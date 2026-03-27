@@ -67,7 +67,7 @@
       (is (#'table/valid-field-order? (mt/id :birds)
                                       [(mt/id :birds :species)])))))
 
-(deftest slashes-in-schema-names-test
+(deftest ^:parallel slashes-in-schema-names-test
   (testing "Schema names should allow forward or back slashes (#8693, #12450)"
     (doseq [schema-name ["my\\schema"
                          "my\\\\schema"
@@ -79,7 +79,7 @@
           (is (= schema-name
                  (t2/select-one-fn :schema :model/Table :id table-id))))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
     (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
                    :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
@@ -174,7 +174,7 @@
               (t2/hydrate :field_values)
               :field_values))))
 
-(deftest pk-field-hydration-test
+(deftest ^:parallel pk-field-hydration-test
   (is (= (mt/id :venues :id)
          (-> (t2/select-one :model/Table (mt/id :venues))
              (t2/hydrate :pk_field)
@@ -541,7 +541,7 @@
       (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/Table
                                               :id [:in [table-1-id table-2-id]]))))))
 
-(deftest collection-hydration-test
+(deftest ^:parallel collection-hydration-test
   (testing "hydrating :collection on a table"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                    :model/Table table {:is_published true :collection_id coll-id}]
@@ -563,7 +563,7 @@
         (is (= coll2-id (-> hydrated second :collection :id)))
         (is (nil? (-> hydrated (nth 2) :collection)))))))
 
-(deftest owner-hydration-test
+(deftest ^:parallel owner-hydration-test
   (testing "hydrating :owner on a table with :owner_user_id"
     (mt/with-temp [:model/Table table {:owner_user_id (mt/user->id :crowberto)}]
       (is (=? {:owner {:id    (mt/user->id :crowberto)
@@ -676,7 +676,7 @@
           (is (contains? hydrated :can_query))
           (is (boolean? (:can_query hydrated))))))))
 
-(deftest serdes-descendants-includes-fields-and-segments-test
+(deftest ^:parallel serdes-descendants-includes-fields-and-segments-test
   (testing "Table descendants includes Fields and Segments"
     (mt/with-temp [:model/Database {db-id :id}      {:name "Test DB"}
                    :model/Table    {table-id :id}   {:name "Test Table" :db_id db-id}
@@ -694,7 +694,7 @@
                    :model/Table    {table-id :id} {:name "Empty Table" :db_id db-id}]
       (is (= {} (serdes/descendants "Table" table-id {}))))))
 
-(deftest serdes-descendants-skip-archived-segments-test
+(deftest ^:parallel serdes-descendants-skip-archived-segments-test
   (testing "Table descendants respects skip-archived option for Segments"
     (mt/with-temp [:model/Database {db-id :id}           {:name "Test DB"}
                    :model/Table    {table-id :id}        {:name "Test Table" :db_id db-id}

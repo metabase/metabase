@@ -4,7 +4,7 @@
    [metabase.comments.render :as render]
    [metabase.test :as mt]))
 
-(deftest content->html-basic-test
+(deftest ^:parallel content->html-basic-test
   (testing "nil content returns nil"
     (is (nil? (render/content->html nil))))
 
@@ -22,7 +22,7 @@
            (render/content->html {:type    "doc"
                                   :content [{:type "paragraph"}]})))))
 
-(deftest content->html-marks-test
+(deftest ^:parallel content->html-marks-test
   (testing "bold text"
     (is (= "<p><strong>bold</strong></p>"
            (render/content->html {:type    "doc"
@@ -69,7 +69,7 @@
                                                         :text  "code"
                                                         :marks [{:type "code"}]}]}]})))))
 
-(deftest content->html-block-nodes-test
+(deftest ^:parallel content->html-block-nodes-test
   (testing "heading"
     (is (= "<h2>Title</h2>"
            (render/content->html {:type    "doc"
@@ -192,7 +192,7 @@
                                                      :model    "unknown"
                                                      :label    "My Thing"}}]})))))
 
-(deftest content->html-unknown-nodes-test
+(deftest ^:parallel content->html-unknown-nodes-test
   (testing "unknown node type is dropped entirely"
     (is (= ""
            (render/content->html {:type    "doc"

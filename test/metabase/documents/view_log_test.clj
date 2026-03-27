@@ -67,7 +67,7 @@
           (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
           (is (= 2 (t2/select-one-fn :view_count :model/Document (:id document)))))))))
 
-(deftest update-document-last-viewed-at-test
+(deftest ^:parallel update-document-last-viewed-at-test
   (let [now (-> (t/offset-date-time)
                 (.withNano 0))
         one-hour-ago (t/minus now (t/hours 1))
@@ -118,7 +118,7 @@
           (is (not (contains? (set @events-published) :event/document-update))
               "updating last_viewed_at should not publish :event/document-update"))))))
 
-(deftest document-event-derivation-test
+(deftest ^:parallel document-event-derivation-test
   (testing "Document events are properly derived from base events"
     (is (isa? :metabase.documents.view-log/document-read :metabase/event))
     (is (isa? :event/document-read :metabase.documents.view-log/document-read))))
@@ -128,7 +128,7 @@
     ;; This should not throw an exception
     (is (some? (events/publish-event! :event/document-read {:object-id 999999 :user-id (mt/user->id :rasta)})))))
 
-(deftest document-statistics-lock-test
+(deftest ^:parallel document-statistics-lock-test
   (testing "Document statistics lock is properly defined"
     (is (= :metabase.documents.view-log/document-statistics-lock
            @#'documents.view-log/document-statistics-lock))))

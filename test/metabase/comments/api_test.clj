@@ -38,7 +38,7 @@
   {:type    "doc"
    :content (mapv render-tiptap content)})
 
-(deftest tiptap-helpers-test
+(deftest ^:parallel tiptap-helpers-test
   (testing "can generate some content but less verbose"
     (is (=? {:type "doc"
              :content
@@ -221,7 +221,7 @@
                 (is (not (str/includes? email-body "evil.example"))))
               (swap! mt/inbox empty))))))))
 
-(deftest update-comment-test
+(deftest ^:parallel update-comment-test
   (testing "PUT /api/comment/:comment-id"
     (mt/with-temp [:model/Document {doc-id :id}     {}
                    :model/Comment  {comment-id :id} {:target_id doc-id}]
@@ -235,7 +235,7 @@
                 (mt/user-http-request :rasta :put 200 (str "comment/" comment-id)
                                       {:is_resolved true})))))))
 
-(deftest delete-comment-test
+(deftest ^:parallel delete-comment-test
   (testing "DELETE /api/comment/:comment-id"
     (mt/with-temp [:model/Document {doc-id :id} {}
                    :model/Comment  {c1 :id}     {:target_id doc-id}
@@ -264,7 +264,7 @@
                                       :target_type "document"
                                       :target_id doc-id)))))))
 
-(deftest toggle-reaction-test
+(deftest ^:parallel toggle-reaction-test
   (testing "POST /api/comment/:comment-id/reaction"
     (mt/with-temp [:model/Document {doc-id :id}     {}
                    :model/Comment  {comment-id :id} {:target_id doc-id}]
@@ -328,7 +328,7 @@
                    (mt/user-http-request :lucky :post 403 (str "comment/" restricted-comment-id "/reaction")
                                          {:emoji "👍"})))))))))
 
-(deftest mention-entities-test
+(deftest ^:parallel mention-entities-test
   (testing "We can get users to mention"
     (is (=? {:data   [{:id int? :common_name "Crowberto Corv" :model "user"}
                       {:id int? :common_name "Lucky Pigeon" :model "user"}
@@ -339,7 +339,7 @@
             (-> (mt/user-http-request :rasta :get 200 "comment/mentions" :limit 50)
                 (update :data #(filter mt/test-user? %)))))))
 
-(deftest iframe-comments-test
+(deftest ^:parallel iframe-comments-test
   (testing "comments are disabled inside of an iframe"
     (mt/with-temp [:model/Document {doc-id :id}     {}
                    :model/Comment  {comment-id :id} {:target_id doc-id}]

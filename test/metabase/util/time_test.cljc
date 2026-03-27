@@ -152,7 +152,7 @@
       "2022-12-12T00:00:00Z"
       1000)))
 
-(deftest same-day-month-year-test
+(deftest ^:parallel same-day-month-year-test
   (let [ref-date      (from "2022-12-19T08:12:45")  ; Base
         same-day      (from "2022-12-19T14:06:00")  ; Later that day
         same-month    (from "2022-12-02T06:44:18")  ; Earlier the same month
@@ -180,7 +180,7 @@
       (is (shared.ut/same-year? same-day same-year))
       (is (not (shared.ut/same-year? same-day previous-year))))))
 
-(deftest to-range-test
+(deftest ^:parallel to-range-test
   (doseq [[exp-from exp-to date unit]
           [["2022-01-01T00:00:00Z" "2022-12-31T23:59:59.999Z" "2022-08-19T00:00:00" "year"]
 
@@ -208,7 +208,7 @@
   #?(:cljs (dayjs s #js ["HH:mm:ss.SSS" "HH:mm:ss" "HH:mm"])
      :clj  (t/local-time s)))
 
-(deftest coerce-to-time-test
+(deftest ^:parallel coerce-to-time-test
   (testing "parsing time strings"
     (are [exp input] (same? (time-from exp) (shared.ut/coerce-to-time input))
       "09:26:45.123" "09:26:45.123"
@@ -235,7 +235,7 @@
                           #"Unknown input to coerce-to-time; expecting a string"
                           (shared.ut/coerce-to-time 12)))))
 
-(deftest format-string-test
+(deftest ^:parallel format-string-test
   (are [exp u] (= exp (shared.ut/format-unit "2023-02-08" u))
     "Wednesday" :day-of-week
     "Feb" :month-of-year
@@ -284,7 +284,7 @@
   (is (= "1 PM" (shared.ut/format-unit 13 :hour-of-day)))
   (is (= "12 AM" (shared.ut/format-unit 0 :hour-of-day))))
 
-(deftest parse-unit-test
+(deftest ^:parallel parse-unit-test
   (are [exp input unit-in unit-out locale-in locale-out]
        (= exp (-> (shared.ut/parse-unit input unit-in  locale-in)
                   (shared.ut/format-unit      unit-out locale-out)))
@@ -297,7 +297,7 @@
     "1 PM"      "13"  :hour-of-day-24 :hour-of-day       "en" "en"
     "12 AM"     "0"   :hour-of-day-24 :hour-of-day       "en" "en"))
 
-(deftest format-diff-test
+(deftest ^:parallel format-diff-test
   (are [exp a b] (= exp (shared.ut/format-diff a b))
     "Oct 3–5, 2023" "2023-10-03" "2023-10-05"
     "Sep 3 – Oct 5, 2023" "2023-09-03" "2023-10-05"

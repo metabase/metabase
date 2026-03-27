@@ -23,7 +23,7 @@
   {:version 1
    :config  {:settings {:my-setting "abc123"}}})
 
-(deftest config-test
+(deftest ^:parallel config-test
   (testing "Specify a custom path and read from YAML"
     (mt/with-temp-file [filename "temp-config-file.yml"]
       (spit filename (yaml/generate-string mock-yaml))

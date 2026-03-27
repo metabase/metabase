@@ -368,7 +368,7 @@
         (t2/update! :model/Notification id {:active true})
         (is (= 2 (count (notification.tu/notification-triggers id))))))))
 
-(deftest v-alerts-schedule-type-test
+(deftest ^:parallel v-alerts-schedule-type-test
   (mt/when-ee-evailable
    (testing "schedule types"
      (doseq [[schedule-type cron-schedule ui-display-type]

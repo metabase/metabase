@@ -240,7 +240,7 @@
 
 ;;; ------------------------------------------- Helper Function Tests -------------------------------------------
 
-(deftest library-is-remote-synced-helper-test
+(deftest ^:parallel library-is-remote-synced-helper-test
   (testing "library-is-remote-synced? returns correct value"
     (collections.tu/with-library-synced
       (is (true? (settings/library-is-remote-synced?))

@@ -9,7 +9,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest metabot-prompts-hydration-test
+(deftest ^:parallel metabot-prompts-hydration-test
   (mt/dataset test-data
     (testing "batched hydration of metabot prompts"
       (mt/with-temp

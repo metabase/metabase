@@ -20,7 +20,7 @@
                                      (messages/generate-pulse-unsubscribe-hash pulse-id email))]]
           (is (= 3 (count (distinct (remove #{expected-hash} alternate-hashes))))))))))
 
-(deftest unsubscribe-test
+(deftest ^:parallel unsubscribe-test
   (testing "POST /api/pulse/unsubscribe"
     (let [email "test@metabase.com"]
       (testing "Invalid hash"
@@ -65,7 +65,7 @@
                   :details  {:email "test@metabase.com"}}
                  (mt/latest-audit-log-entry :subscription-unsubscribe))))))))
 
-(deftest unsubscribe-undo-test
+(deftest ^:parallel unsubscribe-undo-test
   (testing "POST /api/pulse/unsubscribe/undo"
     (let [email "test@metabase.com"]
       (testing "Invalid hash"

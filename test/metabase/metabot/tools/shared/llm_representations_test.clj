@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]))
 
-(deftest escape-xml-test
+(deftest ^:parallel escape-xml-test
   (testing "escape-xml handles special characters"
     (is (= "&amp;" (#'llm-rep/escape-xml "&")))
     (is (= "&lt;" (#'llm-rep/escape-xml "<")))
@@ -16,7 +16,7 @@
   (testing "escape-xml handles nil"
     (is (nil? (#'llm-rep/escape-xml nil)))))
 
-(deftest field->xml-test
+(deftest ^:parallel field->xml-test
   (testing "formats field with all attributes matching Python format"
     ;; for field data format see `metabase.metabot.tools.util/->result-column`
     (let [field {:field_id "f1"
@@ -42,7 +42,7 @@
       (is (str/includes? xml "name=\"\\\"test\\\"\""))
       (is (str/includes? xml "database_type=\"unknown\"")))))
 
-(deftest collection->xml-test
+(deftest ^:parallel collection->xml-test
   (testing "formats collection with name"
     (let [collection {:name "Finance" :description "Finance reports" :authority_level "official"}
           xml (llm-rep/collection->xml collection)]
@@ -56,7 +56,7 @@
           xml (llm-rep/collection->xml collection)]
       (is (str/includes? xml "name=\"Our analytics\"")))))
 
-(deftest metric->xml-test
+(deftest ^:parallel metric->xml-test
   (testing "formats metric with all attributes matching Python"
     (let [metric {:id 42
                   :name "Total Revenue"
@@ -85,7 +85,7 @@
       (is (str/includes? xml "is_verified=\"false\""))
       (is (not (str/includes? xml "### Dimensions"))))))
 
-(deftest table->xml-test
+(deftest ^:parallel table->xml-test
   (testing "formats table with all attributes matching Python"
     (let [table {:id 10
                  :name "users"
@@ -113,7 +113,7 @@
       (is (str/includes? xml "metabase://table/10/fields/{field_id}"))
       (is (str/ends-with? (str/trim xml) "</table>")))))
 
-(deftest model->xml-test
+(deftest ^:parallel model->xml-test
   (testing "formats model with all attributes matching Python"
     (let [model {:id 5
                  :name "Sales Model"
@@ -138,7 +138,7 @@
       ;; Python closes with </model>
       (is (str/ends-with? (str/trim xml) "</model>")))))
 
-(deftest query->xml-test
+(deftest ^:parallel query->xml-test
   (testing "formats query result matching Python"
     (let [query {:query-type :sql
                  :query-id "q123"
@@ -163,7 +163,7 @@
       (is (str/includes? xml "type=\"notebook\""))
       (is (not (str/includes? xml "<query_results>"))))))
 
-(deftest chart->xml-test
+(deftest ^:parallel chart->xml-test
   (testing "formats chart (simplified version)"
     (let [chart {:chart-id "ch-abc-123"
                  :query-id "q1"
@@ -181,7 +181,7 @@
           xml (llm-rep/chart->xml chart)]
       (is (str/includes? xml "type=\"table\"")))))
 
-(deftest visualization->xml-test
+(deftest ^:parallel visualization->xml-test
   (testing "formats visualization with queries"
     (let [viz {:chart-id "v1"
                :queries [{:query-type :sql :query-id "q1" :database_id 1 :query-content "SELECT 1"}]
@@ -193,7 +193,7 @@
       (is (str/includes? xml "<query"))
       (is (str/includes? xml "<visualization>")))))
 
-(deftest question->xml-test
+(deftest ^:parallel question->xml-test
   (testing "formats question matching Python"
     (let [question {:id 100
                     :name "Revenue Report"
@@ -220,7 +220,7 @@
           xml (llm-rep/question->xml question)]
       (is (not (str/includes? xml "display_type"))))))
 
-(deftest dashboard->xml-test
+(deftest ^:parallel dashboard->xml-test
   (testing "formats dashboard matching Python"
     (let [dashboard {:id 50
                      :name "Sales Dashboard"
@@ -241,7 +241,7 @@
       (is (str/includes? xml "<text_card"))
       (is (str/ends-with? (str/trim xml) "</dashboard>")))))
 
-(deftest user->xml-test
+(deftest ^:parallel user->xml-test
   (testing "formats user matching Python"
     (let [user {:id 1
                 :name "John Doe"
@@ -257,7 +257,7 @@
       (is (str/includes? xml "| ARR | Annual Recurring Revenue |"))
       (is (str/ends-with? (str/trim xml) "</user>")))))
 
-(deftest search-result->xml-test
+(deftest ^:parallel search-result->xml-test
   (testing "formats search result with correct tag names"
     (let [result {:id 100
                   :type :metric
@@ -331,7 +331,7 @@
     (is (str/starts-with? (llm-rep/search-result->xml {:id 1 :type :card :name "c"}) "<metabase_question"))
     (is (str/starts-with? (llm-rep/search-result->xml {:id 1 :type :dataset :name "d"}) "<metabase-model"))))
 
-(deftest search-results->xml-test
+(deftest ^:parallel search-results->xml-test
   (testing "formats multiple search results"
     (let [results [{:id 1 :type :metric :name "Metric 1"}
                    {:id 2 :type :table :name "Table 1"}]
@@ -347,7 +347,7 @@
       (is (str/includes? xml "<search-results>"))
       (is (str/includes? xml "</search-results>")))))
 
-(deftest field-values-metadata->xml-test
+(deftest ^:parallel field-values-metadata->xml-test
   (testing "formats field values with samples"
     (let [metadata {:field_values ["US" "DE" "FR"]
                     :statistics {:sample_distinct_count 3
@@ -364,7 +364,7 @@
           xml (llm-rep/field-values-metadata->xml metadata)]
       (is (str/includes? xml "This field hasn't been sampled yet")))))
 
-(deftest field-metadata->xml-test
+(deftest ^:parallel field-metadata->xml-test
   (testing "formats field metadata"
     (let [metadata {:field_id "f1"
                     :value_metadata {:field_values ["A" "B"]}}
@@ -377,7 +377,7 @@
           xml (llm-rep/field-metadata->xml metadata)]
       (is (str/includes? xml "No metadata available to display")))))
 
-(deftest get-metadata-result->xml-test
+(deftest ^:parallel get-metadata-result->xml-test
   (testing "formats metadata with metrics, tables, and models"
     (let [result {:metrics [{:id 1 :name "M1" :description "Metric 1"}]
                   :tables [{:id 2 :name "T1" :database_id 1 :description "Table 1"}]
@@ -402,7 +402,7 @@
       (is (str/includes? xml "<errors>"))
       (is (str/includes? xml "Error 1")))))
 
-(deftest entity->xml-test
+(deftest ^:parallel entity->xml-test
   (testing "dispatches to correct formatter based on type"
     (is (str/starts-with? (llm-rep/entity->xml {:type :metric :id 1 :name "m"}) "<metric"))
     (is (str/starts-with? (llm-rep/entity->xml {:type :table :id 1 :name "t" :database_id 1}) "<table"))

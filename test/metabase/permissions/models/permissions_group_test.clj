@@ -16,7 +16,7 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
-(deftest admin-root-entry-test
+(deftest ^:parallel admin-root-entry-test
   (testing "Check that the root entry for Admin was created"
     (is (t2/exists? :model/Permissions :group_id (u/the-id (perms-group/admin)), :object "/"))))
 
@@ -82,7 +82,7 @@
                                     [:= :p.perm_type (u/qualified-name :perms/view-data)]
                                     [:= :p.db_id db-id]]}))))
 
-(deftest newly-created-databases-test
+(deftest ^:parallel newly-created-databases-test
   (testing "magic groups should have permissions for newly created databases\n"
     (mt/with-temp [:model/Database {database-id :id}]
       (doseq [group [(perms-group/all-users)]]
@@ -117,7 +117,7 @@
         (t2/update! :model/User user-id {:is_superuser false})
         (is (false? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
 
-(deftest data-graph-for-group-check-all-groups-test
+(deftest ^:parallel data-graph-for-group-check-all-groups-test
   (mt/with-temp [:model/PermissionsGroup {} {}
                  :model/Database         {} {}]
     (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup :is_tenant_group false)]
@@ -130,7 +130,7 @@
 (defn- perm-object->db [perm-obj]
   (some-> (re-find #"/db/(\d+)/" perm-obj) second parse-long))
 
-(deftest data-graph-for-db-check-all-dbs-test
+(deftest ^:parallel data-graph-for-db-check-all-dbs-test
   (let [perm-objects (t2/select-fn-set :object :model/Permissions)
         dbs-in-perms (set (keep perm-object->db perm-objects))]
     (doseq [db-id (t2/select-fn-set :id :model/Database)]
@@ -173,7 +173,7 @@
                    :perms/transforms :no}}}
                 (data-perms.graph/data-permissions-graph :group-id group-id :db-id db-id)))))))))
 
-(deftest hydrate-members-tests
+(deftest ^:parallel hydrate-members-tests
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}         {}
                  :model/PermissionsGroup           {group-id-2 :id}         {}
                  :model/User                       {user-1-g1 :id}          {:first_name "a"}
@@ -206,7 +206,7 @@
                     group-id-2 #{{:id user-1-g2 :is_group_manager false}}}
                    (group-id->members)))))))))
 
-(deftest is-tenant-group?-works
+(deftest ^:parallel is-tenant-group?-works
   (mt/with-temp [:model/PermissionsGroup {:as normal-group} {:is_tenant_group false}
                  :model/PermissionsGroup {:as tenant-group} {:is_tenant_group true}]
     (is (= true

@@ -33,13 +33,13 @@
              (mt/user-http-request :crowberto :post 400 "ee/tenant/"
                                    {:name "Foo" :slug "my-tenant"}))))))
 
-(deftest invalid-tenant-slug-error-test
+(deftest ^:parallel invalid-tenant-slug-error-test
   (testing "invalid slug results in an error"
     (mt/user-http-request :crowberto :post 400 "ee/tenant/"
                           {:name "My Tenant"
                            :slug "FOOBAR"})))
 
-(deftest can-get-tenant-info
+(deftest ^:parallel can-get-tenant-info
   (mt/with-temp [:model/Tenant {id1 :id} {:name "Tenant Name" :slug "sluggy" :attributes {"env" "test"}}
                  :model/User _ {:tenant_id id1}]
     (is (=? {:id id1
@@ -51,7 +51,7 @@
              :tenant_collection_id integer?}
             (mt/user-http-request :crowberto :get 200 (str "ee/tenant/" id1))))))
 
-(deftest can-update-tenant-name
+(deftest ^:parallel can-update-tenant-name
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}
                  :model/Tenant _ {:name "Other Name" :slug "sluggy2"}]
     (is (=? {:id id
@@ -74,7 +74,7 @@
                :tenant_collection_id integer?}
               (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "New Name"}))))))
 
-(deftest can-mark-tenant-as-active-or-inactive
+(deftest ^:parallel can-mark-tenant-as-active-or-inactive
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}]
     (is (=? {:id id
              :name "Tenant Name"
@@ -85,7 +85,7 @@
              :tenant_collection_id integer?}
             (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:is_active false})))))
 
-(deftest can-list-tenants
+(deftest ^:parallel can-list-tenants
   (testing "I can list tenants"
     (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "slug-1" :attributes {"env" "prod"}}
                    :model/User {} {:tenant_id id1}
@@ -98,7 +98,7 @@
       (is (=? {:data [{:id id2 :attributes {:env "dev"}}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenant/?offset=1"))))))
 
-(deftest can-list-deactivated-tenants
+(deftest ^:parallel can-list-deactivated-tenants
   (testing "I can list deactivated tenants only"
     (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "slug-1" :attributes {"status" "active"}}
                    :model/User {} {:tenant_id id1}
@@ -179,7 +179,7 @@
                   other-tenant-user-id
                   normal-user-id} (get-recipient-ids :crowberto)))))))
 
-(deftest list-users-can-list-tenant-users
+(deftest ^:parallel list-users-can-list-tenant-users
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
                  :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}
                  :model/User {tenant-user-id :id} {:tenant_id tenant-id}
@@ -205,7 +205,7 @@
              ;; even though this makes sense as a query (it's just redundant), let's just prohibit specifying both
              (mt/user-http-request :crowberto :get 400 (str "user?tenancy=external&tenant_id=" tenant-id)))))))
 
-(deftest users-are-deactivated-with-tenants
+(deftest ^:parallel users-are-deactivated-with-tenants
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
                  :model/User {user-id :id} {:tenant_id tenant-id}
                  :model/User {other-user-id :id} {:tenant_id tenant-id}]
@@ -275,7 +275,7 @@
         (is (contains? (:specific-errors response) :attributes))
         (is (contains? (get-in response [:specific-errors :attributes]) (keyword "@system")))))))
 
-(deftest can-update-tenant-attributes-via-put-test
+(deftest ^:parallel can-update-tenant-attributes-via-put-test
   (testing "Can update tenant attributes via PUT"
     (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test"
                                            :slug "test-tenant"
@@ -293,7 +293,7 @@
                  :tenant_collection_id integer?}
                 (dissoc response :attributes)))))))
 
-(deftest can-update-existing-tenant-attributes-test
+(deftest ^:parallel can-update-existing-tenant-attributes-test
   (testing "Can update existing attributes"
     (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 2"
                                            :slug "test-tenant-2"
@@ -304,7 +304,7 @@
                               {:attributes new-attrs})
         (is (= new-attrs (:attributes (t2/select-one :model/Tenant :id id))))))))
 
-(deftest can-clear-tenant-attributes-test
+(deftest ^:parallel can-clear-tenant-attributes-test
   (testing "Can clear attributes by setting to empty map"
     (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 3"
                                            :slug "test-tenant-3"
@@ -313,7 +313,7 @@
                             {:attributes {}})
       (is (= {} (:attributes (t2/select-one :model/Tenant :id id)))))))
 
-(deftest cannot-update-tenant-with-at-prefix-attributes-test
+(deftest ^:parallel cannot-update-tenant-with-at-prefix-attributes-test
   (testing "Cannot update with attributes starting with @"
     (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Test 4"
                                            :slug "test-tenant-4"

@@ -48,13 +48,13 @@
 (defn- mock-hm-call [operation-id _body]
   (get mock-responses operation-id {:operation-id operation-id}))
 
-(deftest hosted-only-test
+(deftest ^:parallel hosted-only-test
   (testing "endpoint requires hosted instance"
     (mt/with-premium-features #{} ; not hosted
       (is (= "This endpoint is only available for hosted instances"
              (mt/user-http-request :crowberto :post 400 "ee/cloud-proxy/mb-plan-trial-up-available"))))))
 
-(deftest invalid-operation-test
+(deftest ^:parallel invalid-operation-test
   (testing "endpoint rejects invalid operation-id"
     (mt/with-premium-features #{:hosting}
       (is (= "Invalid operation-id"

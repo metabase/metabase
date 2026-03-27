@@ -17,7 +17,7 @@
       (let [new-context (to-map (ThreadContext/getImmutableContext))]
         (apply dissoc new-context (keys original-context))))))
 
-(deftest with-context-test
+(deftest ^:parallel with-context-test
   (let [get-context (get-context-fn)
         original-context (get-context)]
     (testing "with-context should set and reset context correctly"

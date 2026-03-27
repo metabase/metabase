@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.tools.navigation :as navigate]))
 
-(deftest page->path-test
+(deftest ^:parallel page->path-test
   (testing "page navigation produces correct paths"
     ;; Test through the public navigate function
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]
@@ -39,7 +39,7 @@
           (is (string? (get-in result [:structured-output :path])))
           (is (str/starts-with? (get-in result [:structured-output :path]) "/question#")))))))
 
-(deftest entity->path-test
+(deftest ^:parallel entity->path-test
   (testing "entity navigation produces correct paths"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]
       (testing "table navigation"
@@ -77,7 +77,7 @@
                                          :memory-atom memory-atom})]
           (is (= "/collection/111" (get-in result [:structured-output :path]))))))))
 
-(deftest query-navigation-test
+(deftest ^:parallel query-navigation-test
   (testing "query navigation resolves from memory"
     (let [query       {:lib/type :mbql/query
                        :database 1
@@ -97,7 +97,7 @@
            (navigate/navigate {:destination {:query_id "nonexistent"}
                                :memory-atom memory-atom}))))))
 
-(deftest chart-navigation-test
+(deftest ^:parallel chart-navigation-test
   (testing "chart navigation resolves from memory"
     (let [query       {:lib/type :mbql/query :database 1 :stages [{:lib/type :mbql.stage/mbql :source-table 10}]}
           memory-atom (atom {:state {:queries {"q1" query}
@@ -122,7 +122,7 @@
            (navigate/navigate {:destination {:chart_id "nonexistent"}
                                :memory-atom memory-atom}))))))
 
-(deftest navigate-returns-reactions-test
+(deftest ^:parallel navigate-returns-reactions-test
   (testing "navigate returns redirect reaction"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})
           result (navigate/navigate {:destination {:page "home"}
@@ -133,7 +133,7 @@
         (is (= :metabot.reaction/redirect (:type reaction)))
         (is (= "/" (:url reaction)))))))
 
-(deftest navigate-format-message-test
+(deftest ^:parallel navigate-format-message-test
   (testing "navigate returns user-friendly messages"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]
       (testing "page navigation message"
@@ -146,7 +146,7 @@
                                          :memory-atom memory-atom})]
           (is (string? (get-in result [:structured-output :message]))))))))
 
-(deftest navigate-invalid-destination-test
+(deftest ^:parallel navigate-invalid-destination-test
   (testing "navigate fails for invalid destination"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]
       (is (thrown-with-msg?
@@ -155,7 +155,7 @@
            (navigate/navigate {:destination {}
                                :memory-atom memory-atom}))))))
 
-(deftest navigate-unknown-page-test
+(deftest ^:parallel navigate-unknown-page-test
   (testing "navigate fails for unknown page"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]
       (is (thrown-with-msg?
@@ -164,7 +164,7 @@
            (navigate/navigate {:destination {:page "unknown_page"}
                                :memory-atom memory-atom}))))))
 
-(deftest navigate-unknown-entity-type-test
+(deftest ^:parallel navigate-unknown-entity-type-test
   (testing "navigate fails for unknown entity type"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})]
       (is (thrown-with-msg?

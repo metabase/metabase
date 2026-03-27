@@ -13,7 +13,7 @@
     :headers headers
     :body "dummy js"}))
 
-(deftest with-etag-returns-304-when-etag-matches
+(deftest ^:parallel with-etag-returns-304-when-etag-matches
   (testing "Exact strong ETag match returns 304 with only ETag header added"
     (let [etag (format "\"%s\"" config/mb-version-hash)
           resp (lib.etag-cache/with-etag (base-response) {:headers {"if-none-match" etag}})]
@@ -38,7 +38,7 @@
       (is (= (format "\"%s\"" config/mb-version-hash)
              (get-in resp [:headers "ETag"]))))))
 
-(deftest with-etag-returns-200-and-adds-etag-when-no-match
+(deftest ^:parallel with-etag-returns-200-and-adds-etag-when-no-match
   (testing "ETag does not match → 200; adds ETag, preserves existing headers; no Cache-Control/Content-Type"
     (let [resp (lib.etag-cache/with-etag
                  (base-response {"X-Foo" "bar"})
@@ -60,7 +60,7 @@
       (is (nil? (get-in resp [:headers "Cache-Control"])))
       (is (nil? (get-in resp [:headers "Content-Type"]))))))
 
-(deftest with-etag-returns-304-on-wildcard
+(deftest ^:parallel with-etag-returns-304-on-wildcard
   (testing "If-None-Match: * (or with whitespace) returns 304 and only adds ETag"
     (doseq [if-none-match-value ["*" "   *   " "*  " "  *"]]
       (let [resp (lib.etag-cache/with-etag

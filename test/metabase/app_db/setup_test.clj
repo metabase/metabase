@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest verify-db-connection-test
+(deftest ^:parallel verify-db-connection-test
   (testing "Should be able to verify a DB connection"
     (testing "from a jdbc-spec map"
       (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/broken-out-details->DataSource
@@ -27,7 +27,7 @@
       (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/raw-connection-string->DataSource
                                              (format "jdbc:h2:mem:%s" (mt/random-name)))))))
 
-(deftest supported-app-db-version?-test
+(deftest ^:parallel supported-app-db-version?-test
   (testing "Should be able to check if an app DB is a supported version"
     (letfn [(test-supported-versions [db expected-min-version]
               (doseq [diff [nil {:major 1} {:minor 1} {:patch 1}]]
@@ -40,7 +40,7 @@
       (test-supported-versions :mysql {:major 8 :minor 4 :patch 0})
       (test-supported-versions :mariadb {:major 10 :minor 6 :patch 0}))))
 
-(deftest parse-db-version-test
+(deftest ^:parallel parse-db-version-test
   (testing "Can parse H2 version strings"
     (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "2.1.214 (2022-06-13)"))))
   (testing "Can parse postgres version strings"

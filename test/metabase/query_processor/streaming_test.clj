@@ -43,7 +43,7 @@
 (defn- basic-actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-basic-streaming export-format query)))
 
-(deftest basic-streaming-test
+(deftest ^:parallel basic-streaming-test
   (testing "Test that the underlying qp.streaming context logic itself works correctly. Not an end-to-end test!"
     (let [query (mt/mbql-query venues
                   {:order-by [[:asc $id]]

@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.transforms-inspector.degeneracy :as degeneracy]))
 
-(deftest degenerate-for-display-default-test
+(deftest ^:parallel degenerate-for-display-default-test
   (testing "non-degenerate when data present"
     (is (= {:degenerate? false}
            (degeneracy/degenerate-for-display? "card-1" :bar
@@ -24,7 +24,7 @@
            (degeneracy/degenerate-for-display? "card-1" :bar
                                                {"card-1" {}})))))
 
-(deftest degenerate-for-display-hidden-test
+(deftest ^:parallel degenerate-for-display-hidden-test
   (testing ":hidden display type is always degenerate"
     (is (= {:degenerate? true}
            (degeneracy/degenerate-for-display? "card-1" :hidden

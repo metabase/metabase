@@ -90,7 +90,7 @@
             (is (set/subset? #{"tenant-key-1" "tenant-key-2" "tenant-key-3" "user-key"}
                              attributes))))))))
 
-(deftest update-user-attributes-test
+(deftest ^:parallel update-user-attributes-test
   (mt/with-premium-features #{}
     (testing "requires sandbox enabled"
       (mt/assert-has-premium-feature-error "Sandboxes" (mt/user-http-request :crowberto :put 402 (format "mt/user/%d/attributes" (mt/user->id :crowberto)) {}))))
@@ -111,7 +111,7 @@
         (is (= {"foo" "bar"}
                (t2/select-one-fn :login_attributes :model/User :id id)))))))
 
-(deftest attributes-endpoint-includes-jwt-attributes-test
+(deftest ^:parallel attributes-endpoint-includes-jwt-attributes-test
   (testing "GET /api/mt/user/attributes includes keys from jwt_attributes"
     (mt/with-premium-features #{:sandboxes}
       (mt/with-temp [:model/User _ {:login_attributes {"department" "engineering"

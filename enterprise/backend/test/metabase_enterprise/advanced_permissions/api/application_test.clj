@@ -5,7 +5,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]))
 
-(deftest application-permissions-test
+(deftest ^:parallel application-permissions-test
   (mt/with-temp [:model/PermissionsGroup _]
     (testing "GET /api/ee/advanced-permissions/application/graph"
       (mt/with-premium-features #{}
@@ -31,7 +31,7 @@
                             :subscription "yes"}}
                           groups))))))))
 
-(deftest application-permissions-test-2
+(deftest ^:parallel application-permissions-test-2
   (mt/with-temp [:model/PermissionsGroup {group-id :id}]
     (testing "PUT /api/ee/advanced-permissions/application/graph"
       (let [current-graph (mt/with-premium-features #{:advanced-permissions}

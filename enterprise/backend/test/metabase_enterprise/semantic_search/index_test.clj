@@ -397,7 +397,7 @@
                     (is (map? labels) "Should have labels map")
                     (is (contains? labels :embedding-model) "Should include embedding-model label")))))))))))
 
-(deftest personal-collection-filter-test
+(deftest ^:parallel personal-collection-filter-test
   (testing "personal-collection-filter generates correct SQL WHERE clauses"
     (let [user-id 42]
       (testing "filter-type 'all' returns nil (no filter)"
@@ -430,7 +430,7 @@
                (#'semantic.index/personal-collection-filter
                 {:filter-items-in-personal-collection "exclude-others" :current-user-id user-id})))))))
 
-(deftest batch-resolve-personal-owner-ids-test
+(deftest ^:parallel batch-resolve-personal-owner-ids-test
   (testing "batch-resolve-personal-owner-ids correctly resolves personal collection ownership"
     (let [user1-id               (mt/user->id :rasta)
           user2-id               (mt/user->id :crowberto)
@@ -535,7 +535,7 @@
             (let [non-existent-docs [{:id "99999:123" :model "indexed-entity" :content "Non-existent"}]]
               (is (= [] (#'semantic.index/filter-can-read-indexed-entity non-existent-docs))))))))))
 
-(deftest to-boolean-test
+(deftest ^:parallel to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"
     (testing "boolean inputs are returned unchanged"
       (is (true? (#'semantic.index/to-boolean true)))
@@ -545,7 +545,7 @@
       (is (false? (#'semantic.index/to-boolean 0)))
       (is (true? (#'semantic.index/to-boolean 1))))))
 
-(deftest doc->db-record-boolean-conversion-test
+(deftest ^:parallel doc->db-record-boolean-conversion-test
   (testing "doc->db-record properly converts boolean fields using to-boolean"
     (let [embedding-vec [0.1 0.2 0.3]
           base-doc {:model "card"

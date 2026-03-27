@@ -433,7 +433,7 @@
               :table #{products-id}}
              (calculation/upstream-deps:document document))))))
 
-(deftest upstream-deps-sandbox-test
+(deftest ^:parallel upstream-deps-sandbox-test
   (mt/with-premium-features #{:sandboxes}
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "sandbox group"}
                    :model/Card {sandbox-card-id :id} {}
@@ -520,7 +520,7 @@
                 :table #{checkins-id venues-id}}
                (calculation/upstream-deps:segment segment)))))))
 
-(deftest upstream-deps-measure-test
+(deftest ^:parallel upstream-deps-measure-test
   (let [mp (mt/metadata-provider)
         orders-id (mt/id :orders)
         orders (lib.metadata/table mp orders-id)
@@ -550,7 +550,7 @@
               (is (= {:measure #{measure-a-id} :segment #{} :table #{orders-id}}
                      (calculation/upstream-deps:measure measure-b))))))))))
 
-(deftest upstream-deps-measure-with-multiple-measures-test
+(deftest ^:parallel upstream-deps-measure-with-multiple-measures-test
   (testing "Measure depending on multiple other measures tracks all dependencies"
     (let [mp (mt/metadata-provider)
           orders-id (mt/id :orders)
@@ -574,7 +574,7 @@
             (is (= {:measure #{measure-a-id measure-b-id} :segment #{} :table #{orders-id}}
                    (calculation/upstream-deps:measure measure-c)))))))))
 
-(deftest upstream-deps-measure-implicit-join-test
+(deftest ^:parallel upstream-deps-measure-implicit-join-test
   (testing "Measure depending on implicitly joined field adds dep on that field's table"
     (let [mp (mt/metadata-provider)
           checkins-id (mt/id :checkins)
@@ -589,7 +589,7 @@
         (is (= {:measure #{} :segment #{} :table #{checkins-id venues-id}}
                (calculation/upstream-deps:measure measure)))))))
 
-(deftest upstream-deps-card-with-measure-test
+(deftest ^:parallel upstream-deps-card-with-measure-test
   (testing "Card using a measure depends on that measure"
     (let [mp (mt/metadata-provider)
           orders-id (mt/id :orders)
@@ -605,7 +605,7 @@
             (is (= {:card #{} :measure #{measure-id} :segment #{} :table #{orders-id}}
                    (calculation/upstream-deps:card card)))))))))
 
-(deftest upstream-deps-measure-with-segment-test
+(deftest ^:parallel upstream-deps-measure-with-segment-test
   (testing "Measure with conditional aggregation using segment depends on that segment"
     (let [mp (mt/metadata-provider)
           orders-id (mt/id :orders)

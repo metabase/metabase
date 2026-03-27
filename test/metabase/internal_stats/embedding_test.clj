@@ -4,7 +4,7 @@
    [metabase.internal-stats.embedding :as sut]
    [metabase.test :as mt]))
 
-(deftest dashboard-count-test
+(deftest ^:parallel dashboard-count-test
   (testing "counts embedding enabled non-archived dashboards"
     (mt/with-temp [:model/Dashboard _ {:enable_embedding true :archived false}
                    :model/Dashboard _ {:enable_embedding true :archived false}
@@ -13,7 +13,7 @@
                    :model/Dashboard _ {:enable_embedding false :archived true}]
       (is (= 2 (sut/embedding-dashboard-count))))))
 
-(deftest question-count-test
+(deftest ^:parallel question-count-test
   (testing "counts embedding enabled non-archived question cards"
     (mt/with-temp [:model/Card _ {:enable_embedding true :archived false :type :metric}
                    :model/Card _ {:enable_embedding true :archived false :type :model}

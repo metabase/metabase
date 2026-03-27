@@ -44,7 +44,7 @@
           (is (= kind (:kind loaded)))
           (is (mt/secret-value-equals? value (:value loaded))))))))
 
-(deftest secret-retrieval-test
+(deftest ^:parallel secret-retrieval-test
   (testing "A secret value can be retrieved successfully"
     (testing " when there is NO encryption key in place"
       (encryption-test/with-secret-key nil
@@ -53,7 +53,7 @@
       (encryption-test/with-secret-key (resolve 'encryption-test/secret)
         (check-secret)))))
 
-(deftest get-secret-string-test
+(deftest ^:parallel get-secret-string-test
   (testing "get-secret-string from value only"
     (is (= "titok"
            (secret/value-as-string :secret-test-driver {:keystore-value "titok"} "keystore"))))
@@ -240,7 +240,7 @@
                 (is (=? uploaded-str-value
                         (secret/value-as-string :secret-test-driver db-details "keystore")))))))))))
 
-(deftest use-latest-version-test
+(deftest ^:parallel use-latest-version-test
   (testing "when reading a secret from the DB, the latest version is taken (#33116)"
     (let [initial-value "vnetillo"
           latest-value (str initial-value "s")

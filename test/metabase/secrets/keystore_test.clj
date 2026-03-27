@@ -50,7 +50,7 @@
             ^SecretKey secret-key          (.getSecretKey entry)]
         (is (= v (String. (.getEncoded secret-key) StandardCharsets/UTF_8)))))))
 
-(deftest secret-keystore-type-test
+(deftest ^:parallel secret-keystore-type-test
   (testing "A secret with :type :keystore can be saved and loaded properly"
     (binding [api/*current-user-id* (mt/user->id :crowberto)]
       (with-open [baos (ByteArrayOutputStream.)]

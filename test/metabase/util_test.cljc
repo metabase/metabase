@@ -561,7 +561,7 @@
     1 1250.0
     0 1250.0))
 
-(deftest conflicting-keys-test
+(deftest ^:parallel conflicting-keys-test
   (testing "non intersecting maps should not return any conflicts"
     (is (= [] (u/conflicting-keys {:a 1 :b 2}
                                   {:c 3 :d 4}))))
@@ -572,7 +572,7 @@
     (is (= [:c :e] (u/conflicting-keys {:a 1 :b 2 :c 3 :e nil}
                                        {:b 2 :c 4 :d 5 :e 6})))))
 
-(deftest map-all-test
+(deftest ^:parallel map-all-test
   (testing "map-all with 1 collection is just map"
     (is (= [[0] [1] [2] [3] [4]] (u/map-all vector (range 5)))))
   (testing "map-all works with 3 collections"

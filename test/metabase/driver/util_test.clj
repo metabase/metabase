@@ -89,7 +89,7 @@
                     :password "passw"
                     :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp))))))
 
-(deftest connection-props-server->client-test
+(deftest ^:parallel connection-props-server->client-test
   (testing "connection-props-server->client works as expected for secret types"
     (doseq [[expected is-hosted?] [[[{:name "host"}
                                      {:name        "password-value"
@@ -579,7 +579,7 @@
           (is (= 2 (count inner-fields)))
           (is (= "Nested info" (:placeholder (second inner-fields)))))))))
 
-(deftest connection-props-server->client-processes-nested-groups-test
+(deftest ^:parallel connection-props-server->client-processes-nested-groups-test
   (testing "connection-props-server->client processes groups with nested fields and vectors correctly"
     (let [mock-driver :test-driver
           props [{:name "regular" :type :string}

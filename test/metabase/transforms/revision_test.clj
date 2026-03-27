@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.revisions.models.revision :as revision]))
 
-(deftest transform-serialize-instance-test
+(deftest ^:parallel transform-serialize-instance-test
   (testing "serialize-instance for :model/Transform excludes the correct columns"
     (let [transform {:id 1
                      :entity_id "wyQv6yHnXS-IqPrYm1osQ"

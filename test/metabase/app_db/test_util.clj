@@ -38,7 +38,7 @@
  [[metabase.app-db.data-source/broken-out-details->DataSource]] or
  [[metabase.app-db.data-source/raw-connection-string->DataSource]] instead.")
 
-(deftest jdbc-spec-test
+(deftest ^:parallel jdbc-spec-test
   (let [data-source (->ClojureJDBCSpecDataSource
                      {:subprotocol "h2"
                       :subname     (format "mem:%s" (u.random/random-name))

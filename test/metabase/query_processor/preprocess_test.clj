@@ -23,7 +23,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.humanization :as u.humanization]))
 
-(deftest preprocess-caching-test
+(deftest ^:parallel preprocess-caching-test
   (testing "`preprocess` should work the same even if query has cached results (#18579)"
     ;; make a copy of the `test-data` DB so there will be no cache entries from previous test runs possibly affecting
     ;; this test.

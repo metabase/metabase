@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.util.fonts :as u.fonts]))
 
-(deftest normalize-font-dirname-test
+(deftest ^:parallel normalize-font-dirname-test
   (doseq [[s expected] {"Roboto"           "Roboto"
                         "Merriweather"     "Merriweather"
                         "Open_Sans"        "Open Sans"
@@ -27,12 +27,12 @@
       (is (= expected
              (#'u.fonts/normalize-font-dirname s))))))
 
-(deftest available-fonts-test
+(deftest ^:parallel available-fonts-test
   (let [fonts (u.fonts/available-fonts)]
     (testing "A list of available fonts is returned"
       (is (seq fonts)))))
 
-(deftest available-font-predicate-test
+(deftest ^:parallel available-font-predicate-test
   (testing "A valid font on the system returns `true`."
     (is (u.fonts/available-font? "Lato")))
   (testing "An invalid font on the system returns `false`."

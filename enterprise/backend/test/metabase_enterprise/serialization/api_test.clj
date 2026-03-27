@@ -358,7 +358,7 @@
                        "models"      "Collection,Dashboard,PythonLibrary,TransformJob,TransformTag"}
                       (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))))
 
-(deftest import-invalid-archive-test
+(deftest ^:parallel import-invalid-archive-test
   (testing "Import with invalid archive returns 422 client error"
     (mt/with-premium-features #{:serialization}
       (let [res (mt/user-http-request :crowberto :post 422 "ee/serialization/import"
@@ -444,7 +444,7 @@
                    "error_message"   nil}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
 
-(deftest serialization-permissions-test
+(deftest ^:parallel serialization-permissions-test
   (testing "Only admins can export/import"
     (mt/with-premium-features #{:serialization}
       (testing "Non-admin cannot export"
@@ -479,7 +479,7 @@
       (is (= known-files
              (set (.list (io/file api.serialization/parent-dir))))))))
 
-(deftest find-serialization-dir-test
+(deftest ^:parallel find-serialization-dir-test
   (testing "We are able to find serialization dir even in presence of various hidden dirs"
     (let [dst (io/file api.serialization/parent-dir (u.random/random-name))]
       (.mkdirs (io/file dst "._hidden_dir"))

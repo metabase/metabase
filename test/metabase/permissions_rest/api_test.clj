@@ -32,7 +32,7 @@
    (set (apply mt/user-http-request
                :crowberto :get 200 "permissions/group" query-params))))
 
-(deftest fetch-groups-test
+(deftest ^:parallel fetch-groups-test
   (testing "GET /api/permissions/group"
     (letfn [(check-default-groups-returned [id->group]
               (testing "All Users Group should be returned"
@@ -64,7 +64,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "permissions/group"))))))
 
-(deftest no-data-analyst-groups-test
+(deftest ^:parallel no-data-analyst-groups-test
   (testing "GET /api/permissions/group"
     (testing "in OSS, the data analyst group is hidden"
       ;; note that this uses `config/ee-available?` instead of a feature to avoid hiding a group that may stil provide permissions!
@@ -72,7 +72,7 @@
         (is (not (contains? (set (map :name (mt/user-http-request :crowberto :get 200 "permissions/group")))
                             "Data Analysts")))))))
 
-(deftest groups-list-limit-test
+(deftest ^:parallel groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
     (testing "Limit and offset pagination have defaults"
       (is (= (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "0")
@@ -137,7 +137,7 @@
     (testing "invalid tenancy value returns 400"
       (:status (mt/user-http-request :crowberto :get 400 "permissions/group" :tenancy "invalid")))))
 
-(deftest fetch-group-test
+(deftest ^:parallel fetch-group-test
   (testing "GET /permissions/group/:id"
     (let [{:keys [members]} (mt/user-http-request
                              :crowberto :get 200 (format "permissions/group/%d" (:id (perms-group/all-users))))
@@ -212,14 +212,14 @@
           (is (some? group))
           (is (false? (:is_tenant_group group))))))))
 
-(deftest create-group-test-enterprise-features
+(deftest ^:parallel create-group-test-enterprise-features
   (testing "POST /permissions/group enterprise feature enforcement"
     (testing "throws ee-feature-error when trying to create tenant group without tenants feature"
       (mt/with-premium-features #{}
         (is (=? {:message "Tenants is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"}
                 (mt/user-http-request :crowberto :post 402 "permissions/group" {:name "Tenant Group" :is_tenant_group true})))))))
 
-(deftest delete-group-test
+(deftest ^:parallel delete-group-test
   (testing "DELETE /permissions/group/:id"
     (testing "happy path"
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test group"}]
@@ -263,7 +263,7 @@
           (is (= group-id (:model_id audit-entry)))
           (is (= "Delete Me" (get-in audit-entry [:details :name]))))))))
 
-(deftest update-group-audit-test
+(deftest ^:parallel update-group-audit-test
   (mt/with-premium-features #{:audit-app}
     (testing "permissions group update is audited"
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
@@ -280,7 +280,7 @@
             (is (= "Updated Group" (get-in audit-entry [:details :new :name])))
             (is (= "Test Group" (get-in audit-entry [:details :previous :name])))))))))
 
-(deftest fetch-perms-graph-test
+(deftest ^:parallel fetch-perms-graph-test
   (testing "GET /api/permissions/graph"
     (testing "make sure we can fetch the perms graph from the API"
       (mt/with-temp [:model/Database {db-id :id}]
@@ -315,7 +315,7 @@
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
           (is (= #{db-id} (->> graph :groups vals (mapcat keys) set))))))))
 
-(deftest update-perms-graph-test
+(deftest ^:parallel update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
       (mt/with-temp [:model/PermissionsGroup group]
@@ -343,7 +343,7 @@
                   (mt/id :orders) :query-builder}
                  (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :create-queries "PUBLIC"]))))))))
 
-(deftest update-perms-graph-perms-for-new-db-test
+(deftest ^:parallel update-perms-graph-perms-for-new-db-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions for new db"
       (mt/with-temp [:model/PermissionsGroup group       {}
@@ -360,7 +360,7 @@
               :create-queries :query-builder}
              (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
-(deftest update-perms-graph-perms-for-new-db-with-no-tables-test
+(deftest ^:parallel update-perms-graph-perms-for-new-db-with-no-tables-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions for new db with no tables"
       (mt/with-temp [:model/PermissionsGroup group       {}
@@ -376,7 +376,7 @@
               :create-queries :query-builder}
              (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
-(deftest update-perms-graph-with-skip-graph-test
+(deftest ^:parallel update-perms-graph-with-skip-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions graph is not returned when skip-graph"
       (mt/with-temp [:model/PermissionsGroup group       {}
@@ -403,7 +403,7 @@
             (is (mr/validate [:map {:closed true}
                               [:revision pos-int?]] no-returned-g))))))))
 
-(deftest update-perms-graph-force-test
+(deftest ^:parallel update-perms-graph-force-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions graph does not check revision number when force=true"
       (let [do-perm-put    (fn [url status] (mt/user-http-request
@@ -416,7 +416,7 @@
 
         (do-perm-put "permissions/graph?force=true" 200)))))
 
-(deftest can-revoke-permsissions-via-graph-test
+(deftest ^:parallel can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
     (let [table-id (mt/id :venues)]
       (mt/with-temp [:model/PermissionsGroup group]
@@ -450,7 +450,7 @@
                                       :table_id  table-id
                                       :perm_type :perms/view-data))))))))
 
-(deftest update-perms-graph-error-test
+(deftest ^:parallel update-perms-graph-error-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure an error is thrown if the :sandboxes key is included in an OSS request"
       (mt/with-premium-features #{}
@@ -506,7 +506,7 @@
                                                        db-id
                                                        table-id))))))))
 
-(deftest get-group-membership-test
+(deftest ^:parallel get-group-membership-test
   (testing "GET /api/permissions/membership"
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
@@ -523,7 +523,7 @@
         (is (= (t2/select-fn-set :id 'User)
                (conj (set (keys result)) config/internal-mb-user-id)))))))
 
-(deftest add-group-membership-test
+(deftest ^:parallel add-group-membership-test
   (testing "POST /api/permissions/membership"
     (mt/with-temp [:model/User             user  {}
                    :model/PermissionsGroup group {}]
@@ -537,7 +537,7 @@
                               {:group_id         (:id group)
                                :user_id          (:id user)})))))
 
-(deftest update-group-membership-test
+(deftest ^:parallel update-group-membership-test
   (testing "PUT /api/permissions/membership/:id"
     (mt/with-temp [:model/User                       user     {}
                    :model/PermissionsGroup           group    {}
@@ -548,7 +548,7 @@
           (is (= "The group manager permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                  (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d" id) {:is_group_manager false}))))))))
 
-(deftest clear-group-membership-test
+(deftest ^:parallel clear-group-membership-test
   (testing "PUT /api/permissions/membership/:group-id/clear"
     (mt/with-temp [:model/User                       {user-id :id}  {}
                    :model/PermissionsGroup           {group-id :id} {}
@@ -567,7 +567,7 @@
       (testing "The admin group cannot be cleared using this endpoint"
         (mt/user-http-request :crowberto :put 400 (format "permissions/membership/%d/clear" (u/the-id (perms-group/admin))))))))
 
-(deftest delete-group-membership-test
+(deftest ^:parallel delete-group-membership-test
   (testing "DELETE /api/permissions/membership/:id"
     (mt/with-temp [:model/User                       user     {}
                    :model/PermissionsGroup           group    {}

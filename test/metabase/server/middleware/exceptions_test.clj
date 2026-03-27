@@ -180,7 +180,7 @@
           (is (not (contains? (:body @captured-response) :trace))
               "Response should not include stacktrace"))))))
 
-(deftest catch-uncaught-exceptions-middleware-test
+(deftest ^:parallel catch-uncaught-exceptions-middleware-test
   (testing "catch-uncaught-exceptions middleware routes exceptions to raise handler"
     (let [test-exception (create-test-exception "Uncaught exception test")
           handler (mw.exceptions/catch-uncaught-exceptions

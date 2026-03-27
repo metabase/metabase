@@ -51,7 +51,7 @@
            (log.impl/name log/*logger-factory*))
         "Not using log4j2 logger factory. This could add two orders of magnitude of time to logging calls")))
 
-(deftest logger-respect-configured-log-level-test
+(deftest ^:parallel logger-respect-configured-log-level-test
   (testing "The appender that we programmatically added should respect the log levels in the config file"
     ;; whether we're in the REPL or in test mode this should not show up
     (log/debug "THIS SHOULD NOT SHOW UP")
@@ -60,7 +60,7 @@
                        entry))
                    (logger/messages))))))
 
-(deftest fork-logs-test
+(deftest ^:parallel fork-logs-test
   (testing "logger/for-ns works properly"
     (mt/with-temp-file [filename]
       (let [f (io/file filename)]
@@ -69,7 +69,7 @@
         (is (=? [#".*just a test.+"]
                 (line-seq (io/reader f))))))))
 
-(deftest fork-logs-test-2
+(deftest ^:parallel fork-logs-test-2
   (testing "logger/for-ns works properly"
     (let [baos (java.io.ByteArrayOutputStream.)]
       (with-open [_ (logger/for-ns baos 'metabase.logger.core-test {:additive false})]
@@ -79,7 +79,7 @@
         (is (=? [#".*just a test.+"]
                 (line-seq (io/reader (.toByteArray baos)))))))))
 
-(deftest fork-logs-test-3
+(deftest ^:parallel fork-logs-test-3
   (testing "We can capture few separate namespaces"
     (mt/with-temp-file [filename]
       (let [f (io/file filename)]

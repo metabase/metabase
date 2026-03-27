@@ -9,7 +9,7 @@
 
 (comment transform-tag/keep-me)
 
-(deftest initial-tags-translated-on-select
+(deftest ^:parallel initial-tags-translated-on-select
   (doseq [[type name] [["hourly"  (i18n/trs "hourly")]
                        ["daily"   (i18n/trs "daily")]
                        ["weekly"  (i18n/trs "weekly")]

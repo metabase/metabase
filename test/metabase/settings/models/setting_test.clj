@@ -508,7 +508,7 @@
 
 ;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
 
-(deftest boolean-settings-tag-test
+(deftest ^:parallel boolean-settings-tag-test
   (testing "Boolean settings should have correct `:tag` metadata"
     (test-assert-setting-has-tag #'test-boolean-setting 'java.lang.Boolean)))
 
@@ -1057,7 +1057,7 @@
   :driver-feature :actions
   :encryption     :when-encryption-key-set)
 
-(deftest driver-feature-validation-test
+(deftest ^:parallel driver-feature-validation-test
   (testing "A setting with :driver-feature must be :database-local"
     (is (thrown-with-msg?
          Throwable
@@ -1108,7 +1108,7 @@
   :enabled-for-db?  (fn [db] (not (:router_database_id db)))
   :encryption       :when-encryption-key-set)
 
-(deftest enabled-for-db-validation-test
+(deftest ^:parallel enabled-for-db-validation-test
   (testing ":enabled-for-db? must only be used with database-local settings"
     (is (thrown-with-msg?
          ExceptionInfo
@@ -1301,7 +1301,7 @@
           (is (= "Setting name 'retired-setting' is retired; use a different name instead"
                  (ex-message e))))))))
 
-(deftest duplicated-setting-name
+(deftest ^:parallel duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
     (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set))
     (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)))
@@ -1383,7 +1383,7 @@
     (is (= "aa1aa-b2b_cc3c"
            (#'setting/munge-setting-name "aa1'aa@#?-b2@b_cc'3?c?")))))
 
-(deftest validate-default-value-for-type-test
+(deftest ^:parallel validate-default-value-for-type-test
   (letfn [(validate [tag default]
             (@#'setting/validate-default-value-for-type
              {:tag tag, :default default, :name :a-setting, :type :fake-type}))]
@@ -1550,7 +1550,7 @@
   :encryption :when-encryption-key-set
   :export? false)
 
-(deftest export?-test
+(deftest ^:parallel export?-test
   (testing "The :export? property is exposed"
     (is (#'setting/export? :exported-setting))
     (is (not (#'setting/export? :non-exported-setting))))
@@ -1558,7 +1558,7 @@
   (testing "By default settings are not exported"
     (is (not (#'setting/export? :test-setting-1)))))
 
-(deftest realize-throwing-test
+(deftest ^:parallel realize-throwing-test
   (testing "The realize function ensures all nested lazy values are calculated"
     (let [ok (lazy-seq (cons 1 (lazy-seq (list 2))))
           ok-deep (lazy-seq (cons 1 (lazy-seq (list (lazy-seq (list 2))))))
@@ -1597,7 +1597,7 @@
 
 (define-setting-for-type :json)
 
-(deftest valid-json-setting-test
+(deftest ^:parallel valid-json-setting-test
   (testing "Validation is a no-op if the JSON is valid"
     (is (nil? (get-parse-exception :json "[1, 2]")))))
 
@@ -1632,7 +1632,7 @@
 
 (define-setting-for-type :csv)
 
-(deftest valid-csv-setting-test
+(deftest ^:parallel valid-csv-setting-test
   (testing "Validation is a no-op if the CSV is valid"
     (is (nil? (get-parse-exception :csv "1, 2")))))
 
@@ -1653,7 +1653,7 @@
 
 (define-setting-for-type :boolean)
 
-(deftest valid-boolean-setting-test
+(deftest ^:parallel valid-boolean-setting-test
   (testing "Validation is a no-op if the string represents a boolean"
     (is (nil? (get-parse-exception :boolean "")))
     (is (nil? (get-parse-exception :boolean "true")))
@@ -1668,7 +1668,7 @@
 
 (define-setting-for-type :double)
 
-(deftest valid-double-setting-test
+(deftest ^:parallel valid-double-setting-test
   (testing "Validation is a no-op if the string represents a double"
     (is (nil? (get-parse-exception :double "1")))
     (is (nil? (get-parse-exception :double "-1")))
@@ -1685,7 +1685,7 @@
 
 (define-setting-for-type :keyword)
 
-(deftest valid-keyword-setting-test
+(deftest ^:parallel valid-keyword-setting-test
   (testing "Validation is a no-op if the string represents a keyword"
     (is (nil? (get-parse-exception :keyword "1")))
     (is (nil? (get-parse-exception :keyword "a")))
@@ -1697,7 +1697,7 @@
 
 (define-setting-for-type :integer)
 
-(deftest valid-integer-setting-test
+(deftest ^:parallel valid-integer-setting-test
   (testing "Validation is a no-op if the string represents a integer"
     (is (nil? (get-parse-exception :integer "1")))
     (is (nil? (get-parse-exception :integer "-1")))))
@@ -1712,7 +1712,7 @@
 
 (define-setting-for-type :positive-integer)
 
-(deftest valid-positive-integer-setting-test
+(deftest ^:parallel valid-positive-integer-setting-test
   (testing "Validation is a no-op if the string represents a positive-integer"
     (is (nil? (get-parse-exception :positive-integer "1")))
     ;; somewhat un-intuitively this is legal input, and parses to nil
@@ -1728,7 +1728,7 @@
 
 (define-setting-for-type :timestamp)
 
-(deftest valid-timestamp-setting-test
+(deftest ^:parallel valid-timestamp-setting-test
   (testing "Validation is a no-op if the string represents a timestamp"
     (is (nil? (get-parse-exception :timestamp "2024-01-01")))))
 
@@ -1742,7 +1742,7 @@
 (defn ns-validation-setting-symbol [format]
   (symbol "metabase.settings.models.setting-test" (name (validation-setting-symbol format))))
 
-(deftest validation-completeness-test
+(deftest ^:parallel validation-completeness-test
   (let [formats-to-check (disj (set (keys (methods setting/get-value-of-type))) :string)]
     (testing "Every settings format has its redaction predicate defined"
       (doseq [format formats-to-check]
@@ -1774,7 +1774,7 @@
       (setting/migrate-encrypted-settings!)
       (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting))))))
 
-(deftest boolean-settings-default-to-never-encrypted
+(deftest ^:parallel boolean-settings-default-to-never-encrypted
   (testing "Boolean settings default to never encrypted"
     (is (= :no (:encryption (setting/resolve-setting :test-boolean-setting)))))
   (testing "Boolean settings can be encrypted"
@@ -1843,7 +1843,7 @@
     (is (= "PRIMARY" (setting/env-var-value :test-setting-with-deprecated-name)))
     (is (= [] (deprecated-env-var-warnings)))))
 
-(deftest deprecated-name-neither-set-test
+(deftest ^:parallel deprecated-name-neither-set-test
   (is (nil? (setting/env-var-value :test-setting-with-deprecated-name)))
   (is (= [] (deprecated-env-var-warnings))))
 
@@ -1870,7 +1870,7 @@
            (t2/delete! (t2/table-name :model/Setting) :key k#)
            (setting.cache/restore-cache!))))))
 
-(deftest deprecated-name-db-fallback-only-legacy-test
+(deftest ^:parallel deprecated-name-db-fallback-only-legacy-test
   (testing "When only the deprecated key exists in the DB, the new setting reads its value"
     (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
       (is (= "DB_LEGACY" (test-setting-with-deprecated-name))))))

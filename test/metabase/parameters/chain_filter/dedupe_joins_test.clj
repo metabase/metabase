@@ -17,12 +17,12 @@
            {:lhs {:table lhs}, :rhs {:table rhs}})
          keep-ids))))
 
-(deftest no-duplicates-test
+(deftest ^:parallel no-duplicates-test
   (testing "Don't remove joins where there are no duplicates"
     (is (= [[1 2] [2 3]]
            (dedupe-joins [[1 2] [2 3]] #{3 4})))))
 
-(deftest diamond-joins-test
+(deftest ^:parallel diamond-joins-test
   ;; suppose we have a joins like this: T1 is the source Table and we to join against T3, T4 and T5:
   ;;
   ;;    T1
@@ -66,7 +66,7 @@
                [3 4]]
               #{2 3 4}))))))
 
-(deftest large-diamond-test
+(deftest ^:parallel large-diamond-test
   ;;              7
   ;;             /
   ;;      3-----4--8--9
@@ -92,7 +92,7 @@
             0
             #{6 7 9})))))
 
-(deftest luiggi-test
+(deftest ^:parallel luiggi-test
   (testing "A simple linear chain, that killed Metabase. (#46905)"
     (let [in-joins
           [{:lhs {:table 24, :field 265}, :rhs {:table 30, :field 330}} ; 5 times

@@ -75,7 +75,7 @@
       :else
       (throw (ex-info "Unknown type" {:user-id user-id :model model})))))
 
-(deftest bookmarks-on-archived-items-test
+(deftest ^:parallel bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp [:model/Collection archived-collection {:name "Test Collection"
                                                           :archived true}
@@ -145,7 +145,7 @@
             (is (= ["document" "card"]
                    (map :type (mt/user-http-request :rasta :get 200 "bookmark"))))))))))
 
-(deftest document-bookmarks-archived-test
+(deftest ^:parallel document-bookmarks-archived-test
   (testing "Document bookmarks on archived documents"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                    :model/Document archived-document {:name "Archived Document"

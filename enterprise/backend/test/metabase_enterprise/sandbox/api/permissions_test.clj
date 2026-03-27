@@ -95,7 +95,7 @@
                                 [:attribute_remappings nil?]]]
                               (t2/select :model/Sandbox :group_id (u/the-id other-group)))))))))))))
 
-(deftest grant-sandbox-perms-dont-delete-gtaps-test
+(deftest ^:parallel grant-sandbox-perms-dont-delete-gtaps-test
   (testing "PUT /api/permissions/graph"
     (testing "granting sandboxed permissions for a group should *not* delete an associated GTAP (#16190)"
       (mt/with-temp-copy-of-db

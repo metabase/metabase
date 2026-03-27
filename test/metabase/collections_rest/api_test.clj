@@ -63,7 +63,7 @@
 ;;; |                                                GET /collection                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest list-collections-test
+(deftest ^:parallel list-collections-test
   (testing "GET /api/collection"
     (testing "check that we can get a basic list of collections"
       ;; (for test purposes remove the personal collections)
@@ -87,7 +87,7 @@
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 
-(deftest list-collections-only-personal-collections-should-be-visible-test
+(deftest ^:parallel list-collections-only-personal-collections-should-be-visible-test
   (testing "GET /api/collection"
     (testing "We should only see our own Personal Collections!"
       (is (= ["Lucky Pigeon's Personal Collection"]
@@ -161,7 +161,7 @@
                   (map :name)
                   (into #{})))))))
 
-(deftest list-collections-archived-test
+(deftest ^:parallel list-collections-archived-test
   (testing "GET /api/collection"
     (mt/with-temp [:model/Collection {archived-col-id :id} {:name "Archived Collection"}
                    :model/Collection _ {:name "Regular Collection"}]
@@ -402,7 +402,7 @@
                           (map #(select-keys % [:name]))
                           (into #{})))))))))))
 
-(deftest collection-tree-exclude-other-users-personal-collections-test
+(deftest ^:parallel collection-tree-exclude-other-users-personal-collections-test
   (testing "GET /api/collection/tree"
     (testing "Excludes other user collections"
       (let [admin-collection (collection/user->personal-collection (mt/user->id :crowberto))
@@ -697,7 +697,7 @@
              personal-collection (assoc :personal_owner_id personal-collection))
            extra-keypairs)))
 
-(deftest collection-items-return-cards-test
+(deftest ^:parallel collection-items-return-cards-test
   (testing "GET /api/collection/:id/items"
     (testing "check that cards are returned with the collection/items endpoint"
       (mt/with-temp [:model/Collection       collection             {}
@@ -747,7 +747,7 @@
                         (= (:id item) (:id card))))
               first))))))
 
-(deftest collection-items-returns-collections-with-correct-collection-id-test
+(deftest ^:parallel collection-items-returns-collections-with-correct-collection-id-test
   (testing "GET /api/collection/:id/items?model=collection"
     (testing "check that the ID and collection_id don't match"
       (mt/with-temp [:model/Collection parent {}
@@ -757,7 +757,7 @@
                (select-keys (first (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id parent) "/items?model=collection"))))
                             [:id :collection_id])))))))
 
-(deftest collection-items-entity-id-test
+(deftest ^:parallel collection-items-entity-id-test
   (testing "GET /api/collection/:id/items with entity ID"
     (mt/with-temp [:model/Collection collection {}
                    :model/Card       {} {:collection_id (u/the-id collection)}]
@@ -765,7 +765,7 @@
         (is (= 1 (count (:data (mt/user-http-request :crowberto :get 200
                                                      (str "collection/" (:entity_id collection) "/items"))))))))))
 
-(deftest collection-items-return-database-id-for-datasets-test
+(deftest ^:parallel collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"
     (testing "Database id is returned for items in which dataset is true"
       (mt/with-temp [:model/Collection collection      {}
@@ -780,7 +780,7 @@
                     (map #(select-keys % [:id :database_id]))
                     set)))))))
 
-(deftest collection-items-limit-offset-test
+(deftest ^:parallel collection-items-limit-offset-test
   (testing "GET /api/collection/:id/items"
     (testing "check that limit and offset work and total comes back"
       (mt/with-temp [:model/Collection collection {}
@@ -791,7 +791,7 @@
         (is (= 1 (count (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "2")))))
         (is (= 3 (:total (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection) "/items") :limit "2" :offset "1"))))))))
 
-(deftest collection-items-pinning-filtering-test
+(deftest ^:parallel collection-items-pinning-filtering-test
   (testing "GET /api/collection/:id/items"
     (testing "check that pinning filtering exists"
       (mt/with-temp [:model/Collection collection {}
@@ -1057,7 +1057,7 @@
                         :data
                         (map :name))))))))))
 
-(deftest collection-items-order-by-model-test
+(deftest ^:parallel collection-items-order-by-model-test
   (testing "GET /api/collection/:id/items"
     (testing "Results can be ordered by model"
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection with Items"}
@@ -1078,7 +1078,7 @@
                       :data
                       (map (juxt :model :name))))))))))
 
-(deftest collection-items-include-latest-revision-test
+(deftest ^:parallel collection-items-include-latest-revision-test
   (testing "GET /api/collection/:id/items"
     (testing "Results have the lastest revision timestamp"
       (mt/with-temp [:model/Collection {collection-id :id}              {:name "Collection with Items"}
@@ -1118,7 +1118,7 @@
                     :data
                     (map (comp :last_name :last-edit-info)))))))))
 
-(deftest collection-items-include-authority-level-test
+(deftest ^:parallel collection-items-include-authority-level-test
   (testing "GET /api/collection/:id/items"
     (testing "Results include authority_level"
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection with Items"}
@@ -1136,7 +1136,7 @@
                  (into #{} (map #(select-keys % [:name :authority_level]))
                        items))))))))
 
-(deftest collection-items-include-can-run-adhoc-query-test
+(deftest ^:parallel collection-items-include-can-run-adhoc-query-test
   (testing "GET /api/collection/:id/items and GET /api/collection/root/items"
     (testing "include_can_run_adhoc_query parameter controls hydration of can_run_adhoc_query flag"
       (mt/with-temp [:model/Collection {collection-id :id} {}
@@ -1233,7 +1233,7 @@
                 (is (= 3 (count items)))
                 (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
 
-(deftest collection-items-include-datasets-test
+(deftest ^:parallel collection-items-include-datasets-test
   (testing "GET /api/collection/:id/items"
     (testing "Includes datasets"
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Collection with Items"}
@@ -1255,7 +1255,7 @@
           (is (= #{"card" "dash" "subcollection" "dataset"}
                  (into #{} (map :name) items))))))))
 
-(deftest collection-items-include-here-and-below-test
+(deftest ^:parallel collection-items-include-here-and-below-test
   (testing "GET /api/collection/:id/items"
     (mt/with-temp [:model/Collection {id1 :id} {:name "Collection with Items"}
                    :model/Collection {id2 :id} {:name "subcollection"
@@ -1286,7 +1286,7 @@
             (testing "when the item has a dashboard, that's reflected in `here` too"
               (is (= #{"collection" "dashboard"} (set (:here (item))))))))))))
 
-(deftest dashboards-include-here
+(deftest ^:parallel dashboards-include-here
   (testing "GET /api/collection/:id/items"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection with items"}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -1465,7 +1465,7 @@
 (defn- api-get-lucky-personal-collection-items [user-kw & {:keys [expected-status-code], :or {expected-status-code 200}}]
   (:data (mt/user-http-request user-kw :get expected-status-code (str "collection/" (lucky-personal-collection-id) "/items"))))
 
-(deftest fetch-personal-collection-test
+(deftest ^:parallel fetch-personal-collection-test
   (testing "GET /api/collection/:id"
     (testing "Can we use this endpoint to fetch our own Personal Collection?"
       (is (= (lucky-personal-collection)
@@ -1488,7 +1488,7 @@
                                                  (collection/user->personal-collection (mt/user->id :lucky)))}]
     (mt/boolean-ids-and-timestamps (api-get-lucky-personal-collection-items user-kw))))
 
-(deftest fetch-personal-collection-items-test
+(deftest ^:parallel fetch-personal-collection-items-test
   (testing "GET /api/collection/:id/items"
     (testing "If we have a sub-Collection of our Personal Collection, that should show up"
       (is (partial= lucky-personal-subcollection-item
@@ -1628,7 +1628,7 @@
         (is (partial= [(collection-item "C")]
                       (api-get-collection-children a)))))))
 
-(deftest personal-collection-ancestors-test
+(deftest ^:parallel personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
     (let [root-owner-id   (u/the-id (test.users/fetch-user :rasta))
           root-collection (t2/select-one :model/Collection :personal_owner_id root-owner-id)]
@@ -1703,7 +1703,7 @@
                all-types (map :type (:data response))]
            (is (some #{collection/library-collection-type} all-types))))))))
 
-(deftest dashboard-question-candidates-simple-test
+(deftest ^:parallel dashboard-question-candidates-simple-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is in single dashboard"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1729,7 +1729,7 @@
                     keys
                     (into #{}))))))))
 
-(deftest dashboard-question-candidates-can-be-paginated
+(deftest ^:parallel dashboard-question-candidates-can-be-paginated
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -1772,7 +1772,7 @@
         (testing "Zero limit"
           (is (= [] (fetch :limit 0))))))))
 
-(deftest dashboard-question-candidates-card-is-in-two-dashboards-test
+(deftest ^:parallel dashboard-question-candidates-card-is-in-two-dashboards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is in two dashboards"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1787,7 +1787,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest dashboard-question-candidates-card-not-in-any-dashboards-test
+(deftest ^:parallel dashboard-question-candidates-card-not-in-any-dashboards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card is not in any dashboards"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1798,7 +1798,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest get-dashboard-question-candidates-only-works-for-admins-test
+(deftest ^:parallel get-dashboard-question-candidates-only-works-for-admins-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Non-admin request (using `:rasta` instead of `:crowberto`)"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1808,7 +1808,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "collection/" coll-id "/dashboard-question-candidates"))))))))
 
-(deftest dashboard-question-candidates-excludes-archived-cards-test
+(deftest ^:parallel dashboard-question-candidates-excludes-archived-cards-test
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card in archived dashboard"
       ;; Note that this should never happen - the card should be archived with the dashboard it's in. But just in case:
@@ -1822,7 +1822,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest get-dashboard-question-candidates-excludes-cards-in-different-collections-from-dashboard
+(deftest ^:parallel get-dashboard-question-candidates-excludes-cards-in-different-collections-from-dashboard
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Card in different collection from dashboard"
       (mt/with-temp [:model/Collection {coll1-id :id} {}
@@ -1836,7 +1836,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest get-dashboard-question-candidates-filters-by-collection
+(deftest ^:parallel get-dashboard-question-candidates-filters-by-collection
   (testing "Multiple cards in collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
@@ -1850,13 +1850,13 @@
                   (map :id)
                   (into #{})))))))
 
-(deftest get-dashboard-question-candidates-nonexistent-collection
+(deftest ^:parallel get-dashboard-question-candidates-nonexistent-collection
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Returns 404 for non-existent collection"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 "collection/99999999/dashboard-question-candidates"))))))
 
-(deftest get-dashboard-question-candidates-excludes-archived-cards
+(deftest ^:parallel get-dashboard-question-candidates-excludes-archived-cards
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Archived cards are not included in candidates"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1869,7 +1869,7 @@
                     (map :id)
                     (into #{}))))))))
 
-(deftest get-dashboard-question-candidates-excludes-existing-dashboard-questions
+(deftest ^:parallel get-dashboard-question-candidates-excludes-existing-dashboard-questions
   (testing "GET /api/collection/:id/dashboard-question-candidates"
     (testing "Existing DQs are excluded"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1879,7 +1879,7 @@
         (is (= {:data [] :total 0}
                (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/dashboard-question-candidates"))))))))
 
-(deftest get-root-dashboard-question-candidates-single-dashboard-card
+(deftest ^:parallel get-root-dashboard-question-candidates-single-dashboard-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card is in single dashboard"
       (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
@@ -1904,7 +1904,7 @@
                       keys
                       set))))))))
 
-(deftest get-root-dashboard-question-candidates-multi-dashboard-card
+(deftest ^:parallel get-root-dashboard-question-candidates-multi-dashboard-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card is in two dashboards"
       (mt/with-temp [:model/Dashboard {dash1-id :id} {:collection_id nil}
@@ -1919,7 +1919,7 @@
                                  set)
                             card-id)))))))
 
-(deftest get-root-dashboard-question-candidates-no-dashboard-card
+(deftest ^:parallel get-root-dashboard-question-candidates-no-dashboard-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card is not in any dashboards"
       (mt/with-temp [:model/Card {card-id :id} {:collection_id nil :name "No Dashboard Card"}]
@@ -1930,13 +1930,13 @@
                                  set)
                             card-id)))))))
 
-(deftest get-root-dashboard-question-candidates-non-admin
+(deftest ^:parallel get-root-dashboard-question-candidates-non-admin
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Non-admin request (using `:rasta` instead of `:crowberto`)"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "collection/root/dashboard-question-candidates"))))))
 
-(deftest get-root-dashboard-question-candidates-archived-dashboard
+(deftest ^:parallel get-root-dashboard-question-candidates-archived-dashboard
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card in archived dashboard"
       (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil :archived true}
@@ -1949,7 +1949,7 @@
                                  set)
                             card-id)))))))
 
-(deftest get-root-dashboard-question-candidates-different-collection
+(deftest ^:parallel get-root-dashboard-question-candidates-different-collection
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Card in different collection from dashboard"
       (mt/with-temp [:model/Collection {other-coll-id :id} {}
@@ -1963,7 +1963,7 @@
                                  set)
                             card-id)))))))
 
-(deftest get-root-dashboard-question-candidates-multiple-cards
+(deftest ^:parallel get-root-dashboard-question-candidates-multiple-cards
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Multiple cards in collection"
       (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
@@ -1980,13 +1980,13 @@
           (is (not (contains? response-ids card2-id)))
           (is (not (contains? response-ids card3-id))))))))
 
-(deftest get-root-dashboard-question-candidates-nonexistent
+(deftest ^:parallel get-root-dashboard-question-candidates-nonexistent
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Non-existent collection"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 "collection/99999999/dashboard-question-candidates"))))))
 
-(deftest get-root-dashboard-question-candidates-archived-card
+(deftest ^:parallel get-root-dashboard-question-candidates-archived-card
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (testing "Archived card"
       (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
@@ -1999,7 +1999,7 @@
                                  set)
                             card-id)))))))
 
-(deftest root-dashboard-question-candidates-can-be-paginated
+(deftest ^:parallel root-dashboard-question-candidates-can-be-paginated
   (testing "GET /api/collection/root/dashboard-question-candidates"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:collection_id nil}
 
@@ -2080,13 +2080,13 @@
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
         (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
 
-(deftest post-move-dashboard-question-candidates-nonexistent
+(deftest ^:parallel post-move-dashboard-question-candidates-nonexistent
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
     (testing "Non-existent collection"
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 "collection/99999999/move-dashboard-question-candidates"))))))
 
-(deftest post-move-dashboard-question-candidates-archived-card
+(deftest ^:parallel post-move-dashboard-question-candidates-archived-card
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
     (testing "Archived card should not be moved"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -2096,7 +2096,7 @@
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
         (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
 
-(deftest post-move-dashboard-question-candidates-archived-dashboard
+(deftest ^:parallel post-move-dashboard-question-candidates-archived-dashboard
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
     (testing "Card in archived dashboard should not be moved"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -2106,7 +2106,7 @@
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
         (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
 
-(deftest post-move-dashboard-question-candidates-different-collection
+(deftest ^:parallel post-move-dashboard-question-candidates-different-collection
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
     (testing "Card in different collection from dashboard should not be moved"
       (mt/with-temp [:model/Collection {coll1-id :id} {}
@@ -2117,7 +2117,7 @@
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll2-id))
         (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
 
-(deftest post-move-dashboard-question-candidates-specific-cards
+(deftest ^:parallel post-move-dashboard-question-candidates-specific-cards
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
     (testing "It's possible to specify a specific set of card_ids to move"
       (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -2224,7 +2224,7 @@
                               remove-non-personal-collections
                               mt/boolean-ids-and-timestamps)))))))))
 
-(deftest fetch-root-items-do-not-include-personal-collections-test
+(deftest ^:parallel fetch-root-items-do-not-include-personal-collections-test
   (testing "GET /api/collection/root/items"
     (testing "Personal collections do not show up as collection items"
       (is (= []
@@ -2421,7 +2421,7 @@
                               :data
                               (results-matching {:name "Business Card", :model "card"}))))))))))
 
-(deftest fetch-root-items-collection-type-filter-test
+(deftest ^:parallel fetch-root-items-collection-type-filter-test
   (testing "GET /api/collection/root/items"
     (testing "collection_type parameter filters collections to only those with matching type"
       (testing "collection_type=remote-synced returns only remote-synced collections"
@@ -2545,7 +2545,7 @@
               (is (= []
                      (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=stamps")))))))))))
 
-(deftest root-collection-snippets-test
+(deftest ^:parallel root-collection-snippets-test
   (testing "GET /api/collection/root/items?namespace=snippets"
     (testing "\nNative query snippets should come back when fetching the items in the root Collection of the `:snippets` namespace"
       (mt/with-temp [:model/NativeQuerySnippet snippet   {:name "My Snippet", :entity_id nil}
@@ -3035,7 +3035,7 @@
       (is (= #{[false "card"] [false "dataset"] [false "dashboard"]}
              (into #{} (map (juxt :can_write :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))))))))))
 
-(deftest root-items-excludes-trash-by-default
+(deftest ^:parallel root-items-excludes-trash-by-default
   (testing "Trash collection is usually not included"
     (is (= [] (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                    (filter #(= (:name %) "Trash"))))))
@@ -3046,7 +3046,7 @@
                 (filter #(= (:id %) (collection/trash-collection-id)))
                 (map #(select-keys % [:name :id])))))))
 
-(deftest collection-tree-includes-trash-if-requested
+(deftest ^:parallel collection-tree-includes-trash-if-requested
   (testing "Trash collection is included by default"
     (is (some #(= (:id %) (collection/trash-collection-id)) (mt/user-http-request :crowberto :get 200 "collection/tree"))))
   (testing "Trash collection is NOT included if `exclude-archived` is passed"
@@ -3064,7 +3064,7 @@
        (filter #(= (:id %) id))
        first))
 
-(deftest can-restore-dashboard-restorable-test
+(deftest ^:parallel can-restore-dashboard-restorable-test
   (testing "can_restore is correctly populated for dashboard when I can actually restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
@@ -3072,7 +3072,7 @@
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard)) {:archived true})
       (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard))))))))
 
-(deftest can-restore-dashboard-not-restorable-test
+(deftest ^:parallel can-restore-dashboard-not-restorable-test
   (testing "can_restore is correctly populated for dashboard when I can't restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
@@ -3081,7 +3081,7 @@
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
       (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard))))))))
 
-(deftest can-restore-card-restorable-test
+(deftest ^:parallel can-restore-card-restorable-test
   (testing "can_restore is correctly populated for card when I can actually restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
@@ -3089,7 +3089,7 @@
       (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:archived true})
       (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card))))))))
 
-(deftest can-restore-card-not-restorable-test
+(deftest ^:parallel can-restore-card-not-restorable-test
   (testing "can_restore is correctly populated for card when I can't restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
@@ -3098,14 +3098,14 @@
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
       (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card))))))))
 
-(deftest can-restore-collection-restorable-test
+(deftest ^:parallel can-restore-collection-restorable-test
   (testing "can_restore is correctly populated for collection when I can actually restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
       (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection))))))))
 
-(deftest can-restore-collection-not-restorable-parent-archived-test
+(deftest ^:parallel can-restore-collection-not-restorable-parent-archived-test
   (testing "can_restore is correctly populated for collection when I can't restore it because parent archived"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
@@ -3113,20 +3113,20 @@
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
       (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection))))))))
 
-(deftest can-restore-collection-not-restorable-parent-trashed-test
+(deftest ^:parallel can-restore-collection-not-restorable-parent-trashed-test
   (testing "can_restore is correctly populated for collection when I can't restore it because its parent was the one that was trashed"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
       (is (false? (:can_restore (get-item-with-id-in-coll (u/the-id collection) (u/the-id subcollection))))))))
 
-(deftest can-restore-collection-from-root-test
+(deftest ^:parallel can-restore-collection-from-root-test
   (testing "can_restore is correctly populated for collections trashed from the root collection when I can actually restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}]
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
       (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id collection))))))))
 
-(deftest can-restore-items-in-root-collection-test
+(deftest ^:parallel can-restore-items-in-root-collection-test
   (testing "can_restore is correctly populated for things in the root collection"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Dashboard dashboard {:name "Dashboard"}]
@@ -3135,14 +3135,14 @@
       (is (false? (:can_restore (get-item-with-id-in-root (u/the-id dashboard)))))
       (is (false? (:can_restore (get-item-with-id-in-root (u/the-id collection))))))))
 
-(deftest can-restore-items-in-other-collections-test
+(deftest ^:parallel can-restore-items-in-other-collections-test
   (testing "can_restore is correctly populated for things in other collections"
     (mt/with-temp [:model/Collection collection {:name "container"}
                    :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id collection)}]
       (is (contains? (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard)) :can_restore))
       (is (false? (:can_restore (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard))))))))
 
-(deftest nothing-can-be-moved-to-the-trash
+(deftest ^:parallel nothing-can-be-moved-to-the-trash
   (mt/with-temp [:model/Dashboard dashboard {}
                  :model/Collection collection {}
                  :model/Card card {}]
@@ -3156,7 +3156,7 @@
       (mt/user-http-request :crowberto :put 403 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
 
-(deftest skip-graph-skips-graph-on-graph-PUT
+(deftest ^:parallel skip-graph-skips-graph-on-graph-PUT
   (is (malli= [:map [:revision :int] [:groups :map]]
               (mt/user-http-request :crowberto
                                     :put 200
@@ -3170,7 +3170,7 @@
                                      :groups {}}))
       "PUTs with skip_graph should not return the coll permission graph."))
 
-(deftest dashboard-internal-cards-do-not-appear-in-collection-items
+(deftest ^:parallel dashboard-internal-cards-do-not-appear-in-collection-items
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
                  :model/Card {normal-card-id :id} {:collection_id coll-id}
@@ -3199,7 +3199,7 @@
                 (first
                  (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show_dashboard_questions=true")))))))))))
 
-(deftest dashboard-questions-have-dashboard-hydrated
+(deftest ^:parallel dashboard-questions-have-dashboard-hydrated
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Dashboard {dash-id :id
                                    dash-name :name} {:collection_id coll-id}
@@ -3267,7 +3267,7 @@
             (is (t2/exists? :model/Collection :id (u/the-id child-collection) :archived true))
             (is (t2/exists? :model/Collection :id (u/the-id grandchild-collection) :archived true))))))))
 
-(deftest collections-can-be-deleted
+(deftest ^:parallel collections-can-be-deleted
   (mt/with-temp [:model/Collection {coll-a-id :id :as coll-a} {}
                  :model/Dashboard {dash-a-id :id} {:collection_id coll-a-id}
                  :model/Collection {coll-b-id :id :as coll-b} {:location (collection/children-location coll-a)}
@@ -3301,7 +3301,7 @@
       (is (= (str "/" coll-c-id "/")
              (t2/select-one-fn :location :model/Collection coll-d-id))))))
 
-(deftest collection-delete-middle-hoists-survivor
+(deftest ^:parallel collection-delete-middle-hoists-survivor
   (mt/with-temp [:model/Collection {a-id :id :as a} {}
                  :model/Collection {b-id :id :as b} {:location (collection/children-location a)}
                  :model/Collection {c-id :id :as _c} {:location (collection/children-location b)}]
@@ -3318,7 +3318,7 @@
       (is (= (str "/" a-id "/")
              (:location (t2/select-one :model/Collection c-id)))))))
 
-(deftest collection-deep-prune-multiple-ancestors
+(deftest ^:parallel collection-deep-prune-multiple-ancestors
   (mt/with-temp [:model/Collection {a-id :id :as a} {}
                  :model/Collection {b-id :id :as b} {:location (collection/children-location a)}
                  :model/Collection {c-id :id :as c} {:location (collection/children-location b)}
@@ -3334,7 +3334,7 @@
     (testing "d still under c"
       (is (= (str "/" c-id "/") (:location (t2/select-one :model/Collection d-id)))))))
 
-(deftest collection-multiple-survivor-subtrees-hoist
+(deftest ^:parallel collection-multiple-survivor-subtrees-hoist
   (mt/with-temp
     [:model/Collection {a-id :id :as a} {}
      :model/Collection {b1-id :id :as b1} {:location (collection/children-location a)}
@@ -3354,7 +3354,7 @@
         (is (= "/" (:location (t2/select-one :model/Collection cid))))
         (is (:archived (t2/select-one :model/Collection cid)))))))
 
-(deftest collection-deletion-path-normalization-and-dashboard-cascade
+(deftest ^:parallel collection-deletion-path-normalization-and-dashboard-cascade
   (mt/with-temp
     [:model/Collection {a-id :id :as a} {}
      :model/Dashboard {da-id :id} {:collection_id a-id}
@@ -3373,7 +3373,7 @@
       (is (not (t2/exists? :model/Dashboard db-id)))
       (is (t2/exists? :model/Dashboard dc-id)))))
 
-(deftest collection-deletion-prohibitions
+(deftest ^:parallel collection-deletion-prohibitions
   (mt/with-temp [:model/Collection {a-id :id} {}]
     (is (= "Collection must be trashed before deletion."
            (mt/user-http-request :crowberto :delete 400 (str "/collection/" a-id)))))
@@ -3384,7 +3384,7 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))
 
-(deftest published-tables-not-in-collection-items-oss-test
+(deftest ^:parallel published-tables-not-in-collection-items-oss-test
   (testing "In OSS (without :library feature), published tables should NOT appear in collection items"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}

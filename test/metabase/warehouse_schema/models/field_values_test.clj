@@ -169,7 +169,7 @@
   [id]
   (field-values/distinct-values (t2/select-one :model/Field id)))
 
-(deftest distinct-values-test
+(deftest ^:parallel distinct-values-test
   (testing "Correctly get distinct field values for text fields"
     (is (= {:values [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]
             :has_more_values false}
@@ -207,7 +207,7 @@
   (sync/sync-database! db)
   (find-values field-values-id))
 
-(deftest implicit-deduplication-test
+(deftest ^:parallel implicit-deduplication-test
   (let [before (t/zoned-date-time)
         after  (t/plus before (t/millis 1))
         later  (t/plus after (t/millis 1))]
@@ -227,7 +227,7 @@
             ;; double check that we deleted the correct row
             (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))))))))
 
-(deftest implicit-deduplication-batched-test
+(deftest ^:parallel implicit-deduplication-batched-test
   (let [before (t/zoned-date-time)
         after  (t/plus before (t/millis 1))
         later  (t/plus after (t/millis 1))]
@@ -276,7 +276,7 @@
         (is (not= (t/offset-date-time 2001 12)
                   (:last_used_at (t2/select-one :model/FieldValues :field_id (mt/id :categories :name) :type :full))))))))
 
-(deftest normalize-human-readable-values-test
+(deftest ^:parallel normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :id)
                                           :values   (json/encode ["1" "2" "3"])}]
@@ -458,7 +458,7 @@
     (t2/update! :model/FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Field hashes are composed of the name and the table's identity-hash"
     (mt/with-temp [:model/Database    db    {:name "field-db" :engine :h2}
                    :model/Table       table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
@@ -468,7 +468,7 @@
              (serdes/raw-hash [(serdes/identity-hash field)])
              (serdes/identity-hash fv))))))
 
-(deftest select-coherence-test
+(deftest ^:parallel select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
     (let [field-id (mt/id :venues :id)]
       (t2/select :model/FieldValues :field_id field-id)
@@ -483,7 +483,7 @@
                             #"Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
                             (t2/select :model/FieldValues :field_id field-id :type :sandbox :hash_key nil))))))
 
-(deftest select-safety-filter-test
+(deftest ^:parallel select-safety-filter-test
   (testing "We do not modify queries that omit type"
     ;; We could push down a WHERE clause to filter mismatched rows, but for performance reasons we do not.
     (is (= {} (#'field-values/add-mismatched-hash-filter {})))

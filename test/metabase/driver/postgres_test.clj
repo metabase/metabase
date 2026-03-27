@@ -224,7 +224,7 @@
      {:field-name "bird_id", :base-type :type/Integer, :fk :birds}]
     [["Cam" 1]]]])
 
-(deftest duplicate-names-test
+(deftest ^:parallel duplicate-names-test
   (mt/test-driver :postgres
     (testing "Make sure that duplicate column names (e.g. caused by using a FK) still return both columns"
       (mt/dataset duplicate-names
@@ -605,7 +605,7 @@
      [#uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
      [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
 
-(deftest uuid-columns-test
+(deftest ^:parallel uuid-columns-test
   (mt/test-driver :postgres
     (mt/dataset with-uuid
       (testing "Check that we can load a Postgres Database with a :type/UUID"
@@ -712,7 +712,7 @@
     [[[:raw "'192.168.1.1'::inet"]]
      [[:raw "'10.4.4.15'::inet"]]]]])
 
-(deftest inet-columns-test
+(deftest ^:parallel inet-columns-test
   (mt/test-driver :postgres
     (testing (str "Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` "
                   "(otherwise this wouldn't work)")
@@ -1492,7 +1492,7 @@
   (str "-----BEGIN CERTIFICATE-----\n"
        "-----END CERTIFICATE-----"))
 
-(deftest handle-nil-client-ssl-properties-test
+(deftest ^:parallel handle-nil-client-ssl-properties-test
   (mt/test-driver :postgres
     (testing "Setting only one of the client SSL params doesn't result in an NPE error (#19984)"
       (mt/with-temp-file [dummy-root-cert   "dummy-root-cert.pem"
@@ -1542,7 +1542,7 @@
                 :password "abcdef123"
                 :port 5432})))))))
 
-(deftest pkcs-12-extension-test
+(deftest ^:parallel pkcs-12-extension-test
   (testing "Uploaded PKCS-12 SSL keys are stored in a file with the .p12 extension (#20319)"
     (letfn [(absolute-path [^java.io.File file]
               (some-> file .getAbsolutePath))]
@@ -1659,7 +1659,7 @@
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
 
-(deftest query-canceled?-test
+(deftest ^:parallel query-canceled?-test
   (testing "Recognizes timeout exceptions from postgres"
     (mt/test-driver :postgres
       (mt/dataset test-data
@@ -1690,7 +1690,7 @@
     (is (= "SET ROLE \"Role.123\";"   (driver.sql/set-role-statement :postgres "Role.123")))
     (is (= "SET ROLE \"$role\";"      (driver.sql/set-role-statement :postgres "$role")))))
 
-(deftest get-tables-parity-with-jdbc-test
+(deftest ^:parallel get-tables-parity-with-jdbc-test
   (testing "make sure our get-tables return result consistent with jdbc getTables"
     (mt/test-driver :postgres
       (mt/with-empty-db
@@ -1884,7 +1884,7 @@
                    mt/process-query
                    mt/cols))))))
 
-(deftest can-edit-model-metadata
+(deftest ^:parallel can-edit-model-metadata
   (testing "queries with pg arrays have a base type on column metadata (#63909)"
     (mt/test-driver :postgres
       (let [query "SELECT *
@@ -1998,7 +1998,7 @@
        (map unchecked-byte)
        byte-array))
 
-(deftest bytea-column-not-truncated-test
+(deftest ^:parallel bytea-column-not-truncated-test
   (testing "fix for #30671"
     (mt/test-driver :postgres
       (mt/dataset (mt/dataset-definition
@@ -2018,7 +2018,7 @@
 (defn- pg-obj [type val]
   (doto (PGobject.) (.setType type) (.setValue val)))
 
-(deftest pgobject-freeze-thaw-test
+(deftest ^:parallel pgobject-freeze-thaw-test
   (letfn [(test-pgobject-caching [obj]
             (is (= obj (-> obj nippy/freeze nippy/thaw))))]
     (testing "Simple PGobject instances can be frozen and thawed"
@@ -2033,7 +2033,7 @@
             pg-obj-map {:data [pg-object] :metadata {:type "test"}}]
         (test-pgobject-caching pg-obj-map)))))
 
-(deftest canceled-query-no-stacktrace-test
+(deftest ^:parallel canceled-query-no-stacktrace-test
   (mt/test-driver :postgres
     (letfn [(catch-exceptions [run]
               (let [query    (merge {:type :query, :database 1} {})
@@ -2086,7 +2086,7 @@
             (let [bad-messages (into [] (cancel-messages) (messages))]
               (is (empty? bad-messages)))))))))
 
-(deftest bit-strings-can-be-filtered
+(deftest ^:parallel bit-strings-can-be-filtered
   (mt/test-driver :postgres
     (mt/dataset (mt/dataset-definition
                  "bit_string_dataset"
@@ -2153,7 +2153,7 @@
                       [2 "0" "00001111" "10101" "1001001"]]
                      (mt/rows (qp/process-query query)))))))))))
 
-(deftest set-network-timeout-test
+(deftest ^:parallel set-network-timeout-test
   (mt/test-driver :postgres
     (testing "network hangs are interrupted after *network-timeout-ms*"
       (binding [driver.settings/*network-timeout-ms* 3000]

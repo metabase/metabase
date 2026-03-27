@@ -4,7 +4,7 @@
    [metabase.test :as mt]
    [metabase.util.files :as u.files]))
 
-(deftest is-regular-file-test
+(deftest ^:parallel is-regular-file-test
   (mt/with-temp-file [file "temp-file"]
     (testing (format "file = %s" (pr-str file))
       (spit file "abc")

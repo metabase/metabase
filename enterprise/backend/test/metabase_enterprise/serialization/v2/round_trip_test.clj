@@ -138,7 +138,7 @@
   (storage/store! (into [] (extract/extract {:include-field-values true :include-metabot true})) source-dir))
 
 ;; If this test is failing, read the docstring at the top of this namespace for what to do B-)
-(deftest baseline-completeness-test
+(deftest ^:parallel baseline-completeness-test
   (let [ingestable (ingest/ingest-yaml source-dir)
         resources  (ingest/ingest-list ingestable)
         baselined  (into #{} (map :model) (apply concat resources))

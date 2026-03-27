@@ -407,7 +407,7 @@
                                                               {:payload-type "notification/testing"
                                                                :channel-type "channel/metabase-test"}))))))))))
 
-(deftest cron->next-execution-times-test
+(deftest ^:parallel cron->next-execution-times-test
   (t/with-clock (t/mock-clock (t/instant "2023-01-01T10:00:00Z"))
     (let [cron-schedule "0 0 12 * * ? *"] ; noon every day
       (is (= [(t/instant "2023-01-01T12:00:00Z")
@@ -442,7 +442,7 @@
     (with-redefs [notification.send/cron->next-execution-times (fn [_ _] [(t/instant)])]
       (is (= 10 (#'notification.send/avg-interval-seconds "0 0 12 * * ? *" 5))))))
 
-(deftest subscription->deadline-test
+(deftest ^:parallel subscription->deadline-test
   (t/with-clock (t/mock-clock (t/instant))
     (let [now (t/local-date-time)]
       (testing "subscription->deadline returns appropriate deadlines based on frequency"
@@ -457,7 +457,7 @@
           (is (t/before? now deadline))
           (is (t/before? deadline (t/plus now (t/seconds 35)))))))))
 
-(deftest deadline-comparator-test
+(deftest ^:parallel deadline-comparator-test
   (testing "deadline-comparator sorts notifications by deadline"
     (let [now        (t/instant)
           later      (t/plus now (t/minutes 5))

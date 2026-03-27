@@ -33,7 +33,7 @@
          (let [rf (rff metadata)]
            (reduce rf (rf) rows)))))))
 
-(deftest e2e-test
+(deftest ^:parallel e2e-test
   (impl/do-with-serialization
    (fn [in result]
      (doseq [obj objects]
@@ -46,7 +46,7 @@
                 (throw val)
                 (deserialize val))))))))
 
-(deftest max-bytes-test
+(deftest ^:parallel max-bytes-test
   (impl/do-with-serialization
    (fn [in result]
      (doseq [obj objects]

@@ -1625,7 +1625,7 @@
                 (is (= 1 (count log-msgs)))
                 (is (str/includes? (ffirst log-msgs) "Collection 'does-not-exist' was not found"))))))))))
 
-(deftest with-dbs-works-as-expected-test
+(deftest ^:parallel with-dbs-works-as-expected-test
   (ts/with-dbs [source-db dest-db]
     (ts/with-db source-db
       (mt/with-temp

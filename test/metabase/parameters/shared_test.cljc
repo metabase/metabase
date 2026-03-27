@@ -415,7 +415,7 @@
       (is (= "Q1, 2021"
              (params/value-string (second parameters) "en"))))))
 
-(deftest param-val-or-default-test
+(deftest ^:parallel param-val-or-default-test
   (let [param-val-or-default #'params/param-val-or-default]
     (testing "When the parameter’s :value key is missing, fallback to the :default key"
       (is (= "my default value"

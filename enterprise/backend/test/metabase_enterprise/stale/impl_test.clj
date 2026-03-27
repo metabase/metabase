@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest can-find-stale-dashboards
+(deftest ^:parallel can-find-stale-dashboards
   (mt/with-temp [:model/Dashboard {id :id} (stale-dashboard
                                             {:name "My Stale Dashboard"
                                              :collection_id nil})]
@@ -31,7 +31,7 @@
               :sort-column    :name
               :sort-direction :asc}))))))
 
-(deftest can-find-stale-cards
+(deftest ^:parallel can-find-stale-cards
   (with-stale-items [:model/Card {id :id} {:name "My Stale Card"
                                            :collection_id nil}]
     (is (= [{:id id :model :model/Card}]
@@ -44,7 +44,7 @@
               :sort-column    :name
               :sort-direction :asc}))))))
 
-(deftest results-can-be-sorted
+(deftest ^:parallel results-can-be-sorted
   (mt/with-temp [:model/Dashboard {id1 :id} {:name "Z"
                                              :last_viewed_at (datetime-months-ago 10)}
                  :model/Dashboard {id2 :id} {:name "Y"
@@ -102,7 +102,7 @@
                   :sort-column    :last_used_at
                   :sort-direction :desc}))))))))
 
-(deftest limits-and-offset-work
+(deftest ^:parallel limits-and-offset-work
   (with-stale-items [:model/Dashboard {id1 :id} {:name "A"}
                      :model/Dashboard {id2 :id} {:name "B"}]
     (testing "limits"
@@ -135,7 +135,7 @@
                   :sort-column    :name
                   :sort-direction :asc})))))))
 
-(deftest collection-set-is-taken-into-account
+(deftest ^:parallel collection-set-is-taken-into-account
   (mt/with-temp [:model/Collection {col-id-1 :id :as col-1} {}
                  :model/Collection {col-id-2 :id} {:location (collection/children-location col-1)}
                  :model/Dashboard {id-1 :id} (stale-dashboard {:collection_id col-id-1
@@ -181,7 +181,7 @@
              :sort-column    :name
              :sort-direction :asc})))))
 
-(deftest cutoff-date-is-taken-into-account
+(deftest ^:parallel cutoff-date-is-taken-into-account
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Dashboard _ {:name           "A"
                                      :collection_id  col-id
@@ -245,7 +245,7 @@
              :sort-direction :asc}))
         "should not include verified dashboards or cards")))
 
-(deftest cards-in-non-standard-collection-types-are-excluded
+(deftest ^:parallel cards-in-non-standard-collection-types-are-excluded
   (mt/with-temp [:model/Collection {col-id :id} {:type "instance-analytics"}
                  :model/Card _ (stale-card {:name "A" :collection_id col-id})
                  :model/Dashboard _ (stale-dashboard {:name "Dash" :collection_id col-id})]
@@ -315,7 +315,7 @@
                  :sort-column    :name
                  :sort-direction :asc})))))))
 
-(deftest questions-with-alerts-are-excluded
+(deftest ^:parallel questions-with-alerts-are-excluded
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Card {card-id :id} (stale-card {:name          "A"
                                                         :collection_id col-id})
@@ -339,7 +339,7 @@
              :sort-direction :asc}))
         "should not include cards with alerts")))
 
-(deftest dashboards-with-subscriptions-are-excluded
+(deftest ^:parallel dashboards-with-subscriptions-are-excluded
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Dashboard {dash-id :id} (stale-dashboard {:name          "A"
                                                                   :collection_id col-id})
@@ -385,7 +385,7 @@
                :sort-column    :name
                :sort-direction :asc}))))))
 
-(deftest things-that-are-already-archived-do-not-appear
+(deftest ^:parallel things-that-are-already-archived-do-not-appear
   (mt/with-temp [:model/Collection {col-id :id} {}
                  :model/Dashboard _ (stale-dashboard {:name          "A"
                                                       :collection_id col-id

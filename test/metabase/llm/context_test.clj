@@ -9,7 +9,7 @@
 
 ;;; ------------------------------------------- parse-table-mentions Tests -------------------------------------------
 
-(deftest parse-table-mentions-test
+(deftest ^:parallel parse-table-mentions-test
   (testing "extracts single table ID"
     (is (= #{42}
            (context/parse-table-mentions "Show [Orders](metabase://table/42)"))))
@@ -50,7 +50,7 @@
 
 ;;; ------------------------------------------ DDL Formatting Tests ------------------------------------------
 
-(deftest format-schema-ddl-test
+(deftest ^:parallel format-schema-ddl-test
   (testing "formats simple table"
     (let [tables [{:name "users" :schema nil :columns [{:name "id" :database_type "INTEGER"}]}]
           result (#'context/format-schema-ddl tables)]
@@ -103,7 +103,7 @@
 
 ;;; ----------------------------------------- build-schema-context Tests -----------------------------------------
 
-(deftest build-schema-context-test
+(deftest ^:parallel build-schema-context-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database db     {}
                    :model/Table    table1 {:db_id (:id db) :name "orders" :schema "public"}
@@ -129,7 +129,7 @@
       (testing "returns nil for non-existent tables"
         (is (nil? (context/build-schema-context (:id db) #{99999})))))))
 
-(deftest build-schema-context-multiple-tables-test
+(deftest ^:parallel build-schema-context-multiple-tables-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database db     {}
                    :model/Table    t1     {:db_id (:id db) :name "users" :schema "public"}
@@ -148,7 +148,7 @@
 
 ;;; ----------------------------------------- Fingerprint Formatting Tests -----------------------------------------
 
-(deftest format-numeric-stats-test
+(deftest ^:parallel format-numeric-stats-test
   (testing "formats integer range"
     (is (= "range: 1-100, avg: 50"
            (#'context/format-numeric-stats {:min 1 :max 100 :avg 50}))))
@@ -165,7 +165,7 @@
     (is (nil? (#'context/format-numeric-stats {:avg 50})))
     (is (nil? (#'context/format-numeric-stats {})))))
 
-(deftest format-temporal-stats-test
+(deftest ^:parallel format-temporal-stats-test
   (testing "formats date range"
     (is (= "2020-01-01 to 2024-12-31"
            (#'context/format-temporal-stats {:earliest "2020-01-01T00:00:00Z"
@@ -182,7 +182,7 @@
 
 ;;; ----------------------------------------- Column Comment Building Tests -----------------------------------------
 
-(deftest build-column-comment-test
+(deftest ^:parallel build-column-comment-test
   (testing "description takes priority"
     (is (= "Customer email address"
            (#'context/build-column-comment
@@ -233,7 +233,7 @@
   (testing "returns nil for no metadata"
     (is (nil? (#'context/build-column-comment {} nil nil)))))
 
-(deftest truncate-value-test
+(deftest ^:parallel truncate-value-test
   (testing "short values unchanged"
     (is (= "active" (#'context/truncate-value "active"))))
 
@@ -243,7 +243,7 @@
 
 ;;; ----------------------------------------- DDL with Comments Tests -----------------------------------------
 
-(deftest format-schema-ddl-with-comments-test
+(deftest ^:parallel format-schema-ddl-with-comments-test
   (testing "formats table with column comments"
     (let [tables [{:name "orders"
                    :schema nil
@@ -281,7 +281,7 @@
 
 ;;; ----------------------------------------- Enriched Context Integration Tests -----------------------------------------
 
-(deftest build-schema-context-with-description-test
+(deftest ^:parallel build-schema-context-with-description-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database db    {}
                    :model/Table    table {:db_id (:id db) :name "products" :schema "public"}
@@ -301,7 +301,7 @@
           (is (str/includes? result "products"))
           (is (str/includes? result "-- Product display name")))))))
 
-(deftest build-schema-context-with-fk-test
+(deftest ^:parallel build-schema-context-with-fk-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database db     {}
                    :model/Table    users  {:db_id (:id db) :name "users" :schema "public"}
@@ -319,7 +319,7 @@
           (is (some? result))
           (is (str/includes? result "FK->users.id")))))))
 
-(deftest build-schema-context-with-field-values-test
+(deftest ^:parallel build-schema-context-with-field-values-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database   db    {}
                    :model/Table      table {:db_id (:id db) :name "orders" :schema "public"}
@@ -338,7 +338,7 @@
           (is (str/includes? result "shipped"))
           (is (str/includes? result "delivered")))))))
 
-(deftest build-schema-context-with-table-description-test
+(deftest ^:parallel build-schema-context-with-table-description-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database db    {}
                    :model/Table    table {:db_id       (:id db)
@@ -357,7 +357,7 @@
 
 ;;; ----------------------------------------- extract-tables-from-sql Tests -----------------------------------------
 
-(deftest extract-tables-from-sql-test
+(deftest ^:parallel extract-tables-from-sql-test
   (testing "returns empty set for nil inputs"
     (is (= #{} (context/extract-tables-from-sql nil nil)))
     (is (= #{} (context/extract-tables-from-sql 1 nil)))
@@ -367,7 +367,7 @@
     (is (= #{} (context/extract-tables-from-sql 1 "")))
     (is (= #{} (context/extract-tables-from-sql 1 "   ")))))
 
-(deftest extract-tables-from-sql-with-sample-database-test
+(deftest ^:parallel extract-tables-from-sql-with-sample-database-test
   (mt/with-test-user :crowberto
     (testing "extracts single table from simple SELECT"
       (let [result (context/extract-tables-from-sql (mt/id) "SELECT * FROM ORDERS")]

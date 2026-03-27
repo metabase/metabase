@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest new-job-class-not-found-test
+(deftest ^:parallel new-job-class-not-found-test
   (testing "JobFactory should return a no-op job and log an error when the underlying factory fails to load the class"
     (testing "Handles ClassNotFoundException"
       (mt/with-log-messages-for-level [logs :error]
@@ -22,7 +22,7 @@
                   (map :message (logs)))
             "Should log an error about failing to load the job class")))))
 
-(deftest new-job-no-class-def-found-test
+(deftest ^:parallel new-job-no-class-def-found-test
   (testing "JobFactory should return a no-op job and log an error when the underlying factory fails to load the class"
     (testing "Handles NoClassDefFoundError"
       (mt/with-log-messages-for-level [logs :error]
@@ -35,7 +35,7 @@
                   (map :message (logs)))
             "Should log an error about failing to load the job class")))))
 
-(deftest create-listener-test
+(deftest ^:parallel create-listener-test
   (testing "The TriggerListener returned by create-listener should veto NoOpJob instances"
     (let [listener (sut/create-listener)
           noop-job (#'sut/->NoOpJob) ; Access private record constructor

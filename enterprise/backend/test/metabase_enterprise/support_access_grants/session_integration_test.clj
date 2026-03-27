@@ -109,7 +109,7 @@
                                     :token regular-token)]
             (is (true? (:valid response)) "Regular token should be valid")))))))
 
-(deftest password-reset-token-valid-with-invalid-token-test
+(deftest ^:parallel password-reset-token-valid-with-invalid-token-test
   (testing "GET /api/session/password_reset_token_valid returns false for completely invalid token"
     (let [response (mt/client :get 200 "session/password_reset_token_valid"
                               :token "totally-invalid-token-12345")]

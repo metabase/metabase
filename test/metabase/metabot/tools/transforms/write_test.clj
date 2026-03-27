@@ -7,7 +7,7 @@
 
 ;;; Edit Application Tests
 
-(deftest apply-edits-test
+(deftest ^:parallel apply-edits-test
   (testing "replace mode replaces entire content"
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-sql
@@ -104,7 +104,7 @@
 
 ;;; Transform Creation Tests
 
-(deftest create-fresh-transform-test
+(deftest ^:parallel create-fresh-transform-test
   (testing "creates fresh SQL transform when no transform_id"
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-sql
@@ -121,7 +121,7 @@
 
 ;;; Data Parts Tests
 
-(deftest data-parts-test
+(deftest ^:parallel data-parts-test
   (testing "returns transform_suggestion data part"
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-sql
@@ -138,7 +138,7 @@
 
 ;;; Memory Storage Tests
 
-(deftest memory-storage-test
+(deftest ^:parallel memory-storage-test
   (testing "stores updated transform in memory when transform_id provided"
     (let [mp (mt/metadata-provider)
           existing-transform {:id 1 :name "Existing" :source {:query (lib/native-query mp "SELECT 1")}}
@@ -161,7 +161,7 @@
 
 ;;; Error Handling Tests
 
-(deftest error-handling-test
+(deftest ^:parallel error-handling-test
   (testing "fails when transform_id not found"
     (let [memory-atom (atom {:state {:transforms {}}})]
       (is (thrown-with-msg?

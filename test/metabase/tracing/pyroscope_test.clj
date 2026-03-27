@@ -5,7 +5,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest pyroscope-available?-without-agent-test
+(deftest ^:parallel pyroscope-available?-without-agent-test
   (testing "pyroscope-available? returns false when pyroscope.jar is not on the classpath"
     (is (false? (tracing/pyroscope-available?)))))
 

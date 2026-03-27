@@ -97,7 +97,7 @@
             (is (= {:success true, :retries 1} @state))
             (is (= 1 (count @mt/inbox)))))))))
 
-(deftest all-admin-recipients
+(deftest ^:parallel all-admin-recipients
   (mt/with-temp [:model/ApiKey _ {::api-key/unhashed-key (api-key/generate-key)
                                   :name                  "Test API key"
                                   :user_id               (mt/user->id :crowberto)

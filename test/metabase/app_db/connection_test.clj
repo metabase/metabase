@@ -176,7 +176,7 @@
       (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
              (.getTransactionIsolation conn))))))
 
-(deftest rollback-error-handling
+(deftest ^:parallel rollback-error-handling
   (testing "rollback error handling"
     (let [mock-conn (reify Connection
                       (rollback [_ _savepoint]
@@ -192,7 +192,7 @@
           (is (= "Rollback error" (-> e ex-data :rollback-error ex-message)))
           (is (= "Original error" (-> e ex-cause ex-message))))))))
 
-(deftest exception-when-resetting-autocommit-does-not-mask-original-exception-test
+(deftest ^:parallel exception-when-resetting-autocommit-does-not-mask-original-exception-test
   (testing "when setAutoCommit fails in finally block, the original exception is not masked"
     (let [msg "Original transaction error"
           autocommit-reset-called (volatile! false)

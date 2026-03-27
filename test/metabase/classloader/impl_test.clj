@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest has-shared-context-classloader-as-ancestor?-test
+(deftest ^:parallel has-shared-context-classloader-as-ancestor?-test
   (testing "make sure we correctly detect when the current thread has the shared dynamic classloader as an ancestor"
     (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))
     (is (= false
@@ -21,7 +21,7 @@
       (.setContextClassLoader (Thread/currentThread) (DynamicClassLoader. @@#'classloader/shared-context-classloader))
       (is (#'classloader/has-shared-context-classloader-as-ancestor? (.getContextClassLoader (Thread/currentThread)))))))
 
-(deftest set-context-classloader-test
+(deftest ^:parallel set-context-classloader-test
   (testing (str "if the current thread does NOT have a context classloader that is a descendent of the shared context "
                 "classloader, calling `the-classloader` should set it as a side-effect")
     (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))

@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.channel.impl.util :as util]))
 
-(deftest remove-inline-parameters-test
+(deftest ^:parallel remove-inline-parameters-test
   (testing "remove-inline-parameters function"
     (let [dashboard-parts [{:id "d1" :inline_parameters [{:id "81cd957"} {:id "a2f983b"}]}
                            {:id "d2" :inline_parameters [{:id "b4c1a7e"}]}]

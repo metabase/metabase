@@ -136,7 +136,7 @@
 (defmacro ^:private with-temp-objects [[objects-binding] & body]
   `(do-with-temp-objects (fn [~objects-binding] ~@body)))
 
-(deftest all-queries-test
+(deftest ^:parallel all-queries-test
   (mt/with-test-user :crowberto
     (with-temp-objects [objects]
       (mt/with-premium-features #{:audit-app}
@@ -144,7 +144,7 @@
           (testing query-type
             (do-tests-for-query-type query-type objects)))))))
 
-(deftest works-over-dataset-api
+(deftest ^:parallel works-over-dataset-api
   (testing "FE queries work over dataset api (#64383)"
     (mt/with-premium-features #{:audit-app}
       (let [response (mt/user-http-request :crowberto :post 202

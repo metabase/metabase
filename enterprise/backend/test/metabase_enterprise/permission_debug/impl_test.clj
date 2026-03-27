@@ -16,7 +16,7 @@
        ~@body
        (perms/grant-collection-readwrite-permissions! ~group-or-id ~collection-or-id)))
 
-(deftest debug-permissions-card-read-with-permission-test
+(deftest ^:parallel debug-permissions-card-read-with-permission-test
   (testing "debug-permissions for :card/read when user has permission to read the card"
     (mt/with-temp [:model/Collection collection {}
                    :model/Card card {:collection_id (:id collection)}]
@@ -45,7 +45,7 @@
             (is (= [(tru "User does not have permission to read this card")] (:message result)))
             (is (= {} (:suggestions result)))))))))
 
-(deftest debug-permissions-card-read-admin-test
+(deftest ^:parallel debug-permissions-card-read-admin-test
   (testing "debug-permissions for :card/read when user is admin"
     (mt/with-temp [:model/Collection collection {}
                    :model/Card card {:collection_id (:id collection)}]
@@ -130,7 +130,7 @@
                    (:message result)))
             (is (= {} (:suggestions result)))))))))
 
-(deftest debug-permissions-card-query-admin-test
+(deftest ^:parallel debug-permissions-card-query-admin-test
   (testing "debug-permissions for :card/query when user is admin"
     (mt/with-temp [:model/Collection collection {}
                    :model/Card card {:collection_id (:id collection)
@@ -339,7 +339,7 @@
                    (:data result)))
             (is (= {} (:suggestions result)))))))))
 
-(deftest debug-permissions-card-download-results-admin-test
+(deftest ^:parallel debug-permissions-card-download-results-admin-test
   (testing "debug-permissions for :card/download-data when user is admin"
     (mt/with-temp [:model/Collection collection {}
                    :model/Card card {:collection_id (:id collection)

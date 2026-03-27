@@ -49,7 +49,7 @@
             (apply mapv vector [[1 1 1 1 1] [2 2 2 2 2] [3 3 3 3 3] [4 4 4 4 4] [5 5 5 5 5]])))))
 
 #?(:clj
-   (deftest list-comprehensions-test
+   (deftest ^:parallel list-comprehensions-test
      (are [i o] (= o i)
        (perf/for [x (range 3)
                   y (range 5)]
@@ -135,7 +135,7 @@
 
 (defrecord Foo [a b c])
 
-(deftest test-walk
+(deftest ^:parallel test-walk
   (let [colls ['(1 2 3)
                [1 2 3]
                #{1 2 3}
@@ -156,7 +156,7 @@
                   (is (= (.comparator ^clojure.lang.Sorted c)
                          (.comparator ^clojure.lang.Sorted walked)))))))))
 
-(deftest test-select-keys
+(deftest ^:parallel test-select-keys
   (are [keys result] (= result (perf/select-keys {:a 1 :b 2 :c 3 :d 4 :e 5} keys))
     [] {}
     [:a] {:a 1}
@@ -165,7 +165,7 @@
     [:a :b :c :d :e] {:a 1 :b 2 :c 3 :d 4 :e 5}
     [:a :b :c :d :e :f] {:a 1 :b 2 :c 3 :d 4 :e 5}))
 
-(deftest test-update-keys
+(deftest ^:parallel test-update-keys
   (is (= {"a" 1 "b" 2 "c" 3} (perf/update-keys {:a 1 :b 2 :c 3} name)))
   (is (= {} (perf/update-keys nil keyword)))
 

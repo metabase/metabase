@@ -258,7 +258,7 @@
           ;; Should not throw any exception when new collection is nil
           (is (nil? (document/validate-collection-move-permissions old-collection-id nil))))))))
 
-(deftest validate-collection-move-permissions-allows-move-both-nil-test
+(deftest ^:parallel validate-collection-move-permissions-allows-move-both-nil-test
   (testing "allows move when both collections are nil"
     (mt/with-temp [:model/User {user-id :id} {}]
       (mt/with-current-user user-id
@@ -294,7 +294,7 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid"
                                 (document/validate-collection-move-permissions old-collection-id archived-collection-id))))))))
 
-(deftest validate-collection-move-permissions-superuser-test
+(deftest ^:parallel validate-collection-move-permissions-superuser-test
   (testing "superuser can move between any collections"
     (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
                    :model/Collection {new-collection-id :id} {:name "New Collection"}]
@@ -302,7 +302,7 @@
         ;; Superuser should be able to move without explicit permissions
         (is (some? (document/validate-collection-move-permissions old-collection-id new-collection-id)))))))
 
-(deftest hydrate-document-creator-test
+(deftest ^:parallel hydrate-document-creator-test
   (testing "hydrates document creator correctly"
     (mt/with-temp [:model/User {user-id :id} {:first_name "John"
                                               :last_name "Doe"
@@ -317,7 +317,7 @@
           (is (= "Doe" (get-in hydrated-doc [:creator :last_name])))
           (is (= "john.doe@example.com" (get-in hydrated-doc [:creator :email]))))))))
 
-(deftest hydrate-multiple-documents-creator-test
+(deftest ^:parallel hydrate-multiple-documents-creator-test
   (testing "hydrates creators for multiple documents efficiently"
     (mt/with-temp [:model/User {user1-id :id} {:first_name "Alice"
                                                :last_name "Smith"
@@ -355,7 +355,7 @@
             (is (= user1-id (get-in doc3 [:creator :id])))
             (is (= "Alice" (get-in doc3 [:creator :first_name])))))))))
 
-(deftest hydrate-document-cards-test
+(deftest ^:parallel hydrate-document-cards-test
   (testing "hydrates document cards correctly"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
                    :model/Card {card1-id :id} {:name "Card 1"
@@ -377,7 +377,7 @@
           (is (= document-id (get-in hydrated-doc [:cards card1-id :document_id])))
           (is (= document-id (get-in hydrated-doc [:cards card2-id :document_id]))))))))
 
-(deftest hydrate-document-cards-excludes-archived-test
+(deftest ^:parallel hydrate-document-cards-excludes-archived-test
   (testing "hydrated cards exclude archived cards"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"}
                    :model/Card {active-card-id :id} {:name "Active Card"
@@ -394,7 +394,7 @@
           (is (contains? (:cards hydrated-doc) active-card-id))
           (is (not (contains? (:cards hydrated-doc) archived-card-id))))))))
 
-(deftest hydrate-multiple-documents-cards-test
+(deftest ^:parallel hydrate-multiple-documents-cards-test
   (testing "hydrates cards for multiple documents efficiently"
     (mt/with-temp [:model/Document {doc1-id :id} {:name "Document 1"}
                    :model/Document {doc2-id :id} {:name "Document 2"}
@@ -453,7 +453,7 @@
 
 ;;; ------------------------------------------------- Serialization Tests -------------------------------------------
 
-(deftest document-serdes-spec-test
+(deftest ^:parallel document-serdes-spec-test
   (testing "Document serialization spec includes all required fields"
     (let [spec (serdes/make-spec "Document" {})]
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
@@ -468,7 +468,7 @@
         (is (get-in spec [:transform :collection_id ::serdes/fk]))
         (is (get-in spec [:transform :creator_id ::serdes/fk]))))))
 
-(deftest document-serdes-dependencies-test
+(deftest ^:parallel document-serdes-dependencies-test
   (testing "Document dependencies method works correctly"
     (testing "with collection and creator"
       (let [document {:collection_id 123
@@ -478,7 +478,7 @@
         (is (= #{[{:model "Collection" :id 123}]}
                deps))))))
 
-(deftest document-serdes-smartlink-single-reference-test
+(deftest ^:parallel document-serdes-smartlink-single-reference-test
   (testing "single smartLink card reference"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -493,7 +493,7 @@
       (is (contains? deps [{:model "Card" :id 789}]))
       (is (contains? deps [{:model "Collection" :id 123}])))))
 
-(deftest document-serdes-smartlink-multiple-references-test
+(deftest ^:parallel document-serdes-smartlink-multiple-references-test
   (testing "multiple smartLink references of different types"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -516,7 +516,7 @@
       (is (contains? deps [{:model "Table" :id 321}]))
       (is (contains? deps [{:model "Collection" :id 123}])))))
 
-(deftest document-serdes-smartlink-nested-structure-test
+(deftest ^:parallel document-serdes-smartlink-nested-structure-test
   (testing "nested smartLink in complex prose mirror structure"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -535,7 +535,7 @@
       (is (contains? deps [{:model "Card" :id 999}]))
       (is (contains? deps [{:model "Collection" :id 123}])))))
 
-(deftest document-serdes-smartlink-no-smartlinks-test
+(deftest ^:parallel document-serdes-smartlink-no-smartlinks-test
   (testing "document with no smartLinks"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -548,7 +548,7 @@
       (is (= #{[{:model "Collection" :id 123}]}
              deps)))))
 
-(deftest document-serdes-smartlink-unknown-model-test
+(deftest ^:parallel document-serdes-smartlink-unknown-model-test
   (testing "unknown smartLink model type is ignored"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -566,7 +566,7 @@
       (is (contains? deps [{:model "Card" :id 456}]))
       (is (not (some #(= (:model (first %)) "unknown-model") deps))))))
 
-(deftest document-serdes-smartlink-missing-entity-id-test
+(deftest ^:parallel document-serdes-smartlink-missing-entity-id-test
   (testing "smartLink with missing entityId is ignored"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -583,7 +583,7 @@
       (is (contains? deps [{:model "Card" :id 456}]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
-(deftest document-serdes-smartlink-duplicate-references-test
+(deftest ^:parallel document-serdes-smartlink-duplicate-references-test
   (testing "duplicate smartLink references are deduplicated"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -601,7 +601,7 @@
       (is (contains? deps [{:model "Card" :id 789}]))
       (is (= 2 (count deps)))))) ; collection and one unique card
 
-(deftest document-serdes-smartlink-empty-content-test
+(deftest ^:parallel document-serdes-smartlink-empty-content-test
   (testing "empty document content"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -613,7 +613,7 @@
       (is (= #{[{:model "Collection" :id 123}]}
              deps)))))
 
-(deftest document-serdes-smartlink-missing-model-test
+(deftest ^:parallel document-serdes-smartlink-missing-model-test
   (testing "smartLink with missing model is ignored"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -630,7 +630,7 @@
       (is (contains? deps [{:model "Card" :id 456}]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
-(deftest document-serdes-smartlink-nil-attrs-test
+(deftest ^:parallel document-serdes-smartlink-nil-attrs-test
   (testing "smartLink with nil attrs is ignored"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -647,7 +647,7 @@
       (is (contains? deps [{:model "Card" :id 456}]))
       (is (= 2 (count deps)))))) ; collection and one valid card
 
-(deftest document-serdes-smartlink-mixed-content-test
+(deftest ^:parallel document-serdes-smartlink-mixed-content-test
   (testing "mix of smartLinks and other node types"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -680,7 +680,7 @@
       (is (contains? deps [{:model "Collection" :id 123}]))
       (is (= 4 (count deps)))))) ; 3 smartLinks + collection
 
-(deftest document-serdes-smartlink-non-prose-mirror-test
+(deftest ^:parallel document-serdes-smartlink-non-prose-mirror-test
   (testing "non-prose-mirror content type documents don't extract smartLinks"
     (let [document {:collection_id 123
                     :creator_id 456
@@ -693,7 +693,7 @@
           deps (serdes/dependencies document)]
       (is (contains? deps [{:model "Collection" :id 123}])))))
 
-(deftest document-serdes-descendants-embedded-cards-test
+(deftest ^:parallel document-serdes-descendants-embedded-cards-test
   (testing "Document descendants includes embedded cards"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
@@ -706,7 +706,7 @@
                 ["Card" 789] {"Document" document-id}}
                descendants))))))
 
-(deftest document-serdes-descendants-smart-links-test
+(deftest ^:parallel document-serdes-descendants-smart-links-test
   (testing "Document descendants includes smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
@@ -721,7 +721,7 @@
                 ["Dashboard" 789] {"Document" document-id}}
                descendants))))))
 
-(deftest document-serdes-descendants-mixed-content-test
+(deftest ^:parallel document-serdes-descendants-mixed-content-test
   (testing "Document descendants includes both embedded cards and smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
@@ -739,7 +739,7 @@
                 ["Table" 333] {"Document" document-id}}
                descendants))))))
 
-(deftest document-serdes-descendants-empty-document-test
+(deftest ^:parallel document-serdes-descendants-empty-document-test
   (testing "Document descendants handles document with no embedded content"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "paragraph"
@@ -748,12 +748,12 @@
       (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {} descendants))))))
 
-(deftest document-serdes-descendants-nonexistent-document-test
+(deftest ^:parallel document-serdes-descendants-nonexistent-document-test
   (testing "Document descendants returns nil for non-existent document"
     (let [descendants (serdes/descendants "Document" 99999999 {})]
       (is (nil? descendants)))))
 
-(deftest document-serdes-descendants-unknown-smart-link-model-test
+(deftest ^:parallel document-serdes-descendants-unknown-smart-link-model-test
   (testing "Document descendants ignores smart links with unknown model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
@@ -770,7 +770,7 @@
         ;; Should not include unknown model
         (is (not (contains? descendants ["Unknown" 789])))))))
 
-(deftest document-serdes-descendants-duplicate-references-test
+(deftest ^:parallel document-serdes-descendants-duplicate-references-test
   (testing "Document descendants handles duplicate references correctly"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "cardEmbed"
@@ -786,14 +786,14 @@
         ;; Should only have one entry for the card
         (is (= 1 (count descendants)))))))
 
-(deftest document-serdes-descendants-non-prose-mirror-test
+(deftest ^:parallel document-serdes-descendants-non-prose-mirror-test
   (testing "Document descendants handles non-prose-mirror documents"
     (mt/with-temp [:model/Document {document-id :id} {:document {:some "other format"}
                                                       :content_type "application/json"}] ; Not prose-mirror
       (let [descendants (serdes/descendants "Document" document-id {})]
         (is (nil? descendants))))))
 
-(deftest document-serdes-descendants-all-model-types-test
+(deftest ^:parallel document-serdes-descendants-all-model-types-test
   (testing "Document descendants correctly maps all supported smart link model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"

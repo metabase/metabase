@@ -6,7 +6,7 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(deftest retrying-on-exception-test
+(deftest ^:parallel retrying-on-exception-test
   (testing "recovery possible"
     (let [f +
           params (range 6)
@@ -28,7 +28,7 @@
                                             :initial-interval-millis 1)
                      (apply flaky-f params)))))))
 
-(deftest retrying-on-result-test
+(deftest ^:parallel retrying-on-result-test
   (testing "recovery possible"
     (let [a (atom 0)
           f #(swap! a inc)]

@@ -355,7 +355,7 @@
                :mysql
                (assoc sample-connection-details :additional-options conn-attrs)))))))
 
-(deftest read-timediffs-test
+(deftest ^:parallel read-timediffs-test
   (mt/test-driver :mysql
     (testing "Make sure negative result of *diff() functions don't cause Exceptions (#10983)"
       (binding [sync-util/*log-exceptions-and-continue?* true]
@@ -551,7 +551,7 @@
     [["{\"int_val\": 42, \"str_val\": \"hello\"}"]
      ["{\"int_val\": 123, \"str_val\": \"world\"}"]]]])
 
-(deftest json-unfolding-returns-unquoted-values-test
+(deftest ^:parallel json-unfolding-returns-unquoted-values-test
   (testing "JSON unfolding should return values without JSON quotes (#61408)"
     (mt/test-driver :mysql
       (when-not (mysql/mariadb? (mt/db))
@@ -669,7 +669,7 @@
         (testing "When the query takes less time than the timeout, it is successful."
           (is (some? (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))
 
-(deftest syncable-schemas-test
+(deftest ^:parallel syncable-schemas-test
   (mt/test-driver :mysql
     (testing "`syncable-schemas` should return an empty set because mysql doesn't support schemas"
       (mt/with-empty-db

@@ -30,7 +30,7 @@
       (is (nil? (:revoked_at response)))
       (is (nil? (:revoked_by_user_id response))))))
 
-(deftest create-grant-fails-for-non-admin-test
+(deftest ^:parallel create-grant-fails-for-non-admin-test
   (is (= "You don't have permissions to do that."
          (mt/user-http-request :rasta :post 403 "ee/support-access-grant"
                                {:ticket_number "SUPPORT-12346"
@@ -46,12 +46,12 @@
                                  {:ticket_number "SUPPORT-12348"
                                   :grant_duration_minutes 240})))))
 
-(deftest create-grant-validates-max-duration-test
+(deftest ^:parallel create-grant-validates-max-duration-test
   (mt/user-http-request :crowberto :post 400 "ee/support-access-grant"
                         {:ticket_number "SUPPORT-12349"
                          :grant_duration_minutes 10081}))
 
-(deftest create-grant-requires-duration-test
+(deftest ^:parallel create-grant-requires-duration-test
   (mt/user-http-request :crowberto :post 400 "ee/support-access-grant"
                         {:ticket_number "SUPPORT-12350"}))
 
@@ -75,7 +75,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :lucky :put 403 (format "ee/support-access-grant/%d/revoke" grant-id)))))))
 
-(deftest revoke-grant-fails-for-nonexistent-grant-test
+(deftest ^:parallel revoke-grant-fails-for-nonexistent-grant-test
   (is (= "Not found."
          (mt/user-http-request :crowberto :put 404 "ee/support-access-grant/999999/revoke"))))
 
@@ -107,7 +107,7 @@
       (is (= 0 (:offset response)))
       (is (>= (count (:data response)) 3)))))
 
-(deftest list-grants-fails-for-non-admin-test
+(deftest ^:parallel list-grants-fails-for-non-admin-test
   (is (= "You don't have permissions to do that."
          (mt/user-http-request :rasta :get 403 "ee/support-access-grant"))))
 
@@ -177,7 +177,7 @@
                                              :include-revoked true)]
           (is (= 1 (count (:data response)))))))))
 
-(deftest get-current-grant-returns-nil-when-no-grant-exists-test
+(deftest ^:parallel get-current-grant-returns-nil-when-no-grant-exists-test
   (let [response (mt/user-http-request :crowberto :get 204 "ee/support-access-grant/current")]
     (is (nil? response))))
 
@@ -200,6 +200,6 @@
       (let [current (mt/user-http-request :crowberto :get 204 "ee/support-access-grant/current")]
         (is (nil? current))))))
 
-(deftest get-current-grant-fails-for-non-admin-test
+(deftest ^:parallel get-current-grant-fails-for-non-admin-test
   (is (= "You don't have permissions to do that."
          (mt/user-http-request :rasta :get 403 "ee/support-access-grant/current"))))

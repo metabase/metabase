@@ -71,7 +71,7 @@
 
 ;;; ---------------------------------------- sql-operation tests ------------------------------------------------------
 
-(deftest sql-operation-test
+(deftest ^:parallel sql-operation-test
   (testing "extracts SQL verb from various SQL statements"
     (is (= "SELECT" (#'tracing.quartz/sql-operation "SELECT * FROM QRTZ_TRIGGERS")))
     (is (= "UPDATE" (#'tracing.quartz/sql-operation "UPDATE QRTZ_TRIGGERS SET state = ?")))
@@ -190,7 +190,7 @@
 
 ;;; ---------------------------------------- JobListener tests --------------------------------------------------------
 
-(deftest job-listener-name-test
+(deftest ^:parallel job-listener-name-test
   (testing "listener has a descriptive name"
     (let [^JobListener listener (#'tracing.quartz/create-tracing-job-listener)]
       (is (= "metabase.tracing.quartz/quartz-tracing-listener" (.getName listener))))))

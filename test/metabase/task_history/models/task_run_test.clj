@@ -186,7 +186,7 @@
               (reset! captured-run-id (task-history/current-run-id)))
             (is (= original-run-id @captured-run-id) "run-id restored from metadata")))))))
 
-(deftest run-id-meta-nil-propagation-test
+(deftest ^:parallel run-id-meta-nil-propagation-test
   (testing "with-restored-run-id handles nil metadata gracefully"
     (let [data {}]
       (task-history/with-restored-run-id data
@@ -270,7 +270,7 @@
 ;;; |                                       Pulse integration tests                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest pulse->task-run-info-test
+(deftest ^:parallel pulse->task-run-info-test
   (testing "pulse->task-run-info extracts correct info"
     (testing "dashboard subscription"
       (is (= {:run_type :subscription :entity_type :dashboard :entity_id 123}
@@ -329,7 +329,7 @@
                 (is (= :card (:entity_type run)))
                 (is (#{:success :failed} (:status run)) "task run completed")))))))))
 
-(deftest notification->task-run-info-test
+(deftest ^:parallel notification->task-run-info-test
   (testing "notification->task-run-info extracts correct info"
     (testing "card notification (alert)"
       (is (= {:run_type :alert :entity_type :card :entity_id 123}

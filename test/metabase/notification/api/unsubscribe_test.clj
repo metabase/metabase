@@ -43,7 +43,7 @@
                :email    email
                :hash     hash})))
 
-(deftest unsubscribe-test
+(deftest ^:parallel unsubscribe-test
   (mt/with-premium-features #{:audit-app}
     (testing "POST /api/notification/unsubscribe"
       (let [email "test@metabase.com"]
@@ -76,7 +76,7 @@
                       :details  {:email "test@metabase.com"}}
                      (mt/latest-audit-log-entry :notification-unsubscribe-ex))))))))))
 
-(deftest unsubscribe-undo-test
+(deftest ^:parallel unsubscribe-undo-test
   (mt/with-premium-features #{:audit-app}
     (testing "POST /api/notification/unsubscribe/undo"
       (let [email "test@metabase.com"]

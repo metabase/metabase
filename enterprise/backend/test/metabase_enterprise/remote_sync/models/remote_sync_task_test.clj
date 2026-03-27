@@ -124,7 +124,7 @@
 ;;; Tests for current-task-by-type
 ;;; ------------------------------------------------------------------------------------------------
 
-(deftest current-task-returns-nil-when-no-active-tasks-test
+(deftest ^:parallel current-task-returns-nil-when-no-active-tasks-test
   (testing "returns nil when no active tasks exist"
     (is (nil? (first (rst/current-task))))))
 

@@ -6,7 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]))
 
-(deftest perms-test
+(deftest ^:parallel perms-test
   (doseq [[perms expected]    {nil                    false
                                #{"/"}                 true
                                #{"/db/1/"}            false

@@ -57,7 +57,7 @@
 
 ;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
 
-(deftest google-auth-token-info-tests
+(deftest ^:parallel google-auth-token-info-tests
   (testing "Throws exception"
     (testing "for non-200 status"
       (is (= [400 "Invalid Google Sign-In token."]

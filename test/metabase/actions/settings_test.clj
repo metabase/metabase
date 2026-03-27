@@ -24,7 +24,7 @@
     (catch Exception _
       false)))
 
-(deftest database-enable-table-editing-enabled-for-db?-test
+(deftest ^:parallel database-enable-table-editing-enabled-for-db?-test
   (testing "enabled-for-db? returns appropriate disabled reasons"
     (mt/with-premium-features #{:table-data-editing}
       (let [enabled-for-db?  (:enabled-for-db? (#'setting/resolve-setting :database-enable-table-editing))

@@ -47,7 +47,7 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(deftest authentication-test
+(deftest ^:parallel authentication-test
   (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "segment")))
 
@@ -56,7 +56,7 @@
 
 ;; ## POST /api/segment
 
-(deftest create-segment-permissions-test
+(deftest ^:parallel create-segment-permissions-test
   (testing "POST /api/segment"
     (testing "Test security. Requires superuser perms."
       (is (= "You don't have permissions to do that."
@@ -64,7 +64,7 @@
                                                                :table_id   (mt/id :users)
                                                                :definition {}}))))))
 
-(deftest create-segment-input-validation-test
+(deftest ^:parallel create-segment-input-validation-test
   (testing "POST /api/segment"
     (is (=? {:errors {:name "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :post 400 "segment" {})))
@@ -85,7 +85,7 @@
                                                                   :table_id   123
                                                                   :definition "foobar"})))))
 
-(deftest create-segment-test
+(deftest ^:parallel create-segment-test
   (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
                                        "pMBQL" (partial pmbql-segment-definition (mt/id :users))}]
     (testing format-name
@@ -113,7 +113,7 @@
 
 ;; ## PUT /api/segment
 
-(deftest update-permissions-test
+(deftest ^:parallel update-permissions-test
   (testing "PUT /api/segment/:id"
     (testing "test security. requires superuser perms"
       (mt/with-temp [:model/Segment segment {}]
@@ -123,7 +123,7 @@
                                       :definition       {}
                                       :revision_message "something different"})))))))
 
-(deftest update-input-validation-test
+(deftest ^:parallel update-input-validation-test
   (testing "PUT /api/segment/:id"
     (is (=? {:errors {:name "nullable value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "segment/1" {:name "" :revision_message "abc"})))
@@ -140,7 +140,7 @@
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))
 
-(deftest update-test
+(deftest ^:parallel update-test
   (testing "PUT /api/segment/:id"
     (mt/with-temp [:model/Segment {:keys [id]} {:table_id (mt/id :users)
                                                 :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
@@ -172,7 +172,7 @@
                        :definition              (eq-fn (mt/id :users :name) "cans")})
                      segment-response))))))))
 
-(deftest partial-update-test
+(deftest ^:parallel partial-update-test
   (testing "PUT /api/segment/:id"
     (testing "Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?"
       (mt/with-temp [:model/Segment segment {:definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
@@ -182,7 +182,7 @@
                                           :revision_message "WOW HOW COOL"
                                           :definition       {}})))))))
 
-(deftest update-with-full-legacy-query-test
+(deftest ^:parallel update-with-full-legacy-query-test
   (testing "PUT /api/segment/:id"
     (testing "Can update a segment with a full legacy MBQL query structure (type, database, query keys)"
       (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :orders)
@@ -203,7 +203,7 @@
                                          :definition       legacy-full-query}))
               "The definition should be converted to MBQL5"))))))
 
-(deftest archive-test
+(deftest ^:parallel archive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we archive a Segment with the PUT endpoint?"
       (mt/with-temp [:model/Segment {:keys [id]} {:definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
@@ -212,7 +212,7 @@
         (is (true?
              (t2/select-one-fn :archived :model/Segment :id id)))))))
 
-(deftest unarchive-test
+(deftest ^:parallel unarchive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we unarchive a Segment with the PUT endpoint?"
       (mt/with-temp [:model/Segment {:keys [id]} {:archived true
@@ -224,7 +224,7 @@
 
 ;; ## DELETE /api/segment/:id
 
-(deftest delete-permissions-test
+(deftest ^:parallel delete-permissions-test
   (testing "DELETE /api/segment/:id"
     (testing "test security. requires superuser perms"
       (mt/with-temp [:model/Segment {:keys [id]} {:definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
@@ -232,7 +232,7 @@
                (mt/user-http-request :rasta :delete 403 (str "segment/" id)
                                      :revision_message "yeeeehaw!")))))))
 
-(deftest delete-input-validation-test
+(deftest ^:parallel delete-input-validation-test
   (testing "DELETE /api/segment/:id"
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :delete 400 "segment/1" {:name "abc"})))
@@ -240,7 +240,7 @@
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :delete 400 "segment/1" :revision_message "")))))
 
-(deftest delete-test
+(deftest ^:parallel delete-test
   (testing "DELETE /api/segment/:id"
     (mt/with-temp [:model/Segment {:keys [id]} {:table_id (mt/id :users)
                                                 :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
@@ -354,7 +354,7 @@
                 (mt/with-perm-for-group-and-table! all-users-group-id (mt/id :users) :perms/create-queries :query-builder
                   (is (= #{users-seg-id} (returned-segment-ids))))))))))))
 
-(deftest related-entities-test
+(deftest ^:parallel related-entities-test
   (testing "GET /api/segment/:id/related"
     (testing "related/recommended entities"
       (mt/with-temp [:model/Segment {segment-id :id} {:definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]

@@ -7,7 +7,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest internal-user-is-in-all-users-test
+(deftest ^:parallel internal-user-is-in-all-users-test
   (testing "The internal user should be in the All Users group, just like any other user."
     (let [memberships  (-> (t2/select-one :model/User config/internal-mb-user-id)
                            (t2/hydrate :user_group_memberships)
@@ -16,7 +16,7 @@
           all-users-id (t2/select-one-pk :model/PermissionsGroup :name "All Users")]
       (is [all-users-id] memberships))))
 
-(deftest internal-user-is-unmodifiable-via-api-test
+(deftest ^:parallel internal-user-is-unmodifiable-via-api-test
   (testing "GET /api/user"
     ;; since the Internal user is inactive, we only need to check in the `:include_deactivated` `true`
     (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "user", :include_deactivated true)

@@ -6,7 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest first-login-on-this-device?-test
+(deftest ^:parallel first-login-on-this-device?-test
   (let [device-1 (str (random-uuid))
         device-2 (str (random-uuid))]
     (mt/with-temp [:model/User         {user-id :id} {}

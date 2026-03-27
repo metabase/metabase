@@ -13,7 +13,7 @@
     (is (= {:databases [], :fields [], :snippets [], :tables []}
            (queries.metadata/batch-fetch-card-metadata [{}])))))
 
-(deftest only-models-trust-fk-semantic-types-test
+(deftest ^:parallel only-models-trust-fk-semantic-types-test
   (testing "FK semantic types set by user should be preserved for models but stripped for questions"
     (let [target-field-id (mt/id :orders :product_id)
           ;; Create result_metadata with a computed column (no numeric :id) that has FK set

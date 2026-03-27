@@ -4,7 +4,7 @@
    [metabase.channel.shared :as channel.shared]
    [metabase.test :as mt]))
 
-(deftest cron-to-friendly-description-test
+(deftest ^:parallel cron-to-friendly-description-test
   (mt/with-dynamic-fn-redefs [channel.shared/schedule-timezone (constantly "UTC")]
     (testing "converts cron expressions to human-readable descriptions"
       (are [cron expected] (= expected (channel.shared/friendly-cron-description cron))

@@ -100,7 +100,7 @@
               ;; Should be ordered alphabetically
               (is (= (sort tag-names) tag-names)))))))))
 
-(deftest permissions-test
+(deftest ^:parallel permissions-test
   (testing "Transform tag endpoints require data-analyst permissions"
     (mt/with-premium-features #{:transforms-basic}
       (testing "POST /api/transform-tag"

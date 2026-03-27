@@ -9,7 +9,7 @@
    [metabase.metabot.tools.sql :as agent-sql]
    [metabase.test :as mt]))
 
-(deftest create-sql-query-output-test
+(deftest ^:parallel create-sql-query-output-test
   (testing "create_sql_query output includes preamble, query XML, and query-ID-aware instructions"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
@@ -31,7 +31,7 @@
             (testing "instructions contain actual query ID link"
               (is (str/includes? output (str "metabase://query/" query-id))))))))))
 
-(deftest create-sql-query-validation-error-output-test
+(deftest ^:parallel create-sql-query-validation-error-output-test
   (testing "create_sql_query output contains appropriate info on validation failure"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
@@ -44,7 +44,7 @@
             (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
             (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
 
-(deftest edit-sql-query-output-test
+(deftest ^:parallel edit-sql-query-output-test
   (testing "edit_sql_query output includes edit-specific instructions with query ID"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
@@ -72,7 +72,7 @@
                 (is (str/includes? output "If the returned SQL query is NOT correct"))
                 (is (str/includes? output "Make further refinements using this tool again"))))))))))
 
-(deftest edit-sql-query-validation-error-output-test
+(deftest ^:parallel edit-sql-query-validation-error-output-test
   (testing "edit_sql_query output contains appropriate info on validation failure"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
@@ -93,7 +93,7 @@
               (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
               (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
 
-(deftest replace-sql-query-output-test
+(deftest ^:parallel replace-sql-query-output-test
   (testing "replace_sql_query output includes replace-specific instructions with query ID"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
@@ -119,7 +119,7 @@
               (testing "instructions mention edit_sql_query as alternative"
                 (is (str/includes? output "this tool or edit_sql_query again"))))))))))
 
-(deftest replace-sql-query-validtion-error-output-test
+(deftest ^:parallel replace-sql-query-validtion-error-output-test
   (testing "replace_sql_query output contains appropriate info on validation failure"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)

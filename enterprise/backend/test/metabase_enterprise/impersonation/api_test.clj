@@ -36,7 +36,7 @@
                               :group_id (u/the-id group))))
               (is (= 1 (t2/count :model/ConnectionImpersonation :group_id (u/the-id group)))))))))))
 
-(deftest fetch-impersonation-policy-test
+(deftest ^:parallel fetch-impersonation-policy-test
   (testing "GET /api/ee/advanced-permissions/impersonation"
     (mt/with-temp [:model/PermissionsGroup               {group-id-1 :id} {}
                    :model/PermissionsGroup               {group-id-2 :id} {}
@@ -65,7 +65,7 @@
         (mt/with-premium-features #{}
           (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/impersonation"))))))
 
-(deftest delete-impersonation-policy
+(deftest ^:parallel delete-impersonation-policy
   (testing "DELETE /api/ee/advanced-permissions/impersonation"
     (mt/with-premium-features #{:advanced-permissions}
       (testing "Test that a Connection Impersonation can be deleted by ID"
@@ -95,7 +95,7 @@
           (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/impersonation")
           (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))))
 
-(deftest delete-impersonation-policy-after-permissions-change-test
+(deftest ^:parallel delete-impersonation-policy-after-permissions-change-test
   (mt/with-premium-features #{:advanced-permissions}
     (testing "A connection impersonation policy is deleted automatically if the data permissions are changed"
       (mt/with-temp [:model/PermissionsGroup               {group-id :id} {}

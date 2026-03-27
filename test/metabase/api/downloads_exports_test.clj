@@ -622,7 +622,7 @@
               (is (= "Grand totals"
                      (first (last result)))))))))))
 
-(deftest multi-measure-pivot-tables-headers-test
+(deftest ^:parallel multi-measure-pivot-tables-headers-test
   (testing "Pivot tables with multiple measures correctly include the measure titles in the final header row."
     (mt/dataset test-data
       (mt/with-temp [:model/Card {pivot-card-id :id}
@@ -1131,7 +1131,7 @@
                   (testing (format "String \"%s\" is not in the error message." illegal)
                     (is (not (str/includes? results-string illegal)))))))))))))
 
-(deftest unpivoted-pivot-results-do-not-include-pivot-grouping
+(deftest ^:parallel unpivoted-pivot-results-do-not-include-pivot-grouping
   (testing "If a pivot question is downloaded or exported unpivoted, the results do not include 'pivot-grouping' column"
     (doseq [export-format ["csv" "xlsx" "json"]]
       (testing (format "for %s" export-format)
@@ -1154,7 +1154,7 @@
               (is (= 2
                      (count (second data)))))))))))
 
-(deftest unpivoted-pivot-results-use-correct-formatters-in-xlsx
+(deftest ^:parallel unpivoted-pivot-results-use-correct-formatters-in-xlsx
   (testing "If a pivot question is downloaded or exported unpivoted as XLSX, the formatters are set up properly (#48158)"
     (mt/dataset test-data
       (mt/with-temp [:model/Card {pivot-card-id :id}
@@ -1205,7 +1205,7 @@
                 ["Gadget" "679.83" "1,059.11" "844.51" "435.75" "3,019.2"]]
                (take 3 (card-download card {:export-format :xlsx :format-rows false :pivot true}))))))))
 
-(deftest unformatted-downloads-and-exports-keep-numbers-as-numbers
+(deftest ^:parallel unformatted-downloads-and-exports-keep-numbers-as-numbers
   (testing "Unformatted numbers in downloads remain numbers."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display       :table
@@ -1243,7 +1243,7 @@
                     :public-dashcard-download [["A"] [1234.567]]}
                    unformatted-results))))))))
 
-(deftest pivot-measures-order-test
+(deftest ^:parallel pivot-measures-order-test
   (testing "A pivot download will use the user-configured measures order (#48442)."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display                :pivot
@@ -1310,7 +1310,7 @@
                     :public-dashcard-download expected-header}
                    (update-vals formatted-results first)))))))))
 
-(deftest pivot-non-numeric-values-in-aggregations
+(deftest ^:parallel pivot-non-numeric-values-in-aggregations
   (testing "A pivot table with an aggegation that results in non-numeric values (eg. Dates) will still work (#49353)."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display                :pivot
@@ -1569,7 +1569,7 @@
                     ["Grand totals" "25" "490" "19.6" "-5" "55"]]
                    result))))))))
 
-(deftest table-exports-with-non-integral-scale
+(deftest ^:parallel table-exports-with-non-integral-scale
   (testing "Non integral scale values should be respected in table exports (csv, xlsx, json)"
     (mt/dataset test-data
       (mt/with-temp [:model/Card card-scaled  {:display                :table
@@ -1647,7 +1647,7 @@
           (is (= "Custom Title"
                  (second (first res)))))))))
 
-(deftest pivot-subtotal-formatting-in-xlsx-test
+(deftest ^:parallel pivot-subtotal-formatting-in-xlsx-test
   (testing "Pivot table subtotals in XLSX exports use formatted values as strings rather than XLSX formatting codes (#57442)"
     (mt/dataset test-data
       (mt/with-temp [:model/Card {pivot-card-id :id}

@@ -209,7 +209,7 @@
           (perms/revoke-application-permissions! group-id perm-type)
           (is (not (= (perms) #{perm-path}))))))))
 
-(deftest maybe-break-out-permission-data-test
+(deftest ^:parallel maybe-break-out-permission-data-test
   (testing "We can break out a collection permission"
     (are [object m] (= m (select-keys (#'perms/maybe-break-out-permission-data {:object object})
                                       [:collection_id :perm_type :perm_value]))

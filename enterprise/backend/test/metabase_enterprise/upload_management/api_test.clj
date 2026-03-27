@@ -9,7 +9,7 @@
 
 (def list-url "ee/upload-management/tables")
 
-(deftest list-uploaded-tables-test
+(deftest ^:parallel list-uploaded-tables-test
   (testing "GET ee/upload-management/tables"
     (testing "These should come back in alphabetical order and include relevant metadata"
       (mt/with-premium-features #{:upload-management}
@@ -36,7 +36,7 @@
                           (map #(select-keys % [:name :display_name :id :entity_type :schema :usage_count]))
                           set))))))))))
 
-(deftest list-uploaded-tables-no-duplicates-test
+(deftest ^:parallel list-uploaded-tables-no-duplicates-test
   (testing "GET ee/upload-management/tables should not return duplicates for tables in attached DWH"
     (testing "Tables with is_upload=true in attached DWH should only appear once (not duplicated)"
       (mt/with-premium-features #{:upload-management :attached-dwh}

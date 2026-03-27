@@ -4,11 +4,11 @@
    [i18n.create-artifacts.frontend :as frontend]
    [i18n.create-artifacts.test-common :as test-common]))
 
-(deftest ->ttag-reference-test
+(deftest ^:parallel ->ttag-reference-test
   (is (= "${ 0 } schemas"
          (#'frontend/->ttag-reference "{0} schemas"))))
 
-(deftest ->i18n-map-test
+(deftest ^:parallel ->i18n-map-test
   (is (= {:charset      "utf-8"
           :headers      {"mime-version"              "1.0"
                          "content-type"              "text/plain; charset=UTF-8"

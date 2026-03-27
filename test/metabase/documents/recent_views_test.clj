@@ -37,12 +37,12 @@
                                                  :context :question})
         (is (nil? (most-recent-view (mt/user->id :rasta) (:id card) "card")))))))
 
-(deftest select-documents-for-recents-empty-input-test
+(deftest ^:parallel select-documents-for-recents-empty-input-test
   (testing "returns empty vector when given empty document-ids"
     (is (= [] (#'recent-views.model/document-recents [])))
     (is (= [] (#'recent-views.model/document-recents nil)))))
 
-(deftest select-documents-for-recents-with-collection-test
+(deftest ^:parallel select-documents-for-recents-with-collection-test
   (testing "returns documents with collection information"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
                                                     :authority_level "official"
@@ -70,7 +70,7 @@
           (is (= "Document 2" (:name doc2)))
           (is (= false (:archived doc2))))))))
 
-(deftest select-documents-for-recents-without-collection-test
+(deftest ^:parallel select-documents-for-recents-without-collection-test
   (testing "returns documents without collection when collection_id is nil"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Orphan Document"
                                                  :collection_id nil
@@ -85,7 +85,7 @@
           (is (nil? (:collection_name doc)))
           (is (nil? (:collection_authority_level doc))))))))
 
-(deftest select-documents-for-recents-archived-collections-test
+(deftest ^:parallel select-documents-for-recents-archived-collections-test
   (testing "excludes documents from archived collections via left join"
     (mt/with-temp [:model/Collection {archived-coll-id :id} {:name "Archived Collection"
                                                              :authority_level "official"
@@ -118,7 +118,7 @@
           (is (= "Active Collection" (:collection_name doc2)))
           (is (= "official" (:collection_authority_level doc2))))))))
 
-(deftest select-documents-for-recents-archived-documents-test
+(deftest ^:parallel select-documents-for-recents-archived-documents-test
   (testing "includes archived documents in results"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
                                                     :archived false}
@@ -131,12 +131,12 @@
           (is (= "Archived Document" (:name doc)))
           (is (true? (:archived doc))))))))
 
-(deftest select-documents-for-recents-nonexistent-ids-test
+(deftest ^:parallel select-documents-for-recents-nonexistent-ids-test
   (testing "handles non-existent document IDs gracefully"
     (let [results (#'recent-views.model/document-recents [999999 888888])]
       (is (= [] results)))))
 
-(deftest select-documents-for-recents-mixed-ids-test
+(deftest ^:parallel select-documents-for-recents-mixed-ids-test
   (testing "handles mixed existing and non-existing document IDs"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Existing Document"
                                                  :archived false}]

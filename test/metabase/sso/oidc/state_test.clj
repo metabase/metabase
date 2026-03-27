@@ -374,7 +374,7 @@
           ;; No provider validation passes
           (is (some? (oidc.state/get-oidc-state callback))))))))
 
-(deftest clear-oidc-state-cookie-test
+(deftest ^:parallel clear-oidc-state-cookie-test
   (testing "clears the cookie"
     (let [response (oidc.state/clear-oidc-state-cookie {})
           cookie   (get-in response [:cookies "metabase.OIDC_STATE"])]

@@ -52,7 +52,7 @@
           (is (= original-last-updated
                  (channel.settings/slack-channels-and-usernames-last-updated))))))))
 
-(deftest update-slack-settings-test-4
+(deftest ^:parallel update-slack-settings-test-4
   (testing "PUT /api/slack/settings"
     (testing "A non-admin cannot modify the Slack app token"
       (mt/user-http-request :rasta :put 403 "slack/settings"

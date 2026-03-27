@@ -157,7 +157,7 @@
       {:cards [{:id 1} {:id 3}]}
       "modified the cards.")))
 
-(deftest diff-dashboards-str-update-collection-test
+(deftest ^:parallel diff-dashboards-str-update-collection-test
   (testing "update collection ---"
     (is (= "moved this Dashboard to Our analytics."
            (u/build-sentence

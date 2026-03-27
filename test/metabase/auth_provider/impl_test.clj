@@ -35,7 +35,7 @@
                 (is (= [["Polo Lounge"]]
                        (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))))))))))
 
-(deftest fetch-auth-test
+(deftest ^:parallel fetch-auth-test
   (mt/test-drivers #{:postgres :mysql}
     (let [original-details (:details (mt/db))
           auth-details {:use-auth-provider true

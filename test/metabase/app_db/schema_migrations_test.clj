@@ -70,7 +70,7 @@
 
 ;; Kooky that I have to write this, but I do. Make sure people keep tests in order -- I don't want to find any more 52
 ;; tests sandwiched between 48 tests.
-(deftest order-your-migration-tests-test
+(deftest ^:parallel order-your-migration-tests-test
   (testing "Migrations tests should be grouped together by major version and those major versions should be in order"
     (let [versions (migrations-versions)]
       (is (= (sort versions)
@@ -2762,7 +2762,7 @@
         (migrate!)
         (is (= "zh_CN" (t2/select-one-fn :locale (t2/table-name :model/User) :id user-id)))))))
 
-(deftest migrate-password-auth-test
+(deftest ^:parallel migrate-password-auth-test
   (testing "Migration v58.2025-11-04T23:10:03: Migrate password authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:11"] [migrate!]
       ;; Insert users with password auth before migration
@@ -2790,7 +2790,7 @@
                 {:first_name "NoPassword" :provider nil}]
                results))))))
 
-(deftest migrate-ldap-auth-test-2
+(deftest ^:parallel migrate-ldap-auth-test-2
   (testing "Migration v58.2025-11-04T23:10:04: Migrate LDAP authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:12"] [migrate!]
       ;; Insert users with LDAP auth before migration (using sso_source='ldap' from current schema)
@@ -2817,7 +2817,7 @@
                 {:first_name "NoLDAP" :provider nil}]
                results))))))
 
-(deftest migrate-google-sso-auth-test
+(deftest ^:parallel migrate-google-sso-auth-test
   (testing "Migration v58.2025-11-04T23:10:05: Migrate Google SSO authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:13"] [migrate!]
       ;; Insert users with Google SSO before migration
@@ -2843,7 +2843,7 @@
                 {:first_name "NoSSO" :provider nil}]
                results))))))
 
-(deftest migrate-saml-jwt-auth-test
+(deftest ^:parallel migrate-saml-jwt-auth-test
   (testing "Migration v58.2025-11-04T23:10:06: Migrate SAML and JWT authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:14"] [migrate!]
       ;; Insert users with SAML and JWT before migration

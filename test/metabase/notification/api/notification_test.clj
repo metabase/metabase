@@ -16,7 +16,7 @@
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections :notifications))
 
-(deftest get-notification-card-test
+(deftest ^:parallel get-notification-card-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel
                  :model/ChannelTemplate {tmpl-id :id} notification.tu/channel-template-email-with-handlebars-body]
     (notification.tu/with-card-notification
@@ -70,7 +70,7 @@
                                     :active true}]}
                   (mt/user-http-request :crowberto :get 200 (format "notification/%d" notification-id)))))))))
 
-(deftest get-notification-error-test
+(deftest ^:parallel get-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :get 401 "notification/1"))))
   (testing "404 on unknown notification"
@@ -304,7 +304,7 @@
                                              :cron_schedule new-schedule
                                              :ui_display_type ui-display-type)]))
 
-(deftest update-notification-test
+(deftest ^:parallel update-notification-test
   (mt/with-temp [:model/ChannelTemplate {tmpl-id :id} notification.tu/channel-template-email-with-handlebars-body]
     (notification.tu/with-card-notification
       [notification {:card              {:dataset_query (mt/mbql-query users)}
@@ -399,7 +399,7 @@
                                        :active false}}}
                  (mt/latest-audit-log-entry))))))))
 
-(deftest update-notification-error-test
+(deftest ^:parallel update-notification-error-test
   (testing "require auth"
     (is (= "Unauthenticated" (mt/client :put 401 "notification/1"))))
 
@@ -507,7 +507,7 @@
         (testing "no x-metabase-client header: result email has links"
           (is (true? (has-link? nil))))))))
 
-(deftest get-notification-permissions-test
+(deftest ^:parallel get-notification-permissions-test
   (mt/with-temp
     [:model/User {third-user-id :id} {:is_superuser false}]
     (notification.tu/with-card-notification
@@ -650,7 +650,7 @@
                    (change-notification-creator (mt/user->id :rasta))
                    (move-card-collection (mt/user->id :rasta))))))))))))
 
-(deftest send-saved-notification-permissions-test
+(deftest ^:parallel send-saved-notification-permissions-test
   (mt/with-temp [:model/User {third-user-id :id} {:is_superuser false}]
     (notification.tu/with-card-notification
       [notification {:notification {:creator_id (mt/user->id :rasta)}

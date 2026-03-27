@@ -154,7 +154,7 @@
                :superseded-by "deprecated"}
               (:h2 (fetch-setting :engines 200)))))))
 
-(deftest fetch-calculated-settings-test
+(deftest ^:parallel fetch-calculated-settings-test
   (testing "GET /api/setting"
     (testing "Should return the correct `:value` for Settings with no underlying DB/env var value"
       (mt/with-premium-features #{:embedding}

@@ -50,7 +50,7 @@
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
-(deftest user-list-authentication-test
+(deftest ^:parallel user-list-authentication-test
   (testing "authentication"
     (testing "GET /api/user"
       (is (= (get api.response/response-unauthentic :body)
@@ -113,7 +113,7 @@
             (is (= ["sandboxed-analyst@metabase.com"]
                    (map :email result)))))))))
 
-(deftest user-list-for-group-managers-test
+(deftest ^:parallel user-list-for-group-managers-test
   (testing "Group Managers"
     (mt/with-premium-features #{:advanced-permissions}
       (mt/with-temp
@@ -626,7 +626,7 @@
                    :common_name "Rasta Toucan"}
                   resp)))))))
 
-(deftest get-user-structured-attributes-test
+(deftest ^:parallel get-user-structured-attributes-test
   (testing "GET /api/user/:id"
     (testing "includes structured_attributes that tracks attribute provenance"
       (mt/with-temp [:model/User user {:first_name "Test"
@@ -649,7 +649,7 @@
                                            :get 200 (str "user/" (:id user)))]
               (is (contains? self-response :structured_attributes)))))))))
 
-(deftest get-user-structured-attributes-comprehensive-test
+(deftest ^:parallel get-user-structured-attributes-comprehensive-test
   (testing "GET /api/user/:id structured_attributes"
     (testing "with JWT attributes"
       (mt/with-temp [:model/User user {:first_name "Test"
@@ -717,7 +717,7 @@
             (is (= {:source "user" :frozen false :value "only-user"}
                    (get-in response [:structured_attributes :unique])))))))))
 
-(deftest update-user-test-structured-attributes-not-in-put-response
+(deftest ^:parallel update-user-test-structured-attributes-not-in-put-response
   (testing "PUT /api/user/:id"
     (testing "structured_attributes is not included in PUT response"
       (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
@@ -734,7 +734,7 @@
               (is (= {:role {:source "user" :frozen false :value "user"}}
                      (:structured_attributes get-response))))))))))
 
-(deftest combine-function-test
+(deftest ^:parallel combine-function-test
   (testing "combine function merges attributes correctly"
     (testing "basic merging"
       (is (= {"key1" {:source :user :frozen false :value "value1"}
@@ -948,7 +948,7 @@
                              ;; clean up after ourselves
                              (t2/delete! :model/User :email email)))))))))))
 
-(deftest create-user-mixed-case-email-2
+(deftest ^:parallel create-user-mixed-case-email-2
   (testing "POST /api/user/:id"
     (testing "attempting to create a new user with an email with case mutations of an existing email should fail"
       (is (=? {:errors {:email "Email address already in use."}}
@@ -967,7 +967,7 @@
   [user]
   (t2/select-one-fn :name :model/Collection :id (:personal_collection_id user)))
 
-(deftest admin-update-other-user-test
+(deftest ^:parallel admin-update-other-user-test
   (testing "PUT /api/user/:id"
     (testing "test that admins can edit other Users\n"
       (mt/with-premium-features #{}
@@ -1014,7 +1014,7 @@
                       ::personal-collection-name "Cam Eron's Personal Collection"}
                      (user))))))))))
 
-(deftest update-login-attributes-test
+(deftest ^:parallel update-login-attributes-test
   (testing "PUT /api/user/:id"
     (testing "Test that we can update login attributes after a user has been created"
       (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
@@ -1036,7 +1036,7 @@
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
 
-(deftest update-login-attributes-with-different-value-types-test
+(deftest ^:parallel update-login-attributes-with-different-value-types-test
   (testing "PUT /api/user/:id"
     (testing "Non-string attributes are converted to strings"
       (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
@@ -1148,7 +1148,7 @@
       (is (nil? (#'api.user/updated-user-name lastname {:first_name nil :last_name "User"})))
       (is (nil? (#'api.user/updated-user-name lastname {:last_name "User"}))))))
 
-(deftest update-first-name-last-name-test
+(deftest ^:parallel update-first-name-last-name-test
   (testing "PUT /api/user/:id"
     (testing "Test that we can update a user's first and last names"
       (mt/with-temp [:model/User {user-id :id} {:first_name "Blue Ape"
@@ -1203,7 +1203,7 @@
                    (change-user-via-api! {:first_name "Blue"
                                           :last_name nil})))))))))
 
-(deftest update-sso-user-test
+(deftest ^:parallel update-sso-user-test
   (testing "PUT /api/user/:id"
     (testing "Test that we do not update a user's first and last names if they are an SSO user."
       (mt/with-temp [:model/User {user-id :id} {:first_name "SSO"
@@ -1223,7 +1223,7 @@
             (is (partial= {:first_name "SSO" :last_name "User"}
                           (change-user-via-api! 200 {:first_name "SSO" :last_name "User"})))))))))
 
-(deftest update-email-check-if-already-used-test
+(deftest ^:parallel update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
     (testing "test that updating a user's email to an existing inactive user's email fails"
       (let [trashbird (mt/fetch-user :trashbird)
@@ -1232,7 +1232,7 @@
                 (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
                                       (select-keys trashbird [:email]))))))))
 
-(deftest update-existing-email-case-mutation-test
+(deftest ^:parallel update-existing-email-case-mutation-test
   (testing "PUT /api/user/:id"
     (testing "test that updating a user's email to an an existing inactive email by mutating case fails"
       (let [trashbird (mt/fetch-user :trashbird)
@@ -1242,7 +1242,7 @@
                 (mt/user-http-request :crowberto :put 400 (str "user/" (u/the-id rasta))
                                       (select-keys trashbird-mutated [:email]))))))))
 
-(deftest update-superuser-status-test
+(deftest ^:parallel update-superuser-status-test
   (testing "PUT /api/user/:id"
     (testing "Test that a normal user cannot change the :is_superuser flag for themselves"
       (letfn [(fetch-rasta []
@@ -1260,7 +1260,7 @@
               :user_id user-id
               :group_id (:id (perms-group/data-analyst))))
 
-(deftest update-data-analyst-status-test
+(deftest ^:parallel update-data-analyst-status-test
   (testing "PUT /api/user/:id"
     (testing "Test that a superuser can set the :is_data_analyst flag (adds to Data Analysts group)"
       (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst@metabase.com"}]
@@ -1290,7 +1290,7 @@
                (mt/user-http-request :rasta :put 403 (str "user/" user-id)
                                      {:is_data_analyst true})))))))
 
-(deftest filter-by-data-analyst-test
+(deftest ^:parallel filter-by-data-analyst-test
   (testing "GET /api/user"
     (testing "Filter users by is_data_analyst=true includes data analysts group members"
       (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst" :last_name "User"
@@ -1319,7 +1319,7 @@
           (testing "non-analyst is included"
             (is (contains? result-ids non-analyst-id))))))))
 
-(deftest update-permissions-test
+(deftest ^:parallel update-permissions-test
   (testing "PUT /api/user/:id"
     (testing "Check that a non-superuser CANNOT update someone else's user details"
       (is (= "You don't have permissions to do that."
@@ -1352,7 +1352,7 @@
                  (client/client creds :put 403 (format "user/%d" (u/the-id user))
                                 {:email "adifferentemail@metabase.com"}))))))))
 
-(deftest update-permissions-test-2
+(deftest ^:parallel update-permissions-test-2
   (testing "PUT /api/user/:id"
     (testing "Google auth users can change their locale"
       (mt/with-temp [:model/User user {:email "anemail@metabase.com"
@@ -1383,7 +1383,7 @@
   [& body]
   `(do-with-preserved-rasta-personal-collection-name! (fn [] ~@body)))
 
-(deftest update-groups-test
+(deftest ^:parallel update-groups-test
   (testing "PUT /api/user/:id"
     (testing "Check that we can update the groups a User belongs to -- if we are a superuser"
       (mt/with-premium-features #{}
@@ -1429,7 +1429,7 @@
             (is (= "Reggae"
                    (t2/select-one-fn :first_name :model/User :id (mt/user->id :rasta))))))))))
 
-(deftest update-groups-test-4
+(deftest ^:parallel update-groups-test-4
   (testing "PUT /api/user/:id"
     (testing (str "We should be able to put someone in the Admin group when we update them them (is_superuser TRUE? "
                   "and user_group_memberships including admin group ID)")
@@ -1467,7 +1467,7 @@
           (is (= {:is-superuser? false, :pgm-exists? false}
                  (superuser-and-admin-pgm-info email))))))))
 
-(deftest update-groups-test-7
+(deftest ^:parallel update-groups-test-7
   (testing "PUT /api/user/:id"
     (testing "if we PUT a user with is_superuser TRUE but don't specify user_group_memberships, we should be ok"
       (mt/with-temp [:model/User {:keys [email id]}]
@@ -1476,7 +1476,7 @@
         (is (= {:is-superuser? true, :pgm-exists? true}
                (superuser-and-admin-pgm-info email)))))))
 
-(deftest update-groups-test-8
+(deftest ^:parallel update-groups-test-8
   (testing "PUT /api/user/:id"
     (testing "if we include Admin in user_group_memberships but don't specify is_superuser we should be ok"
       (mt/with-premium-features #{}
@@ -1496,7 +1496,7 @@
             :slug "rasta_toucan_s_personal_collection"}
            (t2/select-one [:model/Collection :name :slug] :personal_owner_id (mt/user->id :rasta))))))
 
-(deftest update-locale-test
+(deftest ^:parallel update-locale-test
   (testing "PUT /api/user/:id\n"
     (mt/with-temp [:model/User {user-id :id, email :email} {:password "p@ssw0rd"}]
       (letfn [(set-locale! [expected-status-code new-locale]
@@ -1609,7 +1609,7 @@
       ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
       (not= hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))))))
 
-(deftest can-reset-password-test
+(deftest ^:parallel can-reset-password-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we can reset our own password. If user is a"
       (testing "superuser"
@@ -1619,7 +1619,7 @@
         (is (true?
              (user-can-reset-password? (not :superuser))))))))
 
-(deftest reset-password-permissions-test
+(deftest ^:parallel reset-password-permissions-test
   (testing "PUT /api/user/:id/password"
     (testing "Check that a non-superuser CANNOT update someone else's password"
       (is (= "You don't have permissions to do that."
@@ -1627,7 +1627,7 @@
                                    {:password "whateverUP12!!"
                                     :old_password "whatever"}))))))
 
-(deftest reset-password-input-validation-test
+(deftest ^:parallel reset-password-input-validation-test
   (testing "PUT /api/user/:id/password"
     (testing "Test input validations on password change"
       (is (=? {:errors {:password "password is too common."}}
@@ -1639,7 +1639,7 @@
                                     {:password "whateverUP12!!"
                                      :old_password "mismatched"}))))))
 
-(deftest reset-password-session-test
+(deftest ^:parallel reset-password-session-test
   (testing "PUT /api/user/:id/password"
     (testing "Test that we return a session if we are changing our own password"
       (mt/with-temp [:model/User user {:password "def", :is_superuser false}]
@@ -1684,13 +1684,13 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
 
-(deftest deactivate-missing-user-fails
+(deftest ^:parallel deactivate-missing-user-fails
   (testing "DELETE /api/user/:id"
     (let [max-id (:max_id (t2/query-one {:select [[:%max.id :max_id]]
                                          :from :core_user}))]
       (is (= "Not found." (mt/user-http-request :crowberto :delete 404 (format "user/%d" (* 2 max-id))))))))
 
-(deftest deactivate-deactivated-user-again-succeeds
+(deftest ^:parallel deactivate-deactivated-user-again-succeeds
   (testing "DELETE /api/user/:id"
     (mt/with-temp [:model/User user {:is_active false}]
       (is (= {:success true}
@@ -1700,7 +1700,7 @@
 ;;; |                                             Other Endpoints                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest update-user-modal-test
+(deftest ^:parallel update-user-modal-test
   (doseq [[endpoint property] [["qbnewb" :is_qbnewb]
                                ["datasetnewb" :is_datasetnewb]]]
     (testing (str "PUT /api/user/:id/modal/" endpoint)
@@ -1726,7 +1726,7 @@
                                              (mt/user->id :trashbird)
                                              endpoint))))))))
 
-(deftest user-activate-deactivate-event-test
+(deftest ^:parallel user-activate-deactivate-event-test
   (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/User {:keys [id]} {:first_name "John"
@@ -1747,7 +1747,7 @@
                  [(mt/latest-audit-log-entry :user-deactivated id)
                   (mt/latest-audit-log-entry :user-reactivated id)])))))))
 
-(deftest user-update-event-test
+(deftest ^:parallel user-update-event-test
   (testing "User Updates via the API are recorded in the audit log"
     (mt/with-temp [:model/User {:keys [id]} {:first_name "John"
                                              :last_name "Cena"}]
@@ -1769,7 +1769,7 @@
 ;;; |                  Password Reset URL -- POST /api/user/:id/password-reset-url                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest password-reset-url-admin-can-generate-test
+(deftest ^:parallel password-reset-url-admin-can-generate-test
   (testing "POST /api/user/:id/password-reset-url admin can generate a password reset URL"
     (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
                                               :last_name "User"
@@ -1780,7 +1780,7 @@
         (is (string? (:password_reset_url response)))
         (is (re-find #"/auth/reset_password/" (:password_reset_url response)))))))
 
-(deftest password-reset-url-non-admin-forbidden-test
+(deftest ^:parallel password-reset-url-non-admin-forbidden-test
   (testing "POST /api/user/:id/password-reset-url non-admin gets 403"
     (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
                                               :last_name "User"
@@ -1788,7 +1788,7 @@
       (mt/user-http-request :rasta :post 403
                             (format "user/%d/password-reset-url" user-id)))))
 
-(deftest password-reset-url-inactive-user-not-found-test
+(deftest ^:parallel password-reset-url-inactive-user-not-found-test
   (testing "POST /api/user/:id/password-reset-url inactive user gets 404"
     (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
                                               :last_name "User"
@@ -1797,7 +1797,7 @@
       (mt/user-http-request :crowberto :post 404
                             (format "user/%d/password-reset-url" user-id)))))
 
-(deftest password-reset-url-nonexistent-user-not-found-test
+(deftest ^:parallel password-reset-url-nonexistent-user-not-found-test
   (testing "POST /api/user/:id/password-reset-url nonexistent user gets 404"
     (mt/user-http-request :crowberto :post 404
                           "user/999999/password-reset-url")))

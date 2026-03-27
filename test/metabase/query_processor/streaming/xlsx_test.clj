@@ -483,7 +483,7 @@
                                   [[#t "2020-03-28T10:12:06.681"]]
                                   :parse-fn parse-format-strings)))))))
 
-(deftest column-order-test
+(deftest ^:parallel column-order-test
   (testing "Column titles are ordered correctly in the output"
     (is (= ["Col1" "Col2"]
            (first (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}] {} []))))
@@ -502,7 +502,7 @@
                               {:output-order [1]}
                               [["a" "b"] ["c" "d"]]))))))
 
-(deftest column-title-test
+(deftest ^:parallel column-title-test
   (testing "::mb.viz/column-title precedence over :display_name, which takes precendence over :name"
     (is (= ["Display name"]
            (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}] {} []))))
@@ -581,14 +581,14 @@
                                                           {::mb.viz/field-id 1} {::mb.viz/column-title "Correct title"}}}
                                []))))))
 
-(deftest scale-test
+(deftest ^:parallel scale-test
   (testing "scale is applied to data prior to export"
     (is (= [2.0]
            (second (xlsx-export [{:id 0, :name "Col"}]
                                 {::mb.viz/column-settings {{::mb.viz/column-name "Col"} {::mb.viz/scale 2}}}
                                 [[1.0]]))))))
 
-(deftest misc-data-test
+(deftest ^:parallel misc-data-test
   (testing "nil values"
     (is (= [nil]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[nil]])))))
@@ -657,7 +657,7 @@
     (is (= [:DIV0]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[##-Inf]]))))))
 
-(deftest geographic-coordinates-test
+(deftest ^:parallel geographic-coordinates-test
   (testing "Geograpic coordinates are correctly transformed"
     (is (= ["12.34560000° E"
             "12.34560000° W"
@@ -690,7 +690,7 @@
 
 (defrecord ^:private AnotherNastyClass [^String v])
 
-(deftest encode-strange-classes-test
+(deftest ^:parallel encode-strange-classes-test
   (testing (str "Make sure that we're piggybacking off of the JSON encoding logic when encoding strange values in "
                 "XLSX (#5145, #5220, #5459)")
     (is (= ["Hello XLSX World!" "23" "{\"v\":\"No Encoder\"}"]
@@ -713,7 +713,7 @@
     (doseq [col-width widths]
       (is (not= default-width col-width)))))
 
-(deftest auto-sizing-test
+(deftest ^:parallel auto-sizing-test
   (testing "Columns in export are autosized to fit their content"
     (xlsx-export [{:id 0, :name "Col1"} {:id 1, :name "Col2"}]
                  {}
@@ -761,7 +761,7 @@
           (is (spreadsheet/workbook? (spreadsheet/load-workbook-from-stream istr))
               "not a valid workbook"))))))
 
-(deftest dont-format-non-temporal-columns-as-temporal-columns-test
+(deftest ^:parallel dont-format-non-temporal-columns-as-temporal-columns-test
   (testing "Don't format columns with temporal semantic type as datetime unless they're actually datetimes (#18729)"
     (mt/dataset test-data
       (is (= [["CREATED_AT"]
@@ -777,7 +777,7 @@
                           [[1]
                            [2]]))))))
 
-(deftest ambiguous-column-types-dont-error
+(deftest ^:parallel ambiguous-column-types-dont-error
   (testing "Ambiguous column types (eg. `:type/SnowflakeVariant` will not throw an exception. (#46981)"
     (mt/dataset test-data
       (is (= [["CREATED_AT"]
@@ -792,7 +792,7 @@
                           [[1]
                            [2]]))))))
 
-(deftest number-of-characters-cell-test
+(deftest ^:parallel number-of-characters-cell-test
   (testing "When the number of characters exceeds *number-of-characters-cell*, the excess part will be truncated."
     (binding [qp.xlsx/*number-of-characters-cell* 5]
       (is (= ["abcde"]

@@ -34,7 +34,7 @@
                                     :post 400 "document/" {:name ""
                                                            :document (documents.test-util/text->prose-mirror-ast "Doc 1")}))))))
 
-(deftest post-document-creation-long-name-test
+(deftest ^:parallel post-document-creation-long-name-test
   (testing "POST /api/document/id - basic document update"
     (is (=? {:errors {:name "value must be a non-blank string between 1 and 254 characters."}}
             (mt/user-http-request :crowberto
@@ -42,7 +42,7 @@
                                   {:name (apply str (repeat 255 "c"))
                                    :document (documents.test-util/text->prose-mirror-ast "Doc 1")})))))
 
-(deftest put-document-basic-update-test
+(deftest ^:parallel put-document-basic-update-test
   (testing "PUT /api/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
                                                       :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
@@ -51,7 +51,7 @@
         (is (partial= {:name "Document 2"
                        :document (documents.test-util/text->prose-mirror-ast "Doc 2")} result))))))
 
-(deftest put-document-update-non-blank-name-test
+(deftest ^:parallel put-document-update-non-blank-name-test
   (testing "PUT /api/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
                                                       :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
@@ -61,7 +61,7 @@
                                     {:name ""
                                      :document (documents.test-util/text->prose-mirror-ast "Doc 1")}))))))
 
-(deftest put-document-update-long-name-test
+(deftest ^:parallel put-document-update-long-name-test
   (testing "PUT /api/document/id - basic document update"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
                                                       :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
@@ -71,12 +71,12 @@
                                     {:name (apply str (repeat 255 "c"))
                                      :document (documents.test-util/text->prose-mirror-ast "Doc 1")}))))))
 
-(deftest put-document-nonexistent-document-test
+(deftest ^:parallel put-document-nonexistent-document-test
   (testing "PUT /api/document/id - should return 404 for non-existent document"
     (mt/user-http-request :crowberto
                           :put 404 "document/99999" {:name "Non-existent Document" :document (documents.test-util/text->prose-mirror-ast "Doc")})))
 
-(deftest put-document-with-no-perms-test
+(deftest ^:parallel put-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Document {document-id :id} {:collection_id coll-id
                                                     :name "Test Document"
@@ -85,7 +85,7 @@
       (mt/user-http-request :rasta :put 403 (str "document/" document-id)
                             {:name "Meow"}))))
 
-(deftest put-document-archived-test
+(deftest ^:parallel put-document-archived-test
   (testing "PUT /api/document/:id - cannot update archived document"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
                                                  :document (documents.test-util/text->prose-mirror-ast "Initial")
@@ -96,7 +96,7 @@
                                                :put 404 (format "document/%s" doc-id)
                                                {:name "Updated Name"}))))))))
 
-(deftest post-document-with-no-perms-test
+(deftest ^:parallel post-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}]
     (mt/with-non-admin-groups-no-collection-perms coll-id
       (mt/user-http-request :rasta :post 403 "document/"
@@ -104,7 +104,7 @@
                              :document (documents.test-util/text->prose-mirror-ast "Bar")
                              :collection_id coll-id}))))
 
-(deftest get-document-test
+(deftest ^:parallel get-document-test
   (testing "GET /api/document/id"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
                                                       :document (documents.test-util/text->prose-mirror-ast "Doc 1")}]
@@ -118,7 +118,7 @@
         (mt/user-http-request :crowberto
                               :get 404 "document/99999")))))
 
-(deftest get-documents-test
+(deftest ^:parallel get-documents-test
   (testing "GET /api/document"
     (mt/with-temp [:model/Document _ {:name "Document 1"
                                       :document (documents.test-util/text->prose-mirror-ast "Initial Doc 1")}
@@ -211,14 +211,14 @@
                                   {:name "Should Not Copy"
                                    :collection_id restricted-dest-col})))))))
 
-(deftest copy-document-nonexistent-document-test
+(deftest ^:parallel copy-document-nonexistent-document-test
   (testing "POST /api/document/:id/copy - non-existent source document returns 404"
     (is (= "Not found."
            (mt/user-http-request :crowberto :post 404
                                  (format "document/%d/copy" Integer/MAX_VALUE)
                                  {:name "Copy"})))))
 
-(deftest copy-document-archived-document-test
+(deftest ^:parallel copy-document-archived-document-test
   (testing "POST /api/document/:id/copy - archived source document returns 404"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Archived Document"
                                                  :document (documents.test-util/text->prose-mirror-ast "archived")
@@ -228,7 +228,7 @@
                                    (format "document/%d/copy" doc-id)
                                    {:name "Copy"}))))))
 
-(deftest document-collection-sync-integration-test
+(deftest ^:parallel document-collection-sync-integration-test
   (testing "End-to-end collection synchronization through API"
     (mt/with-temp [:model/Collection {old-collection-id :id} {:name "Old Collection"}
                    :model/Collection {new-collection-id :id} {:name "New Collection"}
@@ -280,7 +280,7 @@
             ;; Other card should still be in old collection
             (is (= old-collection-id (:collection_id (t2/select-one :model/Card :id other-card-id))))))))))
 
-(deftest api-permission-edge-cases-test
+(deftest ^:parallel api-permission-edge-cases-test
   (testing "API permission validation edge cases"
     (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test@integration.com"}
                    :model/Collection {collection1-id :id} {:name "Permission Collection 1"}
@@ -423,7 +423,7 @@
                                           :cards nil})]
         (is (pos? (:id result)))))))
 
-(deftest put-document-with-cards-to-create-test
+(deftest ^:parallel put-document-with-cards-to-create-test
   (testing "PUT /api/document/:id - update document with new cards via cards"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
@@ -537,7 +537,7 @@
         ;; Verify no document was created
         (is (zero? (t2/count :model/Document :name "Document That Should Rollback")))))))
 
-(deftest put-document-cards-to-create-transaction-rollback-test
+(deftest ^:parallel put-document-cards-to-create-transaction-rollback-test
   (testing "PUT /api/document/:id - transaction rollback on card creation failure"
     (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
                                                       :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
@@ -622,7 +622,7 @@
             (is (= col-id (:collection_id card)))
             (is (= :table (:display card)))))))))
 
-(deftest put-document-cards-type-normalization-test
+(deftest ^:parallel put-document-cards-type-normalization-test
   (testing "PUT /api/document/:id - normalizes card type from :model to :question and removes dashboard_id"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
@@ -880,7 +880,7 @@
             (let [original-associated (t2/select-one :model/Card :id associated-card)]
               (is (= other-doc-id (:document_id original-associated))))))))))
 
-(deftest document-clone-only-cards-not-already-in-document-test
+(deftest ^:parallel document-clone-only-cards-not-already-in-document-test
   (testing "Cards already belonging to the current document are not cloned"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
@@ -933,7 +933,7 @@
                          (:id cloned-card)}
                        associated-ids))))))))))
 
-(deftest put-document-clone-existing-cards-test
+(deftest ^:parallel put-document-clone-existing-cards-test
   (testing "PUT /api/document/:id - clones existing cards and substitutes IDs in AST"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
@@ -994,7 +994,7 @@
             (is (nil? (:document_id original-1)))
             (is (nil? (:document_id original-2)))))))))
 
-(deftest put-document-mixed-cloned-and-new-cards-test
+(deftest ^:parallel put-document-mixed-cloned-and-new-cards-test
   (testing "PUT /api/document/:id - handles both cloned existing cards and new cards"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
@@ -1180,7 +1180,7 @@
             (is (= (:id result) (:document_id cloned-card)))
             (is (= col-id (:collection_id cloned-card)))))))))
 
-(deftest document-cloning-idempotent-test
+(deftest ^:parallel document-cloning-idempotent-test
   (testing "Multiple updates with same cards don't create duplicate clones"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Document {document-id :id} {:name "Test Document"
@@ -1436,7 +1436,7 @@
                     (when (= "Doc in Read Collection" (:name doc))
                       (is (false? (get doc :can_write))))))))))))))
 
-(deftest document-archive-basic-test
+(deftest ^:parallel document-archive-basic-test
   (testing "PUT /api/document/:id - basic document archiving"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Test Document"
@@ -1464,7 +1464,7 @@
             ;; Verify document is actually unarchived in database
           (is (false? (:archived (t2/select-one :model/Document :id doc-id)))))))))
 
-(deftest document-archive-with-cards-test
+(deftest ^:parallel document-archive-with-cards-test
   (testing "Document archiving includes associated cards"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Document with Cards"
@@ -1550,7 +1550,7 @@
                                                {:archived false})]
               (is (false? (:archived result))))))))))
 
-(deftest collection-archive-includes-documents-test
+(deftest ^:parallel collection-archive-includes-documents-test
   (testing "Collection archiving includes documents and associated cards"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection to Archive"}
                    :model/Document {doc1-id :id} {:name "Document 1"
@@ -1610,7 +1610,7 @@
         (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
         (is (false? (:archived (t2/select-one :model/Card :id standalone-card-id))))))))
 
-(deftest document-archived-directly-flag-test
+(deftest ^:parallel document-archived-directly-flag-test
   (testing "Document archived_directly flag behavior"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Test Document"
@@ -1680,7 +1680,7 @@
           (is (true? (:archived card)))
           (is (true? (:archived_directly card))))))))
 
-(deftest archived-documents-filtering-test
+(deftest ^:parallel archived-documents-filtering-test
   (testing "Archived documents are properly filtered from various endpoints"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {active-doc-id :id} {:name "Active Document"
@@ -1762,7 +1762,7 @@
           (is (false? (:archived (t2/select-one :model/Document :id doc-id))))
           (is (false? (:archived (t2/select-one :model/Card :id card-id)))))))))
 
-(deftest document-archive-mixed-scenarios-test
+(deftest ^:parallel document-archive-mixed-scenarios-test
   (testing "Mixed archiving scenarios - documents with different archival states"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {directly-archived-doc :id} {:name "Directly Archived Document"
@@ -1798,7 +1798,7 @@
           ;; Active document should remain active
         (is (false? (:archived (t2/select-one :model/Document :id active-doc))))))))
 
-(deftest document-archive-edge-cases-test
+(deftest ^:parallel document-archive-edge-cases-test
   (testing "Document archiving edge cases"
 
     (testing "archiving already archived document is idempotent"
@@ -1853,7 +1853,7 @@
           (is (= "Updated Name" (:name result)))
           (is (= (documents.test-util/text->prose-mirror-ast "Updated content") (:document result))))))))
 
-(deftest delete-document-basic-test
+(deftest ^:parallel delete-document-basic-test
   (testing "DELETE /api/document/:id - basic document deletion"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"
                                                  :document (documents.test-util/text->prose-mirror-ast "Test content")
@@ -1867,7 +1867,7 @@
       (testing "cannot delete same document twice"
         (mt/user-http-request :crowberto :delete 404 (format "document/%s" doc-id))))))
 
-(deftest delete-document-not-archived-test
+(deftest ^:parallel delete-document-not-archived-test
   (testing "DELETE /api/document/:id - cannot delete non-archived document"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Active Document"
                                                  :document (documents.test-util/text->prose-mirror-ast "Active content")
@@ -1910,7 +1910,7 @@
               ;; Verify document still exists
             (is (some? (t2/select-one :model/Document :id read-only-doc-id)))))))))
 
-(deftest delete-document-with-cards-test
+(deftest ^:parallel delete-document-with-cards-test
   (testing "DELETE /api/document/:id - deletes document with associated cards"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Document with Cards"
@@ -1944,7 +1944,7 @@
           ;; Verify non-associated card still exists
         (is (some? (t2/select-one :model/Card :id other-card-id)))))))
 
-(deftest delete-document-nonexistent-test
+(deftest ^:parallel delete-document-nonexistent-test
   (testing "DELETE /api/document/:id - returns 404 for nonexistent document"
     (mt/user-http-request :crowberto :delete 404 "document/999999")))
 
@@ -1964,7 +1964,7 @@
             (is (= "Event Test Document" (get-in delete-event [:event :object :name])))
             (is (= (mt/user->id :crowberto) (get-in delete-event [:event :user-id])))))))))
 
-(deftest document-position-reconciliation-on-create-test
+(deftest ^:parallel document-position-reconciliation-on-create-test
   (testing "Position reconciliation works for new documents via API"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
       ;; Create existing document with position 3 via API
@@ -1999,7 +1999,7 @@
                                                           :collection_id collection-id})]
             (is (nil? (:collection_position no-position-result)))))))))
 
-(deftest document-position-reconciliation-on-update-test
+(deftest ^:parallel document-position-reconciliation-on-update-test
   (testing "Position reconciliation works for document updates via API"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
       ;; Create documents with positions via API
@@ -2055,7 +2055,7 @@
               (let [doc2 (t2/select-one :model/Document :id doc2-id)]
                 (is (= 2 (:collection_position doc2)))))))))))
 
-(deftest document-collection-position-field-handling-test
+(deftest ^:parallel document-collection-position-field-handling-test
   (testing "Document model supports collection_position field via API"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
       (testing "collection_position is stored and retrieved correctly"

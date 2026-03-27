@@ -95,7 +95,7 @@
    identity
    (fn [e] (throw e))))
 
-(deftest wrap-static-api-key-test
+(deftest ^:parallel wrap-static-api-key-test
   (testing "No API key in the request"
     (is (nil?
          (:metabase-session-key

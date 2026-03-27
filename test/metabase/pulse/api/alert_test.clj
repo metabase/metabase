@@ -56,7 +56,7 @@
      result)
     (update result :channels #(sort-by :channel_type %))))
 
-(deftest wrapper-get-alert-test
+(deftest ^:parallel wrapper-get-alert-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel]
     (notification.tu/with-card-notification
       [notification {:notification-card {:send_condition :goal_above
@@ -112,7 +112,7 @@
                   (mt/with-current-user (mt/user->id :crowberto)
                     (models.pulse/retrieve-alert alert))))))))))
 
-(deftest get-alerts-archived-test
+(deftest ^:parallel get-alerts-archived-test
   (notification.tu/with-card-notification
     [active-noti {}]
     (notification.tu/with-card-notification
@@ -125,7 +125,7 @@
         (is (= #{(:id archived-noti)}
                (set (map :id (mt/user-http-request :crowberto :get 200 "alert" :archived true)))))))))
 
-(deftest get-alerts-by-user-test
+(deftest ^:parallel get-alerts-by-user-test
   (notification.tu/with-card-notification
     [crowberto-alert {:notification {:creator_id (mt/user->id :crowberto)}}]
     (notification.tu/with-card-notification
@@ -153,7 +153,7 @@
           (is (= #{(:id rasta-alert) (:id rasta-recipient-alert)}
                  (set (map :id (mt/user-http-request :rasta :get 200 "alert"))))))))))
 
-(deftest get-alert-test
+(deftest ^:parallel get-alert-test
   (testing "an alert can be fetched by ID"
     (notification.tu/with-card-notification
       [notification {}]

@@ -243,7 +243,7 @@
                                keys
                                set))))))))))
 
-(deftest get-users-api-group-id-test
+(deftest ^:parallel get-users-api-group-id-test
   (testing "GET /api/user?group_id=:group_id"
     (testing "should sort by first name for all users in group"
       (mt/with-temp [:model/User                       user-a {:first_name "A"
@@ -382,7 +382,7 @@
                       (add-user-to-group! user 403 random-group)
                       (remove-user-from-group! user 403 random-group))))))))))))
 
-(deftest get-user-structured-attributes-permissions-test
+(deftest ^:parallel get-user-structured-attributes-permissions-test
   (testing "GET /api/user/:id structured_attributes permissions"
     (testing "group managers can see structured_attributes"
       (mt/with-premium-features #{:advanced-permissions}

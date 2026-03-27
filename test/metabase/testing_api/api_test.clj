@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest snapshot-test
+(deftest ^:parallel snapshot-test
   (when (= (mdb/db-type) :h2)
     (let [snapshot-name (mt/random-name)]
       (testing "Just make sure the snapshot endpoint doesn't crash."
@@ -28,7 +28,7 @@
             (finally
               (.delete file))))))))
 
-(deftest restore-test
+(deftest ^:parallel restore-test
   (when (= (mdb/db-type) :h2)
     (testing "Should throw Exception if file does not exist"
       (is (= "Not found."
@@ -60,7 +60,7 @@
             (alter-var-root #'java-time.clock/*clock* (constantly nil))
             (.delete (io/file (#'testing/snapshot-path-for-name snapshot-name)))))))))
 
-(deftest restore-refreshes-search-index-test
+(deftest ^:parallel restore-refreshes-search-index-test
   (when (and (= (mdb/db-type) :h2) (search/supports-index?))
     (testing "After restore, the search index tracking atoms should reflect the restored state"
       (let [snapshot-name (munge (u/qualified-name ::search-index-snapshot))]

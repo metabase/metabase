@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.util.http :as http]))
 
-(deftest valid-host?-test
+(deftest ^:parallel valid-host?-test
   (testing "external-only strategy (default)"
     (is (true? (http/valid-host? :external-only "https://example.com")))
     (is (false? (http/valid-host? :external-only "http://localhost")))

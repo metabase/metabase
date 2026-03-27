@@ -104,7 +104,7 @@
               ;; into keep this number as low as we can
               (is (<= (call-count) 10)))))))))
 
-(deftest created-at-correctness-test
+(deftest ^:parallel created-at-correctness-test
   (let [search-term   "created-at-filtering"
         new           #t "2023-05-04T10:00Z[UTC]"
         two-years-ago (t/minus new (t/years 2))]

@@ -256,6 +256,6 @@
     (mt/with-temporary-setting-values [google-auth-enabled false]
       (is (false? (sso.settings/sso-source-enabled? :google))))))
 
-(deftest sso-source-enabled?-unknown-test
+(deftest ^:parallel sso-source-enabled?-unknown-test
   (testing "sso-source-enabled? returns false for unknown sources"
     (is (false? (sso.settings/sso-source-enabled? :unknown-provider)))))

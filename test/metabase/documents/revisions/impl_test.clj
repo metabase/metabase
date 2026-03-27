@@ -7,7 +7,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest serialize-instance-document-test
+(deftest ^:parallel serialize-instance-document-test
   (testing "Document revision serialization excludes metadata fields"
     (let [document {:id 123
                     :name "Test Document"
@@ -30,7 +30,7 @@
         (is (not (contains? serialized :updated_at)))
         (is (not (contains? serialized :collection_id)))))))
 
-(deftest serialize-instance-document-with-id-test
+(deftest ^:parallel serialize-instance-document-with-id-test
   (testing "Document revision serialization works with different IDs"
     (let [document {:id 123
                     :name "Test Document"
@@ -48,7 +48,7 @@
           (is (= "Test Document" (:name serialized)))
           (is (not (contains? serialized :id))))))))
 
-(deftest serialize-instance-document-minimal-test
+(deftest ^:parallel serialize-instance-document-minimal-test
   (testing "Document revision serialization works with minimal document"
     (let [document {:id 1
                     :name "Minimal Doc"
@@ -91,7 +91,7 @@
               (is (:created_at reverted-document))
               (is (:updated_at reverted-document)))))))))
 
-(deftest excluded-columns-test
+(deftest ^:parallel excluded-columns-test
   (testing "excluded columns constant contains expected fields"
     (let [excluded-columns @#'metabase.documents.revisions.impl/excluded-columns-for-document-revision]
       (is (contains? excluded-columns :id))

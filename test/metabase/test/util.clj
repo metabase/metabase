@@ -1608,7 +1608,7 @@
           [`(with-temp-file ~(vec more) ~@body)]
           body))))
 
-(deftest with-temp-file-test
+(deftest ^:parallel with-temp-file-test
   (testing "random filename"
     (let [temp-filename (atom nil)]
       (with-temp-file [filename]

@@ -31,7 +31,7 @@
   [binding & body]
   `(do-with-dashtab-in-personal-collection (fn [~binding] ~@body)))
 
-(deftest perms-test
+(deftest ^:parallel perms-test
   (with-dashtab-in-personal-collection {:keys [collection dashboard dashtab] :as _dashtab}
     (testing "dashtab's permission is the permission of dashboard they're on"
       (is (= (mi/perms-objects-set dashtab :read)
@@ -73,7 +73,7 @@
       (is (= nil (t2/select-one :model/DashboardTab :id (:id dashtab))))
       (is (= nil (t2/select-one :model/DashboardCard :id (:id dashcard)))))))
 
-(deftest hydration-test
+(deftest ^:parallel hydration-test
   (testing "hydrate a dashboard will return all of its tabs"
     (mt/with-temp
       [:model/Card            card      {}
@@ -86,7 +86,7 @@
                       {:id (:id dashtab-2), :position 1, :dashboard_id (:id dashboard)}]}
               (t2/hydrate dashboard :tabs))))))
 
-(deftest hydrate-tabs-card-test
+(deftest ^:parallel hydrate-tabs-card-test
   (mt/with-temp
     [:model/Dashboard    {dashboard-id :id}    {}
      :model/DashboardTab {tab-2-id :id}        {:name         "Tab 2"

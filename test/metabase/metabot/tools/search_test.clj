@@ -14,7 +14,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest reciprocal-rank-fusion-test
+(deftest ^:parallel reciprocal-rank-fusion-test
   (testing "Basic RRF with single list"
     (let [single-list [[{:id 1 :model "card" :name "Card 1"}
                         {:id 2 :model "dashboard" :name "Dashboard 1"}
@@ -110,7 +110,7 @@
       ;; Item 99 appears in all 5 lists at position 2, so should rank very high
       (is (= 99 (:id (first result)))))))
 
-(deftest postprocess-search-result-test
+(deftest ^:parallel postprocess-search-result-test
   (testing "table result postprocessing"
     (let [result {:model "table"
                   :id 1
@@ -267,7 +267,7 @@
                           :entity-types ["card"]
                           :search-native-query nil}))))))
 
-(deftest other-user-collection-test
+(deftest ^:parallel other-user-collection-test
   (testing "excludes entities from other users' collections"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
@@ -284,7 +284,7 @@
                           (map :name)
                           (set)))))))))))
 
-(deftest enrich-with-collection-descriptions-test
+(deftest ^:parallel enrich-with-collection-descriptions-test
   (mt/with-premium-features #{:content-verification}
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
@@ -342,7 +342,7 @@
                           (is (= 1 (count results)))
                           (is (= "dashboard" (:type (first results)))))))))))))))))
 
-(deftest weight-override-test
+(deftest ^:parallel weight-override-test
   (testing "weights can be overridden on a per-tool-call basis"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table

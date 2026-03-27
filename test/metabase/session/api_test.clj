@@ -45,19 +45,19 @@
 
 (def ^:private session-cookie request/metabase-session-cookie)
 
-(deftest login-basic-test
+(deftest ^:parallel login-basic-test
   (testing "POST /api/session - basic login works"
     (is (malli= SessionResponse
                 (mt/client :post 200 "session" (mt/user->credentials :rasta))))))
 
-(deftest login-mixed-case-email-test
+(deftest ^:parallel login-mixed-case-email-test
   (testing "POST /api/session - login with email of mixed case"
     (let [creds    (update (mt/user->credentials :rasta) :username u/upper-case-en)
           response (mt/client :post 200 "session" creds)]
       (is (malli= SessionResponse
                   response)))))
 
-(deftest login-records-history-test
+(deftest ^:parallel login-records-history-test
   (testing "POST /api/session - login records a LoginHistory item"
     (let [creds    (update (mt/user->credentials :rasta) :username u/upper-case-en)
           response (mt/client :post 200 "session" creds)]
@@ -71,19 +71,19 @@
                    [:active             [:= true]]]
                   (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (t2/select-one-fn :id :model/Session :key_hashed (session/hash-session-key (:id response)))))))))
 
-(deftest login-remember-me-sets-max-age-test
+(deftest ^:parallel login-remember-me-sets-max-age-test
   (testing "POST /api/session - 'remember me' checkbox sets Max-Age attribute on session cookie"
     (let [body (assoc (mt/user->credentials :rasta) :remember true)
           response (mt/client-real-response :post 200 "session" body)]
       (is (get-in response [:cookies session-cookie :expires])))))
 
-(deftest login-remember-me-false-no-max-age-test
+(deftest ^:parallel login-remember-me-false-no-max-age-test
   (testing "POST /api/session - 'remember me' false does not set Max-Age attribute"
     (let [body (assoc (mt/user->credentials :rasta) :remember false)
           response (mt/client-real-response :post 200 "session" body)]
       (is (nil? (get-in response [:cookies session-cookie :expires]))))))
 
-(deftest login-failure-logging-test
+(deftest ^:parallel login-failure-logging-test
   (testing "POST /api/session failure should log an error (#14317)"
     (mt/with-temp [:model/User user]
       (mt/with-log-messages-for-level [messages :error]
@@ -97,28 +97,28 @@
                          (m/find-first #(= (:message %) "Authentication endpoint error")))
                     ["no matching message:" (messages)])))))))
 
-(deftest login-validation-username-required-test
+(deftest ^:parallel login-validation-username-required-test
   (testing "POST /api/session - username is required"
     (is (=? {:errors {:username "value must be a non-blank string."}}
             (mt/client :post 400 "session" {})))))
 
-(deftest login-validation-password-required-test
+(deftest ^:parallel login-validation-password-required-test
   (testing "POST /api/session - password is required"
     (is (=? {:errors {:password "value must be a non-blank string."}}
             (mt/client :post 400 "session" {:username "anything@metabase.com"})))))
 
-(deftest login-validation-inactive-user-test
+(deftest ^:parallel login-validation-inactive-user-test
   (testing "POST /api/session - inactive user cannot login"
     (is (=? {:errors {:_error "Your account is disabled."}}
             (mt/client :post 401 "session" (mt/user->credentials :trashbird))))))
 
-(deftest login-validation-password-check-test
+(deftest ^:parallel login-validation-password-check-test
   (testing "POST /api/session - incorrect password fails"
     (is (=? {:errors {:password "did not match stored password"}}
             (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
                                                (assoc :password "something else")))))))
 
-(deftest login-throttling-test
+(deftest ^:parallel login-throttling-test
   (testing (str "Test that people get blocked from attempting to login if they try too many times (Check that"
                 " throttling works at the API level -- more tests in the throttle library itself:"
                 " https://github.com/metabase/throttle)")
@@ -262,12 +262,12 @@
                                   {:email (:username (mt/user->credentials :rasta))})
             (is (mt/received-email-body? :rasta (re-pattern my-url)))))))))
 
-(deftest forgot-password-email-required-test
+(deftest ^:parallel forgot-password-email-required-test
   (testing "POST /api/session/forgot_password - email is required"
     (is (=? {:errors {:email "value must be a valid email address."}}
             (mt/client :post 400 "session/forgot_password" {})))))
 
-(deftest forgot-password-email-not-found-test
+(deftest ^:parallel forgot-password-email-not-found-test
   (testing "POST /api/session/forgot_password - email not found returns 204"
     (is (= nil
            (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))
@@ -413,7 +413,7 @@
                     :reset_triggered nil}
                    (mt/derecordize (t2/select-one [:model/User :reset_token :reset_triggered], :id id))))))))))
 
-(deftest reset-password-throttling-test
+(deftest ^:parallel reset-password-throttling-test
   (testing "POST /api/session/reset_password - endpoint is throttled"
     (let [try!      (fn []
                       (try
@@ -559,7 +559,7 @@
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
 
-(deftest properties-skip-sensitive-test
+(deftest ^:parallel properties-skip-sensitive-test
   (testing "GET /session/properties"
     (testing "don't return the token for admins"
       (is (= nil
@@ -570,7 +570,7 @@
              (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
                  keys #{:premium-embedding-token}))))))
 
-(deftest properties-skip-include-in-list?=false
+(deftest ^:parallel properties-skip-include-in-list?=false
   (testing "GET /session/properties"
     (testing "don't return the version-info property"
       (is (= nil

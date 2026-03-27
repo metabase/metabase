@@ -162,7 +162,7 @@
                               (ee-audit/ensure-audit-db-installed!)))
         (is (= 0 (audit/last-analytics-checksum)))))))
 
-(deftest should-load-audit?-test
+(deftest ^:parallel should-load-audit?-test
   (testing "load-analytics-content + checksums dont match => load"
     (is (#'ee-audit/should-load-audit? true 1 3)))
   (testing "load-analytics-content + last-checksum is -1 => load (even if current-checksum is also -1)"

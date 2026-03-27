@@ -3,7 +3,7 @@
    [build.version-properties :as version-properties]
    [clojure.test :refer :all]))
 
-(deftest tag-parts-test
+(deftest ^:parallel tag-parts-test
   (doseq [[tag expected] {nil          nil
                           "0.37.0"     [0 37 0]
                           "0.37.0.1"   [0 37 0 1]
@@ -13,7 +13,7 @@
       (is (= expected
              (#'version-properties/tag-parts tag))))))
 
-(deftest current-snapshot-version-test
+(deftest ^:parallel current-snapshot-version-test
   (doseq [[branch edition->tag->expected] {"release-x.37.x" {:oss {nil          "UNKNOWN"
                                                                    "0.37.0"     "v0.37.1-SNAPSHOT"
                                                                    "0.37.0.1"   "v0.37.1-SNAPSHOT"

@@ -91,7 +91,7 @@
 
 ;;; ------------------------------------------------- Root Collection Remote Sync -------------------------------------------------
 
-(deftest root-collection-is-not-remote-synced-test
+(deftest ^:parallel root-collection-is-not-remote-synced-test
   (testing "Root collection for shared-tenant-collection namespace is never remote-synced (individual children can be toggled)"
     (let [root-coll (collection.root/root-collection-with-ui-details :shared-tenant-collection)]
       (is (false? (:is_remote_synced root-coll)))))

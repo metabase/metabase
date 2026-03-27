@@ -22,7 +22,7 @@
     (-> (lib/query mp table-metadata)
         (lib/aggregate aggregation-clause))))
 
-(deftest insert-measure-cycle-detection-test
+(deftest ^:parallel insert-measure-cycle-detection-test
   (testing "Inserting a measure that references an existing measure should succeed"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
                                                       :table_id (mt/id :venues)
@@ -41,7 +41,7 @@
   [referenced-measure-id]
   (measure-definition [:measure {:lib/uuid (str (random-uuid))} referenced-measure-id]))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Measure hashes are composed of the measure name and table identity-hash"
     (let [now   #t "2022-09-01T12:34:56Z"
           table (t2/select-one :model/Table (mt/id :venues))]
@@ -198,7 +198,7 @@
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
-(deftest can-write?-superuser-test
+(deftest ^:parallel can-write?-superuser-test
   (testing "Superusers can write measures"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
                                            :table_id (mt/id :venues)
@@ -232,7 +232,7 @@
         (session/with-current-user analyst-id
           (is (false? (mi/can-write? measure))))))))
 
-(deftest can-write?-non-analyst-test
+(deftest ^:parallel can-write?-non-analyst-test
   (testing "Non-data-analysts cannot write measures"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
                                            :table_id (mt/id :venues)
@@ -241,7 +241,7 @@
       (mt/with-test-user :rasta
         (is (false? (mi/can-write? measure)))))))
 
-(deftest can-read?-superuser-test
+(deftest ^:parallel can-read?-superuser-test
   (testing "Superusers can read measures"
     (mt/with-temp [:model/Measure measure {:name "Test Measure"
                                            :table_id (mt/id :venues)
@@ -304,7 +304,7 @@
         (session/with-current-user user-id
           (is (false? (mi/can-read? measure))))))))
 
-(deftest can-create?-superuser-test
+(deftest ^:parallel can-create?-superuser-test
   (testing "Superusers can create measures"
     (mt/with-test-user :crowberto
       (is (true? (mi/can-create? :model/Measure {:name "Test Measure"
@@ -332,7 +332,7 @@
                                                       :table_id (mt/id :venues)
                                                       :definition (measure-definition (lib/count))}))))))))
 
-(deftest can-create?-non-analyst-test
+(deftest ^:parallel can-create?-non-analyst-test
   (testing "Non-data-analysts cannot create measures"
     (mt/with-test-user :rasta
       (is (false? (mi/can-create? :model/Measure {:name "Test Measure"

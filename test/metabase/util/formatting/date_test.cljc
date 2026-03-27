@@ -329,7 +329,7 @@
         "Q2 - 2022"   "MMMM D, YYYY" "quarter"
         "2022"        "MMMM D, YYYY" "year"))))
 
-(deftest fallback-test
+(deftest ^:parallel fallback-test
   (testing "fallback to ISO date string if neither the unit nor style map to a format"
     (let [result (atom nil)]
       ;; Clear the cache, because it only generates the warning the first time this gets constructured.

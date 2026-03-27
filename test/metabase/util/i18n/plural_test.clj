@@ -10,7 +10,7 @@
   ([formula n]
    (i18n.plural/index (str "plural=" formula) n)))
 
-(deftest basic-arithmetic-test
+(deftest ^:parallel basic-arithmetic-test
   (testing "basic arithmetic"
     (are [formula expected] (= expected (compute formula))
       "0"                         0
@@ -100,7 +100,7 @@
       "0.3"
       ".9")))
 
-(deftest locale-pluralization-test
+(deftest ^:parallel locale-pluralization-test
   ;; This test uses selected example Plural-Forms from https://www.gnu.org/software/gettext/manual/html_node/Plural-forms.html
   ;; These do not necessarily correspond to languages available in Metabase.
   (testing "English, German, Dutch, Spanish, Portuguese, etc"

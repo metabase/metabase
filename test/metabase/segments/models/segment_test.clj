@@ -82,7 +82,7 @@
         (is (= 0
                (t2/update! :model/Segment id {:creator_id (mt/user->id :rasta)})))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Segment hashes are composed of the segment name and table identity-hash"
     (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Database db {:name "field-db" :engine :h2}
@@ -93,7 +93,7 @@
                (serdes/raw-hash ["big customers" (serdes/identity-hash table) (:created_at segment)])
                (serdes/identity-hash segment)))))))
 
-(deftest definition-description-missing-definition-test
+(deftest ^:parallel definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
     (mt/with-temp [:model/Segment {id :id} {:name "Segment"
                                             :table_id (mt/id :users)}]
@@ -190,7 +190,7 @@
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
-(deftest can-write?-superuser-test
+(deftest ^:parallel can-write?-superuser-test
   (testing "Superusers can write segments"
     (mt/with-temp [:model/Segment segment {:name "Test Segment"
                                            :table_id (mt/id :venues)
@@ -224,7 +224,7 @@
         (session/with-current-user analyst-id
           (is (false? (mi/can-write? segment))))))))
 
-(deftest can-write?-non-analyst-test
+(deftest ^:parallel can-write?-non-analyst-test
   (testing "Non-data-analysts cannot write segments"
     (mt/with-temp [:model/Segment segment {:name "Test Segment"
                                            :table_id (mt/id :venues)
@@ -233,7 +233,7 @@
       (mt/with-test-user :rasta
         (is (false? (mi/can-write? segment)))))))
 
-(deftest can-create?-superuser-test
+(deftest ^:parallel can-create?-superuser-test
   (testing "Superusers can create segments"
     (mt/with-test-user :crowberto
       (is (true? (mi/can-create? :model/Segment {:name "Test Segment"
@@ -261,7 +261,7 @@
                                                       :table_id (mt/id :venues)
                                                       :definition {:filter [:> [:field (mt/id :venues :price) nil] 2]}}))))))))
 
-(deftest can-create?-non-analyst-test
+(deftest ^:parallel can-create?-non-analyst-test
   (testing "Non-data-analysts cannot create segments"
     (mt/with-test-user :rasta
       (is (false? (mi/can-create? :model/Segment {:name "Test Segment"

@@ -305,13 +305,13 @@
   [& args]
   (map clean-result (apply search-request-data-with identity args)))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
     (with-search-items-in-root-collection "test"
       (is (= (default-search-results)
              (search-request-data :crowberto :q "test"))))))
 
-(deftest basic-test-2
+(deftest ^:parallel basic-test-2
   (testing "Basic search should only return substring matches"
     (with-search-items-in-root-collection "test"
       (with-search-items-in-root-collection "something different"
@@ -325,33 +325,33 @@
         (is (= (cleaned-results [test-collection])
                (search-request-data :crowberto :q "test collection")))))))
 
-(deftest basic-test-4
+(deftest ^:parallel basic-test-4
   (testing "It limits matches properly"
     (with-search-items-in-root-collection "test"
       (is (>= 2 (count (search-request-data :crowberto :q "test" :limit "2" :offset "0")))))))
 
-(deftest basic-test-5
+(deftest ^:parallel basic-test-5
   (testing "It offsets matches properly"
     (with-search-items-in-root-collection "test"
       (is (<= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2")))))))
 
-(deftest basic-test-6
+(deftest ^:parallel basic-test-6
   (testing "It offsets without limit properly"
     (with-search-items-in-root-collection "test"
       (is (<= 5 (count (search-request-data :crowberto :q "test" :offset "2")))))))
 
-(deftest basic-test-7
+(deftest ^:parallel basic-test-7
   (testing "It limits without offset properly"
     (with-search-items-in-root-collection "test"
       (is (>= 2 (count (search-request-data :crowberto :q "test" :limit "2")))))))
 
-(deftest basic-test-8
+(deftest ^:parallel basic-test-8
   (testing "It subsets matches for model"
     (with-search-items-in-root-collection "test"
       (is (= 0 (count (search-request-data :crowberto :q "test" :models "database"))))
       (is (= 1 (count (search-request-data :crowberto :q "test" :models "database" :models "card")))))))
 
-(deftest basic-test-9
+(deftest ^:parallel basic-test-9
   (testing "It distinguishes datasets from cards"
     (with-search-items-in-root-collection "test"
       (let [results (search-request-data :crowberto :q "test" :models "dataset")]
@@ -361,7 +361,7 @@
         (is (= 1 (count results)))
         (is (= "card" (-> results first :model)))))))
 
-(deftest basic-test-10
+(deftest ^:parallel basic-test-10
   (testing "It returns limit and offset params in return result"
     (with-search-items-in-root-collection "test"
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
@@ -398,7 +398,7 @@
    ;; due to test contamination sometimes documents appear here, so just remove them.
    "document"))
 
-(deftest archived-models-test
+(deftest ^:parallel archived-models-test
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
@@ -453,7 +453,7 @@
           (make-card 3)
           (make-card 0)])))
 
-(deftest dashboard-count-test
+(deftest ^:parallel dashboard-count-test
   (testing "It sorts by dashboard count"
     (mt/with-temp [:model/Card          {card-id-3 :id} {:name "dashboard-count 3"}
                    :model/Card          {card-id-5 :id} {:name "dashboard-count 5"}
@@ -665,7 +665,7 @@
                         set)
                    "db-1")))))))
 
-(deftest bookmarks-test
+(deftest ^:parallel bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
       (mt/with-temp [:model/CardBookmark      _ {:card_id (u/the-id card)
@@ -692,7 +692,7 @@
 (defn- archived [m]
   (assoc m :archived true))
 
-(deftest database-test
+(deftest ^:parallel database-test
   (testing "Should search database names and descriptions"
     (mt/with-temp [:model/Database _ {:name "aviaries"}
                    :model/Database _ {:name "user_favorite_places" :description "Join table between users and their favorite places, which could include aviaries"}
@@ -841,7 +841,7 @@
          :archived_directly true
          :collection_id (:collection_id m)))
 
-(deftest archived-results-test
+(deftest ^:parallel archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
       (mt/with-temp [:model/Card        action-model {:type :model}
@@ -858,7 +858,7 @@
         (is (= (default-search-results)
                (search-request-data :crowberto :q "test")))))))
 
-(deftest archived-results-test-2
+(deftest ^:parallel archived-results-test-2
   (testing "Should return archived results when specified"
     (with-search-items-in-root-collection "test2"
       (mt/with-temp [:model/Card        action-model action-model-params
@@ -880,7 +880,7 @@
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true")))))))
 
-(deftest archived-results-test-3
+(deftest ^:parallel archived-results-test-3
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
       (mt/with-temp [:model/Card        action-model action-model-params
@@ -898,7 +898,7 @@
         (is (mt/ordered-subset? (default-archived-results)
                                 (search-request-data :crowberto :archived "true")))))))
 
-(deftest alerts-test
+(deftest ^:parallel alerts-test
   (testing "Search should not return alerts"
     (with-search-items-in-root-collection "test"
       (mt/with-temp [:model/Pulse pulse {:alert_condition  "rows"
@@ -931,14 +931,14 @@
      (testing (format "\nuser = %s" user#)
        ~@body)))
 
-(deftest table-test
+(deftest ^:parallel table-test
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [:model/Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
         (is (= [(default-table-search-row "RoundTable")]
                (search-request-data user :q "RoundTable" :models "table")))))))
 
-(deftest table-test-2
+(deftest ^:parallel table-test-2
   (testing "You should not see hidden tables"
     (mt/with-temp [:model/Table _normal {:name "Foo Visible"}
                    :model/Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
@@ -946,7 +946,7 @@
         (is (= [(default-table-search-row "Foo Visible")]
                (search-request-data user :q "Foo")))))))
 
-(deftest table-test-3
+(deftest ^:parallel table-test-3
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :display_name lancelot}]
@@ -954,7 +954,7 @@
           (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
                  (search-request-data user :q "Lancelot"))))))))
 
-(deftest table-test-4
+(deftest ^:parallel table-test-4
   (testing "You should be able to search by their description"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :description lancelot}]
@@ -962,7 +962,7 @@
           (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
                  (search-request-data user :q "Lancelot"))))))))
 
-(deftest table-test-5
+(deftest ^:parallel table-test-5
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [:model/Table _ {:name table-name}]
@@ -970,7 +970,7 @@
           (is (= []
                  (search-request-data user :q table-name :archived true))))))))
 
-(deftest table-test-6
+(deftest ^:parallel table-test-6
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [:model/Table _ {:name table-name, :active false}]
@@ -1022,7 +1022,7 @@
                        (binding [*search-request-results-database-id* db-id]
                          (search-request-data :rasta :q "RoundTable")))))))))
 
-(deftest collection-namespaces-test
+(deftest ^:parallel collection-namespaces-test
   (testing "Search should only return Collections in the 'default' namespace"
     (mt/with-temp [:model/Collection _c1 {:name "Normal Collection"}
                    :model/Collection _c2 {:name "Coin Collection" :namespace "currency"}]
@@ -1083,7 +1083,7 @@
               (t2/update! :model/Pulse (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
 
-(deftest filter-by-creator-test
+(deftest ^:parallel filter-by-creator-test
   (let [search-term "Created by Filter"]
     (with-search-items-in-root-collection search-term
       (mt/with-temp
@@ -1320,7 +1320,7 @@
              "Content Management or Official Collections"
              (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true))))))))
 
-(deftest created-at-api-test
+(deftest ^:parallel created-at-api-test
   (let [search-term "created-at-filtering"]
     (with-search-items-in-root-collection search-term
       (testing "returns only applicable models"
@@ -1398,7 +1398,7 @@
         (is (= "Failed to parse datetime value: today~"
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_at "today~" :creator_id (mt/user->id :rasta))))))))
 
-(deftest filter-by-ids-test
+(deftest ^:parallel filter-by-ids-test
   (let [ids #(->> % :data (map :id) set)]
     (mt/with-temp [:model/Card {c1 :id} {:name "a"}
                    :model/Card {c2 :id} {:name "b"}]
@@ -1413,7 +1413,7 @@
         (is (= "Filtering by ids work only when you ask for a single model"
                (mt/user-http-request :crowberto :get 400 "search" :ids c1)))))))
 
-(deftest available-models-should-be-independent-of-models-param-test
+(deftest ^:parallel available-models-should-be-independent-of-models-param-test
   (testing "if a search request includes `models` params, the `available_models` from the response should not be restricted by it"
     (let [search-term "Available models"]
       (with-search-items-in-root-collection search-term
@@ -1504,7 +1504,7 @@
                     (map (juxt :model :id :creator_common_name :last_editor_common_name))
                     set)))))))
 
-(deftest models-archived-string-test
+(deftest ^:parallel models-archived-string-test
   (testing "search request includes `archived-string` param"
     (with-search-items-in-root-collection "Available models"
       (mt/with-temp [:model/Card   {model-id :id} action-model-params
@@ -1518,7 +1518,7 @@
           (is (= #{"action"}
                  (get-available-models :archived "true"))))))))
 
-(deftest filter-items-in-personal-collection-test
+(deftest ^:parallel filter-items-in-personal-collection-test
   (let [search-term "filter-items-in-personal-collection"
         rasta-personal-coll-id     (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
         crowberto-personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))
@@ -1620,7 +1620,7 @@
                   (filter #(#{card-1-id card-2-id card-3-id} (:id %)))
                   (map :name)))))))
 
-(deftest model-ancestors-gets-ancestor-collections
+(deftest ^:parallel model-ancestors-gets-ancestor-collections
   (testing "Collection names are correct"
     (mt/with-temp [:model/Collection {top-col-id :id} {:name "top level col" :location "/"}
                    :model/Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}
@@ -1633,7 +1633,7 @@
                   (map (juxt :id #(get-in % [:collection :effective_ancestors])))
                   (into #{})))))))
 
-(deftest model-ancestors-gets-ancestor-collections-2
+(deftest ^:parallel model-ancestors-gets-ancestor-collections-2
   (testing "Collection names are correct"
     (mt/with-temp [:model/Collection {top-col-id :id} {:name "top level col" :location "/"}
                    :model/Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}
@@ -1646,7 +1646,7 @@
                   (map (juxt :id #(get-in % [:collection :effective_ancestors])))
                   (into #{})))))))
 
-(deftest model-ancestors-gets-ancestor-collections-3
+(deftest ^:parallel model-ancestors-gets-ancestor-collections-3
   (testing "Non-models don't get collection_ancestors"
     (mt/with-temp [:model/Card _ {:name "question"
                                   :collection_id nil}]
@@ -1657,7 +1657,7 @@
                                :collection)
                           :effective_ancestors))))))
 
-(deftest model-ancestors-gets-ancestor-collections-4
+(deftest ^:parallel model-ancestors-gets-ancestor-collections-4
   (testing "If `model_parents` is not passed, it doesn't get populated"
     (mt/with-temp [:model/Collection {top-col-id :id} {:name "top level col" :location "/"}
                    :model/Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}
@@ -1668,7 +1668,7 @@
                   :data
                   (map #(get-in % [:collection :effective_ancestors]))))))))
 
-(deftest collection-type-is-returned
+(deftest ^:parallel collection-type-is-returned
   (testing "Users without perms for a collection can't see search results that were trashed from that collection"
     (let [search-name (random-uuid)
           named       #(str search-name "-" %)]
@@ -1937,7 +1937,7 @@
                            (mapv :id (:data search-results))))
                 "Card should not be found in search results after database deletion")))))))
 
-(deftest collection-filter-test
+(deftest ^:parallel collection-filter-test
   (mt/with-temp
     [:model/Collection {parent-coll :id}      {:name "Parent Collection"
                                                :location "/"}
@@ -1973,7 +1973,7 @@
       (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
         (is (not (some #{other-card} (map :id (:data results)))))))))
 
-(deftest collection-filter-with-search-string-test
+(deftest ^:parallel collection-filter-with-search-string-test
   (mt/with-temp
     [:model/Collection {coll-1 :id}  {:name "Collection 1"}
      :model/Collection _             {:name "Collection 2"}
@@ -1986,7 +1986,7 @@
         (is (= #{card-1}
                (set (map :id (:data results)))))))))
 
-(deftest published-table-not-in-collection-search-oss-test
+(deftest ^:parallel published-table-not-in-collection-search-oss-test
   (testing "In OSS, published tables should NOT appear in collection-filtered search"
     (mt/with-premium-features #{}
       (mt/with-temp
@@ -2004,7 +2004,7 @@
 ;;; |                                         Measure Search Tests (Phase 4)                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest measure-search-by-description-test
+(deftest ^:parallel measure-search-by-description-test
   (testing "Should be able to find measures by description"
     (let [unique-desc (mt/random-name)]
       (mt/with-temp [:model/Measure _ {:name        "Some Measure"
@@ -2013,7 +2013,7 @@
         (is (=? [{:name "Some Measure" :model "measure" :description unique-desc}]
                 (search-request-data :crowberto :q unique-desc)))))))
 
-(deftest measure-table-db-id-filter-test
+(deftest ^:parallel measure-table-db-id-filter-test
   (testing "Measures are returned when searching with matching table_db_id"
     (let [measure-name (mt/random-name)]
       (mt/with-temp [:model/Measure _ {:name     measure-name
@@ -2031,7 +2031,7 @@
                  (search-request-data :crowberto :q measure-name
                                       :table_db_id other-db-id))))))))
 
-(deftest measure-search-result-shape-test
+(deftest ^:parallel measure-search-result-shape-test
   (testing "Measure search results contain table and database context fields"
     (let [measure-name (mt/random-name)]
       (mt/with-temp [:model/Measure _ {:name     measure-name
@@ -2044,7 +2044,7 @@
                 (search-request-data-with identity :crowberto
                                           :q measure-name :models "measure")))))))
 
-(deftest measure-models-filter-test
+(deftest ^:parallel measure-models-filter-test
   (testing "Filtering by models=measure returns only measures"
     (with-search-items-in-root-collection "test"
       (let [results (search-request-data :crowberto :q "test" :models "measure")]

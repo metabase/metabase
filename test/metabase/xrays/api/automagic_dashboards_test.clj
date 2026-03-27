@@ -81,7 +81,7 @@
   (testing "GET /api/automagic-dashboards/table/:id/rule/example/indepth"
     (is (some? (api-call! "table/%s/rule/example/indepth" [(mt/id :venues)])))))
 
-(deftest xray-dashboard-parameter-types-test
+(deftest ^:parallel xray-dashboard-parameter-types-test
   (testing "Should set correct parameter types"
     (mt/dataset test-data
       (is (=? {:parameters [{:name      "Created At"
@@ -320,7 +320,7 @@
 
 ;;; ------------------- Index Entities Xrays -------------------
 
-(deftest add-source-model-link-auto-width-test
+(deftest ^:parallel add-source-model-link-auto-width-test
   (testing "An empty set of input cards will return a default card of width 4"
     (let [[{:keys [size_x]}] (#'api.magic/add-source-model-link {} nil)]
       (is (= 4 size_x))))
@@ -383,7 +383,7 @@
              "\nwith filter: " (-> dashcard :card :dataset_query :query :filter)
              "\nis missing one of " filters))))
 
-(deftest create-linked-dashboard-test-no-linked
+(deftest ^:parallel create-linked-dashboard-test-no-linked
   (testing "If there are no linked-tables, create a default view explaining the situation."
     (is (=? {:dashcards [{:visualization_settings {:virtual_card {:display "link", :archived false}
                                                    :link         {:entity {:model   "dataset"

@@ -261,7 +261,7 @@
                   (is (has-column?! (semantic.db.datasource/ensure-initialized-data-source!)
                                     table_name "new_col")))))))))))
 
-(deftest schema-version-match-default-version-test
+(deftest ^:parallel schema-version-match-default-version-test
   (testing "Default schema should match dynamic schema version"
     (is (= semantic.db.migration.impl/dynamic-schema-version
            (-> (semantic.index/default-index semantic.tu/mock-embedding-model)

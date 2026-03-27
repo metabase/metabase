@@ -18,7 +18,7 @@
    {:context "Should detect [[ and ]] even without variables"
     :dialect "postgres" :sql "SELECT * FROM users [[WHERE active = true]]"}])
 
-(deftest contains-template-tags?-positive-test
+(deftest ^:parallel contains-template-tags?-positive-test
   (doseq [{:keys [context  sql]} contains-template-tags-positive-cases]
     (testing context
       (is (true? (#'metabot.tools.sql.validation/contains-template-tags? sql))))))
@@ -31,7 +31,7 @@
    {:context "Empty string should return False"
     :sql ""}])
 
-(deftest contains-template-tags?-negative-test
+(deftest ^:parallel contains-template-tags?-negative-test
   (doseq [{:keys [context  sql]} contains-template-tags-negative-cases]
     (testing context
       (is (false? (#'metabot.tools.sql.validation/contains-template-tags? sql))))))
@@ -76,7 +76,7 @@
     :dialect "postgres" :sql "   \n\t  "
     :expected {:valid? true :dialect "postgres"}}])
 
-(deftest validate-sql-test
+(deftest ^:parallel validate-sql-test
   (doseq [{:keys [context dialect expected sql]} validation-cases]
     (testing context
       (is (=? expected
@@ -103,7 +103,7 @@
     :expected {:valid? true :transpiled-sql
                "SELECT\n  \"a\",\n  \"b\"\nFROM \"t\"\nWHERE\n  \"x\" > 1\nORDER BY\n  \"a\""}}])
 
-(deftest transpile-sql-test
+(deftest ^:parallel transpile-sql-test
   (doseq [{:keys [context dialect expected sql]} transpilation-cases]
     (testing context
       (is (=? expected

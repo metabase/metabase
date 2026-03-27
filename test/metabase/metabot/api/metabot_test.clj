@@ -157,7 +157,7 @@
                       (mt/user-http-request :crowberto :delete 204 url)
                       (is (nil? (current-prompt-ids))))))))))))))
 
-(deftest metabot-list-test
+(deftest ^:parallel metabot-list-test
   (testing "GET /api/metabot/metabot"
     (with-clean-metabots
       (mt/with-temp [:model/Metabot {metabot-id-1 :id} {:name "Alpha Metabot"}
@@ -176,7 +176,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "metabot/metabot"))))))))
 
-(deftest metabot-get-single-test
+(deftest ^:parallel metabot-get-single-test
   (testing "GET /api/metabot/metabot/:id"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}
                    :model/Metabot {metabot-id :id} {:name "Test Metabot"

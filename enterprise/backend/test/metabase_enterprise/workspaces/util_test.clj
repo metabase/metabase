@@ -40,7 +40,7 @@
           (is (some? result))
           (is (= #{"first" "third"} (t2/select-fn-set (comp :marker :graph) [:model/WorkspaceGraph :graph] :workspace_id (:id ws)))))))))
 
-(deftest ignore-constraint-violation-rethrows-other-exceptions-test
+(deftest ^:parallel ignore-constraint-violation-rethrows-other-exceptions-test
   (testing "ignore-constraint-violation rethrows non-constraint exceptions"
     (is (thrown-with-msg? Exception
                           #"Test exception"

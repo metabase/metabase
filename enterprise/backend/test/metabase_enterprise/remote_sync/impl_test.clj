@@ -101,7 +101,7 @@
       (is (= :error (:status result)))
       (is (re-find #"Failed to reload from git repository" (:message result))))))
 
-(deftest source-error-message-entity-not-found-test
+(deftest ^:parallel source-error-message-entity-not-found-test
   (testing "source-error-message produces helpful message for missing entity errors"
     (let [e (ex-info "Database 'clickhouse' was not found"
                      {:path  "Database clickhouse"

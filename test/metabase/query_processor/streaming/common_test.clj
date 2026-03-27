@@ -19,7 +19,7 @@
                 filename-time-in-report-zone (t/zoned-date-time filename-time test-timezone)]
             (is (= now-in-report-zone filename-time-in-report-zone))))))))
 
-(deftest currency-identifier-test
+(deftest ^:parallel currency-identifier-test
   (testing "narrowSymbol style returns symbol_native"
     (testing "USD symbol_native is $ (same as symbol)"
       (is (= "$" (streaming.common/currency-identifier {::mb.viz/currency "USD"
@@ -34,7 +34,7 @@
     (is (= "KGS" (streaming.common/currency-identifier {::mb.viz/currency "KGS"
                                                         ::mb.viz/currency-style "narrowSymbol"})))))
 
-(deftest column-titles-test
+(deftest ^:parallel column-titles-test
   (testing "column titles properly merge settings from multiple references to the same column"
     (let [ordered-cols [{:name "CREATED_AT" :id 13 :display_name "Created At"}]
           ;; The column settings map has map keys with field references
@@ -51,7 +51,7 @@
       (testing "both settings (title and time) should be applied to the same column"
         (is (= ["test 7"] titles))))))
 
-(deftest column-titles-test-merge-order
+(deftest ^:parallel column-titles-test-merge-order
   (testing "column-title setting precedence when the same column has multiple settings"
     (let [ordered-cols [{:name "AMOUNT" :id 42 :display_name "Amount"}]
           format-rows? true]

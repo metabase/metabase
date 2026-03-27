@@ -40,7 +40,7 @@
 ;;; |                                              GET /api/metric/                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest list-metric-returns-accessible-metric-test
+(deftest ^:parallel list-metric-returns-accessible-metric-test
   (testing "GET /api/metric returns metric the user has access to"
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -57,7 +57,7 @@
             (is (= "Test Metric" (:name returned-metric)))
             (is (= "A test metric" (:description returned-metric)))))))))
 
-(deftest list-metric-limit-test
+(deftest ^:parallel list-metric-limit-test
   (testing "GET /api/metric respects limit parameter"
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _metric1 {:name          "Metric A"
@@ -74,7 +74,7 @@
           (is (= 2 (:limit response)))
           (is (= 2 (count (:data response)))))))))
 
-(deftest list-metric-offset-test
+(deftest ^:parallel list-metric-offset-test
   (testing "GET /api/metric respects offset parameter"
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _metric1 {:name          "Metric A"
@@ -91,7 +91,7 @@
           (is (= 1 (:offset response)))
           (is (= 2 (count (:data response)))))))))
 
-(deftest list-metric-excludes-archived-test
+(deftest ^:parallel list-metric-excludes-archived-test
   (testing "GET /api/metric does not return archived metric"
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _metric {:name          "Archived Metric"
@@ -100,7 +100,7 @@
                                           :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
         (is (= 0 (:total (mt/user-http-request :rasta :get 200 "metric"))))))))
 
-(deftest list-metric-excludes-non-metric-test
+(deftest ^:parallel list-metric-excludes-non-metric-test
   (testing "GET /api/metric does not return non-metric cards"
     (with-sample-metrics-archived
       (mt/with-temp [:model/Card _card {:name          "Regular Card"
@@ -108,7 +108,7 @@
                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
         (is (= 0 (:total (mt/user-http-request :rasta :get 200 "metric"))))))))
 
-(deftest list-metric-hydrates-collection-test
+(deftest ^:parallel list-metric-hydrates-collection-test
   (testing "GET /api/metric hydrates collection information"
     (mt/with-temp [:model/Collection collection {:name "Test Collection"}
                    :model/Card       _metric    {:name          "Metric in Collection"
@@ -125,7 +125,7 @@
 ;;; |                                            GET /api/metric/:id                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest fetch-metric-test
+(deftest ^:parallel fetch-metric-test
   (testing "GET /api/metric/:id"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -136,12 +136,12 @@
         (is (= "Test Metric" (:name response)))
         (is (= "A test metric" (:description response)))))))
 
-(deftest fetch-metric-not-found-test
+(deftest ^:parallel fetch-metric-not-found-test
   (testing "GET /api/metric/:id returns 404 for non-existent metric"
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404 (str "metric/" Integer/MAX_VALUE))))))
 
-(deftest fetch-metric-hydrates-dimensions-test
+(deftest ^:parallel fetch-metric-hydrates-dimensions-test
   (testing "GET /api/metric/:id returns dimensions and dimension_mappings"
     (mt/with-temp [:model/Card metric {:name          "Metric with Dimensions"
                                        :type          :metric
@@ -162,7 +162,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "metric/" (:id metric))))))))))
 
-(deftest fetch-metric-rejects-non-metric-card-test
+(deftest ^:parallel fetch-metric-rejects-non-metric-card-test
   (testing "GET /api/metric/:id returns 404 for non-metric cards"
     (mt/with-temp [:model/Card card {:name          "Regular Question"
                                      :type          :question
@@ -170,7 +170,7 @@
       (is (= "Not found."
              (mt/user-http-request :rasta :get 404 (str "metric/" (:id card))))))))
 
-(deftest fetch-metric-saves-dimensions-on-read-test
+(deftest ^:parallel fetch-metric-saves-dimensions-on-read-test
   (testing "GET /api/metric/:id saves dimensions and dimension_mappings to the database"
     (mt/with-temp [:model/Card metric {:name          "Metric with Dimensions"
                                        :type          :metric
@@ -189,7 +189,7 @@
           (is (seq (:dimensions updated-card)))
           (is (seq (:dimension_mappings updated-card))))))))
 
-(deftest fetch-metric-dimensions-have-has-field-values-test
+(deftest ^:parallel fetch-metric-dimensions-have-has-field-values-test
   (testing "GET /api/metric/:id returns dimensions with has-field-values populated"
     (mt/with-temp [:model/Card metric {:name          "Metric with HFV"
                                        :type          :metric
@@ -209,16 +209,16 @@
 ;;; |                                          POST /api/metric/dataset                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-endpoint-requires-definition-test
+(deftest ^:parallel dataset-endpoint-requires-definition-test
   (testing "POST /api/metric/dataset requires definition"
     (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset" {})))))
 
-(deftest dataset-endpoint-requires-expression-test
+(deftest ^:parallel dataset-endpoint-requires-expression-test
   (testing "POST /api/metric/dataset requires expression in definition"
     (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset"
                                      {:definition {}})))))
 
-(deftest dataset-endpoint-rejects-duplicate-uuids-test
+(deftest ^:parallel dataset-endpoint-rejects-duplicate-uuids-test
   (testing "POST /api/metric/dataset rejects duplicate UUIDs in expression"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -228,7 +228,7 @@
                                                                   [:metric {:lib/uuid "a"} (:id metric)]
                                                                   [:metric {:lib/uuid "a"} (:id metric)]]}}))))))
 
-(deftest dataset-endpoint-metric-source-test
+(deftest ^:parallel dataset-endpoint-metric-source-test
   (testing "POST /api/metric/dataset with metric expression"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -255,13 +255,13 @@
             (is (= 1 (:row_count response)))
             (is (= [[100]] (get-in response [:data :rows])))))))))
 
-(deftest dataset-endpoint-metric-not-found-test
+(deftest ^:parallel dataset-endpoint-metric-not-found-test
   (testing "POST /api/metric/dataset returns 404 for non-existent metric"
     (is (= "Not found."
            (mt/user-http-request :rasta :post 404 "metric/dataset"
                                  {:definition {:expression [:metric {:lib/uuid "a"} Integer/MAX_VALUE]}})))))
 
-(deftest dataset-endpoint-measure-not-found-test
+(deftest ^:parallel dataset-endpoint-measure-not-found-test
   (testing "POST /api/metric/dataset returns 404 for non-existent measure"
     (is (= "Not found."
            (mt/user-http-request :rasta :post 404 "metric/dataset"
@@ -279,7 +279,7 @@
                (mt/user-http-request :rasta :post 403 "metric/dataset"
                                      {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]}})))))))
 
-(deftest dataset-endpoint-rejects-non-metric-card-test
+(deftest ^:parallel dataset-endpoint-rejects-non-metric-card-test
   (testing "POST /api/metric/dataset returns 404 for non-metric cards"
     (mt/with-temp [:model/Card card {:name          "Regular Question"
                                      :type          :question
@@ -292,7 +292,7 @@
 ;;; |                                     POST /api/metric/breakout-values                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest breakout-values-endpoint-test
+(deftest ^:parallel breakout-values-endpoint-test
   (testing "POST /api/metric/breakout-values returns distinct breakout values"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -310,7 +310,7 @@
         (is (seq (:values response)))
         (is (map? (:col response)))))))
 
-(deftest dataset-endpoint-accepts-filters-and-projections-test
+(deftest ^:parallel dataset-endpoint-accepts-filters-and-projections-test
   (testing "POST /api/metric/dataset accepts filters parameter (returns 202 even if filters can't be applied)"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric

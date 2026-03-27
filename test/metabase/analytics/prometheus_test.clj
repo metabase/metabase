@@ -227,7 +227,7 @@
                             #"error when updating metric"
                             (prometheus/observe! :metabase-email/unknown-metric 1))))))
 
-(deftest search-engine-metrics-test
+(deftest ^:parallel search-engine-metrics-test
   (let [metrics       (#'prometheus/initial-labelled-metric-values)
         engine->value (fn [metric] (u/index-by (comp :engine :labels) :value (filter (comp #{metric} :metric) metrics)))
         engines       (fn [metric] (keys (engine->value metric)))

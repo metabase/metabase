@@ -243,7 +243,7 @@
                     (is (contains? broken-question-ids public-card-id))
                     (is (not (contains? broken-question-ids restricted-card-id)))))))))))))
 
-(deftest check-transform-dependencies-python-bypass-test
+(deftest ^:parallel check-transform-dependencies-python-bypass-test
   (mt/with-premium-features #{:transforms-basic :transforms-python}
     (testing "Python transforms bypass dependency checking"
       (mt/with-test-user :crowberto

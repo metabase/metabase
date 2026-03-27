@@ -13,19 +13,19 @@
 ;; Unit Tests for Helper Functions
 ;; ======================================
 
-(deftest similar?-identical-strings-test
+(deftest ^:parallel similar?-identical-strings-test
   (testing "similar? function with identical strings"
     (is (table-utils/similar? "users" "users"))
     (is (table-utils/similar? "PEOPLE" "PEOPLE"))))
 
-(deftest similar?-case-differences-test
+(deftest ^:parallel similar?-case-differences-test
   (testing "similar? function with case differences"
     (is (table-utils/similar? "USERS" "users"))
     (is (table-utils/similar? "Users" "USERS"))
     (is (table-utils/similar? "PEOPLE" "people"))
     (is (table-utils/similar? "People" "PEOPLE"))))
 
-(deftest similar?-small-differences-test
+(deftest ^:parallel similar?-small-differences-test
   (testing "similar? function with small differences within threshold"
     (is (table-utils/similar? "users" "user"))      ; remove 1 char
     (is (table-utils/similar? "orders" "order"))    ; remove 1 char
@@ -36,24 +36,24 @@
     (is (table-utils/similar? "ORDERS" "ORDRE"))    ; change 1 char
     (is (table-utils/similar? "ACCOUNTS" "ACOUNT")))) ; codespell:ignore | remove 2 chars
 
-(deftest similar?-threshold-boundary-test
+(deftest ^:parallel similar?-threshold-boundary-test
   (testing "similar? function at threshold boundary"
     (is (table-utils/similar? "abcd" "abcdefgh"))     ; add 4 chars - should pass
     (is (not (table-utils/similar? "abcd" "abcdefghi"))))) ; add 5 chars - should fail
 
-(deftest similar?-different-strings-test
+(deftest ^:parallel similar?-different-strings-test
   (testing "similar? function with completely different strings"
     (is (not (table-utils/similar? "users" "products")))
     (is (not (table-utils/similar? "accounts" "inventory")))
     (is (not (table-utils/similar? "people" "widgets")))))
 
-(deftest similar?-empty-and-nil-test
+(deftest ^:parallel similar?-empty-and-nil-test
   (testing "similar? function with empty and nil handling"
     (is (not (table-utils/similar? "" "test")))
     (is (not (table-utils/similar? "test" "")))
     (is (table-utils/similar? "" ""))))
 
-(deftest matching-tables?-test
+(deftest ^:parallel matching-tables?-test
   (testing "matching-tables? function with schema matching"
     (let [table1 {:name "users" :schema "public"}
           table2 {:name "USERS" :schema "PUBLIC"}  ; case different
@@ -79,7 +79,7 @@
       (testing "completely different names should not match"
         (is (not (table-utils/matching-tables? table1 table6 {:match-schema? false})))))))
 
-(deftest smoke-test
+(deftest ^:parallel smoke-test
   (testing "Basic smoke test that all functions work"
     (is (table-utils/similar? "test" "test"))
     (is (table-utils/matching-tables? {:name "test" :schema nil}
@@ -89,7 +89,7 @@
 ;; Integration Tests for Database Functions
 ;; ======================================
 
-(deftest database-tables-test
+(deftest ^:parallel database-tables-test
   (testing "database-tables function"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
@@ -129,7 +129,7 @@
             ;; Priority table should appear first (if it appears at all)
             (is (= "orders" (-> tables first :name)))))))))
 
-(deftest find-matching-tables-test
+(deftest ^:parallel find-matching-tables-test
   (testing "find-matching-tables function"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
@@ -220,7 +220,7 @@
                 tables (table-utils/used-tables query)]
             (is (not-any? #(= inactive-id (:id %)) tables))))))))
 
-(deftest used-tables-from-ids-test
+(deftest ^:parallel used-tables-from-ids-test
   (testing "used-tables-from-ids function"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Database {other-db-id :id} {}
@@ -325,7 +325,7 @@
           (is (every? #(not= "hidden_table" (:name %)) tables))
           (is (some #(= "visible_table" (:name %)) tables)))))))
 
-(deftest enhanced-database-tables-test
+(deftest ^:parallel enhanced-database-tables-test
   (testing "enhanced-database-tables function with new format"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
@@ -394,7 +394,7 @@
     "alma llama"     "\"alma llama\""
     "\"alma\" llama" "\"\"\"alma\"\" llama\""))
 
-(deftest schema-sample-basic-functionality-test
+(deftest ^:parallel schema-sample-basic-functionality-test
   (testing "schema-sample with fewer tables than limit"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
@@ -447,7 +447,7 @@
             (testing "includes field definitions"
               (is (re-find #"id INTEGER" ddl)))))))))
 
-(deftest schema-sample-default-limit-test
+(deftest ^:parallel schema-sample-default-limit-test
   (testing "schema-sample with default all-tables-limit"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "table1", :schema nil, :active true, :visibility_type nil}
@@ -462,7 +462,7 @@
           ;; Should not have schema prefix when schema is nil
           (is (not (re-find #"\.table1" ddl))))))))
 
-(deftest schema-sample-special-characters-test
+(deftest ^:parallel schema-sample-special-characters-test
   (testing "schema-sample handles tables with special characters in names"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "user-profiles", :schema "my schema", :active true, :visibility_type nil}
@@ -475,7 +475,7 @@
         (testing "escapes field names with special characters"
           (is (re-find #"\"user id\"" ddl)))))))
 
-(deftest schema-sample-empty-database-test
+(deftest ^:parallel schema-sample-empty-database-test
   (testing "schema-sample handles empty database"
     (mt/with-temp [:model/Database db {}]
       (let [query (mt/with-db db
@@ -485,7 +485,7 @@
           (is (string? ddl))
           (is (= "" ddl)))))))
 
-(deftest schema-sample-table-visibility-test
+(deftest ^:parallel schema-sample-table-visibility-test
   (testing "schema-sample excludes inactive and hidden tables"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
@@ -500,7 +500,7 @@
           (is (not (re-find #"inactive_table" ddl)))
           (is (not (re-find #"hidden_table" ddl))))))))
 
-(deftest schema-sample-empty-tables-test
+(deftest ^:parallel schema-sample-empty-tables-test
   (testing "schema-sample handles tables without fields"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {} {:db_id db-id, :name "empty_table", :schema "public", :active true, :visibility_type nil}]

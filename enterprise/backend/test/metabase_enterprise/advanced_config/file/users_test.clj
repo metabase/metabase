@@ -127,7 +127,7 @@
       (finally
         (t2/delete! :model/User :email "cam+config-file-password-test@metabase.com")))))
 
-(deftest init-from-config-file-validation-test
+(deftest ^:parallel init-from-config-file-validation-test
   (are [user error-pattern] (thrown-with-msg?
                              clojure.lang.ExceptionInfo
                              error-pattern

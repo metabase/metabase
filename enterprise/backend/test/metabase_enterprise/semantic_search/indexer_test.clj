@@ -337,7 +337,7 @@
                   (testing "did not crash"
                     (is (nil? @caught-ex))))))))))))
 
-(deftest init-indexing-state-test
+(deftest ^:parallel init-indexing-state-test
   (testing "initializes indexing state from metadata row"
     (let [metadata-row       {:indexer_last_poll      (ts "2025-01-01T12:00:00Z")
                               :indexer_last_seen      (ts "2025-01-01T11:30:00Z")

@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.tools.clarification :as ask-clarification]))
 
-(deftest ask-for-sql-clarification-test
+(deftest ^:parallel ask-for-sql-clarification-test
   (testing "returns final-response? flag"
     (let [result (ask-clarification/ask-for-sql-clarification {:question "What table should I use?"})]
       (is (map? result))
@@ -30,7 +30,7 @@
       (is (string? (:instructions result)))
       (is (str/includes? (:instructions result) "wait")))))
 
-(deftest final-response-behavior-test
+(deftest ^:parallel final-response-behavior-test
   (testing "final-response? signals agent should stop"
     ;; This is a contract test - the agent loop checks for :final-response? true
     ;; to determine if it should stop processing

@@ -103,7 +103,7 @@
         (t2/update! :model/Database db-id {:name alternate-name})
         (is (= alternate-name (db-name-fn)))))))
 
-(deftest partial-word-test
+(deftest ^:parallel partial-word-test
   (with-index
     (with-fulltext-filtering
       (testing "It does not match partial words"
@@ -125,7 +125,7 @@
         (is (empty? (search.index/search "sat employee")))
         (is (empty? (search.index/search "emp satisfaction")))))))
 
-(deftest either-test
+(deftest ^:parallel either-test
   (with-index
     (with-fulltext-filtering
       (testing "We get results for both terms"
@@ -140,7 +140,7 @@
                   (index-hits "user"))
                (index-hits "satisfaction or user")))))))
 
-(deftest negation-test
+(deftest ^:parallel negation-test
   (with-index
     (with-fulltext-filtering
       (testing "We can filter out results"
@@ -149,7 +149,7 @@
         (is (= 1 (index-hits "satisfaction and customer")))
         (is (= 2 (index-hits "satisfaction -customer")))))))
 
-(deftest phrase-test
+(deftest ^:parallel phrase-test
   (mt/with-dynamic-fn-redefs [u.search/tsv-language (constantly "english")]
     (with-index
       (with-fulltext-filtering

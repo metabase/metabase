@@ -4,7 +4,7 @@
    [metabase-enterprise.tenants.core :as tenants]
    [metabase.test :as mt]))
 
-(deftest login-attribute-keys-disabled-feature-test
+(deftest ^:parallel login-attribute-keys-disabled-feature-test
   (testing "returns empty set when tenants feature is disabled"
     (mt/with-premium-features #{}
       (is (= #{} (tenants/login-attribute-keys))))))
@@ -64,7 +64,7 @@
           (is (= #{"@tenant.slug" "test-key"}
                  (tenants/login-attribute-keys))))))))
 
-(deftest login-attributes-disabled-feature-test
+(deftest ^:parallel login-attributes-disabled-feature-test
   (testing "returns an empty map when tenants feature is disabled"
     (mt/with-premium-features #{}
       (is (empty? (tenants/login-attributes {:tenant_id 1}))))))

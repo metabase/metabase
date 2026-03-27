@@ -34,7 +34,7 @@
     [["main" "0001_initial"]
      ["main" "0002_add_toucans"]]]])
 
-(deftest crufty-tables-test
+(deftest ^:parallel crufty-tables-test
   (testing "south_migrationhistory, being a CRUFTY table, should still be synced, but marked as such"
     (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-a-crufty-table
       (is (= #{{:name "SOUTH_MIGRATIONHISTORY" :visibility_type :cruft :initial_sync_status "complete"}
@@ -42,7 +42,7 @@
              (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
                     (into {} table))))))))
 
-(deftest transform-temp-tables-are-skipped-without-premium-features
+(deftest ^:parallel transform-temp-tables-are-skipped-without-premium-features
   (let [temp-table   {:name   "mb_transform_temp_table_temp_123"
                       :schema "public"}
         normal-table {:name   "orders"

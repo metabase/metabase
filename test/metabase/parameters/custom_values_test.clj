@@ -355,7 +355,7 @@
                   card
                   [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :products :category)]))))))))
 
-(deftest pk-of-fk-pk-field-ids-test
+(deftest ^:parallel pk-of-fk-pk-field-ids-test
   (testing "single group"
     (testing "with PK"
       (is (= (mt/id :products :id)

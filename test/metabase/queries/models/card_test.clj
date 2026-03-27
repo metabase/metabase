@@ -54,7 +54,7 @@
           (is (= 2
                  (get-dashboard-count))))))))
 
-(deftest dropdown-widget-values-usage-count-test
+(deftest ^:parallel dropdown-widget-values-usage-count-test
   (let [hydrated-count (fn [card] (-> card
                                       (t2/hydrate :parameter_usage_count)
                                       :parameter_usage_count))
@@ -331,7 +331,7 @@
       (testing varr
         (varr f)))))
 
-(deftest normalize-visualization-settings-test
+(deftest ^:parallel normalize-visualization-settings-test
   (test-visualization-settings-normalization
    (fn [original expected]
      (mt/with-temp [:model/Card {card-id :id} {:visualization_settings original}]
@@ -491,7 +491,7 @@
         (is (pos? (t2/update! :model/Card id {:parameters [{:id   "new-valid-id"
                                                             :type "id"}]})))))))
 
-(deftest normalize-parameters-test
+(deftest ^:parallel normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]
@@ -503,7 +503,7 @@
                    :target expected}]
                  (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))))
 
-(deftest validate-parameter-mappings-test
+(deftest ^:parallel validate-parameter-mappings-test
   (testing "Should validate Card :parameter_mappings when"
     (testing "creating"
       (is (thrown-with-msg?
@@ -797,7 +797,7 @@
     (is (thrown? clojure.lang.ExceptionInfo (changed? {:a "a"} {:b "b"})))
     (is (thrown? clojure.lang.ExceptionInfo (changed? {:a "a"} {:a "a" :b "b"})))))
 
-(deftest hydrate-dashboard-count-test
+(deftest ^:parallel hydrate-dashboard-count-test
   (testing "cards associated with more than 1 dashboard"
     (mt/with-temp [:model/Card {card-id :id} {}
                    :model/Dashboard {dashboard-id-1 :id} {}
@@ -814,7 +814,7 @@
         (testing "dashboard_count is 0"
           (is (= 0 (:dashboard_count card-with-dashboard-count))))))))
 
-(deftest hydrate-parameter-usage-count-test
+(deftest ^:parallel hydrate-parameter-usage-count-test
   (testing "cards used as parameter sources by multiple dashboards"
     (mt/with-temp [:model/Card {card-id :id} {}
                    :model/Dashboard _ {:parameters [{:id "param-1"
@@ -1374,7 +1374,7 @@
           (is (= "Updated description" (:description updated-card)))
           (is (= remote-synced-coll-id (:collection_id updated-card))))))))
 
-(deftest native-query-search-indexing-test
+(deftest ^:parallel native-query-search-indexing-test
   (testing "native queries should have only query text indexed for search, not the full JSON structure (#64121)"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Test Native Card"
                                               :dataset_query (dummy-dataset-query (mt/id))

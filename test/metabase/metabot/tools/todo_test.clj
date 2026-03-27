@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.tools.todo :as todo]))
 
-(deftest todo-write-test
+(deftest ^:parallel todo-write-test
   (testing "todo-write validates and stores todos in memory"
     (let [memory-atom (atom {:state {}})
           todos [{:id "1" :content "First task" :status "pending" :priority "high"}
@@ -72,7 +72,7 @@
               result (todo/todo-write {:todos todos :memory-atom memory-atom})]
           (is (some? (:structured-output result))))))))
 
-(deftest todo-read-test
+(deftest ^:parallel todo-read-test
   (testing "todo-read returns empty list when no todos in memory"
     (let [memory-atom (atom {:state {}})
           result (todo/todo-read {:memory-atom memory-atom})]

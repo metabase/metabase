@@ -36,7 +36,7 @@
   (mt/with-premium-features #{}
     (-> (scoring/score-and-result item {:search-string search-string}) :score)))
 
-(deftest official-collection-tests
+(deftest ^:parallel official-collection-tests
   (testing "it should bump up the value of items in official collections"
     ;; using the ee implementation that isn't wrapped by premium features token check
     (let [search-string "custom expression examples"
@@ -129,12 +129,12 @@
                  first
                  :name))))))
 
-(deftest identical-results-result-in-identical-hits
+(deftest ^:parallel identical-results-result-in-identical-hits
   (test-corpus ["foo" "bar"])
   (test-corpus ["foo" "bar" "baz"])
   (test-corpus ["foo" "bar" "baz" "quux"]))
 
-(deftest score-result-test
+(deftest ^:parallel score-result-test
   (let [score-result-names (fn [] (set (map :name (scoring/score-result {}))))]
     (testing "does not include scores for official collection or verified if features are disabled"
       (mt/with-premium-features #{}
@@ -154,7 +154,7 @@
       (mt/with-premium-features #{:official-collections :content-verification}
         (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))
 
-(deftest appdb-official-collection-test
+(deftest ^:parallel appdb-official-collection-test
   (appdb.scoring-test/with-index-contents
     [{:model "collection" :id 1 :name "collection normal" :official_collection false}
      {:model "collection" :id 2 :name "collection official" :official_collection true}]
@@ -169,7 +169,7 @@
                 ["collection" 2 "collection official"]]
                (appdb.scoring-test/search-results* "collection")))))))
 
-(deftest appdb-verified-test
+(deftest ^:parallel appdb-verified-test
   (appdb.scoring-test/with-index-contents
     [{:model "card" :id 1 :name "card normal" :verified false}
      {:model "card" :id 2 :name "card verified" :verified true}]
@@ -184,7 +184,7 @@
                 ["card" 2 "card verified"]]
                (appdb.scoring-test/search-results* "card")))))))
 
-(deftest transforms-user-recency-test
+(deftest ^:parallel transforms-user-recency-test
   (mt/with-premium-features #{:transforms-basic}
     (let [user-id (mt/user->id :crowberto)
           now     (Instant/now)

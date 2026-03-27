@@ -49,7 +49,7 @@
                               {:active false})
         (is (= false (t2/select-one-fn :active :model/Channel (:id channel))))))))
 
-(deftest create-channel-with-existing-name-error-test
+(deftest ^:parallel create-channel-with-existing-name-error-test
   (mt/with-temp [:model/Channel _chn default-test-channel]
     (is (= {:errors {:name "Channel with that name already exists"}}
            (mt/user-http-request :crowberto :post 409 "channel" default-test-channel)))))
@@ -71,7 +71,7 @@
      (finally
        (perms/grant-application-permissions! (perms/all-users-group) :subscription))))
 
-(deftest list-channels-test
+(deftest ^:parallel list-channels-test
   (mt/with-temp [:model/Channel chn-1 default-test-channel
                  :model/Channel chn-2 (assoc default-test-channel
                                              :active false
@@ -116,7 +116,7 @@
                  (is (= #{chn-1}
                         (get-channels (:id user)))))))))))))
 
-(deftest ensure-channel-is-namespaced-test
+(deftest ^:parallel ensure-channel-is-namespaced-test
   (testing "POST /api/channel return 400 if channel type is not namespaced"
     (is (=? {:errors {:type "Must be a namespaced channel. E.g: channel/http"}}
             (mt/user-http-request :crowberto :post 400 "channel"
@@ -135,7 +135,7 @@
               (mt/user-http-request :crowberto :put 400 (str "channel/" (:id chn-1))
                                     (assoc chn-1 :type "metabase/metabase-test")))))))
 
-(deftest test-cahnnel-permission-test
+(deftest ^:parallel test-cahnnel-permission-test
   (testing "only admin can test channel"
     (mt/user-http-request :crowberto :post 200 "channel/test"
                           (assoc default-test-channel :details {:return-type  "return-value"
@@ -145,7 +145,7 @@
                           (assoc default-test-channel :details {:return-type  "return-value"
                                                                 :return-value true}))))
 
-(deftest test-channel-connection-test
+(deftest ^:parallel test-channel-connection-test
   (testing "return 200 if channel connects successfully"
     (is (= {:ok true}
            (mt/user-http-request :crowberto :post 200 "channel/test"

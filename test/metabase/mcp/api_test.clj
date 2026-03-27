@@ -100,7 +100,7 @@
 
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
 
-(deftest authentication-required-test
+(deftest ^:parallel authentication-required-test
   (testing "unauthenticated requests return 401"
     (let [response (client/client-full-response :post 401 "mcp"
                                                 (jsonrpc-request "initialize"))]
@@ -126,13 +126,13 @@
                                 {"mcp-session-id" session-id})]
       (is (= 202 (:status response))))))
 
-(deftest session-validation-test
+(deftest ^:parallel session-validation-test
   (testing "requests without a session ID return 400"
     (let [response (mcp-request (jsonrpc-request "tools/list"))]
       (is (= 400 (:status response)))
       (is (= -32600 (get-in response [:body :error :code]))))))
 
-(deftest degenerate-session-id-test
+(deftest ^:parallel degenerate-session-id-test
   (testing "requests with any nonblank session ID are accepted"
     (let [response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" "bogus-session-id"})]
@@ -243,7 +243,7 @@
       ;; Body should be parsed JSON
       (is (map? (:body response))))))
 
-(deftest sse-post-initialize-test
+(deftest ^:parallel sse-post-initialize-test
   (testing "initialize via SSE returns session header and SSE body"
     (let [response (mcp-request (jsonrpc-request "initialize")
                                 {"accept" "text/event-stream"})]
@@ -260,7 +260,7 @@
         (is (= 1 (:id json-data)))
         (is (some? (get-in json-data [:result :protocolVersion])))))))
 
-(deftest get-without-session-test
+(deftest ^:parallel get-without-session-test
   (testing "GET without auth returns 401"
     (let [response (client/client-full-response (test.users/username->token :crowberto)
                                                 :get "mcp")]
@@ -290,7 +290,7 @@
         (is (= "table" (:type table-data)))
         (is (seq (:fields table-data)))))))
 
-(deftest initialized-notification-compatibility-test
+(deftest ^:parallel initialized-notification-compatibility-test
   (testing "requests succeed without notifications/initialized"
     (let [response      (mcp-request (jsonrpc-request "initialize"))
           session-id    (get-in response [:headers "Mcp-Session-Id"])
@@ -347,7 +347,7 @@
       (is (true? (:isError result)))
       (is (str/includes? (:text (first (:content result))) "Missing required path parameter")))))
 
-(deftest tools-list-no-refs-test
+(deftest ^:parallel tools-list-no-refs-test
   (testing "tool inputSchemas have no $ref, no $defs, and root type is always object"
     (let [tools (mcp.tools/list-tools nil)]
       (doseq [tool tools]
@@ -361,7 +361,7 @@
               (is (= "object" (:type schema))
                   (str (:name tool) " root type should be object")))))))))
 
-(deftest tools-call-get-table-query-params-test
+(deftest ^:parallel tools-call-get-table-query-params-test
   (testing "get_table passes query params correctly (with-fields default true)"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool nil "get_table" {:id (mt/id :orders)}))]
@@ -421,7 +421,7 @@
 
 ;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
 
-(deftest tools-list-scope-filtering-test
+(deftest ^:parallel tools-list-scope-filtering-test
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
       (is (= 8 (count tools)))))
@@ -476,7 +476,7 @@
                    :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
                   response)))))))
 
-(deftest tools-call-scope-enforcement-test
+(deftest ^:parallel tools-call-scope-enforcement-test
   (testing "tool call is rejected when token scopes don't include the required scope"
     (let [result (mt/with-current-user (mt/user->id :crowberto)
                    (mcp.tools/call-tool #{"agent:search"} "get_table" {:id (mt/id :orders)}))]
@@ -496,7 +496,7 @@
              (-> result :content first :text))
           "Error must not leak the required scope name"))))
 
-(deftest agent-api-preserves-token-scopes-test
+(deftest ^:parallel agent-api-preserves-token-scopes-test
   (testing "scoped token restrictions are enforced by the Agent API layer (defense-in-depth)"
     (testing "restricted scopes that don't match the endpoint are rejected by Agent API"
       (let [result (mt/with-current-user (mt/user->id :crowberto)

@@ -133,7 +133,7 @@
                      {:is-superuser? false
                       :models #{"dashboard" "card" "transform"}})))))))
 
-(deftest joined-with-table?-test
+(deftest ^:parallel joined-with-table?-test
   #_{:clj-kondo/ignore [:equals-true]}
   (are [expected args]
        (= expected (apply #'search.filter/joined-with-table? args))
@@ -194,7 +194,7 @@
                     base-search-query "card"
                     (merge default-search-ctx {:search-string "a string"})))))))
 
-(deftest date-range-filter-clause-test
+(deftest ^:parallel date-range-filter-clause-test
   (mt/with-clock #t "2023-05-04T10:02:05Z[UTC]"
     (are [created-at expected-where]
          (= expected-where (#'search.filter/date-range-filter-clause :card.created_at created-at))

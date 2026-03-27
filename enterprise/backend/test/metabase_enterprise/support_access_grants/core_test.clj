@@ -128,7 +128,7 @@
       (is (= 50 (:limit result)))
       (is (= 0 (:offset result))))))
 
-(deftest list-grants-includes-revoked-test
+(deftest ^:parallel list-grants-includes-revoked-test
   (mt/with-temp [:model/User {user-id :id} {}
                  :model/SupportAccessGrantLog _ {:user_id user-id
                                                  :ticket_number "SUPPORT-33345"
@@ -144,7 +144,7 @@
       (is (= 2 (count (:data result))))
       (is (= 2 (:total result))))))
 
-(deftest list-grants-filters-by-ticket-number-test
+(deftest ^:parallel list-grants-filters-by-ticket-number-test
   (mt/with-temp [:model/User {user-id :id} {}
                  :model/SupportAccessGrantLog _ {:user_id user-id
                                                  :ticket_number "SUPPORT-44345"
@@ -158,7 +158,7 @@
       (is (= 1 (count (:data result))))
       (is (= "SUPPORT-44345" (:ticket_number (first (:data result))))))))
 
-(deftest list-grants-filters-by-user-id-test
+(deftest ^:parallel list-grants-filters-by-user-id-test
   (mt/with-temp [:model/User {user1-id :id} {}
                  :model/User {user2-id :id} {}
                  :model/SupportAccessGrantLog _ {:user_id user1-id
@@ -173,7 +173,7 @@
       (is (= 1 (count (:data result))))
       (is (= user1-id (:user_id (first (:data result))))))))
 
-(deftest list-grants-respects-limit-and-offset-test
+(deftest ^:parallel list-grants-respects-limit-and-offset-test
   (mt/with-temp [:model/User {user-id :id} {}
                  :model/SupportAccessGrantLog _ {:user_id user-id
                                                  :ticket_number "SUPPORT-60000"
@@ -203,11 +203,11 @@
                 (map :id (:data result2)))
           "Different pages should return different grants"))))
 
-(deftest list-grants-enforces-maximum-limit-test
+(deftest ^:parallel list-grants-enforces-maximum-limit-test
   (let [result (grants/list-grants {:limit 150})]
     (is (= 100 (:limit result)))))
 
-(deftest get-current-grant-returns-nil-when-no-grant-exists-test
+(deftest ^:parallel get-current-grant-returns-nil-when-no-grant-exists-test
   (is (nil? (grants/get-current-grant))))
 
 (deftest get-current-grant-returns-active-grant-test

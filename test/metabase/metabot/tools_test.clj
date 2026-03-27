@@ -6,7 +6,7 @@
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.filters :as filter-tools]))
 
-(deftest all-tools-test
+(deftest ^:parallel all-tools-test
   (testing "profile tools are vars with required metadata"
     (let [tool-vars (mapcat :tools (vals @@#'profiles/*profiles))]
       (is (seq tool-vars))
@@ -16,7 +16,7 @@
           (is (string? (:tool-name m)))
           (is (some? (:schema m))))))))
 
-(deftest filter-by-capabilities-test
+(deftest ^:parallel filter-by-capabilities-test
   (testing "returns tools with no capability requirements when capabilities empty"
     (let [tool-vars [#'agent-tools/search-tool #'agent-tools/read-resource-tool]]
       (is (= tool-vars
@@ -47,7 +47,7 @@
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
       (is (= tool-vars result)))))
 
-(deftest get-tools-for-profile-test
+(deftest ^:parallel get-tools-for-profile-test
   (testing "returns tools for embedding_next profile"
     (let [tools (profiles/get-tools-for-profile :embedding_next #{})]
       (is (map? tools))
@@ -119,7 +119,7 @@
         (is (= tool-name (:tool-name (meta tool-var))))
         (is (some? (:schema (meta tool-var))))))))
 
-(deftest search-tool-test
+(deftest ^:parallel search-tool-test
   (testing "search-tool var has valid metadata"
     (let [m (meta #'agent-tools/search-tool)]
       (is (= "search" (:tool-name m)))
@@ -163,7 +163,7 @@
           (is (= :table (get @chart-called :chart-type)))
           (is (seq (:data-parts result))))))))
 
-(deftest state-dependent-tools-test
+(deftest ^:parallel state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"
     (is (contains? @#'agent-tools/state-dependent-tools "create_chart"))
     (is (contains? @#'agent-tools/state-dependent-tools "edit_chart"))
@@ -183,7 +183,7 @@
     (is (contains? @#'agent-tools/state-dependent-tools "create_dashboard_subscription"))
     (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))))
 
-(deftest wrap-tools-with-state-test
+(deftest ^:parallel wrap-tools-with-state-test
   (testing "wraps state-dependent tools with state injection"
     (let [memory-atom (atom {:state {:queries {"q1" {:database 1}}
                                      :charts {"c1" {:query-id "q1"}}}})
@@ -225,7 +225,7 @@
       (is (map? (get wrapped-tools "construct_notebook_query")))
       (is (fn? (:fn (get wrapped-tools "construct_notebook_query")))))))
 
-(deftest tool-schemas-exclude-state-keys-test
+(deftest ^:parallel tool-schemas-exclude-state-keys-test
   (testing "create_chart schema does not expose state keys"
     (let [{:keys [schema]} (meta #'agent-tools/create-chart-tool)
           [_:=> [_:cat params] _out] schema]

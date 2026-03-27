@@ -78,7 +78,7 @@
 
 ;;; -------------------------------------------------- column-type tests --------------------------------------------------
 
-(deftest ^:lib-metric-types column-type-test
+(deftest ^:parallel ^:lib-metric-types column-type-test
   (testing "returns effective-type when present"
     (is (= :type/DateTime (isa/column-type temporal-dimension))))
   (testing "falls back to base-type when effective-type is nil"
@@ -88,7 +88,7 @@
 
 ;;; -------------------------------------------------- temporal? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types temporal?-test
+(deftest ^:parallel ^:lib-metric-types temporal?-test
   (testing "returns true for temporal types"
     (is (true? (isa/temporal? temporal-dimension)))
     (is (true? (isa/temporal? date-dimension)))
@@ -102,7 +102,7 @@
 
 ;;; -------------------------------------------------- numeric? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types numeric?-test
+(deftest ^:parallel ^:lib-metric-types numeric?-test
   (testing "returns true for numeric types"
     (is (true? (isa/numeric? numeric-dimension)))
     (is (true? (isa/numeric? float-dimension))))
@@ -114,7 +114,7 @@
 
 ;;; -------------------------------------------------- boolean? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types boolean?-test
+(deftest ^:parallel ^:lib-metric-types boolean?-test
   (testing "returns true for boolean types"
     (is (true? (isa/boolean? boolean-dimension))))
   (testing "returns false for non-boolean types"
@@ -125,7 +125,7 @@
 
 ;;; -------------------------------------------------- string? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types string?-test
+(deftest ^:parallel ^:lib-metric-types string?-test
   (testing "returns true for text types"
     (is (true? (isa/string? string-dimension))))
   (testing "returns false for non-string types"
@@ -136,7 +136,7 @@
 
 ;;; -------------------------------------------------- string-like? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types string-like?-test
+(deftest ^:parallel ^:lib-metric-types string-like?-test
   (testing "returns true for string-like types"
     (is (true? (isa/string-like? string-like-dimension))))
   (testing "returns false for plain strings"
@@ -146,7 +146,7 @@
 
 ;;; -------------------------------------------------- string-or-string-like? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types string-or-string-like?-test
+(deftest ^:parallel ^:lib-metric-types string-or-string-like?-test
   (testing "returns true for string types"
     (is (true? (isa/string-or-string-like? string-dimension))))
   (testing "returns true for string-like types"
@@ -158,7 +158,7 @@
 
 ;;; -------------------------------------------------- coordinate? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types coordinate?-test
+(deftest ^:parallel ^:lib-metric-types coordinate?-test
   (testing "returns true for coordinate semantic type"
     (is (true? (isa/coordinate? coordinate-dimension))))
   (testing "returns true for latitude (subtype of coordinate)"
@@ -172,7 +172,7 @@
 
 ;;; -------------------------------------------------- latitude? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types latitude?-test
+(deftest ^:parallel ^:lib-metric-types latitude?-test
   (testing "returns true for latitude semantic type"
     (is (true? (isa/latitude? latitude-dimension))))
   (testing "returns false for other coordinate types"
@@ -183,7 +183,7 @@
 
 ;;; -------------------------------------------------- longitude? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types longitude?-test
+(deftest ^:parallel ^:lib-metric-types longitude?-test
   (testing "returns true for longitude semantic type"
     (is (true? (isa/longitude? longitude-dimension))))
   (testing "returns false for other coordinate types"
@@ -194,7 +194,7 @@
 
 ;;; -------------------------------------------------- location? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types location?-test
+(deftest ^:parallel ^:lib-metric-types location?-test
   (testing "returns true for address semantic type"
     (is (true? (isa/location? location-dimension))))
   (testing "returns true for city (subtype of address)"
@@ -206,7 +206,7 @@
 
 ;;; -------------------------------------------------- foreign-key? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types foreign-key?-test
+(deftest ^:parallel ^:lib-metric-types foreign-key?-test
   (testing "returns true for FK semantic type"
     (is (true? (isa/foreign-key? foreign-key-dimension))))
   (testing "returns false for non-FK types"
@@ -217,7 +217,7 @@
 
 ;;; -------------------------------------------------- primary-key? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types primary-key?-test
+(deftest ^:parallel ^:lib-metric-types primary-key?-test
   (testing "returns true for PK semantic type"
     (is (true? (isa/primary-key? primary-key-dimension))))
   (testing "returns false for non-PK types"
@@ -228,7 +228,7 @@
 
 ;;; -------------------------------------------------- time? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types time?-test
+(deftest ^:parallel ^:lib-metric-types time?-test
   (testing "returns true for time types"
     (is (true? (isa/time? time-dimension))))
   (testing "returns false for date/datetime types"
@@ -239,7 +239,7 @@
 
 ;;; -------------------------------------------------- date-or-datetime? tests --------------------------------------------------
 
-(deftest ^:lib-metric-types date-or-datetime?-test
+(deftest ^:parallel ^:lib-metric-types date-or-datetime?-test
   (testing "returns true for date types"
     (is (true? (isa/date-or-datetime? date-dimension))))
   (testing "returns true for datetime types"
@@ -251,7 +251,7 @@
 
 ;;; -------------------------------------------------- base-type fallback tests --------------------------------------------------
 
-(deftest ^:lib-metric-types base-type-fallback-test
+(deftest ^:parallel ^:lib-metric-types base-type-fallback-test
   (testing "predicates work with only base-type"
     (is (true? (isa/string? base-type-only-dimension)))
     (is (false? (isa/numeric? base-type-only-dimension)))))

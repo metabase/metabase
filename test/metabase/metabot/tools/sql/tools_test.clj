@@ -10,7 +10,7 @@
    [metabase.metabot.tools.sql.replace :as replace-sql-query]
    [metabase.test :as mt]))
 
-(deftest edit-sql-query-test
+(deftest ^:parallel edit-sql-query-test
   (mt/test-drivers #{:h2}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
@@ -80,7 +80,7 @@
                      :edits [{:old_string "id"
                               :new_string "user_id"}]}))))))))))
 
-(deftest replace-sql-query-test
+(deftest ^:parallel replace-sql-query-test
   (mt/test-drivers #{:h2}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
@@ -133,7 +133,7 @@
               (is (= "SELECT 2" (:query-content result)))
               (is (= db-id (:database result))))))))))
 
-(deftest update-query-sql-with-json-pmbql-test
+(deftest ^:parallel update-query-sql-with-json-pmbql-test
   (mt/test-drivers #{:h2}
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (testing "pMBQL query with string enum values (as received from frontend JSON)"
@@ -160,7 +160,7 @@
           (is (lib/native-only-query? result))
           (is (= "SELECT 2" (lib/raw-native-query result))))))))
 
-(deftest integration-create-edit-in-memory-test
+(deftest ^:parallel integration-create-edit-in-memory-test
   (mt/test-drivers #{:h2}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]

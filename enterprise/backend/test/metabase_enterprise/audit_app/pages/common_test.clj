@@ -36,7 +36,7 @@
                                      [[:inline 4] :B]]}]})
    :xform    (map #(update (vec %) 0 inc))})
 
-(deftest transform-results-test
+(deftest ^:parallel transform-results-test
   (testing "Make sure query function result are transformed to QP results correctly"
     (mt/with-premium-features #{:audit-app}
       (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type    ::legacy-format-query-fn
@@ -60,7 +60,7 @@
                     [:like [:lower :db.name] "%birds%"]]}
            (#'common/add-search-clause {} "birds" :t.name :db.name)))))
 
-(deftest query-limit-and-offset-test
+(deftest ^:parallel query-limit-and-offset-test
   (testing "Make sure params passed in as part of the query map are respected"
     (mt/with-premium-features #{:audit-app}
       (doseq [[format-name {:keys [query-type expected-rows]}] {"legacy"    {:query-type    ::legacy-format-query-fn

@@ -6,7 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest scope-type-test
+(deftest ^:parallel scope-type-test
   (testing "scope-type correctly classifies scope based on available keys"
     (are [scope expected] (= expected (actions.scope/scope-type scope))
       {:dashcard-id 1, :dashboard-id 2, :collection-id 3, :card-id 4, :table-id 5, :database-id 6} :dashcard
@@ -14,7 +14,7 @@
       {:model-id 1, :table-id 2, :database-id 3}                                                   :model
       {:table-id 1, :database-id 4}                                                                :table)))
 
-(deftest hydrate-test
+(deftest ^:parallel hydrate-test
   (let [db-id      (mt/id)
         table-id   (mt/id :venues)]
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}
@@ -102,7 +102,7 @@
                 :type        :table}
                (actions.scope/hydrate-scope {:table-id table-id})))))))
 
-(deftest normalize-test
+(deftest ^:parallel normalize-test
   (testing "normalize with various scopes"
     (is (= {:type        :dashcard
             :dashcard-id 2}

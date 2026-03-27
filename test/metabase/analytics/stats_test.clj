@@ -179,7 +179,7 @@
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
       "Spot checking a few system stats to ensure conversion from property names and presence in the anonymous-usage-stats"))
 
-(deftest metrics-anonymous-usage-stats-test
+(deftest ^:parallel metrics-anonymous-usage-stats-test
   (testing "should report the metric count"
     (mt/with-temp [:model/Card _ {:type :metric}
                    :model/Card _ {:type :metric :archived true}]
@@ -229,13 +229,12 @@
    :context      :ad-hoc
    :started_at   (t/offset-date-time)})
 
-(deftest new-impl-test
-  (mt/with-temp [:model/QueryExecution {id1 :id} (merge query-execution-defaults
-                                                        {:error "some error"})
-                 :model/QueryExecution {id2 :id} (merge query-execution-defaults
-                                                        {:error "some error"})
-                 :model/QueryExecution {id3 :id} query-execution-defaults]
-    (t2/delete! :model/QueryExecution :id [:not-in [id1 id2 id3]])
+(deftest ^:parallel new-impl-test
+  (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
+                                                {:error "some error"})
+                 :model/QueryExecution _ (merge query-execution-defaults
+                                                {:error "some error"})
+                 :model/QueryExecution _ query-execution-defaults]
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
         "the new version of the executions metrics works the same way the old one did")))
@@ -271,7 +270,7 @@
 ;;  alert_condition character varying(254), -- Condition (i.e. "rows" or "goal") used as a guard for alerts
 ;;  alert_first_only boolean, -- True if the alert should be disabled after the first notification
 ;;  alert_above_goal boolean, -- For a goal condition, alert when above the goal
-(deftest pulses-and-alerts-test
+(deftest ^:parallel pulses-and-alerts-test
   (mt/with-temp [:model/Card         c {}
                  ;; ---------- Pulses ----------
                  :model/Pulse        p1 {}
@@ -477,7 +476,7 @@
                 config/current-minor-version (constantly nil)]
     (is (false? (@#'stats/csv-upload-available?)))))
 
-(deftest starburst-legacy-test
+(deftest ^:parallel starburst-legacy-test
   (testing "starburst with impersonation"
     (mt/with-temp [(t2/table-name :model/Database) _ {:engine "starburst"
                                                       :name "starburst-legacy-test"
@@ -538,7 +537,7 @@
                   stats/in-docker?                     (constantly false)]
       (is (= "jar" (@#'stats/deployment-model))))))
 
-(deftest no-features-enabled-but-not-available-test
+(deftest ^:parallel no-features-enabled-but-not-available-test
   (testing "Ensure that a feature cannot be reported as enabled if it is not also available"
     ;; Clear premium features so (most of) the features are considered unavailable
     (mt/with-premium-features #{}
@@ -572,7 +571,7 @@
     :session-timeout-config
     :sso-oidc})
 
-(deftest every-feature-is-accounted-for-test
+(deftest ^:parallel every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
     (let [included-features     (->> (concat (@#'stats/snowplow-features-data) (@#'stats/ee-snowplow-features-data))
                                      (map :name))
@@ -584,7 +583,7 @@
       ;; make sure features are not duplicated
       (is (= (count included-features) (count included-features-set))))))
 
-(deftest snowplow-grouped-metric-info-test
+(deftest ^:parallel snowplow-grouped-metric-info-test
   (testing "query_executions"
     (let [{:keys [query_executions query_executions_24h]} (#'stats/->snowplow-grouped-metric-info)]
       (doseq [k (keys query_executions)]
@@ -594,7 +593,7 @@
                     (get query_executions_24h k)))
             "There are never more query executions in the 24h version than all-of-time.")))))
 
-(deftest snowplow-setting-tests
+(deftest ^:parallel snowplow-setting-tests
   (testing "snowplow formated settings"
     (let [instance-stats (#'stats/instance-settings)
           snowplow-settings (#'stats/snowplow-settings instance-stats)]

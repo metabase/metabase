@@ -164,7 +164,7 @@
             (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
             (is (seq (mt/regex-email-bodies #"/auth/login")))))))))
 
-(deftest new-admin-user-test
+(deftest ^:parallel new-admin-user-test
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
                 "PermissionsGroupMembership object")
     (mt/with-temp [:model/User user {:is_superuser true}]
@@ -388,7 +388,7 @@
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "User hashes are based on the email address"
     (mt/with-temp [:model/User user {:email "fred@flintston.es"}]
       (is (= "e8d63472"
@@ -441,7 +441,7 @@
         (request/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
 
-(deftest common-name-test
+(deftest ^:parallel common-name-test
   (testing "common_name should be present depending on what is selected"
     (mt/with-temp [:model/User user {:first_name "John"
                                      :last_name  "Smith"
@@ -485,7 +485,7 @@
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
         (is (nil? deactivated-at))))))
 
-(deftest add-attributes-merges-login-and-jwt-attributes-test
+(deftest ^:parallel add-attributes-merges-login-and-jwt-attributes-test
   (testing "add-attributes should add :attributes key with merged login attributes"
     (let [user {:login_attributes {"user_attr" "user_value"}
                 :jwt_attributes {"jwt_attr" "jwt_value"}
@@ -496,7 +496,7 @@
              (:attributes result)))
       (is (= user (dissoc result :attributes))))))
 
-(deftest add-attributes-handles-nil-login-attributes-test
+(deftest ^:parallel add-attributes-handles-nil-login-attributes-test
   (testing "add-attributes should handle nil login_attributes"
     (let [user {:email "test@example.com"
                 :jwt_attributes {"jwt_attr" "jwt_value"}}
@@ -504,7 +504,7 @@
       (is (= {"jwt_attr" "jwt_value"}
              (:attributes result))))))
 
-(deftest add-attributes-handles-empty-login-attributes-test
+(deftest ^:parallel add-attributes-handles-empty-login-attributes-test
   (testing "add-attributes should handle empty login_attributes"
     (let [user {:login_attributes {}
                 :jwt_attributes {"jwt_attr" "jwt_value"}
@@ -513,7 +513,7 @@
       (is (= {"jwt_attr" "jwt_value"}
              (:attributes result))))))
 
-(deftest add-attributes-user-overrides-jwt-test
+(deftest ^:parallel add-attributes-user-overrides-jwt-test
   (testing "add-attributes: user attributes should override jwt attributes with same keys"
     (let [user {:login_attributes {"shared_key" "user_value"
                                    "user_only" "user_val"}
@@ -526,7 +526,7 @@
               "user_only" "user_val"}
              (:attributes result))))))
 
-(deftest add-attributes-preserves-user-fields-test
+(deftest ^:parallel add-attributes-preserves-user-fields-test
   (testing "add-attributes should preserve all other user fields"
     (let [user {:id 123
                 :email "test@example.com"

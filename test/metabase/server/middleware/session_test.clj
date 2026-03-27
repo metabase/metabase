@@ -107,7 +107,7 @@
               :uri                 "/anyurl"}
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-key :uri]))))))
 
-(deftest current-user-info-for-api-key-test
+(deftest ^:parallel current-user-info-for-api-key-test
   (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
                                   :user_id               (mt/user->id :lucky)
                                   :creator_id            (mt/user->id :lucky)

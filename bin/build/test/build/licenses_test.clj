@@ -46,7 +46,7 @@
 (defn- jar ^Path [lib-name]
   (jar->path (-> basis :libs (get lib-name) :paths first)))
 
-(deftest license-from-pom-test
+(deftest ^:parallel license-from-pom-test
   (let [clojure-jar (-> basis :libs (get 'org.clojure/clojure) :paths first)
         jar-path    (Paths/get ^String clojure-jar (into-array String []))]
     (with-open [jar-fs (FileSystems/newFileSystem jar-path
@@ -60,7 +60,7 @@
     (is (= "Eclipse Public License 1.0: http://opensource.org/licenses/eclipse-1.0.php"
            (-> (lic/discern-license-and-coords libs {}) second :license)))))
 
-(deftest license-from-jar-test
+(deftest ^:parallel license-from-jar-test
   (letfn [(license-path [j f]
             (with-open [jar-fs (FileSystems/newFileSystem (jar j) (ClassLoader/getSystemClassLoader))]
               (some-> (lic/license-from-jar jar-fs)
@@ -80,7 +80,7 @@
     (testing "Nil if not present"
       (is (nil? (license-path 'net.redhogs.cronparser/cron-parser-core identity))))))
 
-(deftest license-from-backfill-test
+(deftest ^:parallel license-from-backfill-test
   (let [backfill {"a" {"a" "License Information"}
                   "b" {"b" {:resource "MIT.txt"}}
                   :override/group
@@ -95,7 +95,7 @@
         (is (not (str/blank? license)))
         (is (str/starts-with? license expected-license))))))
 
-(deftest process*-test
+(deftest ^:parallel process*-test
   (testing "categorizes jar entries"
     (let [jar-libs        (select-keys (:libs basis)
                                        '[org.clojure/clojure
@@ -142,7 +142,7 @@
                                          {:override/group
                                           {"net.redhogs.cronparser" "license"}}}))))))))
 
-(deftest write-license-test
+(deftest ^:parallel write-license-test
   (is (= (str "The following software may be included in this product: a/a: 1.0. "
               "This software contains the following license and notice below:\n\n\n"
               "license text\n\n\n----------\n\n")
@@ -161,7 +161,7 @@
             (and (not success?) (< n max)) (recur (inc n))
             :else (throw (ex-info (str "Could not succeed " step-name) {:max-retries max}))))))
 
-(deftest all-deps-have-licenses
+(deftest ^:parallel all-deps-have-licenses
   (testing "All deps on the classpath have licenses"
     (loop-until-success #(u/sh {:dir u/project-root-directory} "clojure" "-A:ee" "-P") 3 "download deps")
     (let [jar-libs (lic/jar-entries basis)

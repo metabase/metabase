@@ -203,7 +203,7 @@
         (testing "No QueryExecution should get saved when a query is canceled"
           (is (not @saved-query-execution?)))))))
 
-(deftest query-result-should-not-contains-preprocessed-query-test
+(deftest ^:parallel query-result-should-not-contains-preprocessed-query-test
   (let [query (mt/mbql-query venues {:limit 1})]
     (doseq [userland-query? [true false]]
       (testing (format "executing %suserland query shouldn't return the preprocessed query"

@@ -130,7 +130,7 @@
 
 ;; -- Path traversal protection --
 
-(deftest serve-chunk-handler-traversal-returns-404
+(deftest ^:parallel serve-chunk-handler-traversal-returns-404
   (testing "traversal filenames return 404 even when the target file exists"
     ;; Place a real .js file on the classpath (inside resources/) and verify
     ;; that path traversal from the chunks directory cannot reach it.

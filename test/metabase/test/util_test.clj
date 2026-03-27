@@ -134,7 +134,7 @@
 (defn mock-me-outer []
   (mock-me-inner))
 
-(deftest with-dynamic-fn-redefs-nested-binding-test
+(deftest ^:parallel with-dynamic-fn-redefs-nested-binding-test
   (defn z []
     (mt/with-dynamic-fn-redefs [mock-me-outer
                                 (let [orig (mt/dynamic-value mock-me-outer)]

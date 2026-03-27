@@ -14,7 +14,7 @@
 
 ;;; ----------------------------------- write tool integration tests --------------------------------------------------
 
-(deftest write-transform-sql-tool-test
+(deftest ^:parallel write-transform-sql-tool-test
   (testing "creates new SQL transform with correct name, SQL content, and output message"
     (let [memory-atom (atom {:state {}})
           result (binding [shared/*memory-atom* memory-atom]
@@ -28,7 +28,7 @@
       (is (= "Transform SQL updated successfully." (:output result)))
       (is (= "transform_suggestion" (-> result :data-parts first :data-type))))))
 
-(deftest write-transform-python-tool-test
+(deftest ^:parallel write-transform-python-tool-test
   (when (premium-features/has-feature? :transforms-python)
     (testing "creates new Python transform with correct body, source tables, and output message"
       (let [memory-atom (atom {:state {}})
@@ -44,7 +44,7 @@
                (get-in result [:structured-output :transform :source :source-tables])))
         (is (= "transform_suggestion" (-> result :data-parts first :data-type)))))))
 
-(deftest write-transform-tool-nil-transform-id-test
+(deftest ^:parallel write-transform-tool-nil-transform-id-test
   (when (premium-features/has-feature? :transforms-python)
     (testing "SQL: nil transform_id creates fresh transform with nil :id and does not store in memory"
       (let [memory-atom (atom {:state {:transforms {}}})

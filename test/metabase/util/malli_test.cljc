@@ -58,7 +58,7 @@
                   (umd/describe special-lt-4-schema))))))))
 
 #?(:clj
-   (deftest validate-throw-test
+   (deftest ^:parallel validate-throw-test
      (testing "with a schema"
        (is (= {:a 1 :b "b"} (mu/validate-throw [:map [:a :int] [:b :string]] {:a 1 :b "b"})))
        (is (thrown-with-msg? Exception #"Value does not match schema" (mu/validate-throw [:map [:a :int] [:b :string]] "1"))))

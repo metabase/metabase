@@ -4,7 +4,7 @@
    [metabase.notification.condition :refer [evaluate-expression]]))
 
 #_{:clj-kondo/ignore [:equals-true]}
-(deftest evaluate-literal-values-test
+(deftest ^:parallel evaluate-literal-values-test
   (testing "literal values"
     (are [expected expression context] (= expected (evaluate-expression expression context))
       42 42 {}
@@ -13,7 +13,7 @@
       false false {})))
 
 #_{:clj-kondo/ignore [:equals-true]}
-(deftest evaluate-logical-operators-test
+(deftest ^:parallel evaluate-logical-operators-test
   (testing "logical operators"
     (are [expected expression context] (= expected (evaluate-expression expression context))
       ;; and
@@ -35,7 +35,7 @@
       false ["not" ["not" false]] {})))
 
 #_{:clj-kondo/ignore [:equals-true]}
-(deftest evaluate-comparison-operators-test
+(deftest ^:parallel evaluate-comparison-operators-test
   (testing "comparison operators"
     (are [expected expression context] (= expected (evaluate-expression expression context))
       ;; =
@@ -83,7 +83,7 @@
       false ["<=" 2 1 1] {})))
 
 #_{:clj-kondo/ignore [:equals-true]}
-(deftest evaluate-context-access-test
+(deftest ^:parallel evaluate-context-access-test
   (testing "context access"
     (are [expected expression context] (= expected (evaluate-expression expression context))
       1       ["context" "user_id"]   {:user_id 1}
@@ -93,7 +93,7 @@
       [1 2 3] ["context" "rows"]      {:rows [1 2 3]}
       nil     ["context" "missing"]   {})))
 
-(deftest evaluate-functions-test
+(deftest ^:parallel evaluate-functions-test
   (testing "functions"
     (are [expected expression context] (= expected (evaluate-expression expression context))
       ;; count
@@ -112,7 +112,7 @@
       6 ["max" ["context" "a"] ["context" "b"]] {:a 4, :b 6})))
 
 #_{:clj-kondo/ignore [:equals-true]}
-(deftest evaluate-nested-expressions-test
+(deftest ^:parallel evaluate-nested-expressions-test
   (testing "nested expressions"
     (are [expected expression context] (= expected (evaluate-expression expression context))
       true ["and"

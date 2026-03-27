@@ -11,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest encode-byte-arrays-test
+(deftest ^:parallel encode-byte-arrays-test
   (testing "Check that we encode byte arrays as the hex values of their first four bytes"
     (is (= "{\"my-bytes\":\"0xC42360D7\"}"
            (json/encode
@@ -31,7 +31,7 @@
         json/decode+kw)
    (fn raise [e] (throw e))))
 
-(deftest json-error-test
+(deftest ^:parallel json-error-test
   (testing "Parsing invalid JSON returns messages with some details"
     (is (= {:error
             "Unrecognized token 'ture': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false') at 1:17"}

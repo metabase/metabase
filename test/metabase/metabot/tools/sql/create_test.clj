@@ -6,7 +6,7 @@
    [metabase.metabot.tools.sql.create :as create-sql-query]
    [metabase.test :as mt]))
 
-(deftest create-sql-query-test
+(deftest ^:parallel create-sql-query-test
   (mt/test-drivers #{:postgres :h2}
     (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}]
       (testing "creates a basic SQL query"
@@ -26,7 +26,7 @@
                      :native {:query #(re-find #"(?si)SELECT\s+1\s+AS\s+\"?test\"?" %)}}
                     (:query result)))))))))
 
-(deftest create-sql-query-validation-error-test
+(deftest ^:parallel create-sql-query-validation-error-test
   (mt/test-drivers #{:postgres}
     (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}]
       (testing "attempts to create query with wrong syntax"

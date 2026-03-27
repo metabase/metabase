@@ -29,7 +29,7 @@
 (defn- ts ^Timestamp [s]
   (Timestamp/from (Instant/parse s)))
 
-(deftest error-categorization-test
+(deftest ^:parallel error-categorization-test
   (testing "HTTP status codes"
     (is (= :permanent (semantic.dlq/categorize-error (ex-info "Client error" {:status 404}))))
     (is (= :permanent (semantic.dlq/categorize-error (ex-info "Validation error" {:status 422}))))

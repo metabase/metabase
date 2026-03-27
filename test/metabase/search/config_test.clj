@@ -6,7 +6,7 @@
 ;; All that matters is that this is not legacy search.
 (def ^:private search-engine :search.engine/appdb)
 
-(deftest filter-default-test
+(deftest ^:parallel filter-default-test
   (testing "Default values"
     (is (= false (search.config/filter-default search-engine nil :archived)))
     (is (= "all" (search.config/filter-default search-engine nil :filter-items-in-personal-collection))))

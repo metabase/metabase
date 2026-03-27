@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.tools.charts.create :as create-chart]))
 
-(deftest create-chart-test
+(deftest ^:parallel create-chart-test
   (testing "creates a chart from a query"
     (let [queries-state {"q-123" {:query-id "q-123"
                                   :query-content "SELECT * FROM orders"

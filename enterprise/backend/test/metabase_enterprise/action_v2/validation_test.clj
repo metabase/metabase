@@ -65,7 +65,7 @@
 (def decimal-field-required
   {:name "precise_value" :base_type :type/Decimal :database_required true})
 
-(deftest validate-inputs-float-test
+(deftest ^:parallel validate-inputs-float-test
   (testing "Float type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases
@@ -87,7 +87,7 @@
       (testing (str "Float validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-integer-test
+(deftest ^:parallel validate-inputs-integer-test
   (testing "Integer type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases
@@ -109,7 +109,7 @@
       (testing (str "Integer validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-number-test
+(deftest ^:parallel validate-inputs-number-test
   (testing "Number type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases
@@ -130,7 +130,7 @@
       (testing (str "Number validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-text-test
+(deftest ^:parallel validate-inputs-text-test
   (testing "Text type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases
@@ -150,7 +150,7 @@
       (testing (str "Text validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-boolean-test
+(deftest ^:parallel validate-inputs-boolean-test
   (testing "Boolean type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases
@@ -176,7 +176,7 @@
       (testing (str "Boolean validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-date-test
+(deftest ^:parallel validate-inputs-date-test
   (testing "Date type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases
@@ -201,7 +201,7 @@
       (testing (str "Date validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-time-test
+(deftest ^:parallel validate-inputs-time-test
   (testing "Time type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases
@@ -224,7 +224,7 @@
       (testing (str "Time validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-datetime-test
+(deftest ^:parallel validate-inputs-datetime-test
   (testing "DateTime type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases
@@ -256,7 +256,7 @@
       (testing (str "DateTime validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-biginteger-test
+(deftest ^:parallel validate-inputs-biginteger-test
   (testing "BigInteger type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases - regular integers
@@ -284,7 +284,7 @@
       (testing (str "BigInteger validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-decimal-test
+(deftest ^:parallel validate-inputs-decimal-test
   (testing "Decimal type validation"
     (doseq [[expected inputs fields]
             [;; Valid cases - regular numbers
@@ -311,7 +311,7 @@
       (testing (str "Decimal validation - inputs: " inputs)
         (is (= expected (validation/validate-inputs fields inputs)))))))
 
-(deftest validate-inputs-multiple-fields-test
+(deftest ^:parallel validate-inputs-multiple-fields-test
   (testing "Multiple fields and rows validation"
     (testing "Multiple fields in single row"
       (is (= nil

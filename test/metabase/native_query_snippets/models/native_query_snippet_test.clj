@@ -60,7 +60,7 @@
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
              (t2/update! :model/NativeQuerySnippet snippet-id {:collection_id dest-collection-id})))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Native query snippet hashes are composed of the name and the collection's hash"
     (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection         coll    {:name "field-db" :namespace :snippets :location "/" :created_at now}
@@ -69,7 +69,7 @@
                (serdes/raw-hash ["my snippet" (serdes/identity-hash coll) (:created_at snippet)])
                (serdes/identity-hash snippet)))))))
 
-(deftest basic-param-finding-test
+(deftest ^:parallel basic-param-finding-test
   (testing "Can find params in a snippet"
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{id}}"}]
       (is (=? {"id" {:type :text,
@@ -87,7 +87,7 @@
                      :display-name "ID"}}
               (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
 
-(deftest recursive-snippets-test
+(deftest ^:parallel recursive-snippets-test
   (testing "Does not find params in child snippets"
     (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner" :content "id"}
                    :model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{snippet: inner}}"}]
@@ -99,7 +99,7 @@
                 :snippet-id inner-id}}
               (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
 
-(deftest not-parse-recursive-snippets-test
+(deftest ^:parallel not-parse-recursive-snippets-test
   (testing "Does not find params in child snippets"
     (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner" :content "{{id}}"}
                    :model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{snippet: inner}}"}]

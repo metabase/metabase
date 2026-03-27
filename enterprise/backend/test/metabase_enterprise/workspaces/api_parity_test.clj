@@ -48,7 +48,7 @@
                   [[method route] (resolve-schema-form ns-sym schema)])))
         (api.macros/ns-routes ns-sym)))
 
-(deftest response-schemas-in-sync-test
+(deftest ^:parallel response-schemas-in-sync-test
   (let [agent-schemas (endpoint-schemas 'metabase-enterprise.agent-api.workspace)
         ee-schemas    (endpoint-schemas 'metabase-enterprise.workspaces.api)]
     ;; In the future, we may want to diverge in certain ways. Let's tackle that when we get there, but it will probably

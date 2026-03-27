@@ -31,7 +31,7 @@
                 (json/decode r))
               body))))
 
-(deftest paging-test
+(deftest ^:parallel paging-test
   (testing "no paging params"
     (is (=? {:status  200
              :body    {"limit"  nil

@@ -12,7 +12,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest delete-subscriptions-test
+(deftest ^:parallel delete-subscriptions-test
   (testing "DELETE /api/ee/audit-app/user/:id/subscriptions"
     (testing "Should require a token with `:audit-app`"
       (mt/with-premium-features #{}

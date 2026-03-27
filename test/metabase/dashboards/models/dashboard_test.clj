@@ -240,7 +240,7 @@
              #":parameters must be a sequence of maps with :id and :type keys"
              (t2/update! :model/Dashboard id {:parameters [{:id 100}]})))))))
 
-(deftest normalize-parameters-test
+(deftest ^:parallel normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
                                [:field-id 1000]              [:field 1000 nil]}]

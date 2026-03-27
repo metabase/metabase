@@ -6,7 +6,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
-(deftest get-profile-test
+(deftest ^:parallel get-profile-test
   (letfn [(tool-names [profile]
             (set (map #(:tool-name (meta %)) (:tools profile))))]
     (testing "retrieves embedding_next profile with default provider"
@@ -100,7 +100,7 @@
     (mt/with-temporary-setting-values [llm-metabot-provider "openrouter/google/gemini-2.5-flash"]
       (is (= "openrouter/google/gemini-2.5-flash" (:model (profiles/get-profile :embedding_next)))))))
 
-(deftest get-tools-for-profile-capabilities-test
+(deftest ^:parallel get-tools-for-profile-capabilities-test
   (testing "filters tools by capabilities"
     (testing "empty capabilities excludes capability-gated tools but includes ungated tools"
       (let [tools (profiles/get-tools-for-profile :internal [])]
@@ -114,7 +114,7 @@
       (let [tools (profiles/get-tools-for-profile :internal [:frontend-navigate-user-v1])]
         (is (contains? tools "navigate_user"))))))
 
-(deftest get-tools-for-profile-string-capabilities-test
+(deftest ^:parallel get-tools-for-profile-string-capabilities-test
   (testing "capabilities as strings (as sent by the API / benchmark client)"
     (testing "NLQ-only capabilities should exclude SQL tools and include navigate_user"
       (let [;; This is what the NLQ benchmark actually sends via the API:

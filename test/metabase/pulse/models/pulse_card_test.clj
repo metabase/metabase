@@ -6,7 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest test-next-position-for
+(deftest ^:parallel test-next-position-for
   (testing "No existing cards"
     (mt/with-temp [:model/Pulse {pulse-id :id}]
       (is (zero? (pulse-card/next-position-for pulse-id)))))

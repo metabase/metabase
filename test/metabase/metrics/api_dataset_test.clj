@@ -60,7 +60,7 @@
 ;;; |                                         Category 1: Aggregation Types                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-count-aggregation-test
+(deftest ^:parallel dataset-count-aggregation-test
   (mt/dataset test-data
     (testing "POST /api/metric/dataset with count aggregation"
       (mt/with-temp [:model/Card metric {:name          "Count Metric"
@@ -72,7 +72,7 @@
           ;; venues table has 100 rows
           (is (= 100 (first-result response))))))))
 
-(deftest dataset-sum-aggregation-test
+(deftest ^:parallel dataset-sum-aggregation-test
   (testing "POST /api/metric/dataset with sum aggregation"
     (mt/with-temp [:model/Card metric {:name          "Sum Metric"
                                        :type          :metric
@@ -82,7 +82,7 @@
         (is (= 1 (:row_count response)))
         (is (= 203 (first-result response)))))))
 
-(deftest dataset-avg-aggregation-test
+(deftest ^:parallel dataset-avg-aggregation-test
   (testing "POST /api/metric/dataset with avg aggregation"
     (mt/with-temp [:model/Card metric {:name          "Avg Metric"
                                        :type          :metric
@@ -92,7 +92,7 @@
         (is (= 1 (:row_count response)))
         (is (= 2.03 (first-result response)))))))
 
-(deftest dataset-min-aggregation-test
+(deftest ^:parallel dataset-min-aggregation-test
   (testing "POST /api/metric/dataset with min aggregation"
     (mt/with-temp [:model/Card metric {:name          "Min Metric"
                                        :type          :metric
@@ -103,7 +103,7 @@
         ;; Min price should be 1
         (is (= 1 (first-result response)))))))
 
-(deftest dataset-max-aggregation-test
+(deftest ^:parallel dataset-max-aggregation-test
   (testing "POST /api/metric/dataset with max aggregation"
     (mt/with-temp [:model/Card metric {:name          "Max Metric"
                                        :type          :metric
@@ -114,7 +114,7 @@
         ;; Max price should be 4
         (is (= 4 (first-result response)))))))
 
-(deftest dataset-distinct-aggregation-test
+(deftest ^:parallel dataset-distinct-aggregation-test
   (testing "POST /api/metric/dataset with distinct count aggregation"
     (mt/with-temp [:model/Card metric {:name          "Distinct Metric"
                                        :type          :metric
@@ -128,7 +128,7 @@
 ;;; |                                      Category 2: String Filter Operators                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-string-equals-filter-test
+(deftest ^:parallel dataset-string-equals-filter-test
   (testing "POST /api/metric/dataset with string = filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -141,7 +141,7 @@
           (is (= "completed" (:status response)))
           (is (= 1 (first-result response))))))))
 
-(deftest dataset-string-not-equals-filter-test
+(deftest ^:parallel dataset-string-not-equals-filter-test
   (testing "POST /api/metric/dataset with string != filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -154,7 +154,7 @@
           (is (= "completed" (:status response)))
           (is (= 99 (first-result response))))))))
 
-(deftest dataset-string-contains-filter-test
+(deftest ^:parallel dataset-string-contains-filter-test
   (testing "POST /api/metric/dataset with string contains filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -167,7 +167,7 @@
           (is (= "completed" (:status response)))
           (is (= 2 (first-result response))))))))
 
-(deftest dataset-string-does-not-contain-filter-test
+(deftest ^:parallel dataset-string-does-not-contain-filter-test
   (testing "POST /api/metric/dataset with string does-not-contain filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -178,7 +178,7 @@
         (is (= 28 (first-result (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
                                                   :filters    [{:lib/uuid "a" :filter [:does-not-contain {} [:dimension {} (:id name-dim)] "a"]}]}))))))))
 
-(deftest dataset-string-starts-with-filter-test
+(deftest ^:parallel dataset-string-starts-with-filter-test
   (testing "POST /api/metric/dataset with string starts-with filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -191,7 +191,7 @@
           (is (= "completed" (:status response)))
           (is (= 10 (first-result response))))))))
 
-(deftest dataset-string-ends-with-filter-test
+(deftest ^:parallel dataset-string-ends-with-filter-test
   (testing "POST /api/metric/dataset with string ends-with filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -204,7 +204,7 @@
           (is (= "completed" (:status response)))
           (is (= 2 (first-result response))))))))
 
-(deftest dataset-string-is-empty-filter-test
+(deftest ^:parallel dataset-string-is-empty-filter-test
   (testing "POST /api/metric/dataset with string is-empty filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -217,7 +217,7 @@
           (is (= "completed" (:status response)))
           (is (= 0 (first-result response))))))))
 
-(deftest dataset-string-not-empty-filter-test
+(deftest ^:parallel dataset-string-not-empty-filter-test
   (testing "POST /api/metric/dataset with string not-empty filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -230,7 +230,7 @@
           (is (= "completed" (:status response)))
           (is (= 100 (first-result response))))))))
 
-(deftest dataset-string-is-null-filter-test
+(deftest ^:parallel dataset-string-is-null-filter-test
   (testing "POST /api/metric/dataset with string is-null filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -247,7 +247,7 @@
 ;;; |                                      Category 3: Numeric Filter Operators                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-number-equals-filter-test
+(deftest ^:parallel dataset-number-equals-filter-test
   (testing "POST /api/metric/dataset with numeric = filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -260,7 +260,7 @@
           (is (= "completed" (:status response)))
           (is (= 59 (first-result response))))))))
 
-(deftest dataset-number-not-equals-filter-test
+(deftest ^:parallel dataset-number-not-equals-filter-test
   (testing "POST /api/metric/dataset with numeric != filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -271,7 +271,7 @@
         (is (= 41 (first-result (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
                                                   :filters    [{:lib/uuid "a" :filter [:!= {} [:dimension {} (:id price-dim)] 2]}]}))))))))
 
-(deftest dataset-number-greater-than-filter-test
+(deftest ^:parallel dataset-number-greater-than-filter-test
   (testing "POST /api/metric/dataset with numeric > filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -284,7 +284,7 @@
           (is (= "completed" (:status response)))
           (is (= 19 (first-result response))))))))
 
-(deftest dataset-number-greater-than-or-equal-filter-test
+(deftest ^:parallel dataset-number-greater-than-or-equal-filter-test
   (testing "POST /api/metric/dataset with numeric >= filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -295,7 +295,7 @@
         (is (= 78 (first-result (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
                                                   :filters    [{:lib/uuid "a" :filter [:>= {} [:dimension {} (:id price-dim)] 2]}]}))))))))
 
-(deftest dataset-number-less-than-filter-test
+(deftest ^:parallel dataset-number-less-than-filter-test
   (testing "POST /api/metric/dataset with numeric < filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -308,7 +308,7 @@
           (is (= "completed" (:status response)))
           (is (= 81 (first-result response))))))))
 
-(deftest dataset-number-less-than-or-equal-filter-test
+(deftest ^:parallel dataset-number-less-than-or-equal-filter-test
   (testing "POST /api/metric/dataset with numeric <= filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -319,7 +319,7 @@
         (is (= 94 (first-result (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]
                                                   :filters    [{:lib/uuid "a" :filter [:<= {} [:dimension {} (:id price-dim)] 3]}]}))))))))
 
-(deftest dataset-number-between-filter-test
+(deftest ^:parallel dataset-number-between-filter-test
   (testing "POST /api/metric/dataset with numeric between filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -332,7 +332,7 @@
           (is (= "completed" (:status response)))
           (is (= 72 (first-result response))))))))
 
-(deftest dataset-number-is-null-filter-test
+(deftest ^:parallel dataset-number-is-null-filter-test
   (testing "POST /api/metric/dataset with numeric is-null filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -345,7 +345,7 @@
           (is (= "completed" (:status response)))
           (is (= 0 (first-result response))))))))
 
-(deftest dataset-number-not-null-filter-test
+(deftest ^:parallel dataset-number-not-null-filter-test
   (testing "POST /api/metric/dataset with numeric not-null filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -362,7 +362,7 @@
 ;;; |                                      Category 4: Temporal Filter Operators                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-time-interval-filter-test
+(deftest ^:parallel dataset-time-interval-filter-test
   (testing "POST /api/metric/dataset with time-interval filter"
     (mt/with-temp [:model/Card metric {:name          "Checkin Metric"
                                        :type          :metric
@@ -378,7 +378,7 @@
 ;;; |                                        Category 5: Compound Filters                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-and-filter-test
+(deftest ^:parallel dataset-and-filter-test
   (testing "POST /api/metric/dataset with AND filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -393,7 +393,7 @@
           (is (= "completed" (:status response)))
           (is (= 72 (first-result response))))))))
 
-(deftest dataset-or-filter-test
+(deftest ^:parallel dataset-or-filter-test
   (testing "POST /api/metric/dataset with OR filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -407,7 +407,7 @@
                                                                                        [:= {} [:dimension {} (:id price-dim)] 4]]}]})))
             "price=1 (22) + price=4 (6) = 28")))))
 
-(deftest dataset-not-filter-test
+(deftest ^:parallel dataset-not-filter-test
   (testing "POST /api/metric/dataset with NOT filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -419,7 +419,7 @@
                                                   :filters    [{:lib/uuid "a" :filter [:not {} [:= {} [:dimension {} (:id price-dim)] 2]]}]})))
             "NOT price=2 returns 100-59=41")))))
 
-(deftest dataset-nested-compound-filters-test
+(deftest ^:parallel dataset-nested-compound-filters-test
   (testing "POST /api/metric/dataset with nested compound filters"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -438,7 +438,7 @@
           (is (= 59 (first-result response))
               "(price=1 OR price=2) AND NOT price=1 = price=2 = 59"))))))
 
-(deftest dataset-multiple-filters-test
+(deftest ^:parallel dataset-multiple-filters-test
   (testing "POST /api/metric/dataset with multiple filters (implicit AND)"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -457,7 +457,7 @@
 ;;; |                                       Category 6: Projections/Breakouts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-single-projection-test
+(deftest ^:parallel dataset-single-projection-test
   (testing "POST /api/metric/dataset with single projection"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -470,7 +470,7 @@
           (is (= "completed" (:status response)))
           (is (= 4 (:row_count response))))))))
 
-(deftest dataset-multiple-projections-test
+(deftest ^:parallel dataset-multiple-projections-test
   (testing "POST /api/metric/dataset with multiple projections"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -487,7 +487,7 @@
           (is (< 4 (:row_count response))
               "should have more than 4 rows for price/category combinations"))))))
 
-(deftest dataset-projection-with-filter-test
+(deftest ^:parallel dataset-projection-with-filter-test
   (testing "POST /api/metric/dataset with projection and filter combined"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -507,7 +507,7 @@
 ;;; |                                       Category 7: Temporal Bucketing                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-projection-day-bucket-test
+(deftest ^:parallel dataset-projection-day-bucket-test
   (testing "POST /api/metric/dataset with day temporal bucket"
     (mt/with-temp [:model/Card metric {:name          "Checkin Metric"
                                        :type          :metric
@@ -520,7 +520,7 @@
           (is (= "completed" (:status response)))
           (is (< 1 (:row_count response)) "should have multiple rows grouped by day"))))))
 
-(deftest dataset-projection-week-bucket-test
+(deftest ^:parallel dataset-projection-week-bucket-test
   (testing "POST /api/metric/dataset with week temporal bucket"
     (mt/with-temp [:model/Card metric {:name          "Checkin Metric"
                                        :type          :metric
@@ -534,7 +534,7 @@
                                                        :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :week} (:id date-dim)]]}]}))]
           (is (< week-count day-count) "week grouping should have fewer rows than day grouping"))))))
 
-(deftest dataset-projection-month-bucket-test
+(deftest ^:parallel dataset-projection-month-bucket-test
   (testing "POST /api/metric/dataset with month temporal bucket"
     (mt/with-temp [:model/Card metric {:name          "Checkin Metric"
                                        :type          :metric
@@ -547,7 +547,7 @@
           (is (= "completed" (:status response)))
           (is (< 1 (:row_count response)) "should have multiple rows grouped by month"))))))
 
-(deftest dataset-projection-quarter-bucket-test
+(deftest ^:parallel dataset-projection-quarter-bucket-test
   (testing "POST /api/metric/dataset with quarter temporal bucket"
     (mt/with-temp [:model/Card metric {:name          "Checkin Metric"
                                        :type          :metric
@@ -561,7 +561,7 @@
                                                           :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :quarter} (:id date-dim)]]}]}))]
           (is (<= quarter-count month-count) "quarter grouping should have fewer or equal rows than month grouping"))))))
 
-(deftest dataset-projection-year-bucket-test
+(deftest ^:parallel dataset-projection-year-bucket-test
   (testing "POST /api/metric/dataset with year temporal bucket"
     (mt/with-temp [:model/Card metric {:name          "Checkin Metric"
                                        :type          :metric
@@ -574,7 +574,7 @@
           (is (= "completed" (:status response)))
           (is (< 0 (:row_count response)) "should have at least one row grouped by year"))))))
 
-(deftest dataset-projection-day-of-week-bucket-test
+(deftest ^:parallel dataset-projection-day-of-week-bucket-test
   (testing "POST /api/metric/dataset with day-of-week temporal bucket"
     (mt/with-temp [:model/Card metric {:name          "Checkin Metric"
                                        :type          :metric
@@ -591,7 +591,7 @@
 ;;; |                                            Category 8: Binning                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-projection-numeric-binning-default-test
+(deftest ^:parallel dataset-projection-numeric-binning-default-test
   (testing "POST /api/metric/dataset with default binning strategy"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -604,7 +604,7 @@
           (is (= "completed" (:status response)))
           (is (< 1 (:row_count response)) "should have multiple bins"))))))
 
-(deftest dataset-projection-numeric-binning-num-bins-test
+(deftest ^:parallel dataset-projection-numeric-binning-num-bins-test
   (testing "POST /api/metric/dataset with num-bins binning strategy"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -617,7 +617,7 @@
           (is (= "completed" (:status response)))
           (is (<= (:row_count response) 6) "should have at most 5+1 bins"))))))
 
-(deftest dataset-projection-numeric-binning-bin-width-test
+(deftest ^:parallel dataset-projection-numeric-binning-bin-width-test
   (testing "POST /api/metric/dataset with bin-width binning strategy"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -630,7 +630,7 @@
           (is (= "completed" (:status response)))
           (is (< 0 (:row_count response)) "should have at least one bin"))))))
 
-(deftest dataset-projection-coordinate-binning-test
+(deftest ^:parallel dataset-projection-coordinate-binning-test
   (testing "POST /api/metric/dataset with coordinate binning"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -803,17 +803,17 @@
 ;;; |                                          Category 10: Error Cases                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-invalid-metric-id-test
+(deftest ^:parallel dataset-invalid-metric-id-test
   (testing "POST /api/metric/dataset returns 404 for invalid metric ID"
     (is (= "Not found."
            (dataset-request-error 404 {:expression [:metric {:lib/uuid "a"} Integer/MAX_VALUE]})))))
 
-(deftest dataset-invalid-measure-id-test
+(deftest ^:parallel dataset-invalid-measure-id-test
   (testing "POST /api/metric/dataset returns 404 for invalid measure ID"
     (is (= "Not found."
            (dataset-request-error 404 {:expression [:measure {:lib/uuid "a"} Integer/MAX_VALUE]})))))
 
-(deftest dataset-rejects-non-metric-card-test
+(deftest ^:parallel dataset-rejects-non-metric-card-test
   (testing "POST /api/metric/dataset returns 404 for non-metric cards"
     (mt/with-temp [:model/Card card {:name          "Regular Question"
                                      :type          :question
@@ -845,7 +845,7 @@
           (is (= "You don't have permissions to do that."
                  (dataset-request-error 403 {:expression [:measure {:lib/uuid "a"} (:id measure)]}))))))))
 
-(deftest dataset-metric-with-collection-perms-can-execute-test
+(deftest ^:parallel dataset-metric-with-collection-perms-can-execute-test
   (testing "POST /api/metric/dataset allows execution when user has collection read perms"
     (mt/with-temp [:model/Card metric {:name          "Accessible Metric"
                                        :type          :metric
@@ -883,7 +883,7 @@
           (is (= "completed" (:status response)))
           (is (= 100 (ffirst (get-in response [:data :rows])))))))))
 
-(deftest dataset-measure-admin-can-always-execute-test
+(deftest ^:parallel dataset-measure-admin-can-always-execute-test
   (testing "POST /api/metric/dataset allows admin to execute measures regardless of data perms"
     (let [mp             (mt/metadata-provider)
           table-metadata (lib.metadata/table mp (mt/id :venues))
@@ -922,11 +922,11 @@
         (is (= "You don't have permissions to do that."
                (dataset-request-error 403 {:expression [:metric {:lib/uuid "a"} (:id metric)]})))))))
 
-(deftest dataset-requires-definition-test
+(deftest ^:parallel dataset-requires-definition-test
   (testing "POST /api/metric/dataset requires definition"
     (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset" {})))))
 
-(deftest dataset-requires-source-test
+(deftest ^:parallel dataset-requires-source-test
   (testing "POST /api/metric/dataset requires expression"
     (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset"
                                      {:definition {}})))))
@@ -935,7 +935,7 @@
 ;;; |                                        Category 11: Integration Tests                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-full-exploration-test
+(deftest ^:parallel dataset-full-exploration-test
   (testing "POST /api/metric/dataset with filter + projection + temporal bucket"
     (mt/with-temp [:model/Card metric {:name          "Checkin Metric"
                                        :type          :metric
@@ -948,7 +948,7 @@
                                          :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :month} (:id date-dim)]]}]})]
           (is (= "completed" (:status response))))))))
 
-(deftest dataset-results-match-expected-count-test
+(deftest ^:parallel dataset-results-match-expected-count-test
   (testing "POST /api/metric/dataset returns expected count for venues"
     (mt/with-temp [:model/Card metric {:name          "Count Metric"
                                        :type          :metric
@@ -957,7 +957,7 @@
       (let [api-result (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]})]
         (is (= [[100]] (get-in api-result [:data :rows])))))))
 
-(deftest dataset-metric-with-existing-filter-test
+(deftest ^:parallel dataset-metric-with-existing-filter-test
   (testing "POST /api/metric/dataset with metric that has existing filter"
     (mt/with-temp [:model/Card metric {:name          "Expensive Venues"
                                        :type          :metric
@@ -968,7 +968,7 @@
         (is (= "completed" (:status response)))
         (is (= 19 (first-result response)))))))
 
-(deftest dataset-complex-combined-scenario-test
+(deftest ^:parallel dataset-complex-combined-scenario-test
   (testing "POST /api/metric/dataset complex scenario with multiple features"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -989,7 +989,7 @@
           (let [rows (result-rows response)]
             (is (every? #(<= 2 (first %) 3) rows))))))))
 
-(deftest dataset-in-filter-test
+(deftest ^:parallel dataset-in-filter-test
   (testing "POST /api/metric/dataset with IN filter (multiple values)"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -1001,7 +1001,7 @@
                                                   :filters    [{:lib/uuid "a" :filter [:in {} [:dimension {} (:id price-dim)] 1 3]}]})))
             "price=1 (22) + price=3 (13) = 35")))))
 
-(deftest dataset-not-in-filter-test
+(deftest ^:parallel dataset-not-in-filter-test
   (testing "POST /api/metric/dataset with NOT-IN filter"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
@@ -1031,7 +1031,7 @@
                                            (lib/with-join-alias products-id "Products"))]))
         (lib/aggregate (lib/count)))))
 
-(deftest dataset-metric-with-join-basic-test
+(deftest ^:parallel dataset-metric-with-join-basic-test
   (testing "POST /api/metric/dataset with metric that has a join"
     (let [query (create-orders-products-join-query)]
       (mt/with-temp [:model/Card metric {:name          "Orders with Products"
@@ -1043,7 +1043,7 @@
           (is (= 18760 (first-result response))
               "should count all 18760 orders"))))))
 
-(deftest dataset-metric-with-join-filter-on-base-table-test
+(deftest ^:parallel dataset-metric-with-join-filter-on-base-table-test
   (testing "POST /api/metric/dataset with join filtering on base table column"
     (let [query (create-orders-products-join-query)]
       (mt/with-temp [:model/Card metric {:name          "Orders with Products"
@@ -1057,7 +1057,7 @@
             (is (< filtered-count 18760)
                 "filtering on total > 50 should return fewer than all orders")))))))
 
-(deftest dataset-metric-with-join-filter-on-joined-table-test
+(deftest ^:parallel dataset-metric-with-join-filter-on-joined-table-test
   (testing "POST /api/metric/dataset with join filtering on joined table column"
     (let [query (create-orders-products-join-query)]
       (mt/with-temp [:model/Card metric {:name          "Orders with Products"
@@ -1070,7 +1070,7 @@
                                                       :filters    [{:lib/uuid "a" :filter [:= {} [:dimension {} (:id category-dim)] "Gadget"]}]})))
               "Gadget category has 4939 orders"))))))
 
-(deftest dataset-metric-with-join-projection-base-table-test
+(deftest ^:parallel dataset-metric-with-join-projection-base-table-test
   (testing "POST /api/metric/dataset with join projecting on base table column"
     (let [query (create-orders-products-join-query)]
       (mt/with-temp [:model/Card metric {:name          "Orders with Products"
@@ -1085,7 +1085,7 @@
             (is (= 1746 (:row_count response))
                 "should have 1746 rows, one per unique user with orders")))))))
 
-(deftest dataset-metric-with-join-projection-joined-table-test
+(deftest ^:parallel dataset-metric-with-join-projection-joined-table-test
   (testing "POST /api/metric/dataset with join projecting on joined table column"
     (let [query (create-orders-products-join-query)]
       (mt/with-temp [:model/Card metric {:name          "Orders with Products"
@@ -1100,7 +1100,7 @@
             (is (= 4 (:row_count response))
                 "should have 4 rows, one per product category")))))))
 
-(deftest dataset-metric-with-join-filter-and-projection-test
+(deftest ^:parallel dataset-metric-with-join-filter-and-projection-test
   (testing "POST /api/metric/dataset with join combining filter and projection"
     (let [query (create-orders-products-join-query)]
       (mt/with-temp [:model/Card metric {:name          "Orders with Products"
@@ -1118,7 +1118,7 @@
             (is (= 4 (:row_count response))
                 "should have 4 rows, one per product category")))))))
 
-(deftest dataset-metric-with-join-temporal-projection-test
+(deftest ^:parallel dataset-metric-with-join-temporal-projection-test
   (testing "POST /api/metric/dataset with join using temporal bucketing"
     (let [query (create-orders-products-join-query)]
       (mt/with-temp [:model/Card metric {:name          "Orders with Products"
@@ -1137,7 +1137,7 @@
 ;;; |                               Category 11: Source-Card (Model) Metrics                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest dataset-source-card-count-test
+(deftest ^:parallel dataset-source-card-count-test
   (testing "POST /api/metric/dataset with metric based on a model (source-card)"
     (mt/with-temp [:model/Card model  {:name          "Orders Model"
                                        :type          :model
@@ -1154,7 +1154,7 @@
         (is (= 18760 (first-result response))
             "should count all 18760 orders via model")))))
 
-(deftest dataset-source-card-with-filter-test
+(deftest ^:parallel dataset-source-card-with-filter-test
   (testing "POST /api/metric/dataset with source-card metric and dimension filter"
     (mt/with-temp [:model/Card model  {:name          "Orders Model"
                                        :type          :model
@@ -1174,7 +1174,7 @@
           (is (< (first-result response) 18760)
               "filtered count should be less than total orders"))))))
 
-(deftest dataset-source-card-with-projection-test
+(deftest ^:parallel dataset-source-card-with-projection-test
   (testing "POST /api/metric/dataset with source-card metric and dimension breakout"
     (mt/with-temp [:model/Card model  {:name          "Orders Model"
                                        :type          :model

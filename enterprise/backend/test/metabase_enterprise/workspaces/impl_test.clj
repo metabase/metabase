@@ -217,7 +217,7 @@
           {true #{} false #{}}
           entities))
 
-(deftest annotate-staleness-linear-chain-test
+(deftest ^:parallel annotate-staleness-linear-chain-test
   (testing "Linear chain: staleness propagates downstream"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -244,7 +244,7 @@
           (is (= {true #{"t3"} false #{"t1" "t2"}}
                  (stale->id (:entities result)))))))))
 
-(deftest annotate-staleness-diamond-graph-test
+(deftest ^:parallel annotate-staleness-diamond-graph-test
   (testing "Diamond graph: staleness propagates through all paths"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -271,7 +271,7 @@
           (is (= {true #{"t2" "t4"} false #{"t1" "t3"}}
                  (stale->id (:entities result)))))))))
 
-(deftest annotate-staleness-independent-subgraphs-test
+(deftest ^:parallel annotate-staleness-independent-subgraphs-test
   (testing "Independent subgraphs: staleness doesn't cross between them"
     (let [a1 (workspace-transform "a1")
           a2 (workspace-transform "a2")
@@ -288,7 +288,7 @@
           (is (= {true #{"a1" "a2"} false #{"b1" "b2"}}
                  (stale->id (:entities result)))))))))
 
-(deftest annotate-staleness-wide-graph-test
+(deftest ^:parallel annotate-staleness-wide-graph-test
   (testing "Wide graph: stale root propagates to all children"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -308,7 +308,7 @@
       (is (= {true #{"t1" "t2" "t3" "t4" "t5"} false #{}}
              (stale->id (:entities result)))))))
 
-(deftest annotate-staleness-mixed-transforms-test
+(deftest ^:parallel annotate-staleness-mixed-transforms-test
   (testing "Mixed transforms: staleness propagates through external transforms"
     (let [t1 (workspace-transform "t1")
           ext (global-transform 100)
@@ -325,7 +325,7 @@
                  (stale->id (filter #(#{:workspace-transform :external-transform} (:node-type %))
                                     (:entities result))))))))))
 
-(deftest annotate-staleness-empty-stale-set-test
+(deftest ^:parallel annotate-staleness-empty-stale-set-test
   (testing "Empty stale set: nothing is marked stale"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -336,7 +336,7 @@
       (is (= {true #{} false #{"t1" "t2"}}
              (stale->id (:entities result)))))))
 
-(deftest annotate-staleness-input-data-changed-test
+(deftest ^:parallel annotate-staleness-input-data-changed-test
   (testing "input_data_changed triggers staleness just like definition_changed"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -347,7 +347,7 @@
       (is (= {true #{"t1" "t2"} false #{}}
              (stale->id (:entities result)))))))
 
-(deftest annotate-staleness-preserves-other-fields-test
+(deftest ^:parallel annotate-staleness-preserves-other-fields-test
   (testing "compute-staleness preserves other entity fields"
     (let [t1 {:node-type :workspace-transform :id "t1" :extra-field "preserved"}
           graph {:entities     [t1]
@@ -362,7 +362,7 @@
 
 ;;;; Static graph tests for graph traversal functions
 
-(deftest upstream-ids-linear-chain-test
+(deftest ^:parallel upstream-ids-linear-chain-test
   (testing "Linear chain: computes all upstream ancestors"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -380,7 +380,7 @@
       (testing "t1 has no ancestors"
         (is (empty? (ws.impl/upstream-ids graph :workspace-transform "t1")))))))
 
-(deftest upstream-ids-diamond-test
+(deftest ^:parallel upstream-ids-diamond-test
   (testing "Diamond graph: computes all paths"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -402,7 +402,7 @@
         (is (= #{"t1"}
                (set (ws.impl/upstream-ids graph :workspace-transform "t2"))))))))
 
-(deftest upstream-ids-with-external-transforms-test
+(deftest ^:parallel upstream-ids-with-external-transforms-test
   (testing "External transforms are traversed but not included when filtered"
     (let [t1 (workspace-transform "t1")
           ext (global-transform 100)
@@ -419,7 +419,7 @@
                  {:node-type :external-transform :id 100}}
                (ws.impl/upstream-nodes graph "t2")))))))
 
-(deftest downstream-ids-linear-chain-test
+(deftest ^:parallel downstream-ids-linear-chain-test
   (testing "Linear chain: computes all downstream descendants"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -437,7 +437,7 @@
       (testing "t3 has no descendants"
         (is (empty? (ws.impl/downstream-ids graph :workspace-transform "t3")))))))
 
-(deftest downstream-ids-diamond-test
+(deftest ^:parallel downstream-ids-diamond-test
   (testing "Diamond graph: computes all downstream paths"
     (let [t1 (workspace-transform "t1")
           t2 (workspace-transform "t2")
@@ -459,7 +459,7 @@
         (is (= #{"t4"}
                (set (ws.impl/downstream-ids graph :workspace-transform "t2"))))))))
 
-(deftest downstream-ids-with-external-transforms-test
+(deftest ^:parallel downstream-ids-with-external-transforms-test
   (testing "External transforms are traversed but not included when filtered"
     (let [t1 (workspace-transform "t1")
           ext (global-transform 100)
@@ -476,11 +476,11 @@
                  {:node-type :external-transform, :id 100}}
                (ws.impl/downstream-nodes graph "t1")))))))
 
-(deftest downstream-nodes-empty-graph-test
+(deftest ^:parallel downstream-nodes-empty-graph-test
   (testing "Empty graph returns nil"
     (is (nil? (ws.impl/downstream-nodes {:entities [] :dependencies nil} "t1")))))
 
-(deftest upstream-nodes-empty-graph-test
+(deftest ^:parallel upstream-nodes-empty-graph-test
   (testing "Empty graph returns nil"
     (is (nil? (ws.impl/upstream-nodes {:entities [] :dependencies nil} "t1")))))
 

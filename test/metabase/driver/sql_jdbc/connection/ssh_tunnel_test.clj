@@ -198,7 +198,7 @@
       :host        "127.0.0.1"
       :port        1234})))
 
-(deftest ssh-tunnel-works
+(deftest ^:parallel ssh-tunnel-works
   (testing "ssh tunnel can properly tunnel"
     (with-open [server (doto (ServerSocket. 0) ; 0 -- let ServerSocket pick a random port
                          (.setSoTimeout 10000))

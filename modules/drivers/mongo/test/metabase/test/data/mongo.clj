@@ -99,7 +99,7 @@
     (str "_" table-or-field-name)
     table-or-field-name))
 
-(deftest json-raw-test
+(deftest ^:parallel json-raw-test
   (testing "Make sure the `raw-json-generator` util fn actually works the way we expect it to"
     (is (= "{\"x\":{{param}}}"
            (json/encode {:x (json/raw-json-generator "{{param}}")})))))

@@ -13,7 +13,7 @@
 
 ;;; ------------------------------------------- database-dialect Tests -------------------------------------------
 
-(deftest database-engine-test
+(deftest ^:parallel database-engine-test
   (mt/with-temp [:model/Database postgres-db {:engine :postgres}
                  :model/Database mysql-db   {:engine :mysql}
                  :model/Database bigquery-db {:engine :bigquery}]
@@ -30,7 +30,7 @@
 
 ;;; ------------------------------------------- load-dialect-instructions Tests -------------------------------------------
 
-(deftest load-dialect-instructions-test
+(deftest ^:parallel load-dialect-instructions-test
   (testing "known engine with file returns content"
     (let [instructions (#'api/load-dialect-instructions :postgres)]
       (is (string? instructions))
@@ -41,7 +41,7 @@
 
 ;;; ------------------------------------------- Table ID extraction Tests -------------------------------------------
 
-(deftest extract-frontend-table-ids-test
+(deftest ^:parallel extract-frontend-table-ids-test
   (testing "extracts table IDs from referenced_entities"
     (let [entities [{:model "table" :id 1}
                     {:model "table" :id 2}
@@ -69,7 +69,7 @@
                   (map :id)
                   set))))))
 
-(deftest table-id-union-test
+(deftest ^:parallel table-id-union-test
   (testing "all sources merged via set union"
     (let [frontend #{1 2}
           explicit #{2 3}
@@ -87,7 +87,7 @@
 
 ;;; ------------------------------------------- Integration with context Tests -------------------------------------------
 
-(deftest table-mention-parsing-integration-test
+(deftest ^:parallel table-mention-parsing-integration-test
   (testing "explicit mentions parsed from prompt"
     (let [prompt "Join [Orders](metabase://table/123) with [Users](metabase://table/456)"]
       (is (= #{123 456}
@@ -100,7 +100,7 @@
 
 ;;; ------------------------------------------- build-system-prompt Tests -------------------------------------------
 
-(deftest build-system-prompt-test
+(deftest ^:parallel build-system-prompt-test
   (testing "builds prompt with required parameters"
     (let [prompt (#'api/build-system-prompt {:dialect "PostgreSQL"
                                              :schema-ddl "CREATE TABLE users (id INTEGER);"})]

@@ -10,7 +10,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.test :as mt]))
 
-(deftest extract-model-and-id
+(deftest ^:parallel extract-model-and-id
   (is (= ["action" "1895"] (#'search.ingestion/extract-model-and-id ["action" [:= 1895 :this.id]])))
   (is (= ["action" "2000"] (#'search.ingestion/extract-model-and-id ["action" [:= :this.id 2000]])))
   (is (nil? (#'search.ingestion/extract-model-and-id ["action" [:= 1895 :this.model_id]])))
@@ -90,7 +90,7 @@
                (#'search.ingestion/embeddable-text record))
             "Transformation functions should not be applied to embeddable text for semantic search")))))
 
-(deftest search-term-columns-test
+(deftest ^:parallel search-term-columns-test
   (testing "search-term-columns with vector format"
     (is (= #{:name :description}
            (set (#'search.ingestion/search-term-columns [:name :description])))))

@@ -6,7 +6,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest make-context-test
+(deftest ^:parallel make-context-test
   (testing "can make a context that evaluates javascript"
     (let [context (js/context)]
       (js/load-js-string context "function plus (x, y) { return x + y }" "plus test")
@@ -18,7 +18,7 @@
       (let [curried (js/execute-fn-name context "curry_plus" 1)]
         (is (= 3 (.asLong (js/execute-fn curried 2))))))))
 
-(deftest thread-safe-execute-fn-name-test
+(deftest ^:parallel thread-safe-execute-fn-name-test
   (testing "execute-fn-name is thread safe"
     (let [context (js/context)]
       (js/load-js-string context "function plus (x, y) { return x + y }" "plus test")

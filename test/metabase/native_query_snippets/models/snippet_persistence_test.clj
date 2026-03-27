@@ -63,7 +63,7 @@
               (is (contains? updated-tags "snippet: Snippet Y"))
               (is (= snippet-y-id (get-in updated-tags ["snippet: Snippet Y" :snippet-id]))))))))))
 
-(deftest snippet-reference-handles-missing-snippet-test
+(deftest ^:parallel snippet-reference-handles-missing-snippet-test
   (testing "Template tags should handle references to non-existent snippets"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :namespace :snippets}
                    :model/NativeQuerySnippet {snippet-id :id} {:name "Reference Missing"

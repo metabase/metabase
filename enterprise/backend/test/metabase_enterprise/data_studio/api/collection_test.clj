@@ -8,7 +8,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest collection-items-table-test
+(deftest ^:parallel collection-items-table-test
   (mt/with-premium-features #{:library}
     (testing "GET /api/collection/:id/items"
       (mt/with-temp [:model/Collection collection                         {}

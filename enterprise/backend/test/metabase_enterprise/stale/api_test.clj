@@ -12,7 +12,7 @@
 
 ;; Stale API
 
-(deftest stale-items-is-premium-only
+(deftest ^:parallel stale-items-is-premium-only
   (mt/with-premium-features #{}
     (stale.test/with-stale-items [:model/Card _ {}
                                   :model/Dashboard _ {}]
@@ -122,7 +122,7 @@
                         (map :name)
                         set)))))))))
 
-(deftest can-fetch-stale-candidates-2
+(deftest ^:parallel can-fetch-stale-candidates-2
   (mt/with-premium-features #{:collection-cleanup}
     (testing "I can get stale items from the root collection"
       (mt/with-temp [:model/Collection {coll-id :id} {}]
@@ -147,7 +147,7 @@
                       (map :name)
                       set))))))))
 
-(deftest can-fetch-stale-candidates-3
+(deftest ^:parallel can-fetch-stale-candidates-3
   (mt/with-premium-features #{:collection-cleanup}
     (testing "the collection data is included"
       (mt/with-temp [:model/Collection {top-coll-id :id

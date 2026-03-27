@@ -10,7 +10,7 @@
   :once
   (fixtures/initialize :web-server :test-users))
 
-(deftest routes-test
+(deftest ^:parallel routes-test
   (when-not config/ee-available?
     (doseq [route ["auth/sso" "api/saml"]]
       (testing (str route " route returns nice error message")

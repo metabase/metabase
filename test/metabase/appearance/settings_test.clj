@@ -34,7 +34,7 @@
 
         (is (= :metabase (appearance.settings/help-link)))))))
 
-(deftest validate-help-url-test
+(deftest ^:parallel validate-help-url-test
   (testing "validate-help-url accepts valid URLs with HTTP or HTTPS protocols"
     (is (nil? (#'appearance.settings/validate-help-url "http://www.metabase.com")))
     (is (nil? (#'appearance.settings/validate-help-url "https://www.metabase.com"))))

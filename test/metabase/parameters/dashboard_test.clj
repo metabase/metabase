@@ -312,7 +312,7 @@
                        (is (= [1] remapped-values)
                            "Should return raw value when only PK is remapped (PK ignored)")))))))))))))
 
-(deftest find-common-remapping-target-test
+(deftest ^:parallel find-common-remapping-target-test
   (testing "Finding common remapping targets"
     (mt/dataset test-data
       (let [orders-product-id-field-id (mt/id :orders :product_id)

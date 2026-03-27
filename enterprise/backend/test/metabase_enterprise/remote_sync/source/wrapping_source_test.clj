@@ -33,7 +33,7 @@
   (snapshot [_]
     (->MockSourceSnapshot files)))
 
-(deftest wrapping-source-list-files-single-filter-test
+(deftest ^:parallel wrapping-source-list-files-single-filter-test
   (testing "WrappingSource filters list-files based on path-filters"
     (let [mock-source (->MockSource {"collections/foo.yaml" "foo-content"
                                      "collections/bar.yaml" "bar-content"
@@ -45,7 +45,7 @@
              (source.p/list-files wrapped-snap))
           "Should only include files matching the collections pattern"))))
 
-(deftest wrapping-source-list-files-multiple-filters-test
+(deftest ^:parallel wrapping-source-list-files-multiple-filters-test
   (testing "WrappingSource with multiple path filters"
     (let [mock-source (->MockSource {"collections/foo.yaml" "foo-content"
                                      "collections/bar.yaml" "bar-content"
@@ -57,7 +57,7 @@
              (source.p/list-files wrapped-snap))
           "Should include files matching any of the patterns"))))
 
-(deftest wrapping-source-list-files-no-match-test
+(deftest ^:parallel wrapping-source-list-files-no-match-test
   (testing "WrappingSource with no matching files"
     (let [mock-source (->MockSource {"collections/foo.yaml" "foo-content"
                                      "dashboards/dash1.yaml" "dash1-content"})
@@ -66,7 +66,7 @@
              (source.p/list-files wrapped-snap))
           "Should return empty list when no files match"))))
 
-(deftest wrapping-source-read-file-single-filter-test
+(deftest ^:parallel wrapping-source-read-file-single-filter-test
   (testing "WrappingSource filters read-file based on path-filters"
     (let [mock-source (->MockSource {"collections/foo.yaml" "foo-content"
                                      "collections/bar.yaml" "bar-content"
@@ -78,7 +78,7 @@
       (is (nil? (source.p/read-file wrapped-snap "databases/db1.yaml"))
           "Should return nil for file that doesn't match filter"))))
 
-(deftest wrapping-source-read-file-multiple-filters-test
+(deftest ^:parallel wrapping-source-read-file-multiple-filters-test
   (testing "WrappingSource read-file with multiple filters"
     (let [mock-source (->MockSource {"collections/foo.yaml" "foo-content"
                                      "databases/db1.yaml" "db1-content"

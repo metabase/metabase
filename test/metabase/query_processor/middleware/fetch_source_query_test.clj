@@ -115,7 +115,7 @@
                                   "2015-01-01"
                                   "2015-02-01"]}))))))))
 
-(deftest resolve-mbql-queries-test-4
+(deftest ^:parallel resolve-mbql-queries-test-4
   (testing "respects `enable-nested-queries` server setting when true"
     (qp.store/with-metadata-provider (mock-metadata-provider)
       ;; by default nested queries are enabled:

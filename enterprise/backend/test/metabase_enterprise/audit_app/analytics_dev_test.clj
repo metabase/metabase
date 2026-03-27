@@ -18,7 +18,7 @@
              #"Analytics dev mode requires PostgreSQL AppDB"
              (#'analytics-dev/analytics-dev-mode-setup)))))))
 
-(deftest yaml->dev-test
+(deftest ^:parallel yaml->dev-test
   (testing "yaml->dev replaces canonical creator with user email"
     (let [yaml-data {:creator_id "internal@metabase.com"
                      :name "Test Card"
@@ -28,7 +28,7 @@
       (is (= "user@example.com" (:creator_id result)))
       (is (= "user@example.com" (get-in result [:nested :creator_id]))))))
 
-(deftest yaml->canonical-test
+(deftest ^:parallel yaml->canonical-test
   (testing "yaml->canonical replaces user email with canonical creator"
     (let [yaml-data {:creator_id "user@example.com"
                      :name "Test Card"
@@ -181,7 +181,7 @@
                                               table)]
     (into #{} (map :name) (:fields table-metadata))))
 
-(deftest analytics-views-schema-test
+(deftest ^:parallel analytics-views-schema-test
   (testing "Analytics usage views (v_* tables) have expected schema"
     (mt/test-drivers #{:postgres :h2 :mysql}
       (let [analytics-db (t2/select-one :model/Database :is_audit true)]

@@ -11,7 +11,7 @@
    [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
-(deftest unknown-types-test
+(deftest ^:parallel unknown-types-test
   (doseq [{:keys [column unknown-type fallback-type]} [{:column        :base_type
                                                         :unknown-type  :type/Amazing
                                                         :fallback-type :type/*}
@@ -39,7 +39,7 @@
            (mt/with-temp [:model/Field field {column unknown-type}]
              field))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Field hashes are composed of the name, the table's identity-hash, and the parent's identity-hash"
     (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
                    :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
@@ -49,7 +49,7 @@
                (serdes/raw-hash ["sku" table-hash "<none>"])
                (serdes/identity-hash field)))))))
 
-(deftest nested-field-names->field-id-test
+(deftest ^:parallel nested-field-names->field-id-test
   (mt/with-temp
     [:model/Database {db-id :id}              {}
      :model/Table    {table-id :id}           {:db_id db-id}
@@ -68,7 +68,7 @@
       (is (= nil
              (field/nested-field-names->field-id table-id ["top" "nested" "not-exists"]))))))
 
-(deftest nested-fields-with-duplicate-names-test
+(deftest ^:parallel nested-fields-with-duplicate-names-test
   (mt/with-temp
     [:model/Database {db-id :id} {:name "field-db", :engine :h2}
      :model/Table    table       {:schema  "PUBLIC"

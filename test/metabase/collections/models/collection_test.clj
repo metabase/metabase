@@ -45,7 +45,7 @@
                                                                                       :site)))
              (var-get #'collection/collection-slug-max-length))))))
 
-(deftest user->personal-collection-name-test
+(deftest ^:parallel user->personal-collection-name-test
   (testing "test that we can get the name of a user's personal collection as :site"
     (is (= "Lucky Pigeon's Personal Collection"
            (collection/user->personal-collection-name (mt/user->id :lucky) :site))))
@@ -53,7 +53,7 @@
     (is (= "Lucky Pigeon's Personal Collection"
            (collection/user->personal-collection-name (mt/user->id :lucky) :user)))))
 
-(deftest user->personal-collection-names-test
+(deftest ^:parallel user->personal-collection-names-test
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
           (mt/user->id :lucky) "Lucky Pigeon's Personal Collection"}
          (collection/user->personal-collection-names [(mt/user->id :lucky) (mt/user->id :rasta)] :site))))
@@ -63,7 +63,7 @@
     (is (-> trash :name i18n/localized-string?)
         "Trash name must be a localized string")))
 
-(deftest personal-collection-with-ui-details-test
+(deftest ^:parallel personal-collection-with-ui-details-test
   (testing "With personal_owner"
     (is (= {:personal_owner_id (mt/user->id :lucky)
             :name              "Lucky Pigeon's Personal Collection"
@@ -74,7 +74,7 @@
               :personal_owner_id nil}
              (collection/personal-collection-with-ui-details {:other "value" :personal_owner_id nil}))))))
 
-(deftest personal-collections-with-ui-details-test
+(deftest ^:parallel personal-collections-with-ui-details-test
   (is (= [{:personal_owner_id (mt/user->id :lucky)
            :name              "Lucky Pigeon's Personal Collection"
            :slug              "lucky_pigeon_s_personal_collection"}
@@ -130,7 +130,7 @@
       (is (some? c2))
       (is (= (:slug c1) (:slug c2))))))
 
-(deftest entity-ids-test
+(deftest ^:parallel entity-ids-test
   (testing "entity IDs are generated"
     (mt/with-temp [:model/Collection collection]
       (is (some? (:entity_id collection)))))
@@ -538,7 +538,7 @@
         (is (= []
                (effective-ancestors d)))))))
 
-(deftest effective-ancestors-root-collection-test
+(deftest ^:parallel effective-ancestors-root-collection-test
   ;; happens if we do, e.g. `(t2/hydrate a-card-in-the-root-collection [:collection :effective_ancestors])`
   (mt/with-test-user :rasta
     (testing "`nil` and the root collection should get `[]` as their effective_ancestors"
@@ -641,7 +641,7 @@
                                       :location    "/A/"
                                       :children    #{}}}})))))
 
-(deftest descendant-ids-test
+(deftest ^:parallel descendant-ids-test
   (testing "double-check that descendant-ids is working right too"
     (mt/with-temp [:model/Collection a {}
                    :model/Collection b {:location (collection/children-location a)}
@@ -1311,7 +1311,7 @@
       (is (malli= [:map [:personal_collection_id ms/PositiveInt]]
                   (t2/hydrate temp-user :personal_collection_id))))))
 
-(deftest hydrate-is-personal-test
+(deftest ^:parallel hydrate-is-personal-test
   (binding [collection/*allow-deleting-personal-collections* true]
     (mt/with-temp
       [:model/User       {user-id :id}               {}
@@ -1545,7 +1545,7 @@
                         :namespace         "x"
                         :personal_owner_id user-id}))))))
 
-(deftest check-collection-namespace-test
+(deftest ^:parallel check-collection-namespace-test
   (testing "check-collection-namespace"
     (testing "Should succeed if namespace is allowed"
       (mt/with-temp [:model/Collection {collection-id :id}]
@@ -1581,7 +1581,7 @@
       (is (not (t2/exists? :model/NativeQuerySnippet :id snippet-id))
           "Snippet"))))
 
-(deftest collections->tree-test
+(deftest ^:parallel collections->tree-test
   (is (= [{:name     "A"
            :id       1
            :location "/"
@@ -1719,7 +1719,7 @@
            (clean (collection/collections->tree {:card #{1 5} :dataset #{3 4}}
                                                 collections))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
     (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection c1 {:name       "top level"
@@ -1780,7 +1780,7 @@
             (is (not (mi/can-read? cr-dashboard))
                 "Admin isn't able to read custom reports dashboard when audit app isn't enabled")))))))
 
-(deftest collection-insert-updates-permission-graph-revision-test
+(deftest ^:parallel collection-insert-updates-permission-graph-revision-test
   (testing "Creating a new collection should increment the CollectionPermissionGraphRevision"
     (let [initial-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
       (mt/with-current-user (mt/user->id :rasta)
@@ -1789,7 +1789,7 @@
             (is (= (inc initial-revision-count) final-revision-count)
                 "A new CollectionPermissionGraphRevision should be created when inserting a collection")))))))
 
-(deftest collection-insert-skips-permissions-for-personal-collections-test
+(deftest ^:parallel collection-insert-skips-permissions-for-personal-collections-test
   (testing "Creating a collection inside a personal collection should not copy permissions"
     (let [user-id (mt/user->id :rasta)
           personal-collection (collection/user->personal-collection user-id)
@@ -1804,7 +1804,7 @@
             (is (= initial-perms-count final-perms-count)
                 "No new permissions should be created for collections inside personal collections")))))))
 
-(deftest non-remote-synced-dependencies-no-dependencies-test
+(deftest ^:parallel non-remote-synced-dependencies-no-dependencies-test
   (testing "when model has no dependencies"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
                    :model/Card {card-id :id} {:name "Test Card" :collection_id remote-synced-coll-id}]
@@ -1813,7 +1813,7 @@
         (is (empty? result)
             "Should return empty when card has no dependencies")))))
 
-(deftest non-remote-synced-dependencies-all-in-remote-synced-test
+(deftest ^:parallel non-remote-synced-dependencies-all-in-remote-synced-test
   (testing "when model has card dependencies all in remote-synced collection"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
                    :model/Card {dep-card-id :id} {:name "Dependency Card"
@@ -1827,7 +1827,7 @@
         (is (empty? result)
             "Should return empty when all card dependencies are in remote-synced collection")))))
 
-(deftest non-remote-synced-dependencies-outside-remote-synced-test
+(deftest ^:parallel non-remote-synced-dependencies-outside-remote-synced-test
   (testing "when model has card dependencies outside remote-synced collection"
     (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"}
                    :model/Card {card-in-regular-id :id} {:name "Card in Regular"
@@ -1851,7 +1851,7 @@
         (is (set? result)
             "Should return a set of card IDs")))))
 
-(deftest non-remote-synced-dependencies-mixed-locations-test
+(deftest ^:parallel non-remote-synced-dependencies-mixed-locations-test
   (testing "when model has mixed card dependencies (some in remote-synced, some outside)"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
@@ -1870,7 +1870,7 @@
           (is (or (set? result) (empty? result))
               "Should return a set of card IDs or empty set"))))))
 
-(deftest non-remote-synced-dependencies-only-cards-test
+(deftest ^:parallel non-remote-synced-dependencies-only-cards-test
   (testing "function now only returns Card IDs, not other model types"
     (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"}
                    :model/Card {card-in-regular-id :id} {:name "Card in Regular"
@@ -1882,7 +1882,7 @@
         (is (every? integer? result)
             "Should contain only IDs (integers)")))))
 
-(deftest non-remote-synced-dependencies-with-remote-synced-collection-test
+(deftest ^:parallel non-remote-synced-dependencies-with-remote-synced-collection-test
   (testing "when Remote-Synced collection exists and has descendants"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
@@ -1897,7 +1897,7 @@
       (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id card-in-remote-synced-child}))]
         (is (empty? result))))))
 
-(deftest non-remote-synced-dependencies-ignores-non-cards-test
+(deftest ^:parallel non-remote-synced-dependencies-ignores-non-cards-test
   (testing "function only returns Card dependencies, ignores other model types"
     (mt/with-temp [:model/Collection {snippet-coll-id :id} {:name "Snippets Collection"
                                                             :namespace "snippets"}
@@ -1918,7 +1918,7 @@
         (is (not-any? #(= % snippet-id) result)
             "Should not include snippet IDs")))))
 
-(deftest non-remote-synced-dependencies-with-models-test
+(deftest ^:parallel non-remote-synced-dependencies-with-models-test
   (testing "function behavior with model Cards"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
@@ -1936,7 +1936,7 @@
           (is (set? result)
               "Should return a set of card IDs"))))))
 
-(deftest non-remote-synced-dependencies-tables-test
+(deftest ^:parallel non-remote-synced-dependencies-tables-test
   (testing "Tables are not tracked as dependencies"
     ;; The function only returns Card IDs, never Tables
     (mt/with-temp [:model/Card {card-id :id} {:name "Card referencing table"
@@ -1947,7 +1947,7 @@
         (is (or (empty? result) (every? integer? result))
             "Should return only Card IDs or be empty")))))
 
-(deftest non-remote-synced-dependencies-card-ids-only-test
+(deftest ^:parallel non-remote-synced-dependencies-card-ids-only-test
   (testing "function returns only Card IDs regardless of dependency types"
     (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"}
                    :model/Collection {snippet-remote-synced-coll-id :id} {:name "Library Snippets"
@@ -1979,7 +1979,7 @@
           (is (every? integer? result)
               "Should contain only Card IDs (integers)"))))))
 
-(deftest non-remote-synced-dependencies-comprehensive-cards-test
+(deftest ^:parallel non-remote-synced-dependencies-comprehensive-cards-test
   (testing "comprehensive test - function only returns Card IDs outside remote-synced"
     (mt/with-temp [:model/Collection {regular-coll-id :id} {:name "Regular Collection"}
                    :model/Collection {remote-synced-child-id :id} {:name "Remote-Synced Child"
@@ -2017,7 +2017,7 @@
           (is (not-any? map? result)
               "Should not contain model instances, only IDs"))))))
 
-(deftest moving-into-remote-synced?-test
+(deftest ^:parallel moving-into-remote-synced?-test
   (testing "moving-into-remote-synced? function behavior"
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
                    :model/Collection {regular-coll-id :id} {:name "Regular Collection"}
@@ -2354,7 +2354,7 @@
       (is (= [] (collection/remote-synced-dependents (t2/instance :model/Card {:id base-card-id})))
           "Should not return dependents outside the remote-synced collection"))))
 
-(deftest remote-synced-dependents-archived-test
+(deftest ^:parallel remote-synced-dependents-archived-test
   (testing "when dependents are archived"
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
                    :model/Card {base-card-id :id} {:name "Base Card"
@@ -2421,7 +2421,7 @@
             "Should return the dependent card using template tags")))))
 
 ;; Runs into deadlocks on mysql/maria with ^:parallel
-(deftest remote-synced-dependents-with-multiple-types-test
+(deftest ^:parallel remote-synced-dependents-with-multiple-types-test
   (testing "when card has multiple types of dependents"
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :is_remote_synced true}
                    :model/Card {base-card-id :id} {:name "Base Card"
@@ -2549,7 +2549,7 @@
             (is (= #{{"Card" dep-card-id} {"Collection" remote-synced-id}} (-> data :remote-synced-models set))
                 "Exception data should contain the correct dependent card ID")))))))
 
-(deftest check-remote-synced-dependents-no-dependents-test
+(deftest ^:parallel check-remote-synced-dependents-no-dependents-test
   (testing "check-remote-synced-dependents returns model when no remote-synced dependents"
     (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"
                                               :database_id (mt/id)
@@ -2938,7 +2938,7 @@
                (t2/update! :model/Collection (:id remote-synced-collection)
                            {:location (format "/%d/" (:id regular-parent))}))))))))
 
-(deftest moving-into-remote-synced-enhanced-test
+(deftest ^:parallel moving-into-remote-synced-enhanced-test
   (testing "Enhanced moving-into-remote-synced? function behavior including new remote-synced root scenarios"
     (mt/with-temp [:model/Collection {remote-synced-root-a :id} {:name "Remote-Synced Root A" :is_remote_synced true}
                    :model/Collection {remote-synced-root-b :id} {:name "Remote-Synced Root B" :is_remote_synced true}
@@ -2967,7 +2967,7 @@
         (is (true? (collection/moving-into-remote-synced? nil remote-synced-root-a))
             "Should return true when moving from root to remote-synced collection")))))
 
-(deftest moving-from-remote-synced-enhanced-test
+(deftest ^:parallel moving-from-remote-synced-enhanced-test
   (testing "Enhanced moving-from-remote-synced? function behavior including new remote-synced root scenarios"
     (mt/with-temp [:model/Collection {remote-synced-root-a :id} {:name "Remote-Synced Root A" :is_remote_synced true :location "/"}
                    :model/Collection {remote-synced-root-b :id} {:name "Remote-Synced Root B" :is_remote_synced true :location "/"}
@@ -2996,7 +2996,7 @@
         (is (false? (collection/moving-from-remote-synced? child-of-a remote-synced-root-a))
             "Should return false when moving within same remote-synced hierarchy")))))
 
-(deftest exclude-internal-content-hsql-test
+(deftest ^:parallel exclude-internal-content-hsql-test
   (testing "The exclude-internal-content-hsql multimethod returns correct HoneySQL expressions"
     (testing "filters exclude internal collections in practice"
       (mt/with-temp [:model/Collection regular-collection {:name "Regular Collection"}
@@ -3025,7 +3025,7 @@
                                  {:where [:and [:= :id (:id sample-collection)] hsql-clause]})]
             (is (empty? query))))))))
 
-(deftest serdes-descendants-skip-archived-test
+(deftest ^:parallel serdes-descendants-skip-archived-test
   (testing "Collection descendants with skip-archived: true excludes archived items"
     (mt/with-temp [:model/Collection parent-coll {:name "Parent Collection"}
                    :model/Collection child-coll  {:name     "Child Collection"
@@ -3053,7 +3053,7 @@
         (is (contains? (serdes/descendants "Collection" (:id parent-coll) {:skip-archived false})
                        ["Dashboard" (:id dash)]))))))
 
-(deftest serdes-descendants-skip-archived-test-2
+(deftest ^:parallel serdes-descendants-skip-archived-test-2
   (testing "Collection descendants with skip-archived: true includes non-archived items"
     (mt/with-temp [:model/Collection parent-coll      {:name "Parent Collection"}
                    :model/Collection archived-child   {:name     "Archived Child"
@@ -3091,7 +3091,7 @@
           (is (contains? descendants-without-skip ["Card" (:id archived-card)]))
           (is (contains? descendants-without-skip ["Dashboard" (:id archived-dash)])))))))
 
-(deftest serdes-extract-query-skip-archived-test
+(deftest ^:parallel serdes-extract-query-skip-archived-test
   (testing "Collection extract-query with skip-archived: true filters archived collections"
     (mt/with-temp [:model/Collection active-coll   {:name "Active Collection" :archived false}
                    :model/Collection archived-coll {:name "Archived Collection" :archived true}]
@@ -3264,7 +3264,7 @@
           (is (true? (:archived archived-child))
               "Child should be archived"))))))
 
-(deftest can-delete-works
+(deftest ^:parallel can-delete-works
   (mt/with-temp [:model/Collection collection {:archived true}
                  :model/Dashboard dash {:archived true}
                  :model/Card card {:archived true}
@@ -3312,7 +3312,7 @@
                                               collection/library-data-collection-type
                                               collection/library-metrics-collection-type]])))
 
-(deftest is-library-collection?
+(deftest ^:parallel is-library-collection?
   (mt/with-temp [:model/Collection {library-id :id} {:name "Test Library" :type collection/library-collection-type}
                  :model/Collection {models-id :id} {:name "Test Semantic Model Layer" :type collection/library-data-collection-type}
                  :model/Collection {metrics-id :id} {:name "Test Semantic Metrics Layer" :type collection/library-metrics-collection-type}
@@ -3337,7 +3337,7 @@
       (is (nil? (:type collection)))
       (is (true? (:is_remote_synced collection))))))
 
-(deftest serdes-descendants-includes-published-tables-test
+(deftest ^:parallel serdes-descendants-includes-published-tables-test
   (testing "Collection descendants includes published tables"
     (mt/with-temp [:model/Database   db              {:name "Test DB"}
                    :model/Collection coll            {:name "Test Collection"}
@@ -3360,7 +3360,7 @@
         (testing "published table in different collection is not included"
           (is (not (contains? descendants ["Table" (:id other-coll-table)]))))))))
 
-(deftest serdes-descendants-skip-archived-tables-test
+(deftest ^:parallel serdes-descendants-skip-archived-tables-test
   (testing "Collection descendants with skip-archived handles published tables"
     (mt/with-temp [:model/Database   db             {:name "Test DB"}
                    :model/Collection coll           {:name "Test Collection"}

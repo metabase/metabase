@@ -30,24 +30,24 @@
 ;;; |                                         Valid Expression Tests                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest bare-metric-reference-test
+(deftest ^:parallel bare-metric-reference-test
   (testing "A bare metric reference is a valid expression"
     (is (valid? ::lib-metric.schema/metric-math-expression
                 [:metric {:lib/uuid "abc-123"} 42]))))
 
-(deftest bare-measure-reference-test
+(deftest ^:parallel bare-measure-reference-test
   (testing "A bare measure reference is a valid expression"
     (is (valid? ::lib-metric.schema/metric-math-expression
                 [:measure {:lib/uuid "def-456"} 7]))))
 
-(deftest simple-arithmetic-test
+(deftest ^:parallel simple-arithmetic-test
   (testing "Simple arithmetic with two operands is valid"
     (doseq [op [:+ :- :* :/]]
       (testing (str "operator " op)
         (is (valid? ::lib-metric.schema/metric-math-expression
                     [op {} [:metric {:lib/uuid "a"} 1] [:metric {:lib/uuid "b"} 2]]))))))
 
-(deftest nested-arithmetic-test
+(deftest ^:parallel nested-arithmetic-test
   (testing "Nested arithmetic (3+ levels) is valid"
     (is (valid? ::lib-metric.schema/metric-math-expression
                 [:/ {}
@@ -56,14 +56,14 @@
                   [:metric {:lib/uuid "b"} 1]]
                  [:measure {:lib/uuid "c"} 3]]))))
 
-(deftest mixed-metric-measure-expression-test
+(deftest ^:parallel mixed-metric-measure-expression-test
   (testing "Mixed metric + measure in same expression is valid"
     (is (valid? ::lib-metric.schema/metric-math-expression
                 [:+ {}
                  [:metric {:lib/uuid "a"} 10]
                  [:measure {:lib/uuid "b"} 20]]))))
 
-(deftest three-operand-arithmetic-test
+(deftest ^:parallel three-operand-arithmetic-test
   (testing "Arithmetic with three operands is valid"
     (is (valid? ::lib-metric.schema/metric-math-expression
                 [:+ {}
@@ -75,7 +75,7 @@
 ;;; |                                        Invalid Expression Tests                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest missing-uuid-on-reference-test
+(deftest ^:parallel missing-uuid-on-reference-test
   (testing "Missing :lib/uuid on metric reference is invalid (without normalization)"
     ;; normalize-options-map adds :lib/uuid automatically, so we must test raw validation
     (is (not (mr/validate ::lib-metric.schema/metric-math-expression
@@ -84,7 +84,7 @@
     (is (not (mr/validate ::lib-metric.schema/metric-math-expression
                           [:measure {} 7])))))
 
-(deftest single-operand-arithmetic-test
+(deftest ^:parallel single-operand-arithmetic-test
   (testing "Arithmetic with a single operand is invalid"
     (is (not (valid? ::lib-metric.schema/metric-math-expression
                      [:+ {} [:metric {:lib/uuid "a"} 1]])))))
@@ -93,12 +93,12 @@
 ;;; |                                      Definition Validation Tests                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest valid-definition-bare-expression-test
+(deftest ^:parallel valid-definition-bare-expression-test
   (testing "Valid definition with bare metric expression"
     (is (valid-definition?
          {:expression [:metric {:lib/uuid "a"} 42]}))))
 
-(deftest valid-definition-with-filters-test
+(deftest ^:parallel valid-definition-with-filters-test
   (testing "Valid definition with matching filter UUIDs"
     (is (valid-definition?
          {:expression [:- {}
@@ -107,7 +107,7 @@
           :filters    [{:lib/uuid "a"
                         :filter   [:= {} [:dimension {} "550e8400-e29b-41d4-a716-446655440001"] "value"]}]}))))
 
-(deftest valid-definition-with-projections-test
+(deftest ^:parallel valid-definition-with-projections-test
   (testing "Valid definition with matching projection type/id"
     (is (valid-definition?
          {:expression  [:metric {:lib/uuid "a"} 42]
@@ -115,21 +115,21 @@
                          :id         42
                          :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440001"]]}]}))))
 
-(deftest duplicate-uuid-invalid-test
+(deftest ^:parallel duplicate-uuid-invalid-test
   (testing "Duplicate :lib/uuid values in expression are invalid"
     (is (not (valid-definition?
               {:expression [:- {}
                             [:metric {:lib/uuid "a"} 1]
                             [:metric {:lib/uuid "a"} 2]]})))))
 
-(deftest filter-uuid-not-in-expression-test
+(deftest ^:parallel filter-uuid-not-in-expression-test
   (testing "Filter referencing UUID not in expression is invalid"
     (is (not (valid-definition?
               {:expression [:metric {:lib/uuid "a"} 42]
                :filters    [{:lib/uuid "does-not-exist"
                              :filter   [:= {} [:dimension {} "550e8400-e29b-41d4-a716-446655440001"] "value"]}]})))))
 
-(deftest projection-type-id-not-in-expression-test
+(deftest ^:parallel projection-type-id-not-in-expression-test
   (testing "Projection type/id not matching expression leaf is invalid"
     (is (not (valid-definition?
               {:expression  [:metric {:lib/uuid "a"} 42]
@@ -141,20 +141,20 @@
 ;;; |                                         Normalization Tests                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest normalize-string-tags-test
+(deftest ^:parallel normalize-string-tags-test
   (testing "String tags are normalized to keywords"
     (let [decoded (decode ::lib-metric.schema/metric-math-expression
                           ["metric" {"lib/uuid" "abc"} 1])]
       (is (= :metric (first decoded)))
       (is (= "abc" (get (second decoded) :lib/uuid))))))
 
-(deftest normalize-string-operator-test
+(deftest ^:parallel normalize-string-operator-test
   (testing "String arithmetic operator is normalized to keyword"
     (let [decoded (decode ::lib-metric.schema/metric-math-expression
                           ["+" {} ["metric" {"lib/uuid" "a"} 1] ["metric" {"lib/uuid" "b"} 2]])]
       (is (= :+ (first decoded))))))
 
-(deftest normalize-nested-string-expression-test
+(deftest ^:parallel normalize-nested-string-expression-test
   (testing "Nested expression with all strings normalizes correctly"
     (let [decoded (decode ::lib-metric.schema/metric-math-expression
                           ["-" {}
@@ -164,14 +164,14 @@
       (is (= :metric (first (nth decoded 2))))
       (is (= :measure (first (nth decoded 3)))))))
 
-(deftest normalize-instance-filter-test
+(deftest ^:parallel normalize-instance-filter-test
   (testing "Instance filter with string keys normalizes correctly"
     (let [decoded (decode ::lib-metric.schema/instance-filter
                           {"lib/uuid" "abc" "filter" ["=" {} ["dimension" {} "d1"] "val"]})]
       (is (= "abc" (:lib/uuid decoded)))
       (is (some? (:filter decoded))))))
 
-(deftest normalize-typed-projection-test
+(deftest ^:parallel normalize-typed-projection-test
   (testing "Typed projection with string keys normalizes correctly"
     (let [decoded (decode ::lib-metric.schema/typed-projection
                           {"type" "metric" "id" 42 "projection" [["dimension" {} "d1"]]})]

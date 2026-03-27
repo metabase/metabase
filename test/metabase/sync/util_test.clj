@@ -174,7 +174,7 @@
                               :end-time       (t/plus start (t/seconds 4))
                               :log-summary-fn log-summary-fn}]]}))
 
-(deftest log-summary-message-test
+(deftest ^:parallel log-summary-message-test
   (let [operation (mt/random-name)
         db-name   (mt/random-name)
         step-name (mt/random-name)]

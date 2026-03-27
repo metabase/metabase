@@ -59,7 +59,7 @@
              :schedule_hour  16
              :schedule_type  "weekly"})))))
 
-(deftest cron-string->schedule-map-test
+(deftest ^:parallel cron-string->schedule-map-test
   (is (= {:schedule_day    nil
           :schedule_frame  nil
           :schedule_hour   nil

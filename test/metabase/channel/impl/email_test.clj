@@ -118,7 +118,7 @@
                                     {:template-type :email/handlebars-resource
                                      :channel-type  :channel/email})))))))
 
-(deftest render-body-logging-test
+(deftest ^:parallel render-body-logging-test
   (testing "rendering a user-provided template logs the template body at debug level"
     (mt/with-log-messages-for-level [messages :debug]
       (let [template {:details {:type :email/handlebars-text

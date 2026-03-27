@@ -32,7 +32,7 @@
     :dataset_query (mt/mbql-query venues)
     :visualization_settings {:global {:title nil}}}))
 
-(deftest card-search-exclusion-test
+(deftest ^:parallel card-search-exclusion-test
   (testing "Cards with document_id are excluded from search indexing"
     (let [card-name (mt/random-name)
           regular-card-name (str card-name "-regular")]

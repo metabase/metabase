@@ -8,7 +8,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest fetch-groups-test
+(deftest ^:parallel fetch-groups-test
   (testing "GET /api/permissions/group - Data Analysts group is visible with the feature"
     (mt/with-premium-features #{:advanced-permissions}
       (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "permissions/group")))

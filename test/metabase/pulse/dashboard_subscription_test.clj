@@ -730,7 +730,7 @@
      (fn [_ emails]
        (is (empty? emails)))}}))
 
-(deftest use-default-values-test
+(deftest ^:parallel use-default-values-test
   (testing "Dashboard Subscriptions SHOULD use default values for Dashboard parameters when running (#20516)"
     (mt/dataset test-data
       (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard} {:name       "20516 Dashboard"
@@ -787,7 +787,7 @@
                       [10 "Mediocre Wooden Table" "Gizmo"]]
                      (mt/rows results))))))))))
 
-(deftest substitute-parameters-in-virtual-cards
+(deftest ^:parallel substitute-parameters-in-virtual-cards
   (testing "Parameters in virtual (text) cards should have parameter values substituted appropriately"
     (mt/with-temp [:model/Dashboard {dashboard-id :id :as dashboard} {:name "Params in Text Card Test"
                                                                       :parameters [{:name    "Category"
@@ -920,7 +920,7 @@
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
                     (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
 
-(deftest execute-dashboard-with-tabs-test
+(deftest ^:parallel execute-dashboard-with-tabs-test
   (mt/with-temp
     [:model/Dashboard           {dashboard-id :id
                                  :as dashboard}   {:name "Dashboard"}
@@ -955,7 +955,7 @@
               {:text "Card 2 tab-2", :type :text}]
              (execute-dashboard (:id dashboard) (mt/user->id :rasta) nil))))))
 
-(deftest execute-dashboard-with-empty-tabs-test
+(deftest ^:parallel execute-dashboard-with-empty-tabs-test
   (testing "Dashboard with one tab."
     (mt/with-temp
       [:model/Dashboard           {dashboard-id :id

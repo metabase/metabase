@@ -156,7 +156,7 @@
                                               (:body %)
                                               (-> % :body first :content)) emails)))))
 
-(deftest regex-email-bodies-test
+(deftest ^:parallel regex-email-bodies-test
   (letfn [(email [body] {:to #{"mail"}
                          :body [{:content body}]})
           (clean [emails] (m/map-vals #(map :body %) emails))]
@@ -497,7 +497,7 @@
    :email-smtp-port-override     :port
    :email-smtp-security-override :security})
 
-(deftest humanize-error-messages-test
+(deftest ^:parallel humanize-error-messages-test
   (testing "host and port"
     (is (= {:errors {:email-smtp-host "Wrong host or port", :email-smtp-port "Wrong host or port"}}
            (#'email/humanize-error-messages @#'api.email/mb-to-smtp-settings

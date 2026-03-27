@@ -39,7 +39,7 @@
    {:name " both field-id and column-name"
     :fmt-fn format-with-field-id-and-colname-keys}])
 
-(deftest regular-number-formatting
+(deftest ^:parallel regular-number-formatting
   (doseq [{:keys [name fmt-fn]} formatters]
     (let [value    12345.5432
           fmt-part (partial fmt-fn value)]
@@ -53,7 +53,7 @@
         (is (= "12,346" (fmt-part {::mb.viz/decimals 0})))
         (is (= "2" (fmt-fn 2 nil)))))))
 
-(deftest scientific-notation-formatting-test
+(deftest ^:parallel scientific-notation-formatting-test
   (doseq [{:keys [name fmt-fn]} formatters]
     (let [value    12345.5432
           fmt-part (partial fmt-fn value)]
@@ -74,7 +74,7 @@
         (is (= "-1.23E3" (fmt-fn -1234 {::mb.viz/number-style "scientific"})))
         (is (= "-1.23E4" (fmt-fn -12345 {::mb.viz/number-style "scientific"})))))))
 
-(deftest percentage-formatting-test
+(deftest ^:parallel percentage-formatting-test
   (doseq [{:keys [name fmt-fn]} formatters]
     (let [value    12345.5432
           fmt-part (partial fmt-fn value)]
@@ -95,7 +95,7 @@
         (is (= "0.00001%" (fmt-fn 0.0000001 {::mb.viz/number-style "percent"
                                              ::mb.viz/decimals     5})))))))
 
-(deftest natural-formatting-test
+(deftest ^:parallel natural-formatting-test
   (doseq [{:keys [name fmt-fn]} formatters]
     (testing (str "Natural formatting" name)
       ;; basically, for numbers greater than 1, round to 2 decimal places,
@@ -118,7 +118,7 @@
       (is (= ["2"    "0.000012"] [(fmt-fn 2.0000123456789M nil)
                                   (fmt-fn 0.0000123456789M nil)])))))
 
-(deftest currency-formatting-test
+(deftest ^:parallel currency-formatting-test
   (doseq [{:keys [name fmt-fn]} formatters]
     (let [value  12345.5432
           fmt-part (partial fmt-fn value)]
@@ -159,7 +159,7 @@
                                        ::mb.viz/currency-in-header false}))
                 style)))))))
 
-(deftest column-settings-formatting-test
+(deftest ^:parallel column-settings-formatting-test
   (letfn [(fmt-with-type
             ([type value] (fmt-with-type type value nil))
             ([type value decimals]
@@ -183,7 +183,7 @@
       (is (= "3.01" (fmt-with-type :type/Decimal 3.010)))
       (is (= "0.25" (fmt-with-type :type/Decimal 0.254))))))
 
-(deftest relation-types-formatting-test
+(deftest ^:parallel relation-types-formatting-test
   (letfn [(fmt-with-type
             ([type value] (fmt-with-type type value nil))
             ([type value decimals]
@@ -198,7 +198,7 @@
       (is (= "1000" (fmt-with-type :type/PK 1000)))
       (is (= "1000" (fmt-with-type :type/FK 1000))))))
 
-(deftest edge-case-formatting-test
+(deftest ^:parallel edge-case-formatting-test
   (testing "Does not throw on nils"
     (is (nil?
          ((formatter/number-formatter {:id 1}
@@ -214,7 +214,7 @@
                                           {::mb.viz/number-style "percent"}}})
             "bob")))))
 
-(deftest coords-formatting-test
+(deftest ^:parallel coords-formatting-test
   (testing "Test the correctness of formatting longitude and latitude values"
     (is (= "12.34560000° E"
            (formatter/format-geographic-coordinates :type/Longitude 12.3456)))
@@ -236,7 +236,7 @@
       (is (= ""
              (formatter/format-geographic-coordinates :type/Longitude nil))))))
 
-(deftest ambiguous-column-types-test
+(deftest ^:parallel ambiguous-column-types-test
   (testing "Ambiguous column types (eg. `:type/SnowflakeVariant` pass through the formatter without error (#46981)"
     (let [format (fn [value viz]
                    (str ((formatter/number-formatter {:id 1
@@ -269,7 +269,7 @@
           (is (str/starts-with? result "£")
               (str "Expected GBP symbol (£) but got: " result)))))))
 
-(deftest scalar-flag-inserts-currency-inline
+(deftest ^:parallel scalar-flag-inserts-currency-inline
   (testing "When the scalar flag is passed to `number-formatter` it puts the currency inline"
     (let [column {:id 1
                   :name "SUBTOTAL"

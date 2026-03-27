@@ -16,7 +16,7 @@
 ;; Use the default test fixture which sets up the test database
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(deftest job-tags-association-test
+(deftest ^:parallel job-tags-association-test
   (testing "Job-tag associations via join table"
     (mt/with-temp [:model/TransformJob job {}
                    :model/TransformTag tag1 {}
@@ -67,7 +67,7 @@
       (is (t2/exists? :model/TransformTag :id (:id tag))
           "Tag should still exist after job deletion"))))
 
-(deftest transform-tag-helper-functions-test
+(deftest ^:parallel transform-tag-helper-functions-test
   (testing "TransformTag helper functions"
     (mt/with-temp [:model/TransformTag tag {}]
       (testing "tag-name-exists?"
@@ -82,7 +82,7 @@
         (is (transform-tag/tag-name-exists-excluding? (:name tag) (inc (:id tag)))
             "Should return true when name exists but with different ID")))))
 
-(deftest hydrate-tag-ids-test
+(deftest ^:parallel hydrate-tag-ids-test
   (testing "TransformJob tag_ids hydration preserves position order"
     (mt/with-temp [:model/TransformJob job1 {:name "job1" :schedule "0 0 * * * ?"}
                    :model/TransformJob job2 {:name "job2" :schedule "0 0 * * * ?"}
@@ -163,7 +163,7 @@
               (is (= [(:id tag1) (:id tag3) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered with new tag added"))))))))
 
-(deftest table-with-db-and-fields-hydration-test
+(deftest ^:parallel table-with-db-and-fields-hydration-test
   (testing "table-with-db-and-fields hydration handles NULL schemas correctly"
     (mt/with-temp [:model/Database {db-id :id} {}
                    ;; Create tables with different schema values
@@ -227,7 +227,7 @@
           (is (not= other-table-id (-> hydrated :table :id))
               "Should not hydrate unrelated table"))))))
 
-(deftest creator-hydration-test
+(deftest ^:parallel creator-hydration-test
   (testing "Transform creator hydration returns user details"
     (let [user1-data {:first_name "Test"
                       :last_name  "Creator"
@@ -305,7 +305,7 @@
           (is (= transform-name (:transform_name run)))
           (is (= entity-id (:transform_entity_id run))))))))
 
-(deftest orphaned-run-hydration-test
+(deftest ^:parallel orphaned-run-hydration-test
   (testing "Hydrating :transform on orphaned runs returns {:name ... :deleted true}"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformRun run {:transform_id nil

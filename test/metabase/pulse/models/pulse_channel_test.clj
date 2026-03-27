@@ -14,7 +14,7 @@
 
 ;; Test out our predicate functions
 
-(deftest day-of-week?-test
+(deftest ^:parallel day-of-week?-test
   (doseq [[x expected] {nil   false
                         []    false
                         {}    false
@@ -25,7 +25,7 @@
       (is (= expected
              (pulse-channel/day-of-week? x))))))
 
-(deftest hour-of-day?-test
+(deftest ^:parallel hour-of-day?-test
   (doseq [[x expected] {nil   false
                         500   false
                         -12   false
@@ -38,7 +38,7 @@
       (is (= expected
              (pulse-channel/hour-of-day? x))))))
 
-(deftest schedule-type?-test
+(deftest ^:parallel schedule-type?-test
   (doseq [[x expected] {nil     false
                         "abc"   false
                         123     false
@@ -50,7 +50,7 @@
       (is (= expected
              (pulse-channel/schedule-type? x))))))
 
-(deftest schedule-frame?-test
+(deftest ^:parallel schedule-frame?-test
   (doseq [[x expected] {nil     false
                         "abc"   false
                         123     false
@@ -62,7 +62,7 @@
       (is (= expected
              (pulse-channel/schedule-frame? x))))))
 
-(deftest valid-schedule?-test
+(deftest ^:parallel valid-schedule?-test
   (doseq [[group args->expected] {"nil"
                                   {[nil nil nil nil]  false
                                    [:foo nil nil nil] false}
@@ -99,7 +99,7 @@
         (is (= expected
                (apply pulse-channel/valid-schedule? args)))))))
 
-(deftest channel-type?-test
+(deftest ^:parallel channel-type?-test
   (doseq [[x expected] {nil     false
                         "abc"   false
                         123     false
@@ -111,7 +111,7 @@
       (is (= expected
              (pulse-channel/channel-type? x))))))
 
-(deftest supports-recipients?-test
+(deftest ^:parallel supports-recipients?-test
   (doseq [[x expected] {nil    false
                         "abc"  false
                         :email true
@@ -310,7 +310,7 @@
           (is (= (not-empty (set (map mt/user->id expected)))
                  (upd-recipients! (map mt/user->id new-recipients)))))))))
 
-(deftest inactive-users-test
+(deftest ^:parallel inactive-users-test
   (testing "Inactive users shouldn't get Pulses"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Pulse                  {pulse-id :id} {}
@@ -336,7 +336,7 @@
                    :common_name "Rasta Toucan"}]))
                (:recipients (t2/hydrate channel :recipients))))))))
 
-(deftest validate-email-domains-check-user-ids-match-emails
+(deftest ^:parallel validate-email-domains-check-user-ids-match-emails
   (testing `pulse-channel/validate-email-domains
     (testing "should check that User `:id` and `:email`s match for User `:recipients`"
       (let [input {:recipients [{:email "rasta@metabase.com"

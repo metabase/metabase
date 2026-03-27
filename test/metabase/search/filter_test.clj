@@ -62,7 +62,7 @@
                   [filter-key (test-value-for-filter filter-key)])
                 active-filters)))
 
-(deftest search-context->applicable-models-test
+(deftest ^:parallel search-context->applicable-models-test
   (testing "All models (except transforms, which are admin-only) are relevant if we're not looking in the trash"
     (is (= (disj search.config/all-models "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
@@ -103,7 +103,7 @@
    :models                         (disj search.config/all-models "dataset")
    :enabled-transform-source-types #{"mbql"}})
 
-(deftest with-filters-test
+(deftest ^:parallel with-filters-test
   (mt/with-premium-features #{}
     (testing "The kitchen sink context is complete"
       (is (empty? (remove kitchen-sink-filter-context (filter-keys)))))

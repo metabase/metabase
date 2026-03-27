@@ -12,7 +12,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each with-advanced-permissions-fixture)
 
-(deftest permission-debug-test
+(deftest ^:parallel permission-debug-test
   (testing "GET /api/ee/permission_debug"
     (testing "should require superuser permissions"
       (is (= "You don't have permissions to do that."
@@ -100,7 +100,7 @@
           (is (contains? #{"allow" "limited" "denied"} (:decision response)))
           (is (= "card" (:model-type response))))))))
 
-(deftest permission-debug-invalid-scenarios-test
+(deftest ^:parallel permission-debug-invalid-scenarios-test
   (testing "GET /api/ee/permission_debug for invalid scenarios"
     (testing "should handle unknown permission types"
       (is (= {:specific-errors
@@ -119,7 +119,7 @@
                                    :model_id "999"
                                    :action_type "card/read"))))))
 
-(deftest permission-debug-response-schema-test
+(deftest ^:parallel permission-debug-response-schema-test
   (testing "GET /api/ee/permission_debug response schema validation"
     (mt/with-temp [:model/Collection collection {}
                    :model/Card card {:collection_id (:id collection)}]

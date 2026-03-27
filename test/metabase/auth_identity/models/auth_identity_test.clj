@@ -5,7 +5,7 @@
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
-(deftest user-creation-creates-password-auth-identity-test
+(deftest ^:parallel user-creation-creates-password-auth-identity-test
   (testing "User creation automatically creates password AuthIdentity with hashed password"
     (mt/with-temp [:model/User {user-id :id}]
       (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
@@ -78,7 +78,7 @@
           (is (= "new@example.com" (get-in updated [:metadata :email]))
               "Metadata should be updated correctly"))))))
 
-(deftest password-salt-uniqueness-test
+(deftest ^:parallel password-salt-uniqueness-test
   (testing "Each password hash uses a unique salt"
     (mt/with-temp [:model/User user-1 {}
                    :model/User user-2 {}]
@@ -91,7 +91,7 @@
                   (get-in auth-2 [:credentials :password_hash]))
             "Hashes should be different due to different salts")))))
 
-(deftest password-auth-identity-syncs-to-user-table-test
+(deftest ^:parallel password-auth-identity-syncs-to-user-table-test
   (testing "Password AuthIdentity automatically syncs to User table on creation"
     (mt/with-temp [:model/User {user-id :id}]
       (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
@@ -171,7 +171,7 @@
           (is (= original-salt (:password_salt user))
               "User password salt should remain unchanged after SSO metadata update"))))))
 
-(deftest auth-identity-user-consistency-test
+(deftest ^:parallel auth-identity-user-consistency-test
   (testing "AuthIdentity and User table remain consistent"
     (mt/with-temp [:model/User {user-id :id}]
       (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")

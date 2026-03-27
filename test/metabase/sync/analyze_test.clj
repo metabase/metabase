@@ -256,7 +256,7 @@
 
 (defn- not-category [x] (not= :type/Category (:semantic_type x)))
 
-(deftest classify-numeric-values-test
+(deftest ^:parallel classify-numeric-values-test
   (testing "Make sure Integer fields are not classified as Category"
     (let [field (mi/instance :model/Field {:base_type :type/Integer :name "foo_type"})
           fingerprint (fn [c] {:global {:distinct-count c :nil% 0}})
@@ -275,7 +275,7 @@
 
       (is (not-category (classifiers.name/infer-and-assoc-semantic-type-by-name field {}))))))
 
-(deftest classify-bool-values-test
+(deftest ^:parallel classify-bool-values-test
   (testing "Make sure Boolean fields are not classified as Category"
     (let [field (mi/instance :model/Field {:base_type :type/Boolean :name "active"})]
       (is (not-category (classifiers.category/infer-is-category field {})))

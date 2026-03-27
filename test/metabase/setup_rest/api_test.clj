@@ -219,7 +219,7 @@
       (with-setup! {:user {:email "setupper@setup.net"}}
         (is (= "setupper@setup.net" (t2/select-one-fn :email :model/User :email "setupper@setup.net")))))))
 
-(deftest has-user-setup-setting-test
+(deftest ^:parallel has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
     (let [user-count (t2/count :model/User {:where [:not= :id config/internal-mb-user-id]})]
       (if (zero? user-count)

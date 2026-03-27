@@ -771,7 +771,7 @@
               (is (false? (str/ends-with? question-dashboard-name "model")))
               (is (true? (str/ends-with? question-dashboard-name (format "\"%s\"" (:name question-card))))))))))))
 
-(deftest question-with-measure-xray-title-test
+(deftest ^:parallel question-with-measure-xray-title-test
   (testing "X-Ray dashboard should properly handle questions with measures"
     (let [mp (lib-be/application-database-metadata-provider (mt/id))
           venues-table (lib.metadata/table mp (mt/id :venues))
@@ -795,7 +795,7 @@
               (testing "Dashboard content should include the measure name"
                 (is (str/includes? all-text "Total Price"))))))))))
 
-(deftest model-with-measure-xray-title-test
+(deftest ^:parallel model-with-measure-xray-title-test
   (testing "X-Ray dashboard should properly handle models with measures"
     (let [mp (lib-be/application-database-metadata-provider (mt/id))
           venues-table (lib.metadata/table mp (mt/id :venues))
@@ -1113,7 +1113,7 @@
         (is (= []
                (magic/candidate-tables db)))))))
 
-(deftest enhance-table-stats-test
+(deftest ^:parallel enhance-table-stats-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table    {table-id :id} {:db_id db-id}
                  :model/Field    _ {:table_id table-id :semantic_type :type/PK}
@@ -1125,7 +1125,7 @@
                       (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
                           first)))))))
 
-(deftest enhance-table-stats-fk-test
+(deftest ^:parallel enhance-table-stats-fk-test
   (mt/with-temp [:model/Database {db-id :id}    {}
                  :model/Table    {table-id :id} {:db_id db-id}
                  :model/Field    _              {:table_id table-id :semantic_type :type/PK}

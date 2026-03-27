@@ -33,10 +33,10 @@
    (cloud-migration/migration-url (:external_id migration) "/uploaded")
    (constantly {:status 201})})
 
-(deftest cluster?-test
+(deftest ^:parallel cluster?-test
   (is (boolean? (cloud-migration/cluster?))))
 
-(deftest abs-progress-test
+(deftest ^:parallel abs-progress-test
   (is (= 51 (cloud-migration/abs-progress 0 51 99)))
   (is (= 75 (cloud-migration/abs-progress 50 51 99)))
   (is (= 99 (cloud-migration/abs-progress 100 51 99))))

@@ -884,7 +884,7 @@
 
 ;;; ----------------------------------------- Bearer Token Parsing ---------------------------------------------------
 
-(deftest extract-bearer-token-test
+(deftest ^:parallel extract-bearer-token-test
   (testing "standard Bearer token"
     (is (= "abc123" (oauth-server/extract-bearer-token {:headers {"authorization" "Bearer abc123"}}))))
   (testing "case-insensitive prefix"

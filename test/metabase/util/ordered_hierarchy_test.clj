@@ -18,7 +18,7 @@
     :right-angled-triangle
     :obtuse-triangle]))
 
-(deftest make-hierarchy-test
+(deftest ^:parallel make-hierarchy-test
   (testing "Hiccup structures have the expected topological order"
     (is (= [:isosceles-trapezoid
             :right-trapezoid

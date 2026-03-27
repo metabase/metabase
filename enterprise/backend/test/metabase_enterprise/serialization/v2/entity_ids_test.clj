@@ -84,7 +84,7 @@
                    (v2.entity-ids/drop-entity-ids!)))
               (is (nil? (t2/select-fn-set :entity-id :model/Dashboard))))))))))
 
-(deftest entity-ids-are-nullable
+(deftest ^:parallel entity-ids-are-nullable
   (testing "entity_id field should be nullable for model so that drop-entity-ids work (#36365)"
     (t2/with-connection [^java.sql.Connection conn]
       (doseq [m     (v2.entity-ids/toucan-models)

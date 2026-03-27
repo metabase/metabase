@@ -23,7 +23,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest log-tests
+(deftest ^:parallel log-tests
   (let [token (tu/random-token)
         print-token (apply str (concat (take 4 token) "..." (take-last 4 token)))]
     (testing "Do not log the token (#18249)"
@@ -73,7 +73,7 @@
     (is (=? {:valid false, :status "Token does not exist."}
             (token-check/check-token (tu/random-token))))))
 
-(deftest fetch-token-does-not-call-db-when-cached
+(deftest ^:parallel fetch-token-does-not-call-db-when-cached
   (testing "No DB calls are made when checking token status if the status is in local cache"
     (let [token (tu/random-token)
           _ (token-check/check-token token)
@@ -225,7 +225,7 @@
     (mt/with-temporary-setting-values [premium-embedding-token nil]
       (is (nil? (premium-features/token-status))))))
 
-(deftest active-users-count-setting-test
+(deftest ^:parallel active-users-count-setting-test
   (testing "returns the number of active users"
     (is (= (t2/count :model/User :is_active true :type :personal)
            (premium-features/active-users-count))))
@@ -234,7 +234,7 @@
     (binding [mdb.connection/*application-db* {:status (atom nil)}]
       (is (zero? (premium-features/active-users-count))))))
 
-(deftest RemoteCheckedToken-regexp
+(deftest ^:parallel RemoteCheckedToken-regexp
   (testing "valid tokens"
     (is (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 64 "a"))))
     (is (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str "mb_dev_" (repeat 57 "a")))))
@@ -349,7 +349,7 @@
             (token-check/send-metering-events!)
             (is (false? @request-made) "No request should be made for airgap tokens")))))))
 
-(deftest metering-stats-test
+(deftest ^:parallel metering-stats-test
   (testing "metering-stats returns expected keys"
     (let [stats (token-check/metering-stats)]
       (is (map? stats))
@@ -548,7 +548,7 @@
           (token-check/-clear-cache! checker-a)
           (token-check/-clear-cache! checker-b))))))
 
-(deftest db-hash-aware-token-checker-exception-propagation-test
+(deftest ^:parallel db-hash-aware-token-checker-exception-propagation-test
   (testing "When delegate throws on expired/missing, exception propagates through error-catching"
     (let [checker (make-db-hash-aware-checker
                    (fn [_token]

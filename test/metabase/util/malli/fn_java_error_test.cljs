@@ -16,7 +16,7 @@
   []
   (mu-fn))
 
-(deftest mu-defn-exception-handling-test
+(deftest ^:parallel mu-defn-exception-handling-test
   (testing "mu functions do not generate `java.lang.Exception`s"
     (let [result (try
                    (mu-fn-caller)

@@ -9,13 +9,13 @@
 
 ;;; ---------------------------------------- prompt content tests ---------------------------------------------------
 
-(deftest slackbot-prompt-display-guidance-test
+(deftest ^:parallel slackbot-prompt-display-guidance-test
   (testing "slackbot prompt contains display-related guidance"
     (let [prompt (slurp (io/resource "metabot/prompts/system/slackbot.selmer"))]
       (is (str/includes? prompt "Set `display` explicitly for Slackbot charts."))
       (is (str/includes? prompt "Do not omit `display` for chart or graph requests.")))))
 
-(deftest slackbot-prompt-narration-guidance-test
+(deftest ^:parallel slackbot-prompt-narration-guidance-test
   (testing "slackbot prompt contains updated narration guidance"
     (let [prompt (slurp (io/resource "metabot/prompts/system/slackbot.selmer"))]
       (is (str/includes? prompt "Default to no pre-tool text at all."))
@@ -23,7 +23,7 @@
 
 ;;; ---------------------------------------- schema tests -----------------------------------------------------------
 
-(deftest display-field-has-description-test
+(deftest ^:parallel display-field-has-description-test
   (testing "display field in slackbot-query-schema has a description in JSON Schema"
     (let [schema  @#'slackbot-query/slackbot-query-schema
           json-schema (mjs/transform schema)
@@ -33,7 +33,7 @@
       (is (str/includes? (:description display-prop) "Visualization type")
           "description should mention 'Visualization type'"))))
 
-(deftest display-field-is-optional-test
+(deftest ^:parallel display-field-is-optional-test
   (testing "display field is not in the required list"
     (let [schema  @#'slackbot-query/slackbot-query-schema
           json-schema (mjs/transform schema)

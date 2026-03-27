@@ -82,7 +82,7 @@
    :parameterized false
    :started_at    (t/offset-date-time)})
 
-(deftest schedule-cache-config->card-ids-test
+(deftest ^:parallel schedule-cache-config->card-ids-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
                  :model/Card {card-id-1 :id} {:name "Cached card 1"
                                               :dataset_query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}}
@@ -101,7 +101,7 @@
     (testing "Fetches card IDs associated with a dashboard cache config"
       (is (= [card-id-1 card-id-2] (@#'task.cache/schedule-cache-config->card-ids {:model_id dashboard-id :model "dashboard"}))))))
 
-(deftest scheduled-queries-to-rerun-test
+(deftest ^:parallel scheduled-queries-to-rerun-test
   (mt/with-premium-features #{:cache-granular-controls :cache-preemptive}
     (testing "Given a card, we rerun a limited number of variations of the card's query"
       (binding [qp.util/*execute-async?*             false
@@ -138,7 +138,7 @@
               (binding [task.cache/*parameterized-queries-to-rerun-per-card* 1]
                 (is (= [nil param-val-2] (map param-vals (to-rerun))))))))))))
 
-(deftest scheduled-base-query-to-rerun-edge-cases-test
+(deftest ^:parallel scheduled-base-query-to-rerun-edge-cases-test
   (let [query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}]
     (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                               :dataset_query query}
@@ -171,7 +171,7 @@
         (mt/with-temp [:model/QueryExecution {} (merge (query-execution-defaults query) {:parameterized true})]
           (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id)))))))))
 
-(deftest scheduled-parameterized-queries-to-rerun-edge-cases-test
+(deftest ^:parallel scheduled-parameterized-queries-to-rerun-edge-cases-test
   (let [query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}]
     (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                               :dataset_query query}
@@ -302,7 +302,7 @@
               (binding [task.cache/*parameterized-queries-to-rerun-per-card* 1]
                 (is (= [nil param-val-2] (map param-vals (to-rerun card-id))))))))))))
 
-(deftest duration-base-queries-to-rerun-edge-cases-test
+(deftest ^:parallel duration-base-queries-to-rerun-edge-cases-test
   (let [query-1            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
         query-2            {:database (mt/id), :type "native", :native {:query "SELECT * FROM y"}}
         query-1-cache-hash (qp.util/query-hash query-1)
@@ -393,7 +393,7 @@
             (is (= [] (t2/select :model/Query (@#'task.cache/duration-queries-to-rerun-honeysql
                                                [question-cache-config-1] false))))))))))
 
-(deftest duration-parameterized-queries-to-rerun-edge-cases-test
+(deftest ^:parallel duration-parameterized-queries-to-rerun-edge-cases-test
   (let [query-1            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
         query-2            {:database (mt/id), :type "native", :native {:query "SELECT * FROM y"}}
         query-1-cache-hash (qp.util/query-hash query-1)

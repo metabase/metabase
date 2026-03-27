@@ -55,7 +55,7 @@
                (for [row-index (range 0 4)]
                  (js.color/get-background-color color-selector "any value" "any column" row-index))))))))
 
-(deftest render-color-is-thread-safe-test
+(deftest ^:parallel render-color-is-thread-safe-test
   (is (every? some?
               (mt/repeat-concurrently
                3
@@ -91,7 +91,7 @@
           (testing "TextWrapper cell with original value of nil should not receive color"
             (is (nil? (js.color/get-background-color color-selector (formatter/->TextWrapper "" nil) "test" 0))))))))
 
-  (deftest convert-bignumbers-by-column-test
+  (deftest ^:parallel convert-bignumbers-by-column-test
     (testing "convert-bignumbers-by-column should convert BigDecimal and BigInteger values to doubles/longs"
       (let [convert-fn #'js.color/convert-bignumbers-by-column]
         (testing "empty data returns empty vector"

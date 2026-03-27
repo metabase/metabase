@@ -94,7 +94,7 @@
                     :is_group_manager false}}
                  (user-group-memberships user))))))))
 
-(deftest complete-membership-info-test
+(deftest ^:parallel complete-membership-info-test
   (testing "Group membership info is correctly added if not there"
     (let [new-info [{:id 1}
                     {:id 2}

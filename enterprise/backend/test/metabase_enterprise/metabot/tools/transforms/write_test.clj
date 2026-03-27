@@ -5,14 +5,14 @@
    [metabase.metabot.tools.transforms.write :as oss-transforms-write]
    [metabase.test :as mt]))
 
-(deftest create-fresh-python-template-test
+(deftest ^:parallel create-fresh-python-template-test
   (testing "fresh Python transforms include common import"
     (let [result (oss-transforms-write/create-fresh-transform
                   :python "Python Transform" nil 1 nil)]
       (is (= "import common\nimport pandas as pd\n\ndef transform():\n    # Your transformation logic here\n    return pd.DataFrame([{\"message\": \"Hello from Python transform!\"}])\n"
              (get-in result [:source :body]))))))
 
-(deftest create-fresh-python-transform-test
+(deftest ^:parallel create-fresh-python-transform-test
   (testing "creates fresh Python transform"
     (let [memory-atom (atom {:state {}})
           result (transforms-write/write-transform-python

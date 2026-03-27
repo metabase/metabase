@@ -30,7 +30,7 @@
 
 (defn- ts ^Timestamp [s] (Timestamp/from (Instant/parse s)))
 
-(deftest search-doc->gate-doc-test
+(deftest ^:parallel search-doc->gate-doc-test
   (testing "converts search document to gate document format"
     (let [t1         (ts "2025-01-01T12:00:00Z")
           t2         (ts "2025-01-02T12:00:00Z")
@@ -55,7 +55,7 @@
                (:updated_at (sut (dissoc search-doc :updated_at) t2))
                (:updated_at (sut (assoc search-doc :updated_at nil) t2))))))))
 
-(deftest gate-doc->search-doc-test
+(deftest ^:parallel gate-doc->search-doc-test
   (let [original-search-doc {:model "card" :id "123" :searchable_text "Dog Training Guide" :embeddable_text "Dog Training Guide"}
         gate-doc            {:document (doto (PGobject.)
                                          (.setType "jsonb")
@@ -246,7 +246,7 @@
                 (is (= [g2 g3] (poll-times {:last-poll (timestamp-plus g3 (.multipliedBy lag-tolerance 1000))
                                             :last-seen {:gated_at g2}})))))))))))
 
-(deftest watermark-management-test
+(deftest ^:parallel watermark-management-test
   (testing "next-watermark updates watermark based on poll results"
     (let [initial-watermark {:last-poll (ts "2025-01-01T12:00:00Z")
                              :last-seen {:id            "card_1"

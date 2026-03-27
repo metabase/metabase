@@ -28,7 +28,7 @@
   (is (= :completed (:status result)))
   (is (pos? (:row_count result))))
 
-(deftest execute-card-result-structure-test
+(deftest ^:parallel execute-card-result-structure-test
   (testing "execute-card returns only the expected keys"
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       (let [part   (notification.payload.execute/execute-card (mt/user->id :rasta) card-id)
@@ -36,7 +36,7 @@
         (is (= :card (:type part)))
         (check-result-structure result)))))
 
-(deftest execute-dashboard-subscription-card-result-structure-test
+(deftest ^:parallel execute-dashboard-subscription-card-result-structure-test
   (testing "execute-dashboard-subscription-card returns only the expected keys"
     (mt/with-temp [:model/Card      {card-id :id} {:dataset_query (mt/mbql-query venues)}
                    :model/Dashboard {dash-id :id} {}

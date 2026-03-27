@@ -8,7 +8,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest timelines-for-collection-test
+(deftest ^:parallel timelines-for-collection-test
   (mt/with-temp [:model/Collection collection {:name "Rasta's Collection"}]
     (let [coll-id  (u/the-id collection)
           event-names (fn [timelines]
@@ -36,7 +36,7 @@
                                                             :events/all?      true})
                         event-names)))))))))
 
-(deftest balloon-icon-migration-test
+(deftest ^:parallel balloon-icon-migration-test
   (testing "timelines with icon=balloons should use the default icon instead when selected"
     (mt/with-temp [:model/Timeline a {:icon "balloons"}
                    :model/Timeline b {:icon "cake"}]
@@ -45,7 +45,7 @@
       (is (= "cake"
              (t2/select-one-fn :icon :model/Timeline (u/the-id b)))))))
 
-(deftest hydrate-timeline-test
+(deftest ^:parallel hydrate-timeline-test
   (mt/with-temp [:model/Timeline      tl  {:name "tl-a"}
                  :model/TimelineEvent tle {:timeline_id (:id tl) :name "e-a"}]
     (is (= tl (:timeline (t2/hydrate tle :timeline))))))

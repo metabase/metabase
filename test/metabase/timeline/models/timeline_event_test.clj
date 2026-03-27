@@ -10,7 +10,7 @@
 (defn- names [timelines]
   (into #{} (comp (mapcat :events) (map :name)) timelines))
 
-(deftest hydrate-events-test
+(deftest ^:parallel hydrate-events-test
   (testing "hydrate-events function hydrates all timelines events"
     (mt/with-temp [:model/Collection _collection {:name "Rasta's Collection"}
                    :model/Timeline tl-a {:name "tl-a"}
@@ -28,7 +28,7 @@
         (is (= #{"un-1" "un-2" "archived-1" "archived-2"}
                (names (timeline-event/include-events [tl-a tl-b] {:events/all? true}))))))))
 
-(deftest balloon-icon-migration-test
+(deftest ^:parallel balloon-icon-migration-test
   (testing "timeline events with icon=balloons should use the default icon instead when selected"
     (mt/with-temp [:model/Timeline tl-a {:icon "balloons"}
                    :model/Timeline tl-b {:icon "cake"}

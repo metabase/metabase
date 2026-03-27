@@ -62,7 +62,7 @@
 ;; with the cell value. The script right now is hard coded to always return #ff0000. Once the real script is in place,
 ;; we should find some similar basic values that can rely on. The goal isn't to test out the javascript choosing in
 ;; the color (that should be done in javascript) but to verify that the pieces are all connecting correctly
-(deftest background-color-selection-smoke-test
+(deftest ^:parallel background-color-selection-smoke-test
   (let [columns       [{:name "a"} {:name "b"} {:name "c"}]
         query-results {:cols columns
                        :rows [[1 2 3]
@@ -89,7 +89,7 @@
                find-table-body
                cell-value->background-color)))))
 
-(deftest header-truncation-test []
+(deftest ^:parallel header-truncation-test []
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
         [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row} nil {} false)
                                                    (tree-seq vector? rest)

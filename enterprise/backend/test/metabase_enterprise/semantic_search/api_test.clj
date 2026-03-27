@@ -48,7 +48,7 @@
             (testing "returns empty map when no index is active"
               (is (= {} response)))))))))
 
-(deftest status-endpoint-permissions-test
+(deftest ^:parallel status-endpoint-permissions-test
   (testing "GET /api/ee/semantic-search/status permissions"
     (mt/with-premium-features #{:semantic-search}
       (testing "admin users can access status endpoint"

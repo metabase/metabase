@@ -60,7 +60,7 @@
               :context    nil}
              (latest-view (mt/user->id :crowberto) (u/id coll))))))))
 
-(deftest update-view-dashboard-timestamp-test
+(deftest ^:parallel update-view-dashboard-timestamp-test
   ;; the DB might save `last_used_at` with a different level of precision than the JVM does, on some machines
   ;; `offset-date-time` returns nanosecond precision (9 decimal places) but `last_viewed_at` is coming back with
   ;; microsecond precision (6 decimal places). We don't care about such a small difference, just strip it off of the
@@ -206,7 +206,7 @@
 
 ;;; ---------------------------------------- API tests begin -----------------------------------------
 
-(deftest get-collection-view-log-test
+(deftest ^:parallel get-collection-view-log-test
   (mt/with-premium-features #{:audit-app}
     (testing "Collection reads via the API are recorded in the view_log"
       (mt/with-temp [:model/Collection coll {}]
@@ -215,7 +215,7 @@
           (is (partial= {:user_id (mt/user->id :crowberto), :model "collection", :model_id (u/id coll)}
                         (latest-view (mt/user->id :crowberto) (u/id coll)))))))))
 
-(deftest get-card-view-log-test
+(deftest ^:parallel get-card-view-log-test
   (mt/with-premium-features #{:audit-app}
     (testing "Card reads (views) via the API are recorded in the view_log"
       (mt/with-temp [:model/Card card {:name "My Cool Card" :type :question
@@ -225,7 +225,7 @@
           (is (partial= {:user_id (mt/user->id :crowberto), :model "card", :model_id (u/id card), :context :question}
                         (latest-view (mt/user->id :crowberto) (u/id card)))))))))
 
-(deftest get-dashboard-view-log-test
+(deftest ^:parallel get-dashboard-view-log-test
   (mt/with-premium-features #{:audit-app}
     (testing "Dashboard reads (views) via the API are recorded in the view_log"
       (mt/with-temp [:model/Dashboard dash {}]
@@ -234,7 +234,7 @@
           (is (partial= {:user_id (mt/user->id :crowberto), :model "dashboard", :model_id (u/id dash)}
                         (latest-view (mt/user->id :crowberto) (u/id dash)))))))))
 
-(deftest dashboard-card-query-view-log-test
+(deftest ^:parallel dashboard-card-query-view-log-test
   (mt/with-premium-features #{:audit-app}
     (testing "Running a query for a card in a dashboard is recorded in the view_log."
       (mt/with-temp [:model/Dashboard     dash     {}

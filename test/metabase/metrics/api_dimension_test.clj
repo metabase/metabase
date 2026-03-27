@@ -46,7 +46,7 @@
           (is (= [[1] [2] [3] [4]] (:values response)))
           (is (false? (:has_more_values response))))))))
 
-(deftest dimension-values-missing-metric-test
+(deftest ^:parallel dimension-values-missing-metric-test
   (testing "GET /api/metric/:id/dimension/:key/values returns 404 for non-existent metric"
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404
@@ -84,7 +84,7 @@
                                              :query "Red Med")]
           (is (= [["Red Medicine"]] response)))))))
 
-(deftest dimension-search-missing-metric-test
+(deftest ^:parallel dimension-search-missing-metric-test
   (testing "GET /api/metric/:id/dimension/:key/search returns 404 for non-existent metric"
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404
@@ -124,7 +124,7 @@
                                              :value "1")]
           (is (= [1] response)))))))
 
-(deftest dimension-remapping-missing-metric-test
+(deftest ^:parallel dimension-remapping-missing-metric-test
   (testing "GET /api/metric/:id/dimension/:key/remapping returns 404 for non-existent metric"
     (is (= "Not found."
            (mt/user-http-request :rasta :get 404

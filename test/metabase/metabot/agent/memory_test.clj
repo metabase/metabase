@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.memory :as memory]))
 
-(deftest initialize-test
+(deftest ^:parallel initialize-test
   (testing "initializes memory with messages and state"
     (let [messages [{:role :user :content "Hello"}]
           state {:queries {} :charts {}}
@@ -18,7 +18,7 @@
       (is (= {:queries {} :charts {} :todos [] :transforms {} :link-registry {}}
              (:state mem))))))
 
-(deftest add-step-test
+(deftest ^:parallel add-step-test
   (testing "adds step to memory"
     (let [mem (memory/initialize [] {})
           parts [{:type :text :text "Response"}
@@ -38,13 +38,13 @@
       (is (= parts1 (-> mem' :steps-taken first :parts)))
       (is (= parts2 (-> mem' :steps-taken second :parts))))))
 
-(deftest get-state-test
+(deftest ^:parallel get-state-test
   (testing "retrieves state from memory"
     (let [state {:queries {"q1" {:id "q1"}} :charts {}}
           mem (memory/initialize [] state)]
       (is (= state (memory/get-state mem))))))
 
-(deftest update-state-test
+(deftest ^:parallel update-state-test
   (testing "updates state with new values"
     (let [mem (memory/initialize [] {:queries {}})
           mem' (memory/update-state mem {:charts {"c1" {:id "c1"}}})]
@@ -57,7 +57,7 @@
       (is (= {:queries {"q1" {:id "q1"}} :charts {"c1" {:id "c1"}}}
              (memory/get-state mem'))))))
 
-(deftest get-steps-test
+(deftest ^:parallel get-steps-test
   (testing "retrieves all steps"
     (let [parts1 [{:type :tool-input}]
           parts2 [{:type :text}]
@@ -68,14 +68,14 @@
       (is (= parts1 (-> mem memory/get-steps first :parts)))
       (is (= parts2 (-> mem memory/get-steps second :parts))))))
 
-(deftest get-input-messages-test
+(deftest ^:parallel get-input-messages-test
   (testing "retrieves input messages"
     (let [messages [{:role :user :content "Hello"}
                     {:role :assistant :content "Hi"}]
           mem (memory/initialize messages {})]
       (is (= messages (memory/get-input-messages mem))))))
 
-(deftest iteration-count-test
+(deftest ^:parallel iteration-count-test
   (testing "counts number of steps"
     (let [mem (-> (memory/initialize [] {})
                   (memory/add-step [{:type :tool-input}])

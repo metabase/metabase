@@ -14,7 +14,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest with-cluster-locking-test
+(deftest ^:parallel with-cluster-locking-test
   (testing "works when used non-concurrently"
     (is (nil? (sut/with-cluster-lock ::test-lock (Thread/sleep 1)))))
   (when (not= (mdb/db-type) :h2)

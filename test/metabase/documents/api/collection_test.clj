@@ -4,7 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]))
 
-(deftest document-cards-do-not-appear-in-collection-items
+(deftest ^:parallel document-cards-do-not-appear-in-collection-items
   (testing "GET /api/collection/:id/items excludes cards with document_id"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {}
@@ -25,7 +25,7 @@
                          (:data (mt/user-http-request :rasta :get 200
                                                       (str "collection/" coll-id "/items?show_dashboard_questions=true")))))))))))
 
-(deftest document-cards-do-not-appear-in-root-items
+(deftest ^:parallel document-cards-do-not-appear-in-root-items
   (testing "GET /api/collection/root/items excludes cards with document_id"
     (mt/with-temp [:model/Document {doc-id :id} {}
                    :model/Card {normal-card-id :id} {:collection_id nil
@@ -50,7 +50,7 @@
                    [dash-id "dashboard"]}
                  (set (map (juxt :id :model) root-test-items)))))))))
 
-(deftest documents-appear-in-collection-items
+(deftest ^:parallel documents-appear-in-collection-items
   (testing "GET /api/collection/:id/items includes documents"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:collection_id coll-id
@@ -65,7 +65,7 @@
                          (:data (mt/user-http-request :rasta :get 200
                                                       (str "collection/" coll-id "/items")))))))))))
 
-(deftest documents-appear-in-root-items
+(deftest ^:parallel documents-appear-in-root-items
   (testing "GET /api/collection/root/items includes documents"
     (mt/with-temp [:model/Document {doc-id :id} {:collection_id nil
                                                  :name "Root Document"}
@@ -84,7 +84,7 @@
                    [dash-id "dashboard"]}
                  (set (map (juxt :id :model) root-test-items)))))))))
 
-(deftest archived-documents-appear-in-trash-items
+(deftest ^:parallel archived-documents-appear-in-trash-items
   (testing "GET /api/collection/trash/items includes documents with archived_directly true"
     (mt/with-temp [:model/Document {archived-doc-id :id} {:collection_id nil
                                                           :name "Archived Document"
@@ -112,7 +112,7 @@
           (testing "Non-archived documents do not appear in trash"
             (is (not (some #(= normal-doc-id (:id %)) trash-test-items)))))))))
 
-(deftest document-pinning-collection-items
+(deftest ^:parallel document-pinning-collection-items
   (testing "GET /api/collection/:id/items supports pinned_state parameter for documents"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {pinned-doc-id :id} {:collection_id coll-id
@@ -154,7 +154,7 @@
           (is (contains? item-ids ["document" unpinned-doc-id]))
           (is (contains? item-ids ["card" unpinned-card-id])))))))
 
-(deftest document-pinning-root-items
+(deftest ^:parallel document-pinning-root-items
   (testing "GET /api/collection/root/items supports pinned_state parameter for documents"
     (mt/with-temp [:model/Document {pinned-doc-id :id} {:collection_id nil
                                                         :name "Pinned Root Document"
@@ -184,7 +184,7 @@
           (is (contains? test-item-ids ["document" unpinned-doc-id]))
           (is (contains? test-item-ids ["card" unpinned-card-id])))))))
 
-(deftest mixed-pinned-unpinned-documents-collection-view
+(deftest ^:parallel mixed-pinned-unpinned-documents-collection-view
   (testing "Integration test for mixed pinned/unpinned documents in collection view"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc1-id :id} {:collection_id coll-id

@@ -90,7 +90,7 @@
                                                              :dashboard_id dest-dash-id})
         (is (= #{nil} (t2/select-fn-set :dashboard_id :model/Card :id [:in [card-1-id card-2-id]])))))))
 
-(deftest dashboards-for-cards-endpoint-has-no-n+1
+(deftest ^:parallel dashboards-for-cards-endpoint-has-no-n+1
   (mt/with-temp [:model/Card {c1 :id} {}
                  :model/Card {c2 :id} {}
                  :model/Card {c3 :id} {}

@@ -23,7 +23,7 @@
   [username]
   (format "Hi %s, you're not extra special :(" (name username)))
 
-(deftest defenterprise-test
+(deftest ^:parallel defenterprise-test
   (when-not config/ee-available?
     (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
       (is (= "Hi rasta, you're an OSS customer!"
@@ -84,13 +84,13 @@
   [username]
   (format "Hi %s, you're an OSS customer!" username))
 
-(deftest defenterprise-preserves-user-metadata-test
+(deftest ^:parallel defenterprise-preserves-user-metadata-test
   (testing "User-provided metadata on the defenterprise symbol is preserved on the resulting var"
     (is (= "greeting_with_meta" (:tool-name (meta #'greeting-with-user-metadata))))
     (is (= :custom-value (:custom-key (meta #'greeting-with-user-metadata))))
     (is (= '([& args]) (:arglists (meta #'greeting-with-user-metadata))))))
 
-(deftest defenterprise-schema-test
+(deftest ^:parallel defenterprise-schema-test
   (when-not config/ee-available?
     (testing "Argument schemas are validated for OSS implementations"
       (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))

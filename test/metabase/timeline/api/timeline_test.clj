@@ -18,7 +18,7 @@
 (defn- event-names [timelines]
   (->> timelines (mapcat :events) (map :name) set))
 
-(deftest collection-timelines-test
+(deftest ^:parallel collection-timelines-test
   (testing "GET /api/timeline/collection/root|id"
     (mt/with-temp [:model/Collection coll-a {:name "Collection A"}
                    :model/Collection coll-b {:name "Collection B"}

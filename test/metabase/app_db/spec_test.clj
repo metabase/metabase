@@ -11,7 +11,7 @@
    :OpenSourceSubProtocolOverride true
    :ApplicationName               config/mb-version-and-process-identifier})
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (testing "Basic minimal config"
     (is (= (default-pg-spec "metabase")
            (mdb.spec/spec
@@ -20,7 +20,7 @@
              :port 5432
              :db   "metabase"})))))
 
-(deftest defaults-test
+(deftest ^:parallel defaults-test
   (testing (str "Users that don't specify a `:dbname` (and thus no `:db`) will use the user's default, we should "
                 "allow that")
     (is (= (assoc (default-pg-spec "") :dbname nil)
@@ -31,7 +31,7 @@
              :dbname nil
              :db     nil})))))
 
-(deftest allow-other-nils-test
+(deftest ^:parallel allow-other-nils-test
   (testing "We should be tolerant of other random nil values sneaking through"
     (is (= (assoc (default-pg-spec "") :dbname nil, :somethingrandom nil)
            (mdb.spec/spec
@@ -42,7 +42,7 @@
              :db              nil
              :somethingrandom nil})))))
 
-(deftest postgres-default-values-test
+(deftest ^:parallel postgres-default-values-test
   (testing "Not specifying any of the values results in defaults"
     (is (= (default-pg-spec "")
            (mdb.spec/spec :postgres {})))))
@@ -52,7 +52,7 @@
    :subprotocol                   "mysql"
    :subname                       (format "//localhost:3306/%s" db)})
 
-(deftest mysql-default-port-test
+(deftest ^:parallel mysql-default-port-test
   (testing "Check that we default to port 3306 for MySQL databases, if `:port` is `nil`"
     (is (= (assoc (default-mysql-spec "") :dbname nil)
            (mdb.spec/spec

@@ -90,7 +90,7 @@
    :aggregated-query-row-limit nil
    :anon-tracking-enabled true})
 
-(deftest test-config-template
+(deftest ^:parallel test-config-template
   (testing "Setting map for config file is formatted as expected."
     (let [settings (create-settings-map example-settings)]
       (is (= settings-map

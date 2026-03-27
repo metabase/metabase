@@ -165,7 +165,7 @@
                   :status-code 400}
                  (metabot.tools.filters/query-metric {:metric-id (str metric-id)}))))))))
 
-(deftest query-metric-temporal-value-validation-test
+(deftest ^:parallel query-metric-temporal-value-validation-test
   (let [mp (mt/metadata-provider)
         created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
         metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))

@@ -4,7 +4,7 @@
    [metabase.notification.payload.impl.dashboard :as notification.dashboard]
    [metabase.test :as mt]))
 
-(deftest parameters-test
+(deftest ^:parallel parameters-test
   (testing "Get params from both pulse and dashboard if :dashboard-subscription-filters feature is enabled"
     (mt/with-premium-features #{:dashboard-subscription-filters}
       (is (= [{:id "1" :v "a"}

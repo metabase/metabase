@@ -576,7 +576,7 @@
 (defmacro ^:private with-n-temp-users-with-personal-collections [num-users & body]
   `(do-with-n-temp-users-with-personal-collections! ~num-users (fn [] ~@body)))
 
-(deftest mega-graph-test
+(deftest ^:parallel mega-graph-test
   (testing "A truly insane amount of Personal Collections shouldn't cause a Stack Overflow (#13211)"
     (with-n-temp-users-with-personal-collections 2000
       (is (>= (t2/count :model/Collection :personal_owner_id [:not= nil]) 2000))

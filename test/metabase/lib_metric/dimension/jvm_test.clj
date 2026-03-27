@@ -11,7 +11,7 @@
 
 ;;; ---------------------------------------- enrich-columns-with-has-field-values ----------------------------------------
 
-(deftest enrich-columns-with-has-field-values-test
+(deftest ^:parallel enrich-columns-with-has-field-values-test
   (testing "enriches columns that have field IDs with :has-field-values"
     (let [mp       (mt/metadata-provider)
           table    (lib.metadata/table mp (mt/id :venues))
@@ -33,7 +33,7 @@
 
 ;;; ---------------------------------------- compute-dimension-pairs ----------------------------------------
 
-(deftest compute-dimension-pairs-test
+(deftest ^:parallel compute-dimension-pairs-test
   (testing "computes dimension pairs from a metric query"
     (let [mp     (lib-metric.metadata.jvm/metadata-provider)
           table  (lib.metadata/table (mt/metadata-provider) (mt/id :venues))
@@ -54,7 +54,7 @@
                 (str "dimension " (get-in pair [:dimension :name])
                      " should have a valid :has-field-values value"))))))))
 
-(deftest compute-dimension-pairs-has-field-values-for-category-columns-test
+(deftest ^:parallel compute-dimension-pairs-has-field-values-for-category-columns-test
   (testing "CATEGORY_ID dimension has :has-field-values populated"
     (let [mp     (lib-metric.metadata.jvm/metadata-provider)
           table  (lib.metadata/table (mt/metadata-provider) (mt/id :venues))

@@ -4,7 +4,7 @@
    [metabase.internal-stats.users :as sut]
    [metabase.test :as mt]))
 
-(deftest email-domain-count-test
+(deftest ^:parallel email-domain-count-test
   (testing "counts different email domains"
     (mt/with-temp [:model/User _ {:email "ed@gmail.com"}
                    :model/User _ {:email "ted@gmail.com"}
@@ -18,7 +18,7 @@
                    :model/User _ {:email "ted@metalbase.com"}]
       (is (= 4 (sut/email-domain-count))))))
 
-(deftest external-users-count-test
+(deftest ^:parallel external-users-count-test
   (testing "counts users with sso source jwt domains"
     (mt/with-temp [:model/User _ {:sso_source :jwt}
                    :model/User _ {:sso_source :jwt}

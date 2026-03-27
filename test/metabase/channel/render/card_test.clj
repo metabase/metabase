@@ -348,7 +348,7 @@
                                                               {:channel.render/include-title? true})]
           (is (pos? (alength ba)) "PNG byte array should not be empty"))))))
 
-(deftest render-card-with-day-date-style-test
+(deftest ^:parallel render-card-with-day-date-style-test
   (testing "Static-viz should render without error when date formatting contains day (metabase#27105)"
     (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
                                                               :type     :native
@@ -368,7 +368,7 @@
                                                             {:channel.render/include-title? true})]
         (is (pos? (alength ba)) "PNG byte array should not be empty")))))
 
-(deftest render-card-with-unused-column-test
+(deftest ^:parallel render-card-with-unused-column-test
   (testing "Static-viz render does not throw when there is an unused returned column (metabase#27427)"
     (let [q (mt/mbql-query orders
               {:aggregation [[:count] [:sum $total]]

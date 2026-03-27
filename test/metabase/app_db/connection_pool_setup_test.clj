@@ -48,7 +48,7 @@
   (dotimes [_ 5]
     (t2/count :model/Database)))
 
-(deftest MetabaseConnectionCustomizer-test
+(deftest ^:parallel MetabaseConnectionCustomizer-test
   (testing "connection customizer is registered"
     (let [customizer (C3P0Registry/getConnectionCustomizer (.getName MetabaseConnectionCustomizer))]
       (is (some? customizer) "ConnectionCustomizer is not registered with c3p0")
@@ -73,7 +73,7 @@
               "recent-checkin should be a temporal type (OffsetDateTime)")))
       (finally (remove-watch (var-get #'mdb.connection-pool-setup/latest-activity)
                              ::MetabaseConnectionCustomizer-test)))))
-(deftest recent-activity-test
+(deftest ^:parallel recent-activity-test
   ;; these tests are difficult to make non-flaky. Other threads can hit the db of course, and the lifecycle of the
   ;; connection pool is worked from other threads. This means we can't isolate the `latest-checkin` atom. Many will take
   ;; the value of the checkin timestamp and pass it to `recent-activity?*` to act on the value at the time it cares

@@ -117,7 +117,7 @@
           ;; Python transforms have table_ids since source-tables maps to existing table IDs
           (is (every? :table_id inputs)))))))
 
-(deftest analyze-entity-asserts-transform-type-test
+(deftest ^:parallel analyze-entity-asserts-transform-type-test
   (testing "analyze-entity asserts entity-type is :transform"
     (is (thrown-with-msg? Exception #"Only transform entity type is supported"
                           (ws.deps/analyze-entity :card {})))))

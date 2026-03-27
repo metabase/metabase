@@ -76,7 +76,7 @@
                     :recipients   [{:type    :notification-recipient/user
                                     :user_id 1}]}]})
 
-(deftest action-test
+(deftest ^:parallel action-test
   (let [check-change (fn [new-notification]
                        (#'notification.seed/action test-notification new-notification))]
     (testing ":skip if nothing changed"

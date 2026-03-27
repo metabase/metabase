@@ -45,7 +45,7 @@
         (mt/assert-has-premium-feature-error "Official Collections" (mt/user-http-request :crowberto :post 402 "collection" {:name            "An official collection"
                                                                                                                              :authority_level "official"}))))))
 
-(deftest update-collection-authority-happy-path-test
+(deftest ^:parallel update-collection-authority-happy-path-test
   (testing "PUT /api/collection/:id"
     (testing "update authority_level when has :official-collections feature"
       (mt/with-premium-features #{:official-collections}
@@ -76,7 +76,7 @@
           [:model/Collection {id :id} {:authority_level nil}]
           (mt/assert-has-premium-feature-error "Official Collections" (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"})))))))
 
-(deftest update-collection-authority-backward-compatible-test
+(deftest ^:parallel update-collection-authority-backward-compatible-test
   ;; edge cases we need to handle for backwards compatibility see metabase-private#77
   (testing "backwards-compatible check when doesn't have :official-collections feature\n"
     (mt/with-premium-features #{}
@@ -92,7 +92,7 @@
           (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level nil :name "New name"})
           (is (= "New name" (t2/select-one-fn :name :model/Collection id))))))))
 
-(deftest moderation-review-test
+(deftest ^:parallel moderation-review-test
   (mt/with-temp
     [:model/Card {card-id :id} {:name "A question"}
      :model/Card {model-id :id} {:name "A question" :type :model}]

@@ -12,19 +12,19 @@
 
 ;; bulk-set-remote-sync tests
 
-(deftest bulk-set-remote-sync-enables-single-collection-test
+(deftest ^:parallel bulk-set-remote-sync-enables-single-collection-test
   (testing "bulk-set-remote-sync enables remote sync on a single collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
       (core/bulk-set-remote-sync {coll-id true})
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))
 
-(deftest bulk-set-remote-sync-disables-single-collection-test
+(deftest ^:parallel bulk-set-remote-sync-disables-single-collection-test
   (testing "bulk-set-remote-sync disables remote sync on a single collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced true}]
       (core/bulk-set-remote-sync {coll-id false})
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))
 
-(deftest bulk-set-remote-sync-enables-multiple-collections-test
+(deftest ^:parallel bulk-set-remote-sync-enables-multiple-collections-test
   (testing "bulk-set-remote-sync enables remote sync on multiple collections"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
                    :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced false}]
@@ -32,7 +32,7 @@
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id)))))))
 
-(deftest bulk-set-remote-sync-mixed-operations-test
+(deftest ^:parallel bulk-set-remote-sync-mixed-operations-test
   (testing "bulk-set-remote-sync handles mixed enable/disable operations"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
                    :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}]
@@ -40,7 +40,7 @@
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id)))))))
 
-(deftest bulk-set-remote-sync-cascades-to-descendants-test
+(deftest ^:parallel bulk-set-remote-sync-cascades-to-descendants-test
   (testing "bulk-set-remote-sync cascades remote sync to descendant collections when enabling"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced false}
                    :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced false}
@@ -50,7 +50,7 @@
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id)))))))
 
-(deftest bulk-set-remote-sync-cascades-disable-to-descendants-test
+(deftest ^:parallel bulk-set-remote-sync-cascades-disable-to-descendants-test
   (testing "bulk-set-remote-sync cascades disable to descendant collections"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
                    :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced true}
@@ -60,7 +60,7 @@
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id)))))))
 
-(deftest bulk-set-remote-sync-throws-on-non-remote-synced-dependencies-test
+(deftest ^:parallel bulk-set-remote-sync-throws-on-non-remote-synced-dependencies-test
   (testing "bulk-set-remote-sync throws when enabling a collection with non-remote-synced dependencies"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote Synced" :location "/" :is_remote_synced false}
                    :model/Collection {regular-coll-id :id} {:name "Regular" :location "/" :is_remote_synced false}
@@ -77,7 +77,7 @@
            #"Uses content that is not remote synced"
            (core/bulk-set-remote-sync {remote-synced-coll-id true}))))))
 
-(deftest bulk-set-remote-sync-throws-on-remote-synced-dependents-test
+(deftest ^:parallel bulk-set-remote-sync-throws-on-remote-synced-dependents-test
   (testing "bulk-set-remote-sync throws when disabling a collection that has remote-synced dependents"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced true}
                    :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}
@@ -94,13 +94,13 @@
            #"Used by remote synced content"
            (core/bulk-set-remote-sync {coll1-id false}))))))
 
-(deftest bulk-set-remote-sync-empty-map-no-op-test
+(deftest ^:parallel bulk-set-remote-sync-empty-map-no-op-test
   (testing "bulk-set-remote-sync with empty map is a no-op"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
       (core/bulk-set-remote-sync {})
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))
 
-(deftest bulk-set-remote-sync-transaction-rollback-on-error-test
+(deftest ^:parallel bulk-set-remote-sync-transaction-rollback-on-error-test
   (testing "bulk-set-remote-sync rolls back all changes on error"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced true}
                    :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}
@@ -118,7 +118,7 @@
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id)))))))
 
-(deftest bulk-set-remote-sync-allows-disabling-when-no-dependents-test
+(deftest ^:parallel bulk-set-remote-sync-allows-disabling-when-no-dependents-test
   (testing "bulk-set-remote-sync allows disabling when there are no external remote-synced dependents"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced true}
                    :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced false}
@@ -206,7 +206,7 @@
 
 ;;; ------------------------------------------- No-Op Optimization Tests -------------------------------------------
 
-(deftest bulk-set-remote-sync-skips-already-enabled-collections-test
+(deftest ^:parallel bulk-set-remote-sync-skips-already-enabled-collections-test
   (testing "bulk-set-remote-sync does not update collections that are already in the target state (enable)"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
                    :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced true}]
@@ -217,7 +217,7 @@
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child-id)))))))
 
-(deftest bulk-set-remote-sync-skips-already-disabled-collections-test
+(deftest ^:parallel bulk-set-remote-sync-skips-already-disabled-collections-test
   (testing "bulk-set-remote-sync does not update collections that are already in the target state (disable)"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced false}
                    :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced false}]
@@ -228,7 +228,7 @@
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
       (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child-id)))))))
 
-(deftest bulk-set-remote-sync-only-updates-changed-descendants-test
+(deftest ^:parallel bulk-set-remote-sync-only-updates-changed-descendants-test
   (testing "bulk-set-remote-sync only updates descendants that need changing"
     ;; Create all collections with is_remote_synced=false first (valid state),
     ;; then update child2 directly to avoid before-insert validation
@@ -245,7 +245,7 @@
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child1-id))))
       (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child2-id)))))))
 
-(deftest bulk-set-remote-sync-only-updates-changed-descendants-disable-test
+(deftest ^:parallel bulk-set-remote-sync-only-updates-changed-descendants-disable-test
   (testing "bulk-set-remote-sync only updates descendants that need changing (disable)"
     ;; Create all collections with is_remote_synced=true first (valid state),
     ;; then update child2 directly to avoid before-insert validation
@@ -264,7 +264,7 @@
 
 ;;; ------------------------------------------- batch-model-eligible? Tests -------------------------------------------
 
-(deftest batch-model-eligible-for-remote-sync-cards-in-remote-synced-collection-test
+(deftest ^:parallel batch-model-eligible-for-remote-sync-cards-in-remote-synced-collection-test
   (testing "returns true for cards in remote-synced collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}
                    :model/Card card1 {:collection_id coll-id}
@@ -272,14 +272,14 @@
       (is (= {(:id card1) true, (:id card2) true}
              (core/batch-model-eligible? :model/Card [card1 card2]))))))
 
-(deftest batch-model-eligible-for-remote-sync-cards-not-in-remote-synced-collection-test
+(deftest ^:parallel batch-model-eligible-for-remote-sync-cards-not-in-remote-synced-collection-test
   (testing "returns false for cards NOT in remote-synced collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced false}
                    :model/Card card {:collection_id coll-id}]
       (is (= {(:id card) false}
              (core/batch-model-eligible? :model/Card [card]))))))
 
-(deftest batch-model-eligible-for-remote-sync-snippets-library-synced-test
+(deftest ^:parallel batch-model-eligible-for-remote-sync-snippets-library-synced-test
   (testing "snippets eligible when Library is synced"
     (with-library-synced
       (mt/with-temp [:model/Collection {snippet-coll-id :id} {:namespace "snippets"}
@@ -289,7 +289,7 @@
         (is (= {(:id snippet) true}
                (core/batch-model-eligible? :model/NativeQuerySnippet [snippet])))))))
 
-(deftest batch-model-eligible-for-remote-sync-snippets-library-not-synced-test
+(deftest ^:parallel batch-model-eligible-for-remote-sync-snippets-library-not-synced-test
   (testing "snippets NOT eligible when Library is not synced"
     (with-library-not-synced
       (mt/with-temp [:model/Collection {snippet-coll-id :id} {:namespace "snippets"}
@@ -299,7 +299,7 @@
         (is (= {(:id snippet) false}
                (core/batch-model-eligible? :model/NativeQuerySnippet [snippet])))))))
 
-(deftest batch-model-eligible-for-remote-sync-unknown-model-test
+(deftest ^:parallel batch-model-eligible-for-remote-sync-unknown-model-test
   (testing "unknown model returns false for all instances"
     (is (= {1 false, 2 false}
            (core/batch-model-eligible? :model/UnknownModel [{:id 1} {:id 2}])))))

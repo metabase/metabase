@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.test :as mt]))
 
-(deftest source-database-id-set-test
+(deftest ^:parallel source-database-id-set-test
   (testing "inserting a transform correctly sets the source-database-id column"
     (mt/with-temp [:model/Transform transform
                    {:name   "Test Transform"

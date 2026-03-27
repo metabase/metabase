@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest is-temp-transform-tables-ee-test
+(deftest ^:parallel is-temp-transform-tables-ee-test
   (testing "tables with schema"
     (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
           table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]

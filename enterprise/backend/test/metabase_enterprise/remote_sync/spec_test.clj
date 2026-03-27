@@ -10,7 +10,7 @@
 
 ;;; ------------------------------------------------ Spec Validation Tests ---------------------------------------------
 
-(deftest all-specs-have-required-keys-test
+(deftest ^:parallel all-specs-have-required-keys-test
   (testing "Every spec has all required keys"
     (let [required-keys #{:model-type :model-key :identity :events :eligibility
                           :archived-key :tracking :removal :enabled?}]
@@ -20,7 +20,7 @@
             (is (empty? missing-keys)
                 (str "Missing keys: " missing-keys))))))))
 
-(deftest all-specs-have-valid-identity-test
+(deftest ^:parallel all-specs-have-valid-identity-test
   (testing "Every spec has a valid identity type"
     (let [valid-identity-types #{:entity-id :path :hybrid}]
       (doseq [[model-key spec] spec/remote-sync-specs]
@@ -28,7 +28,7 @@
           (is (contains? valid-identity-types (:identity spec))
               (str "Invalid identity type: " (:identity spec))))))))
 
-(deftest path-based-specs-have-path-keys-test
+(deftest ^:parallel path-based-specs-have-path-keys-test
   (testing "Specs with :path or :hybrid identity have :path-keys"
     (doseq [[model-key spec] spec/remote-sync-specs
             :when (#{:path :hybrid} (:identity spec))]
@@ -38,7 +38,7 @@
         (is (seq (:path-keys spec))
             "path-keys should not be empty")))))
 
-(deftest all-specs-have-valid-eligibility-test
+(deftest ^:parallel all-specs-have-valid-eligibility-test
   (testing "Every spec has a valid eligibility type"
     (let [valid-eligibility-types #{:collection :published-table :parent-table :setting :library-synced}]
       (doseq [[model-key spec] spec/remote-sync-specs]
@@ -46,7 +46,7 @@
           (is (contains? valid-eligibility-types (get-in spec [:eligibility :type]))
               (str "Invalid eligibility type: " (get-in spec [:eligibility :type]))))))))
 
-(deftest all-specs-have-valid-events-test
+(deftest ^:parallel all-specs-have-valid-events-test
   (testing "Every spec has valid events configuration"
     (doseq [[model-key spec] spec/remote-sync-specs]
       (testing (str "Spec for " model-key)
@@ -57,7 +57,7 @@
         (is (every? #{:create :update :delete :publish :unpublish} (get-in spec [:events :types]))
             "events :types should only contain :create, :update, :delete, :publish, :unpublish")))))
 
-(deftest all-specs-have-valid-tracking-test
+(deftest ^:parallel all-specs-have-valid-tracking-test
   (testing "Every spec has valid tracking configuration"
     (doseq [[model-key spec] spec/remote-sync-specs]
       (testing (str "Spec for " model-key)
@@ -68,7 +68,7 @@
           (is (map? (:field-mappings tracking))
               "tracking :field-mappings should be a map"))))))
 
-(deftest all-specs-have-valid-removal-test
+(deftest ^:parallel all-specs-have-valid-removal-test
   (testing "Every spec has valid removal configuration"
     (doseq [[model-key spec] spec/remote-sync-specs]
       (testing (str "Spec for " model-key)
@@ -79,7 +79,7 @@
           (is (keyword? scope-key)
               "removal :scope-key should be a keyword when present"))))))
 
-(deftest parent-fk-specs-are-valid-test
+(deftest ^:parallel parent-fk-specs-are-valid-test
   (testing "Every spec with :parent-model and :parent-fk has a keyword :parent-fk"
     (doseq [[model-key spec] spec/remote-sync-specs
             :when (and (:parent-model spec)
@@ -102,7 +102,7 @@
 
 ;;; ------------------------------------------------ Helper Function Tests ---------------------------------------------
 
-(deftest spec-for-model-type-test
+(deftest ^:parallel spec-for-model-type-test
   (testing "spec-for-model-type returns correct spec"
     (is (= :model/Card (:model-key (spec/spec-for-model-type "Card"))))
     (is (= :model/Dashboard (:model-key (spec/spec-for-model-type "Dashboard"))))
@@ -110,14 +110,14 @@
     (is (= :model/Measure (:model-key (spec/spec-for-model-type "Measure"))))
     (is (nil? (spec/spec-for-model-type "NonExistent")))))
 
-(deftest spec-for-model-key-test
+(deftest ^:parallel spec-for-model-key-test
   (testing "spec-for-model-key returns correct spec"
     (is (= "Card" (:model-type (spec/spec-for-model-key :model/Card))))
     (is (= "Dashboard" (:model-type (spec/spec-for-model-key :model/Dashboard))))
     (is (= "Measure" (:model-type (spec/spec-for-model-key :model/Measure))))
     (is (nil? (spec/spec-for-model-key :model/NonExistent)))))
 
-(deftest all-model-types-test
+(deftest ^:parallel all-model-types-test
   (testing "all-model-types returns all model type strings"
     (let [types (spec/all-model-types)]
       (is (set? types))
@@ -197,7 +197,7 @@
 
 ;;; ------------------------------------------------ Event Helper Tests ------------------------------------------------
 
-(deftest determine-status-test
+(deftest ^:parallel determine-status-test
   (testing "determine-status for create event"
     (let [spec (spec/spec-for-model-key :model/Card)]
       (is (= "create" (spec/determine-status spec :event/card-create {:archived false})))))
@@ -214,7 +214,7 @@
     (let [spec (spec/spec-for-model-key :model/Card)]
       (is (= "delete" (spec/determine-status spec :event/card-update {:archived true}))))))
 
-(deftest event-keywords-test
+(deftest ^:parallel event-keywords-test
   (testing "event-keywords generates correct keywords"
     (let [spec (spec/spec-for-model-key :model/Card)
           keywords (spec/event-keywords spec)]
@@ -225,7 +225,7 @@
 
 ;;; -------------------------------------------- Build Sync Object Fields Tests ----------------------------------------
 
-(deftest build-sync-object-fields-test
+(deftest ^:parallel build-sync-object-fields-test
   (testing "build-sync-object-fields with simple mappings"
     (let [spec (spec/spec-for-model-key :model/Dashboard)
           details {:name "My Dashboard" :collection_id 123}
@@ -247,7 +247,7 @@
 
 ;;; --------------------------------------------- Fields for Sync Tests -----------------------------------------------
 
-(deftest fields-for-sync-test
+(deftest ^:parallel fields-for-sync-test
   (testing "fields-for-sync returns spec fields"
     (is (= [:name :collection_id :display]
            (spec/fields-for-sync "Card")))
@@ -262,7 +262,7 @@
 
 ;;; --------------------------------------------- Export Scope Tests -------------------------------------------------
 
-(deftest all-specs-have-valid-export-scope-test
+(deftest ^:parallel all-specs-have-valid-export-scope-test
   (testing "Every spec with :export-scope has a valid value"
     (let [valid-export-scopes #{:root-collections :root-only :all :derived}]
       (doseq [[model-key spec] spec/remote-sync-specs
@@ -271,7 +271,7 @@
           (is (contains? valid-export-scopes (:export-scope spec))
               (str "Invalid export-scope: " (:export-scope spec))))))))
 
-(deftest export-scope-required-for-certain-models-test
+(deftest ^:parallel export-scope-required-for-certain-models-test
   (testing "Collection spec has :root-collections export-scope"
     (is (= :root-collections (:export-scope (spec/spec-for-model-key :model/Collection)))))
 
@@ -287,7 +287,7 @@
 
 ;;; --------------------------------------------- Query Export Roots Tests -------------------------------------------
 
-(deftest query-export-roots-collection-eligibility-test
+(deftest ^:parallel query-export-roots-collection-eligibility-test
   (testing "query-export-roots with :collection eligibility and :derived scope returns nil"
     (let [card-spec (spec/spec-for-model-key :model/Card)]
       (is (nil? (spec/query-export-roots card-spec)))))
@@ -307,7 +307,7 @@
         (is (nil? (spec/query-export-roots transform-spec)))
         (is (nil? (spec/query-export-roots tag-spec)))))))
 
-(deftest query-export-roots-derived-eligibility-test
+(deftest ^:parallel query-export-roots-derived-eligibility-test
   (testing "query-export-roots with :published-table eligibility returns nil (derived)"
     (let [table-spec (spec/spec-for-model-key :model/Table)]
       (is (nil? (spec/query-export-roots table-spec)))))
@@ -392,7 +392,7 @@
 
 ;;; ------------------------------------------ Batch Eligibility Checking Tests --------------------------------------
 
-(deftest batch-check-eligibility-library-synced-test
+(deftest ^:parallel batch-check-eligibility-library-synced-test
   (testing "batch-check-eligibility with :library-synced eligibility"
     (let [spec (spec/spec-for-model-key :model/NativeQuerySnippet)
           instances [{:id 1} {:id 2} {:id 3}]]
@@ -407,7 +407,7 @@
           (let [result (spec/batch-check-eligibility spec instances)]
             (is (= {1 false, 2 false, 3 false} result))))))))
 
-(deftest batch-check-eligibility-default-test
+(deftest ^:parallel batch-check-eligibility-default-test
   (testing "batch-check-eligibility :default falls back to check-eligibility per instance"
     (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}
                    :model/Collection {not-synced-id :id} {:name "Not Synced" :is_remote_synced false :location "/"}]
@@ -455,7 +455,7 @@
 
 ;;; ------------------------------------------ Condition Helper Tests ----------------------------------------------
 
-(deftest export-conditions-test
+(deftest ^:parallel export-conditions-test
   (testing "export-conditions returns :export-conditions when present"
     (is (= {:foo :bar}
            (spec/export-conditions {:export-conditions {:foo :bar}
@@ -468,7 +468,7 @@
   (testing "export-conditions returns nil when neither key present"
     (is (nil? (spec/export-conditions {})))))
 
-(deftest removal-conditions-test
+(deftest ^:parallel removal-conditions-test
   (testing "removal-conditions returns :removal-conditions when present"
     (is (= {:foo :bar}
            (spec/removal-conditions {:removal-conditions {:foo :bar}
@@ -481,7 +481,7 @@
   (testing "removal-conditions returns nil when neither key present"
     (is (nil? (spec/removal-conditions {})))))
 
-(deftest python-library-spec-conditions-test
+(deftest ^:parallel python-library-spec-conditions-test
   (testing "PythonLibrary spec has :removal-conditions but no :conditions or :export-conditions"
     (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
       (is (nil? (:conditions spec))
@@ -501,7 +501,7 @@
       (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
              (spec/removal-conditions spec))))))
 
-(deftest transform-tag-spec-uses-conditions-test
+(deftest ^:parallel transform-tag-spec-uses-conditions-test
   (testing "TransformTag spec still uses :conditions (not split)"
     (let [spec (spec/spec-for-model-key :model/TransformTag)]
       (is (= {:built_in_type nil} (:conditions spec)))

@@ -390,7 +390,7 @@
                       (filter #(test-ids (:id %)))
                       (map (juxt :model :id))))))))))
 
-(deftest recents-endpoint-context-test
+(deftest ^:parallel recents-endpoint-context-test
   (testing "Context query param is required"
     (is (= {:context "vector of enum of :selections, :views"}
            (:errors (mt/user-http-request :crowberto :get 400 "activity/recents")))))

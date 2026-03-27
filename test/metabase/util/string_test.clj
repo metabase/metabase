@@ -5,7 +5,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest mask-test
+(deftest ^:parallel mask-test
   (testing "mask"
     (testing "works correctly in general case"
       (is (= "qwer...uiop"

@@ -5,14 +5,14 @@
    [metabase.app-db.env :as mdb.env]
    [metabase.test :as mt]))
 
-(deftest raw-connection-string->type-test
+(deftest ^:parallel raw-connection-string->type-test
   (are [s expected] (= expected (#'mdb.env/raw-connection-string->type s))
     "jdbc:postgres:wow"   :postgres
     "postgres:wow"        :postgres
     "jdbc:postgresql:wow" :postgres
     "postgresql:wow"      :postgres))
 
-(deftest connection-string-data-source-test
+(deftest ^:parallel connection-string-data-source-test
   (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://metabase?user=cam&password=1234")
          (#'mdb.env/env->DataSource :postgres {:mb-db-connection-uri "postgres://metabase?user=cam&password=1234"})
          (#'mdb.env/env->DataSource :postgres {:mb-db-connection-uri "postgres://metabase?user=cam&password=1234", :mb-db-user "", :mb-db-pass ""})))

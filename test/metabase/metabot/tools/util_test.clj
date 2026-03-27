@@ -119,7 +119,7 @@
               (is (contains? card-ids (:id mb-metric1)))
               (is (contains? card-ids (:id mb-metric2))))))))))
 
-(deftest metabot-scope-query-root-collection-test
+(deftest ^:parallel metabot-scope-query-root-collection-test
   (testing "metabot-scope-query with root collection (null collection_id)"
     (mt/dataset test-data
       (mt/with-temp [:model/Card root-model  {:type :model, :collection_id nil}
@@ -137,7 +137,7 @@
             (is (contains? card-ids (:id root-metric)))
             (is (contains? card-ids (:id coll-model)))))))))
 
-(deftest add-table-reference-test
+(deftest ^:parallel add-table-reference-test
   (testing "add-table-reference function adds table-reference for FK fields"
     (mt/dataset test-data
       (mt/with-current-user (mt/user->id :crowberto)
@@ -232,7 +232,7 @@
                   (is (every? verified-ids (take 2 ordered-ids)))
                   (is (every? unverified-ids (drop 2 ordered-ids))))))))))))
 
-(deftest get-table-filters-inactive-test
+(deftest ^:parallel get-table-filters-inactive-test
   (testing "get-table only returns active tables"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {active-table-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
@@ -242,7 +242,7 @@
         (is (thrown? clojure.lang.ExceptionInfo
                      (metabot.tools.util/get-table inactive-table-id)))))))
 
-(deftest parse-field-id-test
+(deftest ^:parallel parse-field-id-test
   (testing "parse-field-id parses valid field IDs correctly"
     (testing "table field IDs with numeric table ID"
       (is (= {:model-tag "t", :model-id 154, :field-index 1}
@@ -270,7 +270,7 @@
       (is (= {:model-tag "q", :model-id "a-b-c", :field-index 0}
              (metabot.tools.util/parse-field-id "qa-b-c-0"))))))
 
-(deftest resolve-column-test
+(deftest ^:parallel resolve-column-test
   (testing "resolve-column resolves field IDs to columns"
     (let [columns [{:name "ID" :table-id 1 :type :number}           ; index 0
                    {:name "NAME" :table-id 1 :type :string}         ; index 1
@@ -328,7 +328,7 @@
 
 ;;; Nil handling tests - important for robustness against LLM edge cases
 
-(deftest parse-field-id-nil-handling-test
+(deftest ^:parallel parse-field-id-nil-handling-test
   (testing "returns nil for nil input (no NPE)"
     (is (nil? (metabot.tools.util/parse-field-id nil))))
 
@@ -349,7 +349,7 @@
     (is (nil? (metabot.tools.util/parse-field-id "-1-0"))) ; missing model tag
     ))
 
-(deftest resolve-column-nil-handling-test
+(deftest ^:parallel resolve-column-nil-handling-test
   (testing "throws informative error for nil field-id"
     (let [columns [{:name "ID" :table-id 1 :type :number}]]
       (is (thrown-with-msg?
@@ -380,7 +380,7 @@
           (is (:agent-error? (ex-data e)))
           (is (= nil (:field-id (ex-data e)))))))))
 
-(deftest resolve-column-edge-cases-test
+(deftest ^:parallel resolve-column-edge-cases-test
   (testing "handles empty columns vector"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo

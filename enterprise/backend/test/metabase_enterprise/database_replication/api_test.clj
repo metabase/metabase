@@ -10,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest required-features-test
+(deftest ^:parallel required-features-test
   ;; checked in [[metabase-enterprise.api-routes.routes/ee-routes-map]]
   (let [required-features [[:attached-dwh "Attached DWH"]
                            [:etl-connections "ETL Connections"]
@@ -23,7 +23,7 @@
                 (:message (mt/user-http-request :crowberto :post 402 "ee/database-replication/connection/1"))
                 (:message (mt/user-http-request :crowberto :delete 402 "ee/database-replication/connection/1"))))))))
 
-(deftest superuser-test
+(deftest ^:parallel superuser-test
   ;; checked in metabase-enterprise.database-replication.api/routes
   (mt/with-premium-features #{:attached-dwh :etl-connections :etl-connections-pg}
     (is (= "You don't have permissions to do that."
@@ -140,7 +140,7 @@
               (testing "idempotent delete"
                 (mt/user-http-request :crowberto :delete 204 url)))))))))
 
-(deftest preview-replication-test
+(deftest ^:parallel preview-replication-test
   (let [quotas [{:usage 100000, :locked false, :updated-at "2025-08-05T08:48:11Z", :quota-type "rows", :hosting-feature "clickhouse-dwh", :soft-limit 500000}]
         valid-table {:table-schema "public", :table-name "valid_table", :estimated-row-count 1000, :has-pkey true, :has-ownership true}
         no-pk-table {:table-schema "public", :table-name "no_pk_table", :estimated-row-count 2000, :has-pkey false, :has-ownership true}

@@ -8,7 +8,7 @@
 
 ;;; ------------------------------------------ schema / metadata tests -----------------------------------------------
 
-(deftest create-dashboard-subscription-tool-schema-test
+(deftest ^:parallel create-dashboard-subscription-tool-schema-test
   (let [m (meta #'agent-subscriptions/create-dashboard-subscription-tool)]
     (testing "tool has correct :tool-name"
       (is (= "create_dashboard_subscription" (:tool-name m))))
@@ -35,7 +35,7 @@
               (is (= email (:email @captured-args)))
               (is (= dash-id (:dashboard-id @captured-args))))))))))
 
-(deftest create-dashboard-subscription-invalid-dashboard-id-test
+(deftest ^:parallel create-dashboard-subscription-invalid-dashboard-id-test
   (testing "nonexistent dashboard_id → error about missing dashboard"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [result (agent-subscriptions/create-dashboard-subscription-tool

@@ -13,7 +13,7 @@
 (defn- pos [m]
   (merge {:size_x 2 :size_y 2 :dashboard_tab_id nil} m))
 
-(deftest get-position-for-new-dashcard-works
+(deftest ^:parallel get-position-for-new-dashcard-works
   (testing "place first card at 0,0"
     (is (= (pos {:col 0 :row 0})
            (get-position []))))

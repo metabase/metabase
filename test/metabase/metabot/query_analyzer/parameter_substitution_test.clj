@@ -5,20 +5,20 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.query-analyzer.parameter-substitution :as nqa.sub]))
 
-(deftest replace-tags-without-template-tags-test
+(deftest ^:parallel replace-tags-without-template-tags-test
   (testing "Query without template tags returns raw SQL"
     (let [query (lib/native-query meta/metadata-provider "SELECT * FROM venues")]
       (is (= {:query "SELECT * FROM venues"}
              (nqa.sub/replace-tags query))))))
 
-(deftest replace-tags-with-text-tag-test
+(deftest ^:parallel replace-tags-with-text-tag-test
   (testing "Query with :text template tag gets default value substituted"
     (let [query (lib/native-query meta/metadata-provider "SELECT * FROM venues WHERE name = {{name}}")]
       (is (=? {:query "SELECT * FROM venues WHERE name = ?"
                :params ["sample text"]}
               (nqa.sub/replace-tags query))))))
 
-(deftest replace-tags-with-number-tag-test
+(deftest ^:parallel replace-tags-with-number-tag-test
   (testing "Query with :number template tag gets default value substituted"
     (let [query (lib/native-query meta/metadata-provider "SELECT * FROM venues WHERE id = {{id}}")
           tags (-> (lib/template-tags query)
@@ -28,7 +28,7 @@
                :params []}
               (nqa.sub/replace-tags query-with-tags))))))
 
-(deftest replace-tags-with-date-tag-test
+(deftest ^:parallel replace-tags-with-date-tag-test
   (testing "Query with :date template tag gets default value substituted"
     (let [query (lib/native-query meta/metadata-provider "SELECT * FROM venues WHERE created_at = {{date}}")
           tags (-> (lib/template-tags query)
@@ -38,7 +38,7 @@
                :params [#t "2024-01-09"]}
               (nqa.sub/replace-tags query-with-tags))))))
 
-(deftest replace-tags-with-multiple-tags-test
+(deftest ^:parallel replace-tags-with-multiple-tags-test
   (testing "Query with multiple template tags get default values substituted"
     (let [query (lib/native-query meta/metadata-provider
                                   "SELECT * FROM venues WHERE id = {{id}} AND name = {{name}}")

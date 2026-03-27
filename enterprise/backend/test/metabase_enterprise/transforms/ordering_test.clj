@@ -22,7 +22,7 @@
               :name target-name
               :type "table"}}))
 
-(deftest python-transform-table-ref-ordering-test
+(deftest ^:parallel python-transform-table-ref-ordering-test
   (testing "Python transform with name-based source table ref resolves to producing transform"
     (mt/with-temp [;; Transform A produces table "intermediate_output"
                    :model/Transform {t-a :id} (make-python-transform
@@ -46,7 +46,7 @@
                 t-b #{t-a}}
                (ordering/transform-ordering (t2/select :model/Transform :id [:in [t-a t-b]]))))))))
 
-(deftest python-transform-mixed-source-tables-test
+(deftest ^:parallel python-transform-mixed-source-tables-test
   (testing "Python transform with mixed int and name-based refs"
     (mt/with-temp [:model/Transform {t-a :id} (make-python-transform
                                                [(transforms.tu/source-table-entry "input" (mt/id :orders))]

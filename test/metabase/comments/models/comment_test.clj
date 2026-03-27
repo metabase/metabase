@@ -4,7 +4,7 @@
    [metabase.comments.api-test :as at]
    [metabase.comments.models.comment :as comment]))
 
-(deftest comment-test
+(deftest ^:parallel comment-test
   (testing "mentions are parsed correctly"
     (is (= [6]
            (comment/mentions

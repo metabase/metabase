@@ -14,7 +14,7 @@
 
 ;; NOTE: isolation tests are absent, in prod there is only one index-metadata
 
-(deftest qualify-index-test
+(deftest ^:parallel qualify-index-test
   (let [sut semantic.index-metadata/qualify-index]
     (testing "default qualifier sanity"
       (is (= "%s" (:index-table-qualifier semantic.index-metadata/default-index-metadata))))

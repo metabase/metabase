@@ -57,7 +57,7 @@
                                       (str "model-index/" (:id model-index)))))
             (mt/user-http-request :rasta :delete 200 (str "model-index/" (:id model-index)))))))))
 
-(deftest create-tests
+(deftest ^:parallel create-tests
   (testing "Ensures that the pk ref is a primary key"
     (mt/dataset test-data
       (let [query (mt/mbql-query products)]

@@ -296,7 +296,7 @@
       (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
                             (t2/update! :model/Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
 
-(deftest no-archived-cards-test
+(deftest ^:parallel no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
     (mt/with-temp [:model/Pulse     pulse {}
                    :model/Card      card-1 {:archived true}

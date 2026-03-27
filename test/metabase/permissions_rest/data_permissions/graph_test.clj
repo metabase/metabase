@@ -355,11 +355,11 @@
 
 ;; ------------------------------ API Graph Tests ------------------------------
 
-(deftest ellide?-test
+(deftest ^:parallel ellide?-test
   (is (not (#'data-perms.graph/ellide? :perms/view-data :unrestricted)))
   (is (#'data-perms.graph/ellide? :perms/view-data :blocked)))
 
-(deftest perms-are-renamed-test
+(deftest ^:parallel perms-are-renamed-test
   (testing "Perm keys and values are correctly renamed, and permissions are ellided as necessary"
     (are [db-graph api-graph] (= api-graph (-> db-graph
                                                (#'data-perms.graph/rename-perm)

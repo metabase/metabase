@@ -112,7 +112,7 @@
                   :else x))]
     (walk structure)))
 
-(deftest ensure-consistent-type-test
+(deftest ^:parallel ensure-consistent-type-test
   #?(:clj
      (testing "Normalizes types (like BigInt/BigDecimal)"
        (is (= java.lang.Integer (type (@#'pivot/ensure-consistent-type 3))))
@@ -127,13 +127,13 @@
        (is (= js/Number (type (@#'pivot/ensure-consistent-type 3.0))))
        (is (= js/Number (type (@#'pivot/ensure-consistent-type 3.0M)))))))
 
-(deftest columns-without-pivot-group-test
+(deftest ^:parallel columns-without-pivot-group-test
   (testing "Correctly filters out the pivot grouping column based on name"
     (is (= ["col0" "col1" "col2" "count"]
            (->> (pivot/columns-without-pivot-group (:cols pivot-test-data))
                 (map :name))))))
 
-(deftest split-pivot-data
+(deftest ^:parallel split-pivot-data
   (testing "split-pivot-table pulls apart the aggregations packed into a single
     result set, keyed by the columns indexes that are aggregated"
     (is (= {:pivot-data {[0 1 2] [[1 "A" "Y" 1]
@@ -170,7 +170,7 @@
            ;; Dissoc :columns beacuse this is the same as the result of `columns-without-pivot-group-test`, tested above
            (dissoc (pivot/split-pivot-data pivot-test-data) :columns)))))
 
-(deftest get-subtotal-values-test
+(deftest ^:parallel get-subtotal-values-test
   (testing "Extracts subtotal values from pivot data"
     (let [pivot-data {[0 1 2] [[1 "A" "Y" 10]
                                [1 "B" "Z" 20]]}
@@ -180,7 +180,7 @@
                        [1 "B" "Z"] [20]}}
              result)))))
 
-(deftest get-subtotal-values-primary-rows-key-test
+(deftest ^:parallel get-subtotal-values-primary-rows-key-test
   (testing "Excludes the primary rows if passed a primary rows key"
     (let [pivot-data {[0 1 2] [[1 "A" "Y" 10]
                                [1 "B" "Z" 20]]}
@@ -189,7 +189,7 @@
       (is (= {}
              result)))))
 
-(deftest get-active-breakout-indexes-test
+(deftest ^:parallel get-active-breakout-indexes-test
   (testing "Correctly determines active breakout indexes from pivot group values"
     (let [pivot-group   0  ;; All breakouts active (000 in binary)
           num-breakouts 3]
@@ -211,7 +211,7 @@
       (is (= []
              (#'pivot/get-active-breakout-indexes pivot-group num-breakouts))))))
 
-(deftest get-subtotals-test
+(deftest ^:parallel get-subtotals-test
   (testing "Returns correctly formatted subtotal values"
     (let [subtotal-values {[0 1] {[1 "A"] [100 200]}}
           breakout-indexes [0 1]
@@ -224,7 +224,7 @@
               {:value "200%" :isSubtotal true :custom "attr"}]
              result)))))
 
-(deftest build-pivot-trees-test
+(deftest ^:parallel build-pivot-trees-test
   (testing "build-pivot-trees correctly builds basic row and column tree structures"
     (let [rows [[1 "A" "Y" 0 10]
                 [2 "B" "Z" 0 20]]
@@ -305,7 +305,7 @@
                "Row tree should have correct collapsed state for the children of the root"))))))
 
 #?(:clj
-   (deftest build-pivot-trees-no-collapsing-clj-test
+   (deftest ^:parallel build-pivot-trees-no-collapsing-clj-test
      (testing "build-pivot-trees correctly handles collapsed subtotals"
        (let [rows [[1 "A" "Y" 0 10]
                    [1 "B" "Z" 0 20]
@@ -514,7 +514,7 @@
               (lists-to-vecs-recursively (:row-tree result)))
              "Row tree should not crash and should have no collapsed nodes for non-existent parent paths")))))
 
-(deftest build-pivot-trees-sort-trees-test
+(deftest ^:parallel build-pivot-trees-sort-trees-test
   (let [rows [[1 "A" "Y" 0 10]
               [1 "B" "Z" 0 20]
               [2 "A" "Y" 0 30]
@@ -556,7 +556,7 @@
                   :children [{:value "B"} {:value "A"}]}]
                 (lists-to-vecs-recursively (:row-tree result))))))))
 
-(deftest create-row-section-getter-test
+(deftest ^:parallel create-row-section-getter-test
   (testing "Returns a function that correctly retrieves cell values"
     (let [values-by-key {["A" 1] {:values [10 20]
                                   :valueColumns [{:name "count"} {:name "sum"}]
@@ -595,7 +595,7 @@
              #?(:cljs (js->clj result :keywordize-keys true)
                 :clj result))))))
 
-(deftest tree-to-array-test
+(deftest ^:parallel tree-to-array-test
   (testing "Correctly flattens a tree to array with position information"
     (let [tree [{:value "A" :rawValue "A"
                  :children [{:value "X" :rawValue "X" :children []}

@@ -10,7 +10,7 @@
 
 (comment =?/keep-me)
 
-(deftest effective-details-default-test
+(deftest ^:parallel effective-details-default-test
   (testing "effective-details returns :details when *connection-type* is :default"
     (let [details            {:host "read-host" :port 5432}
           write-data-details {:host "write-host" :port 5432}
@@ -20,7 +20,7 @@
       (is (=? details
               (driver.conn/effective-details database))))))
 
-(deftest effective-details-write-with-write-details-test
+(deftest ^:parallel effective-details-write-with-write-details-test
   (mt/when-ee-evailable
    (mt/with-premium-features #{:writable-connection}
      (let [details            {:host "read-host" :port 5432}
@@ -42,7 +42,7 @@
                (is (=? write-data-details
                        (driver.conn/effective-details database)))))))))))
 
-(deftest effective-details-write-fallback-test
+(deftest ^:parallel effective-details-write-fallback-test
   (mt/with-premium-features #{:writable-connection}
     (let [details {:host "read-host" :port 5432}]
       (testing "effective-details falls back to :details when :write-data but no write details"
@@ -59,7 +59,7 @@
               (is (=? details
                       (driver.conn/effective-details database))))))))))
 
-(deftest effective-details-write-without-feature-test
+(deftest ^:parallel effective-details-write-without-feature-test
   (testing "without :writable-connection feature, with-write-connection falls back to main connection details"
     (mt/with-premium-features #{}
       (let [details            {:host "read-host" :port 5432}
@@ -71,14 +71,14 @@
           (is (=? details
                   (driver.conn/effective-details database))))))))
 
-(deftest effective-details-nil-test
+(deftest ^:parallel effective-details-nil-test
   (testing "effective-details returns nil when database is nil"
     (is (nil? (driver.conn/effective-details nil)))
     (mt/with-premium-features #{:writable-connection}
       (driver.conn/with-write-connection
         (is (nil? (driver.conn/effective-details nil)))))))
 
-(deftest write-connection-requested?-test
+(deftest ^:parallel write-connection-requested?-test
   (testing "write-connection-requested? returns false by default"
     (is (false? (driver.conn/write-connection-requested?))))
   (testing "write-connection-requested? returns true inside with-write-connection"
@@ -86,7 +86,7 @@
       (driver.conn/with-write-connection
         (is (true? (driver.conn/write-connection-requested?)))))))
 
-(deftest effective-details-with-workspace-swap-test
+(deftest ^:parallel effective-details-with-workspace-swap-test
   (testing "effective-details applies workspace swap in :default connection type"
     (let [database {:lib/type :metadata/database
                     :id       1

@@ -9,7 +9,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest is-remote-synced-hydration-test
+(deftest ^:parallel is-remote-synced-hydration-test
   (testing ":is_remote_synced hydration adds boolean field indicating if item is in remote-synced collection"
     (mt/with-temp [:model/Collection remote-sync-coll {:name "Remote Sync Collection"
                                                        :is_remote_synced true
@@ -31,7 +31,7 @@
         (testing "card without collection has is_remote_synced = false"
           (is (false? (:is_remote_synced (nth hydrated-cards 2)))))))))
 
-(deftest is-remote-synced-hydration-dashboard-test
+(deftest ^:parallel is-remote-synced-hydration-dashboard-test
   (testing ":is_remote_synced hydration works for dashboards"
     (mt/with-temp [:model/Collection remote-sync-coll {:name "Remote Sync Collection"
                                                        :is_remote_synced true
@@ -49,7 +49,7 @@
         (testing "dashboard in normal collection has is_remote_synced = false"
           (is (false? (:is_remote_synced (second hydrated-dashboards)))))))))
 
-(deftest is-remote-synced-hydration-batched-test
+(deftest ^:parallel is-remote-synced-hydration-batched-test
   (testing ":is_remote_synced hydration is efficient with batch hydration"
     (mt/with-temp [:model/Collection remote-sync-coll {:name "Remote Sync Collection"
                                                        :is_remote_synced true
@@ -73,7 +73,7 @@
         (testing "card without collection is correctly hydrated"
           (is (false? (:is_remote_synced (nth hydrated-cards 4)))))))))
 
-(deftest is-remote-synced-hydration-default-value-test
+(deftest ^:parallel is-remote-synced-hydration-default-value-test
   (testing ":is_remote_synced hydration defaults to false when collection info is missing"
     (mt/with-temp [:model/Card card-no-coll {:name "Card without Collection"}]
       (let [hydrated-cards (t2/hydrate [card-no-coll] :is_remote_synced)]

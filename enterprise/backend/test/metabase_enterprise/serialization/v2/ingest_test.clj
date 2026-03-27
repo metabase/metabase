@@ -6,7 +6,7 @@
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase.util.yaml :as yaml]))
 
-(deftest basic-ingest-test
+(deftest ^:parallel basic-ingest-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (io/make-parents dump-dir "collections" "1234567890abcdefABCDE_the_label" "fake") ; Prepare the right directories.
     (io/make-parents dump-dir "collections" "0987654321zyxwvuABCDE" "fake")
@@ -50,7 +50,7 @@
                      (assoc :serdes/meta abs-path))
                  (ingest/ingest-one ingestable abs-path))))))))
 
-(deftest flexible-file-matching-test
+(deftest ^:parallel flexible-file-matching-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (io/make-parents dump-dir "collections" "1234567890abcdefABCDE_human-readable-things" "fake")
     (spit (io/file dump-dir "collections" "1234567890abcdefABCDE_human-readable-things"
@@ -70,7 +70,7 @@
         (is (= exp
                (ingest/ingest-one ingestable [{:model "Collection" :id "1234567890abcdefABCDE"}])))))))
 
-(deftest keyword-reconstruction-test
+(deftest ^:parallel keyword-reconstruction-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (io/make-parents dump-dir "collections" "cards" "fake")
     (spit (io/file dump-dir "collections" "cards" "1234567890abcdefABCDE_some_card.yaml")

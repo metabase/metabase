@@ -27,7 +27,7 @@
         (is (= mseqs
                (-> mseqs mongo.conversion/to-document (mongo.conversion/from-document nil))))))))
 
-(deftest bson-negative-zero->big-decimal-test
+(deftest ^:parallel bson-negative-zero->big-decimal-test
   (testing "Bson Decimal128 zero is converted to BigDecimal zero"
     (is (= {"negativeZero" 0M}
            (mongo.conversion/from-document

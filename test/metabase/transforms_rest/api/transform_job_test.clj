@@ -208,7 +208,7 @@
               (is (string? (:job_run_id response)))
               (is (re-matches #"stub-\d+-\d+" (:job_run_id response))))))))))
 
-(deftest permissions-test
+(deftest ^:parallel permissions-test
   (testing "All endpoints require transform permissions"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformJob job {:name "Test" :schedule "0 0 0 * * ?"}]

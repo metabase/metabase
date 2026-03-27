@@ -98,29 +98,29 @@
                                 :visibility_type :retired})
 
 ;; Testing the format of headers
-(deftest header-result
+(deftest ^:parallel header-result
   (is (= default-header-result
          (prep-for-html-rendering' test-columns example-test-data))))
 
-(deftest header-result-2
+(deftest ^:parallel header-result-2
   (let [cols-with-details (conj test-columns detail-col)
         data-with-details (mapv #(conj % "Details") example-test-data)]
     (is (= default-header-result
            (prep-for-html-rendering' cols-with-details data-with-details)))))
 
-(deftest header-result-3
+(deftest ^:parallel header-result-3
   (let [cols-with-sensitive (conj test-columns sensitive-col)
         data-with-sensitive (mapv #(conj % "Sensitive") example-test-data)]
     (is (= default-header-result
            (prep-for-html-rendering' cols-with-sensitive data-with-sensitive)))))
 
-(deftest header-result-4
+(deftest ^:parallel header-result-4
   (let [columns-with-retired (conj test-columns retired-col)
         data-with-retired    (mapv #(conj % "Retired") example-test-data)]
     (is (= default-header-result
            (prep-for-html-rendering' columns-with-retired data-with-retired)))))
 
-(deftest prefers-col-visualization-settings-for-header
+(deftest ^:parallel prefers-col-visualization-settings-for-header
   (testing "Users can give columns custom names. Use those if they exist."
     (let [card    {:visualization_settings
                    {:column_settings {"[\"ref\",[\"field\",321,null]]" {:column_title "Custom Last Login"}
@@ -150,13 +150,13 @@
                                                       {:cols cols :rows []}))))))))
 
 ;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
-(deftest narrow-the-columns
+(deftest ^:parallel narrow-the-columns
   (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude")]}
           #{2}]
          (prep-for-html-rendering' (subvec test-columns 0 2) example-test-data))))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
-(deftest format-result-rows
+(deftest ^:parallel format-result-rows
   (is (= [{:row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
           {:row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
           {:row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
@@ -193,13 +193,13 @@
         ["Bad" "Ok" "Good"]))
 
 ;; With a remapped column, the header should contain the name of the remapped column (not the original)1
-(deftest remapped-col
+(deftest ^:parallel remapped-col
   (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude") "Rating Desc" "Last Login" "Name" "Description Column"]}
           #{6}]
          (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping))))
 
 ;; Result rows should include only the remapped column value, not the original
-(deftest include-only-remapped-column-name
+(deftest ^:parallel include-only-remapped-column-name
   (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]
           [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]
           [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]]
@@ -208,12 +208,12 @@
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
-(deftest no-truncation-warnig
+(deftest ^:parallel no-truncation-warnig
   (is (= ""
          (html (#'body/render-truncation-warning 100 10)))))
 
 ;; When there are more rows than the limit, check to ensure a truncation warning is present
-(deftest truncation-warning-when-rows-exceed-max
+(deftest ^:parallel truncation-warning-when-rows-exceed-max
   (is (true?
        (let [html-output (html (#'body/render-truncation-warning 10 100))]
          (boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))))))
@@ -223,7 +223,7 @@
                                 :effective_type :type/DateTime
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
-(deftest cols-with-semantic-types
+(deftest ^:parallel cols-with-semantic-types
   (is (= [{:row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
           {:row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
           {:row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
@@ -233,7 +233,7 @@
                                                {}
                                                {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
 
-(deftest error-test
+(deftest ^:parallel error-test
   (testing "renders error"
     (is (= "An error occurred while displaying this card."
            (-> (body/render :render-error nil nil nil nil nil) :content last str))))
@@ -246,7 +246,7 @@
       :content
       last))
 
-(deftest scalar-test
+(deftest ^:parallel scalar-test
   (testing "renders int"
     (is (= "10"
            (render-scalar-value {:cols [{:name         "ID",
@@ -345,10 +345,10 @@
 (def ^:private render-truncation-warning'
   (comp replace-style-maps #'body/render-truncation-warning))
 
-(deftest no-truncation-warnig-for-style
+(deftest ^:parallel no-truncation-warnig-for-style
   (is (nil? (render-truncation-warning' 10 5))))
 
-(deftest renders-truncation
+(deftest ^:parallel renders-truncation
   (is (= [:div
           :style-map
           [:div :style-map "Showing "
@@ -399,7 +399,7 @@
 (defn- render-funnel [results]
   (body/render :funnel :inline pacific-tz render.tu/test-card nil results))
 
-(deftest render-funnel-test
+(deftest ^:parallel render-funnel-test
   (testing "Test that we can render a funnel with all valid values"
     (is (has-inline-image?
          (render-funnel
@@ -407,7 +407,7 @@
            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
            :viz-settings {}})))))
 
-(deftest render-funnel-test-2
+(deftest ^:parallel render-funnel-test-2
   (testing "Test that we can render a funnel with extraneous columns and also weird strings stuck in places"
     (is (has-inline-image?
          (render-funnel
@@ -415,7 +415,7 @@
            :rows         [[10.0 1 2 2] [5.0 10 "11.1" 1] ["2.50" 20 1337 0] [1.25 30 -2 "-2"]]
            :viz-settings {}})))))
 
-(deftest render-funnel-test-3
+(deftest ^:parallel render-funnel-test-3
   (testing "Test that we can have some nil values stuck everywhere"
     (is (has-inline-image?
          (render-funnel
@@ -423,7 +423,7 @@
            :rows         [[nil 1] [11.0 nil] [nil nil] [2.50 20] [1.25 30]]
            :viz-settings {}})))))
 
-(deftest render-funnel-visualizer
+(deftest ^:parallel render-funnel-visualizer
   (testing "Visualizer funnel charts render"
     (let [test-card-1 {:id 192 :entity_id "abc" :name "SCALAR 3"}
           test-card-2 {:id 191 :entity_id "def" :name "SCALAR 2"}
@@ -699,7 +699,7 @@
     nil  "1,234,543.21%"
     ""   "1,234,543.21%"))
 
-(deftest add-dashcard-timeline-events-test-34924
+(deftest ^:parallel add-dashcard-timeline-events-test-34924
   (testing "Timeline events should be added to the isomorphic renderer stages"
     (mt/dataset test-data
       (mt/with-current-user (mt/user->id :crowberto)
@@ -919,7 +919,7 @@
   [render-type card data]
   (body/render render-type :attachment (channel.render/defaulted-timezone card) card nil data))
 
-(deftest render-cards-are-thread-safe-test-for-js-visualization
+(deftest ^:parallel render-cards-are-thread-safe-test-for-js-visualization
   (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders
                                                              {:aggregation [[:count]]
                                                               :breakout    [$orders.created_at]
@@ -930,7 +930,7 @@
     (let [data (:data (qp/process-query (:dataset_query card)))]
       (is (every? some? (mt/repeat-concurrently 3 #(render-card :javascript_visualization card data)))))))
 
-(deftest render-cards-are-thread-safe-test-for-table
+(deftest ^:parallel render-cards-are-thread-safe-test-for-table
   (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})
                                    :display       :table}]
     (let [data (:data (qp/process-query (:dataset_query card)))]
@@ -1156,7 +1156,7 @@
                   (testing "Renders with custom whitelabel color"
                     (is (str/includes? svg "#0005FF"))))))))))))
 
-(deftest order-data-handles-duplicated-table-columns-test
+(deftest ^:parallel order-data-handles-duplicated-table-columns-test
   (testing "order-data function handles duplicated table columns correctly (#62053)"
     (let [test-cols [{:name "ID" :display_name "ID" :base_type :type/BigInteger}
                      {:name "NAME" :display_name "Name" :base_type :type/Text}]
@@ -1180,7 +1180,7 @@
         (is (= [1 "Alice"] (first ordered-rows)))
         (is (= [2 "Bob"] (second ordered-rows)))))))
 
-(deftest order-data-respect-table-columns-order-test
+(deftest ^:parallel order-data-respect-table-columns-order-test
   (testing "order-data respect table-columns order from viz-settings (#62053)"
     (let [col-names ["ID" "NAME" "EMAIL" "PHONE" "ADDRESS" "CITY" "STATE" "ZIP" "COUNTRY" "CREATED_AT"]
           test-cols (vec (for [col-name col-names]
@@ -1201,7 +1201,7 @@
         (is (= ["alice@example.com" "Alice" "Boston" "MA" "02101" 1 "555-1234" "123 Main St" "USA" "2024-01-01"]
                (first ordered-rows)))))))
 
-(deftest render-table-with-remapped-with-custom-columns-order-test
+(deftest ^:parallel render-table-with-remapped-with-custom-columns-order-test
   (mt/with-column-remappings [orders.product_id products.title]
     (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
       (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders {:limit 1})

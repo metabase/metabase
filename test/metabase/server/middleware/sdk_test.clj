@@ -19,7 +19,7 @@
     client  (ring.mock/header (keyword (wonk-case "x-metabase-client")) client)
     version (ring.mock/header (keyword (wonk-case "x-metabase-client-version")) version)))
 
-(deftest bind-client-test
+(deftest ^:parallel bind-client-test
   (are [client]
        (let [request (mock-request {:client client})
              handler (analytics/embedding-mw
@@ -30,7 +30,7 @@
     nil
     "embedding-iframe"))
 
-(deftest bind-client-version-test
+(deftest ^:parallel bind-client-version-test
   (are [version]
        (let [request (mock-request {:version version})
              handler (analytics/embedding-mw

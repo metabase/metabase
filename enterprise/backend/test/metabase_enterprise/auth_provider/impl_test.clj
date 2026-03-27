@@ -73,7 +73,7 @@
                 "password-expiry-timestamp" expiry}
                props))))))
 
-(deftest http-provider-tests
+(deftest ^:parallel http-provider-tests
   (mt/with-premium-features #{:database-auth-providers}
     (let [original-details (:details (mt/db))
           provider-details {:use-auth-provider true
@@ -86,7 +86,7 @@
               (tx/driver)
               provider-details))))))
 
-(deftest oauth-provider-tests
+(deftest ^:parallel oauth-provider-tests
   (mt/with-premium-features #{:database-auth-providers}
     (let [oauth-response {:access_token "foobar"
                           :expires_in "84791"}

@@ -5,7 +5,7 @@
 
 ;;; -------------------------------------------------- compute-card-result --------------------------------------------------
 
-(deftest compute-card-result-test
+(deftest ^:parallel compute-card-result-test
   (testing "join-analysis join_step computes null rate"
     (is (= {"output_count" 100 "matched_count" 80 "null_count" 20 "null_rate" 1/5}
            (inspector.core/compute-card-result
@@ -21,7 +21,7 @@
 
 ;;; -------------------------------------------------- triggered-alerts --------------------------------------------------
 
-(deftest triggered-alerts-test
+(deftest ^:parallel triggered-alerts-test
   (let [triggers [{:id "alert-1"
                    :condition {:name :high-null-rate :card_id "step-1"}
                    :severity :warning
@@ -48,7 +48,7 @@
 
 ;;; -------------------------------------------------- triggered-drill-lenses --------------------------------------------------
 
-(deftest triggered-drill-lenses-test
+(deftest ^:parallel triggered-drill-lenses-test
   (let [triggers [{:lens_id "unmatched-rows"
                    :condition {:name :has-unmatched-rows :card_id "step-1"}
                    :params {:join_step 1}
@@ -66,7 +66,7 @@
 
 ;;; -------------------------------------------------- evaluate-triggers --------------------------------------------------
 
-(deftest evaluate-triggers-test
+(deftest ^:parallel evaluate-triggers-test
   (let [lens {:alert_triggers       [{:id "alert-1"
                                       :condition {:name :high-null-rate :card_id "step-1"}
                                       :severity :warning
@@ -81,7 +81,7 @@
         (is (= 1 (count (:alerts result))))
         (is (= 1 (count (:drill_lenses result))))))))
 
-(deftest evaluate-triggers-no-triggers-test
+(deftest ^:parallel evaluate-triggers-no-triggers-test
   (let [lens {:alert_triggers [] :drill_lens_triggers []}
         card-results {"step-1" {"null_rate" 0.3}}]
     (testing "returns empty collections when no triggers defined"
@@ -91,7 +91,7 @@
 
 ;;; -------------------------------------------------- interesting-fields --------------------------------------------------
 
-(deftest interesting-fields-test
+(deftest ^:parallel interesting-fields-test
   (testing "filters out dominated fields and keeps interesting ones"
     (let [fields [{:name "id" :semantic_type :type/PK :base_type :type/Integer}
                   {:name "created" :base_type :type/DateTime}]
@@ -101,7 +101,7 @@
 
 ;;; -------------------------------------------------- degenerate? --------------------------------------------------
 
-(deftest degenerate-test
+(deftest ^:parallel degenerate-test
   (testing "no_data is degenerate"
     (is (= {:degenerate? true :reason :no-data}
            (inspector.core/degenerate? "c1" :bar {"c1" {"no_data" true}}))))

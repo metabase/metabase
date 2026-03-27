@@ -36,7 +36,7 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(deftest authentication-test
+(deftest ^:parallel authentication-test
   (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "measure")))
 
@@ -45,7 +45,7 @@
 
 ;; ## POST /api/measure
 
-(deftest create-measure-permissions-test
+(deftest ^:parallel create-measure-permissions-test
   (testing "POST /api/measure"
     (testing "Test security. Requires superuser perms."
       (is (= "You don't have permissions to do that."
@@ -53,7 +53,7 @@
                                                                :table_id   (mt/id :venues)
                                                                :definition {}}))))))
 
-(deftest create-measure-input-validation-test
+(deftest ^:parallel create-measure-input-validation-test
   (testing "POST /api/measure"
     (is (=? {:errors {:name "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :post 400 "measure" {})))
@@ -74,7 +74,7 @@
                                                                   :table_id   123
                                                                   :definition "foobar"})))))
 
-(deftest create-measure-test
+(deftest ^:parallel create-measure-test
   (testing "POST /api/measure"
     (is (=? {:name        "A Measure"
              :description "I did it!"
@@ -93,7 +93,7 @@
 
 ;; ## PUT /api/measure
 
-(deftest update-permissions-test
+(deftest ^:parallel update-permissions-test
   (testing "PUT /api/measure/:id"
     (testing "test security. requires superuser perms"
       (mt/with-temp [:model/Measure measure {:table_id   (mt/id :venues)
@@ -104,7 +104,7 @@
                                       :definition       {}
                                       :revision_message "something different"})))))))
 
-(deftest update-input-validation-test
+(deftest ^:parallel update-input-validation-test
   (testing "PUT /api/measure/:id"
     (is (=? {:errors {:name "nullable value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "measure/1" {:name "" :revision_message "abc"})))
@@ -121,7 +121,7 @@
                                                                    :revision_message "123"
                                                                    :definition       "foobar"})))))
 
-(deftest update-test
+(deftest ^:parallel update-test
   (testing "PUT /api/measure/:id"
     (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
                                                 :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
@@ -143,7 +143,7 @@
                 :revision_message "I got me some revisions"
                 :definition       (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}))))))
 
-(deftest partial-update-test
+(deftest ^:parallel partial-update-test
   (testing "PUT /api/measure/:id"
     (testing "Can I update a measure's name without specifying all fields?"
       (mt/with-temp [:model/Measure measure {:table_id   (mt/id :venues)
@@ -153,7 +153,7 @@
                                          {:name             "Cool name"
                                           :revision_message "WOW HOW COOL"})))))))
 
-(deftest archive-test
+(deftest ^:parallel archive-test
   (testing "PUT /api/measure/:id"
     (testing "Can we archive a Measure with the PUT endpoint?"
       (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
@@ -163,7 +163,7 @@
         (is (true?
              (t2/select-one-fn :archived :model/Measure :id id)))))))
 
-(deftest unarchive-test
+(deftest ^:parallel unarchive-test
   (testing "PUT /api/measure/:id"
     (testing "Can we unarchive a Measure with the PUT endpoint?"
       (mt/with-temp [:model/Measure {:keys [id]} {:archived   true
@@ -302,7 +302,7 @@
           (is (mbql5-definition? (:definition response))
               "Returned definition should be MBQL5"))))))
 
-(deftest api-accepts-mbql4-on-put-test
+(deftest ^:parallel api-accepts-mbql4-on-put-test
   (testing "PUT /api/measure/:id accepts MBQL4 definitions and returns MBQL5"
     (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :venues)
                                                     :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]

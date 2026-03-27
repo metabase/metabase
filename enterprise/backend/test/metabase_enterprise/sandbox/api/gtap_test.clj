@@ -9,7 +9,7 @@
    [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
 
-(deftest require-auth-test
+(deftest ^:parallel require-auth-test
   (testing "Must be authenticated to query for GTAPs"
     (mt/with-premium-features #{:sandboxes}
       (is (= (get api.response/response-unauthentic :body)
@@ -186,7 +186,7 @@
             (is (= "Not found."
                    (mt/user-http-request :crowberto :get 404 (format "mt/gtap/%s" id))))))))))
 
-(deftest update-gtap-test
+(deftest ^:parallel update-gtap-test
   (testing "PUT /api/mt/gtap/:id"
     (mt/with-temp [:model/Table            {table-id :id} {}
                    :model/PermissionsGroup {group-id :id} {}

@@ -4,7 +4,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.mcp.tools :as mcp.tools]))
 
-(deftest scope-matches?-test
+(deftest ^:parallel scope-matches?-test
   (let [scope-matches? #'mcp.tools/scope-matches?]
     (testing "nil token-scopes (internal callers) → always matches"
       (is (true? (scope-matches? nil "agent:read")))

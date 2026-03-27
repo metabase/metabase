@@ -6,7 +6,7 @@
 
 (use-fixtures :once fixtures/initialize :db :test-users)
 
-(deftest saml-settings-test
+(deftest ^:parallel saml-settings-test
   (testing "PUT /api/saml/settings"
     (mt/with-premium-features #{}
       (testing "SAML settings cannot be saved without SAML feature flag enabled"

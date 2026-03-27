@@ -40,7 +40,7 @@
           (t2/delete! :model/AuthIdentity :id (:id auth-identity))
           (is (nil? (t2/select-one :model/AuthIdentity :id (:id auth-identity)))))))))
 
-(deftest auth-identity-json-transform-test
+(deftest ^:parallel auth-identity-json-transform-test
   (testing "JSON transformation for credentials and metadata"
     (mt/with-temp [:model/User user {}
                    :model/AuthIdentity auth-identity {:user_id (:id user)

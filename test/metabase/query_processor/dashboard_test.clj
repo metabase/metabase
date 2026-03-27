@@ -87,7 +87,7 @@
                     (run-query-for-dashcard dashboard-id card-id dashcard-id
                                             {:parameters (assoc-in params [0 :value] 3)}))))))))))
 
-(deftest card-and-dashcard-id-validation-test
+(deftest ^:parallel card-and-dashcard-id-validation-test
   (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:parameters []}
                  :model/Card          {card-id-1 :id} {:dataset_query (mt/mbql-query venues)}
                  :model/Card          {card-id-2 :id} {:dataset_query (mt/mbql-query venues)}
@@ -122,7 +122,7 @@
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
-(deftest default-value-precedence-test-field-filters
+(deftest ^:parallel default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
@@ -220,7 +220,7 @@
         1 [["11" 2 1]]
         2 []))))
 
-(deftest default-value-precedence-test-raw-values
+(deftest ^:parallel default-value-precedence-test-raw-values
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
@@ -264,7 +264,7 @@
                            :parameters [{:id    "5791ff38"
                                          :value nil}])))))))))
 
-(deftest do-not-apply-unconnected-filters-for-same-card-test
+(deftest ^:parallel do-not-apply-unconnected-filters-for-same-card-test
   (testing (str "If the same Card is added to a Dashboard multiple times but with different filters, only apply the "
                 "filters for the DashCard we're running a query for (#19494)")
     (mt/dataset test-data
@@ -309,7 +309,7 @@
                                                     :parameters [{:id    "CATEGORY_2"
                                                                   :value ["Gadget"]}]))))))))))
 
-(deftest field-filters-should-work-if-no-value-is-specified-test
+(deftest ^:parallel field-filters-should-work-if-no-value-is-specified-test
   (testing "Field Filters should not apply if no value is specified (metabase#20493)"
     (mt/dataset test-data
       (let [query (mt/native-query {:query         "SELECT COUNT(*) FROM \"PRODUCTS\" WHERE {{cat}}"
@@ -358,7 +358,7 @@
             (is (= [[200]]
                    (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id))))))))))
 
-(deftest field-filters-with-default-if-no-value-is-specified-test
+(deftest ^:parallel field-filters-with-default-if-no-value-is-specified-test
   (testing "Field Filters work differently if a default on the card parameter is specified"
     (mt/dataset test-data
       (let [query (mt/native-query {:query         "SELECT COUNT(*) FROM \"PRODUCTS\" WHERE {{cat}}"
@@ -407,7 +407,7 @@
             (is (= [[51]]
                    (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id))))))))))
 
-(deftest ignore-default-values-in-request-parameters-test
+(deftest ^:parallel ignore-default-values-in-request-parameters-test
   (testing "Parameters passed in from the request with only default values (but no actual values) should get ignored (#20516)"
     (mt/dataset test-data
       (mt/with-temp [:model/Card {card-id :id} {:name          "Orders"
@@ -468,7 +468,7 @@
             (run-query-for-dashcard dashboard-id card-id dashcard-id)
             (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))
 
-(deftest exclude-day-of-week-dashboard-parameter-test
+(deftest ^:parallel exclude-day-of-week-dashboard-parameter-test
   (testing "Exclude day-of-week filter via dashboard parameter should not embed date literals in SQL (#68479)"
     ;; Repro scenario from the issue:
     ;; 1. Create a question on a table with a timestamp column

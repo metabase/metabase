@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.test.http-client :as client]))
 
-(deftest test-public-routes
+(deftest ^:parallel test-public-routes
   (binding [client/*url-prefix* ""]
     (is (str/ends-with? (-> (client/client-full-response :get 302 "public/question/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.csv" {})
                             :headers
@@ -19,7 +19,7 @@
                             (get "Location"))
                         "/api/public/card/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/query/xlsx?"))))
 
-(deftest test-embed-routes
+(deftest ^:parallel test-embed-routes
   (binding [client/*url-prefix* ""]
     (is (str/ends-with? (-> (client/client-full-response :get 302 "embed/question/token-string.csv" {})
                             :headers

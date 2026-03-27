@@ -38,14 +38,14 @@
   [opts]
   (reduce (fn [_ _]) nil (agent/run-agent-loop opts)))
 
-(deftest has-tool-calls-test
+(deftest ^:parallel has-tool-calls-test
   (testing "detects tool calls in parts"
     (is (#'agent/has-tool-calls? [{:type :tool-input :id "t1"}]))
     (is (not (#'agent/has-tool-calls? [{:type :text :text "hello"}])))
     (is (#'agent/has-tool-calls? [{:type :text :text "hi"}
                                   {:type :tool-input :id "t1"}]))))
 
-(deftest should-continue-test
+(deftest ^:parallel should-continue-test
   (let [max-iter 3]
     (testing "continues when iteration < max and has tool calls"
       (is (#'agent/should-continue? 0 max-iter [{:type :tool-input}]))
@@ -136,7 +136,7 @@
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj
 
-(deftest seed-state-test
+(deftest ^:parallel seed-state-test
   (testing "seeds queries from user_is_viewing context"
     (let [context {:user_is_viewing [{:type "native"
                                       :id "query-123"
@@ -183,7 +183,7 @@
 
 ;;; Query and Chart extraction tests
 
-(deftest extract-queries-test
+(deftest ^:parallel extract-queries-test
   (testing "extracts queries from tool output parts"
     (let [query {:database 1 :type :query :query {:source-table 1}}
           parts [{:type :tool-output
@@ -212,7 +212,7 @@
           updated (#'agent/extract-queries memory parts)]
       (is (empty? (:queries (memory/get-state updated)))))))
 
-(deftest extract-charts-test
+(deftest ^:parallel extract-charts-test
   (testing "extracts charts from tool output parts"
     (let [chart-data {:chart-id "c-456"
                       :query-id "q-123"
@@ -764,7 +764,7 @@
           (tu/poll-until 5000 @classify-called)
           (is (true? @classify-called)))))))
 
-(deftest chart-configs-loaded-into-charts-test
+(deftest ^:parallel chart-configs-loaded-into-charts-test
   (let [query (lib/native-query (mt/metadata-provider) "select 1")
         chart-config {:display_type "pie"
                       :query query

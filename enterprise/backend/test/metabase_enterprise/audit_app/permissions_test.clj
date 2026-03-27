@@ -22,7 +22,7 @@
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
-(deftest audit-db-view-names-test
+(deftest ^:parallel audit-db-view-names-test
   (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"
     (let [view-query "SELECT table_name FROM information_schema.views WHERE table_name LIKE 'v\\_%';"]
       (is (set/superset?

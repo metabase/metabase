@@ -25,7 +25,7 @@
                        {:name (i18n/deferred-trs "Monthly job")
                         :description (i18n/deferred-trs "Executes transforms tagged with ''monthly'' once per month")}})
 
-(deftest initial-jobs-translated-on-select
+(deftest ^:parallel initial-jobs-translated-on-select
   (doseq [[type translations] values]
     (mt/with-temp [:model/TransformJob job
                    {:name "default"

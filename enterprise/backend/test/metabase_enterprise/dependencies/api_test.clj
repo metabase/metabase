@@ -331,7 +331,7 @@
                        :bad_transforms []}
                       response)))))))))
 
-(deftest check-transform-test
+(deftest ^:parallel check-transform-test
   (testing "POST /api/ee/dependencies/check-transform"
     (mt/with-premium-features #{:dependencies :transforms-basic}
       (mt/with-temp [:model/Transform {_transform-id :id :as transform} {}]
@@ -339,7 +339,7 @@
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
-(deftest check-snippet-test
+(deftest ^:parallel check-snippet-test
   (testing "POST /api/ee/dependencies/check-snippet"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/NativeQuerySnippet {_snippet-id :id :as snippet} {:name "test-snippet"
@@ -422,7 +422,7 @@
                         (update :edges set)
                         (update :nodes #(sort-by (juxt :type :id) %)))))))))))
 
-(deftest graph-transform-hydrates-creator-test
+(deftest ^:parallel graph-transform-hydrates-creator-test
   (testing "GET /api/ee/dependencies/graph hydrates creator for transforms"
     (mt/with-premium-features #{:dependencies :transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id} {:name "Test Transform"
@@ -678,7 +678,7 @@
                                   {:id (:id snippet)
                                    :content "SELECT 2"})))))))
 
-(deftest check-transform-permissions-test
+(deftest ^:parallel check-transform-permissions-test
   (testing "POST /api/ee/dependencies/check-transform requires read permissions on the input transform"
     (mt/with-premium-features #{:dependencies :transforms-basic}
       (mt/with-temp [:model/Transform transform {:name "test transform"}]
@@ -2705,7 +2705,7 @@
                     names (mapv #(get-in % [:data :name]) response)]
                 (is (= ["B Dependent - countsorttest" "A Dependent - countsorttest"] names))))))))))
 
-(deftest broken-requires-id-and-type-test
+(deftest ^:parallel broken-requires-id-and-type-test
   (testing "GET /api/ee/dependencies/graph/broken - requires id and type parameters"
     (mt/with-premium-features #{:dependencies}
       (testing "missing both id and type returns 400"
@@ -2900,7 +2900,7 @@
                                               :email "crowberto@metabase.com"}}}]}
                       response)))))))))
 
-(deftest data-analyst-can-access-dependency-graph-test
+(deftest ^:parallel data-analyst-can-access-dependency-graph-test
   (mt/with-premium-features #{:data-studio :dependencies}
     (testing "Data analysts can access dependency diagnostics endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]

@@ -304,7 +304,7 @@
              (map #(select-keys % [:description :has_multiple_changes])
                   (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id)))))))
 
-(deftest dashboard-width-revision-diff-test
+(deftest ^:parallel dashboard-width-revision-diff-test
   (testing "The Dashboard's revision history correctly reports dashboard width changes (#38910)"
     (mt/with-temp
       [:model/Dashboard  {dashboard-id :id :as dash} {:name "A dashboard"}
@@ -531,7 +531,7 @@
           (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
         (is (= "A dashboard" (t2/select-one-fn :name :model/Dashboard :id dashboard-id)))))))
 
-(deftest fetch-dashboard-revisions-test
+(deftest ^:parallel fetch-dashboard-revisions-test
   (testing "GET /api/revision/dashboard/:id"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Revision  _ {:model        "Dashboard"
@@ -580,7 +580,7 @@
                 :description          "created this."}]
               (mt/user-http-request :crowberto :get 200 (format "revision/dashboard/%d" dashboard-id)))))))
 
-(deftest revert-dashboard-test
+(deftest ^:parallel revert-dashboard-test
   (testing "POST /api/revision/revert <Dashboard>"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Revision  {revision-id :id} {:model       "Dashboard"

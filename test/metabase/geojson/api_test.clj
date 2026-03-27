@@ -206,7 +206,7 @@
       (is (= "Invalid custom GeoJSON key: us_states"
              (mt/user-real-request :crowberto :get 400 "geojson/us_states"))))))
 
-(deftest resolver-disallows-link-local-geojson-attack
+(deftest ^:parallel resolver-disallows-link-local-geojson-attack
   (testing "Should block link local dns resolution"
     (binding [api.geojson/*system-dns-resolver* (doto (InMemoryDnsResolver.)
                                                   (.add "metabase.com"

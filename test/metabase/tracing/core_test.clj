@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest group-enabled?-disabled-by-default-test
+(deftest ^:parallel group-enabled?-disabled-by-default-test
   (testing "group-enabled? returns false when tracing is not initialized"
     ;; By default, enabled-groups atom is nil (tracing not initialized)
     (is (not (tracing/group-enabled? :qp)))
@@ -67,7 +67,7 @@
     (is (contains? (tracing/registered-groups) :test-group))
     (is (= "A test group" (:description (:test-group (tracing/registered-groups)))))))
 
-(deftest built-in-groups-registered-test
+(deftest ^:parallel built-in-groups-registered-test
   (testing "all built-in groups are registered"
     (let [groups (tracing/registered-groups)]
       (is (contains? groups :qp))

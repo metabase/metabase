@@ -109,7 +109,7 @@
         (is (= "Sales & Revenue"
                (#'slackbot.streaming/format-viz-title "Sales & Revenue" nil)))))))
 
-(deftest feedback-blocks-test
+(deftest ^:parallel feedback-blocks-test
   (testing "feedback-blocks generates correct Slack context_actions block with feedback_buttons"
     (let [conversation-id "test-conv-123"
           blocks          (#'slackbot.streaming/feedback-blocks conversation-id)]
@@ -128,7 +128,7 @@
             (is (= {:conversation_id conversation-id :positive false}
                    (json/decode (get-in fb [:negative_button :value]) true)))))))))
 
-(deftest streaming-response-includes-feedback-blocks-test
+(deftest ^:parallel streaming-response-includes-feedback-blocks-test
   (testing "send-response passes feedback blocks to stop-stream"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]
@@ -169,7 +169,7 @@
         {:cbs          cbs
          :append-calls append-calls}))))
 
-(deftest on-text-respects-batch-size-test
+(deftest ^:parallel on-text-respects-batch-size-test
   (testing "on-text does not flush until pending text reaches min-text-batch-size"
     (let [{:keys [cbs append-calls]} (make-test-callbacks)
           {:keys [on-text request-flush! slack-writer]} cbs
@@ -188,7 +188,7 @@
       (request-flush! true)
       (await slack-writer))))
 
-(deftest flush-throttle-test
+(deftest ^:parallel flush-throttle-test
   (testing "rapid flushes are throttled by min-flush-interval-ns"
     (let [{:keys [cbs append-calls]} (make-test-callbacks)
           {:keys [on-text request-flush! slack-writer]} cbs

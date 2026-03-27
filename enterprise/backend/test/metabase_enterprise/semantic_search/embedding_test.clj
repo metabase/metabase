@@ -73,14 +73,14 @@
              #"OpenAI API key not configured"
              (embedding/get-embeddings-batch embedding-model ["test text"])))))))
 
-(deftest test-token-counting
+(deftest ^:parallel test-token-counting
   (testing "count-tokens returns reasonable counts for text"
     (is (= 2 (#'embedding/count-tokens "Hello world")))
     (is (= 9 (#'embedding/count-tokens "This is a longer sentence with more tokens.")))
     (is (zero? (#'embedding/count-tokens "")))
     (is (nil? (#'embedding/count-tokens nil)))))
 
-(deftest test-batching-logic
+(deftest ^:parallel test-batching-logic
   (testing "create-batches handles empty input"
     (is (empty? (#'embedding/create-batches 10 count [])))
     (is (empty? (#'embedding/create-batches 10 count nil))))
@@ -124,7 +124,7 @@
       (.putFloat buffer (float f)))
     (.encodeToString (Base64/getEncoder) (.array buffer))))
 
-(deftest test-extract-base64-response-embeddings
+(deftest ^:parallel test-extract-base64-response-embeddings
   (let [decode #(map vec (#'embedding/decode-embeddings %))]
     (testing "extracts single embedding correctly"
       (let [test-embedding [1.0 2.5 -0.5 3.14159]

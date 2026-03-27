@@ -7,7 +7,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest log-info-input-tests
+(deftest ^:parallel log-info-input-tests
   (testing "log-info handles nil status input"
     (is (true?
          (try
@@ -17,7 +17,7 @@
              false)))))) ; Make sure it didn't throw NPE
 
 ;; just make sure `stats-test` can report application DB information correctly without barfing.
-(deftest stats-test
+(deftest ^:parallel stats-test
   (testing `log/stats
     (is (re= #"^App DB connections:.*"
              (#'mw.log/stats (fn [] {:info true}))))))

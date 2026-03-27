@@ -45,7 +45,7 @@
         (t2/delete! :model/ApiKey :scope :scim)
         (mt/user-http-request :crowberto :get 404 "ee/scim/api_key")))))
 
-(deftest post-api-key-test
+(deftest ^:parallel post-api-key-test
   (testing "POST /api/ee/scim/api_key"
     (mt/with-premium-features #{:scim}
       (testing "Can create a new SCIM API key"

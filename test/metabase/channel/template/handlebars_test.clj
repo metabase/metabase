@@ -33,7 +33,7 @@
   [[filename-binding filename content] & body]
   `(do-with-temp-template! ~filename ~content (fn [~filename-binding] ~@body)))
 
-(deftest render-string-test
+(deftest ^:parallel render-string-test
   (testing "Render a template string with a context."
     (are [expected template context]
          (= expected (handlebars/render-string template context))
@@ -56,7 +56,7 @@
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{uppercase name}}"]
       (is (= "Hello NGOC" (handlebars/render custom-hbs tmpl-name {:name "Ngoc"}))))))
 
-(deftest validate-template-path-test
+(deftest ^:parallel validate-template-path-test
   (testing "valid paths are accepted"
     (is (true? (handlebars/valid-template-path? "metabase/channel/email/password_reset.hbs")))
     (is (true? (handlebars/valid-template-path? "metabase/channel/email/notification_card.hbs")))
@@ -71,7 +71,7 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid template path"
                           (handlebars/render "metabase/channel/email/logo.clj" {})))))
 
-(deftest dotted-path-resolution-works-on-maps-test
+(deftest ^:parallel dotted-path-resolution-works-on-maps-test
   (are [template context]
        (= "" (handlebars/render-string template context))
     "{{x.y}}"       {"x" "a string"}

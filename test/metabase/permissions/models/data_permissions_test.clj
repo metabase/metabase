@@ -439,7 +439,7 @@
                                                         :db-id database-id-1
                                                         :perm-type :perms/view-data)))))))
 
-(deftest most-restrictive-per-group-works
+(deftest ^:parallel most-restrictive-per-group-works
   (is (= #{:query-builder-and-native}
          (#'data-perms/most-restrictive-per-group :perms/create-queries [{:group-id 1 :value :query-builder-and-native}])))
   (is (= #{:no}
@@ -825,7 +825,7 @@
            (t2/select-fn-set :object :model/Permissions :group_id group-id)
            (str "/block/db/" db-id "/"))))))
 
-(deftest use-cache?-test
+(deftest ^:parallel use-cache?-test
   (testing "use-cache? returns true only when both cache is enabled and user is current user"
     (let [current-user-id 1
           other-user-id 2]

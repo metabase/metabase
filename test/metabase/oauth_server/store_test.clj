@@ -9,7 +9,7 @@
 
 ;;; ------------------------------------------------ ClientStore -------------------------------------------------------
 
-(deftest client-store-register-and-get-test
+(deftest ^:parallel client-store-register-and-get-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [cs          (store/create-client-store)
           secret-hash (oidc-util/hash-client-secret "super-secret")
@@ -43,7 +43,7 @@
         (let [fetched (proto/get-client cs (:client-id config))]
           (is (oidc-util/verify-client-secret "super-secret" (:client-secret-hash fetched))))))))
 
-(deftest client-store-generate-client-id-test
+(deftest ^:parallel client-store-generate-client-id-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [cs     (store/create-client-store)
           config {:redirect-uris  ["https://example.com/callback"]
@@ -55,7 +55,7 @@
         (is (some? (:client-id result)))
         (is (string? (:client-id result)))))))
 
-(deftest client-store-update-test
+(deftest ^:parallel client-store-update-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [cs        (store/create-client-store)
           client-id (str (random-uuid))
@@ -74,17 +74,17 @@
           (let [fetched (proto/get-client cs client-id)]
             (is (= "Updated Name" (:client-name fetched)))))))))
 
-(deftest client-store-get-nonexistent-test
+(deftest ^:parallel client-store-get-nonexistent-test
   (let [cs (store/create-client-store)]
     (testing "get-client returns nil for nonexistent client"
       (is (nil? (proto/get-client cs "nonexistent-id"))))))
 
-(deftest client-store-update-nonexistent-test
+(deftest ^:parallel client-store-update-nonexistent-test
   (let [cs (store/create-client-store)]
     (testing "update-client returns nil for nonexistent client"
       (is (nil? (proto/update-client cs "nonexistent-id" {:client-name "Nope"}))))))
 
-(deftest client-store-register-public-client-test
+(deftest ^:parallel client-store-register-public-client-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [cs     (store/create-client-store)
           config {:client-id      (str (random-uuid))
@@ -101,7 +101,7 @@
           (is (nil? (:client-secret-hash fetched)))
           (is (= "none" (:token-endpoint-auth-method fetched))))))))
 
-(deftest client-store-registration-access-token-test
+(deftest ^:parallel client-store-registration-access-token-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [cs       (store/create-client-store)
           rat      "my-registration-access-token"
@@ -129,7 +129,7 @@
 
 ;;; ----------------------------------------- AuthorizationCodeStore ---------------------------------------------------
 
-(deftest authorization-code-store-save-and-get-test
+(deftest ^:parallel authorization-code-store-save-and-get-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [acs       (store/create-authorization-code-store)
           code      (str (random-uuid))
@@ -158,7 +158,7 @@
                    :resource              ["https://api.example.com"]}
                   fetched)))))))
 
-(deftest authorization-code-store-delete-test
+(deftest ^:parallel authorization-code-store-delete-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [acs       (store/create-authorization-code-store)
           code      (str (random-uuid))
@@ -174,12 +174,12 @@
       (testing "get returns nil after delete"
         (is (nil? (proto/get-authorization-code acs code)))))))
 
-(deftest authorization-code-store-get-nonexistent-test
+(deftest ^:parallel authorization-code-store-get-nonexistent-test
   (let [acs (store/create-authorization-code-store)]
     (testing "get-authorization-code returns nil for nonexistent code"
       (is (nil? (proto/get-authorization-code acs "nonexistent-code"))))))
 
-(deftest authorization-code-store-consume-test
+(deftest ^:parallel authorization-code-store-consume-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [acs       (store/create-authorization-code-store)
           code      (str (random-uuid))
@@ -211,7 +211,7 @@
       (testing "consuming again returns nil"
         (is (nil? (proto/consume-authorization-code acs code)))))))
 
-(deftest authorization-code-store-consume-race-test
+(deftest ^:parallel authorization-code-store-consume-race-test
   (testing "concurrent consume calls: exactly one succeeds"
     (let [acs       (store/create-authorization-code-store)
           code      (str (random-uuid))
@@ -233,7 +233,7 @@
 
 ;;; ------------------------------------------------ TokenStore --------------------------------------------------------
 
-(deftest token-store-access-token-test
+(deftest ^:parallel token-store-access-token-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [ts        (store/create-token-store)
           token     (str (random-uuid))
@@ -253,7 +253,7 @@
                    :resource  ["https://api.example.com"]}
                   fetched)))))))
 
-(deftest token-store-refresh-token-test
+(deftest ^:parallel token-store-refresh-token-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [ts        (store/create-token-store)
           token     (str (random-uuid))
@@ -269,7 +269,7 @@
                    :scope     ["openid"]}
                   fetched)))))))
 
-(deftest token-store-revoke-test
+(deftest ^:parallel token-store-revoke-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
     (let [ts           (store/create-token-store)
           access-tok   (str (random-uuid))
@@ -286,7 +286,7 @@
         (is (nil? (proto/get-access-token ts access-tok)))
         (is (nil? (proto/get-refresh-token ts refresh-tok)))))))
 
-(deftest token-store-get-nonexistent-test
+(deftest ^:parallel token-store-get-nonexistent-test
   (let [ts (store/create-token-store)]
     (testing "get-access-token returns nil for nonexistent token"
       (is (nil? (proto/get-access-token ts "nonexistent"))))

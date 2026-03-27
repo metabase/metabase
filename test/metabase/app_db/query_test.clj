@@ -29,7 +29,7 @@
       (is (= (-> (qp/process-query q) :data :rows)
              (-> (qp/process-query native-query) :data :rows))))))
 
-(deftest ensure-same-queries-test
+(deftest ^:parallel ensure-same-queries-test
   (testing "A test with several joins and an aggregate should produce the same result in mbql or the derived native sql"
     (mt/dataset test-data
       (let [q (mt/mbql-query nil

@@ -44,7 +44,7 @@
              :type :native
              :native {:query "SELECT * FROM VENUES"}}))))))
 
-(deftest native-query-perms-test-2
+(deftest ^:parallel native-query-perms-test-2
   (testing "...but it should work if user has perms"
     (mt/with-temp [:model/Database db]
       ;; query should be returned by middleware unchanged
@@ -70,7 +70,7 @@
                :type :query
                :query {:source-table (u/the-id table)}})))))))
 
-(deftest mbql-query-perms-test-2
+(deftest ^:parallel mbql-query-perms-test-2
   (testing "...but it should work if user has perms [MBQL]"
     (mt/with-temp [:model/Database db {}
                    :model/Table table {:db_id (u/the-id db)}]
@@ -98,7 +98,7 @@
              :type :query
              :query {:source-query {:native "SELECT * FROM VENUES"}}}))))))
 
-(deftest nested-native-query-test-2
+(deftest ^:parallel nested-native-query-test-2
   (testing "...but it should work if user has perms [nested native queries]"
     (mt/with-temp [:model/Database db]
       ;; query should be returned by middleware unchanged
@@ -124,7 +124,7 @@
                :type :query
                :query {:source-query {:source-table (u/the-id table)}}})))))))
 
-(deftest nested-mbql-query-test-2
+(deftest ^:parallel nested-mbql-query-test-2
   (testing "...but it should work if user has perms [nested MBQL queries]"
     (mt/with-temp [:model/Database db {}
                    :model/Table table {:db_id (u/the-id db)}]
@@ -158,7 +158,7 @@
                                           {:id tag-name, :name tag-name, :display-name tag-name,
                                            :type "card", :card card-id}}}}))))))))
 
-(deftest template-tags-referenced-queries-test-2
+(deftest ^:parallel template-tags-referenced-queries-test-2
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp [:model/Database db {}
                    :model/Table _ {:db_id (u/the-id db)}
@@ -209,7 +209,7 @@
                                           {:id tag-name, :name tag-name, :display-name tag-name,
                                            :type "card", :card card-id}}}}))))))))
 
-(deftest template-tags-referenced-queries-test-4
+(deftest ^:parallel template-tags-referenced-queries-test-4
   (testing "...but it should work if user has perms [template tag referenced query]"
     (mt/with-temp [:model/Database db {}
                    :model/Card card {:dataset_query

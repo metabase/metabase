@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.query-processor.pivot.postprocess :as pivot.postprocess]))
 
-(deftest build-top-headers-test
+(deftest ^:parallel build-top-headers-test
   (testing "builds top headers with single level hierarchy"
     (let [top-header-items [{:depth 0 :value "A" :span 2}
                             {:depth 0 :value "B" :span 1}]
@@ -54,7 +54,7 @@
       (is (= [["Row"]]
              result)))))
 
-(deftest build-left-headers-test
+(deftest ^:parallel build-left-headers-test
   (testing "builds left headers with single level hierarchy"
     (let [left-header-items [{:depth 0 :value "A" :span 1 :offset 0}
                              {:depth 0 :value "B" :span 1 :offset 1}]
@@ -81,7 +81,7 @@
       (is (= []
              result)))))
 
-(deftest build-full-pivot-test
+(deftest ^:parallel build-full-pivot-test
   (testing "builds full pivot table correctly"
     (let [get-row-section (fn [col-idx row-idx]
                             (case [col-idx row-idx]

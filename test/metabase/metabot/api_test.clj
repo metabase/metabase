@@ -361,7 +361,7 @@
                         {:provider "anthropic"
                          :model    "claude-haiku-4-5"}))
 
-(deftest endpoints-require-authentication-test
+(deftest ^:parallel endpoints-require-authentication-test
   (testing "Metabot v3 endpoints require authentication"
     (testing "/agent-streaming"
       (is (= "Unauthenticated"

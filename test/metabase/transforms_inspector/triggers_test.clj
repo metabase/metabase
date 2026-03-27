@@ -3,11 +3,11 @@
    [clojure.test :refer :all]
    [metabase.transforms-inspector.triggers :as triggers]))
 
-(deftest evaluate-condition-default-test
+(deftest ^:parallel evaluate-condition-default-test
   (testing "unknown condition names return false"
     (is (not (triggers/evaluate-condition {:name :nonexistent} {})))))
 
-(deftest evaluate-condition-high-null-rate-test
+(deftest ^:parallel evaluate-condition-high-null-rate-test
   (testing "high-null-rate triggers when null_rate > 0.2"
     (is (true? (triggers/evaluate-condition
                 {:name :high-null-rate :card_id "step-1"}
@@ -29,7 +29,7 @@
               {:name :high-null-rate :card_id "step-1"}
               {"step-1" {}})))))
 
-(deftest evaluate-condition-has-unmatched-rows-test
+(deftest ^:parallel evaluate-condition-has-unmatched-rows-test
   (testing "has-unmatched-rows triggers when null_rate > 0.05"
     (is (true? (triggers/evaluate-condition
                 {:name :has-unmatched-rows :card_id "step-1"}

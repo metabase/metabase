@@ -2702,7 +2702,7 @@
           (testing "everything back to normal after downgrade"
             (assert-pre-conditions)))))))
 
-(deftest escape-existing-at-symbol-user-attributes-test
+(deftest ^:parallel escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
     (impl/test-migrations ["v58.2025-11-18T12:31:49"] [migrate!]
       (let [user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bar\"}"}))

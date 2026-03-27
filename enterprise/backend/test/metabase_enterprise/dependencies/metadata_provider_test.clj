@@ -9,7 +9,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]))
 
-(deftest basic-cards-test
+(deftest ^:parallel basic-cards-test
   (testing "overriding a single card, it is returned correctly"
     (let [card    (:orders (lib.tu/mock-cards))
           mp      (deps.mp/override-metadata-provider
@@ -31,7 +31,7 @@
       (assoc :dataset-query (lib/->legacy-MBQL new-query))
       (dissoc :result-metadata)))
 
-(deftest upstream-card-test
+(deftest ^:parallel upstream-card-test
   (testing "overriding an upstream card that's consumed by a downstream card"
     (let [upstream   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/breakout (meta/field-metadata :products :category))
@@ -66,7 +66,7 @@
                      (lib/query mp)
                      lib/returned-columns)))))))
 
-(deftest card->transform->card-test
+(deftest ^:parallel card->transform->card-test
   (testing "changing the columns of an upstream card that is transformed and then used by a card"
     (let [upstream   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/breakout (meta/field-metadata :products :category))

@@ -93,7 +93,7 @@
                          :pie.show_legend_perecent percent
                          :pie.show_data_labels     labels})))))))
 
-(deftest encrypted-data-with-no-secret-test
+(deftest ^:parallel encrypted-data-with-no-secret-test
   (encryption-test/with-secret-key nil
     (testing "Just parses string normally when there is no key and the string is JSON"
       (is (= {:a 1}
@@ -238,7 +238,7 @@
       (with-redefs [mi/can-read? (constantly false)]
         (is (false? (mi/can-query? card)))))))
 
-(deftest can-query-hydration-returns-boolean-test
+(deftest ^:parallel can-query-hydration-returns-boolean-test
   (testing ":can_query hydration returns a boolean value"
     (mt/with-temp [:model/Card card {}]
       (let [hydrated (t2/hydrate card :can_query)]

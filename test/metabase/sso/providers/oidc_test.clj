@@ -277,7 +277,7 @@
             result (provider/authenticate :provider/oidc request)]
         (is (= :redirect (:success? result)))))))
 
-(deftest provider-hierarchy-test
+(deftest ^:parallel provider-hierarchy-test
   (testing "OIDC provider derives from base provider"
     (is (isa? :provider/oidc ::provider/provider)))
 

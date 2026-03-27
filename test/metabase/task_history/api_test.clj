@@ -23,12 +23,12 @@
                       :ended_at   (t/plus now (t/seconds idx))}))
                  task-names)))
 
-(deftest list-perms-test
+(deftest ^:parallel list-perms-test
   (testing "Only superusers can query for TaskHistory"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "task/")))))
 
-(deftest list-test
+(deftest ^:parallel list-test
   (testing "Superusers can query TaskHistory, should return DB results"
     (let [[task-hist-1 _task-hist-2] (generate-tasks 2)
           task-hist-1 (assoc task-hist-1 :duration 100)
@@ -43,7 +43,7 @@
                           :when  (contains? task-names (:task result))]
                       (mt/boolean-ids-and-timestamps result)))))))))
 
-(deftest sort-by-started-at-test
+(deftest ^:parallel sort-by-started-at-test
   (testing (str "Multiple results should be sorted via `:started_at`. Below creates two tasks, the second one has a "
                 "later `:started_at` date and should be returned first")
     (let [now             (t/zoned-date-time)
@@ -65,7 +65,7 @@
                      :when  (contains? task-names (:task result))]
                  (mt/boolean-ids-and-timestamps result))))))))
 
-(deftest limit-param-test
+(deftest ^:parallel limit-param-test
   (testing "Should default when only including a limit"
     (is (= (mt/user-http-request :crowberto :get 200 "task/" :limit 100 :offset 0)
            (mt/user-http-request :crowberto :get 200 "task/" :limit 100))))
@@ -95,18 +95,18 @@
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 "task/" :limit 2 :offset 2))))))))
 
-(deftest not-found-test
+(deftest ^:parallel not-found-test
   (testing "Superusers querying for a TaskHistory that doesn't exist will get a 404"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get 404 (format "task/%s" Integer/MAX_VALUE))))))
 
-(deftest fetch-perms-test
+(deftest ^:parallel fetch-perms-test
   (testing "Regular users can't query for a specific TaskHistory"
     (mt/with-temp [:model/TaskHistory task]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "task/%s" (u/the-id task))))))))
 
-(deftest fetch-test
+(deftest ^:parallel fetch-test
   (testing "Superusers querying for specific TaskHistory will get that task info"
     (mt/with-temp [:model/TaskHistory task {:task     "Test Task"
                                             :duration 100}]
@@ -114,7 +114,7 @@
              (mt/boolean-ids-and-timestamps
               (mt/user-http-request :crowberto :get 200 (format "task/%s" (u/the-id task)))))))))
 
-(deftest fetch-info-test
+(deftest ^:parallel fetch-info-test
   (testing "Regular user can't get task info"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "task/info"))))
@@ -502,7 +502,7 @@
 ;;; |                                              Task Runs API tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest runs-list-perms-test
+(deftest ^:parallel runs-list-perms-test
   (testing "Only superusers can query for TaskRuns"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "task/runs")))))
@@ -610,7 +610,7 @@
         (testing "tasks are sorted by started_at asc"
           (is (= (:id th1) (-> response :tasks first :id))))))))
 
-(deftest runs-entities-perms-test
+(deftest ^:parallel runs-entities-perms-test
   (testing "non-superuser cannot access runs/entities"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "task/runs/entities"
@@ -773,7 +773,7 @@
                                                :status "failed")]
             (is (= 1 (:total response)))))))))
 
-(deftest runs-started-at-invalid-date-test
+(deftest ^:parallel runs-started-at-invalid-date-test
   (testing "invalid date string returns 400 error"
     (is (re-matches #"Failed to parse datetime value.*"
                     (mt/user-http-request :crowberto :get 400 "task/runs" :started-at "invalid-date")))))

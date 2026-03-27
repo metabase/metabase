@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.warehouses.provider-detection :as provider-detection]))
 
-(deftest detects-from-strings
+(deftest ^:parallel detects-from-strings
   (let [raw-yaml "
 providers:
 - {name: Foo™, pattern: foo\\.hosted\\.com$}
@@ -18,7 +18,7 @@ providers:
                              [nil "not.gonna.match.com"]]]
       (is (= expected (#'provider-detection/detect-provider host providers))))))
 
-(deftest detect-provider-from-database-test
+(deftest ^:parallel detect-provider-from-database-test
   (testing "database with unsupported engine returns nil"
     (let [database {:details {:host "czrs8kj4isg7.us-east-1.rds.amazonaws.com"} :engine :mysql}]
       (is (nil? (provider-detection/detect-provider-from-database database)))))

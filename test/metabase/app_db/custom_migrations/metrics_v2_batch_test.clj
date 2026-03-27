@@ -179,7 +179,7 @@
      (flush))))
 
 (when (.canRead (io/file data-file))
-  (deftest metabase-cloud-instance-rewrite-test
+  (deftest ^:parallel metabase-cloud-instance-rewrite-test
     (process-instances)))
 
 (comment

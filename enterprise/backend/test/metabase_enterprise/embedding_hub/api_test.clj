@@ -41,7 +41,7 @@
               (is (false? (get-in response [:checklist :create-models]))
                   "Should exclude models in both sample collections"))))))))
 
-(deftest has-user-created-tenants-test
+(deftest ^:parallel has-user-created-tenants-test
   (testing "create-tenants returns true when there is an active tenant"
     (mt/with-premium-features #{:embedding}
       (mt/with-temp [:model/Tenant _ {:name "Test Tenant" :slug "test-tenant"}]
@@ -61,7 +61,7 @@
       (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
         (is (false? (get-in response [:checklist :create-tenants])))))))
 
-(deftest has-configured-data-segregation-strategy-test
+(deftest ^:parallel has-configured-data-segregation-strategy-test
   (testing "setup-data-segregation-strategy returns true when row-level security is configured"
     (mt/with-premium-features #{:embedding :sandboxes}
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
@@ -139,7 +139,7 @@
           (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
             (is (false? (get-in response [:checklist :data-permissions-and-enable-tenants])))))))))
 
-(deftest data-isolation-strategy-test
+(deftest ^:parallel data-isolation-strategy-test
   (testing "data-isolation-strategy is nil when no strategy is configured"
     (mt/with-premium-features #{:embedding}
       (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]

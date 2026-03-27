@@ -6,7 +6,7 @@
    [metabase.metabot.tools.charts.edit :as edit-chart]
    [metabase.test :as mt]))
 
-(deftest edit-chart-test
+(deftest ^:parallel edit-chart-test
   (testing "edits a chart's visualization type"
     (let [mp (mt/metadata-provider)
           charts-state {"chart-abc" {:chart-id "chart-abc"

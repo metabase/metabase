@@ -138,7 +138,7 @@
            :semantic_type :type/Category}]
    :rows [[42 "Entity ID Card"]]})
 
-(deftest test-merge-visualizer-data-with-entity-ids
+(deftest ^:parallel test-merge-visualizer-data-with-entity-ids
   (testing "merge-visualizer-data handles entity IDs correctly"
     (let [result (render-util/merge-visualizer-data
                   entity-id-series-data

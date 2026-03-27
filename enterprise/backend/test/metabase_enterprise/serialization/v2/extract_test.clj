@@ -1856,7 +1856,7 @@
                       (is (not (some #(str/starts-with? % "Failed to export") warn-msgs))
                           (str "Should not have export warnings, got: " warn-msgs)))))))))))))
 
-(deftest entity-id-in-targets-test
+(deftest ^:parallel entity-id-in-targets-test
   (mt/with-temp [:model/Collection c {:name "Top-Level Collection"}]
     (testing "Conversion from eid to id works"
       (is (= (:id c)
@@ -1868,7 +1868,7 @@
         (is (= #{(:entity_id c)}
                (ids-by-model "Collection" ser)))))))
 
-(deftest extract-nested-test
+(deftest ^:parallel extract-nested-test
   (testing "extract-nested working"
     (mt/with-temp [:model/Dashboard           d   {:name "Top Dash"}
                    :model/Card                c1  {:name "Some Card"}
@@ -1888,7 +1888,7 @@
                        :tabs nil)
                 (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
 
-(deftest extract-nested-efficient-test
+(deftest ^:parallel extract-nested-efficient-test
   (testing "extract-nested is efficient"
     (mt/with-temp [:model/Dashboard           d1  {:name "Top Dash 1"}
                    :model/Dashboard           d2  {:name "Top Dash 2"}
@@ -1933,7 +1933,7 @@
           ;; - 2 for series (7 dashcards / 5 -> 2 batches)
           (is (= 5 (qc))))))))
 
-(deftest result-metadata-test
+(deftest ^:parallel result-metadata-test
   (mt/with-temp [:model/Card c {:dataset_query (mt/query venues)}]
     (let [res (qp/process-query
                (qp/userland-query
@@ -2179,7 +2179,7 @@
                 result (serdes/export-visualizer-settings input)]
             (is (= expected result))))))))
 
-(deftest glossary-test
+(deftest ^:parallel glossary-test
   (testing "Glossary entries are extracted well"
     (mt/with-temp [:model/Glossary _ {:term       "foobar"
                                       :definition "It's foobar2000 actually"}]

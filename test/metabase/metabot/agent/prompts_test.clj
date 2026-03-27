@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.prompts :as prompts]))
 
-(deftest load-system-prompt-template-test
+(deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
     (let [template (prompts/load-system-prompt-template "internal.selmer")]
       (is (some? template))
@@ -22,7 +22,7 @@
     (let [template (prompts/load-system-prompt-template "non-existent.selmer")]
       (is (nil? template)))))
 
-(deftest load-dialect-instructions-test
+(deftest ^:parallel load-dialect-instructions-test
   (testing "loads postgresql dialect"
     (let [instructions (prompts/load-dialect-instructions "postgresql")]
       (is (some? instructions))
@@ -43,7 +43,7 @@
     (let [instructions (prompts/load-dialect-instructions nil)]
       (is (nil? instructions)))))
 
-(deftest render-system-prompt-test
+(deftest ^:parallel render-system-prompt-test
   (testing "renders template with variables"
     (let [template "Hello {{name}}, today is {{day}}"
           context {:name "Metabot" :day "Monday"}
@@ -109,13 +109,13 @@
     (let [template (prompts/get-cached-system-prompt "internal.selmer")]
       (is (some? template)))))
 
-(deftest extract-tool-instructions-test
+(deftest ^:parallel extract-tool-instructions-test
   (testing "finds correct instructions"
     (is (=? [{:tool_name "read_resource"
               :instructions #(str/includes? % "you have access to a unified interface")}]
             (prompts/extract-tool-instructions {"read_resource" identity})))))
 
-(deftest build-system-message-content-test
+(deftest ^:parallel build-system-message-content-test
   (testing "builds complete system message"
     (let [profile {:prompt-template "embedding-next.selmer"}
           context {:current_time "2024-01-15 14:30:00"

@@ -18,7 +18,7 @@
         (is (< 5 (count (set thresholds))) "value should be decently random between versions")
         (is (every? (fn [x] (and (integer? x) (<= 0 x 100))) thresholds) "should always be an integer between 0 and 100")))))
 
-(deftest prevent-upgrade?-test
+(deftest ^:parallel prevent-upgrade?-test
   ;; verify that the base value works
   (is (prevent? 45 {:version "0.46" :rollout 50} 75) "base case that it does prevent when rollout is below threshold")
   (testing "never throws and returns truthy"
@@ -44,7 +44,7 @@
 
 (def info #'version.settings/version-info*)
 
-(deftest version-info*-test
+(deftest ^:parallel version-info*-test
   (let [version-info {:latest {:version "1.51.23.1" :rollout 50
                                :highlights ["highlights for 1.51.23.1"]}
                       :older [{:version "1.51.22" :highlights ["highlights for 1.51.22"]}

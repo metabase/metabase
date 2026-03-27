@@ -368,7 +368,7 @@
         (t2/update! :model/Dashboard dash-id-3 {:archived true})
         (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
 
-(deftest id-pruning-test
+(deftest ^:parallel id-pruning-test
   (mt/with-temp [:model/Database a-db     {}
                  :model/Table a-table     {:db_id (:id a-db)}
                  :model/Collection a-coll {}
@@ -403,7 +403,7 @@
                (:id rv14) (:id rv15)}                            ;; dupe models
              ids-to-prune)))))
 
-(deftest test-recent-views-garbage-collection
+(deftest ^:parallel test-recent-views-garbage-collection
   (mt/with-temp [:model/Card a-card {:type "question" :table_id (mt/id :reviews)}
                  :model/Card b-card {:type "question" :table_id (mt/id :reviews)}
                  :model/Card c-card {:type "question" :table_id (mt/id :reviews)}

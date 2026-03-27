@@ -17,7 +17,7 @@
    :context      :ad-hoc
    :started_at   (t/offset-date-time)})
 
-(deftest query-execution-24h-filtering-test
+(deftest ^:parallel query-execution-24h-filtering-test
   (t/with-clock (t/mock-clock 1583351015000)
     (let [before (sut/query-executions-all-time-and-last-24h)
           one-year-ago-defaults (assoc query-execution-defaults
@@ -63,7 +63,7 @@
           (is (= 0 (- (-> after :query-executions-24h :interactive_embed)
                       (-> before :query-executions-24h :interactive_embed)))))))))
 
-(deftest query-execution-last-utc-day-test
+(deftest ^:parallel query-execution-last-utc-day-test
   (testing "count query exeuections over the previous utc day")
   (t/with-clock (t/mock-clock 1583351015000)
     (let [yesterday-defaults (assoc query-execution-defaults

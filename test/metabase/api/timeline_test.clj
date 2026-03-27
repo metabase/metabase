@@ -11,7 +11,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest auth-tests
+(deftest ^:parallel auth-tests
   (testing "Authentication"
     (is (= (get api.response/response-unauthentic :body)
            (client/client :get 401 "/timeline")))
@@ -69,7 +69,7 @@
             (is (partial= [{:name "Timeline A"} {:name "Timeline B"}]
                           (events-for :crowberto false)))))))))
 
-(deftest get-timeline-test
+(deftest ^:parallel get-timeline-test
   (testing "GET /api/timeline/:id"
     (mt/with-temp [:model/Timeline tl-a {:name "Timeline A"}
                    :model/Timeline tl-b {:name "Timeline B" :archived true}]
@@ -102,7 +102,7 @@
 (defn- event-names [timeline]
   (->> timeline :events (map :name) set))
 
-(deftest timelines-range-test
+(deftest ^:parallel timelines-range-test
   (testing "GET /api/timeline/:id?include=events&start=TIME&end=TIME"
     (mt/with-temp [:model/Collection    collection {:name "Collection"}
                    :model/Timeline      tl-a       {:name          "Timeline A"
@@ -161,7 +161,7 @@
               (is (= "star"
                      (t2/select-one-fn :icon :model/Timeline :collection_id id))))))))))
 
-(deftest update-timeline-test
+(deftest ^:parallel update-timeline-test
   (testing "PUT /api/timeline/:id"
     (mt/with-temp [:model/Collection _ {:name "Important Data"}
                    :model/Timeline tl-a {:name "Timeline A" :archived true}
@@ -194,7 +194,7 @@
   (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id timeline))
                         :include "events" :archived archived?))
 
-(deftest timeline-hydration-test
+(deftest ^:parallel timeline-hydration-test
   (testing "GET /api/timeline/:id?include=events"
     (mt/with-temp [:model/Collection collection {:name "Important Data"}
                    :model/Timeline empty-tl {:name          "Empty TL"

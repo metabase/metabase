@@ -8,7 +8,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest ee-snowplow-features-test
+(deftest ^:parallel ee-snowplow-features-test
   (testing "Every feature returned by `ee-snowplow-features-data` has a corresponding OSS fallback"
     (let [ee-features (map :name (ee-stats/ee-snowplow-features-data))
           oss-features (map :name (@#'stats/ee-snowplow-features-data'))]

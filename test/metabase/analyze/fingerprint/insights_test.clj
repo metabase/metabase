@@ -11,7 +11,7 @@
 
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
 
-(deftest last-value-test
+(deftest ^:parallel last-value-test
   (doseq [{:keys [rows expected]} [{:rows [["2014" 100]
                                            ["2015" 200]
                                            ["2016" nil]
@@ -40,7 +40,7 @@
   ([from to period]
    (boolean (#'insights/valid-period? (inst->day from) (inst->day to) period))))
 
-(deftest valid-period-test
+(deftest ^:parallel valid-period-test
   (is (true? (valid-period? #t "2015-01" #t "2015-02")))
   ; Do we correctly handle descending time series?
   (is (true? (valid-period? #t "2015-02" #t "2015-01")))
@@ -116,7 +116,7 @@
     12300.0 3 12345.67
     0.00321 3 0.003209817))
 
-(deftest timeseries-insight-test
+(deftest ^:parallel timeseries-insight-test
   (is (= [{:last-value 144,
            :previous-value 179,
            :last-change -0.19553072625698323,
@@ -163,7 +163,7 @@
   (let [futures (doall (repeatedly n #(future (f))))]
     (map deref futures)))
 
-(deftest consistent-timeseries-insight-test
+(deftest ^:parallel consistent-timeseries-insight-test
   (testing "Timeseries insights remain stable when sampling. (#44349)"
     (let [insights (fn []
                      (-> (transduce identity
@@ -178,7 +178,7 @@
       (is (= 1
              (count (distinct (prepeatedly 100 insights))))))))
 
-(deftest change-test
+(deftest ^:parallel change-test
   (is (= 0.0 (insights/change 1 1)))
   (is (= -0.5 (insights/change 1 2)))
   (is (= 1.0 (insights/change 2 1)))
@@ -190,7 +190,7 @@
   (is (= nil (insights/change -1 0)))
   (is (= 1.0 (insights/change 0 -1))))
 
-(deftest insights-with-custom-epxression-columns-test
+(deftest ^:parallel insights-with-custom-epxression-columns-test
   (testing "If valid timeseries columns exist, insights should be computed even with custom expressions. (#46244)"
     (is (some?
          (transduce identity
@@ -202,7 +202,7 @@
                     [["2024-08-09" 10.0 "weekday"]
                      ["2024-08-10" 20.0 "weekend"]])))))
 
-(deftest datetime-unit-insights
+(deftest ^:parallel datetime-unit-insights
   (testing "A timeseries column with a :type/Text base type can still produce insights if it has a valid :unit (#12388)"
     (are [assertion datetime-col] (assertion
                                    (transduce identity

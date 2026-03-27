@@ -237,7 +237,7 @@
     (let [search-ctx (merge search.filter-test/default-search-ctx search-ctx)]
       (t2/query (search.legacy/full-search-query search-ctx)))))
 
-(deftest search-native-query-scoring-test
+(deftest ^:parallel search-native-query-scoring-test
   (testing "Exclude native query matches in search scoring when the search should exclude native queries"
     (mt/dataset test-data
       (mt/with-temp [;; card-1 has a match in the native query, card-2 does not

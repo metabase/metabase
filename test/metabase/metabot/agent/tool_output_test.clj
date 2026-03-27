@@ -156,7 +156,7 @@
                     (doseq [pattern edn-patterns]
                       (is (not (re-find pattern output)) (str "output contains EDN pattern " pattern)))))))))))))
 
-(deftest read-resource-model-output-test
+(deftest ^:parallel read-resource-model-output-test
   (testing "read_resource returns formatted :output for model URIs"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -171,7 +171,7 @@
             (doseq [[description thunk expected-pattern] (read-resource-model-invocations model-id)]
               (assert-formatted-output (thunk) description expected-pattern))))))))
 
-(deftest read-resource-multiple-uris-test
+(deftest ^:parallel read-resource-multiple-uris-test
   (testing "read_resource with multiple URIs returns a single formatted :output string"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -180,7 +180,7 @@
                               (str "metabase://table/" (mt/id :products))]})]
           (assert-formatted-output result "multiple tables" #"<resources>"))))))
 
-(deftest read-resource-error-uri-test
+(deftest ^:parallel read-resource-error-uri-test
   (testing "read_resource with bad URI returns :output string, not an exception"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -191,7 +191,7 @@
             (doseq [pattern edn-patterns]
               (is (not (re-find pattern output)) (str "error output contains EDN pattern " pattern)))))))))
 
-(deftest search-tool-structured-output-formats-correctly-test
+(deftest ^:parallel search-tool-structured-output-formats-correctly-test
   (testing "search tool :structured-output formats to clean XML via format-structured-result"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -201,7 +201,7 @@
                        :entity_types     ["table"]})]
           (assert-formatted-structured result "search: tables" #"<search-results\b"))))))
 
-(deftest search-tool-with-models-structured-output-test
+(deftest ^:parallel search-tool-with-models-structured-output-test
   (testing "search tool with model results formats correctly"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -220,7 +220,7 @@
               (assert-formatted-structured
                result "search: model" #"<search-results\b"))))))))
 
-(deftest list-available-fields-structured-output-test
+(deftest ^:parallel list-available-fields-structured-output-test
   (testing "list_available_fields :structured-output formats to clean XML"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -231,7 +231,7 @@
                        :metric_ids []})]
           (assert-formatted-structured result "list_available_fields: table" #"<tables\b"))))))
 
-(deftest list-available-fields-multiple-sources-test
+(deftest ^:parallel list-available-fields-multiple-sources-test
   (testing "list_available_fields with multiple source types formats correctly"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -262,7 +262,7 @@
                          :field_id    (str "t" table-id "-" idx)})]
             (assert-formatted-structured result "get_field_values: table field" #"<field-metadata\b")))))))
 
-(deftest get-field-values-metric-structured-output-test
+(deftest ^:parallel get-field-values-metric-structured-output-test
   (testing "get_field_values for metric dimensions formats correctly"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -285,7 +285,7 @@
               (assert-formatted-structured
                result "get_field_values: metric dimension" #"(?:<field-metadata\b|No metadata available)"))))))))
 
-(deftest get-field-values-model-structured-output-test
+(deftest ^:parallel get-field-values-model-structured-output-test
   (testing "get_field_values for model field formats correctly"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)
@@ -326,7 +326,7 @@
                             {:uris [(str "metabase://model/" model-id "/fields/" field-id)]})]
               (assert-formatted-output result "model field values" #"<field-metadata\b"))))))))
 
-(deftest read-resource-metric-dimension-values-test
+(deftest ^:parallel read-resource-metric-dimension-values-test
   (testing "read_resource for metric dimension values returns formatted :output"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :crowberto)

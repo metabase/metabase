@@ -88,7 +88,7 @@
                                 :x4 #{:x3}}}
                 translated))))))
 
-(deftest expand-solver-test
+(deftest ^:parallel expand-solver-test
   (testing "expand-shorthand inserts interstitial nodes for transform output tables"
     (is (= {:t1  [:x1]
             :x3  [:t1 :t2]
@@ -103,7 +103,7 @@
             :m13 [:t11 :m12]}
            (dag-abstract/expand-shorthand example-graph)))))
 
-(deftest abstract-path-induced-subgraph-test
+(deftest ^:parallel abstract-path-induced-subgraph-test
   (testing "path-induced-subgraph computes correct result for example graph"
     (is (= {:check-outs   [:x3 :m6 :m10 :m13]
             :inputs       [:t1 :t2 :t5 :t9]
@@ -124,7 +124,7 @@
 
 ;;;; Graph utility tests
 
-(deftest reverse-graph-test
+(deftest ^:parallel reverse-graph-test
   (testing "empty graph"
     (is (= {} (ws.dag/reverse-graph {}))))
 
@@ -144,7 +144,7 @@
     (is (= {:a [:x], :b [:x], :c [:x]}
            (ws.dag/reverse-graph {:x [:a :b :c]})))))
 
-(deftest bfs-reduce-test
+(deftest ^:parallel bfs-reduce-test
   (testing "empty adjacency returns empty"
     (is (= [] (ws.dag/bfs-reduce {} [:a]))))
 
@@ -209,7 +209,7 @@
           xf (keep #(when (= :workspace-transform (:node-type %)) (:id %)))]
       (is (= ["t2"] (ws.dag/bfs-reduce graph [tx1] :rf (xf conj)))))))
 
-(deftest collapse-test
+(deftest ^:parallel collapse-test
   (is (= {:x1 [:x2 :x3]
           :x2 [:t3]
           :x3 [:x5]
@@ -249,7 +249,7 @@
    {}
    (partition 2 1 (reverse chain))))
 
-(deftest in-memory-path-induced-subgraph-test
+(deftest ^:parallel in-memory-path-induced-subgraph-test
   (testing "singleton"
     (is (= {:inputs       [:t1]
             :outputs      [:t2]

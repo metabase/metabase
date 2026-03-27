@@ -84,7 +84,7 @@
   [expected-re sym]
   (hawk.approx/=?-diff expected-re (name sym)))
 
-(deftest parse-multi-values-param-test
+(deftest ^:parallel parse-multi-values-param-test
   (testing "single value returns a vector with 1 elem"
     (is (= [1] (api/parse-multi-values-param "1" parse-long))))
 
@@ -152,12 +152,12 @@
         (is (thrown-with-msg? ExceptionInfo #"permissions"
                               (api/query-check card)))))))
 
-(deftest query-check-throws-404-for-nil-object-test
+(deftest ^:parallel query-check-throws-404-for-nil-object-test
   (testing "query-check throws 404 for nil object"
     (is (thrown-with-msg? ExceptionInfo #"Not found"
                           (api/query-check nil)))))
 
-(deftest present-items-works
+(deftest ^:parallel present-items-works
   (testing "order is preserved"
     (is (= [{:id 1 :model :foo} {:id 2 :model :foo} {:id 3 :model :foo}]
            (api/present-items (fn [_ vs]

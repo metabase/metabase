@@ -9,7 +9,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest llm-name-test
+(deftest ^:parallel llm-name-test
   (testing "plain column"
     (is (= "price" (#'native-generator/llm-name {:name "price"}))))
   (testing "FK column with table-reference"
@@ -17,7 +17,7 @@
   (testing "nil table-reference"
     (is (= "id" (#'native-generator/llm-name {:name "id" :table-reference nil})))))
 
-(deftest llm-description-test
+(deftest ^:parallel llm-description-test
   (testing "plain column with description"
     (is (= "The price" (#'native-generator/llm-description {:description "The price"}))))
   (testing "FK column with description"
@@ -29,7 +29,7 @@
   (testing "no description no table-reference"
     (is (= "" (#'native-generator/llm-description {})))))
 
-(deftest enrich-column-test
+(deftest ^:parallel enrich-column-test
   (testing "adds llm_name and llm_description while preserving original keys"
     (is (=? {:llm_name        "region"
              :llm_description "Sales region"

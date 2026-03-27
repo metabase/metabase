@@ -8,38 +8,38 @@
 
 ;;; -------------------------------------------------- lens-id->type --------------------------------------------------
 
-(deftest lens-id->type-test
+(deftest ^:parallel lens-id->type-test
   (is (= :join-analysis (lens.core/lens-id->type "join-analysis")))
   (is (= :generic-summary (lens.core/lens-id->type "generic-summary"))))
 
 ;;; -------------------------------------------------- params->id-suffix --------------------------------------------------
 
-(deftest params->id-suffix-empty-test
+(deftest ^:parallel params->id-suffix-empty-test
   (testing "nil params returns empty string"
     (is (= "" (lens.core/params->id-suffix nil))))
   (testing "empty map returns empty string"
     (is (= "" (lens.core/params->id-suffix {})))))
 
-(deftest params->id-suffix-single-param-test
+(deftest ^:parallel params->id-suffix-single-param-test
   (is (= "@join_step=1" (lens.core/params->id-suffix {:join_step 1}))))
 
-(deftest params->id-suffix-multiple-params-test
+(deftest ^:parallel params->id-suffix-multiple-params-test
   (testing "params are sorted by key"
     (is (= "@a=1,b=2" (lens.core/params->id-suffix {:b 2 :a 1})))))
 
 ;;; -------------------------------------------------- make-card-id --------------------------------------------------
 
-(deftest make-card-id-no-params-test
+(deftest ^:parallel make-card-id-no-params-test
   (is (= "base-count" (lens.core/make-card-id "base-count" nil)))
   (is (= "base-count" (lens.core/make-card-id "base-count" {}))))
 
-(deftest make-card-id-with-params-test
+(deftest ^:parallel make-card-id-with-params-test
   (is (= "join-step-1@join_step=1"
          (lens.core/make-card-id "join-step-1" {:join_step 1}))))
 
 ;;; -------------------------------------------------- with-metadata --------------------------------------------------
 
-(deftest with-metadata-test
+(deftest ^:parallel with-metadata-test
   (testing "merges lens metadata into lens map"
     ;; Use the :default method which returns a basic metadata map
     (let [result (lens.core/with-metadata :some-unknown-type {} {:cards [] :sections []})]
@@ -50,16 +50,16 @@
 
 ;;; -------------------------------------------------- lens-applicable? --------------------------------------------------
 
-(deftest lens-applicable-default-test
+(deftest ^:parallel lens-applicable-default-test
   (testing "default method returns false for unknown lens types"
     (is (not (lens.core/lens-applicable? :nonexistent-lens {})))))
 
-(deftest generic-summary-always-applicable-test
+(deftest ^:parallel generic-summary-always-applicable-test
   (testing "generic-summary is always applicable"
     (is (true? (lens.core/lens-applicable? :generic-summary {})))
     (is (true? (lens.core/lens-applicable? :generic-summary {:has-joins? false})))))
 
-(deftest join-analysis-applicability-test
+(deftest ^:parallel join-analysis-applicability-test
   (testing "join-analysis applicable when has-joins? is true and all tables are simple"
     (is (true? (lens.core/lens-applicable? :join-analysis
                                            {:has-joins? true
@@ -98,14 +98,14 @@
                                                                           {:strategy :inner-join
                                                                            :source-table nil}]}})))))
 
-(deftest column-comparison-applicability-test
+(deftest ^:parallel column-comparison-applicability-test
   (testing "column-comparison applicable when has-column-matches? is true"
     (is (true? (lens.core/lens-applicable? :column-comparison {:has-column-matches? true}))))
   (testing "column-comparison not applicable without column matches"
     (is (not (lens.core/lens-applicable? :column-comparison {:has-column-matches? false})))
     (is (not (lens.core/lens-applicable? :column-comparison {})))))
 
-(deftest unmatched-rows-applicability-test
+(deftest ^:parallel unmatched-rows-applicability-test
   (testing "unmatched-rows applicable with MBQL, joins, preprocessed query, and outer joins"
     (is (true? (lens.core/lens-applicable? :unmatched-rows
                                            {:source-type :mbql
@@ -131,49 +131,49 @@
 
 ;;; -------------------------------------------------- lens-metadata --------------------------------------------------
 
-(deftest generic-summary-metadata-test
+(deftest ^:parallel generic-summary-metadata-test
   (let [meta (lens.core/lens-metadata :generic-summary {})]
     (is (= "generic-summary" (:id meta)))
     (is (= "Data Summary" (:display_name meta)))
     (is (= {:level :fast} (:complexity meta)))))
 
-(deftest join-analysis-metadata-test
+(deftest ^:parallel join-analysis-metadata-test
   (let [meta (lens.core/lens-metadata :join-analysis {})]
     (is (= "join-analysis" (:id meta)))
     (is (= "Join Analysis" (:display_name meta)))
     (is (= {:level :very-slow} (:complexity meta)))))
 
-(deftest column-comparison-metadata-test
+(deftest ^:parallel column-comparison-metadata-test
   (let [meta (lens.core/lens-metadata :column-comparison {})]
     (is (= "column-comparison" (:id meta)))
     (is (= "Column Distributions" (:display_name meta)))
     (is (= {:level :slow} (:complexity meta)))))
 
-(deftest unmatched-rows-metadata-test
+(deftest ^:parallel unmatched-rows-metadata-test
   (let [meta (lens.core/lens-metadata :unmatched-rows {})]
     (is (= "unmatched-rows" (:id meta)))
     (is (= "Unmatched Rows" (:display_name meta)))
     (is (= {:level :slow} (:complexity meta)))))
 
-(deftest default-metadata-test
+(deftest ^:parallel default-metadata-test
   (let [meta (lens.core/lens-metadata :nonexistent {})]
     (is (= "nonexistent" (:id meta)))
     (is (nil? (:description meta)))))
 
 ;;; -------------------------------------------------- available-lenses --------------------------------------------------
 
-(deftest available-lenses-includes-generic-test
+(deftest ^:parallel available-lenses-includes-generic-test
   (testing "generic-summary always appears in available lenses"
     (let [lenses (lens.core/available-lenses {})]
       (is (some #(= "generic-summary" (:id %)) lenses)))))
 
-(deftest available-lenses-ordering-test
+(deftest ^:parallel available-lenses-ordering-test
   (testing "generic-summary comes first (lowest priority)"
     (let [lenses (lens.core/available-lenses {:has-joins? true
                                               :has-column-matches? true})]
       (is (= "generic-summary" (:id (first lenses)))))))
 
-(deftest available-lenses-excludes-drill-lenses-test
+(deftest ^:parallel available-lenses-excludes-drill-lenses-test
   (testing "drill lenses (unmatched-rows) are not in discovery list"
     (let [lenses (lens.core/available-lenses {:source-type :mbql
                                               :has-joins? true
@@ -183,7 +183,7 @@
 
 ;;; -------------------------------------------------- get-lens --------------------------------------------------
 
-(deftest get-lens-throws-for-inapplicable-test
+(deftest ^:parallel get-lens-throws-for-inapplicable-test
   (testing "throws when lens is not applicable"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Lens data not available"
                           (lens.core/get-lens {:has-joins? false} "join-analysis")))))

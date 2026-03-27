@@ -21,7 +21,7 @@
 
 (def ^:private test-uuid #uuid "092797dd-a82a-4748-b393-697d7bb9ab65")
 
-(deftest existing-cookie
+(deftest ^:parallel existing-cookie
   (testing "do not set DEVICE cookie if one is already present"
     (let [request  (-> (ring.mock/request :get "https://localhost/foo")
                        (assoc :cookies {browser-id-cookie-name {:value test-uuid}}))
@@ -29,7 +29,7 @@
       (is (= (str test-uuid) (:body response)))
       (is (nil? (:cookies response))))))
 
-(deftest no-existing-cookie
+(deftest ^:parallel no-existing-cookie
   (testing "set DEVICE cookie with SameSite=Lax if served over HTTP"
     (let [request    (ring.mock/request :get "http://localhost/foo")
           response   (handler request)

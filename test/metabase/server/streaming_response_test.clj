@@ -278,7 +278,7 @@
          #"Cannot call response control functions outside of a streaming-response context"
          (streaming-response/set-status! 500)))))
 
-(deftest committed?-outside-streaming-context-test
+(deftest ^:parallel committed?-outside-streaming-context-test
   (testing "Calling committed? outside a streaming-response context should raise"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
@@ -565,7 +565,7 @@
       (is (zero? (.size os))
           "Nothing should be written when async context is already completed"))))
 
-(deftest async-timeout-completes-context-once-test
+(deftest ^:parallel async-timeout-completes-context-once-test
   (testing "Only one of timeout callback or worker thread should call .complete"
     (let [complete-count (atom 0)
           completed?     (AtomicBoolean. false)

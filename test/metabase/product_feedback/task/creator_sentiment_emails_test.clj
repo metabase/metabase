@@ -83,7 +83,7 @@
             (is (= (if hosted? 0 1)
                    (count (et/regex-email-bodies #"external services"))))))))))
 
-(deftest fetch-creators-test
+(deftest ^:parallel fetch-creators-test
   (mt/with-temp [:model/User {creator-email :email creator-id :id} {}
                  :model/User _ {:email "noncreator@metabase.com"}
                  :model/Dashboard _ {:creator_id creator-id}

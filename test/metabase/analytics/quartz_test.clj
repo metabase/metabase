@@ -41,7 +41,7 @@
       (getJobDetail [_] job-detail)
       (getJobRunTime [_] run-time))))
 
-(deftest get-quartz-task-states-test
+(deftest ^:parallel get-quartz-task-states-test
   (testing "should correctly count tasks in various states"
     (let [scheduler (mock-scheduler
                      [Trigger$TriggerState/NORMAL

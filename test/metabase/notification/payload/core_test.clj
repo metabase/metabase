@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest lib-metadata-stripped-from-payload-test
+(deftest ^:parallel lib-metadata-stripped-from-payload-test
   (testing "lib/metadata keys are stripped from the realized notification payload"
     (notification.tu/with-card-notification
       [notification {}]

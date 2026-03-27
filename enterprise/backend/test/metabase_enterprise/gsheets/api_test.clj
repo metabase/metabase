@@ -74,7 +74,7 @@
              [:map [:email [:maybe :string]]]
              (mt/user-http-request :crowberto :get 200 "ee/gsheets/service-account")))))))
 
-(deftest can-get-service-account-test
+(deftest ^:parallel can-get-service-account-test
   (let [[status response] (mock-make-request happy-responses
                                              :get
                                              "/api/v2/mb/connections-google/service-account")]
@@ -386,14 +386,14 @@
         (= {:status "not-connected"}
            (mt/user-http-request :crowberto :delete 200 "ee/gsheets/connection"))))))
 
-(deftest url-type
+(deftest ^:parallel url-type
   (is (= "gdrive" (#'gsheets.api/url-type "https://drive.google.com/drive/abc")))
   (is (= "gdrive" (#'gsheets.api/url-type "http://drive.google.com/drive/abc")))
   (is (= "google_spreadsheet" (#'gsheets.api/url-type "https://docs.google.com/spreadsheets/abc")))
   (is (= "google_spreadsheet" (#'gsheets.api/url-type "http://docs.google.com/spreadsheets/abc")))
   (is (thrown-with-msg? Exception #"Invalid URL: https://not.google.com/file" (#'gsheets.api/url-type "https://not.google.com/file"))))
 
-(deftest loggable-response
+(deftest ^:parallel loggable-response
   (is (= {:status 404, :body {:foo "bar"}}
          (#'gsheets.api/loggable-response {:status 404, :body {:foo "bar"}})))
   (is (= {:status 404, :body {:foo "bar2"}}

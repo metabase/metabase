@@ -5,7 +5,7 @@
    [metabase.util.time :as u.time]))
 
 ;; This tests the underlying string formatter, not the public interface.
-(deftest string-formatting-test
+(deftest ^:parallel string-formatting-test
   (testing "string formatting"
     (testing "works for keywords and vectors"
       (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t)))

@@ -3,14 +3,14 @@
    [clojure.test :refer :all]
    [metabase.transforms-inspector.card-result :as card-result]))
 
-(deftest compute-card-result-default-test
+(deftest ^:parallel compute-card-result-default-test
   (testing "default method returns nil for non-nil rows"
     (is (nil? (card-result/compute-card-result :unknown-lens {:metadata {:card_type "something"}} [1 2 3]))))
   (testing "default method returns no_data for nil row"
     (is (= {"no_data" true}
            (card-result/compute-card-result :unknown-lens {:metadata {:card_type "something"}} nil)))))
 
-(deftest compute-card-result-join-step-test
+(deftest ^:parallel compute-card-result-join-step-test
   (testing "join-analysis join_step computes null rate correctly"
     (let [card {:metadata {:card_type "join_step"}}]
       (testing "normal case: some unmatched rows"

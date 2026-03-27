@@ -7,7 +7,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(deftest superuser-returns-all-tables-test
+(deftest ^:parallel superuser-returns-all-tables-test
   (testing "superuser returns all tables regardless of permissions"
     (mt/with-temp [:model/Database db {}
                    :model/Table _ {:db_id (:id db)}
@@ -22,7 +22,7 @@
         (is (every? #(contains? % :id) results) "Results should contain table IDs")
         (is (every? #(contains? % :group_id) results) "Results should contain group IDs")))))
 
-(deftest non-superuser-with-table-level-permissions-test
+(deftest ^:parallel non-superuser-with-table-level-permissions-test
   (testing "non-superuser with table-level permissions"
     (mt/with-temp [:model/Database db {}
                    :model/Table table1 {:db_id (:id db)}
@@ -43,7 +43,7 @@
         (is (some #(= (:id %) (:id table1)) results) "Should include table with permissions")
         (is (every? #(contains? #{(:id group) (u/the-id (perms/all-users-group))}  (:group_id %)) results) "Should include user's group")))))
 
-(deftest non-superuser-with-database-level-permissions-test
+(deftest ^:parallel non-superuser-with-database-level-permissions-test
   (testing "non-superuser with database-level permissions"
     (mt/with-temp [:model/Database db {}
                    :model/Table table1 {:db_id (:id db)}
@@ -84,7 +84,7 @@
         (is (every? #(contains? #{"perms/view-data" "perms/create-queries"}  (:perm_type %)) results) "Should include the requested permission types")
         (is (every? #(contains? #{(:id group) (u/the-id (perms/all-users-group))}  (:group_id %)) results) "Should include user's group")))))
 
-(deftest permission-level-with-most-least-directive-test
+(deftest ^:parallel permission-level-with-most-least-directive-test
   (testing "permission level with most/least directive"
     (mt/with-temp [:model/Database db {}
                    :model/Table table1 {:db_id (:id db)}
@@ -135,7 +135,7 @@
               results (t2/query query)]
           (is (not (some #(= (:id table1) (:id %)) results)) "User with non-matching permissions should get no results"))))))
 
-(deftest empty-permission-mapping-test
+(deftest ^:parallel empty-permission-mapping-test
   (testing "empty permission mapping"
     (mt/with-temp [:model/Database db {}
                    :model/Table _ {:db_id (:id db)}
@@ -148,7 +148,7 @@
             results (t2/query query)]
         (is (empty? results) "Empty permission mapping should not return results")))))
 
-(deftest multiple-groups-with-different-permissions-test
+(deftest ^:parallel multiple-groups-with-different-permissions-test
   (testing "multiple groups with different permissions"
     (mt/with-temp [:model/Database db {}
                    :model/Table table1 {:db_id (:id db)}
@@ -178,7 +178,7 @@
         (is (some #(and (= (:id %) (:id table2)) (= (:group_id %) (:id group2))) results)
             "Should include table2 from group2")))))
 
-(deftest visible-table-filter-with-cte-include-inactive-test
+(deftest ^:parallel visible-table-filter-with-cte-include-inactive-test
   (testing "visible-table-filter-with-cte respects active-only? option"
     (mt/with-temp [:model/Database db {}
                    :model/Table active-table {:db_id (:id db) :active true}
@@ -211,7 +211,7 @@
             (is (some #(= (:id %) (:id active-table)) results))
             (is (not (some #(= (:id %) (:id inactive-table)) results)))))))))
 
-(deftest visible-table-filter-select-include-inactive-test
+(deftest ^:parallel visible-table-filter-select-include-inactive-test
   (testing "visible-table-filter-select respects active-only? option"
     (mt/with-temp [:model/Database db {}
                    :model/Table active-table {:db_id (:id db) :active true}

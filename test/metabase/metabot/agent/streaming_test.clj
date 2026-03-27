@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.agent.streaming :as streaming]))
 
-(deftest navigate-to-part-test
+(deftest ^:parallel navigate-to-part-test
   (testing "creates correct navigate_to data part structure"
     (let [url "/question#abc123"
           part (streaming/navigate-to-part url)]
@@ -20,7 +20,7 @@
       (is (= "/metric/456" (:data part2)))
       (is (= "/dashboard/789" (:data part3))))))
 
-(deftest query->question-url-test
+(deftest ^:parallel query->question-url-test
   (testing "converts query to /question# URL"
     (let [query {:database 1 :type :query :query {:source-table 1}}
           url (streaming/query->question-url query)]
@@ -36,7 +36,7 @@
           url (streaming/query->question-url query)]
       (is (str/starts-with? url "/question#")))))
 
-(deftest reactions->data-parts-test
+(deftest ^:parallel reactions->data-parts-test
   (testing "converts redirect reactions to navigate_to data parts"
     (let [reactions [{:type :metabot.reaction/redirect :url "/question#xyz"}]
           parts (streaming/reactions->data-parts reactions)]
@@ -65,7 +65,7 @@
     (is (= [] (streaming/reactions->data-parts [])))
     (is (= [] (streaming/reactions->data-parts nil)))))
 
-(deftest state-part-test
+(deftest ^:parallel state-part-test
   (testing "creates state data part"
     (let [state {:queries {"q1" {:database 1}} :charts {"c1" {:type :bar}}}
           part (streaming/state-part state)]
@@ -75,7 +75,7 @@
 
 ;;; New Data Part Types (AI Service Parity)
 
-(deftest todo-list-part-test
+(deftest ^:parallel todo-list-part-test
   (testing "creates todo_list data part with correct structure"
     (let [todos [{:id "1" :content "Task 1" :status "pending" :priority "high"}
                  {:id "2" :content "Task 2" :status "completed" :priority "low"}]
@@ -91,7 +91,7 @@
       (is (= "todo_list" (:data-type part)))
       (is (= [] (:data part))))))
 
-(deftest code-edit-part-test
+(deftest ^:parallel code-edit-part-test
   (testing "creates code_edit data part with correct structure"
     (let [edit-data {:buffer_id "buffer-123"
                      :mode "rewrite"
@@ -110,7 +110,7 @@
           part (streaming/code-edit-part edit-data)]
       (is (= edit-data (:data part))))))
 
-(deftest transform-suggestion-part-test
+(deftest ^:parallel transform-suggestion-part-test
   (testing "creates transform_suggestion data part with correct structure"
     (let [suggestion {:id 1
                       :name "My Transform"
@@ -130,7 +130,7 @@
           part (streaming/transform-suggestion-part suggestion)]
       (is (= suggestion (:data part))))))
 
-(deftest adhoc-viz-part-test
+(deftest ^:parallel adhoc-viz-part-test
   (testing "creates adhoc_viz data part with correct structure"
     (let [value {:query {:database 1 :type :query :query {:source-table 1}}
                  :link "/question#abc123"
@@ -149,7 +149,7 @@
       (is (= "adhoc_viz" (:data-type part)))
       (is (= value (:data part))))))
 
-(deftest static-viz-part-test
+(deftest ^:parallel static-viz-part-test
   (testing "creates static_viz data part with correct structure"
     (let [value {:entity_id 42}
           part (streaming/static-viz-part value)]
@@ -158,7 +158,7 @@
       (is (= 1 (:version part)))
       (is (= value (:data part))))))
 
-(deftest data-type-constants-test
+(deftest ^:parallel data-type-constants-test
   (testing "data type constants are defined correctly"
     (is (= "navigate_to" streaming/navigate-to-type))
     (is (= "state" streaming/state-type))
@@ -170,7 +170,7 @@
 
 ;;; Transducer Tests
 
-(deftest expand-reactions-xf-test
+(deftest ^:parallel expand-reactions-xf-test
   (testing "expands reactions from tool-output parts"
     (let [parts [{:type :tool-output
                   :id "t1"
@@ -204,7 +204,7 @@
       (is (= "/a" (:data (second result))))
       (is (= "/b" (:data (nth result 2)))))))
 
-(deftest expand-data-parts-xf-test
+(deftest ^:parallel expand-data-parts-xf-test
   (testing "expands data-parts from tool-output results"
     (let [todo-part {:type :data :data-type "todo_list" :data [{:id "1"}]}
           parts [{:type :tool-output
@@ -236,7 +236,7 @@
       (is (= "a" (:data-type (second result))))
       (is (= "b" (:data-type (nth result 2)))))))
 
-(deftest resolve-links-xf-test
+(deftest ^:parallel resolve-links-xf-test
   (testing "resolves metabase:// links in text parts"
     (let [query {:database 1 :type :query :query {:source-table 1}}
           parts [{:type :text :text "[Results](metabase://query/q1)"}]
@@ -272,7 +272,7 @@
           result (into [] (streaming/post-process-xf {} {} (atom {})) parts)]
       (is (= "[Model](/model/123)" (:text (first result)))))))
 
-(deftest post-process-xf-test
+(deftest ^:parallel post-process-xf-test
   (testing "composes all post-processing transducers"
     (let [query {:database 1 :type :query :query {:source-table 1}}
           parts [{:type :tool-output

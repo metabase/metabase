@@ -8,7 +8,7 @@
 
 ;;;; validate-query
 
-(deftest validate-query-syntax-error-test
+(deftest ^:parallel validate-query-syntax-error-test
   (mt/test-driver
     :postgres
     (let [mp (mt/metadata-provider)
@@ -17,7 +17,7 @@
         (is (= #{(lib/syntax-error)}
                (sql-tools/validate-query-impl :sqlglot driver/*driver* query)))))))
 
-(deftest validate-query-missing-table-alias-wildcard-test
+(deftest ^:parallel validate-query-missing-table-alias-wildcard-test
   (mt/test-driver
     :postgres
     (let [mp (mt/metadata-provider)
@@ -26,7 +26,7 @@
         (is (= #{(lib/missing-table-alias-error "foo")}
                (sql-tools/validate-query-impl :sqlglot driver/*driver* query)))))))
 
-(deftest validate-query-missing-table-alias-column-test
+(deftest ^:parallel validate-query-missing-table-alias-column-test
   (mt/test-driver
     :postgres
     (let [mp (mt/metadata-provider)
@@ -35,7 +35,7 @@
       (testing "Column with unknown table qualifier returns missing-table-alias error"
         (sql-tools/validate-query-impl :sqlglot :postgres query)))))
 
-(deftest validate-query-missing-column-test
+(deftest ^:parallel validate-query-missing-column-test
   (mt/test-driver
     :postgres
     (let [mp (mt/metadata-provider)
@@ -44,7 +44,7 @@
         (is (= #{(lib/missing-column-error "nonexistent")}
                (sql-tools/validate-query-impl :sqlglot driver/*driver* query)))))))
 
-(deftest validate-query-valid-test
+(deftest ^:parallel validate-query-valid-test
   (mt/test-driver
     :postgres
     (let [mp (mt/metadata-provider)

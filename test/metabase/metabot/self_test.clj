@@ -68,14 +68,14 @@
 
 ;;; utils tests
 
-(deftest sse-reducible-test
+(deftest ^:parallel sse-reducible-test
   (testing "sse-reducible produces items via standard reduce"
     (let [data    ["just a test" "to make you jealous"]
           istream (io/input-stream (.getBytes (test-util/make-sse data)))
           result  (into [] (self.core/sse-reducible istream))]
       (is (= data result)))))
 
-(deftest sse-reducible-early-termination-test
+(deftest ^:parallel sse-reducible-early-termination-test
   (testing "sse-reducible stops on reduced"
     (let [data    (mapv #(str "msg-" %) (range 100))
           istream (io/input-stream (.getBytes (test-util/make-sse data)))
@@ -88,7 +88,7 @@
                           (self.core/sse-reducible istream))]
       (is (= ["msg-0" "msg-1" "msg-2"] result)))))
 
-(deftest sse-reducible-stops-response-test
+(deftest ^:parallel sse-reducible-stops-response-test
   (let [cnt     (atom 30)
         handler (fn [_req]
                   (let [out (java.io.PipedOutputStream.)
@@ -130,7 +130,7 @@
       (finally
         (.stop server)))))
 
-(deftest lite-aisdk-xf-test
+(deftest ^:parallel lite-aisdk-xf-test
   (testing "streams text deltas immediately instead of batching"
     (let [chunks [{:type :start :messageId "msg-1"}
                   {:type :text-start :id "text-1"}
@@ -371,24 +371,24 @@
 
 ;;; AI SDK v4 Line Protocol tests
 
-(deftest format-text-line-test
+(deftest ^:parallel format-text-line-test
   (testing "formats text as JSON-encoded string with 0: prefix"
     (is (= "0:\"Hello world\"" (self.core/format-text-line {:text "Hello world"})))
     (is (= "0:\"Line with \\\"quotes\\\"\"" (self.core/format-text-line {:text "Line with \"quotes\""})))))
 
-(deftest format-data-line-test
+(deftest ^:parallel format-data-line-test
   (testing "formats data with type, version, and value"
     (is (= "2:{\"type\":\"state\",\"version\":1,\"value\":{\"queries\":{}}}"
            (self.core/format-data-line {:data-type "state" :data {:queries {}}})))
     (is (= "2:{\"type\":\"navigate_to\",\"version\":1,\"value\":{\"url\":\"/question/123\"}}"
            (self.core/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
 
-(deftest format-error-line-test
+(deftest ^:parallel format-error-line-test
   (testing "formats error message as JSON string with 3: prefix"
     (is (= "3:\"Something went wrong\"" (self.core/format-error-line {:error {:message "Something went wrong"}})))
     (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"})))))
 
-(deftest format-tool-call-line-test
+(deftest ^:parallel format-tool-call-line-test
   (testing "formats tool call with toolCallId, toolName, and args"
     (let [line (self.core/format-tool-call-line {:id "call-123"
                                                  :function "search"
@@ -400,7 +400,7 @@
         ;; args should be JSON string, not object
         (is (string? (:args parsed)))))))
 
-(deftest format-tool-result-line-test
+(deftest ^:parallel format-tool-result-line-test
   (testing "formats tool result with toolCallId and result"
     (let [line (self.core/format-tool-result-line {:id "call-123"
                                                    :result {:data [{:id 1}]}})]
@@ -427,7 +427,7 @@
         (is (= "call-789" (:toolCallId parsed)))
         (is (not (contains? parsed :duration-ms)))))))
 
-(deftest format-finish-line-test
+(deftest ^:parallel format-finish-line-test
   (testing "formats finish message with usage"
     (let [line (self.core/format-finish-line false {"claude-sonnet-4-5-20250929" {:prompt 100 :completion 50}})]
       (is (str/starts-with? line "d:"))
@@ -436,14 +436,14 @@
         ;; Keys are keywordized when parsing JSON
         (is (= 100 (get-in parsed [:usage :claude-sonnet-4-5-20250929 :prompt])))))))
 
-(deftest format-start-line-test
+(deftest ^:parallel format-start-line-test
   (testing "formats start message with messageId"
     (let [line (self.core/format-start-line {:id "msg-123"})]
       (is (str/starts-with? line "f:"))
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "msg-123" (:messageId parsed)))))))
 
-(deftest aisdk-line-xf-test
+(deftest ^:parallel aisdk-line-xf-test
   (testing "converts internal parts to AI SDK v4 line protocol, skipping usage by default"
     (let [parts [{:type :start :id "msg-1"}
                  {:type :text :text "Hello"}
@@ -475,7 +475,7 @@
 
 ;;; ===================== Retry Logic Tests =====================
 
-(deftest retryable-error-test
+(deftest ^:parallel retryable-error-test
   (testing "check exception retryability"
     (are [x y] (= x (#'self/retryable-error? y))
       true  (ex-info "rate limited" {:status 429})
@@ -489,7 +489,7 @@
       ;; but other stuff is not
       false (RuntimeException. "oops"))))
 
-(deftest retry-delay-ms-test
+(deftest ^:parallel retry-delay-ms-test
   (testing "backoff"
     (are [timeout attempt ex] (<= timeout
                                   (#'self/retry-delay-ms attempt ex)

@@ -22,7 +22,7 @@
 
 ;;; ------------------------------------------------ Query Execution -------------------------------------------------
 
-(deftest execute-adhoc-query-test
+(deftest ^:parallel execute-adhoc-query-test
   (testing "execute-adhoc-query runs a query and returns results"
     (mt/with-current-user (mt/user->id :rasta)
       (let [mp      (mt/metadata-provider)
@@ -37,7 +37,7 @@
         (testing "returns correct number of rows"
           (is (= 5 (count (get-in results [:data :rows])))))))))
 
-(deftest execute-adhoc-query-aggregation-test
+(deftest ^:parallel execute-adhoc-query-aggregation-test
   (testing "execute-adhoc-query handles aggregation queries"
     (mt/with-current-user (mt/user->id :rasta)
       (let [mp      (mt/metadata-provider)
@@ -54,7 +54,7 @@
 
 ;;; ------------------------------------------------ PNG Generation --------------------------------------------------
 
-(deftest generate-adhoc-png-table-test
+(deftest ^:parallel generate-adhoc-png-table-test
   (testing "generate-adhoc-png renders table visualization as PNG"
     (mt/with-current-user (mt/user->id :rasta)
       (let [mp      (mt/metadata-provider)
@@ -68,7 +68,7 @@
         (testing "image has reasonable dimensions"
           (is (< 100 (.getWidth image))))))))
 
-(deftest generate-adhoc-png-bar-chart-test
+(deftest ^:parallel generate-adhoc-png-bar-chart-test
   (testing "generate-adhoc-png renders bar chart visualization as PNG"
     (mt/with-current-user (mt/user->id :rasta)
       (let [mp      (mt/metadata-provider)
@@ -81,7 +81,7 @@
         (testing "returns parseable PNG"
           (is (some? image)))))))
 
-(deftest generate-adhoc-png-line-chart-test
+(deftest ^:parallel generate-adhoc-png-line-chart-test
   (testing "generate-adhoc-png renders line chart visualization as PNG"
     (mt/dataset test-data
       (mt/with-current-user (mt/user->id :rasta)
@@ -97,7 +97,7 @@
           (testing "returns parseable PNG"
             (is (some? image))))))))
 
-(deftest render-dimensions-test
+(deftest ^:parallel render-dimensions-test
   (testing "render-dimensions calculates width from display type aspect ratios"
     (testing "bar chart uses 2:1 ratio (12:6 default)"
       (is (= {:width 1280 :height 640}
@@ -111,7 +111,7 @@
 
 ;;; ------------------------------------------------ Table Blocks ----------------------------------------------------
 
-(deftest format-results-as-table-blocks-test
+(deftest ^:parallel format-results-as-table-blocks-test
   (testing "format-results-as-table-blocks creates valid Slack table block structure"
     (let [results {:data {:rows   [[1 "Alice" 100.50]
                                    [2 "Bob" 200.75]]
@@ -252,7 +252,7 @@
 
 ;;; -------------------------------------------- generate-adhoc-output -----------------------------------------------
 
-(deftest generate-adhoc-output-chart-display-test
+(deftest ^:parallel generate-adhoc-output-chart-display-test
   (testing "generate-adhoc-output renders chart display types as PNG images"
     (mt/with-current-user (mt/user->id :rasta)
       (let [mp    (mt/metadata-provider)
@@ -276,7 +276,7 @@
             (is (= :image type))
             (is (bytes? content))))))))
 
-(deftest generate-adhoc-output-table-display-test
+(deftest ^:parallel generate-adhoc-output-table-display-test
   (testing "generate-adhoc-output renders table display as Slack table blocks"
     (mt/with-current-user (mt/user->id :rasta)
       (let [mp    (mt/metadata-provider)
@@ -296,7 +296,7 @@
             (is (= :table type))
             (is (= "table" (:type (first content))))))))))
 
-(deftest generate-adhoc-output-default-display-test
+(deftest ^:parallel generate-adhoc-output-default-display-test
   (testing "generate-adhoc-output defaults to table display"
     (mt/with-current-user (mt/user->id :rasta)
       (let [mp    (mt/metadata-provider)
@@ -309,7 +309,7 @@
 
 ;;; -------------------------------------------- generate-card-output -----------------------------------------------
 
-(deftest generate-card-output-display-type-test
+(deftest ^:parallel generate-card-output-display-type-test
   (testing "generate-card-output returns correct type based on card display"
     (let [mock-results {:data {:cols [{:name "x" :base_type :type/Integer}]
                                :rows [[1] [2]]}}]
@@ -332,7 +332,7 @@
                 (let [result (#'slackbot.query/generate-card-output card-id)]
                   (is (= :table (:type result))))))))))))
 
-(deftest generate-card-output-failed-qp-result-test
+(deftest ^:parallel generate-card-output-failed-qp-result-test
   (testing "throws when QP returns :status :failed for table card"
     (mt/with-temp [:model/Card {card-id :id} {:display :table}]
       (mt/with-dynamic-fn-redefs
@@ -341,7 +341,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Permission denied"
                               (#'slackbot.query/generate-card-output card-id)))))))
 
-(deftest generate-card-output-failed-qp-result-image-test
+(deftest ^:parallel generate-card-output-failed-qp-result-image-test
   (testing "throws when QP returns :status :failed for image card"
     (mt/with-temp [:model/Card {card-id :id} {:display :bar}]
       (mt/with-dynamic-fn-redefs

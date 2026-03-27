@@ -12,7 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest compress-test
+(deftest ^:parallel compress-test
   (testing "tgz/untgz"
     (let [dir     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))
                     .mkdirs)
@@ -55,7 +55,7 @@
         (.closeArchiveEntry tar)))
     archive))
 
-(deftest untgz-path-traversal-test
+(deftest ^:parallel untgz-path-traversal-test
   (testing "untgz rejects tar entries with path traversal"
     (let [content (.getBytes "content" "UTF-8")
           out     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))

@@ -5,7 +5,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest delay-with-ttl-test
+(deftest ^:parallel delay-with-ttl-test
   (let [d (delay/delay-with-ttl 300 #(Object.))
         val1 @d
         val2 @d

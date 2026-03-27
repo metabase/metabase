@@ -164,7 +164,7 @@
                       :model     "snippet"}]
                     (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection))))))))))))
 
-(deftest snippet-collection-items-test-2
+(deftest ^:parallel snippet-collection-items-test-2
   (testing "GET /api/collection/:id/items"
     (testing "Snippet collections should be returned on EE with the snippet-collections feature flag, rather than
              returning all nested snippets as a flat list"

@@ -119,7 +119,7 @@
 
 ;;; # REVISIONS + PUSH-REVISION!
 
-(deftest new-object-no-revisions-test
+(deftest ^:parallel new-object-no-revisions-test
   (testing "Test that a newly created Card doesn't have any revisions"
     (mt/with-temp [:model/Card {card-id :id}]
       (is (= []
