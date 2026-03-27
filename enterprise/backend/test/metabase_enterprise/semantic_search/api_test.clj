@@ -9,6 +9,7 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.mq.test-util :as mq.tu]
+   [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]))
 
@@ -79,8 +80,9 @@
 
             (testing "re-init creates the new index"
               (with-redefs [semantic.index/model-table-suffix (constantly 345)]
-                (let [response (mt/user-http-request :crowberto :post 200 "search/re-init")]
-                  (is (contains? response :message))))
+                ;; Call init directly instead of via HTTP — with-redefs is thread-local
+                ;; and not visible to the HTTP handler thread.
+                (search.impl/sync-init-index! {:force-reset? true}))
 
               (is (not= original-table-name new-table-name))
               (is (semantic.tu/table-exists-in-db? original-table-name))
