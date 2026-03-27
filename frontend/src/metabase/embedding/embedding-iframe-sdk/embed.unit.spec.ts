@@ -405,7 +405,9 @@ describe("embed.js script tag for sdk iframe embedding", () => {
               // The rest of the properties
               instanceUrl: "http://localhost:3000",
               guestEmbedProviderUri: "/mock-provider",
-              dashboardId: 1,
+              // dashboardId and questionId are not sent — the token already encodes the resource
+              dashboardId: undefined,
+              questionId: undefined,
               componentName: "metabase-dashboard",
               _isLocalhost: true,
             },
@@ -432,6 +434,18 @@ describe("embed.js script tag for sdk iframe embedding", () => {
                 code: "CANNOT_FETCH_JWT_TOKEN",
               }),
             },
+          }),
+          "*",
+        );
+
+        expect(iframePostMessageSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "metabase.embed.setSettings",
+            data: expect.objectContaining({
+              // dashboardId and questionId are not sent on error path either
+              dashboardId: undefined,
+              questionId: undefined,
+            }),
           }),
           "*",
         );

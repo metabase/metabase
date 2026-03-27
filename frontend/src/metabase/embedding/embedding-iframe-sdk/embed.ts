@@ -582,8 +582,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     const { guestEmbedProviderUri, componentName, dashboardId, questionId } =
       this.properties;
 
-    // Callers always guard guestEmbedProviderUri before invoking this function.
-    // This check is only to satisfy TypeScript's type narrowing.
     if (!guestEmbedProviderUri) {
       return "";
     }
@@ -599,10 +597,8 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     const isRefreshingToken = expiredToken !== undefined;
 
-    // If the user supplies dashboardId/questionId without a static token prop
-    // (token fetch and refresh handled by their JWT endpoint), use those attributes.
-    // Otherwise, for the static token case (token={jwt}), fall back to decoding
-    // the expired token's payload to extract the entity ID.
+    // Prefer the attribute entity ID; fall back to decoding the expired token
+    // for the static token case (no dashboardId/questionId attribute).
     const attributeEntityId =
       componentName === "metabase-dashboard" ? dashboardId : questionId;
     const tokenEntityId = isRefreshingToken
