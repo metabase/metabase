@@ -44,7 +44,6 @@
                               :sso-ldap
                               :sso-oidc
                               :sso-saml
-                              :sso-slack
                               :support-users
                               :transforms-basic
                               :transforms-python
@@ -90,7 +89,6 @@
             :sso_ldap                       true
             :sso_oidc                       true
             :sso_saml                       true
-            :sso_slack                      true
             :support-users                  true
             :table_data_editing             false
             :transforms-basic               true
