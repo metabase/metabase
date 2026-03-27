@@ -96,8 +96,8 @@
    [:column.aggregation/uuid [:ref ::lib.schema.common/uuid]]])
 
 (mr/def ::breakout
-  "Breakouts are *fresh* columns introduced on a stage; they're keyed by UUID.
-
+  "Breakouts wrap their input column's key, and include the UUID of the breakout column to distinguish multiple
+  breakouts with the same input column but different bucketing.
 
   The UUID for a breakout column is the `:lib/uuid` of the `:field` or `:expression` **ref** that appears in the
   `:breakout` list.
@@ -107,7 +107,26 @@
   columns, and the `:order-by` logic takes care to distinguish them by matching the binning and temporal units."
   [:map {:decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= :column/key]]
-   [:column.breakout/uuid [:ref ::lib.schema.common/uuid]]])
+   [:column.breakout/input-column [:ref ::column-key]]
+   [:column.breakout/uuid         [:ref ::lib.schema.common/uuid]]])
+
+(mr/def ::fallback-id
+  "Sometimes we cannot resolve a field ref properly and resort to *fallback metadata*. In that case, there is only the
+  name or ID given in the ref to go by.
+
+  This schema is for the field ID variant; see `::fallback-name` for the name counterpart."
+  [:map {:decode/normalize lib.schema.common/normalize-map}
+   [:lib/type [:= :column/key]]
+   [:column.fallback/field-id ::lib.schema.id/field]])
+
+(mr/def ::fallback-name
+  "Sometimes we cannot resolve a field ref properly and resort to *fallback metadata*. In that case, there is only the
+  name or ID given in the ref to go by.
+
+  This schema is for the name variant; see `::fallback-id` for the field ID counterpart."
+  [:map {:decode/normalize lib.schema.common/normalize-map}
+   [:lib/type [:= :column/key]]
+   [:column.fallback/column-name [:ref :metabase.lib.schema.metadata/desired-column-alias]]])
 
 (mr/def ::column-key
   "A generic column key, any one of the supported flavours of column keys."
@@ -120,4 +139,6 @@
    ::opaque-card
    ::expression
    ::aggregation
-   ::breakout])
+   ::breakout
+   ::fallback-id
+   ::fallback-name])

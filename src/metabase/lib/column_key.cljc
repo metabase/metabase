@@ -84,10 +84,13 @@
     (assoc column-metadata :lib/column-key column-key)))
 
 (mu/defn breakout-key :- ::lib.schema.column-key/column-key
-  "Given a breakout clause like `[:field ...]`, construct its column key."
-  [brk-clause :- ::lib.schema/breakout]
-  {:lib/type             :column/key
-   :column.breakout/uuid (lib.options/uuid brk-clause)})
+  "Given the `input-column-or-key` for a breakout's input column, and the breakout clause, return the column key for
+  that breakout."
+  [input-column-or-key :- [:or ::lib.schema.metadata/column ::lib.schema.column-key/column-key]
+   brk-clause          :- ::lib.schema/breakout]
+  {:lib/type                     :column/key
+   :column.breakout/input-column (->key input-column-or-key)
+   :column.breakout/uuid         (lib.options/uuid brk-clause)})
 
 (mu/defn aggregation-key :- ::lib.schema.column-key/column-key
   "Given an aggregation clause like `[:max ...]`, construct its column key."
@@ -106,3 +109,12 @@
   [unique-column-name :- ::lib.schema.common/non-blank-string]
   {:lib/type                  :column/key
    :column.native/unique-name unique-column-name})
+
+(mu/defn fallback-key :- ::lib.schema.column-key/column-key
+  "Creates a column key for *fallback metadata*, when a ref cannot be resolved."
+  [id-or-name :- [:or :string :int]]
+  (let [k (if (string? id-or-name)
+            :column.fallback/column-name
+            :column.fallback/field-id)]
+    {:lib/type :column/key
+     k         id-or-name}))

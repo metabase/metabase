@@ -543,6 +543,7 @@
     ;; guess that the column came from the previous stage
     :lib/source          :source/previous-stage
     :base-type           :type/*
+    :lib/column-key      (lib.column-key/fallback-key id-or-name)
     ::fallback-metadata? true}
    (if (pos-int? id-or-name)
      {:id                      id-or-name
