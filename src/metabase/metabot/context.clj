@@ -45,8 +45,28 @@
         (.newLine w)
         (.newLine w)))))
 
+(def item-types
+  "Allowed values for the `:type` key of `:user_is_viewing` item."
+  #{"adhoc"
+
+    "question"
+    "model"
+    "metric"
+
+    "document"
+    "dashboard"
+    "transform"
+    "code_editor"})
+
+(def item-type-schema
+  "Schema for the `:type` key of `:user_is_viewing` item."
+  (into [:enum] item-types))
+
 (mr/def ::context
-  [:map-of :keyword :any])
+  [:and
+   [:map-of :keyword :any]
+   [:map
+    [:type item-type-schema]]])
 
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
