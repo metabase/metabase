@@ -117,9 +117,9 @@
   Returns `nil` if connection impersonation should not be used for the current user. Throws an exception if multiple
   conflicting connection impersonation policies are found, or the role is not a single string."
   [database-or-id]
-  (cached [::impersonation-role api/*current-user-id* (u/the-id database-or-id)]
-          (fn []
-            (when (and database-or-id (not api/*is-superuser?*))
+  (when (and database-or-id (not api/*is-superuser?*))
+    (cached [::impersonation-role api/*current-user-id* (u/the-id database-or-id)]
+            (fn []
               (let [conn-impersonations  (enforced-impersonations-for-db database-or-id)
                     role-attributes      (set (map :attribute conn-impersonations))]
                 (when conn-impersonations
