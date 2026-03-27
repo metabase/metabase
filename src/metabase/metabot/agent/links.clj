@@ -105,10 +105,9 @@
   (memoize/ttl
    (fn [table-id]
      (let [parsed-id (cond
-                       (int? table-id) table-id
-                       (string? table-id) (when (re-matches #"\d+" table-id)
-                                            (parse-long table-id))
-                       :else nil)]
+                       (int? table-id)    table-id
+                       (string? table-id) (parse-long table-id)
+                       :else              nil)]
        (if-not parsed-id
          (do
            (log/warn "Invalid table id for link resolution" {:table-id table-id})
