@@ -7,20 +7,26 @@ redirect_from:
 
 # Metabot AI settings
 
-> Metabot is available as an add-on on [Metabase Cloud](https://www.metabase.com/cloud/), or on self-hosted Metabase with your own AI provider API key.
+> Metabot is available with your own AI provider API key, or as an add-on on [Metabase Cloud](https://www.metabase.com/cloud/)
 
 _Admin > AI_
 
 This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot.md).
 
-Before using Metabot, you'll need to connect an AI provider:
+### Metabase Cloud
 
-- **Metabase Cloud**: [Add the Metabot add-on](#add-metabot-from-the-metabase-store) from the Metabase Store.
-- **Self-hosted**: [Bring your own API key](#connection-settings) from a supported AI provider.
+On Cloud, you can either:
+
+- [Purchase the Metabot add-on](#add-metabot-from-the-metabase-store) from the Metabase Store, or
+- [Bring your own API key](#bring-your-own-api-key) from a supported AI provider.
+
+### Metabase self-hosted
+
+On self-hosted Metabases, you can [bring your own API key](#bring-your-own-api-key) from a supported AI provider.
 
 ## Add Metabot from the Metabase Store
 
-If you're on [Metabase Cloud](https://www.metabase.com/cloud/), you can add Metabot from the Metabase Store. If you're self-hosted, skip to [Connection settings](#connection-settings).
+If you're on [Metabase Cloud](https://www.metabase.com/cloud/), you can add Metabot from the Metabase Store:
 
 1. Go to [store.metabase.com](https://store.metabase.com).
 2. Log in with your **Metabase Store account** (distinct from the account you use to log into your Metabase).
@@ -31,15 +37,15 @@ If you're on [Metabase Cloud](https://www.metabase.com/cloud/), you can add Meta
 
 5. Read through the [terms of service](https://www.metabase.com/license/hosting) and click **Add Metabot AI**.
 
-Once you've added Metabot AI in the Metabase store, you can log into your Metabase and configure it in _Admin > AI_.
+Once you've added Metabot AI in the Metabase store, you can log in to your Metabase and configure it in _Admin > AI_.
 
-## Connection settings
+## Bring your own API key
 
 _Admin > AI > Connection settings_
 
 ![Connect to an AI provider](./images/ai-connection-settings.png)
 
-To power Metabot with your own API key:
+To power Metabot with your own API key to an AI provider:
 
 1. Go to **Admin > AI > Connection settings**.
 2. Select your **Provider**.
@@ -51,7 +57,7 @@ When your connection is active, you'll see a **CONNECTED** badge.
 
 ### Supported providers
 
-Currently, Metabot only supports Anthropic models.
+Currently, Metabot only supports models from Anthropic.
 
 ## Configure Metabot
 
@@ -59,7 +65,7 @@ _Admin > AI > Metabot_
 
 ![Metabot settings](./images/ai-settings.png)
 
-You can configure Metabot for your internal Metabase separately from [embedded](../embedding/introduction.md) Metabase contexts. That way you can, for example, use Metabot in your Metabase while not giving access to Metabot in your embedded Metabase.
+You can configure Metabot for your internal Metabase separately from [embedded](../embedding/introduction.md) Metabase contexts. That way you can, for example, use Metabot in your Metabase while not granting access to Metabot in your embedded Metabase.
 
 ### Enable Metabot
 
