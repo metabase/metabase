@@ -108,13 +108,19 @@ export function BucketPickerPopover({
           )}
         </Button>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown
+        // Prevent touch events from bubbling to the parent dropdown,
+        // which causes it to scroll/select items on mobile (metabase#EMB-1471)
+        onTouchStart={(e: React.TouchEvent) => e.stopPropagation()}
+        onTouchMove={(e: React.TouchEvent) => e.stopPropagation()}
+      >
         <SelectList
           p="sm"
           miw="10rem"
           style={
             {
               "--bucket-picker-active-color": activeColor,
+              overscrollBehavior: "contain",
             } as React.CSSProperties
           }
         >

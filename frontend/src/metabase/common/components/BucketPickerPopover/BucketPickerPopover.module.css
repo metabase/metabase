@@ -9,6 +9,18 @@
   visibility: visible;
 }
 
+/* No hover on touch devices, so always show the button with readable text */
+@media (hover: none) {
+  .triggerButton {
+    visibility: visible;
+    color: var(--mb-color-brand);
+  }
+
+  .chevronIcon {
+    color: var(--mb-color-brand);
+  }
+}
+
 .triggerButtonLabel {
   display: flex;
   gap: 0.5rem;
