@@ -78,7 +78,9 @@ export const updateUrl = createThunkAction(
         datasetEditorTab = getDatasetEditorTab(getState());
       }
 
-      const card = isAdHocModelOrMetric ? getCard(getState()) : question.card();
+      const card = isAdHocModelOrMetric
+        ? getCard(getState())!
+        : question.card();
       const newState = {
         card,
         cardId: question.id(),
