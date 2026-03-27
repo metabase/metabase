@@ -25,7 +25,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.serialization.resolve :as resolve]))
+   [metabase.models.serialization.resolve :as resolve]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -302,6 +303,152 @@
   (->SourceMetadataProvider store))
 
 ;;; ===========================================================================
+;;; Common entity checks — apply to any entity type
+;;;
+;;; These validations run on every entity (cards, dashboards, collections,
+;;; metrics, segments, etc.). Add new cross-entity checks here.
+;;; ===========================================================================
+
+(defn- validate-collection-id
+  "Validate that `collection_id` in `data` points to a known collection.
+   Returns a failure map or nil."
+  [store data]
+  (when-let [coll-id (:collection_id data)]
+    (let [kind (store/index-kind-of store coll-id)]
+      (cond
+        (nil? kind)
+        {:type :collection :entity-id coll-id
+         :message (str "collection_id " coll-id " not found")}
+
+        (not= :collection kind)
+        {:type :collection :entity-id coll-id
+         :message (str "collection_id " coll-id " points to a " (name kind) ", not a collection")}))))
+
+(defn- check-common
+  "Run checks that apply to any entity (card, dashboard, metric, etc.).
+   Returns a vector of failure maps, or empty vector if all checks pass."
+  [store data]
+  (filterv some?
+           [(validate-collection-id store data)]))
+
+;;; ===========================================================================
+;;; Dashboard-specific checks
+;;;
+;;; Validates dashboard internal consistency:
+;;; - dashcard card_id refs point to known cards
+;;; - dashcard dashboard_tab_id refs point to tabs in this dashboard
+;;; - dashcard grid positions are within bounds (24-column grid)
+;;; ===========================================================================
+
+(def ^:private grid-width
+  "Dashboard grid width in columns."
+  24)
+
+(defn- validate-dashcard-card-ref
+  "Validate that a dashcard's card_id points to a known card.
+   Virtual cards (headings, text) have null card_id — that's fine."
+  [store dashcard]
+  (let [card-id (:card_id dashcard)]
+    (when (and card-id (not (store/in-index? store :card card-id)))
+      {:type :dashcard-card-ref
+       :dashcard-entity-id (:entity_id dashcard)
+       :entity-id card-id
+       :message (str "dashcard " (:entity_id dashcard) " references card " card-id " which is not in the export")})))
+
+(defn- validate-dashcard-tab-ref
+  "Validate that a dashcard's dashboard_tab_id references a tab in this dashboard.
+   dashboard_tab_id is [dashboard-entity-id, tab-entity-id]."
+  [tab-entity-ids dashcard]
+  (when-let [tab-ref (:dashboard_tab_id dashcard)]
+    (let [tab-eid (if (vector? tab-ref) (second tab-ref) tab-ref)]
+      (when (and tab-eid (not (contains? tab-entity-ids tab-eid)))
+        {:type :dashcard-tab-ref
+         :dashcard-entity-id (:entity_id dashcard)
+         :entity-id tab-eid
+         :message (str "dashcard " (:entity_id dashcard) " references tab " tab-eid " which is not in this dashboard")}))))
+
+(defn- validate-dashcard-grid
+  "Validate that a dashcard's grid position is within bounds."
+  [dashcard]
+  (let [col    (or (:col dashcard) 0)
+        row    (or (:row dashcard) 0)
+        size-x (or (:size_x dashcard) 1)
+        size-y (or (:size_y dashcard) 1)
+        eid    (:entity_id dashcard)]
+    (cond
+      (neg? col)
+      {:type :dashcard-grid :dashcard-entity-id eid
+       :message (str "dashcard " eid " has negative col: " col)}
+
+      (> (+ col size-x) grid-width)
+      {:type :dashcard-grid :dashcard-entity-id eid
+       :message (str "dashcard " eid " extends beyond grid: col=" col " + size_x=" size-x " > " grid-width)}
+
+      (< size-x 1)
+      {:type :dashcard-grid :dashcard-entity-id eid
+       :message (str "dashcard " eid " has invalid size_x: " size-x)}
+
+      (< size-y 1)
+      {:type :dashcard-grid :dashcard-entity-id eid
+       :message (str "dashcard " eid " has invalid size_y: " size-y)}
+
+      (neg? row)
+      {:type :dashcard-grid :dashcard-entity-id eid
+       :message (str "dashcard " eid " has negative row: " row)})))
+
+(defn- check-dashboard
+  "Run dashboard-specific semantic checks on loaded dashboard data.
+   Returns a vector of failure maps."
+  [store data]
+  (let [tabs          (:tabs data)
+        dashcards     (:dashcards data)
+        tab-entity-ids (into #{} (keep :entity_id) tabs)]
+    (into []
+          (keep identity)
+          (mapcat (fn [dc]
+                    [(validate-dashcard-card-ref store dc)
+                     (validate-dashcard-tab-ref tab-entity-ids dc)
+                     (validate-dashcard-grid dc)])
+                  dashcards))))
+
+;;; ===========================================================================
+;;; Non-card entity checking — load from files, run common + type-specific checks
+;;; ===========================================================================
+
+(defn- check-entity-from-file
+  "Load an entity YAML file from the index and run checks.
+   Runs common checks on all entities, plus dashboard-specific checks.
+   Returns [entity-id result-map] or nil if all checks pass."
+  [store kind entity-id]
+  (when-let [file (store/index-file store kind entity-id)]
+    (try
+      (let [data     (serdes/load-yaml file)
+            failures (into (check-common store data)
+                           (when (= :dashboard kind)
+                             (check-dashboard store data)))]
+        (when (seq failures)
+          [entity-id {:name       (or (:name data) entity-id)
+                      :entity-id  entity-id
+                      :kind       kind
+                      :unresolved failures}]))
+      (catch Exception e
+        [entity-id {:name       entity-id
+                    :entity-id  entity-id
+                    :kind       kind
+                    :error      (.getMessage e)}]))))
+
+(defn- check-non-card-entities
+  "Run checks on indexed dashboards and collections (not cards).
+   Cards are checked inline in check-card since their data is already loaded.
+   Returns a map of entity-id → result for entities with failures."
+  [store]
+  (into {}
+        (keep identity)
+        (concat
+         (map #(check-entity-from-file store :dashboard %) (store/all-refs store :dashboard))
+         (map #(check-entity-from-file store :collection %) (store/all-refs store :collection)))))
+
+;;; ===========================================================================
 ;;; Card validation
 ;;; ===========================================================================
 
@@ -344,17 +491,18 @@
         (extract-refs-from-query store (lib/query provider dq) provider visited)))
     (catch Exception _ {:tables [] :fields [] :source-cards []})))
 
-(defn check-card
-  "Check a single card. Returns result map with :name, :refs, :unresolved, :bad-refs, :error, :native-errors."
-  [store provider entity-id]
-  (let [data     (store/load-card! store entity-id)
-        card-id  (:id data)
-        card-meta (->card-metadata store data)]
+;;; ===========================================================================
+;;; Query checks — apply to entities with a dataset_query
+;;; ===========================================================================
+
+(defn- check-query
+  "Validate an entity's dataset_query. Returns a result map with
+   :refs, :unresolved, :bad-refs, :error, :native-errors."
+  [store provider data]
+  (let [card-meta (->card-metadata store data)
+        card-id   (:id data)]
     (if-let [missing-db (::missing-database card-meta)]
-      {:card-id    card-id
-       :name       (:name data)
-       :entity-id  entity-id
-       :unresolved (into [{:type :database :name missing-db}]
+      {:unresolved (into [{:type :database :name missing-db}]
                          (::resolution-failures card-meta))
        :error      (str "Unknown database: " missing-db)}
       (try
@@ -375,30 +523,65 @@
               bad-refs      (lib/find-bad-refs query)
               native-errors (when is-native?
                               (native/validate-native-sql store provider query db-name))]
-          (cond-> {:card-id    card-id
-                   :name       (:name data)
-                   :entity-id  entity-id
-                   :refs       refs
+          (cond-> {:refs     refs
                    :unresolved (::resolution-failures card-meta)
-                   :bad-refs   bad-refs}
+                   :bad-refs bad-refs}
             (seq native-errors) (assoc :native-errors native-errors)))
         (catch Exception e
-          {:card-id    card-id
-           :name       (:name data)
-           :entity-id  entity-id
-           :unresolved (::resolution-failures card-meta)
+          {:unresolved (::resolution-failures card-meta)
            :error      (.getMessage e)})))))
 
-(defn check-cards
-  "Check multiple cards from source. Returns map of entity-id → result.
+;;; ===========================================================================
+;;; Card checking — common checks + query checks
+;;; ===========================================================================
 
-   `index` is a file index: `{kind {ref file-path}}` (see store/make-store)."
+(defn check-card
+  "Check a single card: common checks (collection_id) + query validation."
+  [store provider entity-id]
+  (let [data            (store/load-card! store entity-id)
+        common-failures (check-common store data)
+        query-result    (check-query store provider data)
+        all-unresolved  (into (or (:unresolved query-result) []) common-failures)]
+    (cond-> {:card-id    (:id data)
+             :name       (:name data)
+             :entity-id  entity-id}
+      (seq all-unresolved)          (assoc :unresolved all-unresolved)
+      (:refs query-result)          (assoc :refs (:refs query-result))
+      (:bad-refs query-result)      (assoc :bad-refs (:bad-refs query-result))
+      (:native-errors query-result) (assoc :native-errors (:native-errors query-result))
+      (:error query-result)         (assoc :error (:error query-result)))))
+
+(defn- check-duplicate-entity-ids
+  "Check for duplicate entity_ids in the index. Returns a map of
+   synthetic key → result for each duplicate group."
+  [index]
+  (when-let [dupes (:duplicates index)]
+    (into {}
+          (for [{:keys [kind ref files]} dupes]
+            [(str "duplicate:" ref)
+             {:name       (str "Duplicate " (name kind) " entity_id: " ref)
+              :entity-id  ref
+              :kind       kind
+              :error      (str "entity_id " ref " appears in " (count files) " files: "
+                               (str/join ", " files))
+              :suggested-replacement (u/generate-nano-id)}]))))
+
+(defn check-cards
+  "Check card queries and collection_id refs across all entity types.
+   Returns map of entity-id → result.
+
+   `index` is a file index: `{kind {ref file-path}}` (see store/make-store).
+   Card query validation uses the source and provider.
+   Dashboard/collection collection_id validation loads YAML from files in the index."
   [source index card-ids]
   (let [store    (store/make-store source index)
-        provider (make-provider store)]
-    (into {}
-          (for [eid card-ids]
-            [eid (check-card store provider eid)]))))
+        provider (make-provider store)
+        card-results (into {}
+                           (for [eid card-ids]
+                             [eid (check-card store provider eid)]))
+        other-results (check-non-card-entities store)
+        dupe-results  (check-duplicate-entity-ids index)]
+    (merge card-results other-results dupe-results)))
 
 ;;; ===========================================================================
 ;;; Results processing — pure functions on result data
@@ -479,6 +662,8 @@
             (swap! lines conj (str "  sql error: " (pr-str (dissoc err :source-entity-type :source-entity-id))))))
         (when (:error result)
           (swap! lines conj (str "  error: " (:error result))))
+        (when-let [replacement (:suggested-replacement result)]
+          (swap! lines conj (str "  suggested replacement entity_id: " replacement)))
         (str/join "\n" @lines)))))
 
 (defn write-results!
@@ -493,25 +678,25 @@
   "Build a composite source (db schemas from `schema-dir`, cards from `export-dir`)
    and a merged file index."
   [export-dir schema-dir]
-  (let [db-source   (serdes/make-database-source schema-dir)
-        card-source (serdes/make-source export-dir)
-        src         (source/composite-source db-source card-source)
-        db-index    (serdes/source-index db-source)
-        card-index  (serdes/source-index card-source)
-        index       (merge db-index (select-keys card-index [:card]))]
-    {:source src :index index :card-source card-source}))
+  (let [db-source    (serdes/make-database-source schema-dir)
+        export-source (serdes/make-source export-dir)
+        src          (source/composite-source db-source export-source)
+        db-index     (serdes/source-index db-source)
+        export-index (serdes/source-index export-source)
+        index        (merge db-index (select-keys export-index [:card :dashboard :collection :duplicates]))]
+    {:source src :index index :export-source export-source}))
 
 (defn check
-  "Check cards in an export directory against database schemas.
+  "Check entities in an export directory against database schemas.
 
-   `export-dir`  — directory containing serdes-exported cards (collections/)
+   `export-dir`  — directory containing serdes-exported entities (collections/)
    `schema-dir`  — directory containing serdes-exported database schemas
-   `entity-ids`  — optional seq of card entity-ids to check (defaults to all)
+   `entity-ids`  — optional seq of card entity-ids to check (defaults to all cards)
 
    Returns a map with :results and :source."
   ([export-dir schema-dir]
-   (let [{:keys [source index card-source]} (make-source-and-index export-dir schema-dir)
-         card-ids (serdes/all-card-ids card-source)]
+   (let [{:keys [source index export-source]} (make-source-and-index export-dir schema-dir)
+         card-ids (serdes/all-card-ids export-source)]
      {:results (check-cards source index card-ids)
       :source  source}))
   ([export-dir schema-dir entity-ids]

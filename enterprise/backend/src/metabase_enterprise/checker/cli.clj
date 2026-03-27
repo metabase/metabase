@@ -9,7 +9,8 @@
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [metabase-enterprise.checker.semantic :as checker]
-   [metabase-enterprise.checker.structural :as structural]))
+   [metabase-enterprise.checker.structural :as structural]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,10 +48,19 @@
         failures (filter #(not= :ok (checker/result-status (second %))) results)]
     (if errors-only
       ;; Errors-only mode: just errors to stdout, nothing else
-      (doseq [entry (sort-by (comp :name second) failures)
-              :let [error-str (checker/format-error entry)]
-              :when error-str]
-        (println error-str))
+      (do
+        (doseq [entry (sort-by (comp :name second) failures)
+                :let [error-str (checker/format-error entry)]
+                :when error-str]
+          (println error-str))
+        ;; Print spare entity_ids — one per duplicate, plus a few extra
+        (let [dupe-count (count (filter #(str/starts-with? (str (first %)) "duplicate:") failures))
+              spare-count (+ dupe-count 5)]
+          (when (pos? spare-count)
+            (println)
+            (println (str "spare entity_ids (" spare-count "):"))
+            (dotimes [_ spare-count]
+              (println (str "  " (u/generate-nano-id)))))))
       ;; Normal mode: full output
       (do
         ;; Write to output file if specified
@@ -72,7 +82,14 @@
           (println "---------")
           (doseq [entry (sort-by (comp :name second) failures)]
             (println)
-            (println (checker/format-result entry))))))
+            (println (checker/format-result entry))))
+        ;; Print spare entity_ids — one per duplicate, plus a few extra
+        (let [dupe-count (count (filter #(str/starts-with? (str (first %)) "duplicate:") failures))
+              spare-count (+ dupe-count 5)]
+          (when (pos? spare-count)
+            (println (str "\nSpare entity_ids (" spare-count "):"))
+            (dotimes [_ spare-count]
+              (println (str "  " (u/generate-nano-id))))))))
     ;; Exit with appropriate code
     (flush)
     (System/exit (if (zero? (+ (:errors summary) (:unresolved summary) (:native-errors summary) (:issues summary)))

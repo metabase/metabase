@@ -57,6 +57,26 @@
   [store kind]
   (keys (get-in @store [:index kind])))
 
+(defn in-index?
+  "Is `ref` known in the file index under `kind`?"
+  [store kind ref]
+  (contains? (get-in @store [:index kind]) ref))
+
+(defn index-kind-of
+  "Return the kind of an entity-id in the index, or nil if not found.
+   Checks :collection, :card, :dashboard."
+  [store entity-id]
+  (cond
+    (in-index? store :collection entity-id) :collection
+    (in-index? store :card entity-id)       :card
+    (in-index? store :dashboard entity-id)  :dashboard
+    :else nil))
+
+(defn index-file
+  "Get the file path for a ref of a given kind from the index, or nil."
+  [store kind ref]
+  (get-in @store [:index kind ref]))
+
 (defn all-database-names
   "All database names from the file index."
   [store]

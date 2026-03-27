@@ -180,19 +180,59 @@
         :when entity-id]
     {:kind kind :ref entity-id :file path}))
 
+(defn- index-collection-files
+  "Index collection YAML files under collections/.
+   Collection files are those directly inside a collection directory
+   (not inside cards/, dashboards/, or transforms/ subdirs)
+   where the filename matches the directory name."
+  [export-dir]
+  (let [collections-dir (io/file export-dir "collections")]
+    (when (.isDirectory collections-dir)
+      (for [^File file (file-seq collections-dir)
+            :when (.isFile file)
+            :let  [path (.getPath file)
+                   fname (.getName file)]
+            :when (str/ends-with? fname ".yaml")
+            ;; Exclude files in cards/, dashboards/, transforms/ subdirs
+            :when (not (re-find #"/(?:cards|dashboards|transforms)/[^/]+\.yaml$" path))
+            ;; Collection file: directory name matches filename (minus .yaml)
+            :let  [parent-name (.getName (.getParentFile file))
+                   base-name (str/replace fname ".yaml" "")]
+            :when (= parent-name base-name)
+            :let  [entity-id (extract-entity-id path)]
+            :when entity-id]
+        {:kind :collection :ref entity-id :file path}))))
+
 (defn build-file-index
   "Build index of all entity files in an export directory.
-   Returns `{kind {ref file-path}}` where kind is :database, :table, :field,
-   :card, or :dashboard."
+   Returns a map with:
+   - Entity kind keys (:database, :table, :field, :card, :dashboard, :collection)
+     each mapping ref → file-path (first occurrence wins)
+   - `:duplicates` — a vector of {:kind :ref :files [path1 path2 ...]} for any
+     ref that appears in multiple files"
   [export-dir]
   (let [entries (concat
                  (walk-layout (io/file export-dir) [] database-layout)
                  (index-entity-id-files export-dir :card      #"/cards/[^/]+\.yaml$")
-                 (index-entity-id-files export-dir :dashboard #"/dashboards/[^/]+\.yaml$"))]
-    (reduce (fn [idx {:keys [kind ref file]}]
-              (assoc-in idx [kind ref] file))
-            {}
-            entries)))
+                 (index-entity-id-files export-dir :dashboard #"/dashboards/[^/]+\.yaml$")
+                 (index-collection-files export-dir))
+        ;; Group by [kind ref] to find duplicates
+        by-key  (reduce (fn [m {:keys [kind ref file]}]
+                          (update m [kind ref] (fnil conj []) file))
+                        {}
+                        entries)
+        ;; Build the index (first file wins) and collect duplicates
+        index   (reduce-kv (fn [idx [kind ref] files]
+                              (assoc-in idx [kind ref] (first files)))
+                            {}
+                            by-key)
+        dupes   (into []
+                      (keep (fn [[[kind ref] files]]
+                              (when (> (count files) 1)
+                                {:kind kind :ref ref :files files})))
+                      by-key)]
+    (cond-> index
+      (seq dupes) (assoc :duplicates dupes))))
 
 (def ^:private databases-dir-layout
   "Layout descriptor for a directory that IS the databases directory.
@@ -228,6 +268,7 @@
    :fields         (count (:field index))
    :cards          (count (:card index))
    :dashboards     (count (:dashboard index))
+   :collections    (count (:collection index))
    :database-names (vec (keys (:database index)))})
 
 ;;; ===========================================================================

@@ -9,7 +9,8 @@
    [metabase-enterprise.checker.semantic :as checker]
    [metabase-enterprise.checker.format.serdes :as serdes-format]
    [metabase-enterprise.checker.source :as source]
-   [metabase-enterprise.checker.store :as store]))
+   [metabase-enterprise.checker.store :as store]
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 
@@ -367,6 +368,274 @@
       (is (seq (:unresolved result)) "Should track unresolved table")
       (is (some #(= :table (:type %)) (:unresolved result))
           "Should have unresolved table ref"))))
+
+;;; ===========================================================================
+;;; Collection reference tests
+;;; ===========================================================================
+
+(deftest valid-collection-id-test
+  (testing "Card with valid collection_id passes"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Good Card"
+                                      :entity_id "card-1"
+                                      :collection_id "coll-1"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
+          source (make-memory-source entities)
+          ;; Index includes the collection
+          index (assoc (make-memory-index entities)
+                       :collection {"coll-1" :memory})
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (nil? (:error result)))
+      (is (empty? (:unresolved result)) "Valid collection_id should not produce unresolved refs"))))
+
+(deftest missing-collection-id-test
+  (testing "Card with collection_id pointing to nonexistent entity is flagged"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Bad Collection Card"
+                                      :entity_id "card-1"
+                                      :collection_id "nonexistent"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
+          source (make-memory-source entities)
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (seq (:unresolved result)) "Missing collection should be flagged")
+      (is (some #(= :collection (:type %)) (:unresolved result))
+          "Should have unresolved collection ref"))))
+
+(deftest collection-id-points-to-card-test
+  (testing "Card with collection_id pointing to another card (not a collection) is flagged"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Card With Bad Collection"
+                                      :entity_id "card-1"
+                                      :collection_id "card-2"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}
+                            "card-2" {:name "Other Card"
+                                      :entity_id "card-2"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
+          source (make-memory-source entities)
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (seq (:unresolved result)) "collection_id pointing to a card should be flagged")
+      (is (some #(and (= :collection (:type %))
+                       (re-find #"card" (or (:message %) "")))
+                 (:unresolved result))
+          "Error should mention it points to a card"))))
+
+(deftest nil-collection-id-test
+  (testing "Card with nil collection_id is fine"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Root Card"
+                                      :entity_id "card-1"
+                                      :collection_id nil
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
+          source (make-memory-source entities)
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (nil? (:error result)))
+      (is (empty? (:unresolved result)) "nil collection_id should be fine"))))
+
+(deftest dashboard-bad-collection-id-test
+  (testing "Dashboard with invalid collection_id is flagged via file-based check"
+    (let [dir (java.io.File/createTempFile "dash-coll-test" "")]
+      (.delete dir)
+      (.mkdirs dir)
+      (try
+        ;; Write a dashboard YAML file
+        (let [dash-file (io/file dir "dashboard.yaml")]
+          (spit dash-file "name: My Dashboard\nentity_id: dash-1\ncollection_id: nonexistent\n")
+          ;; Create a minimal source (no cards, no databases — we only care about collection_id)
+          (let [source (make-memory-source {:databases {} :tables {} :fields {} :cards {}})
+                index {:dashboard {"dash-1" (.getPath dash-file)}
+                       :collection {}}
+                results (checker/check-cards source index [])]
+            ;; The dashboard should appear in results with an unresolved collection ref
+            (is (contains? results "dash-1") "Dashboard should be in results")
+            (let [result (get results "dash-1")]
+              (is (seq (:unresolved result)) "Dashboard with bad collection_id should be flagged")
+              (is (some #(= :collection (:type %)) (:unresolved result))))))
+        (finally
+          (doseq [f (reverse (file-seq dir))]
+            (.delete ^java.io.File f)))))))
+
+(deftest dashboard-valid-collection-id-not-flagged-test
+  (testing "Dashboard with valid collection_id is not in results"
+    (let [dir (java.io.File/createTempFile "dash-coll-ok" "")]
+      (.delete dir)
+      (.mkdirs dir)
+      (try
+        (let [dash-file (io/file dir "dashboard.yaml")]
+          (spit dash-file "name: Good Dashboard\nentity_id: dash-1\ncollection_id: coll-1\n")
+          (let [source (make-memory-source {:databases {} :tables {} :fields {} :cards {}})
+                index {:dashboard {"dash-1" (.getPath dash-file)}
+                       :collection {"coll-1" :memory}}
+                results (checker/check-cards source index [])]
+            ;; Valid dashboard should not appear (no errors)
+            (is (not (contains? results "dash-1")) "Dashboard with valid collection_id should not be in results")))
+        (finally
+          (doseq [f (reverse (file-seq dir))]
+            (.delete ^java.io.File f)))))))
+
+;;; ===========================================================================
+;;; Dashboard semantic validation tests
+;;; ===========================================================================
+
+(defn- with-temp-dashboard
+  "Write a dashboard YAML to a temp file and run checks.
+   `dashboard-data` is a map that will be written as YAML.
+   `extra-index` is merged into the index (e.g. to add cards).
+   Calls `(f results)` with the check results."
+  [dashboard-data extra-index f]
+  (let [dir (java.io.File/createTempFile "dash-test" "")]
+    (.delete dir)
+    (.mkdirs dir)
+    (try
+      (let [dash-file (io/file dir "dashboard.yaml")
+            entity-id (:entity_id dashboard-data)]
+        (spit dash-file (yaml/generate-string dashboard-data))
+        (let [source (make-memory-source {:databases {} :tables {} :fields {} :cards {}})
+              index  (merge {:dashboard {entity-id (.getPath dash-file)}
+                             :collection {}
+                             :card {}}
+                            extra-index)
+              results (checker/check-cards source index [])]
+          (f results)))
+      (finally
+        (doseq [fl (reverse (file-seq dir))]
+          (.delete ^java.io.File fl))))))
+
+(deftest dashboard-card-ref-valid-test
+  (testing "Dashboard with valid card_id refs passes"
+    (with-temp-dashboard
+      {:name "Good Dashboard"
+       :entity_id "dash-1"
+       :tabs [{:entity_id "tab-1" :name "Tab 1" :position 0}]
+       :dashcards [{:entity_id "dc-1"
+                    :card_id "card-1"
+                    :dashboard_tab_id ["dash-1" "tab-1"]
+                    :row 0 :col 0 :size_x 12 :size_y 6}]}
+      {:card {"card-1" :memory}}
+      (fn [results]
+        (is (not (contains? results "dash-1"))
+            "Dashboard with valid refs should not appear in results")))))
+
+(deftest dashboard-card-ref-missing-test
+  (testing "Dashboard with card_id pointing to unknown card is flagged"
+    (with-temp-dashboard
+      {:name "Bad Card Ref"
+       :entity_id "dash-1"
+       :tabs [{:entity_id "tab-1" :name "Tab 1" :position 0}]
+       :dashcards [{:entity_id "dc-1"
+                    :card_id "nonexistent-card"
+                    :dashboard_tab_id ["dash-1" "tab-1"]
+                    :row 0 :col 0 :size_x 12 :size_y 6}]}
+      {}
+      (fn [results]
+        (is (contains? results "dash-1"))
+        (let [result (get results "dash-1")]
+          (is (some #(= :dashcard-card-ref (:type %)) (:unresolved result))
+              "Should flag missing card ref"))))))
+
+(deftest dashboard-virtual-card-null-card-id-test
+  (testing "Dashboard with null card_id (heading/text) is fine"
+    (with-temp-dashboard
+      {:name "Headings Dashboard"
+       :entity_id "dash-1"
+       :tabs [{:entity_id "tab-1" :name "Tab 1" :position 0}]
+       :dashcards [{:entity_id "dc-1"
+                    :card_id nil
+                    :dashboard_tab_id ["dash-1" "tab-1"]
+                    :row 0 :col 0 :size_x 24 :size_y 1}]}
+      {}
+      (fn [results]
+        (is (not (contains? results "dash-1"))
+            "Virtual card with null card_id should be fine")))))
+
+(deftest dashboard-tab-ref-invalid-test
+  (testing "Dashboard with dashcard referencing nonexistent tab is flagged"
+    (with-temp-dashboard
+      {:name "Bad Tab Ref"
+       :entity_id "dash-1"
+       :tabs [{:entity_id "tab-1" :name "Tab 1" :position 0}]
+       :dashcards [{:entity_id "dc-1"
+                    :card_id nil
+                    :dashboard_tab_id ["dash-1" "wrong-tab"]
+                    :row 0 :col 0 :size_x 12 :size_y 6}]}
+      {}
+      (fn [results]
+        (is (contains? results "dash-1"))
+        (let [result (get results "dash-1")]
+          (is (some #(= :dashcard-tab-ref (:type %)) (:unresolved result))
+              "Should flag bad tab ref"))))))
+
+(deftest dashboard-grid-overflow-test
+  (testing "Dashboard with dashcard extending beyond grid width is flagged"
+    (with-temp-dashboard
+      {:name "Grid Overflow"
+       :entity_id "dash-1"
+       :tabs [{:entity_id "tab-1" :name "Tab 1" :position 0}]
+       :dashcards [{:entity_id "dc-1"
+                    :card_id nil
+                    :dashboard_tab_id ["dash-1" "tab-1"]
+                    :row 0 :col 20 :size_x 12 :size_y 6}]}
+      {}
+      (fn [results]
+        (is (contains? results "dash-1"))
+        (let [result (get results "dash-1")]
+          (is (some #(= :dashcard-grid (:type %)) (:unresolved result))
+              "Should flag grid overflow"))))))
+
+(deftest dashboard-grid-negative-col-test
+  (testing "Dashboard with negative col is flagged"
+    (with-temp-dashboard
+      {:name "Negative Col"
+       :entity_id "dash-1"
+       :tabs []
+       :dashcards [{:entity_id "dc-1"
+                    :card_id nil
+                    :row 0 :col -1 :size_x 12 :size_y 6}]}
+      {}
+      (fn [results]
+        (is (contains? results "dash-1"))
+        (let [result (get results "dash-1")]
+          (is (some #(= :dashcard-grid (:type %)) (:unresolved result))
+              "Should flag negative col"))))))
+
+(deftest dashboard-valid-full-width-test
+  (testing "Dashboard with full-width card (col=0, size_x=24) passes"
+    (with-temp-dashboard
+      {:name "Full Width"
+       :entity_id "dash-1"
+       :tabs [{:entity_id "tab-1" :name "Tab 1" :position 0}]
+       :dashcards [{:entity_id "dc-1"
+                    :card_id nil
+                    :dashboard_tab_id ["dash-1" "tab-1"]
+                    :row 0 :col 0 :size_x 24 :size_y 1}]}
+      {}
+      (fn [results]
+        (is (not (contains? results "dash-1"))
+            "Full-width card should be valid")))))
 
 ;;; ===========================================================================
 ;;; REPL Helpers
