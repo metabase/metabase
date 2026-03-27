@@ -27,8 +27,7 @@ There are a few advantages to using the agent API over the Metabase API.
 
 The Agent API supports:
 
-- Searching for tables and metrics (keyword and semantic search)
-- Discovering tables and metrics
+- Searching for tables and metrics
 - Inspecting their fields
 - Constructing and executing queries
 
@@ -36,7 +35,7 @@ If you want to connect an MCP-compatible AI client (like Claude Desktop) without
 
 ## Row limits and pagination
 
-Queries return a maximum of 200 rows per request. To page through larger result sets, use `POST /v1/query`, which returns a `continuation_token` when more rows are available. Pass the token back to get the next page.
+Queries return a maximum of 200 rows per request. To page through larger result sets, use `POST /api/agent/v1/query`, which returns a `continuation_token` when more rows are available. Pass the token back to get the next page.
 
 ## Agent API endpoints and reference
 
@@ -108,7 +107,7 @@ Example JWT payload:
 }
 ```
 
-You can also exchange a JWT for a session token via `POST /auth/sso/to_session`, then use the `X-Metabase-Session` header as described above.
+You can also exchange a JWT for a session token via `POST /auth/sso/to_session` (note: this endpoint is under `/auth`, not `/api`), then use the `X-Metabase-Session` header as described above.
 
 ## Further reading
 

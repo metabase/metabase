@@ -49,7 +49,7 @@ To enable AI features with your own API key:
 4. Click **Connect**.
 5. Select a **Model** from the dropdown. Available models are fetched from the provider using your API key.
 
-When your connection is active, you'll see a **CONNECTED** badge. With your key connected, you get access to [Metabot](./metabot.md), inline SQL generation, the [MCP server](./mcp.md), and the [Agent API](./agent-api.md).
+When your connection is active, you'll see a **CONNECTED** badge. With your key connected, you get access to [Metabot](./metabot.md), [inline SQL generation](./metabot.md#inline-sql-editing), the [MCP server](./mcp.md), and the [Agent API](./agent-api.md).
 
 ### Supported providers
 
@@ -67,7 +67,7 @@ You can configure Metabot for your internal Metabase separately from [embedded](
 
 Toggle [Metabot](./metabot.md) on or off for your Metabase. Metabot is enabled by default.
 
-When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden.
+When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden. Currently, Metabot is available to everyone who uses your Metabase. There's no way to scope Metabot usage per person.
 
 Toggling off Metabot only turns off in-app Metabot features. People can still use the [MCP server](./mcp.md) and [Agent API](./agent-api.md). To turn off the MCP server and Agent API, you'll need to disconnect from the provider in **Admin > AI > Connection settings**.
 
@@ -150,10 +150,6 @@ The **Metabot AI requests used, this month (updated daily)** field shows how man
 
 If you're using your own API key, you can track usage and costs through your AI provider's dashboard.
 
-## Metabot can't be enabled per person
-
-Currently, Metabot is available to everyone who uses your Metabase.
-
 ## Choosing the AI model
 
 If you're using your own API key, you can choose which AI model Metabase uses in [Connection settings](#bring-your-own-api-key).
@@ -162,9 +158,11 @@ On Metabase Cloud, Metabase's AI service selects models automatically. We use in
 
 ## Privacy
 
-We've intentionally limited what Metabot can do. Metabot can't create assets, write data, or send your data outside of your Metabase. Your questions and conversations remain private to your Metabase (unless you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses)). We do collect some metadata to gauge and improve usage.
+On Metabase Cloud with the Metabot add-on, your questions and conversations remain private to your Metabase -- we don't send your data to external services. We do collect some metadata to gauge and improve usage.
 
 If you're using your own API key, your prompts and data are sent to your selected AI provider. Review your provider's data handling and privacy policies. When using the [MCP server](./mcp.md), query results are sent to the connected MCP client.
+
+In both cases, Metabot can't create assets or write data. If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses), the form you send may contain sensitive data from your conversation.
 
 ### What Metabot can see
 
@@ -174,4 +172,4 @@ Metabot has access to your Metabase metadata and some data values to help answer
 - **Sample field values**: When you ask questions like "Filter everyone from Wisconsin," Metabot might check the values in the state field to understand how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
 - **Timeseries data**: For chart analysis, Metabot might see the timeseries data used to draw certain visualizations, depending on the chart type.
 
-When you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses), however, the form you send may contain sensitive data from your conversation.
+This data may be included when you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses).

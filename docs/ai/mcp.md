@@ -21,6 +21,18 @@ https://{your-metabase.example.com}/api/mcp
 
 In Claude Code, for example, you can run `/mcp add metabase https://{your-metabase.example.com}/api/mcp --transport streamable-http` and Claude will handle the OAuth flow for you.
 
+For Claude Desktop, add this to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "metabase": {
+      "url": "https://{your-metabase.example.com}/api/mcp"
+    }
+  }
+}
+```
+
 ## Authentication
 
 MCP clients authenticate with Metabase using OAuth 2.0. Metabase runs its own embedded OAuth server, so you don't need to set up an external OAuth provider.
@@ -34,9 +46,11 @@ A first-time connection will go something like this:
 3. You're redirected to Metabase to log in (if you aren't already) and approve the connection.
 4. The client receives an access token scoped to the permissions you have in Metabase.
 
+Results returned by the MCP server are sent to your MCP client, which may forward them to an AI provider depending on how the client is configured. See [Privacy](./settings.md#privacy).
+
 ## Available tools
 
-You may need to allow access to these tools in your client. The MCP server builds on Metabase's [Agent API](./agent-api.md), and exposes the following tools. If you're building a custom integration and need full control, use the [Agent API](./agent-api.md) directly instead.
+Some clients (like Claude Desktop) will ask you to approve each tool the first time it's used. The MCP server builds on Metabase's [Agent API](./agent-api.md), and exposes the following tools. If you're building a custom integration and need full control, use the [Agent API](./agent-api.md) directly instead.
 
 - **search**: Find tables and metrics using keyword or natural language search.
 - **get_table**: Get details about a table, including its fields, related tables, and metrics.
