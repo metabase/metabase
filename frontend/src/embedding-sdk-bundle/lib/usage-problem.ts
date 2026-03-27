@@ -5,7 +5,10 @@ import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
 } from "embedding-sdk-bundle/types/usage-problem";
-import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
+import {
+  EMBEDDING_SDK_CONFIG,
+  isEmbeddingEajs,
+} from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 import { getIsLocalhost } from "./get-is-localhost";
@@ -17,6 +20,7 @@ interface SdkProblemOptions {
   hasTokenFeature: boolean;
   isDevelopmentMode?: boolean;
   session: MetabaseEmbeddingSessionToken | null;
+
   /**
    * Indicates whether the current environment is localhost.
    * If not provided, it will be determined automatically based on window.location.
@@ -75,7 +79,9 @@ export function getSdkUsageProblem(
     session,
     isLocalHost,
   } = options;
+
   const { apiKey } = authConfig;
+  const { isMcpApp } = EMBEDDING_SDK_CONFIG;
 
   const isSSO = !apiKey;
   const isApiKey = !!apiKey;
@@ -109,7 +115,10 @@ export function getSdkUsageProblem(
       isLocalhost,
       isEnabled,
       session,
+      isMcpApp,
     })
+      // MCP Apps uses temporary sessions created by MCP backend.
+      .with({ isMcpApp: true }, () => null)
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
       )
