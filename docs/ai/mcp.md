@@ -21,17 +21,7 @@ https://{your-metabase.example.com}/api/mcp
 
 In Claude Code, for example, you can run `/mcp add metabase https://{your-metabase.example.com}/api/mcp --transport streamable-http` and Claude will handle the OAuth flow for you.
 
-For Claude Desktop, add this to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "metabase": {
-      "url": "https://{your-metabase.example.com}/api/mcp"
-    }
-  }
-}
-```
+For Claude desktop, you can create a [custom connector](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) by just giving it that URL to your Metabase's mcp endpoint.
 
 ## Authentication
 
@@ -57,6 +47,8 @@ Some clients (like Claude Desktop) will ask you to approve each tool the first t
 - **get_table_field_values**: Get sample values and statistics for a field in a table.
 - **get_metric**: Get details about a metric, including its queryable dimensions.
 - **get_metric_field_values**: Get sample values and statistics for a field in a metric.
+- **construct_query**: Construct a query against a table or metric. Returns an opaque query string that can be executed with `execute_query`.
+- **execute_query**: Execute a previously constructed query and return the results with column metadata, row count, and execution time.
 - **query**: Query a table or metric and return results.
 
 ## Further reading
