@@ -536,6 +536,22 @@
    :version   1
    :data      debug-log})
 
+(def ^:private profile-id->required-permission
+  "Map from profile-id to the metabot permission that must be `:yes` for a user
+  to use that profile. Profiles not listed here have no profile-level permission gate."
+  {:sql                       :permission/metabot-sql-generation
+   :nlq                       :permission/metabot-nql
+   :transforms_codegen        :permission/metabot-sql-generation
+   :document-generate-content :permission/metabot-other-tools})
+
+(defn- check-profile-permission!
+  "Throw a 403 if the user's metabot permissions do not grant access to the
+  requested profile."
+  [profile-id perms]
+  (when-let [required-perm (profile-id->required-permission profile-id)]
+    (api/check (= :yes (get perms required-perm))
+               [403 (format "You do not have permission to use the %s assistant." (name profile-id))])))
+
 (mu/defn run-agent-loop
   "Run agent loop, returning a reducible of parts.
 
@@ -565,7 +581,8 @@
                              (scope/resolve-user-permissions api/*current-user-id*))
         scopes             (if api/*is-superuser?*
                              scope/unrestricted
-                             (scope/user-metabot-perms->scopes perms))]
+                             (scope/user-metabot-perms->scopes perms))
+        _                  (check-profile-permission! profile-id perms)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot.agent/run-agent-loop

@@ -792,3 +792,38 @@
       (is (every? string? (keys chart-configs)))
       (is (=? {chart-configs-key chart-config}
               chart-configs)))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Profile permission checks
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest check-profile-permission-test
+  (let [check! #'agent/check-profile-permission!]
+    (testing "sql profile blocked when sql-generation is :no"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+            (check! :sql {:permission/metabot-sql-generation :no}))))
+    (testing "sql profile allowed when sql-generation is :yes"
+      (is (check! :sql {:permission/metabot-sql-generation :yes})))
+    (testing "nlq profile blocked when nql is :no"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+            (check! :nlq {:permission/metabot-nql :no}))))
+    (testing "nlq profile allowed when nql is :yes"
+      (is (check! :nlq {:permission/metabot-nql :yes})))
+    (testing "transforms_codegen blocked when sql-generation is :no"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+            (check! :transforms_codegen {:permission/metabot-sql-generation :no}))))
+    (testing "transforms_codegen allowed when sql-generation is :yes"
+      (is (check! :transforms_codegen {:permission/metabot-sql-generation :yes})))
+    (testing "document-generate-content blocked when other-tools is :no"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+            (check! :document-generate-content {:permission/metabot-other-tools :no}))))
+    (testing "document-generate-content allowed when other-tools is :yes"
+      (is (check! :document-generate-content {:permission/metabot-other-tools :yes})))
+    (testing "internal profile has no gate — always passes"
+      (is (nil? (check! :internal {:permission/metabot-sql-generation :no
+                                   :permission/metabot-nql            :no
+                                   :permission/metabot-other-tools    :no}))))
+    (testing "slackbot profile has no gate — always passes"
+      (is (nil? (check! :slackbot {:permission/metabot-sql-generation :no
+                                   :permission/metabot-nql            :no
+                                   :permission/metabot-other-tools    :no}))))))

@@ -61,7 +61,11 @@
     (testing "SQL tool selection guidance is excluded"
       (is (not (re-find #"Explicitly requested.*Write SQL" rendered))))
     (testing "SQL anti-pattern example is excluded"
-      (is (not (re-find #"Not checking field formats before SQL" rendered))))))
+      (is (not (re-find #"Not checking field formats before SQL" rendered))))
+    (testing "explicit denial for SQL is included"
+      (is (re-find #"You cannot write SQL" rendered)))
+    (testing "denial suggests NLQ as alternative"
+      (is (re-find #"natural language query builder" rendered)))))
 
 (deftest prompt-gates-nql-section-test
   (let [with-nql    (render-internal-template all-yes-perms)
@@ -73,7 +77,11 @@
     (testing "NLQ guidance excluded when not permitted"
       (is (not (re-find #"Natural Language Querying" without-nql))))
     (testing "NLQ routing excluded when not permitted"
-      (is (not (re-find #"Use natural language querying \(your default mode\)" without-nql))))))
+      (is (not (re-find #"Use natural language querying \(your default mode\)" without-nql))))
+    (testing "explicit denial for NLQ is included when not permitted"
+      (is (re-find #"You cannot use natural language querying" without-nql)))
+    (testing "denial suggests SQL as alternative"
+      (is (re-find #"offer to write SQL" without-nql)))))
 
 (deftest prompt-gates-other-tools-section-test
   (let [with-other    (render-internal-template all-yes-perms)
@@ -85,7 +93,9 @@
     (testing "dashboard routing included when permitted"
       (is (re-find #"Use dashboard tools" with-other)))
     (testing "dashboard routing excluded when not permitted"
-      (is (not (re-find #"Use dashboard tools" without-other))))))
+      (is (not (re-find #"Use dashboard tools" without-other))))
+    (testing "explicit denial for other tools is included when not permitted"
+      (is (re-find #"You cannot create dashboards or documents" without-other)))))
 
 (deftest prompt-gates-query-tools-sections-test
   (let [with-queries    (render-internal-template all-yes-perms)
@@ -111,7 +121,12 @@
       (is (re-find #"Context Grounding" without-queries))
       (is (re-find #"Communication Style" without-queries))
       (is (re-find #"search_request" without-queries))
-      (is (re-find #"Find \[existing content\]" without-queries)))))
+      (is (re-find #"Find \[existing content\]" without-queries)))
+    (testing "explicit denial for query tools is included"
+      (is (re-find #"You cannot build queries or create charts" without-queries)))
+    (testing "no individual SQL/NQL denials when both are off"
+      (is (not (re-find #"You cannot write SQL" without-queries)))
+      (is (not (re-find #"You cannot use natural language querying" without-queries))))))
 
 (deftest prompt-all-no-permissions-test
   (let [rendered (render-internal-template all-no-perms)]
@@ -124,7 +139,10 @@
       (is (not (re-find #"Natural Language Querying" rendered)))
       (is (not (re-find #"Use dashboard tools" rendered)))
       (is (not (re-find #"CRITICAL CONSTRAINTS" rendered)))
-      (is (not (re-find #"Verify Data Structure" rendered))))))
+      (is (not (re-find #"Verify Data Structure" rendered))))
+    (testing "denial messages are present"
+      (is (re-find #"You cannot build queries or create charts" rendered))
+      (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
 (deftest defaults-to-no-permissions-when-unbound-test
   (testing "when *current-user-metabot-permissions* is nil, defaults exclude everything"
@@ -132,4 +150,78 @@
       (is (not (re-find #"sql_construction" rendered)))
       (is (not (re-find #"Natural Language Querying" rendered)))
       (is (not (re-find #"Use dashboard tools" rendered)))
-      (is (not (re-find #"CRITICAL CONSTRAINTS" rendered))))))
+      (is (not (re-find #"CRITICAL CONSTRAINTS" rendered)))
+      (is (re-find #"You cannot build queries or create charts" rendered))
+      (is (re-find #"You cannot create dashboards or documents" rendered)))))
+
+(deftest prompt-no-denials-when-all-enabled-test
+  (let [rendered (render-internal-template all-yes-perms)]
+    (testing "no denial messages when all permissions are enabled"
+      (is (not (re-find #"You cannot" rendered))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Slackbot template gating
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- render-slackbot-template
+  "Render the slackbot.selmer template with given permission flags."
+  [perms]
+  (binding [scope/*current-user-metabot-permissions* perms]
+    (prompts/build-system-message-content
+     {:prompt-template "slackbot.selmer"}
+     {:current_time "2026-03-25T12:00:00Z"}
+     {})))
+
+(deftest slackbot-nlq-sections-gated-test
+  (let [with-nlq    (render-slackbot-template all-yes-perms)
+        without-nlq (render-slackbot-template {:permission/metabot-sql-generation :yes
+                                               :permission/metabot-nql            :no
+                                               :permission/metabot-other-tools    :yes
+                                               :permission/metabot-model          :large})]
+    (testing "NLQ sections included when permitted"
+      (is (re-find #"construct_notebook_query" with-nlq))
+      (is (re-find #"Data Exploration Workflow" with-nlq))
+      (is (re-find #"Request Modification Workflow" with-nlq))
+      (is (re-find #"CSV File Uploads" with-nlq)))
+    (testing "NLQ sections excluded when not permitted"
+      (is (not (re-find #"construct_notebook_query" without-nlq)))
+      (is (not (re-find #"Data Exploration Workflow" without-nlq)))
+      (is (not (re-find #"Request Modification Workflow" without-nlq)))
+      (is (not (re-find #"CSV File Uploads" without-nlq))))
+    (testing "NLQ denial message present when not permitted"
+      (is (re-find #"You cannot build custom queries" without-nlq)))))
+
+(deftest slackbot-other-tools-sections-gated-test
+  (let [with-other    (render-slackbot-template all-yes-perms)
+        without-other (render-slackbot-template {:permission/metabot-sql-generation :yes
+                                                 :permission/metabot-nql            :yes
+                                                 :permission/metabot-other-tools    :no
+                                                 :permission/metabot-model          :large})]
+    (testing "other-tools sections included when permitted"
+      (is (re-find #"static_viz" with-other))
+      (is (re-find #"Visualization Titles" with-other))
+      (is (re-find #"Visual Previews" with-other)))
+    (testing "other-tools sections excluded when not permitted"
+      (is (not (re-find #"static_viz" without-other)))
+      (is (not (re-find #"Visualization Titles" without-other)))
+      (is (not (re-find #"Visual Previews" without-other))))
+    (testing "other-tools denial message present when not permitted"
+      (is (re-find #"You cannot create inline visualizations" without-other)))))
+
+(deftest slackbot-all-no-permissions-test
+  (let [rendered (render-slackbot-template all-no-perms)]
+    (testing "core structure still renders"
+      (is (re-find #"Metabot" rendered))
+      (is (re-find #"Core Operating Principles" rendered)))
+    (testing "NLQ and viz sections excluded"
+      (is (not (re-find #"construct_notebook_query" rendered)))
+      (is (not (re-find #"static_viz" rendered))))
+    (testing "denial messages present"
+      (is (re-find #"You cannot build custom queries" rendered))
+      (is (re-find #"You cannot create inline visualizations" rendered)))))
+
+(deftest slackbot-no-denials-when-all-enabled-test
+  (let [rendered (render-slackbot-template all-yes-perms)]
+    (testing "no denial messages when all permissions are enabled"
+      (is (not (re-find #"You cannot build custom queries" rendered)))
+      (is (not (re-find #"You cannot create inline visualizations" rendered))))))
