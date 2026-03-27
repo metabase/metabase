@@ -1,17 +1,17 @@
 ---
-title: Metabot AI settings
-summary: Connect an AI provider and configure Metabot settings, including which collections Metabot can access, and tips for improving Metabot's performance.
+title: AI settings
+summary: Connect an AI provider and configure AI settings, including Metabot, collections, and tips for improving performance.
 redirect_from:
   - /docs/latest/ai/sql-generation
 ---
 
-# Metabot AI settings
+# AI settings
 
-> Metabot is available with your own AI provider API key, or as an add-on on [Metabase Cloud](https://www.metabase.com/cloud/)
+> AI features are available with your own AI provider API key, or as an add-on on [Metabase Cloud](https://www.metabase.com/cloud/).
 
 _Admin > AI_
 
-This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot.md).
+This page covers admin settings for AI features in Metabase, including [Metabot](./metabot.md).
 
 On **Metabase Cloud** you can either:
 
@@ -41,7 +41,7 @@ _Admin > AI > Connection settings_
 
 ![Connect to an AI provider](./images/ai-connection-settings.png)
 
-To power Metabot with your own API key to an AI provider:
+To enable AI features with your own API key:
 
 1. Go to **Admin > AI > Connection settings**.
 2. Select your **Provider**.
@@ -53,7 +53,7 @@ When your connection is active, you'll see a **CONNECTED** badge.
 
 ### Supported providers
 
-Currently, Metabot only supports models from Anthropic.
+Currently, Metabase only supports models from Anthropic.
 
 ## Configure Metabot
 
@@ -128,7 +128,7 @@ Metabase will try to set semantic types automatically, but you should confirm th
 
 ### Define domain-specific terms in the glossary
 
-Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../exploration-and-organization/data-model-reference.md#glossary). When you submit a prompt, Metabat can look up terms in the glossary to better understand your request.
+Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../exploration-and-organization/data-model-reference.md#glossary). When you submit a prompt, Metabot can look up terms in the glossary to better understand your request.
 
 For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?" This is especially helpful for industry-specific jargon, internal product names, or abbreviations unique to your organization.
 
@@ -154,7 +154,7 @@ Currently, Metabot is available to everyone who uses your Metabase.
 
 ## Choosing the AI model
 
-If you're using your own API key, you can choose which AI model Metabot uses in [Connection settings](#bring-your-own-api-key).
+If you're using your own API key, you can choose which AI model Metabase uses in [Connection settings](#bring-your-own-api-key).
 
 On Metabase Cloud, Metabase's AI service selects models automatically. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
 

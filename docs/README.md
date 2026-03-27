@@ -150,7 +150,7 @@ Metabase's reference documentation.
 
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
-- [Setting up Metabot](./ai/settings.md)
+- [AI settings](./ai/settings.md)
 - [Agent API](./ai/agent-api.md)
 - [MCP server](./ai/mcp.md)
 

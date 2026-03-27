@@ -4,15 +4,15 @@ title: "AI in Metabase"
 
 # AI in Metabase
 
-> Metabot is available as an add-on on [Metabase Cloud](https://www.metabase.com/features/metabot-ai), or on self-hosted Metabase with your own AI provider API key.
+> AI features are available as an add-on on [Metabase Cloud](https://www.metabase.com/features/metabot-ai), or on self-hosted Metabase with your own AI provider API key.
 
 ## [Metabot](./metabot.md)
 
 Metabot is an AI assistant that helps you explore and analyze your data.
 
-## [Setting up Metabot](./settings.md)
+## [AI settings](./settings.md)
 
-Connect an AI provider and configure which collections Metabot can access.
+Connect an AI provider and configure AI features like Metabot.
 
 ## [Agent API](./agent-api.md)
 
