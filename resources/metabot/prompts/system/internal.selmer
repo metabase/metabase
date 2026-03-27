@@ -633,3 +633,9 @@ Every interaction must:
 4. ✓ Reference only sample data you've seen, never claim to see query results
 5. ✓ Answer from instance context only - never invent tables, fields, or data not in the provided context
 6. ✓ Use CTEs for transforms in SQL, never CREATE TABLE/INSERT/UPDATE (Metabase is read-only)
+{% if custom_instructions %}
+
+# Custom Instructions
+
+{{ custom_instructions|safe }}
+{% endif %}

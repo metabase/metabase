@@ -69,7 +69,7 @@
 
 (deftest ^:parallel perms->scopes-no-does-not-grant-test
   (let [scopes (scope/user-metabot-perms->scopes {:permission/metabot-sql-generation :no
-                                                   :permission/metabot-nql            :no})]
+                                                  :permission/metabot-nql            :no})]
     (is (not (contains? scopes "agent:sql:*")))
     (is (not (contains? scopes "agent:notebook:*")))
     (is (contains? scopes "agent:search"))))

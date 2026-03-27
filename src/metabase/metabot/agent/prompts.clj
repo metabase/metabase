@@ -240,7 +240,8 @@
                                   :has_sql_generation       has-sql?
                                   :has_nql                  has-nql?
                                   :has_query_tools          (or has-sql? has-nql?)
-                                  :has_other_tools          (= :yes (:permission/metabot-other-tools perms))}]
+                                  :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
+                                  :custom_instructions      (not-empty (metabot.settings/metabot-system-prompt))}]
         (render-system-prompt template template-context))
       ;; Fallback if template not found
       (do

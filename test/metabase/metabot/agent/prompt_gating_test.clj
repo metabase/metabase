@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.agent.prompts :as prompts]
-   [metabase.metabot.scope :as scope]))
+   [metabase.metabot.scope :as scope]
+   [metabase.test :as mt]))
 
 (defn- render-internal-template
   "Render the internal.selmer template with given permission flags."
@@ -225,3 +226,43 @@
     (testing "no denial messages when all permissions are enabled"
       (is (not (re-find #"You cannot build custom queries" rendered)))
       (is (not (re-find #"You cannot create inline visualizations" rendered))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Custom system prompt injection
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- render-template
+  "Render a template with given permission flags and optional setting overrides."
+  [template-name perms]
+  (binding [scope/*current-user-metabot-permissions* perms]
+    (prompts/build-system-message-content
+     {:prompt-template template-name}
+     {:current_time "2026-03-25T12:00:00Z"}
+     {})))
+
+(deftest custom-instructions-injected-when-set-test
+  (mt/with-temporary-setting-values [metabot-system-prompt "Always respond in French."]
+    (testing "internal template includes custom instructions"
+      (let [rendered (render-template "internal.selmer" all-yes-perms)]
+        (is (re-find #"Custom Instructions" rendered))
+        (is (re-find #"Always respond in French" rendered))))
+    (testing "sql template includes custom instructions"
+      (let [rendered (render-template "sql-querying-only.selmer" all-yes-perms)]
+        (is (re-find #"Custom Instructions" rendered))
+        (is (re-find #"Always respond in French" rendered))))
+    (testing "nlq template includes custom instructions"
+      (let [rendered (render-template "natural-language-querying-only.selmer" all-yes-perms)]
+        (is (re-find #"Custom Instructions" rendered))
+        (is (re-find #"Always respond in French" rendered))))))
+
+(deftest custom-instructions-absent-when-empty-test
+  (mt/with-temporary-setting-values [metabot-system-prompt ""]
+    (testing "internal template has no custom instructions section"
+      (let [rendered (render-template "internal.selmer" all-yes-perms)]
+        (is (not (re-find #"Custom Instructions" rendered)))))
+    (testing "sql template has no custom instructions section"
+      (let [rendered (render-template "sql-querying-only.selmer" all-yes-perms)]
+        (is (not (re-find #"Custom Instructions" rendered)))))
+    (testing "nlq template has no custom instructions section"
+      (let [rendered (render-template "natural-language-querying-only.selmer" all-yes-perms)]
+        (is (not (re-find #"Custom Instructions" rendered)))))))
