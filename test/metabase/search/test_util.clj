@@ -1,6 +1,7 @@
 (ns metabase.search.test-util
   (:require
    [metabase.api.common :as api]
+   [metabase.mq.publish :as mq.publish]
    [metabase.mq.test-util :as mq.tu]
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request] ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
@@ -16,10 +17,12 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-sync-search-indexing
-  "Perform all search indexing synchronously."
+  "Perform all search indexing synchronously.
+  Also disables transaction deferral so that after-insert hooks index entities inline."
   [& body]
   `(mq.tu/with-sync-mq
-     ~@body))
+     (binding [mq.publish/*defer-in-transaction?* false]
+       ~@body)))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
