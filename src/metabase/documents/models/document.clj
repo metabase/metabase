@@ -200,7 +200,7 @@
                :collection_id (serdes/fk :model/Collection)
                :creator_id (serdes/fk :model/User)}})
 
-(defmethod serdes/default-values "Document" [_]
+(defmethod serdes/default-values "Document" [_model-name]
   {:archived          false
    :archived_directly false})
 

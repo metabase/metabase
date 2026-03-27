@@ -414,7 +414,7 @@
                :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
    :coerce {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}})
 
-(defmethod serdes/default-values "Dashboard" [_]
+(defmethod serdes/default-values "Dashboard" [_model-name]
   {:archived                false
    :archived_directly       false
    :auto_apply_filters      true

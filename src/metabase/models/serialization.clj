@@ -435,18 +435,18 @@
 
 (defmulti default-values
   "Return a map of default values for serialized fields. During export, fields whose values match their defaults
-  are omitted from the output. During import, missing fields are filled in with these defaults.
+  are omitted from the output.
 
   By default all fields are assumed to default to `nil`, so you only need to specify non-nil defaults here.
 
   Example:
-  (defmethod serdes/default-values \"Dashboard\" [_]
+  (defmethod serdes/default-values \"Dashboard\" [_model-name]
     {:archived false
      :auto_apply_filters true})"
   {:arglists '([model-name])}
   identity)
 
-(defmethod default-values :default [_] {})
+(defmethod default-values :default [_model-name] {})
 
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:

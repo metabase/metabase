@@ -76,7 +76,7 @@
   {:copy      [:name :description :type :details :active]
    :transform {:created_at (serdes/date)}})
 
-(defmethod serdes/default-values "Channel" [_]
+(defmethod serdes/default-values "Channel" [_model-name]
   {:active true})
 
 ;; ------------------------------------------------------------------------------------------------;;

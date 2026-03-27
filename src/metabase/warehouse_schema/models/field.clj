@@ -467,7 +467,7 @@
                :parent_id          (serdes/fk :model/Field)
                :dimensions         (serdes/nested :model/Dimension :field_id opts)}})
 
-(defmethod serdes/default-values "Field" [_]
+(defmethod serdes/default-values "Field" [_model-name]
   {:database_is_auto_increment false
    :is_defective_duplicate     false})
 

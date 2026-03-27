@@ -1316,7 +1316,7 @@
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
     :result_metadata        {:export export-result-metadata :import import-result-metadata}}})
 
-(defmethod serdes/default-values "Card" [_]
+(defmethod serdes/default-values "Card" [_model-name]
   {:archived            false
    :archived_directly   false
    :collection_preview  true

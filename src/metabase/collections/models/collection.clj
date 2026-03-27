@@ -2102,7 +2102,7 @@
                :personal_owner_id (serdes/fk :model/User)
                :workspace_id      (serdes/fk :model/Workspace)}})
 
-(defmethod serdes/default-values "Collection" [_]
+(defmethod serdes/default-values "Collection" [_model-name]
   {:archived          false
    :archived_directly false
    :is_sample         false

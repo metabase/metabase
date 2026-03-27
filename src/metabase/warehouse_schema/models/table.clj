@@ -704,7 +704,7 @@
                :collection_id  (serdes/fk :model/Collection)
                :transform_id   (serdes/fk :model/Transform)}})
 
-(defmethod serdes/default-values "Table" [_]
+(defmethod serdes/default-values "Table" [_model-name]
   {:data_layer "internal"})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
