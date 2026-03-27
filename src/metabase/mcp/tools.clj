@@ -64,8 +64,7 @@
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
-   When `token-scopes` is provided, only tools whose scope matches are included.
-   Appends visualize_query when the agent:visualize scope is authorized."
+   When `token-scopes` is provided, only tools whose scope matches are included."
   [token-scopes]
   (let [{:keys [tools]} (manifest)
         base-tools (into []
@@ -208,8 +207,10 @@
    Returns MCP content maps (text-content on success, error-content on failure)."
   [token-scopes tool-name arguments]
   (if (= "visualize_query" tool-name)
-    {:content          [{:type "text" :text "Visualizing query..."}]
-     :structuredContent {:query (:query arguments)}}
+    (if-not (scope-matches? token-scopes "agent:visualize")
+      (error-content (str "Insufficient scope to call tool: " tool-name))
+      {:content          [{:type "text" :text "Visualizing query..."}]
+       :structuredContent {:query (:query arguments)}})
     (if-let [tool-def (get (tool-index) tool-name)]
       (if-not (scope-matches? token-scopes (:scope tool-def))
         (error-content (str "Insufficient scope to call tool: " tool-name))
