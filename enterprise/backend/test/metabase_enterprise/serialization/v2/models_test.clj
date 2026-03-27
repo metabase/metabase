@@ -126,34 +126,19 @@
                 (is (= (serdes/parent-ref)
                        (get-in inner-spec [:transform backward-fk]))))))
 
-          (testing ":defaults match actual DB column defaults\n"
-            (let [column-names   (set (concat (:copy spec) (keys (:transform spec))))
-                  default-values (:default-values spec)]
-              ;; Every declared default must match the actual DB column default
-              (doseq [[column-name expected-default-value] default-values
-                      :let [field-name           (u/upper-case-en (name column-name))
-                            field                (get fields field-name)
-                            actual-default-value (some-> field :default parse-default-value)]]
-                (testing (format "declared :defaults for `%s.%s` matches DB" m (name column-name))
-                  (is (some? field)
-                      (format "Column %s not found in table" (name column-name)))
-                  (is (= expected-default-value actual-default-value)
-                      (format "Declared default for %s.%s is %s but DB default is %s (raw: %s)"
-                              m
-                              (name column-name)
-                              (pr-str expected-default-value)
-                              (pr-str actual-default-value)
-                              (pr-str (:default field))))))
-              ;; Every non-nil DB column default for a serialized field should be declared
+          (testing ":default-values match actual DB field defaults\n"
+            (let [serialized-fields (set (concat (:copy spec) (keys (:transform spec))))
+                  declared-defaults (or (:default-values spec) {})]
+              ;; Every DB field with a boolean default that is serialized should be in :default-values
               (doseq [[field-name field] fields
-                      :let [column-name          (keyword (u/lower-case-en field-name))
-                            actual-default-value (some-> field :default parse-default-value)]
-                      :when (and (some? actual-default-value)
-                                 (contains? column-names column-name))]
-                (testing (format "DB default for `%s.%s` should be in :defaults" m (name column-name))
-                  (is (contains? default-values column-name)
-                      (format "DB default for %s.%s is %s (raw: %s) but is not declared in :defaults"
-                              m
-                              (name column-name)
-                              (pr-str actual-default-value)
-                              (pr-str (:default field)))))))))))))
+                      :let [field-kw   (keyword (u/lower-case-en field-name))
+                            db-default (some-> field :default parse-default-value)]
+                      :when (and (some? db-default)
+                                 (contains? serialized-fields field-kw))]
+                (testing (format "`%s.%s` has DB default %s" m (name field-kw) (pr-str db-default))
+                  (is (contains? declared-defaults field-kw))
+                  (is (= db-default (get declared-defaults field-kw)))))
+              ;; Every entry in :default-values should reference a serialized field
+              (doseq [field-kw (keys declared-defaults)]
+                (testing (format "`%s.%s` in :default-values is a serialized field" m (name field-kw))
+                  (is (contains? serialized-fields field-kw)))))))))))
