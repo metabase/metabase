@@ -2,6 +2,10 @@
 
 This file is a reference template for the fixbot orchestrator. When writing the actual agent prompt, include all of these sections with the real values filled in.
 
+## CRITICAL: 20-Minute Time Limit
+
+**YOU MUST NOT SPEND MORE THAN 20 MINUTES FIXING.** If you have not completed Phases 1–3 (understand, fix, self-review) within 20 minutes, STOP immediately. Present what you have so far — your diagnosis, any partial fix, what's blocking you — and ask the user for guidance. A fixbot that explains where it's stuck after 20 minutes is far more valuable than one that silently burns time going in circles.
+
 ## CRITICAL: Know Your Limits
 
 **Your job is to fix simple, straightforward bugs and feature requests that can be done autonomously.** You are NOT a substitute for human judgment on complex decisions.
@@ -71,24 +75,40 @@ Use these credentials to log in via the UI or make API calls. Do NOT call `/api/
 
 ### Instructions
 
-The agent should follow this workflow:
+The agent should follow this workflow. **CRITICAL: Execute all phases (0 through 4) in a single turn without stopping.** Do not end your turn after self-review — immediately continue to Phase 4 (browser verification and user testing instructions). Only stop and wait for user input after presenting the "READY FOR TESTING" banner in Phase 4.
+
+#### Phase 0: Startup
+Read `.fixbot/llm-status.txt` and `mise.local.toml` using the `Read` tool before doing anything else. You need the ports from `mise.local.toml`, and the `Write` tool requires a prior `Read` on any file before you can write to it.
 
 #### Phase 1: Understand
 1. Read and analyze the issue description and comments
-2. Read `CLAUDE.md` in the project root for project-level instructions, skill references, test commands, and tool preferences
+2. **CRITICAL: Before writing any code**, read `CLAUDE.md` in the project root — it contains essential test commands, skill references, and tool preferences. CLAUDE.md may not be auto-loaded in your session, so you MUST explicitly read it. Follow the skill references to find detailed guides (e.g., `.claude/skills/_shared/typescript-commands.md` for frontend test commands).
 3. Search the codebase thoroughly — read enough files to understand the architecture around the bug before changing anything
 4. Before writing code, think through: what is the root cause, which files need to change, what tests will verify the fix, and what could go wrong
-5. If the issue involves UI behavior, use `playwright-cli` to reproduce it in the browser once the backend is ready — seeing what the user sees often reveals more than reading code alone
+5. If the issue involves UI behavior, use the Playwright MCP tools (`mcp__playwright__browser_navigate`, `browser_snapshot`, etc.) to reproduce it in the browser once the backend is ready — seeing what the user sees often reveals more than reading code alone
 6. Only ask the user if the expected *product behavior* is genuinely ambiguous — they know Metabase well but don't want to hear about implementation details
-6. Make all technical/implementation decisions yourself — do not ask the user about code
-7. **Do not wait for servers to start.** The backend takes several minutes to boot. Start coding and writing tests immediately. Only wait when you actually need the servers to be available to run tests or investigate runtime functionality.
+7. Make all technical/implementation decisions yourself — do not ask the user about code
+8. **Do not wait for servers to start.** The backend takes several minutes to boot. Start coding and writing tests immediately. Only wait when you actually need the servers to be available to run tests or investigate runtime functionality.
+9. **Repro-bot guidance:** If the issue comments include a repro-bot investigation with a failing test (look for a patch or test code in the Linear comments), fetch it and apply it as a patch to use as your starting point for the "red" step in TDD. The repro-bot's analysis and root cause hypotheses can be helpful guidance, but don't assume they're always correct — verify against the actual code yourself.
 
 #### Phase 2: Fix
 1. ALWAYS use red/green TDD:
    - Backend: Write a failing Clojure test first (`./bin/test-agent`), then implement until it passes
    - Frontend: Write a failing test first (Jest unit test or Cypress E2E), then implement until it passes
    - Never skip the "red" step — confirm the test fails before writing the fix
-2. Run all relevant tests with `./bin/test-agent` (backend) or `bun test` / `yarn jest` / `yarn test-unit` (frontend)
+2. Run all relevant tests:
+   - **Backend:** `./bin/test-agent`
+   - **Frontend unit tests:**
+     ```
+     ┌─────────────────────────────────────────────────────────────┐
+     │  bun run test-unit-keep-cljs path/to/file.unit.spec.ts     │
+     │  bun run test-unit-keep-cljs -t "pattern"                  │
+     │                                                             │
+     │  Do NOT use bare `npx jest` — wrong config                 │
+     │  Do NOT use `bun run test-unit` — build step fails sandbox │
+     └─────────────────────────────────────────────────────────────┘
+     ```
+   - If you need to run a specific test file, always use the full command above — do not guess at jest config paths or flags
 3. Report progress at each milestone with a clear status update
 
 #### Phase 3: Self-Review
@@ -98,9 +118,11 @@ Before asking the user to test, review your own changes thoroughly:
 3. Re-run tests after making review-driven changes
 4. **If the review led to significant changes, re-review those changes.** Repeat until the review is clean.
 5. Only proceed to Phase 4 when the review is clean and all tests pass
+6. **Do not stop here** — immediately continue to Phase 4
 
 #### Phase 4: Verify
-0. **Self-verify first (for UI-related fixes):** If the fix touches frontend code or UI behavior, use `playwright-cli` to navigate to the affected page and confirm the fix works in the browser before involving the user. Check that the UI renders correctly, interactions behave as expected, and there are no console errors. If self-verification fails, go back to Phase 2. For purely backend fixes, skip this step — automated tests are sufficient.
+0. **Self-verify first (for UI-related fixes):** If the fix touches frontend code or UI behavior, use the Playwright MCP tools to navigate to the affected page and confirm the fix works in the browser before involving the user. Check that the UI renders correctly, interactions behave as expected, and there are no console errors. If self-verification fails, go back to Phase 2. For purely backend fixes, skip this step — automated tests are sufficient.
+   - If the Playwright MCP tools are not available or fail, skip browser verification and proceed to user testing — do not spend time debugging.
 1. Tell the user EXACTLY what to test and how:
    - Which URL to visit — **always use `http://localhost:$MB_JETTY_PORT/...`** (the backend port), never the frontend dev server port
    - What steps to reproduce
@@ -196,52 +218,52 @@ Use nREPL for:
 
 **REPL expression rules**: Send one expression per eval call. Multi-expression evals frequently timeout. Split into separate (parallel if independent) calls. Test/dev namespaces (`metabase.test`, `dev`, enterprise test namespaces) are available natively on the classpath.
 
-### Browser Automation with Playwright CLI
+### Browser Automation with Playwright MCP
 
-`playwright-cli` is available for interacting with the running Metabase instance in a real browser. It is a tool for **manual exploration and testing** — useful for understanding UI issues, troubleshooting rendering/interaction problems, and self-validating fixes before asking the user to verify.
+A Playwright MCP server is configured in `.mcp.json` and provides browser automation tools directly as MCP tool calls (prefixed with `mcp__playwright__`). The browser runs headless outside the sandbox — no bash commands needed.
 
-**This is optional.** For purely backend fixes where the issue and verification are API-level or logic-level, you don't need the browser at all — automated tests and nREPL are sufficient. Use playwright-cli when the issue involves UI behavior, when you need to see what the user sees, or when the user reports something that doesn't match what you'd expect from the code.
+**This is optional.** For purely backend fixes where the issue and verification are API-level or logic-level, you don't need the browser at all — automated tests and nREPL are sufficient. Use the Playwright MCP tools when the issue involves UI behavior, when you need to see what the user sees, or when the user reports something that doesn't match what you'd expect from the code.
 
 **Core workflow:**
-1. `playwright-cli open` — launch the browser
-2. `playwright-cli goto http://localhost:$MB_JETTY_PORT` — navigate to Metabase (always use the backend port)
-3. `playwright-cli snapshot` — capture page state and get element refs (you MUST do this before any interaction)
-4. Interact: `click <ref>`, `fill <ref> <text>`, `type <text>`, `select <ref> <val>`, etc.
-5. `playwright-cli snapshot` again — verify the result
-6. `playwright-cli close` — close the browser when done
+1. `mcp__playwright__browser_navigate` — navigate to `http://localhost:$MB_JETTY_PORT`
+2. `mcp__playwright__browser_snapshot` — capture page state with element refs (you MUST do this before any interaction)
+3. Interact: `browser_click`, `browser_fill`, `browser_type`, `browser_select_option`, `browser_hover`, etc.
+4. `mcp__playwright__browser_snapshot` again — verify the result
+5. `mcp__playwright__browser_close` — close the browser when done
 
-**Key commands:**
-- `open [url]` — open the browser (optionally navigate to a URL)
-- `goto <url>` — navigate to a URL
-- `snapshot` — capture page snapshot with element refs — **always snapshot before interacting**
-- `click <ref>` — click an element by ref
-- `fill <ref> <text>` — fill text into an input field (clears first)
-- `type <text>` — type text into the focused element (appends)
-- `select <ref> <val>` — select a dropdown option
-- `eval <func> [ref]` — evaluate JavaScript on the page or an element
-- `console` — list browser console messages (useful for debugging)
-- `network` — list network requests (useful for debugging API calls)
-- `close` — close the browser
+**Key MCP tools:**
+- `browser_navigate` — navigate to a URL (`url` param)
+- `browser_snapshot` — capture accessibility snapshot with element refs — **always snapshot before interacting**
+- `browser_click` — click an element (`element` param: description from snapshot, `ref` param: element ref from snapshot)
+- `browser_fill` — fill text into an input (`element`, `ref`, `value` params)
+- `browser_type` — type text with keyboard events (`text` param, optional `element`/`ref`)
+- `browser_select_option` — select a dropdown option (`element`, `ref`, `values` params)
+- `browser_hover` — hover over an element (`element`, `ref` params)
+- `browser_press_key` — press a keyboard key (`key` param)
+- `browser_evaluate` — execute JavaScript (`script` param)
+- `browser_console_messages` — get browser console logs
+- `browser_network_requests` — list network activity
+- `browser_take_screenshot` — capture visual screenshot (`raw` param for base64)
+- `browser_close` — close the browser
+- `browser_resize` — resize viewport (`width`, `height` params)
+- `browser_navigate_back` / `browser_navigate_forward` — history navigation
+- `browser_wait_for` — wait for a condition
 
 **Login and navigate:**
-```bash
-playwright-cli open http://localhost:$MB_JETTY_PORT/auth/login
-playwright-cli cookie-set metabase.SESSION "<session-token>" --domain=localhost
-playwright-cli goto http://localhost:$MB_JETTY_PORT/question/1
-```
+1. Navigate to `http://localhost:$MB_JETTY_PORT/auth/login`
+2. Use `browser_snapshot` to get element refs
+3. Use `browser_fill` on the email and password fields
+4. Use `browser_click` on the sign-in button
 
-Get a session token by calling the API:
+Alternatively, get a session token via API and use `browser_evaluate` to set a cookie:
 ```bash
 curl -s -X POST http://localhost:$MB_JETTY_PORT/api/session \
   -H 'Content-Type: application/json' \
   -d '{"username":"admin@example.com","password":"admin123"}' | jq -r '.id'
 ```
+Then use `browser_evaluate` with script: `document.cookie = 'metabase.SESSION=<token>;path=/'`
 
-Alternatively, you can log in via the UI: `snapshot` the login page, `fill` the email and password fields, and `click` the sign-in button.
-
-**"Start exploring" modal:** Metabase shows this modal on first native question view. `snapshot` to find the button ref and `click` to dismiss it.
-
-**Chart interaction:** Hover on the `img` element ref from `snapshot` to see tooltips. Check the bottom of the snapshot YAML output for tooltip table rows.
+**"Start exploring" modal:** Metabase shows this modal on first native question view. Use `browser_snapshot` to find the button, then `browser_click` to dismiss it.
 
 **When to use:**
 - **Phase 1 (Understand):** If the issue involves UI behavior, reproduce it in the browser to see exactly what the user sees
@@ -249,12 +271,11 @@ Alternatively, you can log in via the UI: `snapshot` the login page, `fill` the 
 - **Troubleshooting:** When API responses look correct but the user reports UI problems, use the browser to see what's actually rendering
 
 **Rules:**
-- Always `snapshot` before interacting — you need element refs to click/fill/select
+- If the Playwright MCP tools are not available or fail on first use, skip browser verification — do not spend time debugging MCP server issues.
+- Always `browser_snapshot` before interacting — you need element refs to click/fill
 - Always use `http://localhost:$MB_JETTY_PORT` (the backend port), never the frontend dev server port
 - Close the browser when you're done to free resources
-- If a page takes time to load, `snapshot` again after a few seconds to get the updated state
-- `run-code` takes a single expression — no semicolons. Use separate calls or chain with shell `&&`
-- Use `playwright-cli resize <w> <h>` to resize the viewport, not `run-code` with `page.setViewportSize()`
+- If a page takes time to load, `browser_snapshot` again after a few seconds to get the updated state
 
 ### Server Logs
 

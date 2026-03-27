@@ -14,6 +14,7 @@ post_create:
   - sed "s|{{pwd}}|$(pwd)|;s|{{tmpdir}}|${TMPDIR%/}|" .claude/fixbot/settings.local-template.json > .claude/settings.local.json
   - mkdir -p .fixbot/playwright/sessions .fixbot/playwright/sockets
   - echo '{{ISSUE_ID}} | {{ISSUE_URL}}' > .fixbot/issue.txt
+  - "echo 'Phase 0: Setting up' > .fixbot/llm-status.txt"
   - rm -f .claude/commands/fixbot*.md
   - cp .claude/fixbot/commands/*.md .claude/commands/
   - mkdir -p .github/hooks/workmux-status
@@ -21,7 +22,7 @@ post_create:
   - MB_PREMIUM_EMBEDDING_TOKEN={{MB_PREMIUM_EMBEDDING_TOKEN}} LINEAR_API_KEY={{LINEAR_API_KEY}} ./bin/mage -fixbot-dev-env --app-db {{APP_DB}}
   - mise trust mise.local.toml
   - bun install
-  - playwright-cli install --skills
+  - 'echo ''{"mcpServers":{"playwright":{"command":"npx","args":["-y","@playwright/mcp","--headless","--browser","chrome"]}}}'' > .mcp.json'
 
 pre_remove:
   - ./bin/mage -fixbot-dev-env --down
