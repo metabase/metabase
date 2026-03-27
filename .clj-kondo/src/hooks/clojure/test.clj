@@ -56,14 +56,21 @@
       (hooks/reg-finding! (assoc (meta test-name)
                                  :message "Test should not be marked both ^:parallel and ^:synchronized"
                                  :type :metabase/validate-deftest)))
-    ;; only when the custom `:metabase/deftest-not-marked-parallel-or-synchronized` is enabled: complain if tests are
-    ;; not explicitly marked `^:parallel` or `^:synchronized`. This is mostly to encourage people to mark everything
-    ;; `^:parallel` in places like `metabase.lib` tests unless there is a really good reason not to.
     (when-not (or parallel? synchronized?)
+      ;; only when the custom `:metabase/deftest-not-marked-parallel-or-synchronized` is enabled: complain if tests are
+      ;; not explicitly marked `^:parallel` or `^:synchronized`. This is mostly to encourage people to mark everything
+      ;; `^:parallel` in places like `metabase.lib` tests unless there is a really good reason not to.
       (hooks/reg-finding!
        (assoc (meta test-name)
               :message "Test should be marked either ^:parallel or ^:synchronized"
-              :type :metabase/deftest-not-marked-parallel-or-synchronized)))
+              :type :metabase/deftest-not-marked-parallel-or-synchronized))
+      ;; suggest ^:parallel for unmarked tests that contain no thread-unsafe forms
+      (let [unsafe-forms (mapcat #(detect-disallowed-parallel-forms % config) body)]
+        (when (empty? unsafe-forms)
+          (hooks/reg-finding!
+           (assoc (meta test-name)
+                  :message "Test does not contain any thread-unsafe forms and should be marked ^:parallel"
+                  :type :metabase/validate-deftest)))))
     (when parallel?
       (doseq [form body]
         (warn-about-disallowed-parallel-forms form config)))))

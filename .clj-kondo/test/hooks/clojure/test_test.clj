@@ -82,6 +82,52 @@
            (use-fixtures-warnings
              "(use-fixtures)")))))
 
+(defn- deftest-validate-warnings
+  "Returns warnings from the validate-deftest linter (not the deftest-not-marked-parallel-or-synchronized linter)."
+  [form]
+  (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/validate-deftest {:level :warning}}}
+                                        :ignores    (atom nil)
+                                        :findings   (atom [])
+                                        :namespaces (atom {})}]
+    (hooks.clojure.test/deftest {:node   (api/parse-string form)
+                                 :config {:linters
+                                          {:metabase/validate-deftest
+                                           {:parallel/unsafe #{'clojure.core/with-redefs}
+                                            :parallel/safe   #{'clojure.core/reset!}}}}})
+    (->> @(:findings clj-kondo.impl.utils/*ctx*)
+         (filter #(= :metabase/validate-deftest (:type %)))
+         (mapv :message))))
+
+(deftest ^:parallel suggest-parallel-for-unmarked-safe-test
+  (testing "unmarked test with no unsafe forms suggests ^:parallel"
+    (is (= ["Test does not contain any thread-unsafe forms and should be marked ^:parallel"]
+           (deftest-validate-warnings
+             "(deftest my-test (is (= 1 1)))")))))
+
+(deftest ^:parallel no-suggestion-for-unmarked-unsafe-test
+  (testing "unmarked test with unsafe forms gets no validate-deftest warning"
+    (is (= []
+           (deftest-validate-warnings
+             "(deftest my-test (clojure.core/with-redefs [foo bar] (is (= 1 1))))")))))
+
+(deftest ^:parallel no-suggestion-for-unmarked-bang-suffix-test
+  (testing "unmarked test with !-suffixed function not in safe list gets no suggestion"
+    (is (= []
+           (deftest-validate-warnings
+             "(deftest my-test (some.ns/mutate! x) (is (= 1 1)))")))))
+
+(deftest ^:parallel no-suggestion-for-parallel-test
+  (testing "^:parallel test gets no suggestion"
+    (is (= []
+           (deftest-validate-warnings
+             "(deftest ^:parallel my-test (is (= 1 1)))")))))
+
+(deftest ^:parallel no-suggestion-for-synchronized-test
+  (testing "^:synchronized test gets no suggestion"
+    (is (= []
+           (deftest-validate-warnings
+             "(deftest ^:synchronized my-test (is (= 1 1)))")))))
+
 (deftest ^:parallel check-driver-keywords-test
   (testing "Make sure we keep hooks.clojure.test/driver-keywords up to date"
     (let [driver-keywords (-> (slurp ".clj-kondo/config.edn")
