@@ -485,3 +485,12 @@
                       (assoc :use-m2m true
                              :client-id (tx/db-test-env-var-or-throw :databricks :client-id)
                              :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))
+
+(deftest ^:parallel mulit-line-comment-test
+  (mt/test-driver :databricks
+    (testing "queries with multi line block comments work (#68667)"
+      (is (= [[1]]
+             (->> "/*\n*/\nselect 1;"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/rows)))))))

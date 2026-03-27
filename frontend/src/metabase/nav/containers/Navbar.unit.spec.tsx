@@ -140,6 +140,19 @@ describe("nav > containers > Navbar > Core App", () => {
     await expectNavbarClosed();
   });
 
+  it("should not close navbar when preserveNavbarState is set", async () => {
+    const store = await setup({ isOpen: true });
+    await expectNavbarOpen();
+    store.dispatch({
+      type: "@@router/LOCATION_CHANGE",
+      payload: {
+        pathname: "/question/1",
+        state: { preserveNavbarState: true },
+      },
+    });
+    await expectNavbarOpen();
+  });
+
   it("should preserve state when navigating collections", async () => {
     const store = await setup({ pathname: "/collection/1" });
     await expectNavbarOpen();

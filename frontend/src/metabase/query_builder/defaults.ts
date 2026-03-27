@@ -21,7 +21,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: "view", // "view" | "notebook" | "dataset"
-  previousQueryBuilderMode: false,
+  previousQueryBuilderMode: null,
   snippetCollectionId: null,
   datasetEditorTab: "query",
   isShowingQuestionDetailsSidebar: false,
@@ -33,6 +33,8 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   modalContext: null,
   highlightedNativeQueryLineNumbers: [],
   isShowingListViewConfiguration: false,
+  nativeEditorSelectedRange: [],
+  questionDetailsTimelineDrawerState: null,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {
