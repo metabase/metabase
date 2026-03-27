@@ -43,6 +43,7 @@ type RunListPageProps = {
 };
 
 export function RunListPage({ location }: RunListPageProps) {
+  usePageTitle(t`Runs`);
   const params = getParsedParams(location);
   const { page = 0 } = params;
   const { ref: containerRef, width: containerWidth } = useElementSize();

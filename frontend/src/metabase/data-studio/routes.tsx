@@ -16,6 +16,7 @@ import type { State } from "metabase-types/store";
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
+import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
@@ -70,7 +71,7 @@ export function getDataStudioRoutes(
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route
             path="dependency-diagnostics"
-            component={DependenciesSectionLayout}
+            component={DependencyDiagnosticsSectionLayout}
           >
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes()}
           </Route>
