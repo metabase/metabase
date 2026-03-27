@@ -209,8 +209,11 @@
                      :model/DashboardCard {dc1 :id} {:dashboard_id d :card_id c1}
                      :model/DashboardCard {dc2 :id} {:dashboard_id d :card_id c2}
                      :model/DashboardCard {dc3 :id} {:dashboard_id d :card_id c3}]
-        ;; Run serial so all DB calls are on the calling thread and counted by t2/with-call-count
+        ;; Run serial so all DB calls are on the calling thread and counted by t2/with-call-count.
+        ;; Warm-up run to prime settings caches, metadata providers, etc. so that the measured
+        ;; runs aren't polluted by one-time cache misses (settings TTL expiry, etc.).
         (binding [qp.dashboard-batch/*thread-pool* :serial]
+          (batch-request d)
           (let [per-card-total (let [counts (atom 0)]
                                  (doseq [[dc-id card-id] [[dc1 c1] [dc2 c2] [dc3 c3]]]
                                    (t2/with-call-count [call-count]
@@ -225,8 +228,9 @@
               (is (< batch-total per-card-total)
                   "batch endpoint should use fewer DB calls than individual card queries")
               ;; With batch-fetch, request-scoped caching (permissions, routing, cache strategy),
-              ;; and pre-warmed metadata providers, 3 cards on the same DB should stay under 80
-              ;; AppDB calls. Bump this ceiling if legitimate new queries are added.
+              ;; pre-warmed metadata providers, transitive card-ID resolution, and cache-config
+              ;; warming, 3 cards on the same DB should stay under 80 AppDB calls.
+              ;; Bump this ceiling if legitimate new queries are added.
               (is (<= batch-total 80)
                   (format "batch call count regression: expected ≤80, got %d" batch-total)))))))))
 
@@ -244,7 +248,9 @@
                      :model/DashboardCard _        {:dashboard_id d :card_id c3}
                      :model/DashboardCard _        {:dashboard_id d :card_id c4}
                      :model/DashboardCard _        {:dashboard_id d :card_id c5}]
+        ;; Warm-up run to prime settings caches, metadata providers, etc.
         (binding [qp.dashboard-batch/*thread-pool* :serial]
+          (batch-request d)
           (let [batch-3 (t2/with-call-count [call-count]
                           (batch-request d {:cards (take 3 (map (fn [dc] {:dashcard_id (:id dc) :card_id (:card_id dc)})
                                                                 (t2/select [:model/DashboardCard :id :card_id]
@@ -263,3 +269,47 @@
               ;; With cache-strategy caching and deferred view-log, marginal cost is ~7/card.
               (is (< marginal-cost 15)
                   (format "marginal per-card cost too high: %.1f" marginal-cost)))))))))
+
+;;; ---------------------------------------- Unit tests for helper fns ----------------------------------------
+
+(deftest extract-source-card-ids-test
+  (let [extract-source-card-ids #'qp.dashboard-batch/extract-source-card-ids]
+    (testing "card with no source-card refs returns empty set"
+      (mt/with-temp [:model/Card {card-id :id} {:database_id   (mt/id)
+                                                :dataset_query (mt/mbql-query venues {:limit 1})}]
+        (let [card (t2/select-one :model/Card :id card-id)]
+          (is (= #{} (extract-source-card-ids [card]))))))
+
+    (testing "card based on another card returns that card's ID"
+      (mt/with-temp [:model/Card {source-id :id} {:database_id   (mt/id)
+                                                  :dataset_query (mt/mbql-query venues)}
+                     :model/Card {card-id :id}   {:database_id   (mt/id)
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (str "card__" source-id)}}}]
+        (let [card (t2/select-one :model/Card :id card-id)]
+          (is (contains? (extract-source-card-ids [card]) source-id)))))
+
+    (testing "card with unparseable query doesn't throw"
+      (is (= #{} (extract-source-card-ids [{:dataset_query {:garbage true}}]))))))
+
+(deftest resolve-all-transitive-card-ids-test
+  (let [resolve-all-transitive-card-ids #'qp.dashboard-batch/resolve-all-transitive-card-ids]
+    (testing "no transitive refs — returns just input card IDs"
+      (mt/with-temp [:model/Card {c1 :id :as card1} {:database_id   (mt/id)
+                                                     :dataset_query (mt/mbql-query venues {:limit 1})}]
+        (is (= #{c1} (resolve-all-transitive-card-ids {c1 card1})))))
+
+    (testing "transitive chain: card A → card B → card C"
+      (mt/with-temp [:model/Card {c-id :id}              {:database_id   (mt/id)
+                                                          :dataset_query (mt/mbql-query venues)}
+                     :model/Card {b-id :id}             {:database_id   (mt/id)
+                                                         :dataset_query {:database (mt/id)
+                                                                         :type     :query
+                                                                         :query    {:source-table (str "card__" c-id)}}}
+                     :model/Card {a-id :id :as card-a} {:database_id   (mt/id)
+                                                        :dataset_query {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (str "card__" b-id)}}}]
+        (let [result (resolve-all-transitive-card-ids {a-id card-a})]
+          (is (= #{a-id b-id c-id} result)))))))

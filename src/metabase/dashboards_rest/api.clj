@@ -36,8 +36,8 @@
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
+   [metabase.query-processor.core :as qp.core]
    [metabase.query-processor.dashboard :as qp.dashboard]
-   [metabase.query-processor.dashboard-batch :as qp.dashboard-batch]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -1421,7 +1421,7 @@
                                              [:ignore_cache      {:optional true} [:maybe :boolean]]
                                              [:cards             {:optional true} [:maybe [:sequential BatchCardSpec]]]]]
   (with-dashboard-load-id dashboard_load_id
-    (qp.dashboard-batch/process-batch-queries
+    (qp.core/process-batch-queries
      {:dashboard-id dashboard-id
       :parameters   (:parameters body)
       :ignore-cache (:ignore_cache body)

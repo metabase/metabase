@@ -15,7 +15,7 @@
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.dashboard-batch :as qp.dashboard-batch]
+   [metabase.query-processor.core :as qp.core]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.request.core :as request]
@@ -432,7 +432,7 @@
         parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
     (request/as-admin
       (binding [api/*current-user-id* nil]
-        (qp.dashboard-batch/process-batch-queries
+        (qp.core/process-batch-queries
          {:dashboard-id dashboard-id
           :parameters   parameters
           :context      :embedded-dashboard
