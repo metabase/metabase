@@ -13,6 +13,7 @@ type TextWidthMeasurer = (text: string, style: FontStyle) => number;
 type TextHeightMeasurer = (text: string, style: FontStyle) => number;
 
 interface BuildCustomVizPropsOptions {
+  locale: string;
   measureText: TextMeasurer;
   measureTextWidth: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
@@ -23,6 +24,7 @@ export function buildCustomVizProps(
   opts: BuildCustomVizPropsOptions,
 ): CreateCustomVisualizationProps {
   return {
+    locale: opts.locale,
     translate: (text: string) => t`${text}`,
     columnTypes: {
       isDate: isa.isDate,

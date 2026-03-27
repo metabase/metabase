@@ -18,6 +18,11 @@ export type CreateCustomVisualization<CustomVisualizationSettings> = (
 
 export type CreateCustomVisualizationProps = {
   /**
+   * Current user's locale (e.g., "de", "ja", "en").
+   */
+  locale: string;
+
+  /**
    * Translates text using ttag function used in Metabase.
    */
   translate: (text: string) => string;
