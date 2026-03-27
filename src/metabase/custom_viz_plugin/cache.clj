@@ -106,15 +106,27 @@
     (< (/ (- (System/nanoTime) last-failure-ns) 1e6)
        fetch-failure-cooldown-ms)))
 
+(defn- repo-asset-paths
+  "List all file paths under `dist/assets/` in the repo, returned relative to that prefix."
+  [conn commit-sha]
+  (let [prefix "dist/assets/"]
+    (->> (git/list-files conn commit-sha)
+         (filter #(str/starts-with? % prefix))
+         (map #(subs % (count prefix))))))
+
 (defn- fetch-and-cache-assets!
   "Fetch and cache static assets from the plugin repo based on the manifest whitelist.
-   Asset names from the manifest (e.g. `icon.svg`) map to `dist/assets/<name>` in the repo."
+   Asset names from the manifest (e.g. `icon.svg`) map to `dist/assets/<name>` in the repo.
+   Supports glob patterns (e.g. `locales/*`) which are expanded against available files."
   [conn commit-sha plugin-id parsed-manifest]
   (when parsed-manifest
-    (doseq [asset-name (manifest/asset-paths parsed-manifest)]
-      (when-let [bytes (git/read-file-bytes conn commit-sha (str "dist/assets/" asset-name))]
-        (swap! asset-cache assoc-in [plugin-id asset-name] bytes)
-        (write-asset-to-disk! plugin-id asset-name bytes)))))
+    (let [declared     (manifest/asset-paths parsed-manifest)
+          available    (repo-asset-paths conn commit-sha)
+          asset-names  (manifest/expand-globs declared available)]
+      (doseq [asset-name asset-names]
+        (when-let [bytes (git/read-file-bytes conn commit-sha (str "dist/assets/" asset-name))]
+          (swap! asset-cache assoc-in [plugin-id asset-name] bytes)
+          (write-asset-to-disk! plugin-id asset-name bytes))))))
 
 (defn fetch-and-cache!
   "Fetch index.js and manifest from the plugin's git repo, update both caches and DB record.
