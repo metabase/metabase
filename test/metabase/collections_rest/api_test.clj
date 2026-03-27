@@ -3398,7 +3398,7 @@
             (is (some #(= card-id (:id %)) items)
                 "Card should be in collection items"))
           (testing "Published table should NOT appear"
-            (is (not (some #(= table-id (:id %)) items))
+            (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
                 "Published table should NOT be in collection items in OSS"))))))
   (testing "In OSS (without :library feature), published tables should NOT appear in root collection items"
     (mt/with-premium-features #{}
@@ -3406,7 +3406,7 @@
                                                   :is_published  true
                                                   :name          "Root Published Table"}]
         (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
-          (is (not (some #(= table-id (:id %)) items))
+          (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
               "Published table should NOT be in root collection items in OSS"))))))
 
 (deftest unarchive-collection-requires-curate-perms-on-destination-test
