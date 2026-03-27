@@ -35,7 +35,6 @@ import {
   Stack,
   Text,
   TextInput,
-  Title,
 } from "metabase/ui";
 import type { CustomVizPlugin } from "metabase-types/api";
 
@@ -49,15 +48,16 @@ function PluginIconPreview({ plugin }: { plugin: CustomVizPlugin }) {
   const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
   const dimmed = !plugin.enabled;
   return (
-    <ActionIcon
+    <Flex
       w="3.125rem"
       h="3.125rem"
-      radius="xl"
-      variant="outline"
-      c={dimmed ? "text-secondary" : undefined}
+      align="center"
+      justify="center"
       style={{
+        borderRadius: "var(--mantine-radius-xl)",
         border: "1px solid var(--mb-color-border)",
         opacity: dimmed ? 0.6 : undefined,
+        flexShrink: 0,
       }}
     >
       {iconUrl ? (
@@ -69,9 +69,13 @@ function PluginIconPreview({ plugin }: { plugin: CustomVizPlugin }) {
           style={dimmed ? { filter: "grayscale(1)", opacity: 0.6 } : undefined}
         />
       ) : (
-        <Icon name="unknown" size={20} />
+        <Icon
+          name="unknown"
+          size={20}
+          c={dimmed ? "text-secondary" : undefined}
+        />
       )}
-    </ActionIcon>
+    </Flex>
   );
 }
 
@@ -82,7 +86,6 @@ function PluginListItem({
   plugin: CustomVizPlugin;
   onDelete: (id: number) => void;
 }) {
-  const dispatch = useDispatch();
   const [isDeleting, setIsDeleting] = useState(false);
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
   const [refreshPlugin, { isLoading: isRefreshing }] =
@@ -105,17 +108,14 @@ function PluginListItem({
     await refreshPlugin(plugin.id);
   }, [plugin.id, refreshPlugin]);
 
-  const handleClick = useCallback(() => {
-    dispatch(push(`${BASE_PATH}/edit/${plugin.id}`));
-  }, [dispatch, plugin.id]);
-
   return (
     <Flex
+      component={Link}
+      to={`${BASE_PATH}/edit/${plugin.id}`}
       justify="space-between"
       align="center"
       p="md"
       className={S.pluginListItem}
-      onClick={handleClick}
     >
       <Group gap="md" align="center">
         <PluginIconPreview plugin={plugin} />
@@ -130,7 +130,7 @@ function PluginListItem({
               size="sm"
               c="text-tertiary"
               td="underline"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
               {plugin.repo_url}
             </Text>
@@ -152,7 +152,12 @@ function PluginListItem({
           )}
         </Stack>
       </Group>
-      <Box onClick={(e) => e.stopPropagation()}>
+      <Box
+        onClick={(e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <Menu>
           <Menu.Target>
             <ActionIcon variant="subtle" loading={isRefreshing || isDeleting}>
@@ -199,15 +204,10 @@ export function ManageCustomVisualizationsPage() {
 
   return (
     <SettingsPageWrapper
+      title={t`Manage custom visualizations`}
       description={t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
     >
-      <Flex justify="space-between" align="center" mih="2.75rem">
-        <Title
-          order={1}
-          h="2.75rem"
-          display="flex"
-          style={{ alignItems: "center" }}
-        >{t`Manage custom visualizations`}</Title>
+      <Flex justify="flex-end">
         <Button
           component={Link}
           to={`${BASE_PATH}/new`}
@@ -218,48 +218,46 @@ export function ManageCustomVisualizationsPage() {
         </Button>
       </Flex>
 
-      <SettingsSection>
-        {isLoading && (
-          <Flex justify="center" p="xl">
-            <Loader />
-          </Flex>
-        )}
+      {isLoading && (
+        <Flex justify="center" p="xl">
+          <Loader />
+        </Flex>
+      )}
 
-        {plugins && plugins.length === 0 && !isLoading && (
-          <Box
-            p="xl"
-            style={{
-              borderRadius: "var(--mb-radius-md)",
-              backgroundColor: "var(--mb-color-bg-white)",
-              minHeight: "20rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text c="text-tertiary">{t`You don't have any custom visualizations.`}</Text>
-          </Box>
-        )}
+      {plugins && plugins.length === 0 && !isLoading && (
+        <Box
+          p="xl"
+          style={{
+            borderRadius: "var(--mb-radius-md)",
+            backgroundColor: "var(--mb-color-bg-white)",
+            minHeight: "20rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text c="text-tertiary">{t`You don't have any custom visualizations.`}</Text>
+        </Box>
+      )}
 
-        {plugins && plugins.length > 0 && (
-          <Box
-            className={S.pluginList}
-            style={{
-              borderRadius: "var(--mb-radius-md)",
-              backgroundColor: "var(--mb-color-bg-white)",
-              overflow: "hidden",
-            }}
-          >
-            {plugins.map((plugin) => (
-              <PluginListItem
-                key={plugin.id}
-                plugin={plugin}
-                onDelete={handleDelete}
-              />
-            ))}
-          </Box>
-        )}
-      </SettingsSection>
+      {plugins && plugins.length > 0 && (
+        <Box
+          className={S.pluginList}
+          style={{
+            borderRadius: "var(--mb-radius-md)",
+            backgroundColor: "var(--mb-color-bg-white)",
+            overflow: "hidden",
+          }}
+        >
+          {plugins.map((plugin) => (
+            <PluginListItem
+              key={plugin.id}
+              plugin={plugin}
+              onDelete={handleDelete}
+            />
+          ))}
+        </Box>
+      )}
     </SettingsPageWrapper>
   );
 }
@@ -318,15 +316,9 @@ export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
 
   return (
     <SettingsPageWrapper
+      title={t`Manage custom visualizations`}
       description={t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
     >
-      <Title
-        order={1}
-        h="2.75rem"
-        display="flex"
-        style={{ alignItems: "center" }}
-      >{t`Manage custom visualizations`}</Title>
-
       <SettingsSection>
         <Box
           style={{
@@ -338,7 +330,11 @@ export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
             {({ dirty }) => (
               <Form>
                 <Stack gap="lg">
-                  <Text fw={700} fz="xl">{t`Add a new chart`}</Text>
+                  <Text fw={700} fz="xl">
+                    {isEdit
+                      ? t`Edit visualization`
+                      : t`Add a new visualization`}
+                  </Text>
                   <FormTextInput
                     name="repo_url"
                     label={t`Repository URL`}
@@ -380,112 +376,111 @@ export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
   );
 }
 
-function DevUrlItem({ plugin }: { plugin: CustomVizPlugin }) {
-  const [setDevUrl, { isLoading }] = useSetCustomVizPluginDevUrlMutation();
-  const [url, setUrl] = useState(plugin.dev_bundle_url ?? "");
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = useCallback(async () => {
-    try {
-      await setDevUrl({
-        id: plugin.id,
-        dev_bundle_url: url || null,
-      }).unwrap();
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch {
-      // error is handled by RTK Query
-    }
-  }, [plugin.id, url, setDevUrl]);
-
-  const handleClear = useCallback(async () => {
-    try {
-      setUrl("");
-      await setDevUrl({
-        id: plugin.id,
-        dev_bundle_url: null,
-      }).unwrap();
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch {
-      // error is handled by RTK Query
-    }
-  }, [plugin.id, setDevUrl]);
-
+function DevUrlItem({
+  plugin,
+  url,
+  onChange,
+}: {
+  plugin: CustomVizPlugin;
+  url: string;
+  onChange: (pluginId: number, url: string) => void;
+}) {
   return (
-    <Box>
-      <Flex gap="sm" align="flex-end">
-        <Box style={{ flex: 1 }}>
-          <TextInput
-            label={plugin.display_name}
-            placeholder="http://localhost:5174"
-            value={url}
-            onChange={(e) => {
-              setUrl(e.currentTarget.value);
-              setSaved(false);
-            }}
-          />
-        </Box>
-        {url && url !== (plugin.dev_bundle_url ?? "") && (
-          <Button
-            variant="filled"
-            size="sm"
-            onClick={handleSave}
-            loading={isLoading}
-          >
-            {saved ? t`Saved` : t`Save`}
-          </Button>
-        )}
-        {plugin.dev_bundle_url && (
-          <ActionIcon variant="subtle" size="lg" onClick={handleClear}>
-            <Icon name="trash" />
-          </ActionIcon>
-        )}
-      </Flex>
-    </Box>
+    <Stack gap="xs">
+      <TextInput
+        label={plugin.display_name}
+        placeholder="http://localhost:5174"
+        value={url}
+        onChange={(e) => onChange(plugin.id, e.currentTarget.value)}
+      />
+    </Stack>
   );
 }
 
 export function CustomVizDevelopmentPage() {
   const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
+  const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
+  const [devUrls, setDevUrls] = useState<Record<number, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  const getUrl = (plugin: CustomVizPlugin) =>
+    devUrls[plugin.id] ?? plugin.dev_bundle_url ?? "";
+
+  const handleChange = useCallback((pluginId: number, url: string) => {
+    setDevUrls((prev) => ({ ...prev, [pluginId]: url }));
+  }, []);
+
+  const hasChanges = plugins?.some((plugin) => {
+    const current = devUrls[plugin.id];
+    return current !== undefined && current !== (plugin.dev_bundle_url ?? "");
+  });
+
+  const handleSave = useCallback(async () => {
+    if (!plugins) {
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await Promise.all(
+        plugins
+          .filter((plugin) => {
+            const current = devUrls[plugin.id];
+            return (
+              current !== undefined && current !== (plugin.dev_bundle_url ?? "")
+            );
+          })
+          .map((plugin) =>
+            setDevUrl({
+              id: plugin.id,
+              dev_bundle_url: devUrls[plugin.id] || null,
+            }).unwrap(),
+          ),
+      );
+      setDevUrls({});
+    } finally {
+      setIsSaving(false);
+    }
+  }, [plugins, devUrls, setDevUrl]);
 
   return (
     <SettingsPageWrapper
+      title={t`Development`}
       description={t`Set dev bundle URLs to load plugin code from a local dev server instead of the stored bundle. Changes take effect on the next page reload.`}
     >
-      <Title
-        order={1}
-        h="2.75rem"
-        display="flex"
-        style={{ alignItems: "center" }}
-      >{t`Development`}</Title>
+      {isLoading && (
+        <Flex justify="center" p="xl">
+          <Loader />
+        </Flex>
+      )}
 
-      <SettingsSection>
-        {isLoading && (
-          <Flex justify="center" p="xl">
-            <Loader />
-          </Flex>
-        )}
+      {plugins && plugins.length === 0 && !isLoading && (
+        <Text c="text-tertiary">{t`Register custom visualizations first to configure dev URLs.`}</Text>
+      )}
 
-        {plugins && plugins.length === 0 && !isLoading && (
-          <Text c="text-tertiary">{t`Register custom visualizations first to configure dev URLs.`}</Text>
-        )}
-
-        {plugins && plugins.length > 0 && (
-          <Box
-            className={S.devUrlList}
-            p="md"
-            style={{
-              borderRadius: "var(--mb-radius-md)",
-              backgroundColor: "var(--mb-color-bg-white)",
-            }}
-          >
+      {plugins && plugins.length > 0 && (
+        <SettingsSection>
+          <Stack gap="lg">
             {plugins.map((plugin) => (
-              <DevUrlItem key={plugin.id} plugin={plugin} />
+              <DevUrlItem
+                key={plugin.id}
+                plugin={plugin}
+                url={getUrl(plugin)}
+                onChange={handleChange}
+              />
             ))}
-          </Box>
-        )}
-      </SettingsSection>
+            <Group justify="flex-end">
+              <Button
+                variant="filled"
+                onClick={handleSave}
+                loading={isSaving}
+                disabled={!hasChanges}
+              >
+                {t`Save`}
+              </Button>
+            </Group>
+          </Stack>
+        </SettingsSection>
+      )}
     </SettingsPageWrapper>
   );
 }

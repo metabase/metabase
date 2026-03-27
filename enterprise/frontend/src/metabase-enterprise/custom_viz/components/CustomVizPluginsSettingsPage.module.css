@@ -1,6 +1,7 @@
 .pluginListItem {
   cursor: pointer;
-  border-radius: var(--mantine-radius-md);
+  text-decoration: none;
+  color: inherit;
 }
 
 .pluginListItem:hover {
@@ -8,9 +9,5 @@
 }
 
 .pluginList > *:not(:last-child) {
-  border-bottom: 1px solid var(--mb-color-border);
-}
-
-.devUrlList > *:not(:last-child) {
   border-bottom: 1px solid var(--mb-color-border);
 }
