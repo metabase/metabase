@@ -521,16 +521,6 @@
     (is (= :not-found (mcp.resources/check-resource-access "ui://metabase/nonexistent.html" #{"agent:*"})))))
 
 (deftest resources-read-scope-denied-test
-  (testing "resources/read returns JSON-RPC error -32602 when scope is denied"
-    (let [[session-id _] (initialize!)
-          response (mcp-request (jsonrpc-request "resources/read"
-                                                 {:uri "ui://metabase/visualize-query.html"})
-                                {"mcp-session-id" session-id
-                                 ;; Use a token scope that doesn't match the resource
-                                 "x-metabase-token-scopes" "agent:search"})]
-      ;; Without OAuth bearer auth, scopes default to unrestricted, so test via unit fn instead
-      (is (= 200 (:status response)))))
-
   (testing "resources/read returns -32602 for unknown URI"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "resources/read"
@@ -539,13 +529,7 @@
       (is (= 200 (:status response)))
       (is (= -32602 (get-in response [:body :error :code])))
       (is (= "Resource not found or insufficient scope"
-             (get-in response [:body :error :message])))))
-
-  (testing "error messages are identical for not-found and scope-denied (no URI leakage)"
-    ;; Both paths should return the same opaque message
-    (let [not-found-msg    "Resource not found or insufficient scope"
-          scope-denied-msg "Resource not found or insufficient scope"]
-      (is (= not-found-msg scope-denied-msg)))))
+             (get-in response [:body :error :message]))))))
 
 (deftest agent-api-preserves-token-scopes-test
   (testing "scoped token restrictions are enforced by the Agent API layer (defense-in-depth)"
