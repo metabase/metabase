@@ -22,15 +22,20 @@ describe("parseTimestamp", () => {
 });
 
 describe("validateDatabase", () => {
-  it.each<{ label: string; db: Database; isValid: boolean; message?: string }>([
+  it.each<{
+    label: string;
+    database: Database;
+    isValid: boolean;
+    message?: string;
+  }>([
     {
       label: "valid database",
-      db: createMockDatabase({ features: ["transforms/table"] }),
+      database: createMockDatabase({ features: ["transforms/table"] }),
       isValid: true,
     },
     {
       label: "sample database",
-      db: createMockDatabase({
+      database: createMockDatabase({
         is_sample: true,
         features: ["transforms/table"],
       }),
@@ -39,7 +44,7 @@ describe("validateDatabase", () => {
     },
     {
       label: "audit database",
-      db: createMockDatabase({
+      database: createMockDatabase({
         is_audit: true,
         features: ["transforms/table"],
       }),
@@ -48,7 +53,7 @@ describe("validateDatabase", () => {
     },
     {
       label: "database with router_user_attribute",
-      db: createMockDatabase({
+      database: createMockDatabase({
         router_user_attribute: "attr",
         features: ["transforms/table"],
       }),
@@ -57,7 +62,7 @@ describe("validateDatabase", () => {
     },
     {
       label: "database with router_database_id",
-      db: createMockDatabase({
+      database: createMockDatabase({
         router_database_id: 2,
         features: ["transforms/table"],
       }),
@@ -66,12 +71,12 @@ describe("validateDatabase", () => {
     },
     {
       label: "database without transforms/table feature",
-      db: createMockDatabase({ features: [] }),
+      database: createMockDatabase({ features: [] }),
       isValid: false,
       message: "Transforms can't be enabled on this database.",
     },
-  ])("should validate $label", ({ db, isValid, message }) => {
-    const result = validateDatabase(db);
+  ])("should validate $label", ({ database, isValid, message }) => {
+    const result = validateDatabase(database);
     expect(result.isValid).toBe(isValid);
     expect(result.message).toBe(message);
   });
