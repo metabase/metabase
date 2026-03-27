@@ -314,7 +314,7 @@ describe(
             signJwt({ dashboardId, expirationSeconds: -60 }).then(
               (expiredToken) => {
                 cy.intercept(PROVIDER_INTERCEPT, (req) => {
-                  req.reply({ statusCode: 500, body: null });
+                  req.reply({ statusCode: 500 });
                 }).as("guestTokenProvider");
 
                 H.visitCustomHtmlPage(`
@@ -505,7 +505,9 @@ describe(
                       cy.wait("@guestTokenProvider");
 
                       H.popover().within(() => {
-                        cy.findByText("Doohickey").click();
+                        cy.findByRole("checkbox", {
+                          name: "Doohickey",
+                        }).click();
                         cy.button("Add filter").click();
                       });
 
@@ -680,10 +682,7 @@ describe(
                     });
                   </script>
                   <style>metabase-question { height: 100vh; }</style>
-                  <metabase-question
-                    question-id="${questionId}"
-                    token="${expiredToken}"
-                  />
+                  <metabase-question token="${expiredToken}" />
                 `);
 
                 cy.wait("@guestTokenProvider");
@@ -720,10 +719,7 @@ describe(
                         });
                       </script>
                       <style>metabase-question { height: 100vh; }</style>
-                      <metabase-question
-                        question-id="${questionId}"
-                        token="${expiredToken}"
-                      />
+                      <metabase-question token="${expiredToken}" />
                     `);
 
                     cy.wait("@guestTokenProvider");
