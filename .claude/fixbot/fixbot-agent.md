@@ -166,6 +166,7 @@ When the user says they're happy (e.g., "looks good", "ship it", "done", "open t
 After submitting the pull request, monitor the pull request until it passes. NOTE: this may take a while and several attempts.
 1. Run `/fixbot-ci` to monitor CI results and handle failures
 2. **Ignore** the "Decide whether to backport or not" check failure — that's a label requirement handled by the user/reviewer, not something you can fix
+3. **Small PRs:** For frontend-only changes (no backend files touched), the relevant CI checks are `frontend-tests/*` and `e2e-tests/*`. If those pass and only unrelated checks (SDK, driver tests, etc.) fail, re-run the failed jobs immediately rather than waiting for the full suite to complete.
 
 ### Status Bar
 
@@ -300,6 +301,7 @@ curl -s -X POST https://api.github.com/repos/metabase/metabase/pulls \
 Use the same pattern for any other `gh` operations (e.g., `gh pr view` → `curl -s https://api.github.com/repos/metabase/metabase/pulls/NUMBER ...`).
 
 ### Important Rules
+- **Python in bash:** Never write Python code inline in bash heredocs — `!` and other characters get mangled by shell expansion. Instead, write Python scripts to a temp file (`$TMPDIR/script.py`) and run them with `python3 $TMPDIR/script.py`.
 - Focus ONLY on the reported issue — no unrelated changes
 - Always run tests before telling the user to verify
 - Check backend readiness: `curl -s http://localhost:$MB_JETTY_PORT/api/health`
