@@ -139,7 +139,7 @@ function setup({
     onOpenModal: jest.fn(),
     onAddFilter: jest.fn(),
     onCloseFilter: jest.fn(),
-    onEditSummary: jest.fn(),
+    editSummary: jest.fn(),
     onOpenQuestionInfo: jest.fn(),
     onCloseSummary: jest.fn(),
     onSave: jest.fn(),
@@ -320,12 +320,12 @@ describe("ViewTitleHeader", () => {
         });
 
         it("offers to summarize query results", () => {
-          const { onEditSummary } = setup({
+          const { editSummary } = setup({
             card,
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Summarize"));
-          expect(onEditSummary).toHaveBeenCalled();
+          expect(editSummary).toHaveBeenCalled();
         });
 
         it("allows to open notebook editor", () => {

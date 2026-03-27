@@ -271,7 +271,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
       ) {
-        setDidFirstNonTableChartRender(card);
+        if (card) {
+          setDidFirstNonTableChartRender(card);
+        }
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
@@ -319,7 +321,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       trackCardBookmarkAdded(card);
     }
 
-    toggleBookmark(card.id);
+    if (card) {
+      toggleBookmark(card.id.toString());
+    }
   };
 
   /**
@@ -432,7 +436,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       ) {
         showNotification(
           t`All Set! Your question is ready.`,
-          t`${card.name} is loaded.`,
+          t`${card?.name} is loaded.`,
         );
       }
     }

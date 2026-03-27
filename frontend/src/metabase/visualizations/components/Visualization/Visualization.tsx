@@ -149,7 +149,7 @@ type VisualizationOwnProps = {
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
-  onEditSummary?: () => void;
+  editSummary?: () => void;
   rawSeries?: (
     | SingleSeries
     | {
@@ -211,7 +211,7 @@ const mapStateToProps = (state: State): StateProps => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: isEmbeddingSdk(),
-  scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
+  scrollToLastColumn: getUiControls(state)?.scrollToLastColumn ?? false,
   isDownloadingToImage: getIsDownloadingToImage(state),
 });
 
@@ -683,7 +683,7 @@ class Visualization extends PureComponent<
       isDownloadingToImage,
       metadata,
       mode,
-      onEditSummary,
+      editSummary,
       queryBuilderMode,
       rawSeries = [],
       isSelectable,
@@ -896,7 +896,7 @@ class Visualization extends PureComponent<
             <EmptyVizState
               chartType={visualization?.identifier}
               isSummarizeSidebarOpen={isShowingSummarySidebar}
-              onEditSummary={isDashboard ? undefined : onEditSummary}
+              editSummary={isDashboard ? undefined : editSummary}
               isNativeView={isNativeView}
             />
           ) : (
