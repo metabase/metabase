@@ -724,6 +724,7 @@
                 search!     (fn [search-term]
                               (:data (make-search-request :crowberto [:q search-term])))]
             (model-index/add-values! model-index)
+            (search.impl/sync-reindex! {:in-place? true})
 
             (is (= #{"Dallas-Fort Worth" "Fort Lauderdale" "Fort Myers"
                      "Fort Worth" "Fort Smith" "Fort Wayne"}
@@ -769,6 +770,7 @@
               normalize     (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
           (model-index/add-values! model-index-1)
           (model-index/add-values! model-index-2)
+          (search.impl/sync-reindex! {:in-place? true})
 
           (testing "Indexed entities returned if a non-admin user has full data perms and collection access"
             (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
@@ -1901,16 +1903,15 @@
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
 
 (deftest ^:synchronized multiple-limits-test
-  (search.tu/with-sync-search-indexing
-    (when (search/supports-index?)
-      (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
-    (testing "Multiple `limit` query args should be handled correctly (#45345)"
-      (let [total-count  (-> (mt/user-real-request :crowberto :get 200 "search?q=product") ;; using real request to support the double limit query params
-                             :data count)
-            result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
-                             :data count)]
-        (is (>= total-count result-count))
-        (is (= 1 result-count))))))
+  (testing "Multiple `limit` query args should be handled correctly (#45345)"
+    ;; Uses search_engine=in-place to avoid needing an appdb index (this test verifies limit parsing, not search content).
+    ;; Uses user-real-request to support duplicate limit query params.
+    (let [total-count  (-> (mt/user-real-request :crowberto :get 200 "search?q=product&search_engine=in-place")
+                           :data count)
+          result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3&search_engine=in-place")
+                           :data count)]
+      (is (>= total-count result-count))
+      (is (= 1 result-count)))))
 
 (deftest ^:synchronized delete-database-hides-cards-from-search-test
   (search.tu/with-sync-search-indexing
