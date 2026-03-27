@@ -64,5 +64,37 @@ describe("scenarios > embedding-sdk > touch join column picker", () => {
         );
       });
     });
+
+    it("should not autofocus search field in column picker on touch devices", () => {
+      mountSdkContent(
+        <div style={{ display: "flex", padding: "20px" }}>
+          <InteractiveQuestion questionId="new" />
+        </div>,
+      );
+
+      // Pick Orders table
+      popover().within(() => {
+        cy.findByText("Orders").click();
+      });
+
+      // Add join
+      getSdkRoot().within(() => {
+        cy.button("Join data").click();
+      });
+
+      // Pick Products table
+      popover().within(() => {
+        cy.findByText("Products").click();
+      });
+
+      // Open left column picker
+      cy.findByLabelText("Left column").click();
+
+      // Search field should exist but not be focused on touch devices
+      popover().within(() => {
+        cy.findByTestId("list-search-field").should("exist");
+        cy.findByTestId("list-search-field").should("not.be.focused");
+      });
+    });
   });
 });
