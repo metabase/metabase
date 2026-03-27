@@ -125,6 +125,18 @@
       (is (= "Chart" output))
       (is (= "" flushed)))))
 
+(deftest ^:parallel resolve-table-link-test
+  (testing "resolves metabase://table links to ad-hoc question URLs"
+    (let [table-id (mt/id :venues)
+          [output flushed] (process (str "[Users Table](metabase://table/" table-id ")"))]
+      (is (re-find #"\[Users Table\]\(/question#.+\)" output))
+      (is (= "" flushed))))
+
+  (testing "falls back to link text for unknown table"
+    (let [[output flushed] (process "[Unknown Table](metabase://table/999999999)")]
+      (is (= "Unknown Table" output))
+      (is (= "" flushed)))))
+
 (deftest ^:parallel resolve-entity-link-test
   (testing "resolves metabase://model links"
     (let [[output flushed] (process "[My Model](metabase://model/123)")]
@@ -139,11 +151,6 @@
   (testing "resolves metabase://dashboard links"
     (let [[output flushed] (process "[Sales Dashboard](metabase://dashboard/789)")]
       (is (= "[Sales Dashboard](/dashboard/789)" output))
-      (is (= "" flushed))))
-
-  (testing "resolves metabase://table links"
-    (let [[output flushed] (process "[Users Table](metabase://table/42)")]
-      (is (= "[Users Table](/table/42)" output))
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-link-split-across-chunks-test
