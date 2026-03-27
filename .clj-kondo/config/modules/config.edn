@@ -147,6 +147,7 @@
    :friends #{enterprise/agent-api}
    :uses    #{api
               auth-identity
+              lib
               metabot
               query-processor
               request
@@ -222,6 +223,7 @@
            metabase.api.docs
            metabase.api.init
            metabase.api.macros
+           metabase.api.macros.defendpoint.tools-manifest
            metabase.api.macros.scope
            metabase.api.open-api
            metabase.api.routes.common
@@ -545,6 +547,10 @@
                     :model/NotificationHandler
                     :model/NotificationRecipient
                     :model/NotificationSubscription
+                    :model/OAuthAccessToken
+                    :model/OAuthAuthorizationCode
+                    :model/OAuthClient
+                    :model/OAuthRefreshToken
                     :model/ParameterCard
                     :model/Permissions
                     :model/PermissionsGroup
@@ -1131,7 +1137,8 @@
 
   llm
   {:team "Metabot"
-   :api  #{metabase.llm.api
+   :api  #{metabase.llm.anthropic
+           metabase.llm.api
            metabase.llm.init
            metabase.llm.settings}
    :uses #{analytics
@@ -1173,6 +1180,18 @@
            util}
    :model-exports #{:model/LoginHistory}}
 
+  mcp
+  {:team "Metabot"
+   :api  #{metabase.mcp.api}
+   :uses #{agent-api
+           api
+           config
+           oauth-server
+           request
+           server
+           system
+           util}}
+
   measures
   {:team "Graphy"
    :api  #{metabase.measures.api}
@@ -1193,8 +1212,6 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-              metabase.metabot.api.sql-fixer
-              metabase.metabot.api.sql-generation
               metabase.metabot.init}
    :friends #{agent-api
               enterprise/metabot
@@ -1211,7 +1228,6 @@
               documents
               driver
               internal-stats
-              legacy-mbql
               lib
               lib-be
               llm
@@ -1320,7 +1336,8 @@
            settings
            transforms
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :friends #{transforms}
    :model-exports #{:model/Transform
                     :model/TransformJob
@@ -1399,6 +1416,22 @@
                     :model/DashboardCard
                     :model/DashboardTab
                     :model/User}}
+
+  oauth-server
+  {:team "UX West"
+   :api  #{metabase.oauth-server.api
+           metabase.oauth-server.core
+           metabase.oauth-server.init}
+   :uses #{api
+           appearance
+           models
+           settings
+           system
+           util}
+   :model-exports #{:model/OAuthAccessToken
+                    :model/OAuthAuthorizationCode
+                    :model/OAuthClient
+                    :model/OAuthRefreshToken}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -1825,7 +1858,8 @@
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
-           metabase.search.spec}
+           metabase.search.spec
+           metabase.search.task.search-index}
    :uses #{analytics
            api
            app-db
@@ -1890,6 +1924,7 @@
            embedding
            initialization-status
            lib-be
+           oauth-server
            premium-features
            query-processor
            request
@@ -2417,8 +2452,7 @@
            remote-sync
            search
            util
-           warehouses
-           workspaces}
+           warehouses}
    :model-exports #{:model/Dimension
                     :model/Field
                     :model/FieldUserSettings
@@ -2510,7 +2544,6 @@
 
   workspaces
   {:team "Metabot"
-   :api  #{metabase.workspaces.core}
    :uses #{util}}
 
   xrays
@@ -2927,11 +2960,13 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
+
   enterprise/metabot
   {:team    "Metabot"
    :api     #{}
    :friends #{enterprise/agent-api
               slackbot
+              mcp
               metabot}
    :uses    #{api
               lib-be
@@ -2942,6 +2977,7 @@
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/Card :model/Transform}}
+
 
   enterprise/permission-debug
   {:team "UX West"

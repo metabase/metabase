@@ -1,7 +1,11 @@
 import { Route } from "react-router";
 
+import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockTransform } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTransform,
+} from "metabase-types/api/mocks";
 
 import { TransformHeader } from "./TransformHeader";
 
@@ -12,6 +16,10 @@ type SetupOpts = {
 
 function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
   const transform = createMockTransform({ id: 1, name: "Test Transform" });
+
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root" })],
+  });
 
   renderWithProviders(
     <Route

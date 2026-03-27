@@ -13,13 +13,13 @@ on:
         type: string
         required: false
         default: ""
-  # schedule:
-  #   - cron: "0 21 * * 1-5" # every weekday at 4 pm EST/5 pm EDT
+  schedule:
+    - cron: "0 21 * * 1-5" # every weekday at 4 pm EST/5 pm EDT
 
 jobs:
   auto-patch-trigger:
     # don't run this workflow on a cron for forks
-    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    if: ${{ github.event_name != 'schedule' || (github.repository == 'metabase/metabase' && vars.ENABLE_AUTO_PATCH == 'true') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:

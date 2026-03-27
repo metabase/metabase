@@ -68,6 +68,13 @@
   {:arglists '([engine])}
   identity)
 
+(defmulti sync-from-restored-db!
+  "Reconcile in-memory search state with what's currently in the database.
+   Used after snapshot restore where the DB already contains valid index data.
+   Engines that store their index in the appdb can skip reindexing."
+  {:arglists '([engine])}
+  identity)
+
 (defn known-engines
   "List the possible search engines defined for this version, whether this instance supports them or not."
   []

@@ -58,3 +58,11 @@ export function setupUpsellEndpoints() {
     { status: 204 },
   );
 }
+
+export function setupGenerateRandomTokenEndpoint(token: string) {
+  fetchMock.get(
+    "path:/api/util/random_token",
+    { token },
+    { name: "generate-random-token" },
+  );
+}

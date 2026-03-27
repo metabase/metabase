@@ -1,7 +1,5 @@
 (ns metabase.metabot.native-generation-integration-test
-  "Integration tests for native example question generation path.
-
-  Tests the full regenerate endpoint flow with `use-native-agent=true`."
+  "Integration tests for native example question generation path."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -9,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.example-question-generator :as native-generator]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -51,9 +48,8 @@
                                  "NativeMetric1" ["native m1" "native m2" "native m3" "native m4" "native m5"]}
                 native-mock (make-native-prompt-generator prompts-by-name)]
 
-            (testing "regenerate endpoint works with native path (use-native-agent=true)"
-              (with-redefs [metabot.settings/use-native-agent        (constantly true)
-                            native-generator/generate-example-questions  native-mock]
+            (testing "regenerate endpoint works with native path"
+              (with-redefs [native-generator/generate-example-questions native-mock]
                 (mt/user-http-request :crowberto :post 204
                                       (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
 
@@ -69,8 +65,7 @@
 
             (testing "native path prompts are replaced on re-regenerate"
               (let [old-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
-                (with-redefs [metabot.settings/use-native-agent        (constantly true)
-                              native-generator/generate-example-questions  native-mock]
+                (with-redefs [native-generator/generate-example-questions native-mock]
                   (mt/user-http-request :crowberto :post 204
                                         (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
                 (let [new-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]

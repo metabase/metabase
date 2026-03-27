@@ -91,7 +91,7 @@ function addDefinitionToTabs(
   );
 
   return tabs.map((tab) => {
-    if (newDefId in tab.dimensionMapping) {
+    if (newDefId in tab.dimensionMapping || tab.label == null) {
       return tab;
     }
 

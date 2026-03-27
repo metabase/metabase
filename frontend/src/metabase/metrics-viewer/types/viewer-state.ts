@@ -1,3 +1,4 @@
+import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
 import type { MetricDefinition } from "metabase-lib/metric";
 import type {
   CardDisplayType,
@@ -20,13 +21,7 @@ export type MetricsViewerDisplayType = Extract<
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
 export type MetricExpressionId = `expression:${string}`;
 
-export type MetricsViewerTabType =
-  | "time"
-  | "geo"
-  | "category"
-  | "boolean"
-  | "numeric"
-  | "scalar";
+export type MetricsViewerTabType = DimensionType | "scalar";
 
 export interface StoredMetricsViewerTab {
   id: string;
@@ -105,7 +100,7 @@ export interface MetricsViewerTabProjectionConfig {
 export interface MetricsViewerTabState {
   id: string;
   type: MetricsViewerTabType;
-  label: string;
+  label: string | null;
   display: MetricsViewerDisplayType;
   dimensionMapping: Record<MetricSourceId, DimensionId | null>;
   projectionConfig: MetricsViewerTabProjectionConfig;
