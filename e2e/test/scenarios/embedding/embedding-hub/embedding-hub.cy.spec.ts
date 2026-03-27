@@ -1614,7 +1614,6 @@ describe("scenarios - embedding hub", () => {
       H.main().findByRole("button", { name: "Next" }).click();
 
       cy.wait("@updatePermissionsGraph");
-      cy.wait("@getChecklist");
 
       cy.log("create tenants should reopen instead of skipping to summary");
       H.main()
