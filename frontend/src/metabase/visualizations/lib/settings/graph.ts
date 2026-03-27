@@ -11,6 +11,7 @@ import {
   type ChartSettingEnumToggleProps,
 } from "metabase/visualizations/components/settings/ChartSettingEnumToggle";
 import { ChartSettingMaxCategories } from "metabase/visualizations/components/settings/ChartSettingMaxCategories";
+import type { ChartSettingSegmentedControlProps } from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -55,6 +56,7 @@ import {
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type {
   ComputedVisualizationSettings,
+  SeriesSettingDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
@@ -437,18 +439,14 @@ export const TOOLTIP_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (rawSeries, vizSettings) => {
       return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
     },
-    getProps: (rawSeries, vizSettings) => {
-      const options = getAvailableAdditionalColumns(rawSeries, vizSettings).map(
+    getProps: (rawSeries, vizSettings) => ({
+      options: getAvailableAdditionalColumns(rawSeries, vizSettings).map(
         (col) => ({
           label: col.display_name,
           value: getColumnKey(col),
         }),
-      );
-
-      return {
-        options,
-      };
-    },
+      ),
+    }),
     readDependencies: ["graph.metrics", "graph.dimensions"],
   },
 };
@@ -523,18 +521,8 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
     },
     getProps: () => ({
       options: [
-        {
-          get name() {
-            return t`Some`;
-          },
-          value: "fit",
-        },
-        {
-          get name() {
-            return t`All`;
-          },
-          value: "all",
-        },
+        { name: t`Some`, value: "fit" },
+        { name: t`All`, value: "all" },
       ],
     }),
     getDefault: getDefaultDataLabelsFrequency,
@@ -1032,9 +1020,28 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.series_labels": {},
 };
 
-export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
+const BOXPLOT_LABEL_VALUE_FREQUENCY_SETTING: SeriesSettingDefinition<
+  "fit" | "all",
   ChartSettingEnumToggleProps<"fit" | "all">
 > = {
+  get section() {
+    return t`Display`;
+  },
+  get title() {
+    return t`Hide overlapping labels`;
+  },
+  widget: ChartSettingEnumToggle,
+  getDefault: () => "fit",
+  inline: true,
+  getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
+  getProps: () => ({
+    checkedValue: "fit",
+    uncheckedValue: "all",
+  }),
+  readDependencies: ["graph.show_values"],
+};
+
+export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
   "boxplot.whisker_type": {
     get section() {
       return t`Display`;
@@ -1045,12 +1052,10 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     widget: "radio",
     getDefault: () => "tukey",
     getProps: () => ({
-      get options() {
-        return [
-          { name: t`1.5 × interquartile range`, value: "tukey" },
-          { name: t`Min/Max`, value: "min-max" },
-        ];
-      },
+      options: [
+        { name: t`1.5 × interquartile range`, value: "tukey" },
+        { name: t`Min/Max`, value: "min-max" },
+      ],
     }),
   },
   "boxplot.points_mode": {
@@ -1137,23 +1142,20 @@ export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
     }),
     readDependencies: ["graph.show_values"],
   },
-  "graph.label_value_frequency": {
-    get section() {
-      return t`Display`;
-    },
-    get title() {
-      return t`Hide overlapping labels`;
-    },
-    widget: ChartSettingEnumToggle,
-    getDefault: () => "fit",
-    inline: true,
-    getHidden: (_series, vizSettings) => !vizSettings["graph.show_values"],
-    getProps: () => ({
-      checkedValue: "fit",
-      uncheckedValue: "all",
-    }),
-    readDependencies: ["graph.show_values"],
-  },
+  "graph.label_value_frequency":
+    /**
+     * "graph.label_value_frequency" key is used for 2 different settings:
+     *   - in waterfall viz and every cartesian viz - as a segmented toggle
+     *   - in boxplot viz - as a switch (on/off)
+     *
+     * It's the only case in VisualizationSettingsDefinitions where 1 key has 2 meanings.
+     * For simplicity, we're defaulting to segmented toggle widget in types,
+     * and making an exception here for the boxplot viz with this cast.
+     */
+    BOXPLOT_LABEL_VALUE_FREQUENCY_SETTING as SeriesSettingDefinition<
+      unknown,
+      ChartSettingSegmentedControlProps
+    >,
   "graph.label_value_formatting": {
     get section() {
       return t`Display`;

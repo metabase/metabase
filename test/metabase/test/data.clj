@@ -48,7 +48,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]

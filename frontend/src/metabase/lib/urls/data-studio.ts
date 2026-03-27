@@ -273,6 +273,10 @@ export function dataStudioMetric(cardId: CardId) {
   return `${dataStudioLibrary()}/metrics/${cardId}`;
 }
 
+export function dataStudioMetricOverview(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/overview`;
+}
+
 export function dataStudioMetricQuery(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/query`;
 }
@@ -283,6 +287,10 @@ export function dataStudioMetricDependencies(cardId: CardId) {
 
 export function dataStudioMetricCaching(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/caching`;
+}
+
+export function dataStudioMetricHistory(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/history`;
 }
 
 export function dataStudioGlossary() {

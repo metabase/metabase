@@ -10,14 +10,10 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationDefinition, VisualizationProps } from "../../types";
 
-Object.assign(
-  LineChart,
-  getCartesianChartDefinition({
+const LineViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
+  {
     getUiName: () => t`Line`,
     identifier: "line",
     iconName: "line",
@@ -27,9 +23,10 @@ Object.assign(
     defaultSize: getDefaultSize("line"),
     settings: {
       ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
-  }),
-);
+    },
+  };
+
+Object.assign(LineChart, getCartesianChartDefinition(LineViz));
 
 export function LineChart(props: VisualizationProps) {
   return <CartesianChart {...props} />;

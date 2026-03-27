@@ -10,12 +10,12 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.remap :as lib.tu.remap]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.fetch-source-query]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))

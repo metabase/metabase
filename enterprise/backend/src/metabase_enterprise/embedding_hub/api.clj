@@ -61,6 +61,14 @@
                                          [:= :namespace "shared-tenant-collection"]
                                          [:= :archived false]]}))
 
+(defn- shared-collection-has-dashboards? []
+  (when-let [shared-coll-id (t2/select-one-pk :model/Collection {:where [:and
+                                                                         [:= :namespace "shared-tenant-collection"]
+                                                                         [:= :archived false]]})]
+    (t2/exists? :model/Dashboard {:where [:and
+                                          [:= :collection_id shared-coll-id]
+                                          [:= :archived false]]})))
+
 (defn- has-configured-data-segregation-strategy? []
   ;; Check if any of the 3 data segregation strategies are enabled:
   ;; 1. Row and Column Level Security (Sandboxing)
@@ -102,6 +110,7 @@
 
       ;; for the "configure data permissions and enable tenants" sub-checklist page
       "enable-tenants"                    enable-tenants?
+      "move-dashboard-to-shared"          (boolean (shared-collection-has-dashboards?))
       "create-tenants"                    create-tenants?
       "setup-data-segregation-strategy"   setup-data-segregation-strategy?
 
@@ -125,6 +134,7 @@
      ["sso-configured"                       :boolean]
      ["data-permissions-and-enable-tenants"  :boolean]
      ["enable-tenants"                       :boolean]
+     ["move-dashboard-to-shared"             :boolean]
      ["create-tenants"                       :boolean]
      ["setup-data-segregation-strategy"      :boolean]
      ["sso-auth-manual-tested"               :boolean]]]

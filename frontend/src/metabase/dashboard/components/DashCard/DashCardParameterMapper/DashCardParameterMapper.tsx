@@ -2,7 +2,7 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { isQuestionDashCard } from "metabase/dashboard/utils";
+import { isQuestionDashCard } from "metabase/lib/dashboard";
 import { Flex } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import type { DashboardCard } from "metabase-types/api";

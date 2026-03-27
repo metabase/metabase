@@ -135,7 +135,8 @@
   (let [admin-group-id (u/the-id (perms/admin-group))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
-                                                                     (when-not audit? [:not= :id audit/audit-db-id])]}))]
+                                                                     (when-not audit? [:not= :id audit/audit-db-id])
+                                                                     [:= :router_database_id nil]]}))]
     ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
     (if (or (= group-id admin-group-id)
             (contains? (set group-ids) admin-group-id)
@@ -155,7 +156,8 @@
   (let [data-analyst-group-id (u/the-id (perms/data-analyst-group))
         db-ids                (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                                    {:where [:and
-                                                                            (when-not audit? [:not= :id audit/audit-db-id])]}))]
+                                                                            (when-not audit? [:not= :id audit/audit-db-id])
+                                                                            [:= :router_database_id nil]]}))]
     ;; Don't add data analyst perms when we're fetching perms for a specific non-data-analyst group
     (if (or (= group-id data-analyst-group-id)
             (contains? (set group-ids) data-analyst-group-id)
@@ -207,7 +209,10 @@
                                        (when db-id [:= :db_id db-id])
                                        (when group-id [:= :group_id group-id])
                                        (when group-ids [:in :group_id group-ids])
-                                       (when-not audit? [:not= :db_id audit/audit-db-id])]})]
+                                       (when-not audit? [:not= :db_id audit/audit-db-id])
+                                       [:not-in :db_id {:select [:id]
+                                                        :from   [:metabase_database]
+                                                        :where  [:not= :router_database_id nil]}]]})]
     (reduce
      (fn [graph {group-id  :group-id
                  perm-type :type

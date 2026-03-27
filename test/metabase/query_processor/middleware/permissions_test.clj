@@ -7,11 +7,11 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.setup :as qp.setup]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn])
