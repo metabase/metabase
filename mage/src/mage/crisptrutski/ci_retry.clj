@@ -95,8 +95,9 @@
          found 0]
     (if (or (zero? pos) (>= found n))
       (subs s (if (zero? pos) 0 (inc pos)))
-      (recur (str/last-index-of s \newline (dec pos))
-             (inc found)))))
+      (let [next-pos (str/last-index-of s \newline (dec pos))]
+        (recur (if (nil? next-pos) 0 next-pos)
+               (inc found))))))
 
 (defn- parse-test-failures
   "Parse trunk report section from job logs.
