@@ -17,11 +17,8 @@
 
 (def ^:private resource-mime-type "text/html;profile=mcp-app")
 
-(defn- site-url []
-  (system/site-url))
-
 (defn- csp-config []
-  (let [url (site-url)]
+  (let [url (system/site-url)]
     {:connectDomains  [url]
      :resourceDomains [url]
      :frameDomains    [url]}))
@@ -44,11 +41,12 @@
   (t2/delete! :model/Session :key_hashed (session/hash-session-key session-key)))
 
 (defn- generate-visualize-html [opts]
-  (let [session-key (:session-key opts)]
+  (let [site-url    (system/site-url)
+        session-key (:session-key opts)]
     (stencil/render-file
      "frontend_client/embed-mcp.html"
-     {:instanceUrl     (json/encode (site-url))
-      :instanceUrlRaw  (site-url)
+     {:instanceUrl     (json/encode site-url)
+      :instanceUrlRaw  site-url
       :sessionToken    (when session-key (json/encode session-key))
       :cacheBuster     (if config/is-dev?
                          (str (System/currentTimeMillis))
