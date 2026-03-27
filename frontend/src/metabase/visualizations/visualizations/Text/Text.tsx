@@ -1,7 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ReactMarkdown, { type Options } from "react-markdown";
+import ReactMarkdown, {
+  type Options,
+  defaultUrlTransform,
+} from "react-markdown";
 import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
@@ -51,6 +54,16 @@ const REMARK_PLUGINS = [remarkGfm];
 const REHYPE_PLUGINS: Options["rehypePlugins"] = [
   [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
 ];
+
+const DATA_IMAGE_URI_PATTERN =
+  /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;
+
+function urlTransform(url: string): string {
+  if (DATA_IMAGE_URI_PATTERN.test(url)) {
+    return url;
+  }
+  return defaultUrlTransform(url);
+}
 
 export function Text({
   onUpdateVisualizationSettings,
@@ -129,6 +142,7 @@ export function Text({
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}
+              urlTransform={urlTransform}
               className={cx(
                 CS.full,
                 CS.flexFull,
@@ -186,6 +200,7 @@ export function Text({
           )}
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}
+          urlTransform={urlTransform}
         >
           {content}
         </ReactMarkdown>

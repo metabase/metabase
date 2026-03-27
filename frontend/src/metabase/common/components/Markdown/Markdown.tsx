@@ -14,8 +14,14 @@ const MarkdownLink = (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
   <a {...props} target="_blank" rel="noopener noreferrer" />
 );
 
+const DATA_IMAGE_URI_PATTERN =
+  /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;
+
 function urlTransform(url: string): string {
   if (url.startsWith("metabase://")) {
+    return url;
+  }
+  if (DATA_IMAGE_URI_PATTERN.test(url)) {
     return url;
   }
   return defaultUrlTransform(url);
