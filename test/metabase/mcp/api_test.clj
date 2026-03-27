@@ -11,6 +11,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -131,23 +132,23 @@
   (testing "requests without a session ID return 400"
     (let [response (mcp-request (jsonrpc-request "tools/list"))]
       (is (= 400 (:status response)))
-      (is (= -32600 (get-in response [:body :error :code]))))))
+      (is (= -32600 (get-in response [:body :error :code])))))
 
-(deftest degenerate-session-id-test
-  (testing "requests with any nonblank session ID are accepted"
+  (testing "requests with an invalid session ID return 404"
     (let [response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" "bogus-session-id"})]
-      (is (= 200 (:status response)))
-      (is (some? (get-in response [:body :result :tools]))))))
+      (is (= 404 (:status response)))
+      (is (= -32600 (get-in response [:body :error :code]))))))
 
 (deftest session-delete-test
-  (testing "DELETE succeeds but does not invalidate a degenerate session ID"
+  (testing "DELETE cleans up the session and subsequent requests are rejected"
     (let [[session-id _] (initialize!)
           delete-response (mcp-delete {"mcp-session-id" session-id})
           post-response (mcp-request (jsonrpc-request "tools/list")
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status delete-response)))
-      (is (= 200 (:status post-response))))))
+      (is (= 404 (:status post-response))
+          "Deleted session should no longer be valid"))))
 
 (def ^:private all-tool-names
   #{"construct_query"
@@ -548,3 +549,66 @@
                      (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted} nil))]
         (is (not (:isError result))
             "Agent API should accept unrestricted scopes")))))
+
+;;; -------------------------------------------- Session Lifecycle -------------------------------------------------
+
+(deftest session-embedding-reuse-test
+  (testing "multiple resources/read calls within one session reuse the same embedding session"
+    (let [[session-id _] (initialize!)
+          read1 (mcp-request (jsonrpc-request "resources/read"
+                                              {:uri "ui://metabase/visualize-query.html"} 1)
+                             {"mcp-session-id" session-id})
+          read2 (mcp-request (jsonrpc-request "resources/read"
+                                              {:uri "ui://metabase/visualize-query.html"} 2)
+                             {"mcp-session-id" session-id})]
+      (is (= 200 (:status read1)))
+      (is (= 200 (:status read2)))
+      ;; Both responses should contain the same session token in the rendered HTML
+      (let [html1 (-> (get-in read1 [:body :result :contents]) first :text)
+            html2 (-> (get-in read2 [:body :result :contents]) first :text)]
+        (is (some? html1))
+        (is (= html1 html2)
+            "Same embedding session should produce identical HTML output")))))
+
+(deftest batch-initialized-then-resources-read-test
+  (testing "batch containing notifications/initialized + resources/read succeeds"
+    (let [response      (mcp-request (jsonrpc-request "initialize"))
+          session-id    (get-in response [:headers "Mcp-Session-Id"])
+          batch-response (mcp-request [(jsonrpc-notification "notifications/initialized")
+                                       (jsonrpc-request "resources/read"
+                                                        {:uri "ui://metabase/visualize-query.html"} 1)]
+                                      {"mcp-session-id" session-id})]
+      (is (= 200 (:status batch-response)))
+      (is (sequential? (:body batch-response)))
+      ;; Only the request (not the notification) produces a response
+      (is (= 1 (count (:body batch-response))))
+      (let [result (first (:body batch-response))]
+        (is (= 1 (:id result)))
+        (is (nil? (get-in result [:error])) "resources/read should not be rejected as uninitialized")
+        (is (some? (get-in result [:result :contents])))))))
+
+(deftest embedding-key-encryption-round-trip-test
+  (testing "embedding session key survives encrypt/decrypt round-trip through the database"
+    (encryption-test/with-secret-key "0123456789abcdef"
+      (let [[session-id _] (initialize!)
+            ;; Trigger embedding session creation via resources/read
+            read-resp (mcp-request (jsonrpc-request "resources/read"
+                                                    {:uri "ui://metabase/visualize-query.html"} 1)
+                                   {"mcp-session-id" session-id})
+            _         (is (= 200 (:status read-resp)))
+            ;; Read the raw encrypted value from the DB
+            raw-db-val (t2/select-one-fn :embedding_session_key :model/McpSession :id session-id)]
+        ;; The stored value should be encrypted (not a bare UUID)
+        (is (some? raw-db-val))
+        (is (not (re-matches #"[0-9a-f\-]{36}" raw-db-val))
+            "Stored value should be encrypted, not a plaintext UUID")
+        ;; A second read should still succeed (decrypt works)
+        (let [read2 (mcp-request (jsonrpc-request "resources/read"
+                                                  {:uri "ui://metabase/visualize-query.html"} 2)
+                                 {"mcp-session-id" session-id})]
+          (is (= 200 (:status read2)))
+          ;; Both reads should produce identical HTML (same decrypted key)
+          (let [html1 (-> (get-in read-resp [:body :result :contents]) first :text)
+                html2 (-> (get-in read2 [:body :result :contents]) first :text)]
+            (is (= html1 html2)
+                "Decrypted key should match across reads")))))))
