@@ -1,5 +1,3 @@
-import { redactJwt } from "metabase/lib/jwt";
-
 import { MetabaseError } from "./base";
 
 export function INVALID_SESSION_OBJECT(params: {
@@ -41,7 +39,7 @@ export function CUSTOM_FETCH_REQUEST_TOKEN_ERROR(params: {
 }) {
   return new MetabaseError(
     "CUSTOM_FETCH_ERROR",
-    `Your fetchRefreshToken function must return an object with the shape { jwt: string }${params.actual ? `, but instead received ${redactJwt(params.actual)}` : ``}`,
+    `Your fetchRefreshToken function must return an object with the shape { jwt: string }${params.actual ? `, but instead received ${params.actual}` : ``}`,
     params,
   );
 }
@@ -49,7 +47,7 @@ export function CUSTOM_FETCH_REQUEST_TOKEN_ERROR(params: {
 export function DEFAULT_ENDPOINT_ERROR(params: { actual?: string }) {
   return new MetabaseError(
     "DEFAULT_ENDPOINT_ERROR",
-    `Your JWT server endpoint must return an object with the shape { jwt: string }${params.actual ? `, but instead received ${redactJwt(params.actual)}` : ``}`,
+    `Your JWT server endpoint must return an object with the shape { jwt: string }${params.actual ? `, but instead received ${params.actual}` : ``}`,
     params,
   );
 }

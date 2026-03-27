@@ -10,10 +10,6 @@ export function isJWT(string: unknown): string is string {
   return match !== null && match[0] === string;
 }
 
-export function redactJwt(value: string): string {
-  return value.replaceAll(new RegExp(JWT_REGEX.source, "g"), "YOUR_JWT");
-}
-
 /**
  * Decodes a JWT token and returns its payload.
  * Uses Uint8Array/TextDecoder instead of manual decodeURIComponent for safer UTF-8 decoding.
