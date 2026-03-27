@@ -891,8 +891,8 @@
                                                               [:created_at                   :string]
                                                               [:timestamp                    :string]
                                                               [:icon {:optional true}        [:maybe :string]]]]]
-                             [:icon {:optional rue}         [:maybe :string]]
-                             [:default {:optional true}     :boolean]]
+                             [:icon {:optional true}          [:maybe :string]]
+                             [:default {:optional true}      :boolean]]
                             timeline1))
                 (is (= 2 (-> timeline1 :events count)))
                 (is (= 1 (-> timeline2 :events count)))))))

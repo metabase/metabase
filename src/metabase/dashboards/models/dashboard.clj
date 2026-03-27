@@ -395,6 +395,13 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod serdes/default-spec-values "Dashboard" [_]
+  {:archived              false
+   :archived_directly     false
+   :auto_apply_filters    true
+   :enable_embedding      false
+   :show_in_getting_started false})
+
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
