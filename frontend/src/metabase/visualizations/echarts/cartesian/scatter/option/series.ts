@@ -80,5 +80,6 @@ export function buildEChartsScatterSeries(
         opacity: CHART_STYLE.opacity.blur,
       },
     },
+    progressive: 0,
   };
 }

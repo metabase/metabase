@@ -1,7 +1,4 @@
-import type {
-  ITreeNodeItem,
-  TreeNodeProps,
-} from "metabase/common/components/tree/types";
+import type { TreeNodeProps } from "metabase/common/components/tree/types";
 import type { IconName } from "metabase/ui";
 
 import {
@@ -12,14 +9,14 @@ import {
 } from "./NodeList";
 import S from "./ResourceTreeNode.module.css";
 
-export const ResourceTreeNode = ({
+export const ResourceTreeNode = <TData = unknown,>({
   item,
   depth,
   isExpanded,
   displayId = false,
   onToggleExpand,
   onItemClick,
-}: TreeNodeProps<ITreeNodeItem> & {
+}: TreeNodeProps<TData> & {
   displayId?: boolean;
   onItemClick: () => void;
 }) => {

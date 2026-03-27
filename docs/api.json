@@ -7112,6 +7112,10 @@
         "type" : "string",
         "enum" : [ "default", "write-data" ]
       },
+      "metabase.frontend-errors.api.frontend-error-type" : {
+        "type" : "string",
+        "enum" : [ "component-crash", "chart-render-error" ]
+      },
       "metabase.legacy-mbql.schema.-" : {
         "description" : "schema for a valid MBQL 4 :- clause",
         "allOf" : [ ]
@@ -7393,13 +7397,6 @@
       "metabase.legacy-mbql.schema..legacy-column-metadata.qualified-keys" : {
         "type" : "object",
         "properties" : {
-          "qp.pivot/pivot-grouping?" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "lib/external-remap" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.external"
@@ -8089,13 +8086,6 @@
           "default" : { },
           "type" : "object",
           "properties" : {
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -8309,7 +8299,8 @@
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceQuery"
             },
             "limit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+              "type" : "integer",
+              "minimum" : 0
             },
             "filter" : {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
@@ -9067,13 +9058,6 @@
         "allOf" : [ {
           "type" : "object",
           "properties" : {
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "field_ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -9618,7 +9602,8 @@
               "$ref" : "#/components/schemas/metabase.lib.schema.filters"
             },
             "limit" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+              "type" : "integer",
+              "minimum" : 0
             },
             "joins" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.join.joins"
@@ -9801,11 +9786,6 @@
       "metabase.lib.schema.common.base-type" : {
         "type" : "string"
       },
-      "metabase.lib.schema.common.int-greater-than-or-equal-to-zero" : {
-        "description" : "Schema representing an integer than must also be greater than or equal to zero.",
-        "type" : "integer",
-        "minimum" : 0
-      },
       "metabase.lib.schema.common.kebab-cased-map" : { },
       "metabase.lib.schema.common.non-blank-string" : {
         "type" : "string",
@@ -9879,11 +9859,13 @@
         "properties" : {
           "max-results" : {
             "description" : "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this\n  applies to all queries",
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+            "type" : "integer",
+            "minimum" : 0
           },
           "max-results-bare-rows" : {
             "description" : "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than\n  `:max-results`.",
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+            "type" : "integer",
+            "minimum" : 0
           }
         }
       },
@@ -10860,13 +10842,6 @@
                 "type" : "null"
               } ]
             },
-            "qp.pivot/pivot-grouping?" : {
-              "oneOf" : [ {
-                "type" : "boolean"
-              }, {
-                "type" : "null"
-              } ]
-            },
             "lib/external-remap" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.external"
@@ -11358,13 +11333,6 @@
               "fk-join-alias" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
-                }, {
-                  "type" : "null"
-                } ]
-              },
-              "qp.pivot/pivot-grouping?" : {
-                "oneOf" : [ {
-                  "type" : "boolean"
                 }, {
                   "type" : "null"
                 } ]
@@ -12042,13 +12010,6 @@
         "default" : { },
         "type" : "object",
         "properties" : {
-          "qp.pivot/pivot-grouping?" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "binning" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
           },
@@ -12130,13 +12091,6 @@
         "default" : { },
         "type" : "object",
         "properties" : {
-          "qp.pivot/pivot-grouping?" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "binning" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
           },
@@ -15051,8 +15005,8 @@
       "ApiKeyAuth" : {
         "type" : "apiKey",
         "in" : "header",
-        "name" : "X-Metabase-Session",
-        "description" : "Session token obtained from /api/session endpoint"
+        "name" : "X-API-Key",
+        "description" : "API key for authentication"
       }
     }
   },
@@ -19966,9 +19920,6 @@
                   "content" : {
                     "type" : "object"
                   },
-                  "html" : {
-                    "type" : "string"
-                  },
                   "parent_comment_id" : {
                     "oneOf" : [ {
                       "description" : "value must be an integer greater than zero.",
@@ -19988,7 +19939,7 @@
                     "enum" : [ "document" ]
                   }
                 },
-                "required" : [ "target_type", "target_id", "content", "html" ]
+                "required" : [ "target_type", "target_id", "content" ]
               }
             }
           }
@@ -20050,9 +20001,6 @@
                 "properties" : {
                   "content" : {
                     "type" : "object"
-                  },
-                  "html" : {
-                    "type" : "string"
                   },
                   "is_resolved" : {
                     "type" : "boolean"
@@ -34551,6 +34499,41 @@
           }
         },
         "tags" : [ "/api/field" ]
+      }
+    },
+    "/api/frontend-errors" : {
+      "post" : {
+        "operationId" : "post-api-frontend-errors",
+        "summary" : "POST /api/frontend-errors",
+        "description" : "Endpoint for the frontend to report errors. Increments a Prometheus counter\n   with the given `type` label.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "type" : {
+                    "$ref" : "#/components/schemas/metabase.frontend-errors.api.frontend-error-type"
+                  }
+                },
+                "required" : [ "type" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/frontend-errors" ]
       }
     },
     "/api/geojson" : {

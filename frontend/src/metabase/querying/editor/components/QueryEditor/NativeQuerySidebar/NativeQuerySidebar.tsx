@@ -77,7 +77,7 @@ function QueryDataReferenceSidebar({
   useMount(() => {
     const databaseId = question.databaseId();
     if (dataReferenceStack.length === 0 && databaseId !== null) {
-      pushDataReferenceStack({ type: "database", item: { id: databaseId } });
+      pushDataReferenceStack({ type: "database", id: databaseId });
     }
   });
 

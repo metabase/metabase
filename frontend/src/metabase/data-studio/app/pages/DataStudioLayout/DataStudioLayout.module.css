@@ -21,7 +21,8 @@
 .tab {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  width: 100%;
 
   &:hover {
     background-color: var(--mb-color-background-hover);

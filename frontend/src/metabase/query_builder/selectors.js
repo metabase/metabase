@@ -1018,7 +1018,7 @@ export const getDataReferenceStack = createSelector(
     uiControls.dataReferenceStack
       ? uiControls.dataReferenceStack
       : dbId
-        ? [{ type: "database", item: { id: dbId } }]
+        ? [{ type: "database", id: dbId }]
         : [],
 );
 

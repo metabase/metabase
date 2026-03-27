@@ -23,6 +23,7 @@ export interface ObjectDetailBodyProps {
     [key: number]: { status: number; value: number };
   };
   followForeignKey?: (fk: ForeignKey) => void;
+  isDashboard: boolean;
 }
 
 export function ObjectDetailBody({
@@ -36,6 +37,7 @@ export function ObjectDetailBody({
   tableForeignKeys,
   tableForeignKeyReferences,
   followForeignKey,
+  isDashboard,
 }: ObjectDetailBodyProps): JSX.Element {
   return (
     <ObjectDetailBodyWrapper>
@@ -45,6 +47,7 @@ export function ObjectDetailBody({
         settings={settings}
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
+        isDashboard={isDashboard}
       />
       {hasRelationships && (
         <Relationships
