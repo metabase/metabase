@@ -348,7 +348,7 @@ export const getPKColumnIndex = createSelector(
   [getFirstQueryResult, getTableId],
   (result, tableId) => {
     if (!result || !result.data) {
-      return -1;
+      return;
     }
     const { cols } = result.data;
 
@@ -362,10 +362,14 @@ export const getPKColumnIndex = createSelector(
   },
 );
 
+function isSafeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value);
+}
+
 export const getPKRowIndexMap = createSelector(
   [getFirstQueryResult, getPKColumnIndex],
   (result, PKColumnIndex) => {
-    if (!result || !result.data || !Number.isSafeInteger(PKColumnIndex)) {
+    if (!result || !result.data || !isSafeInteger(PKColumnIndex)) {
       return {};
     }
     const { rows } = result.data;
@@ -389,7 +393,7 @@ export const getPKRowIndexMap = createSelector(
 export const getRowIndexToPKMap = createSelector(
   [getFirstQueryResult, getPKColumnIndex],
   (result, PKColumnIndex) => {
-    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+    if (!result || !isSafeInteger(PKColumnIndex)) {
       return {};
     }
     const { rows } = result.data;
@@ -558,7 +562,7 @@ export const getZoomedObjectRowIndex = createSelector(
 export const getPreviousRowPKValue = createSelector(
   [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
   (result, PKColumnIndex, rowIndex) => {
-    if (!result || rowIndex == null) {
+    if (!result || rowIndex == null || !isSafeInteger(PKColumnIndex)) {
       return;
     }
     if (PKColumnIndex === -1) {
@@ -572,7 +576,7 @@ export const getPreviousRowPKValue = createSelector(
 export const getNextRowPKValue = createSelector(
   [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
   (result, PKColumnIndex, rowIndex) => {
-    if (!result || rowIndex == null) {
+    if (!result || rowIndex == null || !isSafeInteger(PKColumnIndex)) {
       return;
     }
     if (PKColumnIndex === -1) {
