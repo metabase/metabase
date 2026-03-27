@@ -42,6 +42,11 @@
       (swap! registry assoc-in [:uri->tool uri] tool))
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
 
+(defn all-scopes
+  "Return the distinct set of scopes registered across all UI resources."
+  []
+  (into (sorted-set) (keep :scope) (vals (:uri->resource @registry))))
+
 (defn list-ui-tools
   "Return the list of MCP tools corresponding to UI components"
   []

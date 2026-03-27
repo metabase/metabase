@@ -1,0 +1,153 @@
+## MCP session table for durable, multi-server MCP session management
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+
+  - changeSet:
+      id: v60.mcp-session-table
+      author: christruter
+      comment: Create mcp_session table for durable MCP session tracking
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: mcp_session
+      changes:
+        - createTable:
+            tableName: mcp_session
+            remarks: Tracks MCP protocol sessions and their associated embedding sessions
+            columns:
+              - column:
+                  name: id
+                  type: varchar(36)
+                  remarks: Random UUID sent to clients as the Mcp-Session-Id header value
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: The authenticated user who owns this session
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding_session_key
+                  type: ${text.type}
+                  remarks: >-
+                    The embedding SDK session key, encrypted at the application level using
+                    MB_ENCRYPTION_SECRET_KEY (AES-256-CBC with HMAC-SHA512). Stored as text
+                    to accommodate the base64-encoded ciphertext. Falls back to plaintext
+                    when no encryption key is configured.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: embedding_session_id
+                  type: varchar(254)
+                  remarks: >-
+                    Foreign key to core_session.id for the embedding session. Stored alongside
+                    the encrypted key so that cleanup can join-delete without decryption.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: initialized
+                  type: ${boolean.type}
+                  remarks: Whether the client has completed the MCP handshake
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Session creation timestamp, used for TTL expiry
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: mcp_session
+
+  - changeSet:
+      id: v60.mcp-session-user-fk
+      author: christruter
+      comment: Add foreign key from mcp_session.user_id to core_user.id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_mcp_session_user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: mcp_session
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_mcp_session_user_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: mcp_session
+            constraintName: fk_mcp_session_user_id
+
+  - changeSet:
+      id: v60.mcp-session-created-at-idx
+      author: christruter
+      comment: Add index on mcp_session.created_at for TTL sweep queries
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_mcp_session_created_at
+      changes:
+        - createIndex:
+            tableName: mcp_session
+            indexName: idx_mcp_session_created_at
+            columns:
+              - column:
+                  name: created_at
+      rollback:
+        - dropIndex:
+            tableName: mcp_session
+            indexName: idx_mcp_session_created_at
+
+  - changeSet:
+      id: v60.mcp-session-embedding-session-id-idx
+      author: christruter
+      comment: Add index on mcp_session.embedding_session_id for join-based cleanup deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_mcp_session_embedding_session_id
+      changes:
+        - createIndex:
+            tableName: mcp_session
+            indexName: idx_mcp_session_embedding_session_id
+            columns:
+              - column:
+                  name: embedding_session_id
+      rollback:
+        - dropIndex:
+            tableName: mcp_session
+            indexName: idx_mcp_session_embedding_session_id
+
+  - changeSet:
+      id: v60.mcp-session-embedding-session-fk
+      author: christruter
+      comment: Add foreign key from mcp_session.embedding_session_id to core_session.id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_mcp_session_embedding_session_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: mcp_session
+            baseColumnNames: embedding_session_id
+            referencedTableName: core_session
+            referencedColumnNames: id
+            constraintName: fk_mcp_session_embedding_session_id
+            onDelete: SET NULL
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: mcp_session
+            constraintName: fk_mcp_session_embedding_session_id
