@@ -254,7 +254,8 @@
         (public-test/with-temp-public-card [card]
           (testing "GET /api/public/card/:uuid/query"
             (client/client :get 202 (str "public/card/" (:public_uuid card) "/query"))
-            (is (partial= {:model "card", :model_id (:id card), :has_access true, :context :question}
+            (is (partial= {:model "card", :model_id (:id card), :has_access true, :context :question
+                           :embedding_client "public"}
                           (latest-view nil (:id card))))))))))
 
 (deftest public-dashboard-card-query-view-log-test
@@ -285,7 +286,8 @@
                                          :dataset_query (mt/mbql-query venues {:limit 1})}]
           (testing "GET /api/embed/card/:token/query"
             (client/client :get 202 (str (embed-test/card-url card) "/query"))
-            (is (partial= {:model "card", :model_id (:id card), :has_access true}
+            (is (partial= {:model "card", :model_id (:id card), :has_access true
+                           :embedding_client "guest-embed"}
                           (latest-view nil (:id card))))))))))
 
 (deftest embedded-dashboard-card-query-view-log-test
@@ -310,5 +312,15 @@
             (client/client :get 200 (embed-test/dashboard-url dash))
             (is (partial= {:model "dashboard", :model_id (:id dash), :has_access true}
                           (latest-view nil (:id dash))))))))))
+
+(deftest server-side-binding-wins-over-client-header-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "Server-side embedding_client binding wins over X-Metabase-Client header"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (public-test/with-temp-public-card [card]
+          (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
+                         {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}})
+          (is (= "public"
+                 (:embedding_client (latest-view nil (:id card))))))))))
 
 ;;; ---------------------------------------- API tests end -----------------------------------------

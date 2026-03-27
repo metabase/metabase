@@ -5,6 +5,7 @@
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
    [metabase.analytics.api]
+   [metabase.analytics.sdk :as sdk]
    [metabase.api-keys.api]
    [metabase.api.docs]
    [metabase.api.macros :as api.macros]
@@ -142,6 +143,11 @@
 (defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (->handler handler)))
 (defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (->handler handler)))
 
+(defn- +embedding-client [client handler]
+  (fn [request respond raise]
+    (sdk/with-client! [client]
+      (handler request respond raise))))
+
 (declare routes)
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -155,7 +161,7 @@
 (def ^:private route-map
   {"/action"               (+auth 'metabase.actions-rest.api)
    "/activity"             (+auth 'metabase.activity-feed.api)
-   "/agent"                metabase.agent-api.api/routes
+   "/agent"                (+embedding-client "agent-api" metabase.agent-api.api/routes)
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
@@ -178,7 +184,7 @@
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      'metabase.eid-translation.api
    "/email"                metabase.channel.api/email-routes
-   "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
+   "/embed"                (+message-only-exceptions (+embedding-client "guest-embed" metabase.embedding-rest.api/embedding-routes))
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
    "/frontend-errors"      'metabase.frontend-errors.api
    "/geojson"              'metabase.geojson.api
@@ -190,7 +196,7 @@
    "/login-history"        (+auth 'metabase.login-history.api)
    "/mcp"                  metabase.mcp.api/handler
    "/measure"              (+auth 'metabase.measures.api)
-   "/metabot"              metabase.metabot.api/routes
+   "/metabot"              (+embedding-client "metabot" metabase.metabot.api/routes)
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
@@ -201,7 +207,7 @@
    "/premium-features"     (+auth metabase.premium-features.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/product-feedback"     'metabase.product-feedback.api
-   "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
+   "/public"               (+public-exceptions (+embedding-client "public" metabase.public-sharing-rest.api/routes))
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
