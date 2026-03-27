@@ -757,4 +757,4 @@
           (.executeBatch ^Statement stmt))))))
 
 (defmethod driver/llm-sql-dialect-resource :redshift [_]
-  "llm/prompts/dialects/redshift.md")
+  "metabot/prompts/dialects/redshift.md")

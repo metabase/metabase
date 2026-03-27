@@ -24,6 +24,7 @@ Metabot can help you to:
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
 - Answer questions from our documentation (as in, the literature you're reading right now).
+- [Chat with Metabot in Slack](./metabot-slack.md).
 
 Like with all generative AI, you'll always need to double-check results.
 
@@ -133,6 +134,10 @@ Metabot is getting smarter all the time, but there are some things it can't do y
 - **Chart formatting.** Metabot can't change visualization settings like colors, axis labels, or number formatting.
 - **Slack alerts.** Metabot can't create Slack alerts directly. To send alerts via Slack, use Metabase's [Slack integration](../configuring-metabase/slack.md).
 - **Search.** Metabot can't search for documents, collections, segments, measures, actions, or indexed entities. It can however, incorporate segments and measures in its ad-hoc queries.
+
+## Metabot in Slack
+
+Slack Metabot directly or @mention it in a channel to ask questions about your data. See [Metabot in Slack](./metabot-slack.md).
 
 ## Giving feedback on Metabot responses
 

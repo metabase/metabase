@@ -21,3 +21,7 @@ A REST API for building headless, agentic BI applications on top of Metabase's s
 ## [MCP server](./mcp.md)
 
 Connect MCP-compatible AI clients to your Metabase.
+
+## [Metabot in Slack](./metabot-slack.md)
+
+Chat with Metabot directly in Slack — ask questions, get charts, and manage subscriptions without leaving Slack.

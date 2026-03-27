@@ -147,7 +147,8 @@ export function setup(
     promptSuggestions?: { prompt: string }[];
   } | void,
 ) {
-  mockSettings({
+  const settings = mockSettings({
+    "llm-metabot-configured?": true,
     "token-features": createMockTokenFeatures({
       metabot_v3: true,
     }),
@@ -181,6 +182,7 @@ export function setup(
       storeInitialState: createMockState({
         currentUser: currentUser ? currentUser : undefined,
         metabot: metabotInitialState,
+        settings,
       }),
     },
   );
