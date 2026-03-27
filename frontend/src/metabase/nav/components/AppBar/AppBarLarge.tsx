@@ -4,6 +4,7 @@ import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { NotificationArea } from "metabase/notifications/AppNotifications/NotificationArea";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
@@ -113,6 +114,7 @@ const AppBarLarge = ({
             (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {<MetabotAppBarButton />}
+          <NotificationArea />
           {isAppSwitcherVisible && (
             <Box c="text-primary" aria-label={t`Settings menu`}>
               <AppSwitcher />
