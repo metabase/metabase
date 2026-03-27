@@ -882,7 +882,7 @@ serdes/meta:
                   "Transform should be in removal paths after setting is disabled")
               (is (some #(str/includes? % "test_tag") paths-after)
                   "TransformTag should be in removal paths after setting is disabled")
-              (is (some #(str/includes? % "common_py") paths-after)
+              (is (some #(str/includes? % "common.py") paths-after)
                   "PythonLibrary should be in removal paths after setting is disabled"))))))))
 
 (deftest build-all-removal-paths-excludes-builtin-transform-tags-test
@@ -959,7 +959,7 @@ serdes/meta:
           (settings/sync-transform-tracking! true)
           (settings/sync-transform-tracking! false)
           (let [paths (spec/build-all-removal-paths)]
-            (is (some #(str/includes? % "custom_py") paths)
+            (is (some #(str/includes? % "custom.py") paths)
                 "Custom PythonLibrary should be in removal paths")
-            (is (not (some #(str/includes? % "common_py") paths))
+            (is (not (some #(str/includes? % "common.py") paths))
                 "Built-in PythonLibrary should NOT be in removal paths")))))))

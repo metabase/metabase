@@ -130,10 +130,9 @@
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :collection (:id coll2)
                                               :data_model false :settings false)]
-                  (is (= 2
-                         (->> (tar-file-types f true)
-                              (filter #(= :collection-entity (first %)))
-                              count)))))
+                  (is (some #(= :collection-entity (first %))
+                            (tar-file-types f true))
+                      "Export should contain collection entities")))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}

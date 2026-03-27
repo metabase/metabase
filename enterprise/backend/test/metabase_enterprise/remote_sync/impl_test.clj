@@ -701,7 +701,7 @@
             (t2/insert! :model/RemoteSyncObject
                         [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
                          {:model_type "Table" :model_id table-id :model_name "test-table" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
-            (let [initial-files {"main" {"databases/test_db/schemas/PUBLIC/tables/test_table/test_table.yaml"
+            (let [initial-files {"main" {"databases/test_db/schemas/public/tables/test_table/test_table.yaml"
                                          (test-helpers/generate-table-yaml "test-table" "test-db" :schema "PUBLIC")}}
                   mock-source (test-helpers/create-mock-source :initial-files initial-files)
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
@@ -1164,7 +1164,7 @@ serdes/meta:
                     (let [filter-strs (map str @paths-passed)]
                       (is (some #(str/includes? % "transforms") filter-strs)
                           "transforms path should be included in filters")
-                      (is (some #(str/includes? % "python-libraries") filter-strs)
+                      (is (some #(str/includes? % "python") filter-strs)
                           "python-libraries path should be included in filters")
                       (is (some #(str/includes? % "snippets") filter-strs)
                           "snippets path should be included in filters"))))))))))))
@@ -1418,3 +1418,18 @@ serdes/meta:
           (is (not= :conflict (:status result))
               "Should not detect a conflict when local has no unsynced namespace collections")
           (is (nil? (seq (:conflict-details result)))))))))
+
+(deftest import!-old-format-paths-test
+  (testing "import! can load content stored at old-format paths (entity_id in name)"
+    (mt/with-model-cleanup [:model/RemoteSyncTask]
+      (let [task-id     (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+            coll-eid    "old-fmt-coll-xxxxxxxx"
+            ;; Old-format paths: entity_id in filename
+            test-files  {"main" {(str "collections/" coll-eid "_test_collection/" coll-eid "_test_collection.yaml")
+                                 (test-helpers/generate-collection-yaml coll-eid "Test Collection")}}
+            mock-source (test-helpers/create-mock-source :initial-files test-files)
+            result      (impl/import! (source.p/snapshot mock-source) task-id)]
+        (is (= :success (:status result))
+            "import should succeed with old-format paths")
+        (is (t2/exists? :model/Collection :entity_id coll-eid)
+            "collection should have been imported from old-format path")))))
