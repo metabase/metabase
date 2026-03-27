@@ -537,4 +537,4 @@
   (sql.qp/->integer-with-round driver value))
 
 (defmethod driver/llm-sql-dialect-resource :sqlite [_]
-  "llm/prompts/dialects/sqlite.md")
+  "metabot/prompts/dialects/sqlite.md")

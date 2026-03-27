@@ -66,7 +66,7 @@ export class VisualizationResult extends Component {
       className,
       isRunning,
       isShowingSummarySidebar,
-      onEditSummary,
+      editSummary,
       renderEmptyMessage,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -142,7 +142,7 @@ export class VisualizationResult extends Component {
             isQueryBuilder={true}
             isShowingSummarySidebar={isShowingSummarySidebar}
             isRunning={isRunning}
-            onEditSummary={onEditSummary}
+            editSummary={editSummary}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}
             canToggleSeriesVisibility

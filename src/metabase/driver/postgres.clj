@@ -1393,4 +1393,4 @@
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :postgres [_]
-  "llm/prompts/dialects/postgresql.md")
+  "metabot/prompts/dialects/postgresql.md")

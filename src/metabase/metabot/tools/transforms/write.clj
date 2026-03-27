@@ -3,6 +3,8 @@
   Supports both partial edits (targeted string replacements) and full replacement modes."
   (:require
    [clojure.string :as str]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.util.log :as log]))
 
@@ -63,21 +65,31 @@ def transform():
     return pd.DataFrame([{\"message\": \"Hello from Python transform!\"}])
 ")
 
+(defn- source-for-transform-type
+  [source-type database-id source-tables]
+  (case source-type
+    :sql (let [mp (lib-be/application-database-metadata-provider database-id)]
+           {:type "query"
+            :query (lib/native-query mp fresh-sql-template)})
+    :python {:type "python"
+             :body fresh-python-template
+             :source-database database-id
+             :source-tables source-tables}
+    (throw (ex-info "Unexpected source-type `%s`"
+                    {:source-type source-type}))))
+
 (defn create-fresh-transform
   "Create a fresh transform structure with the given source type."
-  [source-type transform-name transform-description source-database source-tables]
-  (let [template (case source-type
-                   :sql fresh-sql-template
-                   :python fresh-python-template)]
-    {:id nil
-     :name (or transform-name (str "New " (name source-type) " Transform"))
-     :description (or transform-description "")
-     :source {:type (name source-type)
-              :query template
-              :source-database source-database
-              :source-tables (or source-tables {})}
-     :target {:type "table"
-              :name ""}}))
+  [source-type transform-name transform-description database-id source-tables]
+  {:id nil
+   :name (or transform-name (str "New " (name source-type) " Transform"))
+   :description (or transform-description "")
+   :target {:type "table"
+            :name ""
+            :database database-id
+            :schema nil}
+   :source (source-for-transform-type
+            source-type database-id source-tables)})
 
 ;;; Write Transform SQL Tool
 
@@ -99,7 +111,7 @@ def transform():
   - :structured-output - The suggested transform
   - :data-parts - Transform suggestion data part for streaming"
   [{:keys [transform_id edit_action thinking transform_name transform_description
-           source_database source_tables memory-atom context]}]
+           database_id source_tables memory-atom context]}]
   (log/info "Writing SQL transform" {:transform-id transform_id
                                      :edit-mode (:mode edit_action)
                                      :has-context (some? context)})
@@ -117,7 +129,7 @@ def transform():
                             ;; Create fresh transform
                             :else
                             (create-fresh-transform :sql transform_name transform_description
-                                                    source_database source_tables))
+                                                    database_id source_tables))
 
         _ (when (and transform_id (nil? current-transform))
             (throw (ex-info (str "Transform with ID " transform_id " not found. "
@@ -125,7 +137,8 @@ def transform():
                             {:agent-error? true
                              :transform-id transform_id})))
 
-        current-sql (get-in current-transform [:source :query] "")
+        current-sql (some-> (get-in current-transform [:source :query])
+                            lib/raw-native-query)
 
         ;; Apply edits based on mode
         new-sql (case (:mode edit_action)
@@ -140,11 +153,10 @@ def transform():
 
         ;; Build suggested transform
         suggested-transform (cond-> current-transform
-                              true (assoc-in [:source :query] new-sql)
+                              true (update-in [:source :query] lib/with-native-query new-sql)
                               transform_name (assoc :name transform_name)
                               transform_description (assoc :description transform_description)
-                              source_database (assoc-in [:source :source-database] source_database)
-                              source_tables (assoc-in [:source :source-tables] source_tables))]
+                              database_id (assoc-in [:source :database] database_id))]
 
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)

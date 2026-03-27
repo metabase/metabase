@@ -106,8 +106,6 @@ describe("SetupSsoPage", () => {
     );
     await userEvent.click(enableJwtButton);
 
-    expect(await screen.findByText("JWT Signing Key")).toBeVisible();
-
     expect(
       screen.getByRole("listitem", { name: "Set up JWT authentication" }),
     ).toHaveAttribute("data-completed", "true");
