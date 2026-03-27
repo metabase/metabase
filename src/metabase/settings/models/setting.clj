@@ -538,9 +538,9 @@
   ^String [setting-name-str]
   (if config/*disable-setting-cache*
     (t2/select-one-fn :value :model/Setting :key setting-name-str)
-         (do
-           (when (nil? (setting.cache/cache))
-             (setting.cache/restore-cache!))
+    (do
+      (when (nil? (setting.cache/cache))
+        (setting.cache/restore-cache!))
       (let [cache (setting.cache/cache)]
         (if (nil? cache)
           ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
