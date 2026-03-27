@@ -9,6 +9,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel query->database-and-table-ids-test
   (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                    :type     :query

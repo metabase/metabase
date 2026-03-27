@@ -24,18 +24,18 @@
   (into []
         (comp (map str/trim)
               (remove str/blank?)
-              (map #(json/decode+kw %)))
+              (map json/decode+kw))
         (str/split-lines body)))
 
 (defn- batch-url [dashboard-id]
   (format "dashboard/%d/card-query-batch" dashboard-id))
 
-(defn- batch-request
+(defn- batch-request!
   "Make a batch card query request. Returns parsed NDJSON lines.
    Uses `with-redefs` to bypass the test client's `parse-response`, which calls `json/decode`
    on the NDJSON body and silently parses only the first line, discarding the rest."
   ([dashboard-id]
-   (batch-request dashboard-id {}))
+   (batch-request! dashboard-id {}))
   ([dashboard-id body]
    (with-redefs [test.client/parse-response identity]
      (parse-ndjson
@@ -70,22 +70,22 @@
                                                            :dataset_query (mt/mbql-query people {:limit 5})}
                      :model/Dashboard     {dash-id :id}   {}
                      :model/DashboardCard {dc-1-id :id}   {:dashboard_id dash-id :card_id card-1-id}
-                     :model/DashboardCard {dc-2-id :id}   {:dashboard_id dash-id :card_id card-2-id}]
+                     :model/DashboardCard _               {:dashboard_id dash-id :card_id card-2-id}]
         (testing "returns results for all cards"
-          (let [lines (batch-request dash-id)]
+          (let [lines (batch-request! dash-id)]
             (is (= 2 (count (card-results lines))))
             (is (= 0 (count (card-errors lines))))
             (is (= {:type "complete" :total 2 :succeeded 2 :failed 0}
                    (completion-message lines)))))
 
         (testing "with explicit cards list"
-          (let [lines (batch-request dash-id {:cards [{:dashcard_id dc-1-id :card_id card-1-id}]})]
+          (let [lines (batch-request! dash-id {:cards [{:dashcard_id dc-1-id :card_id card-1-id}]})]
             (is (= 1 (count (card-results lines))))
             (is (= {:type "complete" :total 1 :succeeded 1 :failed 0}
                    (completion-message lines)))))
 
         (testing "card results contain expected data shape"
-          (let [lines   (batch-request dash-id {:cards [{:dashcard_id dc-1-id :card_id card-1-id}]})
+          (let [lines   (batch-request! dash-id {:cards [{:dashcard_id dc-1-id :card_id card-1-id}]})
                 result  (first (card-results lines))]
             (is (= dc-1-id (:dashcard_id result)))
             (is (= card-1-id (:card_id result)))
@@ -102,7 +102,7 @@
                      :model/DashboardCard _        {:dashboard_id d :card_id c1}
                      :model/DashboardCard _        {:dashboard_id d :card_id c2}
                      :model/DashboardCard _        {:dashboard_id d :card_id c3}]
-        (let [lines (batch-request d)]
+        (let [lines (batch-request! d)]
           (is (= 3 (count (card-results lines))))
           (is (= {:type "complete" :total 3 :succeeded 3 :failed 0}
                  (completion-message lines))))))))
@@ -115,15 +115,15 @@
                      :model/Dashboard     {d :id}   {}
                      :model/DashboardCard {dc :id}  {:dashboard_id d :card_id c1}]
         (testing "wrong card_id for a valid dashcard"
-          (let [lines (batch-request d {:cards [{:dashcard_id dc :card_id c2}]})]
+          (let [lines (batch-request! d {:cards [{:dashcard_id dc :card_id c2}]})]
             (is (= 1 (count (card-errors lines))))
             (is (= 404 (get-in (first (card-errors lines)) [:error :status])))
             (is (= {:type "complete" :total 1 :succeeded 0 :failed 1}
                    (completion-message lines)))))
 
         (testing "mix of valid and invalid"
-          (let [lines (batch-request d {:cards [{:dashcard_id dc :card_id c1}
-                                                {:dashcard_id dc :card_id c2}]})]
+          (let [lines (batch-request! d {:cards [{:dashcard_id dc :card_id c1}
+                                                 {:dashcard_id dc :card_id c2}]})]
             (is (= 1 (count (card-results lines))))
             (is (= 1 (count (card-errors lines))))
             (is (= {:type "complete" :total 2 :succeeded 1 :failed 1}
@@ -148,7 +148,7 @@
                      :model/DashboardCard {dc :id} {:dashboard_id d :card_id c}]
         (mt/with-no-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-          (let [lines (batch-request d {:cards [{:dashcard_id dc :card_id c}]})]
+          (let [lines (batch-request! d {:cards [{:dashcard_id dc :card_id c}]})]
             (is (= 1 (count (card-errors lines))))
             (is (= 403 (get-in (first (card-errors lines)) [:error :status])))
             (is (= {:type "complete" :total 1 :succeeded 0 :failed 1}
@@ -170,18 +170,18 @@
                                                                        :slug "price"
                                                                        :id   "_PRICE_"
                                                                        :type "category"}]}
-                     :model/DashboardCard {dc-id :id}   {:dashboard_id       dash-id
+                     :model/DashboardCard _             {:dashboard_id       dash-id
                                                          :card_id            card-id
                                                          :parameter_mappings [{:parameter_id "_PRICE_"
                                                                                :card_id      card-id
                                                                                :target       [:dimension (mt/$ids venues $price)]}]}]
         (testing "without filter — all rows"
-          (let [lines      (batch-request dash-id)
+          (let [lines      (batch-request! dash-id)
                 row-count  (get-in (first (card-results lines)) [:result :row_count])]
             (is (= 100 row-count))))
 
         (testing "with price=4 filter — fewer rows"
-          (let [lines      (batch-request dash-id {:parameters [{:id "_PRICE_" :value 4}]})
+          (let [lines      (batch-request! dash-id {:parameters [{:id "_PRICE_" :value 4}]})
                 row-count  (get-in (first (card-results lines)) [:result :row_count])]
             (is (= 6 row-count))))))))
 
@@ -194,7 +194,7 @@
                      :model/DashboardCard _        {:dashboard_id d :card_id c1}
                      :model/DashboardCard _        {:dashboard_id d :card_id c2}]
         (binding [qp.dashboard-batch/*thread-pool* :serial]
-          (let [lines (batch-request d)]
+          (let [lines (batch-request! d)]
             (is (= 2 (count (card-results lines))))
             (is (= {:type "complete" :total 2 :succeeded 2 :failed 0}
                    (completion-message lines)))))))))
@@ -213,7 +213,7 @@
         ;; Warm-up run to prime settings caches, metadata providers, etc. so that the measured
         ;; runs aren't polluted by one-time cache misses (settings TTL expiry, etc.).
         (binding [qp.dashboard-batch/*thread-pool* :serial]
-          (batch-request d)
+          (batch-request! d)
           (let [per-card-total (let [counts (atom 0)]
                                  (doseq [[dc-id card-id] [[dc1 c1] [dc2 c2] [dc3 c3]]]
                                    (t2/with-call-count [call-count]
@@ -222,7 +222,7 @@
                                      (swap! counts + (call-count))))
                                  @counts)
                 batch-total    (t2/with-call-count [call-count]
-                                 (batch-request d)
+                                 (batch-request! d)
                                  (call-count))]
             (testing (format "per-card: %d DB calls, batch: %d DB calls" per-card-total batch-total)
               (is (< batch-total per-card-total)
@@ -250,16 +250,16 @@
                      :model/DashboardCard _        {:dashboard_id d :card_id c5}]
         ;; Warm-up run to prime settings caches, metadata providers, etc.
         (binding [qp.dashboard-batch/*thread-pool* :serial]
-          (batch-request d)
+          (batch-request! d)
           (let [batch-3 (t2/with-call-count [call-count]
-                          (batch-request d {:cards (take 3 (map (fn [dc] {:dashcard_id (:id dc) :card_id (:card_id dc)})
-                                                                (t2/select [:model/DashboardCard :id :card_id]
-                                                                           :dashboard_id d
-                                                                           {:order-by [[:id :asc]]
-                                                                            :limit    3})))})
+                          (batch-request! d {:cards (take 3 (map (fn [dc] {:dashcard_id (:id dc) :card_id (:card_id dc)})
+                                                                 (t2/select [:model/DashboardCard :id :card_id]
+                                                                            :dashboard_id d
+                                                                            {:order-by [[:id :asc]]
+                                                                             :limit    3})))})
                           (call-count))
                 batch-5 (t2/with-call-count [call-count]
-                          (batch-request d)
+                          (batch-request! d)
                           (call-count))
                 marginal-cost (/ (- batch-5 batch-3) 2.0)]
             (testing (format "3-card batch: %d, 5-card batch: %d, marginal: %.1f per card"
