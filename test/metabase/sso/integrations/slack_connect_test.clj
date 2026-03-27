@@ -18,21 +18,21 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
-(def ^:private test-encryption-key
+(def test-encryption-key
   "Test encryption key for OIDC state encryption."
   "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=")
 
-(def ^:private test-secret
+(def test-secret
   "Hashed test encryption key."
   (encryption/secret-key->hash test-encryption-key))
 
-(defmacro ^:private with-test-encryption!
+(defmacro with-test-encryption!
   "Wraps body with test encryption key enabled. Use for tests that involve OIDC state cookies."
   [& body]
   `(with-redefs [encryption/default-secret-key test-secret]
      ~@body))
 
-(defn- do-with-url-prefix-disabled
+(defn do-with-url-prefix-disabled
   "Test fixture that disables API URL prefix."
   [thunk]
   (binding [client/*url-prefix* ""]
@@ -40,23 +40,23 @@
 
 (use-fixtures :each do-with-url-prefix-disabled)
 
-(def ^:private default-redirect-uri "/")
+(def default-redirect-uri "/")
 
 (methodical/defmethod auth-identity/authenticate :provider/test-successful-oidc
   [_provider request]
   (if (some #(contains? request %) [:code :error :state])
-    {:success? true
-     :claims {}
-     :user-data {:email "example@slack.com"}
+    {:success?    true
+     :claims      {}
+     :user-data   {:email "example@slack.com"}
      :provider-id "test-provider-id"}
-    {:success? :redirect
+    {:success?     :redirect
      :redirect-url "http://example.com/slack"
-     :state "test-state"
-     :nonce "test-nonce"}))
+     :state        "test-state"
+     :nonce        "test-nonce"}))
 
 (methodical/prefer-method! #'auth-identity/authenticate :provider/test-successful-oidc :provider/oidc)
 
-(defmacro ^:private with-successful-oidc! [& body]
+(defmacro with-successful-oidc! [& body]
   `(do
      (derive :provider/slack-connect :provider/test-successful-oidc)
      ~@body
@@ -129,21 +129,6 @@
                   (is (= "test-nonce" (:nonce state-data)))
                   (is (= "/" (:redirect state-data)))
                   (is (= "slack-connect" (:provider state-data))))))))))))
-
-(deftest multiple-sso-methods-test
-  (testing "with SAML and Slack Connect configured, a GET request to /auth/sso/slack-connect should redirect to Slack"
-    (with-test-encryption!
-      (sso.test-helpers/with-slack-default-setup!
-        (mt/with-temporary-setting-values
-          [saml-enabled true
-           saml-identity-provider-uri "http://test.idp.metabase.com"
-           saml-identity-provider-certificate (slurp "test_resources/sso/auth0-public-idp.cert")]
-          (with-successful-oidc!
-            (let [result (mt/client-full-response :get 302 "/auth/sso/slack-connect"
-                                                  {:request-options {:redirect-strategy :none}}
-                                                  :redirect default-redirect-uri)
-                  redirect-url (get-in result [:headers "Location"])]
-              (is (str/starts-with? redirect-url "http://example.com/slack")))))))))
 
 ;;; -------------------------------------------------- POST Not Allowed Tests --------------------------------------------------
 
