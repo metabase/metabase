@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.resources :as mcp.resources]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
    [metabase.system.core :as system]
@@ -12,18 +13,13 @@
 
 (defonce ^:private provider (atom nil))
 
-(def ^:private extra-mcp-tool-scopes
-  "OAuth scopes for MCP tools that are not registered as agent-api defendpoints."
-  ["agent:visualize"])
-
 (defn all-agent-scopes
   "All supported OAuth scopes derived from defendpoint metadata on the agent API,
-   plus additional scopes for tools not registered as defendpoints (e.g. visualize_query)."
+   plus scopes from MCP UI resources (e.g. visualize_query)."
   []
-  (into extra-mcp-tool-scopes
+  (into (mcp.resources/all-scopes)
         (comp (keep #(get-in % [:form :metadata :scope]))
-              (filter string?)
-              (distinct))
+              (filter string?))
         (vals (api.macros/ns-routes 'metabase.agent-api.api))))
 
 (defn- build-provider-config
