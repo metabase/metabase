@@ -7,7 +7,7 @@ on:
 
 jobs:
   fe-test-coverage:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4

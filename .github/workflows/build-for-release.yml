@@ -14,7 +14,7 @@ on:
 
 jobs:
   start-message:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +43,7 @@ jobs:
             }).catch(console.error);
 
   trigger-milestone-check:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     needs: start-message
     steps:
@@ -64,7 +64,7 @@ jobs:
 
 
   check-version:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
@@ -114,7 +114,7 @@ jobs:
           return versions;
 
   check-commit:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
     - name: Check out the code to verify the release branch
@@ -143,7 +143,7 @@ jobs:
           || (echo "Commit not found in correct release branch" && exit 1)
 
   get-build-requirements:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
@@ -176,7 +176,7 @@ jobs:
 
   build-uberjar-for-release:
     needs: [check-version, check-commit, get-build-requirements]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
       matrix:

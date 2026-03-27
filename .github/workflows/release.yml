@@ -48,7 +48,7 @@ on:
 
 jobs:
   check-version:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
@@ -102,7 +102,7 @@ jobs:
           return versions
 
   publish-start-message:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [check-version]
     timeout-minutes: 5
     steps:
@@ -131,7 +131,7 @@ jobs:
 
   download-uberjar:
     needs: check-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     strategy:
       matrix:
@@ -172,7 +172,7 @@ jobs:
           ./version.properties
 
   upload-to-s3:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: download-uberjar
     timeout-minutes: 15
     strategy:
@@ -220,7 +220,7 @@ jobs:
         --paths /${{ steps.version_path.outputs.result }}/metabase.jar
 
   verify-s3-download:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: upload-to-s3
     timeout-minutes: 15
     strategy:
@@ -275,7 +275,7 @@ jobs:
   push-tags:
     permissions: write-all
     needs: [verify-s3-download, containerize-oss, containerize-ee, check-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
@@ -306,7 +306,7 @@ jobs:
 
   get-extra-tags:
     needs: [ check-version ]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       extra_tags: ${{ steps.taglist.outputs.extra_tags }}
     steps:
@@ -352,7 +352,7 @@ jobs:
   trigger-cloud-issues:
     if: ${{ !inputs.auto }}
     needs: push-tags
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -402,7 +402,7 @@ jobs:
     needs:
       - containerize-ee
       - verify-s3-download
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/github-script@v7
@@ -425,7 +425,7 @@ jobs:
   draft-release-notes:
     if: ${{ !inputs.auto }}
     needs: add-extra-tags
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     permissions: write-all
     env:
@@ -491,7 +491,7 @@ jobs:
             }).catch(console.warn);
 
   publish-version-info:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [push-tags, check-version]
     timeout-minutes: 15
     strategy:
@@ -565,7 +565,7 @@ jobs:
       tag_oss: true
 
   publish-complete-message:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [set-release-channel, add-extra-tags]
     timeout-minutes: 5
     steps:
@@ -596,7 +596,7 @@ jobs:
   manage-milestones:
     if: ${{ !inputs.auto }}
     permissions: write-all
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [draft-release-notes, publish-version-info] # this will ensure that the milestone stays open until the release notes are published
     timeout-minutes: 15
     steps:

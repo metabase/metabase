@@ -5,7 +5,7 @@ on:
 
 jobs:
   get-sample-apps-data:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
       # we must support the last two stable releases
@@ -95,7 +95,7 @@ jobs:
         environment: ["production", "development"]
     if: |
       !cancelled() && needs.get-sample-apps-data.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-sample-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:
@@ -235,7 +235,7 @@ jobs:
             "angular-20-host-app-e2e",
           ]
         environment: ["production", "development"]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     name: e2e-host-app-${{ matrix.test_suite }}-tests-${{ matrix.environment }}-bundle
     env:

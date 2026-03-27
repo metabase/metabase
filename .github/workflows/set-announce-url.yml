@@ -11,7 +11,7 @@ on:
 
 jobs:
   set-announce-url:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
       - name: Validate input
