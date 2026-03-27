@@ -49,7 +49,7 @@ To chat with Metabot, people will need to link their Slack account to their Meta
 
 ### Clearing context
 
-Metabot remembers the context of a thread. To clear context and start a fresh conversation, either begin a new DM or @mention Metabot in a new thread in a channel.
+Metabot remembers the context of a thread. To clear context and start a fresh conversation, either begin a new direct message or @mention Metabot in a new thread in a channel.
 
 ## Notes on privacy
 
