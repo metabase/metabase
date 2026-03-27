@@ -16,6 +16,8 @@
   (:import
    (java.net URI)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
 
 (defmacro with-version! "Used to track information about the metabase embedding client version."
