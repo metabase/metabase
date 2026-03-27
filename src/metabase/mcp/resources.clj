@@ -35,7 +35,8 @@
    tool         :- [:map
                     [:name :string]
                     [:description :string]
-                    [:inputSchema :map]]]
+                    [:inputSchema :map]
+                    [:response-fn fn?]]]
   (if-let [uri (get-in @registry [:key->uri resource-key])]
     (let [scope (get-in @registry [:uri->resource uri :scope])
           tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
@@ -60,15 +61,17 @@
                                                 :frameDomains    [url]})}})))})
 
 (defn read-resource
-  "Read an MCP resource by URI. Returns nil if the URI is not recognized."
-  [uri opts]
-  (when-let [{:keys [render-fn] :as resource} (get-in @registry [:uri->resource uri])]
-    (let [url (system/site-url)]
-      {:contents [(-> (select-keys resource [:uri :mimeType])
-                      (assoc :text (render-fn opts)
-                             :_meta {:ui {:csp {:connectDomains  [url]
-                                                :resourceDomains [url]
-                                                :frameDomains    [url]}}}))]})))
+  "Read an MCP resource by URI. Returns nil if the URI is not recognized.
+   When `token-scopes` is provided, the resource's scope is checked before returning content."
+  [uri opts token-scopes]
+  (when-let [{:keys [render-fn scope] :as resource} (get-in @registry [:uri->resource uri])]
+    (when (mcp.scope/matches? token-scopes scope)
+      (let [url (system/site-url)]
+        {:contents [(-> (select-keys resource [:uri :mimeType])
+                        (assoc :text (render-fn opts)
+                               :_meta {:ui {:csp {:connectDomains  [url]
+                                                  :resourceDomains [url]
+                                                  :frameDomains    [url]}}}))]}))))
 
 ;;; registrations
 
@@ -96,4 +99,7 @@
   :description "Visualize a previously constructed query as an interactive chart or table."
   :inputSchema {:type       "object"
                 :properties {:query {:type "string" :minLength 1}}
-                :required   ["query"]}})
+                :required   ["query"]}
+  :response-fn (fn [arguments]
+                 {:content          [{:type "text" :text "Visualizing query..."}]
+                  :structuredContent {:query (:query arguments)}})})

@@ -156,13 +156,13 @@
                  :session_key session-key})
     session-key))
 
-(defn- handle-resources-read [id params session-id]
+(defn- handle-resources-read [id params session-id token-scopes]
   (let [user-id     api/*current-user-id*
         session-key (when user-id (create-embedding-session! user-id))]
     ;; Track the embedding session key in the MCP session for cleanup
     (when session-key
       (swap! sessions update-in [session-id :embedding-session-keys] (fnil conj #{}) session-key))
-    (jsonrpc-response id (mcp.resources/read-resource (:uri params) {:session-key session-key}))))
+    (jsonrpc-response id (mcp.resources/read-resource (:uri params) {:session-key session-key} token-scopes))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
@@ -179,7 +179,7 @@
         "tools/list"                (handle-tools-list id params token-scopes)
         "tools/call"                (handle-tools-call id params token-scopes)
         "resources/list"            (handle-resources-list id params token-scopes)
-        "resources/read"            (when-initialized id session-id (handle-resources-read id params session-id))
+        "resources/read"            (when-initialized id session-id (handle-resources-read id params session-id token-scopes))
         "ping"                      (handle-ping id params)
         (if id
           (jsonrpc-error id -32601 (str "Method not found: " method))

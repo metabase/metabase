@@ -3,6 +3,7 @@
    tool calls to existing agent API endpoints."
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
@@ -174,8 +175,7 @@
   (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
     (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
       (error-content (str "Insufficient scope to call tool: " tool-name))
-      {:content          [{:type "text" :text "Visualizing query..."}]
-       :structuredContent {:query (:query arguments)}})
+      ((:response-fn ui-tool) arguments))
     (if-let [tool-def (get (tool-index) tool-name)]
       (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
         (error-content (str "Insufficient scope to call tool: " tool-name))

@@ -423,10 +423,15 @@
 
 ;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
 
+(def ^:private all-tool-names
+  #{"search" "get_table" "get_metric" "get_table_field_values"
+    "get_metric_field_values" "construct_query" "execute_query" "query"
+    "visualize_query"})
+
 (deftest tools-list-scope-filtering-test
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
-      (is (= 9 (count tools)))))
+      (is (= all-tool-names (set (map :name tools))))))
 
   (testing "tools/list with specific scope only returns matching tools"
     (let [tools     (mcp.tools/list-tools #{"agent:search"})
@@ -437,13 +442,13 @@
       (is (not (contains? tool-names "get_table")))
       (is (not (contains? tool-names "construct_query")))))
 
-  (testing "tools/list with wildcard scope matches all agent tools"
+  (testing "tools/list with wildcard scope matches all agent and UI tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
-      (is (= 9 (count tools)))))
+      (is (= all-tool-names (set (map :name tools))))))
 
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
-      (is (= 9 (count tools)))))
+      (is (= all-tool-names (set (map :name tools))))))
 
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]
