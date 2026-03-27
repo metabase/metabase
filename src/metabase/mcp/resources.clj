@@ -60,17 +60,27 @@
                                                 :resourceDomains [url]
                                                 :frameDomains    [url]})}})))})
 
+(defn check-resource-access
+  "Check whether `uri` exists and is accessible under `token-scopes`.
+   Returns :ok, :not-found, or :scope-denied."
+  [uri token-scopes]
+  (if-let [{:keys [scope]} (get-in @registry [:uri->resource uri])]
+    (if (mcp.scope/matches? token-scopes scope)
+      :ok
+      :scope-denied)
+    :not-found))
+
 (defn read-resource
-  "Read an MCP resource by URI. Returns nil if the URI is not recognized, or has an unsupported scope."
-  [uri opts token-scopes]
-  (when-let [{:keys [render-fn scope] :as resource} (get-in @registry [:uri->resource uri])]
-    (when (mcp.scope/matches? token-scopes scope)
-      (let [url (system/site-url)]
-        {:contents [(-> (select-keys resource [:uri :mimeType])
-                        (assoc :text (render-fn opts)
-                               :_meta {:ui {:csp {:connectDomains  [url]
-                                                  :resourceDomains [url]
-                                                  :frameDomains    [url]}}}))]}))))
+  "Read an MCP resource by URI. The caller should use [[check-resource-access]] first
+   to distinguish not-found from scope-denied; this function returns nil for both."
+  [uri opts]
+  (when-let [{:keys [render-fn] :as resource} (get-in @registry [:uri->resource uri])]
+    (let [url (system/site-url)]
+      {:contents [(-> (select-keys resource [:uri :mimeType])
+                      (assoc :text (render-fn opts)
+                             :_meta {:ui {:csp {:connectDomains  [url]
+                                                :resourceDomains [url]
+                                                :frameDomains    [url]}}}))]})))
 
 ;;; registrations
 
