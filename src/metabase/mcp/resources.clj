@@ -15,27 +15,26 @@
 (defonce ^:private ui-tools (atom (sorted-map)))
 
 (mu/defn- register-ui-resource!
-  [key      :- :keyword
-   uri      :- :string
+  [uri      :- :string
    resource :- [:map
                 [:name :string]
                 [:description :string]
                 [:render-fn fn?]]]
-  (swap! resources assoc key
+  (swap! resources assoc uri
          (-> (assoc resource :uri uri)
              (update :mimeType #(or % "text/html;profile=mcp-app")))))
 
 (mu/defn- register-ui-tool!
-  [resource-key :- :keyword
+  [resource-uri :- :string
    scope        :- :string
    tool         :- [:map
                     [:name :string]
                     [:description :string]
                     [:inputSchema :map]]]
-  (if-let [uri (get-in @resources [resource-key :uri])]
-    (->> (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})
+  (if (get @resources resource-uri)
+    (->> (assoc tool :scope scope :_meta {:ui {:resourceUri resource-uri}})
          (swap! ui-tools assoc (:name tool)))
-    (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
+    (throw (ex-info "Unknown resource" {:resource-uri resource-uri}))))
 
 (defn list-ui-tools
   "Return the list of MCP tools corresponding to UI components"
@@ -47,21 +46,25 @@
   []
   {:resources (for [resource (vals @resources)]
                 (-> (select-keys resource [:uri :name :description :mimeType])
-                    (assoc :meta {:ui {:csp (let [url (system/site-url)]
-                                              {:connectDomains  [url]
-                                               :resourceDomains [url]
-                                               :frameDomains    [url]})}})))})
+                    (assoc :_meta {:ui {:csp (let [url (system/site-url)]
+                                               {:connectDomains  [url]
+                                                :resourceDomains [url]
+                                                :frameDomains    [url]})}})))})
 
 (defn read-resource
   "Read an MCP resource by URI. Returns nil if the URI is not recognized."
   [uri opts]
   (when-let [{:keys [render-fn] :as resource} (get @resources uri)]
-    (assoc (select-keys resource [:uri :mimeType :text]) :text (render-fn opts))))
+    (let [url (system/site-url)]
+      {:contents [(-> (select-keys resource [:uri :mimeType])
+                      (assoc :text (render-fn opts)
+                             :_meta {:ui {:csp {:connectDomains  [url]
+                                                :resourceDomains [url]
+                                                :frameDomains    [url]}}}))]})))
 
 ;;; registrations
 
 (register-ui-resource!
- :visualize-query
  "ui://metabase/visualize-query.html"
  {:name        "Visualize Query"
   :description "Interactive Metabase SDK visualization for a query"
@@ -78,7 +81,7 @@
                                        config/mb-version-hash)})))})
 
 (register-ui-tool!
- :visualize-query
+ "ui://metabase/visualize-query.html"
  "agent:visualize"
  {:name        "visualize_query"
   :description "Visualize a previously constructed query as an interactive chart or table."
