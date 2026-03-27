@@ -208,13 +208,15 @@ describe(
         name: "Products with price filter",
         native: {
           query:
-            "SELECT ID, TITLE, PRICE FROM PRODUCTS WHERE PRICE >= {{price}} LIMIT 10",
+            "SELECT ID, TITLE, PRICE FROM PRODUCTS WHERE {{price}} LIMIT 10",
           "template-tags": {
             price: {
               id: "cccccccc",
               name: "price",
               "display-name": "Price greater than",
-              type: "number",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.PRICE, null],
+              "widget-type": "number/>=",
               required: false,
             },
           },
@@ -370,7 +372,7 @@ describe(
                     cy.wait("@guestTokenProvider");
                     H.getSimpleEmbedIframeContent()
                       .findByText(
-                        'Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":"YOUR_JWT"}',
+                        /Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":/,
                       )
                       .should("be.visible");
                   },
@@ -594,7 +596,7 @@ describe(
             cy.wait("@guestTokenProvider");
             H.getSimpleEmbedIframeContent()
               .findByText(
-                "A valid JWT token is required to be passed in guest embeds mode.",
+                "Failed to fetch JWT token from /api/mock-guest-token-provider, status: 500.",
               )
               .should("be.visible");
           });
@@ -727,7 +729,7 @@ describe(
                     cy.wait("@guestTokenProvider");
                     H.getSimpleEmbedIframeContent()
                       .findByText(
-                        'Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":"YOUR_JWT"}',
+                        /Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":/,
                       )
                       .should("be.visible");
                   },
@@ -784,9 +786,12 @@ describe(
                       });
 
                     H.getSimpleEmbedIframeContent().within(() => {
-                      cy.findByLabelText("Price greater than").type(
-                        "50{enter}",
-                      );
+                      cy.findByLabelText("Price greater than").click();
+                      H.popover().within(() => {
+                        cy.findByPlaceholderText("Enter a number").type(
+                          "50{enter}",
+                        );
+                      });
                       cy.log(
                         "ensure the token is refreshed after applying a filter value",
                       );
@@ -954,7 +959,7 @@ describe(
             cy.wait("@guestTokenProvider");
             H.getSimpleEmbedIframeContent()
               .findByText(
-                "A valid JWT token is required to be passed in guest embeds mode.",
+                "Failed to fetch JWT token from /api/mock-guest-token-provider, status: 500.",
               )
               .should("be.visible");
           });

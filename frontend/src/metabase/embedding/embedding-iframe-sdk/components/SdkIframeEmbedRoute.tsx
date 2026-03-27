@@ -170,11 +170,7 @@ const SdkIframeEmbedView = ({
         /**
          * Need for initial token flow with JWT provider when the provider returns errors.
          * Without this, the InteractiveDashboard component will be rendered because
-         * there is no `token`. And the error component will not be rendered because
-         * guest embed doesn't support InteractiveDashboard.
-         *
-         * We don't need to check guestEmbedProviderUri for questions because it seems to
-         * already render correctly.
+         * there is no `token`, so it won't match this pattern.
          */
         {
           componentName: "metabase-dashboard",
@@ -228,6 +224,14 @@ const SdkIframeEmbedView = ({
           />
         ),
       )
+      // Exists solely to discriminate type from the pattern below when matching `guestEmbedProviderUri: P.nonNullable`
+      .with(
+        {
+          componentName: "metabase-question",
+          template: "exploration",
+        },
+        () => null,
+      )
       .with(
         // Embedding based on a questionId (Metabase Account auth type) with disabled drills
         {
@@ -244,6 +248,15 @@ const SdkIframeEmbedView = ({
           componentName: "metabase-question",
           token: P.nonNullable,
         },
+        /**
+         * Need for initial token flow with JWT provider when the provider returns errors.
+         * Without this, the InteractiveDashboard component will be rendered because
+         * there is no `token`, so it won't match this pattern.
+         */
+        {
+          componentName: "metabase-question",
+          guestEmbedProviderUri: P.nonNullable,
+        },
         (settings) => {
           const entityProps: SdkQuestionEntityPublicProps = settings.token
             ? {
@@ -252,7 +265,6 @@ const SdkIframeEmbedView = ({
             : {
                 questionId: settings.questionId ?? null,
               };
-
           return (
             <StaticQuestion
               key={rerenderKey}
