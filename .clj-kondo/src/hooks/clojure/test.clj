@@ -51,12 +51,16 @@
                            {}
                            metadata-sexprs)
         parallel?     (:parallel combined-metadata)
-        synchronized? (:synchronized combined-metadata)]
-    (when (and parallel? synchronized?)
+        synchronized? (:synchronized combined-metadata)
+        sequential?   (:sequential combined-metadata)
+        ;; treat ^:sequential and ^:mb/old-migrations-test the same as ^:synchronized for parallel suggestion purposes
+        explicitly-non-parallel? (or synchronized? sequential?
+                                    (:mb/old-migrations-test combined-metadata))]
+    (when (and parallel? explicitly-non-parallel?)
       (hooks/reg-finding! (assoc (meta test-name)
-                                 :message "Test should not be marked both ^:parallel and ^:synchronized"
+                                 :message "Test should not be marked both ^:parallel and ^:synchronized/^:sequential"
                                  :type :metabase/validate-deftest)))
-    (when-not (or parallel? synchronized?)
+    (when-not (or parallel? explicitly-non-parallel?)
       ;; only when the custom `:metabase/deftest-not-marked-parallel-or-synchronized` is enabled: complain if tests are
       ;; not explicitly marked `^:parallel` or `^:synchronized`. This is mostly to encourage people to mark everything
       ;; `^:parallel` in places like `metabase.lib` tests unless there is a really good reason not to.
