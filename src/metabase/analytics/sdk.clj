@@ -57,8 +57,6 @@
   (or (= client embedding-sdk-client)
       (= client embedding-iframe-client)))
 
-(def my-requests (atom []))
-
 (def route-client-mapping
   [["/api/public/" "public"]
    ["/api/embed/" "guest-embed"]
@@ -79,7 +77,6 @@
   [handler]
   (fn embedding-mw-fn
     [request respond raise]
-    (swap! my-requests conj request)
     (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
           version (get-in request [:headers "x-metabase-client-version"])
           preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
