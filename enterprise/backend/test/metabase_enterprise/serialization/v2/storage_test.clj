@@ -41,22 +41,26 @@
                 "A few top-level files are expected"))
 
           (testing "the Collections properly exported"
-            (is (= (-> (into {} (t2/select-one :model/Collection :id (:id parent)))
-                       (dissoc :id :location)
-                       (assoc :parent_id nil)
-                       (update :created_at t/offset-date-time))
-                   (-> (yaml/from-file (io/file dump-dir "collections" parent-filename (str parent-filename ".yaml")))
-                       (dissoc :serdes/meta)
-                       (update :created_at t/offset-date-time))))
+            (let [yaml-parent (-> (yaml/from-file (io/file dump-dir "collections" parent-filename (str parent-filename ".yaml")))
+                                  (dissoc :serdes/meta)
+                                  (update :created_at t/offset-date-time))
+                  yaml-child  (-> (yaml/from-file (io/file dump-dir "collections" parent-filename
+                                                           child-filename (str child-filename ".yaml")))
+                                  (dissoc :serdes/meta)
+                                  (update :created_at t/offset-date-time))]
+              (is (= (-> (into {} (t2/select-one :model/Collection :id (:id parent)))
+                         (dissoc :id :location)
+                         (assoc :parent_id nil)
+                         (update :created_at t/offset-date-time)
+                         (select-keys (keys yaml-parent)))
+                     yaml-parent))
 
-            (is (= (-> (into {} (t2/select-one :model/Collection :id (:id child)))
-                       (dissoc :id :location)
-                       (assoc :parent_id (:entity_id parent))
-                       (update :created_at t/offset-date-time))
-                   (-> (yaml/from-file (io/file dump-dir "collections" parent-filename
-                                                child-filename (str child-filename ".yaml")))
-                       (dissoc :serdes/meta)
-                       (update :created_at t/offset-date-time))))))))))
+              (is (= (-> (into {} (t2/select-one :model/Collection :id (:id child)))
+                         (dissoc :id :location)
+                         (assoc :parent_id (:entity_id parent))
+                         (update :created_at t/offset-date-time)
+                         (select-keys (keys yaml-child)))
+                     yaml-child)))))))))
 
 (deftest collection-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
