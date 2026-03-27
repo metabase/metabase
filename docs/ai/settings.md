@@ -7,7 +7,7 @@ redirect_from:
 
 # AI settings
 
-> AI features are available with your own AI provider API key, or as an add-on on [Metabase Cloud](https://www.metabase.com/cloud/).
+> AI features are available with your own AI provider API key, or as an add-on on [Metabase Cloud](https://www.metabase.com/features/metabot-ai).
 
 _Admin > AI_
 
