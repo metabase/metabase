@@ -9,6 +9,10 @@
   "Allowed string enum values for temporal units and buckets."
   #{"millisecond" "second" "minute" "hour" "day" "week" "month" "quarter" "year"})
 
+(def ^:private time-interval-amount-keywords
+  "String values for time-interval amount that should be keywordized."
+  #{"current" "last" "next"})
+
 (def order-direction-values
   "Allowed string enum values for order direction."
   #{"asc" "desc"})
@@ -59,7 +63,13 @@
       args)
 
     "time-interval"
-    (update args 2 #(keyword-enum (conj path 3) "temporal unit" % temporal-unit-values))
+    (-> args
+        (update 1 (fn [amount]
+                    (cond
+                      (keyword? amount)                       amount
+                      (time-interval-amount-keywords amount)  (keyword amount)
+                      :else                                   amount)))
+        (update 2 #(keyword-enum (conj path 3) "temporal unit" % temporal-unit-values)))
 
     "relative-time-interval"
     (-> args

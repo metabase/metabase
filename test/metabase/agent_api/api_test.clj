@@ -10,7 +10,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -180,17 +179,15 @@
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id)))
 
 (defn- visible-field-id
-  "Find the field-id string for a field by display name within a table's visible columns."
+  "Find the real field ID for a field by display name within a table's visible columns."
   [table-id field-display-name]
-  (let [mp            (mt/metadata-provider)
-        query         (lib/query mp (lib.metadata/table mp table-id))
-        field-prefix  (metabot.tools.u/table-field-id-prefix table-id)
-        visible-cols  (lib/visible-columns query)]
-    (->> (keep-indexed (fn [i col]
-                         (when (= (lib/display-name query col) field-display-name)
-                           (str field-prefix i)))
-                       visible-cols)
-         first)))
+  (let [mp           (mt/metadata-provider)
+        query        (lib/query mp (lib.metadata/table mp table-id))
+        visible-cols (lib/visible-columns query)]
+    (->> visible-cols
+         (filter #(= (lib/display-name query %) field-display-name))
+         first
+         :id)))
 
 (deftest get-table-field-values-test
   ;; Ensure field values exist for the field we'll test

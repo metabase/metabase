@@ -65,35 +65,56 @@
   "Map source_entity type to the model string used by agent-lib evaluation context."
   [type]
   (case type
-    "table"              "table"
-    ("model" "question") "card"
-    "metric"             "metric"
+    "table"      "table"
+    "model"      "dataset"
+    "question"   "card"
+    "metric"     "metric"
     type))
+
+(defn- source-metadata-for
+  "Resolve the lib metadata object for a source entity."
+  [type id metadata-provider]
+  (case type
+    "table"              (lib.metadata/table metadata-provider id)
+    ("model" "question") (lib.metadata/card metadata-provider id)
+    "metric"             (lib.metadata/card metadata-provider id)
+    nil))
+
+(defn- surrounding-tables-for
+  "Derive surrounding tables from a source query's visible columns."
+  [metadata-provider source-metadata source-id]
+  (try
+    (let [query (lib/query metadata-provider source-metadata)]
+      (->> (lib/visible-columns query)
+           (keep :table-id)
+           distinct
+           (remove #{source-id})
+           (mapv (fn [tid] {:id tid}))))
+    (catch Exception _ [])))
+
+(defn- available-measure-ids
+  "Return the set of measure IDs available on a source entity, or empty set."
+  [metadata-provider source-metadata]
+  (try
+    (->> (lib/available-measures (lib/query metadata-provider source-metadata))
+         (keep :id)
+         set)
+    (catch Exception _ #{})))
 
 (defn- build-evaluation-context
   "Build the EvaluationContext for agent-lib from source_entity and referenced_entities."
-  [{:keys [type id] :as source-entity} referenced-entities metadata-provider]
-  (let [model-str (source-entity->model-str type)
-        ;; Get surrounding tables for join context
-        surrounding-tables (when (= type "table")
-                             (let [table-query (lib/query metadata-provider (lib.metadata/table metadata-provider id))]
-                               (->> (lib/visible-columns table-query)
-                                    (keep :table-id)
-                                    distinct
-                                    (remove #{id})
-                                    (mapv (fn [tid] {:id tid})))))
-        ;; Source metadata for the runtime 'source binding
-        source-metadata (case type
-                          "table"              (lib.metadata/table metadata-provider id)
-                          ("model" "question") (lib.metadata/card metadata-provider id)
-                          "metric"             (lib.metadata/card metadata-provider id)
-                          nil)]
+  [{:keys [type id]} referenced-entities metadata-provider]
+  (let [model-str      (source-entity->model-str type)
+        source-metadata (source-metadata-for type id metadata-provider)
+        surrounding     (surrounding-tables-for metadata-provider source-metadata id)
+        measure-ids     (available-measure-ids metadata-provider source-metadata)]
     {:source-entity       {:model model-str :id id}
      :referenced-entities (or (mapv (fn [{:keys [type id]}]
                                       {:model (source-entity->model-str type) :id id})
                                     referenced-entities)
                               [])
-     :surrounding-tables  (or surrounding-tables [])
+     :surrounding-tables  surrounding
+     :measure-ids         measure-ids
      :source-metadata     source-metadata}))
 
 ;;; ---------------------------------------- Result columns ----------------------------------------
