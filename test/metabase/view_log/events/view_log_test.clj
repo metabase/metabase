@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.analytics.sdk :as sdk]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.events.core :as events]
@@ -322,5 +323,16 @@
                          {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}})
           (is (= "public"
                  (:embedding_client (latest-view nil (:id card))))))))))
+
+(deftest route-client-mapping-test
+  (testing "combinations of routes and header values"
+    (testing "Some routes override the header value"
+      (is (= "public" (#'sdk/derived-client {:uri "/api/public/something" :metabase-client-header "header"})))
+      (is (= "guest-embed" (#'sdk/derived-client {:uri "/api/embed/something" :metabase-client-header "header"})))
+      (is (= "guest-embed" (#'sdk/derived-client {:uri "/api/preview-embed/something" :metabase-client-header "header"})))
+      (is (= "metabot" (#'sdk/derived-client {:uri "/api/metabot/something" :metabase-client-header "header"})))
+      (is (= "agent-api" (#'sdk/derived-client {:uri "/api/agent/something" :metabase-client-header "header"}))))
+    (testing "The rest of the routes use the header value"
+      (is (= "header" (#'sdk/derived-client {:uri "no-mapping" :metabase-client-header "header"}))))))
 
 ;;; ---------------------------------------- API tests end -----------------------------------------

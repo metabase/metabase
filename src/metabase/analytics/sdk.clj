@@ -57,7 +57,7 @@
   (or (= client embedding-sdk-client)
       (= client embedding-iframe-client)))
 
-(def route-client-mapping
+(def ^:private route-client-mapping
   [["/api/public/" "public"]
    ["/api/embed/" "guest-embed"]
    ; TODO Is this the client value that we want?
