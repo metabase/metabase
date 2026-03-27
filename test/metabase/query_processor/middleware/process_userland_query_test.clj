@@ -15,7 +15,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -215,3 +216,24 @@
                        :data
                        (contains? :preprocessed_query)
                        not)))))))
+
+(deftest grouper-queue-integration-test
+  (testing "save-execution-metadata! writes QueryExecution and avg execution time via grouper queues"
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (let [query  (assoc (mt/mbql-query venues {:limit 1})
+                          :info {:executed-by  (mt/user->id :rasta)
+                                 :context      :question
+                                 :query-hash   (qp.util/query-hash (mt/mbql-query venues {:limit 1}))})
+            q-hash (qp.util/query-hash query)]
+        ;; Clean up any prior QueryExecution / Query rows for this hash
+        (t2/delete! :model/QueryExecution :hash q-hash)
+        (t2/delete! :model/Query :query_hash q-hash)
+        (try
+          (qp/process-query (qp/userland-query query))
+          (testing "QueryExecution row was written"
+            (is (pos? (t2/count :model/QueryExecution :hash q-hash))))
+          (testing "Query avg execution time row was written"
+            (is (some? (t2/select-one :model/Query :query_hash q-hash))))
+          (finally
+            (t2/delete! :model/QueryExecution :hash q-hash)
+            (t2/delete! :model/Query :query_hash q-hash)))))))

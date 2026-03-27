@@ -18,8 +18,8 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.core :as qp.core]
    [metabase.query-processor.dashboard :as qp.dashboard]
-   [metabase.query-processor.dashboard-batch :as qp.dashboard-batch]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -324,7 +324,7 @@
         params       (cond-> parameters (string? parameters) json/decode+kw)]
     (request/as-admin
       (binding [api/*current-user-id* nil]
-        (qp.dashboard-batch/process-batch-queries
+        (qp.core/process-batch-queries
          {:dashboard-id dashboard-id
           :parameters   params
           :context      :public-dashboard

@@ -14,7 +14,9 @@
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model]))
+   [toucan2.model :as t2.model])
+  (:import
+   (java.nio ByteBuffer)))
 
 (set! *warn-on-reflection* true)
 
@@ -120,13 +122,17 @@
                                         [h (assoc params :query (:query (peek entries)))])))
                                by-hash)
             all-hashes   (vec (keys hash->params))
-            ;; 1. Find which hashes already exist
-            existing     (into #{} (map :query_hash)
-                               (t2/query {:select [:query_hash]
-                                          :from   [:query]
-                                          :where  [:in :query_hash all-hashes]}))
-            to-update    (filterv existing all-hashes)
-            to-insert    (filterv (complement existing) all-hashes)]
+            ;; 1. Find which hashes already exist.
+            ;; Byte arrays use reference equality, so wrap in ByteBuffer for value-based lookup.
+            existing-bb  (into #{}
+                               (map (fn [^bytes h] (ByteBuffer/wrap h)))
+                               (map :query_hash
+                                    (t2/query {:select [:query_hash]
+                                               :from   [:query]
+                                               :where  [:in :query_hash all-hashes]})))
+            existing?    (fn [^bytes h] (contains? existing-bb (ByteBuffer/wrap h)))
+            to-update    (filterv existing? all-hashes)
+            to-insert    (filterv (complement existing?) all-hashes)]
         ;; 2. Batch UPDATE existing rows — single UPDATE with CASE
         (when (seq to-update)
           (let [avg-case   (into [:case]

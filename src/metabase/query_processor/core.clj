@@ -11,6 +11,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.dashboard :as qp.dashboard]
+   [metabase.query-processor.dashboard-batch :as qp.dashboard-batch]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.limit :as qp.limit]
@@ -41,6 +42,9 @@
  ;; Dashboard — metabase.query-processor.dashboard
  [qp.dashboard
   process-query-for-dashcard]
+ ;; Dashboard batch — metabase.query-processor.dashboard-batch
+ [qp.dashboard-batch
+  process-batch-queries]
  ;; Metadata — metabase.query-processor.metadata
  [qp.metadata
   result-metadata]
