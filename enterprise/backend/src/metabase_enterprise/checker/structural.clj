@@ -4,8 +4,8 @@
    This checker validates that YAML files are structurally correct without
    resolving references. It's fast feedback that files are well-formed.
 
-   Schemas are defined in Malli and can be exported to JSON Schema for
-   LLM consumption via (export-json-schemas!)."
+   Schemas are defined in checker.schemas (pure Malli) and can be exported
+   as JSON Schema for LLM consumption via (export-json-schemas!)."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -13,243 +13,22 @@
    [malli.error :as me]
    [malli.json-schema :as mjs]
    [metabase-enterprise.checker.format.serdes :as serdes-format]
+   [metabase-enterprise.checker.schemas :as schemas]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ===========================================================================
-;;; Portable Reference Schemas
-;;;
-;;; Serdes uses vectors to represent references that get resolved on import.
+;;; Re-export schemas for backward compatibility
 ;;; ===========================================================================
 
-(def PortableDatabaseRef
-  "Reference to a database by name."
-  :string)
-
-(def PortableTableRef
-  "Reference to a table: [db-name schema-name table-name].
-   schema-name can be null for schema-less databases (e.g., SQLite)."
-  [:tuple :string [:maybe :string] :string])
-
-(def PortableFieldRef
-  "Reference to a field: [db-name schema-name table-name field-name].
-   schema-name can be null for schema-less databases."
-  [:tuple :string [:maybe :string] :string :string])
-
-(def PortableCardRef
-  "Reference to a card by entity_id."
-  :string)
-
-;;; ===========================================================================
-;;; Common Schemas
-;;; ===========================================================================
-
-(def timestamp-pattern "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*$")
-(def base-type-pattern "^type/\\w+$")
-
-(def Timestamp
-  "ISO 8601 timestamp string."
-  [:re (re-pattern timestamp-pattern)])
-
-(def BaseType
-  "Metabase base type, e.g., type/Integer, type/Text."
-  [:re (re-pattern base-type-pattern)])
-
-(def SemanticType
-  "Metabase semantic type, e.g., type/PK, type/FK, type/Category."
-  [:maybe [:re (re-pattern base-type-pattern)]])
-
-(def VisibilityType
-  "Field or table visibility."
-  [:maybe [:enum "normal" "hidden" "sensitive" "details-only" "retired"]])
-
-(def SerdesMeta
-  "Serdes metadata for identifying entities."
-  [:sequential
-   [:map
-    [:id :string]
-    [:model :string]
-    [:label {:optional true} :string]]])
-
-;;; ===========================================================================
-;;; Database Schema
-;;; ===========================================================================
-
-(def Database
-  "Schema for database YAML files."
-  [:map
-   [:name :string]
-   [:engine :string]
-   [:created_at {:optional true} Timestamp]
-   [:settings {:optional true} [:maybe :map]]
-   [:serdes/meta SerdesMeta]])
-
-;;; ===========================================================================
-;;; Table Schema
-;;; ===========================================================================
-
-(def Table
-  "Schema for table YAML files."
-  [:map
-   [:name :string]
-   [:display_name {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]
-   [:created_at {:optional true} Timestamp]
-   [:active {:optional true} :boolean]
-   [:visibility_type {:optional true} VisibilityType]
-   [:schema {:optional true} [:maybe :string]]
-   [:db_id {:optional true} :string]
-   [:serdes/meta SerdesMeta]])
-
-;;; ===========================================================================
-;;; Field Schema
-;;; ===========================================================================
-
-(def Field
-  "Schema for field YAML files."
-  [:map
-   [:name :string]
-   [:display_name {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]
-   [:created_at {:optional true} Timestamp]
-   [:active {:optional true} :boolean]
-   [:visibility_type {:optional true} VisibilityType]
-   [:table_id PortableTableRef]
-   [:database_type :string]
-   [:base_type BaseType]
-   [:effective_type {:optional true} [:maybe BaseType]]
-   [:semantic_type {:optional true} SemanticType]
-   [:fk_target_field_id {:optional true} [:maybe [:or PortableFieldRef :nil]]]
-   [:position {:optional true} :int]
-   [:serdes/meta SerdesMeta]])
-
-;;; ===========================================================================
-;;; Dataset Query Schemas
-;;; ===========================================================================
-
-(def NativeQuery
-  "Native SQL query."
-  [:map
-   [:database PortableDatabaseRef]
-   [:type [:enum "native"]]
-   [:native [:map
-             [:query :string]
-             [:template-tags {:optional true} :map]]]])
-
-(def MBQLQuery
-  "MBQL structured query."
-  [:map
-   [:database PortableDatabaseRef]
-   [:type [:enum "query"]]
-   [:query [:map
-            [:source-table {:optional true} [:or PortableTableRef :string]]
-            [:source-query {:optional true} :map]
-            [:aggregation {:optional true} :any]
-            [:breakout {:optional true} :any]
-            [:filter {:optional true} :any]
-            [:joins {:optional true} :any]
-            [:order-by {:optional true} :any]
-            [:limit {:optional true} :int]
-            [:fields {:optional true} :any]
-            [:expressions {:optional true} :any]]]])
-
-(def DatasetQuery
-  "Either a native or MBQL query."
-  [:or NativeQuery MBQLQuery])
-
-;;; ===========================================================================
-;;; Card Schema
-;;; ===========================================================================
-
-(def ResultMetadataColumn
-  "A column in result_metadata."
-  [:map
-   [:name :string]
-   [:base_type {:optional true} [:or BaseType :string]]
-   [:display_name {:optional true} :string]
-   [:effective_type {:optional true} [:or BaseType :string :nil]]
-   [:semantic_type {:optional true} [:or SemanticType :string :nil]]
-   [:field_ref {:optional true} :any]
-   [:id {:optional true} [:or PortableFieldRef :int :nil]]
-   [:table_id {:optional true} [:or PortableTableRef :int :nil]]
-   [:fk_target_field_id {:optional true} [:or PortableFieldRef :int :nil]]])
-
-(def Card
-  "Schema for card (question/model) YAML files."
-  [:map
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:entity_id :string]
-   [:created_at {:optional true} Timestamp]
-   [:creator_id {:optional true} :string]
-   [:display {:optional true} :string]
-   [:archived {:optional true} :boolean]
-   [:query_type {:optional true} [:enum "query" "native"]]
-   [:database_id PortableDatabaseRef]
-   [:table_id {:optional true} [:maybe [:or PortableTableRef :nil]]]
-   [:dataset_query DatasetQuery]
-   [:result_metadata {:optional true} [:maybe [:sequential ResultMetadataColumn]]]
-   [:visualization_settings {:optional true} :map]
-   [:serdes/meta SerdesMeta]
-   [:type {:optional true} [:enum "question" "model" "metric"]]])
-
-;;; ===========================================================================
-;;; Dashboard Schema
-;;; ===========================================================================
-
-(def DashboardCard
-  "A card on a dashboard."
-  [:map
-   [:entity_id {:optional true} :string]
-   [:card_id {:optional true} [:maybe [:or PortableCardRef :nil]]]
-   [:row {:optional true} :int]
-   [:col {:optional true} :int]
-   [:size_x {:optional true} :int]
-   [:size_y {:optional true} :int]
-   [:parameter_mappings {:optional true} :any]
-   [:visualization_settings {:optional true} :map]])
-
-(def Dashboard
-  "Schema for dashboard YAML files."
-  [:map
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:entity_id :string]
-   [:created_at {:optional true} Timestamp]
-   [:creator_id {:optional true} :string]
-   [:archived {:optional true} :boolean]
-   [:dashcards {:optional true} [:sequential DashboardCard]]
-   [:parameters {:optional true} :any]
-   [:serdes/meta SerdesMeta]])
-
-;;; ===========================================================================
-;;; Collection Schema
-;;; ===========================================================================
-
-(def Collection
-  "Schema for collection YAML files."
-  [:map
-   [:name :string]
-   [:description {:optional true} [:maybe :string]]
-   [:entity_id :string]
-   [:created_at {:optional true} Timestamp]
-   [:slug {:optional true} :string]
-   [:archived {:optional true} :boolean]
-   [:serdes/meta SerdesMeta]])
-
-;;; ===========================================================================
-;;; Schema Registry
-;;; ===========================================================================
-
-(def schemas
-  "Map of entity type to schema."
-  {:database Database
-   :table Table
-   :field Field
-   :card Card
-   :dashboard Dashboard
-   :collection Collection})
+(def Database    schemas/Database)
+(def Table       schemas/Table)
+(def Field       schemas/Field)
+(def Card        schemas/Card)
+(def Dashboard   schemas/Dashboard)
+(def Collection  schemas/Collection)
+(def schemas     schemas/schemas)
 
 ;;; ===========================================================================
 ;;; Validation
@@ -354,7 +133,7 @@
   [schema-type file-path]
   (try
     (let [data (serdes-format/load-yaml file-path)
-          schema (get schemas schema-type)]
+          schema (get schemas/schemas schema-type)]
       (if schema
         (when-let [errors (validate schema data)]
           (assoc errors :file file-path :type schema-type))
@@ -380,7 +159,7 @@
 (defn validate-entity
   "Validate entity data against schema. Returns nil if valid, error map if invalid."
   [entity-type data]
-  (when-let [schema (get schemas entity-type)]
+  (when-let [schema (get schemas/schemas entity-type)]
     (validate schema data)))
 
 ;;; ===========================================================================
@@ -411,7 +190,7 @@
 (defn export-json-schemas!
   "Export all schemas to JSON Schema files in the given directory."
   [output-dir]
-  (doseq [[type schema] schemas
+  (doseq [[type schema] schemas/schemas
           :let [json-schema (schema->json-schema schema)
                 filename (str (name type) ".schema.json")
                 path (io/file output-dir filename)]]
@@ -419,7 +198,7 @@
     (spit path (json/encode json-schema {:pretty true}))
     (println "Wrote" (.getPath path))
     (flush))
-  (println "Done. Exported" (count schemas) "schemas.")
+  (println "Done. Exported" (count schemas/schemas) "schemas.")
   (flush))
 
 ;;; ===========================================================================
@@ -431,14 +210,10 @@
   [{:keys [file type error diagnostics raw-errors]}]
   (let [lines (atom [(str "\n  " file " (" (name type) ")")])]
     (if error
-      ;; Parse error or other exception
       (swap! lines conj (str "    " error))
-      ;; Validation errors with diagnostics
       (if (seq diagnostics)
-        ;; Show friendly diagnostics
         (doseq [{:keys [message]} diagnostics]
           (swap! lines conj (str "    - " message)))
-        ;; Fall back to raw errors if no diagnostics
         (swap! lines conj (str "    " (pr-str raw-errors)))))
     (str/join "\n" @lines)))
 
@@ -457,12 +232,7 @@
     results))
 
 (defn cli
-  "CLI entrypoint for structural validation. Returns results map.
-
-   Usage:
-     clojure -X:ee metabase-enterprise.checker.structural/cli :export '\"path/to/export\"'
-     clojure -X:ee metabase-enterprise.checker.structural/cli :export '\"path/to/export\"' :output '\"path/to/results.edn\"'
-     clojure -X:ee metabase-enterprise.checker.structural/cli :export-schemas '\"path/to/schemas\"'"
+  "CLI entrypoint for structural validation. Returns results map."
   [{:keys [export output export-schemas]}]
   (cond
     export-schemas
@@ -483,16 +253,7 @@
       (println "  Export schemas:   clojure -X:ee metabase-enterprise.checker.structural/cli :export-schemas '\"path/to/schemas\"'"))))
 
 (comment
-  ;; Validate an export directory
   (check "export-dir")
-
-  ;; Export JSON schemas for LLM consumption
-  (export-json-schemas! "resources/serdes-schemas")
-
   (export-json-schemas! "/tmp/serdes-schemas")
-
-  ;; Validate a single file
   (validate-yaml-file :card "export-dir/collections/cards/my-card.yaml")
-
-  ;; Get JSON Schema for a type
-  (schema->json-schema Card))
+  (schema->json-schema schemas/Card))
