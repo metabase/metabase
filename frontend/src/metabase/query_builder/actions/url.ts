@@ -35,6 +35,7 @@ export const updateUrl = createThunkAction(
       dirty,
       replaceState,
       preserveParameters = true,
+      preserveNavbarState = false,
       queryBuilderMode,
       datasetEditorTab,
       objectId,
@@ -128,7 +129,13 @@ export const updateUrl = createThunkAction(
 
       try {
         if (replaceState) {
-          dispatch(replace(locationDescriptor));
+          const replaceDescriptor = preserveNavbarState
+            ? {
+                ...locationDescriptor,
+                state: { ...locationDescriptor.state, preserveNavbarState },
+              }
+            : locationDescriptor;
+          dispatch(replace(replaceDescriptor));
         } else {
           dispatch(push(locationDescriptor));
         }
