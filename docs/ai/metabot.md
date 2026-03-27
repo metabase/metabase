@@ -132,7 +132,7 @@ Metabot is getting smarter all the time, but there are some things it can't do y
 - **SQL variables.** Metabot can't generate SQL queries that include [SQL parameters](../questions/native-editor/sql-parameters.md) (like filters or field filters).
 - **Goal lines.** Metabot can't add [goal lines](../questions/visualizations/line-bar-and-area-charts.md#goal-lines) to charts.
 - **Chart formatting.** Metabot can't change visualization settings like colors, axis labels, or number formatting.
-- **Slack alerts.** Metabot can't create Slack alerts directly. To send alerts via Slack, use Metabase's [Slack integration](../configuring-metabase/slack.md).
+- **Managing alerts.** [Metabot in Slack](./metabot-slack.md) can create alerts and dashboard subscriptions, but can't modify or delete existing ones.
 - **Search.** Metabot can only search for tables, metrics, questions, models, and dashboards. It can't discover segments, measures, documents, collections, actions, or indexed entities on its own — but it can use segments and measures in ad-hoc queries (for example, filtering by a segment).
 
 ## Metabot in Slack

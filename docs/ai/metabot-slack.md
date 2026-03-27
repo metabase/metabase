@@ -17,7 +17,8 @@ From Slack you can ask Metabot to:
 - **Answer questions**: Create ad-hoc queries from natural language to answer your questions on the spot. You can click the link to save the question in Metabase.
 - **Show charts and tables**: Render static visualizations or tabular results in Slack. You can copy table results or download them as TSV.
 - **Work with CSVs**: [Upload a CSV](../databases/uploads.md) to Metabase, then ask follow-up questions about the data.
-- **Manage notifications**: Create [subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md) from within a channel. Metabot can find an answer and subscribe you to it in one go (though Metabot won't create new questions or dashboards).
+- **Create alerts**: Set up [alerts](../questions/alerts.md) on saved questions that get delivered to the current Slack channel. Metabot can find an answer and set up an alert for it in one go (though the question must already be saved).
+- **Create dashboard subscriptions**: Set up recurring [subscriptions](../dashboards/subscriptions.md) that deliver a dashboard's contents to the current Slack channel.
 
 ## Set up Metabot in Slack
 
@@ -50,6 +51,17 @@ To chat with Metabot, people will need to link their Slack account to their Meta
 ### Clearing context
 
 Metabot remembers the context of a thread. To clear context and start a fresh conversation, either begin a new direct message or @mention Metabot in a new thread in a channel.
+
+## Alerts and subscriptions
+
+From Slack, Metabot can create [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md) that deliver to the current Slack channel.
+
+Some caveats:
+
+- For goal-based alerts, the goal line must already be configured and saved on the question. Metabot can't add goal lines.
+- Metabot can't modify or delete existing alerts or subscriptions.
+- Alerts and subscriptions are delivered to the Slack channel where the conversation takes place. You can't redirect them to a different channel or to email.
+- Alerts can only be set on questions not metrics or ad-hoc queries.
 
 ## Notes on privacy
 
