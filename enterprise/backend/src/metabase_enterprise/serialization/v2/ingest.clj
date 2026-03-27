@@ -79,7 +79,9 @@
       (yaml/from-file {:key-fn parse-key})
       read-timestamps))
 
-(def legal-top-level-paths "Known top-level paths for directory with serialization output"
+(def legal-top-level-paths
+  "Known top-level paths for directory with serialization output.
+  We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
   #{"actions" "collections" "databases" "glossary" "python_libraries" "python-libraries" "snippets" "transforms"})
 
 (defn- ingest-all
