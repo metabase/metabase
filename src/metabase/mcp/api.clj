@@ -160,7 +160,7 @@
   (let [uri    (:uri params)
         access (mcp.resources/check-resource-access uri token-scopes)]
     (case access
-      :not-found    (jsonrpc-error id -32602 (str "Resource not found: " uri))
+      :not-found    (jsonrpc-error id -32602 "Resource not found or insufficient scope")
       :scope-denied (jsonrpc-error id -32602 "Resource not found or insufficient scope")
       :ok           (let [user-id     api/*current-user-id*
                           session-key (when user-id (create-embedding-session! user-id))]

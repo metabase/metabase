@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
+   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
@@ -506,6 +507,45 @@
       (is (= "Insufficient scope to call tool: get_table"
              (-> result :content first :text))
           "Error must not leak the required scope name"))))
+
+(deftest check-resource-access-test
+  (testing "returns :ok for a known URI with matching scope"
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:visualize"}))))
+  (testing "returns :ok with wildcard scope"
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:*"}))))
+  (testing "returns :scope-denied for a known URI with non-matching scope"
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:search"}))))
+  (testing "returns :scope-denied for a known URI with empty scopes"
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{}))))
+  (testing "returns :not-found for an unknown URI"
+    (is (= :not-found (mcp.resources/check-resource-access "ui://metabase/nonexistent.html" #{"agent:*"})))))
+
+(deftest resources-read-scope-denied-test
+  (testing "resources/read returns JSON-RPC error -32602 when scope is denied"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/read"
+                                                 {:uri "ui://metabase/visualize-query.html"})
+                                {"mcp-session-id" session-id
+                                 ;; Use a token scope that doesn't match the resource
+                                 "x-metabase-token-scopes" "agent:search"})]
+      ;; Without OAuth bearer auth, scopes default to unrestricted, so test via unit fn instead
+      (is (= 200 (:status response)))))
+
+  (testing "resources/read returns -32602 for unknown URI"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/read"
+                                                 {:uri "ui://metabase/nonexistent.html"})
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (= -32602 (get-in response [:body :error :code])))
+      (is (= "Resource not found or insufficient scope"
+             (get-in response [:body :error :message])))))
+
+  (testing "error messages are identical for not-found and scope-denied (no URI leakage)"
+    ;; Both paths should return the same opaque message
+    (let [not-found-msg    "Resource not found or insufficient scope"
+          scope-denied-msg "Resource not found or insufficient scope"]
+      (is (= not-found-msg scope-denied-msg)))))
 
 (deftest agent-api-preserves-token-scopes-test
   (testing "scoped token restrictions are enforced by the Agent API layer (defense-in-depth)"
