@@ -25,7 +25,7 @@ On **self-hosted Metabases**: you can [bring your own API key](#bring-your-own-a
 If you're on [Metabase Cloud](https://www.metabase.com/cloud/), you can add Metabot from the Metabase Store:
 
 1. Go to [store.metabase.com](https://store.metabase.com).
-2. Log in with your **Metabase Store account** (distinct from the account you use to log into your Metabase).
+2. Log in with your **Metabase Store account** (distinct from the account you use to log in to your Metabase).
 3. In the **Instances** tab, find the instance you'd like to add Metabot to, and click "Add Metabot AI".
 4. Pick the plan based on the number of requests you expect you'll need.
 
@@ -49,7 +49,7 @@ To enable AI features with your own API key:
 4. Click **Connect**.
 5. Select a **Model** from the dropdown. Available models are fetched from the provider using your API key.
 
-When your connection is active, you'll see a **CONNECTED** badge.
+When your connection is active, you'll see a **CONNECTED** badge. With your key connected, you get access to [Metabot](./metabot.md), inline SQL generation, the [MCP server](./mcp.md), and the [Agent API](./agent-api.md).
 
 ### Supported providers
 
@@ -162,7 +162,7 @@ On Metabase Cloud, Metabase's AI service selects models automatically. We use in
 
 We've intentionally limited what Metabot can do. Metabot can't create assets, write data, or send your data outside of your Metabase. Your questions and conversations remain private to your Metabase (unless you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses)). We do collect some metadata to gauge and improve usage.
 
-If you're using your own API key, your prompts and data are sent to your selected AI provider. Review your provider's data handling and privacy policies.
+If you're using your own API key, your prompts and data are sent to your selected AI provider. Review your provider's data handling and privacy policies. When using the [MCP server](./mcp.md), query results are sent to the connected MCP client.
 
 ### What Metabot can see
 
