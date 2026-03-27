@@ -63,79 +63,73 @@
        [k v]))))
 
 (defn- most-recent-query-execution-for-query [query]
-  ;; it might take a fraction of a second for the QueryExecution to show up, it's saved asynchronously. So wait a bit
-  ;; and retry if it's not there yet.
-  (letfn [(thunk []
-            (t2/select-one :model/QueryExecution
-                           :hash (qp.util/query-hash query)
-                           {:order-by [[:started_at :desc]]}))]
-    (loop [retries 3]
-      (or (thunk)
-          (when (pos? retries)
-            (Thread/sleep 100)
-            (recur (dec retries)))))))
+  (t2/select-one :model/QueryExecution
+                 :hash (qp.util/query-hash query)
+                 {:order-by [[:started_at :desc]]}))
 
 (def ^:private query-defaults
   {:middleware {:add-default-userland-constraints? true
                 :js-int-to-string? true}})
 
 (deftest basic-query-test
-  (testing "POST /api/dataset"
-    (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      (let [query (mt/mbql-query checkins
-                    {:aggregation [[:count]]})
-            result (mt/user-http-request :crowberto :post 202 "dataset" query)]
-        (testing "\nAPI Response"
-          (is (=?
-               {:data                   {:rows             [[1000]]
-                                         :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
-                                         :native_form      true
-                                         :results_timezone "UTC"}
-                :row_count              1
-                :status                 "completed"
-                :context                "ad-hoc"
-                :json_query             (-> (mt/mbql-query checkins
-                                              {:aggregation [[:count]]})
-                                            (assoc-in [:query :aggregation] [["count"]])
-                                            (assoc :type "query")
-                                            (merge query-defaults))
-                :started_at             true
-                :running_time           true
-                :average_execution_time nil
-                :database_id            (mt/id)}
-               (format-response result))))
-        (testing "\nSaved QueryExecution"
-          (is (= {:hash             true
-                  :row_count        1
-                  :result_rows      1
-                  :context          :ad-hoc
-                  :executor_id      (mt/user->id :crowberto)
-                  :native           false
-                  :pulse_id         nil
-                  :card_id          nil
-                  :is_sandboxed     false
-                  :dashboard_id     nil
-                  :transform_id     nil
-                  :lens_id          nil
-                  :lens_params      nil
-                  :error            nil
-                  :id               true
-                  :action_id        nil
-                  :cache_hit        false
-                  :cache_hash       false
-                  :parameterized    false
-                  :database_id      (mt/id)
-                  :started_at       true
-                  :running_time     true
-                  :embedding_client nil
-                  :embedding_version nil}
-                 (format-response (most-recent-query-execution-for-query query)))))))))
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (testing "POST /api/dataset"
+      (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
+        (let [query  (mt/mbql-query checkins
+                       {:aggregation [[:count]]})
+              result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+          (testing "\nAPI Response"
+            (is (=?
+                 {:data                   {:rows             [[1000]]
+                                           :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
+                                           :native_form      true
+                                           :results_timezone "UTC"}
+                  :row_count              1
+                  :status                 "completed"
+                  :context                "ad-hoc"
+                  :json_query             (-> (mt/mbql-query checkins
+                                                {:aggregation [[:count]]})
+                                              (assoc-in [:query :aggregation] [["count"]])
+                                              (assoc :type "query")
+                                              (merge query-defaults))
+                  :started_at             true
+                  :running_time           true
+                  :average_execution_time nil
+                  :database_id            (mt/id)}
+                 (format-response result))))
+          (testing "\nSaved QueryExecution"
+            (is (= {:hash             true
+                    :row_count        1
+                    :result_rows      1
+                    :context          :ad-hoc
+                    :executor_id      (mt/user->id :crowberto)
+                    :native           false
+                    :pulse_id         nil
+                    :card_id          nil
+                    :is_sandboxed     false
+                    :dashboard_id     nil
+                    :transform_id     nil
+                    :lens_id          nil
+                    :lens_params      nil
+                    :error            nil
+                    :id               true
+                    :action_id        nil
+                    :cache_hit        false
+                    :cache_hash       false
+                    :parameterized    false
+                    :database_id      (mt/id)
+                    :started_at       true
+                    :running_time     true
+                    :embedding_client nil
+                    :embedding_version nil}
+                   (format-response (most-recent-query-execution-for-query query))))))))))
 
 (deftest failure-test
   ;; clear out recent query executions!
   (t2/delete! :model/QueryExecution)
-  (testing "POST /api/dataset"
-    (testing "\nA failed query should return a 400 response from the API"
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (testing "POST /api/dataset"
+      (testing "\nA failed query should return a 400 response from the API")
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
       ;; that it exists and contains the substring "Syntax error in SQL statement"
       (let [query  {:database (mt/id)
