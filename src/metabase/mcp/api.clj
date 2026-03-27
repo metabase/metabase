@@ -38,7 +38,7 @@
   "Sessions expire after 1 hour."
   (* 60 60 1000))
 
-(defn delete-embedding-session!
+(defn- delete-embedding-session!
   "Delete a Metabase session by its session key (hashed lookup)."
   [session-key]
   (t2/delete! :model/Session :key_hashed (session/hash-session-key session-key)))
@@ -141,10 +141,10 @@
         arguments (or (:arguments params) {})]
     (jsonrpc-response id (mcp.tools/call-tool token-scopes tool-name arguments))))
 
-(defn- handle-resources-list [id _params]
-  (jsonrpc-response id (mcp.resources/list-resources)))
+(defn- handle-resources-list [id _params token-scopes]
+  (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
 
-(defn create-embedding-session!
+(defn- create-embedding-session!
   "Create a Metabase session for embedding SDK auth.
    Returns the session key (the value the SDK uses as X-Metabase-Session)."
   [user-id]
@@ -178,7 +178,7 @@
         "notifications/initialized" (do (mark-session-initialized! session-id) nil)
         "tools/list"                (handle-tools-list id params token-scopes)
         "tools/call"                (handle-tools-call id params token-scopes)
-        "resources/list"            (handle-resources-list id params)
+        "resources/list"            (handle-resources-list id params token-scopes)
         "resources/read"            (when-initialized id session-id (handle-resources-read id params session-id))
         "ping"                      (handle-ping id params)
         (if id

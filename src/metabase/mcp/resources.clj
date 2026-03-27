@@ -3,6 +3,7 @@
    that renders interactive Metabase visualizations via the Embedding SDK."
   (:require
    [metabase.config.core :as config]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -18,11 +19,12 @@
 (mu/defn- register-ui-resource!
   [key      :- :keyword
    uri      :- :string
+   scope    :- :string
    resource :- [:map
                 [:name :string]
                 [:description :string]
                 [:render-fn fn?]]]
-  (let [resource (-> (assoc resource :uri uri)
+  (let [resource (-> (assoc resource :uri uri :scope scope)
                      (update :mimeType #(or % "text/html;profile=mcp-app")))]
     (swap! registry #(-> %
                          (assoc-in [:key->uri key] uri)
@@ -30,13 +32,13 @@
 
 (mu/defn- register-ui-tool!
   [resource-key :- :keyword
-   scope        :- :string
    tool         :- [:map
                     [:name :string]
                     [:description :string]
                     [:inputSchema :map]]]
   (if-let [uri (get-in @registry [:key->uri resource-key])]
-    (let [tool (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
+    (let [scope (get-in @registry [:uri->resource uri :scope])
+          tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
       (swap! registry assoc-in [:uri->tool uri] tool))
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
 
@@ -46,9 +48,11 @@
   (vals (:uri->tool @registry)))
 
 (defn list-resources
-  "Return the list of available MCP resources."
-  []
-  {:resources (for [resource (vals (:uri->resource @registry))]
+  "Return the list of available MCP resources.
+   Only resources whose scope matches `token-scopes` are included."
+  [token-scopes]
+  {:resources (for [resource (vals (:uri->resource @registry))
+                    :when (mcp.scope/matches? token-scopes (:scope resource))]
                 (-> (select-keys resource [:uri :name :description :mimeType])
                     (assoc :_meta {:ui {:csp (let [url (system/site-url)]
                                                {:connectDomains  [url]
@@ -71,6 +75,7 @@
 (register-ui-resource!
  :visualize-query
  "ui://metabase/visualize-query.html"
+ "agent:visualize"
  {:name        "Visualize Query"
   :description "Interactive Metabase SDK visualization for a query"
   :render-fn   (fn [opts]
@@ -87,7 +92,6 @@
 
 (register-ui-tool!
  :visualize-query
- "agent:visualize"
  {:name        "visualize_query"
   :description "Visualize a previously constructed query as an interactive chart or table."
   :inputSchema {:type       "object"
