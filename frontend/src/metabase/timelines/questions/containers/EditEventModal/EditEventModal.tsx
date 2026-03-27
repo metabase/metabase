@@ -2,9 +2,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { TimelineEvents } from "metabase/entities/timeline-events";
-import { connect } from "metabase/utils/redux";
 import { addUndo } from "metabase/redux/undo";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
+import { connect } from "metabase/utils/redux";
 import type { TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

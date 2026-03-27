@@ -11,11 +11,11 @@ import { Markdown } from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { modelToUrl } from "metabase/utils/urls";
-import { getUserName } from "metabase/utils/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
+import { modelToUrl } from "metabase/utils/urls";
+import { getUserName } from "metabase/utils/user";
 import type {
   CollectionItem,
   ListCollectionItemsSortColumn,

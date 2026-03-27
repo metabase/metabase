@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import { getLocation } from "metabase/selectors/routing";
 import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { getLocation } from "metabase/selectors/routing";
 
 import { Metabot } from "./Metabot";
 

@@ -24,9 +24,9 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { checkNotNull } from "metabase/utils/types";
 import * as Urls from "metabase/utils/urls";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   Database,

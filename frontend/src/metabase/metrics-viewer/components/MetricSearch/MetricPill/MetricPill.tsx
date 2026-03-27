@@ -4,13 +4,13 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
+import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import {
   dataStudioMetric,
   dataStudioPublishedTableMeasure,
 } from "metabase/utils/urls/data-studio";
-import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 

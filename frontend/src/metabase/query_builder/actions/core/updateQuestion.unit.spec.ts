@@ -1,7 +1,7 @@
 import { createMockEntitiesState } from "__support__/store";
-import { checkNotNull } from "metabase/utils/types";
 import * as questionActions from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";

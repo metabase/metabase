@@ -1,7 +1,7 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 
-import { combineEntities, createEntity } from "metabase/utils/entities";
 import requestsReducer from "metabase/redux/requests";
+import { combineEntities, createEntity } from "metabase/utils/entities";
 
 function getObject(id) {
   return { id: id, name: `object${id}` };

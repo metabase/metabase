@@ -8,9 +8,9 @@ import type {
   ColumnOptions,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Checkbox, Flex } from "metabase/ui";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import {
   createMockSettingsState,
   createMockState,

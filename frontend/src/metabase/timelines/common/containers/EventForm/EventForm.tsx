@@ -1,5 +1,5 @@
-import { connect } from "metabase/utils/redux";
 import { getSetting } from "metabase/selectors/settings";
+import { connect } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 
 import type {

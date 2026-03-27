@@ -75,6 +75,8 @@ import { denormalize, normalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 
+import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
+import { addUndo } from "metabase/redux/undo";
 import { DELETE, GET, POST, PUT } from "metabase/utils/api";
 import {
   combineReducers,
@@ -84,8 +86,6 @@ import {
   withCachedDataAndRequestState,
   withRequestState,
 } from "metabase/utils/redux";
-import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
-import { addUndo } from "metabase/redux/undo";
 
 const EMPTY_ENTITY_QUERY = {};
 

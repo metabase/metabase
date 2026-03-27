@@ -2,14 +2,14 @@ import { t } from "ttag";
 
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { ViewFooterButton } from "metabase/common/components/ViewFooterButton";
-import { trackSimpleEvent } from "metabase/utils/analytics";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   onCloseTimelines,
   onOpenTimelines,
 } from "metabase/query_builder/actions";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Indicator } from "metabase/ui";
+import { trackSimpleEvent } from "metabase/utils/analytics";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;

@@ -8,8 +8,8 @@ import {
   useGetPersistedInfoQuery,
   useListPersistedInfoQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 import { PersistedModelSchema } from "metabase/schema";
+import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 
 const REFRESH_CACHE = "metabase/entities/persistedModels/REFRESH_CACHE";
 

@@ -7,9 +7,9 @@ import { t } from "ttag";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/utils/redux";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Icon } from "metabase/ui";
+import { connect } from "metabase/utils/redux";
 import type { ConcreteTableId, Segment, Table } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

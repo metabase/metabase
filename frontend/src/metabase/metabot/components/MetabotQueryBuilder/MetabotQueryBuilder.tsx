@@ -8,8 +8,6 @@ import _ from "underscore";
 
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
-import { useDispatch } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useRouter } from "metabase/router";
@@ -22,6 +20,8 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
 import { useMetabotAgent, useMetabotEnabledEmbeddingAware } from "../../hooks";
 

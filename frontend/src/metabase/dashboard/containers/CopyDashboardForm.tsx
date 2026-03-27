@@ -19,9 +19,9 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { Group, Icon, Tooltip } from "metabase/ui";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import * as Errors from "metabase/utils/errors";
-import { Group, Icon, Tooltip } from "metabase/ui";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
 import {

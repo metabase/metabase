@@ -2,9 +2,9 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Timelines } from "metabase/entities/timelines";
+import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
 import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
 import type { Timeline } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

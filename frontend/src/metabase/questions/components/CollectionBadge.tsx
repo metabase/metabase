@@ -3,9 +3,9 @@ import type { ComponentType, PropsWithChildren } from "react";
 import { Badge } from "metabase/common/components/Badge";
 import { Collections } from "metabase/entities/collections";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getIcon } from "metabase/utils/icon";
 import { modelToUrl } from "metabase/utils/urls/modelToUrl";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   CollectionId,
   Collection as CollectionType,

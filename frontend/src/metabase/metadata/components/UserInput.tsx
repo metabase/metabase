@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { isEmail } from "metabase/utils/email";
 import { Avatar, Flex, Icon, Select, type SelectProps } from "metabase/ui";
+import { isEmail } from "metabase/utils/email";
 import type { User, UserId } from "metabase-types/api";
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   email: string | null;

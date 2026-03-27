@@ -5,10 +5,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
-import { connect, useDispatch, useSelector } from "metabase/utils/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Loader } from "metabase/ui";
+import { connect, useDispatch, useSelector } from "metabase/utils/redux";
 import type { GroupId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

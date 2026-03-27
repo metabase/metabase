@@ -22,7 +22,6 @@ import { Api } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { RouterProvider } from "metabase/router";
@@ -30,6 +29,7 @@ import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-va
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 

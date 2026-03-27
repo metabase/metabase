@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { timelineEventApi, useGetTimelineEventQuery } from "metabase/api";
+import { TimelineEventSchema } from "metabase/schema";
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
 } from "metabase/utils/entities";
-import { TimelineEventSchema } from "metabase/schema";
 
 /**
  * @deprecated use "metabase/api" instead

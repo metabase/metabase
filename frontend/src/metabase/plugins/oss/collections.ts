@@ -3,9 +3,9 @@ import type { ComponentType } from "react";
 import { t } from "ttag";
 
 import { Messages } from "metabase/admin/permissions/constants/messages";
-import { getIconBase } from "metabase/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconProps } from "metabase/ui";
+import { getIconBase } from "metabase/utils/icon";
 import type {
   BaseEntityId,
   Bookmark,

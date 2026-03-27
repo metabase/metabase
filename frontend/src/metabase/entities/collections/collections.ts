@@ -13,13 +13,13 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import { CollectionSchema } from "metabase/schema";
+import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
 } from "metabase/utils/entities";
-import { CollectionSchema } from "metabase/schema";
-import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
   Collection,
   CreateCollectionRequest,

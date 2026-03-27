@@ -5,6 +5,8 @@ import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type { GroupIds, UserGroupType } from "metabase/admin/types";
 import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
+import { Box, Icon, Popover } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import {
   canEditMembership,
   getGroupNameLocalized,
@@ -12,8 +14,6 @@ import {
   isDefaultGroup,
 } from "metabase/utils/groups";
 import { isNotNull } from "metabase/utils/types";
-import { Box, Icon, Popover } from "metabase/ui";
-import { color } from "metabase/ui/colors";
 import type { GroupInfo } from "metabase-types/api";
 
 function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {

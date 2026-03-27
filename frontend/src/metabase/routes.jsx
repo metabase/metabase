@@ -36,7 +36,6 @@ import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
-import { trackPageView } from "metabase/utils/analytics";
 import { MetabotQueryBuilder } from "metabase/metabot/components/MetabotQueryBuilder";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
@@ -68,6 +67,7 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { trackPageView } from "metabase/utils/analytics";
 
 import {
   CanAccessDataModel,

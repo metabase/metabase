@@ -5,12 +5,12 @@ import {
 } from "@reduxjs/toolkit";
 import { compose, pick } from "underscore";
 
-import { parseSearchOptions } from "metabase/utils/browser";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
   setDataPicker,
   setEntityTypes,
 } from "metabase/redux/embedding-data-picker";
+import { parseSearchOptions } from "metabase/utils/browser";
 import type {
   InteractiveEmbeddingOptions,
   InteractiveEmbeddingOptionsState,

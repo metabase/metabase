@@ -2,8 +2,8 @@ import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
 import { Dashboards } from "metabase/entities/dashboards";
-import { createThunkAction } from "metabase/utils/redux";
 import { CardApi } from "metabase/services";
+import { createThunkAction } from "metabase/utils/redux";
 import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
 import type { DashCardId, ParameterId } from "metabase-types/api";
 import type {

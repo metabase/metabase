@@ -5,9 +5,9 @@ import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Collections } from "metabase/entities/collections";
+import { Modal } from "metabase/ui";
 import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { Modal } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 

@@ -1,9 +1,9 @@
+import { loadSettings } from "metabase/redux/settings";
 import {
   isValidColorScheme,
   setUserColorSchemeAfterUpdate,
 } from "metabase/utils/color-scheme";
 import MetabaseSettings from "metabase/utils/settings";
-import { loadSettings } from "metabase/redux/settings";
 import type {
   EnterpriseSettings,
   PasswordResetTokenStatus,

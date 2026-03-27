@@ -1,9 +1,9 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
+import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { formatValue } from "metabase/utils/formatting";
 import { isEmpty } from "metabase/utils/validate";
-import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
-import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";

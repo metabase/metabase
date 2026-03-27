@@ -5,9 +5,6 @@ import { replace } from "react-router-redux";
 
 import { Questions } from "metabase/entities/questions";
 import { Snippets } from "metabase/entities/snippets";
-import { deserializeCardFromUrl } from "metabase/utils/card";
-import { isNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
@@ -16,6 +13,9 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
+import { deserializeCardFromUrl } from "metabase/utils/card";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

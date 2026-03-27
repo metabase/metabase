@@ -1,8 +1,8 @@
+import { openUrl } from "metabase/redux/app";
+import { getMetadata } from "metabase/selectors/metadata";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import { createThunkAction } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { openUrl } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardCard, VirtualCard } from "metabase-types/api";

@@ -7,12 +7,12 @@ import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { Heading } from "metabase/visualizations/visualizations/Heading";

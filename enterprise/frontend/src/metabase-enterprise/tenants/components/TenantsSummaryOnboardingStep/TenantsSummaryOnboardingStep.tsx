@@ -5,10 +5,10 @@ import { jt, msgid, ngettext, t } from "ttag";
 
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
 import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
-import { conjunct } from "metabase/utils/formatting/strings";
-import { useDispatch } from "metabase/utils/redux";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
+import { conjunct } from "metabase/utils/formatting/strings";
+import { useDispatch } from "metabase/utils/redux";
 
 import { useListTenantsQuery } from "../../../api/tenants";
 import { getIsolationFieldConfig } from "../CreateTenantsOnboardingStep/isolation-field-config";

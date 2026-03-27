@@ -11,13 +11,13 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";

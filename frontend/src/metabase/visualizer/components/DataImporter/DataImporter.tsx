@@ -3,9 +3,6 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { trackSimpleEvent } from "metabase/utils/analytics";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   Box,
   Button,
@@ -16,6 +13,9 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
+import { trackSimpleEvent } from "metabase/utils/analytics";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
 import {

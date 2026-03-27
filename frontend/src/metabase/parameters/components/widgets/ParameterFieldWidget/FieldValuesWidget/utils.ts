@@ -1,9 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { ComboboxItem } from "metabase/ui";
 import { isTransientId } from "metabase/utils/dashboard";
 import { stripId } from "metabase/utils/formatting";
-import type { ComboboxItem } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
   canListFieldValues,

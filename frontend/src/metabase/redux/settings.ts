@@ -1,8 +1,8 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import { sessionApi } from "metabase/api";
-import { createAsyncThunk } from "metabase/utils/redux";
 import { SettingsApi } from "metabase/services";
+import { createAsyncThunk } from "metabase/utils/redux";
 import type { Settings, UserSettings } from "metabase-types/api";
 
 export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";

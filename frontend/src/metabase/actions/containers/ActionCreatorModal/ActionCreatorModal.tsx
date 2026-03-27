@@ -6,9 +6,9 @@ import _ from "underscore";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
 import { Questions } from "metabase/entities/questions";
+import { setErrorPage } from "metabase/redux/app";
 import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { setErrorPage } from "metabase/redux/app";
 import type Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor, State } from "metabase-types/store";

@@ -7,13 +7,13 @@ import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { trackSimpleEvent } from "metabase/utils/analytics";
-import { useSelector } from "metabase/utils/redux";
-import { isSyncInProgress } from "metabase/utils/syncing";
 import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
 import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
+import { trackSimpleEvent } from "metabase/utils/analytics";
+import { useSelector } from "metabase/utils/redux";
+import { isSyncInProgress } from "metabase/utils/syncing";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { trackBrowseXRayClicked, trackTableClick } from "../analytics";

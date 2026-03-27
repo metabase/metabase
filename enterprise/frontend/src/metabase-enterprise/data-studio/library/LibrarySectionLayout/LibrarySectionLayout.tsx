@@ -23,8 +23,6 @@ import {
 import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
 import {
@@ -41,6 +39,8 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Collection, CollectionId } from "metabase-types/api";
 

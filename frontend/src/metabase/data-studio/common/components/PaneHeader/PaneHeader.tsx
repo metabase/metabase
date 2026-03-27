@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { useSelector } from "metabase/utils/redux";
 import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { getLocation } from "metabase/selectors/routing";
@@ -18,6 +17,7 @@ import {
   type StackProps,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import S from "./PaneHeader.module.css";
 import type { PaneHeaderTab } from "./types";

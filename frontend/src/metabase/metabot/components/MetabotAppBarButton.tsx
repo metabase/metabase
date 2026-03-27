@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
-import { METAKEY } from "metabase/utils/browser";
 import {
   useMetabotAgent,
   useMetabotEnabledEmbeddingAware,
 } from "metabase/metabot/hooks";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
 
 import { trackMetabotChatOpened } from "../analytics";
 

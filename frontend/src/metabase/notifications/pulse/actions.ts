@@ -3,15 +3,15 @@ import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
 import { Pulses } from "metabase/entities/pulses";
+import { setErrorPage } from "metabase/redux/app";
+import { addUndo } from "metabase/redux/undo";
+import { PulseApi } from "metabase/services";
 import {
   NEW_PULSE_TEMPLATE,
   createChannel,
   getDefaultChannel,
 } from "metabase/utils/pulse";
 import { createThunkAction } from "metabase/utils/redux";
-import { setErrorPage } from "metabase/redux/app";
-import { addUndo } from "metabase/redux/undo";
-import { PulseApi } from "metabase/services";
 import type {
   ChannelApiResponse,
   ChannelSpec,

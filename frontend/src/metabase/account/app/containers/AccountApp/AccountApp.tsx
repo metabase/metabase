@@ -1,8 +1,8 @@
 import type { Location } from "history";
 import { push } from "react-router-redux";
 
-import { connect } from "metabase/utils/redux";
 import { getUser } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 
 import AccountLayout from "../../components/AccountLayout";

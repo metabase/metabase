@@ -15,6 +15,7 @@ import {
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import {
   getGroupNameLocalized,
   getGroupSortOrder,
@@ -22,7 +23,6 @@ import {
   isDefaultGroup,
 } from "metabase/utils/groups";
 import { isNotNull } from "metabase/utils/types";
-import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
   CollectionId,

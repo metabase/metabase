@@ -2,10 +2,10 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useCollectionQuery, useTableQuery } from "metabase/common/hooks";
+import { clearAllUploads, getAllUploads } from "metabase/redux/uploads";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import { isUploadAborted, isUploadInProgress } from "metabase/utils/uploads";
 import { isEmpty } from "metabase/utils/validate";
-import { clearAllUploads, getAllUploads } from "metabase/redux/uploads";
 import type { CollectionId, TableId } from "metabase-types/api";
 import type { FileUpload } from "metabase-types/store/upload";
 

@@ -7,8 +7,8 @@ import {
   isInDbTree,
 } from "metabase/common/components/Pickers";
 import { replaceCard } from "metabase/dashboard/actions";
-import { useDispatch } from "metabase/utils/redux";
 import { Button, Flex } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 
 import type { VisualizationDefinition, VisualizationProps } from "../types";

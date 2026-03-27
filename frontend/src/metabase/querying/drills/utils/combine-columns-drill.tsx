@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/utils/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Box, Title } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type {
   ClickActionPopoverProps,
   Drill,

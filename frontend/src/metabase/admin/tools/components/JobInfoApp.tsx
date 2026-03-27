@@ -12,8 +12,8 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/utils/redux";
 import { Flex, Stack } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type { Job } from "metabase-types/api";
 
 interface SchedulerInfoProps {

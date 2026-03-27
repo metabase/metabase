@@ -2,11 +2,11 @@ import { Route } from "react-router";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 
-import { useDispatch } from "metabase/utils/redux";
 import {
   useMetabotAgent,
   useMetabotEnabledEmbeddingAware,
 } from "metabase/metabot/hooks";
+import { useDispatch } from "metabase/utils/redux";
 
 export const getMetabotQuickLinks = () => {
   return (

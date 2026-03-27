@@ -6,13 +6,13 @@ import {
   useGetActionQuery,
   useListActionsQuery,
 } from "metabase/api";
+import { ActionSchema } from "metabase/schema";
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
 } from "metabase/utils/entities";
 import { createThunkAction } from "metabase/utils/redux";
-import { ActionSchema } from "metabase/schema";
 import type {
   CreateActionRequest,
   GetActionRequest,

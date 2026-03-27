@@ -1,6 +1,6 @@
+import { UserApi } from "metabase/services";
 import { createThunkAction } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
-import { UserApi } from "metabase/services";
 
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {

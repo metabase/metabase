@@ -54,12 +54,12 @@ import {
   selectTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
-import { connect } from "metabase/utils/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,
   getUserIsAdmin,
 } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
 import type { State } from "metabase-types/store";
 
 import {

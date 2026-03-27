@@ -5,11 +5,11 @@ import { updateSetting } from "metabase/admin/settings/settings";
 import { useGetVersionInfoQuery } from "metabase/api";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { useSetting } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import S from "./WhatsNewNotification.module.css";
 import Sparkles from "./sparkles.svg?component";

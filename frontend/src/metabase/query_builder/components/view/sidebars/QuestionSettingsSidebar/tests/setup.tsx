@@ -10,8 +10,8 @@ import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,

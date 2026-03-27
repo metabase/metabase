@@ -1,9 +1,9 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { Modal } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { Modal } from "metabase/ui";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 

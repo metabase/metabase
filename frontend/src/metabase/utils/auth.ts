@@ -1,5 +1,5 @@
-import { isResourceNotFoundError } from "metabase/utils/errors/messages";
 import { SessionApi } from "metabase/services";
+import { isResourceNotFoundError } from "metabase/utils/errors/messages";
 
 export const deleteSession = async () => {
   try {

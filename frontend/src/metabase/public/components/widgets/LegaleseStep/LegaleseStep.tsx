@@ -2,9 +2,9 @@ import { jt, t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useDispatch } from "metabase/utils/redux";
 import { LegaleseStepDetailsContainer } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep.styled";
 import { Button, Center, Stack, Text, Title } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 export const LegaleseStep = ({
   goToNextStep,

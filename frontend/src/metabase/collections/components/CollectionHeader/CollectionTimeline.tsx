@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
+import { Indicator, Tooltip } from "metabase/ui";
 import { trackSimpleEvent } from "metabase/utils/analytics";
 import * as Urls from "metabase/utils/urls";
-import { Indicator, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";

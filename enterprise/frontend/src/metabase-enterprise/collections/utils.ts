@@ -1,7 +1,7 @@
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
+import type { ItemWithCollection } from "metabase/plugins";
 import type { IconData, ObjectWithModel } from "metabase/utils/icon";
 import { getIconBase } from "metabase/utils/icon";
-import type { ItemWithCollection } from "metabase/plugins";
 import type {
   Bookmark,
   Collection,

@@ -13,9 +13,9 @@ import {
 } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
-import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";

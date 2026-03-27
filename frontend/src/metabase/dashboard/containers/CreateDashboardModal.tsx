@@ -4,9 +4,9 @@ import { t } from "ttag";
 
 import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
+import { Modal, type ModalProps } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { Modal, type ModalProps } from "metabase/ui";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import { CreateDashboardForm } from "./CreateDashboardForm";

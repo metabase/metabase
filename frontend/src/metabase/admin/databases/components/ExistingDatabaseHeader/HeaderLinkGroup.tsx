@@ -1,9 +1,9 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Button, Flex, Icon } from "metabase/ui";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import { browseDatabase } from "metabase/utils/urls";
-import { Button, Flex, Icon } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
 interface Props {

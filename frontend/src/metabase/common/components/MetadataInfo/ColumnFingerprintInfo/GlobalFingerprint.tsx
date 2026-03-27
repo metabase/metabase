@@ -1,9 +1,9 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
+import { getMetadata } from "metabase/selectors/metadata";
 import { formatNumber } from "metabase/utils/formatting";
 import { useSelector } from "metabase/utils/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
 import {

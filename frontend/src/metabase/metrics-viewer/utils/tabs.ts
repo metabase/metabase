@@ -1,8 +1,8 @@
-import { getObjectEntries } from "metabase/utils/objects";
 import type { DimensionDescriptor } from "metabase/metrics/common/utils/dimension-descriptors";
 import { getDimensionDescriptors } from "metabase/metrics/common/utils/dimension-descriptors";
 import { GEO_SUBTYPE_PRIORITY } from "metabase/metrics/common/utils/dimension-types";
 import type { IconName } from "metabase/ui";
+import { getObjectEntries } from "metabase/utils/objects";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 

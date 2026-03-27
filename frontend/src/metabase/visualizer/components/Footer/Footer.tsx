@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { Button, Flex } from "metabase/ui";
 import { trackSimpleEvent } from "metabase/utils/analytics";
 import { useDispatch, useSelector } from "metabase/utils/redux";
-import { Button, Flex } from "metabase/ui";
 import {
   getDatasets,
   getIsLoading,

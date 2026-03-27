@@ -3,10 +3,10 @@ import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import { trackSimpleEvent } from "metabase/utils/analytics";
-import { useSelector } from "metabase/utils/redux";
 import { subscribeToNewsletter } from "metabase/setup/utils";
 import { Switch, Title } from "metabase/ui";
+import { trackSimpleEvent } from "metabase/utils/analytics";
+import { useSelector } from "metabase/utils/redux";
 
 import { getIsStepActive, getUserEmail } from "../../selectors";
 

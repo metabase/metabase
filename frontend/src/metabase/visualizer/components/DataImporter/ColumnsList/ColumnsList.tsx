@@ -2,9 +2,9 @@ import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { Box, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
 import { trackSimpleEvent } from "metabase/utils/analytics";
 import { useDispatch, useSelector } from "metabase/utils/redux";
-import { Box, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
 import { useIsCardPristine } from "metabase/visualizer/hooks/use-is-card-pristine";

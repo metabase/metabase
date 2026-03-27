@@ -1,9 +1,9 @@
 import innerText from "react-innertext";
 
 import DashboardS from "metabase/css/dashboard.module.css";
+import { Badge, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import { formatValue } from "metabase/utils/formatting/value";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { Badge, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";

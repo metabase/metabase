@@ -15,9 +15,9 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { Button, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useSelector } from "metabase/utils/redux";
-import { Button, Stack } from "metabase/ui";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import {

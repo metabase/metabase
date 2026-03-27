@@ -11,6 +11,7 @@ import {
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
 import { Link } from "metabase/common/components/Link/Link";
+import { Group, Icon } from "metabase/ui";
 import {
   canArchive,
   formatNotificationSchedule,
@@ -18,7 +19,6 @@ import {
   getNotificationEnabledChannelsMap,
 } from "metabase/utils/notifications";
 import * as Urls from "metabase/utils/urls";
-import { Group, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 type NotificationCardProps = {

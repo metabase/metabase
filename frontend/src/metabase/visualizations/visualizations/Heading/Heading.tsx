@@ -15,11 +15,11 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { getSetting } from "metabase/selectors/settings";
+import { Box, Flex } from "metabase/ui";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import { useSelector } from "metabase/utils/redux";
 import { isEmpty } from "metabase/utils/validate";
-import { getSetting } from "metabase/selectors/settings";
-import { Box, Flex } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,

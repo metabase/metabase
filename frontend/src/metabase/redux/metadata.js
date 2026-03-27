@@ -7,9 +7,9 @@ import { Fields } from "metabase/entities/fields";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { isProduction } from "metabase/env";
+import { RevisionsApi } from "metabase/services";
 import { entityCompatibleQuery } from "metabase/utils/entities";
 import { createThunkAction, fetchData } from "metabase/utils/redux";
-import { RevisionsApi } from "metabase/services";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 // NOTE: All of these actions are deprecated. Use metadata entities directly.

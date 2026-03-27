@@ -5,13 +5,13 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import { DocumentSchema } from "metabase/schema";
+import { color } from "metabase/ui/utils/colors";
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
 } from "metabase/utils/entities";
-import { DocumentSchema } from "metabase/schema";
-import { color } from "metabase/ui/utils/colors";
 import type {
   Collection,
   CopyDocumentRequest,

@@ -16,8 +16,6 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";
-import { capitalize, inflect } from "metabase/utils/formatting";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   dismissUndo,
   pauseUndo,
@@ -25,6 +23,8 @@ import {
   resumeUndo,
 } from "metabase/redux/undo";
 import { Portal, Progress } from "metabase/ui";
+import { capitalize, inflect } from "metabase/utils/formatting";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Undo } from "metabase-types/store/undo";
 
 import CS from "./UndoListing.module.css";

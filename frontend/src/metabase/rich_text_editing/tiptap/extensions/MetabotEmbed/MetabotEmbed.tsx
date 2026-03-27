@@ -20,10 +20,10 @@ import {
   loadMetadataForDocumentCard,
 } from "metabase/documents/documents.slice";
 import { getCurrentDocument } from "metabase/documents/selectors";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
 import { wrapCardEmbed } from "../shared/layout";

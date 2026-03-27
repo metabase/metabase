@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { useDispatch } from "metabase/utils/redux";
 import {
   useMetabotAgent,
   useMetabotEnabledEmbeddingAware,
 } from "metabase/metabot/hooks";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import { useDispatch } from "metabase/utils/redux";
 
 import { trackQueryFixClicked } from "../../analytics";
 

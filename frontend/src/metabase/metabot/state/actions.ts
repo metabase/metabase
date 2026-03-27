@@ -9,10 +9,10 @@ import {
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { createAsyncThunk } from "metabase/utils/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
+import { createAsyncThunk } from "metabase/utils/redux";
 import type {
   JSONValue,
   MetabotAgentRequest,

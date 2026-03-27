@@ -1,7 +1,7 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
-import Settings from "metabase/utils/settings";
 import { getUserId } from "metabase/selectors/user";
+import Settings from "metabase/utils/settings";
 
 export const trackPageView = (url) => {
   if (!url || !Settings.trackingEnabled()) {

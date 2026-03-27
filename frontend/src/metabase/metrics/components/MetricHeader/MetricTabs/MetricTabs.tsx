@@ -5,9 +5,9 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/utils/redux";
 import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

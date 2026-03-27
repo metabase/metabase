@@ -2,10 +2,10 @@ import { match } from "ts-pattern";
 
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import type { MenuItem } from "metabase/documents/components/Editor/shared/MenuComponents";
+import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
 import { getIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
 import { type UrlableModel, modelToUrl } from "metabase/utils/urls/modelToUrl";
-import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
 import type {
   Database,
   MentionableUser,

@@ -10,6 +10,8 @@ import {
 import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useToast } from "metabase/common/hooks/use-toast";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
+import { Box, Button, Text } from "metabase/ui";
 import {
   canEditMembership,
   getGroupNameLocalized,
@@ -17,8 +19,6 @@ import {
   isDefaultGroup,
 } from "metabase/utils/groups";
 import { useDispatch } from "metabase/utils/redux";
-import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
-import { Box, Button, Text } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { Alert } from "./Alert";

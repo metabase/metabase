@@ -2,6 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
+import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -9,8 +11,6 @@ import {
   isDefaultGroup,
 } from "metabase/utils/groups";
 import { isNotNull } from "metabase/utils/types";
-import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
-import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
 import type { GroupInfo, Member } from "metabase-types/api";
 
 import { GroupSummary } from "../GroupSummary";

@@ -18,6 +18,9 @@ import {
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { addUndo } from "metabase/redux/undo";
+import { Box, Flex, type FlexProps } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
 import {
   GRID_ASPECT_RATIO,
@@ -27,9 +30,6 @@ import {
   MIN_ROW_HEIGHT,
 } from "metabase/utils/dashboard_grid";
 import { connect } from "metabase/utils/redux";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { addUndo } from "metabase/redux/undo";
-import { Box, Flex, type FlexProps } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {

@@ -24,8 +24,6 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import type { OptionsType } from "metabase/utils/formatting/types";
-import { useDispatch } from "metabase/utils/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi } from "metabase/services";
 import {
@@ -38,6 +36,8 @@ import {
   Tooltip,
   rem,
 } from "metabase/ui";
+import type { OptionsType } from "metabase/utils/formatting/types";
+import { useDispatch } from "metabase/utils/redux";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";

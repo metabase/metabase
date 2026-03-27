@@ -3,6 +3,13 @@ import { type CSSProperties, Component } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import {
+  Box,
+  type BoxProps,
+  SegmentedControl,
+  type SelectOption,
+} from "metabase/ui";
 import {
   AM_PM_OPTIONS,
   HOUR_OPTIONS,
@@ -12,13 +19,6 @@ import {
 } from "metabase/utils/date-time";
 import { capitalize } from "metabase/utils/formatting/strings";
 import { useSelector } from "metabase/utils/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
-import {
-  Box,
-  type BoxProps,
-  SegmentedControl,
-  type SelectOption,
-} from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,

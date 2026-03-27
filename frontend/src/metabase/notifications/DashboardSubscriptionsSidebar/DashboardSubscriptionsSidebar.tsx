@@ -8,12 +8,6 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Pulses } from "metabase/entities/pulses";
 import {
-  NEW_PULSE_TEMPLATE,
-  cleanPulse,
-  createChannel,
-} from "metabase/utils/pulse";
-import { connect } from "metabase/utils/redux";
-import {
   AddEditEmailSidebar,
   AddEditSlackSidebar,
 } from "metabase/notifications/AddEditSidebar/AddEditSidebar";
@@ -32,6 +26,12 @@ import {
 } from "metabase/notifications/pulse/selectors";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { UserApi } from "metabase/services";
+import {
+  NEW_PULSE_TEMPLATE,
+  cleanPulse,
+  createChannel,
+} from "metabase/utils/pulse";
+import { connect } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,

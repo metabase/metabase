@@ -3,12 +3,12 @@ import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
 import {
   isActionDashCard,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";

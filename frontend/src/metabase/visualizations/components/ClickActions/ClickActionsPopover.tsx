@@ -1,9 +1,9 @@
 import { Component } from "react";
 import type * as tippy from "tippy.js";
 
+import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
 import { getEventTarget } from "metabase/utils/dom";
 import { connect } from "metabase/utils/redux";
-import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
   ClickObject,

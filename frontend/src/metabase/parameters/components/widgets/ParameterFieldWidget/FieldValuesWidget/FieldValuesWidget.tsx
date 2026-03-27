@@ -29,9 +29,6 @@ import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { Fields } from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { parseNumber } from "metabase/utils/number";
-import { connect, useDispatch } from "metabase/utils/redux";
-import { isNotNull } from "metabase/utils/types";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
@@ -45,6 +42,9 @@ import {
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";
+import { parseNumber } from "metabase/utils/number";
+import { connect, useDispatch } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 import Field from "metabase-lib/v1/metadata/Field";
 import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";

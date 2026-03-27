@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
+import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
   type CurrencyStyle,
   getCurrencyOptions,
@@ -11,7 +12,6 @@ import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
 } from "metabase/utils/formatting";
-import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import type { FormattingSettings } from "metabase-types/api";
 
 import { SetByEnvVar } from "./AdminSettingInput";

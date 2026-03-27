@@ -23,10 +23,10 @@ import {
   type DashboardContextReturned,
   useDashboardContext,
 } from "metabase/dashboard/context";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type {
   Dashboard,
   ModerationReview,

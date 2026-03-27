@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { createThunkAction } from "metabase/utils/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { createThunkAction } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
