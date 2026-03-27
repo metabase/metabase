@@ -5,7 +5,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.system.core :as system]
@@ -113,7 +113,7 @@
            (log/warn "Invalid table id for link resolution" {:table-id table-id})
            nil)
          (if-let [db-id (t2/select-one-fn :db_id :model/Table :id parsed-id)]
-           (let [mp    (lib.metadata.jvm/application-database-metadata-provider db-id)
+           (let [mp    (lib-be/application-database-metadata-provider db-id)
                  table (lib.metadata/table mp parsed-id)
                  query (lib/query mp table)]
              (str "/question#" (query->url-hash query)))
