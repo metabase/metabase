@@ -1,7 +1,6 @@
 import { updateIn } from "icepick";
 import _ from "underscore";
 
-import { copy } from "metabase/utils/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
@@ -51,7 +50,7 @@ export function applyParameters(
   parameterMappings = [],
   { sparse = false } = {},
 ) {
-  const datasetQuery = copy(card.dataset_query);
+  const datasetQuery = structuredClone(card.dataset_query);
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {
     const value = parameterValues[parameter.id];

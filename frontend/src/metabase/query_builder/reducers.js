@@ -7,7 +7,6 @@ import {
   NAVIGATE_TO_NEW_CARD,
 } from "metabase/dashboard/actions";
 import { TimelineEvents } from "metabase/entities/timeline-events";
-import { copy } from "metabase/utils/utils";
 
 import {
   API_CREATE_QUESTION,
@@ -355,20 +354,21 @@ export const originalCard = handleActions(
   {
     [INITIALIZE_QB]: {
       next: (state, { payload }) =>
-        payload.originalCard ? copy(payload.originalCard) : null,
+        payload.originalCard ? structuredClone(payload.originalCard) : null,
     },
     [RELOAD_CARD]: {
-      next: (state, { payload }) => (payload.id ? copy(payload) : null),
+      next: (state, { payload }) =>
+        payload.id ? structuredClone(payload) : null,
     },
     [SET_CARD_AND_RUN]: {
       next: (state, { payload }) =>
-        payload.originalCard ? copy(payload.originalCard) : null,
+        payload.originalCard ? structuredClone(payload.originalCard) : null,
     },
     [API_CREATE_QUESTION]: {
-      next: (state, { payload }) => copy(payload),
+      next: (state, { payload }) => structuredClone(payload),
     },
     [API_UPDATE_QUESTION]: {
-      next: (state, { payload }) => copy(payload),
+      next: (state, { payload }) => structuredClone(payload),
     },
   },
   null,
