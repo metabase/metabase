@@ -61,8 +61,7 @@
                                                 :frameDomains    [url]})}})))})
 
 (defn read-resource
-  "Read an MCP resource by URI. Returns nil if the URI is not recognized.
-   When `token-scopes` is provided, the resource's scope is checked before returning content."
+  "Read an MCP resource by URI. Returns nil if the URI is not recognized, or has an unsupported scope."
   [uri opts token-scopes]
   (when-let [{:keys [render-fn scope] :as resource} (get-in @registry [:uri->resource uri])]
     (when (mcp.scope/matches? token-scopes scope)

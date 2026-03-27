@@ -148,6 +148,17 @@
       (is (= 200 (:status delete-response)))
       (is (= 200 (:status post-response))))))
 
+(def ^:private all-tool-names
+  #{"construct_query"
+    "execute_query"
+    "get_metric"
+    "get_metric_field_values"
+    "get_table"
+    "get_table_field_values"
+    "query"
+    "search"
+    "visualize_query"})
+
 (deftest tools-list-test
   (testing "tools/list returns the agent and UI tools"
     (let [[session-id _] (initialize!)
@@ -156,10 +167,7 @@
           tools (get-in response [:body :result :tools])]
       (is (= 200 (:status response)))
       (is (pos? (count tools)))
-      (is (= #{"search" "get_table" "get_metric" "get_table_field_values"
-               "get_metric_field_values" "construct_query" "execute_query" "query"
-               "visualize_query"}
-             (set (map :name tools))))
+      (is (= all-tool-names (set (map :name tools))))
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
           (is (string? (:description tool)))
@@ -422,11 +430,6 @@
             (oauth-server/reset-provider!)))))))
 
 ;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
-
-(def ^:private all-tool-names
-  #{"search" "get_table" "get_metric" "get_table_field_values"
-    "get_metric_field_values" "construct_query" "execute_query" "query"
-    "visualize_query"})
 
 (deftest tools-list-scope-filtering-test
   (testing "tools/list with unrestricted scopes returns all tools"
