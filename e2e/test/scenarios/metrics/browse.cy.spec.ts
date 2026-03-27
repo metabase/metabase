@@ -107,7 +107,7 @@ describe("scenarios > browse > metrics", () => {
         ).should("be.visible");
         cy.findByText("Create metric").should("be.visible").click();
       });
-      cy.location("pathname").should("eq", "/metric/query");
+      cy.location("pathname").should("eq", "/metric/new");
     });
 
     it("should not show the create metric button if the user does not have data access", () => {
@@ -135,22 +135,24 @@ describe("scenarios > browse > metrics", () => {
       cy.findByTestId("browse-metrics-header")
         .findByLabelText("Create a new metric")
         .click();
+      H.MetricPage.queryEditor().should("be.visible");
       H.miniPicker().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("People").click();
       });
-      cy.findByTestId("edit-bar")
-        .should("contain", "New metric")
-        .button("Save")
-        .click();
-      H.modal()
-        .should("contain", "Save metric")
-        .and("contain", H.getPersonalCollectionName(USERS["nocollection"]))
-        .button("Save")
-        .click();
+      H.MetricPage.saveButton().click();
+      H.modal().within(() => {
+        cy.findByPlaceholderText("What is the name of your metric?").type(
+          "My metric",
+        );
+        cy.findByText("Save your metric");
+        cy.findByText(H.getPersonalCollectionName(USERS["nocollection"]));
+        cy.button("Save").click();
+      });
 
       cy.wait("@createMetric");
-      cy.location("pathname").should("match", /^\/metric\/\d+-.*$/);
+      H.MetricPage.aboutPage().should("be.visible");
+      cy.location("pathname").should("match", /^\/metric\/\d+/);
     });
   });
 
@@ -169,9 +171,8 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click();
-      cy.location("pathname").should("match", /^\/explore/);
-      H.MetricsViewer.openMetricHomePage("Count of orders");
-      cy.location("pathname").should("match", /^\/metric\/\d+-.*$/);
+      cy.location("pathname").should("match", /^\/metric\//);
+      H.MetricPage.aboutPage().should("be.visible");
     });
 
     it("should navigate to that collection when clicking a collection title", () => {
@@ -200,7 +201,7 @@ describe("scenarios > browse > metrics", () => {
       cy.get("@open").should("have.been.calledOnce");
       cy.get("@open").should(
         "have.been.calledWithMatch",
-        /^\/explore/,
+        /^\/metric\//,
         "_blank",
       );
 
@@ -447,6 +448,7 @@ describe("scenarios > browse > metrics", () => {
       cy.visit("/browse/metrics");
       verifyMetric(ORDERS_SCALAR_METRIC);
 
+      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
       cy.findByRole("switch", { name: /show.*verified.*metrics/i }).should(
         "have.attr",
         "aria-selected",
@@ -495,12 +497,11 @@ function shouldNotHaveBookmark(name: string) {
 
 function verifyMetric(metric: StructuredQuestionDetailsWithName) {
   metricsTable().findByText(metric.name).should("be.visible").click();
-  H.MetricsViewer.openMetricHomePage(metric.name);
+  H.MetricPage.aboutPage().should("be.visible");
 
-  cy.findByLabelText("Move, trash, and more…").click();
+  H.MetricPage.moreMenu().click();
   H.popover().findByText("Verify this metric").click();
-
-  H.openNavigationSidebar();
+  cy.icon("verified").should("be.visible");
   H.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })
     .click();
@@ -508,12 +509,11 @@ function verifyMetric(metric: StructuredQuestionDetailsWithName) {
 
 function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
   metricsTable().findByText(metric.name).should("be.visible").click();
-  H.MetricsViewer.openMetricHomePage(metric.name);
+  H.MetricPage.aboutPage().should("be.visible");
 
-  cy.findByLabelText("Move, trash, and more…").click();
+  H.MetricPage.moreMenu().click();
   H.popover().findByText("Remove verification").click();
-
-  H.openNavigationSidebar();
+  cy.icon("verified").should("not.exist");
   H.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })
     .click();

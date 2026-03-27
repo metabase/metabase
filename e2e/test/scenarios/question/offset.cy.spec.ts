@@ -1250,9 +1250,30 @@ describe("scenarios > question > offset", () => {
       display: "scalar",
     };
 
-    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
-      H.visitMetric(card.id),
-    );
+    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+      H.createQuestion(
+        {
+          name: "Question with metric",
+          type: "question",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["metric", metric.id]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                },
+              ],
+            ],
+          },
+          display: "line",
+        },
+        { visitQuestion: true },
+      );
+    });
 
     H.openNotebook();
 
@@ -1263,7 +1284,9 @@ describe("scenarios > question > offset", () => {
 
     H.visualize();
 
-    cy.findByTestId("chart-container").should("contain", "January 2024");
+    H.echartsContainer().within(() => {
+      cy.contains("January 2024").should("be.visible");
+    });
   });
 });
 

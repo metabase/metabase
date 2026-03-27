@@ -2,9 +2,8 @@ import { b64url_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { getObjectEntries } from "metabase/lib/objects";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { TemporalUnit } from "metabase-types/api";
+import type { MathOperator, TemporalUnit } from "metabase-types/api";
 
-import type { MathOperator } from "../types/operators";
 import type {
   ExpressionSubToken,
   MetricExpressionId,
@@ -87,7 +86,7 @@ interface SerializedProjectionConfig {
 interface SerializedTab {
   id: string;
   type: MetricsViewerTabType;
-  label: string;
+  label: string | null;
   display: MetricsViewerDisplayType;
   definitions: SerializedTabDef[];
   projectionConfig?: SerializedProjectionConfig;
@@ -390,7 +389,7 @@ const projectionConfigSchema = defineCompactSchema<SerializedProjectionConfig>({
 const tabSchema = defineCompactSchema<SerializedTab>({
   id: "i",
   type: "t",
-  label: { key: "l", default: "" },
+  label: { key: "l", default: null },
   display: { key: "d", default: "line" },
   definitions: { key: "D", schema: tabDefSchema, default: [] },
   projectionConfig: {

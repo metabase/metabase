@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import type { MathOperator } from "../../types/operators";
+import type { MathOperator } from "metabase-types/api";
+
 import type {
   ExpressionSubToken,
   MetricDefinitionEntry,

@@ -13,7 +13,9 @@ import { MetabotAppBarButton } from "./MetabotAppBarButton";
 function setup({
   isMetabotEnabled = true,
 }: { isMetabotEnabled?: boolean } = {}) {
-  mockSettings({
+  const settings = mockSettings({
+    "llm-metabot-configured?": true,
+    "metabot-enabled?": isMetabotEnabled,
     "token-features": createMockTokenFeatures({ metabot_v3: true }),
   });
   setupEnterprisePlugins();
@@ -24,7 +26,7 @@ function setup({
     </MetabotProvider>,
     {
       storeInitialState: createMockState({
-        settings: mockSettings({ "metabot-enabled?": isMetabotEnabled }),
+        settings,
       }),
     },
   );

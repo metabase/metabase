@@ -7,7 +7,11 @@
    [metabase.lib-metric.ast.compile :as ast.compile]
    [metabase.lib-metric.ast.walk :as ast.walk]
    [metabase.lib-metric.operators :as operators]
+   [metabase.types.core]
    [metabase.util.performance :as perf]))
+
+;; Ensure type hierarchy is loaded
+(comment metabase.types.core/keep-me)
 
 ;;; -------------------- Plan Data Structures --------------------
 ;;;
@@ -53,14 +57,29 @@
                     :signatures     (perf/mapv #(dimension-signature % sub-ast) group-by)}))
                leaves)))
 
+(defn- effective-types-compatible?
+  "Check if two effective types are compatible for dimension joining.
+   Types are compatible if they are equal, or if both are date/datetime types
+   (Date, DateTime, DateTimeWithLocalTZ, etc.), or if both are time types."
+  [type-a type-b]
+  (or (= type-a type-b)
+      ;; Both have a date component — Date, DateTime, DateTimeWithLocalTZ, etc.
+      (and (isa? type-a :type/HasDate)
+           (isa? type-b :type/HasDate))
+      ;; Both are pure time types — Time, TimeWithLocalTZ
+      (and (isa? type-a :type/Time)
+           (isa? type-b :type/Time))))
+
 (defn- signatures-compatible?
   "Check if two dimension signatures are compatible for joining.
    nil values are treated as unknown and compatible with any known value.
-   Only rejects when both sides have known but different values."
+   Only rejects when both sides have known but different values.
+   Effective types are matched using [[effective-types-compatible?]] which allows
+   compatible-but-not-identical temporal types (e.g. Date vs DateTimeWithLocalTZ)."
   [sig-a sig-b]
   (and (or (nil? (:effective-type sig-a))
            (nil? (:effective-type sig-b))
-           (= (:effective-type sig-a) (:effective-type sig-b)))
+           (effective-types-compatible? (:effective-type sig-a) (:effective-type sig-b)))
        (or (nil? (:temporal-unit sig-a))
            (nil? (:temporal-unit sig-b))
            (= (:temporal-unit sig-a) (:temporal-unit sig-b)))

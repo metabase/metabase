@@ -677,7 +677,7 @@ describe("issue 17910", () => {
         .blur();
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByTestId("saved-question-history-list")
-        .children()
+        .findAllByTestId("revision-history-event")
         .should("have.length", 2);
     });
   });

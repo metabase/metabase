@@ -76,6 +76,8 @@ export function MetricSearchInput({
   // currentWord is the word under the cursor, used as the dropdown search query
   const [currentWord, setCurrentWord] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
   const [isFocused, setIsFocused] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   // Pixel position (viewport-relative) of the current word's left edge and
@@ -462,6 +464,12 @@ export function MetricSearchInput({
     setIsOpen(true);
   }, []);
 
+  const handleEditorKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setIsOpen(false);
+    }
+  }, []);
+
   const handleDropdownHasSelectionChange = useCallback(
     (hasSelection: boolean) => {
       dropdownHasSelectionRef.current = hasSelection;
@@ -546,6 +554,25 @@ export function MetricSearchInput({
               handleRunRef.current();
             }
             return true;
+          },
+        },
+        // don't move the cursor when using the arrow keys to navigate the dropdown
+        {
+          key: "ArrowDown",
+          run: () => {
+            if (isOpenRef.current) {
+              return true;
+            }
+            return false;
+          },
+        },
+        {
+          key: "ArrowUp",
+          run: () => {
+            if (isOpenRef.current) {
+              return true;
+            }
+            return false;
           },
         },
       ]),
@@ -660,6 +687,7 @@ export function MetricSearchInput({
               onFocus={handleInputFocus}
               onBlur={handleInputBlur}
               onClick={handleEditorClick}
+              onKeyDown={handleEditorKeyDown}
             >
               <CodeMirror
                 ref={editorRef}
@@ -704,6 +732,7 @@ export function MetricSearchInput({
                     onSelect={handleSelect}
                     externalSearchText={currentWord}
                     onHasSelectionChange={handleDropdownHasSelectionChange}
+                    onClose={() => setIsOpen(false)}
                   />
                 )}
               </Popover.Dropdown>

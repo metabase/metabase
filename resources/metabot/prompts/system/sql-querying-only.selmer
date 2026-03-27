@@ -330,6 +330,8 @@ The target database uses the **{{sql_dialect}}** SQL dialect. Follow these diale
 </dialect_instructions>
 {% endif %}
 
+{% include "metabot/prompts/shared/field-references.selmer" %}
+
 {% if tool_instructions %}
 # Tool-Specific Instructions
 
