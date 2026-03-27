@@ -41,7 +41,7 @@
    Reuses the SSO JWT test setup which handles premium features and settings correctly."
   [& body]
   `(sso.test-setup/with-jwt-default-setup!
-     (mt/with-additional-premium-features #{:agent-api :metabot-v3}
+     (mt/with-additional-premium-features #{:agent-api}
        ~@body)))
 
 (defn- auth-headers
