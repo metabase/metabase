@@ -1,11 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { Column, DatasetData, RowValue, Series } from "./data";
-import type {
-  TextHeightMeasurer,
-  TextMeasurer,
-  TextWidthMeasurer,
-} from "./measure-text";
+import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 
 /**
  * Export this function to define a custom visualization.
@@ -26,21 +22,6 @@ export type CreateCustomVisualizationProps = {
    * @example getAssetUrl("icon.svg")
    */
   getAssetUrl: (assetPath: string) => string;
-
-  /**
-   * Measures text dimensions (width and height) for given text and font style.
-   */
-  measureText: TextMeasurer;
-
-  /**
-   * Measures text width for given text and font style.
-   */
-  measureTextWidth: TextWidthMeasurer;
-
-  /**
-   * Measures text height for given text and font style.
-   */
-  measureTextHeight: TextHeightMeasurer;
 };
 
 declare const SettingDefinitionSymbol: unique symbol;

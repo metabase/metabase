@@ -17,7 +17,7 @@ type CustomWidgetProps = {
 };
 
 export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
-  measureText,
+  getAssetUrl: _getAssetUrl,
 }) => {
   return {
     id: "my-custom-viz",

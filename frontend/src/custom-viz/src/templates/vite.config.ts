@@ -51,6 +51,9 @@ function metabaseVizExternals() {
           "const ct = window.__METABASE_VIZ_API__.columnTypes;",
           "export const { isDate, isNumeric, isInteger, isBoolean, isString, isStringLike, isSummable, isNumericBaseType, isDateWithoutTime, isNumber, isFloat, isTime, isFK, isPK, isEntityName, isTitle, isProduct, isSource, isAddress, isScore, isQuantity, isCategory, isAny, isState, isCountry, isCoordinate, isLatitude, isLongitude, isCurrency, isPercentage, isID, isURL, isEmail, isAvatarURL, isImageURL, hasLatitudeAndLongitudeColumns } = ct;",
           "export const formatValue = window.__METABASE_VIZ_API__.formatValue;",
+          "export const measureText = window.__METABASE_VIZ_API__.measureText;",
+          "export const measureTextWidth = window.__METABASE_VIZ_API__.measureTextWidth;",
+          "export const measureTextHeight = window.__METABASE_VIZ_API__.measureTextHeight;",
         ].join("\n");
       }
       return null;

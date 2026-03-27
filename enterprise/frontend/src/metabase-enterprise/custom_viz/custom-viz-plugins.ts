@@ -45,6 +45,9 @@ declare global {
         value: unknown,
         options?: Record<string, unknown>,
       ) => string;
+      measureText: typeof measureText;
+      measureTextWidth: typeof measureTextWidth;
+      measureTextHeight: typeof measureTextHeight;
     };
     // Set by custom viz IIFE bundles during loading, read and cleared by loadCustomVizPlugin
     __customVizPlugin__?: (
@@ -53,7 +56,7 @@ declare global {
   }
 }
 
-function wrappedFormatValue(
+function formatValue(
   value: unknown,
   options?: Record<string, unknown>,
 ): string {
@@ -70,7 +73,10 @@ function ensureVizApi() {
     React,
     jsxRuntime,
     columnTypes: isa,
-    formatValue: wrappedFormatValue,
+    formatValue,
+    measureText,
+    measureTextWidth,
+    measureTextHeight,
   };
 }
 
@@ -315,9 +321,6 @@ export async function loadCustomVizPlugin(
     const getAssetUrl = (path: string) =>
       `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
     const props = buildCustomVizProps({
-      measureText,
-      measureTextWidth,
-      measureTextHeight,
       getAssetUrl,
     });
     const vizDef = factory(props);
