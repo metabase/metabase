@@ -17,8 +17,8 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 
 The path to embedding settings depends on your Metabase version:
 
-- **OSS**: **Admin settings > Embedding**
-- **Starter/Pro/Enterprise**: **Admin settings > Embedding > Guest embeds**
+- **OSS**: **Admin > Embedding**
+- **Starter/Pro/Enterprise**: **Admin > Embedding > Guest embeds**
 
 Toggle **Enable guest embeds**.
 
@@ -102,8 +102,10 @@ You can set different attributes to enable/disable UI. Here are some example att
 | -------------------- | --------------------------------------------------------------------- |
 | `token`              | Required. The signed JWT token from your server.                      |
 | `with-title`         | Show or hide the title. Values: `"true"` or `"false"`.                |
-| `with-downloads`     | Enable or disable downloads. Values: `"true"` or `"false"`.           |
+| `with-downloads`\*   | Enable or disable downloads. Values: `"true"` or `"false"`.           |
 | `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'`. |
+
+\* Disabling downloads is only available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options than embeds that use SSO. See more on [components and their attributes](./components.md).
 
@@ -250,7 +252,7 @@ The end user won't see the "category" filter, but the dashboard will only show d
 4. Select **Guest embedding**
 5. Click **Unpublish**.
 
-Admins can find a list of embedded items in **Admin settings > Embedding** (on Pro and Enterprise plans, check the **Guest embeds** tab).
+Admins can find a list of embedded items in **Admin > Embedding** (on Pro and Enterprise plans, check the **Guest embeds** tab).
 
 ## Removing the "Powered by Metabase" banner
 
@@ -262,7 +264,7 @@ The banner appears on guest embeds created with Metabase's open-source version. 
 
 Your embedding secret key is used to sign JWTs for all of your embeds.
 
-1. Go to **Admin settings > Embedding**. On Pro and Enterprise plans, check the **Guest embeds** tab.
+1. Go to **Admin > Embedding**. On Pro and Enterprise plans, check the **Guest embeds** tab.
 2. Under **Regenerate secret key**, click **Regenerate key**.
 
 This key is shared across all guest embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
@@ -273,7 +275,7 @@ You can only use the **URL** option for [custom destinations](../dashboards/inte
 
 You can propagate filter values into the external URL, unless the filter is locked.
 
-## Translating guest embeds
+## Translating embeds
 
 To translate an embed, set the `locale` in `window.metabaseConfig`:
 
@@ -287,7 +289,7 @@ To translate an embed, set the `locale` in `window.metabaseConfig`:
 </script>
 ```
 
-The `locale` setting works for all modular embeds (guest and SSO). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a translation dictionary. Translation dictionaries only work with guest embeds. See [Translating embedded questions and dashboards](./translations.md).
+The `locale` setting works for all modular embeds (guest, SSO, and SDK). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a [translation dictionary](./translations.md).
 
 ## How guest embedding works
 

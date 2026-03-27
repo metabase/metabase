@@ -12,7 +12,7 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { getCardsSeriesModels } from "./series";
+import { getBreakoutDistinctValues, getCardsSeriesModels } from "./series";
 
 const createMockComputedVisualizationSettings = (
   opts: Partial<ComputedVisualizationSettings> = {},
@@ -379,6 +379,118 @@ describe("series", () => {
           tooltipName: breakoutColumns.metric.column.display_name,
         });
       });
+    });
+
+    describe("with untranslatedRows", () => {
+      it("should use untranslated breakout values for keys when rows are translated", () => {
+        const translatedSeries: SingleSeries = {
+          ...breakoutSeries,
+          data: {
+            ...breakoutSeries.data,
+            rows: [
+              [1, "Translated1", 100],
+              [2, "Translated1", 200],
+              [3, "Translated2", 300],
+              [3, "Translated2", 400],
+            ],
+            untranslatedRows: breakoutSeries.data.rows,
+          },
+        };
+
+        const rawSeries = [translatedSeries];
+        const cardsColumns = [breakoutColumns];
+
+        const result = getCardsSeriesModels(
+          rawSeries,
+          cardsColumns,
+          [],
+          createMockComputedVisualizationSettings(),
+        );
+
+        expect(result).toHaveLength(2);
+        expect(result[0]).toMatchObject({
+          dataKey: "2:count:type1",
+          vizSettingsKey: "type1",
+          name: "Translated1",
+        });
+        expect(result[1]).toMatchObject({
+          dataKey: "2:count:type2",
+          vizSettingsKey: "type2",
+          name: "Translated2",
+        });
+      });
+
+      it("should match series_settings using untranslated keys", () => {
+        const translatedSeries: SingleSeries = {
+          ...breakoutSeries,
+          data: {
+            ...breakoutSeries.data,
+            rows: [
+              [1, "Type One", 100],
+              [2, "Type One", 200],
+              [3, "Type Two", 300],
+              [3, "Type Two", 400],
+            ],
+            untranslatedRows: breakoutSeries.data.rows,
+          },
+        };
+
+        const rawSeries = [translatedSeries];
+        const cardsColumns = [breakoutColumns];
+
+        const result = getCardsSeriesModels(
+          rawSeries,
+          cardsColumns,
+          [],
+          createMockComputedVisualizationSettings({
+            series_settings: {
+              type1: { title: "Custom Name" },
+            },
+          }),
+        );
+
+        expect(result[0]).toMatchObject({
+          dataKey: "2:count:type1",
+          name: "Custom Name",
+        });
+        expect(result[1]).toMatchObject({
+          dataKey: "2:count:type2",
+          name: "Type Two",
+        });
+      });
+    });
+  });
+
+  describe("getBreakoutDistinctValues", () => {
+    it("should return distinct values from rows", () => {
+      const data = createMockDatasetData({
+        rows: [
+          [1, "a", 100],
+          [2, "b", 200],
+          [3, "a", 300],
+        ],
+      });
+
+      const result = getBreakoutDistinctValues(data, 1);
+      expect(result).toEqual(["a", "b"]);
+    });
+
+    it("should use untranslatedRows when present", () => {
+      const data = createMockDatasetData({
+        rows: [
+          [1, "Translated A", 100],
+          [2, "Translated B", 200],
+          [3, "Translated A", 300],
+        ],
+        untranslatedRows: [
+          [1, "a", 100],
+          [2, "b", 200],
+          [3, "a", 300],
+        ],
+      });
+
+      const result = getBreakoutDistinctValues(data, 1);
+      expect(result).toEqual(["a", "b"]);
     });
   });
 });

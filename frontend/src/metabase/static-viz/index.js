@@ -87,6 +87,7 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
         visualization_settings: settings,
       },
       data: mergedData,
+      columnValuesMapping,
     },
   ];
 }
@@ -111,7 +112,7 @@ export function RenderChart(rawSeries, dashcardSettings, options) {
       rawSeries.map((series) => {
         const source = createDataSource(
           "card",
-          series.card.entity_id,
+          series.card.id,
           series.card.name,
         );
         return [source.id, source.name];

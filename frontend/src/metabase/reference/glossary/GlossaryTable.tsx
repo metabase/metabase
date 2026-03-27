@@ -7,7 +7,6 @@ import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   ActionIcon,
   Box,
@@ -18,7 +17,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { SortDirection } from "metabase-types/api/sorting";
+import type { SortDirection } from "metabase-types/api";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
@@ -51,11 +50,7 @@ export function GlossaryTable({
   const [sortColumnName, setSortColumnName] = useState<
     keyof GlossaryItem | null
   >(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(
-    SortDirection.Asc,
-  );
-
-  const hasMetabot = useHasTokenFeature("metabot_v3");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const sortedRows = useMemo(() => {
     if (!sortColumnName) {
@@ -68,7 +63,7 @@ export function GlossaryTable({
       const ak = a[sortColumnName] ?? "";
       const bk = b[sortColumnName] ?? "";
       const cmp = String(ak).localeCompare(String(bk));
-      return sortDirection === SortDirection.Asc ? cmp : -cmp;
+      return sortDirection === "asc" ? cmp : -cmp;
     });
     return [
       ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),
@@ -80,9 +75,7 @@ export function GlossaryTable({
     <>
       <Group justify="space-between" mb="xs">
         <Text>
-          {hasMetabot
-            ? t`Define terms to help your team and Metabot understand your data.`
-            : t`Define terms to help your team understand your data.`}
+          {t`Define terms to help your team and Metabot understand your data.`}
         </Text>
         <Button
           variant="default"

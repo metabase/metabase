@@ -86,7 +86,7 @@
 
   &[data-variant="visualizer"] {
     --button-color: var(--mb-color-brand);
-    --button-color-hover: var(--mb-color-brand-light);
+    --button-color-hover: var(--mb-color-background-hover);
 
     border-radius: 8px;
     display: flex;
@@ -123,7 +123,7 @@
   &[data-variant="inverse"] {
     /* need to implement variantColorResolver to support other colors */
     --button-color: var(--mb-color-brand);
-    --button-color-hover: var(--mb-color-brand-light);
+    --button-color-hover: var(--mb-color-background-hover);
 
     display: flex;
     justify-content: flex-start;

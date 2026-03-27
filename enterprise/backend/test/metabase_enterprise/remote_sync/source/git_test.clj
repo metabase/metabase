@@ -10,7 +10,8 @@
   (:import (java.io File)
            (org.apache.commons.io FileUtils)
            (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib PersonIdent)))
+           (org.eclipse.jgit.lib PersonIdent)
+           (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
 
 (set! *warn-on-reflection* true)
 
@@ -482,3 +483,11 @@
         (is (= ["Add new file" "Initial commit"]
                (map :message (git/log repaired-source)))
             "Should be able to fetch after origin repair")))))
+
+(deftest ^:parallel credentials-provider-test
+  (testing "GitHub URL uses x-access-token"
+    (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
+      (is (instance? UsernamePasswordCredentialsProvider provider))))
+  (testing "Bitbucket URL uses x-token-auth"
+    (let [provider (#'git/credentials-provider "https://bitbucket.org/org/repo" "my-token")]
+      (is (instance? UsernamePasswordCredentialsProvider provider)))))

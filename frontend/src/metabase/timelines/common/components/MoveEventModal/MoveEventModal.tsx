@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button/Button";
+import { Button } from "metabase/common/components/Button/Button";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 

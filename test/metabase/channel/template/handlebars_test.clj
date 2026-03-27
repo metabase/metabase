@@ -21,13 +21,13 @@
 
 (defn do-with-temp-template!
   [filename content thunk]
-  ;; create the channel_template folder if not exists
   (let [temp-file (format "test_resources/%s" filename)]
-    (try
-      (spit temp-file content)
-      (thunk filename)
-      (finally
-        (io/delete-file temp-file)))))
+    (with-redefs [handlebars/allowed-template-prefixes #{""}]
+      (try
+        (spit temp-file content)
+        (thunk filename)
+        (finally
+          (io/delete-file temp-file))))))
 
 (defmacro with-temp-template!
   [[filename-binding filename content] & body]
@@ -50,10 +50,33 @@
 (deftest render-test
   (testing "Render a template with a context."
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{name}}"]
-      (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"}))))
-    (with-temp-template! [tmpl-name "tmpl.handlebars" "Hello {{name}}"]
       (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))))
 
   (testing "with custom req"
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{uppercase name}}"]
       (is (= "Hello NGOC" (handlebars/render custom-hbs tmpl-name {:name "Ngoc"}))))))
+
+(deftest validate-template-path-test
+  (testing "valid paths are accepted"
+    (is (true? (handlebars/valid-template-path? "metabase/channel/email/password_reset.hbs")))
+    (is (true? (handlebars/valid-template-path? "metabase/channel/email/notification_card.hbs")))
+    (is (true? (handlebars/valid-template-path? "notification/channel_template/hello_world.hbs"))))
+
+  (is (false? (handlebars/valid-template-path? "foo/bar/baz.hbs")))
+  (is (false? (handlebars/valid-template-path? "/metabase/channel/email/foo.hbs")))
+
+  (testing "render rejects invalid paths"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid template path"
+                          (handlebars/render "foo/bar.hbs" {})))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid template path"
+                          (handlebars/render "metabase/channel/email/logo.clj" {})))))
+
+(deftest dotted-path-resolution-works-on-maps-test
+  (are [template context]
+       (= "" (handlebars/render-string template context))
+    "{{x.y}}"       {"x" "a string"}
+    "{{x.y}}"       {"x" 42}
+    "{{x.toString}}" {"x" 42}
+    "{{x.y.z}}"     {"x" {"y" (Object.)}})
+  (is (= "hello" (handlebars/render-string "{{x.y}}" {"x" {"y" "hello"}})))
+  (is (= "deep" (handlebars/render-string "{{a.b.c}}" {"a" {"b" {"c" "deep"}}}))))

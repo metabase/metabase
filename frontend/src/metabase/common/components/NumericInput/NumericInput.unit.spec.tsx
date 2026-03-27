@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { render, screen } from "__support__/ui";
 
 import type { NumericInputProps } from "./NumericInput";
-import NumericInput from "./NumericInput";
+import { NumericInput } from "./NumericInput";
 
 const NumericInputTest = ({ onChange, ...props }: NumericInputProps) => {
   const [value, setValue] = useState<number>();

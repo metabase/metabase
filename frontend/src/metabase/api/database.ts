@@ -5,10 +5,13 @@ import type {
   AutocompleteSuggestion,
   CardAutocompleteRequest,
   CardAutocompleteSuggestion,
+  CheckWorkspacePermissionsRequest,
+  CheckWorkspacePermissionsResponse,
   CreateDatabaseRequest,
   Database,
   DatabaseId,
   Field,
+  GetDatabaseHealthRequest,
   GetDatabaseHealthResponse,
   GetDatabaseMetadataRequest,
   GetDatabaseRequest,
@@ -67,13 +70,17 @@ export const databaseApi = Api.injectEndpoints({
           dispatch(updateMetadata(data, DatabaseSchema)),
         ),
     }),
-    getDatabaseHealth: builder.query<GetDatabaseHealthResponse, DatabaseId>({
-      query: (id) => ({
+    getDatabaseHealth: builder.query<
+      GetDatabaseHealthResponse,
+      GetDatabaseHealthRequest
+    >({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/healthcheck`,
+        params,
       }),
       // invalidate health check in the case db connection info changes
-      providesTags: (_, __, id) => [idTag("database", id)],
+      providesTags: (_, __, { id }) => [idTag("database", id)],
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -96,6 +103,7 @@ export const databaseApi = Api.injectEndpoints({
         method: "GET",
         url: `/api/database/${id}/settings-available`,
       }),
+      providesTags: (_response, _error, id) => [idTag("database", id)],
     }),
     listDatabaseSchemas: builder.query<
       SchemaName[],
@@ -266,6 +274,18 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    checkWorkspacePermissions: builder.mutation<
+      CheckWorkspacePermissionsResponse,
+      CheckWorkspacePermissionsRequest
+    >({
+      query: ({ id, cached = true }) => ({
+        method: "POST",
+        url: `/api/database/${id}/permission/workspace/check`,
+        body: { cached },
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("database", id)]),
+    }),
     addSampleDatabase: builder.mutation<Database, void>({
       query: () => ({
         method: "POST",
@@ -323,6 +343,7 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
+  useCheckWorkspacePermissionsMutation,
   useListAutocompleteSuggestionsQuery,
   useLazyListAutocompleteSuggestionsQuery,
   useAddSampleDatabaseMutation,

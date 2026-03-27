@@ -1,8 +1,8 @@
 import type {
   Cell,
   CellContext,
+  Column,
   ColumnDefTemplate,
-  ColumnPinningState,
   ColumnSizingState,
   HeaderContext,
   OnChangeFn,
@@ -13,8 +13,7 @@ import type {
   SortingState,
   Table,
 } from "@tanstack/react-table";
-import type { VirtualItem } from "@tanstack/react-virtual";
-import type React from "react";
+import type { ScrollToOptions, VirtualItem } from "@tanstack/react-virtual";
 import type { RefObject } from "react";
 
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";
@@ -30,6 +29,7 @@ declare module "@tanstack/react-table" {
     formatter?: CellFormatter<TValue>;
     clipboardFormatter?: PlainCellFormatter<TValue>;
     width?: "auto";
+    isUtilityColumn?: boolean;
   }
 }
 
@@ -177,8 +177,14 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Width of each column by ID */
   columnSizingMap?: ColumnSizingState;
 
-  /** Pinning state of columns */
-  columnPinning?: ColumnPinningState;
+  /** Number of left-pinned data columns (excluding rowId) */
+  pinnedLeftColumnsCount?: number;
+
+  /** number of top pinned rows */
+  pinnedTopRowsCount?: number;
+
+  /** Custom row ID accessor */
+  getRowId?: (originalRow: TData, index: number, parent?: Row<TData>) => string;
 
   /** Array of column sorting options */
   sorting?: SortingState;
@@ -287,6 +293,16 @@ export type CellId = {
   cellId: string;
 };
 
+export type ScrollToDestination = {
+  index: number;
+  options?: ScrollToOptions;
+};
+
+export type ScrollToDestinations = {
+  row?: ScrollToDestination;
+  column?: ScrollToDestination;
+};
+
 export interface DataGridInstance<TData> {
   table: Table<TData>;
   gridRef: RefObject<HTMLDivElement>;
@@ -297,8 +313,15 @@ export interface DataGridInstance<TData> {
   enableRowVirtualization: boolean;
   enablePagination: boolean;
   theme?: DataGridTheme;
+  sorting: SortingState | undefined;
   getTotalHeight: () => number;
-  getVisibleRows: () => MaybeVirtualRow<TData>[];
+  getCenterRows: () => DataGridRowType<TData>[];
+  getPinnedRows: () => DataGridRowType<TData>[];
+  getPinnedColumns: () => DataGridColumnType<TData>[];
+  getCenterColumns: () => DataGridColumnType<TData>[];
+  datasetIndexAttributeName: string;
+  rowMeasureRef: (element: Element | null) => void;
+  scrollTo: (destinations: ScrollToDestinations) => void;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
     columnId?: string,
@@ -312,9 +335,15 @@ export interface DataGridInstance<TData> {
   onWheel?: React.UIEventHandler<HTMLDivElement>;
 }
 
-export type VirtualRow<TData> = {
-  row: Row<TData>;
-  virtualRow: VirtualItem;
+export type DataGridRowType<TData> = {
+  origin: Row<TData>;
+  virtualItem?: VirtualItem;
+  displayIndex: number;
+  height: number;
 };
 
-export type MaybeVirtualRow<TData> = Row<TData> | VirtualRow<TData>;
+export type DataGridColumnType<TData, TValue = unknown> = {
+  origin: Column<TData, TValue>;
+  virtualItem?: VirtualItem;
+  getCell: (row: Row<TData>) => Cell<TData, TValue>;
+};

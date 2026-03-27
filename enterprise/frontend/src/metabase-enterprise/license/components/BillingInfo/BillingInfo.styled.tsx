@@ -1,9 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import Card from "metabase/common/components/Card";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { Card } from "metabase/common/components/Card";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 
 export const BillingInfoCard = styled(Card)`
   margin-top: 1rem;

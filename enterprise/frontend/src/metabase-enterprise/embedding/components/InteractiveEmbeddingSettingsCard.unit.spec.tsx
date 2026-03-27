@@ -40,6 +40,20 @@ describe("InteractiveEmbeddingSettingsCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("should show a link to the doc", async () => {
+    await setup({ enabled: true });
+
+    const linkToDoc = await screen.findByRole("link", {
+      name: "Documentation",
+    });
+
+    expect(linkToDoc).toBeVisible();
+    expect(linkToDoc).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/embedding/full-app-embedding.html",
+    );
+  });
+
   it("should toggle interactive embedding on", async () => {
     await setup({ enabled: false });
     const toggle = await screen.findByLabelText(
@@ -59,7 +73,7 @@ describe("InteractiveEmbeddingSettingsCard", () => {
 
     const input = await screen.findByPlaceholderText("https://*.example.com");
     await userEvent.type(input, "https://*.foo.example.com");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("https://*.foo.example.com");
 
     const puts = await findRequests("PUT");

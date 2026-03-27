@@ -10,9 +10,9 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -832,11 +832,7 @@
                         "        month"
                         "        from"
                         "          \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "      ) <> extract("
-                        "        month"
-                        "        from"
-                        "          ?"
-                        "      )"
+                        "      ) <> 1"
                         "    )"
                         "    OR ("
                         "      extract("
@@ -846,7 +842,7 @@
                         "      ) IS NULL"
                         "    )"
                         "  );"]
-                :params [#t "2016-01-01"]}
+                :params []}
                (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"})
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
@@ -866,11 +862,7 @@
                         "          month"
                         "          from"
                         "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) <> extract("
-                        "          month"
-                        "          from"
-                        "            ?"
-                        "        )"
+                        "        ) <> 1"
                         "      )"
                         "      OR ("
                         "        extract("
@@ -886,11 +878,7 @@
                         "          month"
                         "          from"
                         "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) <> extract("
-                        "          month"
-                        "          from"
-                        "            ?"
-                        "        )"
+                        "        ) <> 2"
                         "      )"
                         "      OR ("
                         "        extract("
@@ -901,8 +889,7 @@
                         "      )"
                         "    )"
                         "  );"]
-                :params [#t "2016-01-01"
-                         #t "2016-02-01"]}
+                :params []}
                (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 

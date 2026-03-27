@@ -7,13 +7,14 @@ import { checkNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
   columnFinder,
-  createQuery,
-  findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
 import {
+  ORDERS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
   createSavedStructuredCard,
@@ -23,22 +24,45 @@ import { DEFAULT_QUESTION, createMockNotebookStep } from "../../../test-utils";
 
 import { type SetupOpts, setup as baseSetup } from "./setup";
 
+const findAggregationOperator = (
+  query: Lib.Query,
+  operatorShortName: string,
+) => {
+  const operators = Lib.availableAggregationOperators(query, 0);
+  const operator = operators.find(
+    (operator) =>
+      Lib.displayInfo(query, 0, operator).shortName === operatorShortName,
+  );
+  if (!operator) {
+    throw new Error(`Could not find aggregation operator ${operatorShortName}`);
+  }
+  return operator;
+};
+
 const createQueryWithFields = (columnNames: string[]) => {
-  const query = createQuery();
-  const findColumn = columnFinder(query, Lib.fieldableColumns(query, 0));
-  const columns = columnNames.map((name) => findColumn("ORDERS", name));
-  return Lib.withFields(query, 0, columns);
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        fields: columnNames.map((name) => ({
+          type: "column",
+          sourceName: "ORDERS",
+          name,
+        })),
+      },
+    ],
+  });
 };
 
 const createQueryWithAggregation = () => {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const count = findAggregationOperator(query, "count");
   const aggregation = Lib.aggregationClause(count);
   return Lib.aggregate(query, 0, aggregation);
 };
 
 const createQueryWithBreakout = () => {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const columns = Lib.breakoutableColumns(query, 0);
   const findColumn = columnFinder(query, columns);
   const column = findColumn("ORDERS", "TAX");

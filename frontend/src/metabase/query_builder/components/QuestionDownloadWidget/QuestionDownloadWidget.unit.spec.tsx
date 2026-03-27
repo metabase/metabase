@@ -7,6 +7,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen } from "__support__/ui";
+import { QuestionDownloadWidget } from "metabase/common/components/QuestionDownloadWidget";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
@@ -18,8 +19,6 @@ import {
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-
-import { QuestionDownloadWidget } from "./QuestionDownloadWidget";
 
 registerVisualizations();
 

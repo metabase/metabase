@@ -9,9 +9,9 @@ import {
   forwardRef,
 } from "react";
 
-import EntityItem from "metabase/common/components/EntityItem";
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import Link from "metabase/common/components/Link";
+import { EntityItem } from "metabase/common/components/EntityItem";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { Link } from "metabase/common/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import type { IconProps, TextProps } from "metabase/ui";
 import { FixedSizeIcon, Text } from "metabase/ui";

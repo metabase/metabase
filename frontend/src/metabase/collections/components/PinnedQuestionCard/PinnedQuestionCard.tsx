@@ -10,7 +10,7 @@ import {
   isFullyParameterized,
   isPreviewShown,
 } from "metabase/collections/utils";
-import EventSandbox from "metabase/common/components/EventSandbox";
+import { EventSandbox } from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";

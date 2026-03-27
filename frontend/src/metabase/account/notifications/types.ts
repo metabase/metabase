@@ -1,7 +1,9 @@
-import type { Alert, Notification } from "metabase-types/api";
+import type { DashboardSubscription, Notification } from "metabase-types/api";
 
-export type DashboardAlertListItem = {
-  item: Alert;
+export type NotificationType = "alert" | "pulse";
+
+export type DashboardSubscriptionListItem = {
+  item: DashboardSubscription;
   type: "pulse";
 };
 
@@ -11,5 +13,5 @@ export type QuestionNotificationListItem = {
 };
 
 export type NotificationListItem =
-  | DashboardAlertListItem
+  | DashboardSubscriptionListItem
   | QuestionNotificationListItem;

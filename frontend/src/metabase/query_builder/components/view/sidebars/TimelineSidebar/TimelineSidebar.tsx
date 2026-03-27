@@ -2,9 +2,8 @@ import type { Dayjs } from "dayjs";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import type { QueryModalType } from "metabase/query_builder/constants";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel";
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
@@ -23,7 +22,7 @@ export interface TimelineSidebarProps {
   onClose?: () => void;
 }
 
-const TimelineSidebar = ({
+export const TimelineSidebar = ({
   question,
   timelines,
   visibleTimelineEventIds,
@@ -92,6 +91,3 @@ const formatTitle = (xDomain?: [Dayjs, Dayjs]) => {
 const formatDate = (date: Dayjs) => {
   return date.format("ll");
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelineSidebar;

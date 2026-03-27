@@ -5,7 +5,6 @@ import _ from "underscore";
 import type { DayOfWeekId } from "metabase-types/api";
 
 // returns 0-6 where Sunday as 0 and Saturday as 6
-// Note: Keep in mind that this relays on moment internal state, which is not ideal.
 const getFirstDayOfWeekIndex = (): number => {
   return dayjs().startOf("week").isoWeekday();
 };

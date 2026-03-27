@@ -1,6 +1,5 @@
 (ns metabase.actions.scope
   (:require
-   [macaw.util :as u]
    [metabase.actions.types :as types]
    [metabase.lib.core :as lib]
    [metabase.util.malli :as mu]
@@ -30,7 +29,7 @@
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
     scope
     (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id)
-          table-id     (lib/source-table-id (:dataset_query card))]
+          table-id     (lib/primary-source-table-id (:dataset_query card))]
       (merge {:table-id      table-id
               :collection-id (:collection_id card missing-id)
               :database-id   (:database_id card missing-id)}
@@ -48,12 +47,17 @@
     (:table-id scope)
     (update :database-id #(or % (t2/select-one-fn :db_id [:model/Table :db_id] (:table-id scope)) missing-id))))
 
+(defn- strip-nils
+  "Remove any keys corresponding to nil values from the given map."
+  [m]
+  (into {} (filter (comp some? val) m)))
+
 (mu/defn hydrate-scope :- ::types/scope.hydrated
   "Add the implicit keys that can be derived from the existing ones in a scope. Idempotent."
   [scope :- ::types/scope.raw]
   ;; Infer type if FE is not passing it (yet)
   (let [scope-type (or (:type scope) (scope-type scope))]
-    (assoc (u/strip-nils
+    (assoc (strip-nils
             ;; Rerun until it converges.
             (ffirst (filter (partial apply =) (partition 2 1 (iterate hydrate-scope* scope)))))
            :type scope-type)))

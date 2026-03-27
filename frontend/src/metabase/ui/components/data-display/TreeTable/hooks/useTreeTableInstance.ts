@@ -7,7 +7,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DEFAULT_OVERSCAN, DEFAULT_ROW_HEIGHT } from "../constants";
 import type {
@@ -38,6 +38,7 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
     rowSelection: controlledRowSelection,
     onRowSelectionChange,
     enableSorting = true,
+    enableRowPinning = false,
     sorting: controlledSorting,
     onSortingChange,
     manualSorting = false,
@@ -49,6 +50,7 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
     overscan = DEFAULT_OVERSCAN,
     onRowActivate,
     selectedRowId,
+    initialState,
   } = options;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -96,6 +98,22 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
     },
     [expanded, onExpandedChange],
   );
+
+  useEffect(() => {
+    // override expanded state if defaultExpanded changes
+    setInternalExpanded((prevExpanded) => {
+      if (defaultExpanded === true) {
+        return true;
+      }
+      if (defaultExpanded) {
+        return {
+          ...(prevExpanded === true ? {} : prevExpanded),
+          ...defaultExpanded,
+        };
+      }
+      return prevExpanded;
+    });
+  }, [defaultExpanded]);
 
   const handleRowSelectionChange = useCallback(
     (
@@ -191,22 +209,27 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
     enableSubRowSelection,
     enableSorting,
     manualSorting,
+    enableRowPinning,
     getCoreRowModel: getCoreRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
     getSortedRowModel: manualSorting ? undefined : getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     filterFromLeafRows: true,
     globalFilterFn: effectiveFilterFn,
+    initialState,
   });
 
   const rows = table.getRowModel().rows;
+  const topPinnedRows = table.getTopRows();
+  const centerRows = table.getCenterRows();
+  const bottomPinnedRows = table.getBottomRows();
 
   const virtualizer = useVirtualizer({
-    count: rows.length,
+    count: centerRows.length,
     getScrollElement: () => containerRef.current,
     estimateSize: () => defaultRowHeight,
     overscan,
-    getItemKey: (index) => rows[index]?.id ?? index,
+    getItemKey: (index) => centerRows[index]?.id ?? index,
   });
 
   const virtualRows = virtualizer.getVirtualItems();
@@ -220,6 +243,9 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
   const keyboard = useTreeTableKeyboard({
     table,
     virtualizer,
+    topPinnedRows,
+    centerRows,
+    bottomPinnedRows,
     enableRowSelection: Boolean(enableRowSelection),
     onRowActivate,
   });
@@ -229,12 +255,13 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
       rowId: string,
       options?: { align?: "start" | "center" | "end" | "auto" },
     ) => {
-      const index = rows.findIndex((r) => r.id === rowId);
+      // Only scroll to center rows - pinned rows are always visible
+      const index = centerRows.findIndex((r) => r.id === rowId);
       if (index >= 0) {
         virtualizer.scrollToIndex(index, options);
       }
     },
-    [rows, virtualizer],
+    [centerRows, virtualizer],
   );
 
   const scrollToNode = useCallback(
@@ -247,6 +274,9 @@ export function useTreeTableInstance<TData extends TreeNodeData>(
   return {
     table,
     rows,
+    topPinnedRows,
+    centerRows,
+    bottomPinnedRows,
     virtualizer,
     containerRef,
     virtualRows,

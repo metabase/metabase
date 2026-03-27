@@ -4,7 +4,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { RawMaybeLink } from "metabase/common/components/Badge/Badge.styled";
-import Card from "metabase/common/components/Card";
+import { Card } from "metabase/common/components/Card";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import { Box, type BoxProps, Icon } from "metabase/ui";
 

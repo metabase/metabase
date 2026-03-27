@@ -53,8 +53,7 @@ export function shouldClosePopover(
   return false;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function useSequencedContentCloseHandler() {
+export function useSequencedContentCloseHandler() {
   const popoverDataRef = useRef<PopoverData>();
 
   const handleEvent = useCallback((e: MouseEvent | KeyboardEvent) => {

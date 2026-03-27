@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import BaseTabList from "metabase/common/components/TabList";
-import { alpha } from "metabase/lib/colors";
+import { TabList as BaseTabList } from "metabase/common/components/TabList";
+import { alpha } from "metabase/ui/colors";
 
 export const TabList = styled(BaseTabList)`
   width: 100%;

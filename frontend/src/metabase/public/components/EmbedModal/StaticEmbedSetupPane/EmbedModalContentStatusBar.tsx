@@ -34,6 +34,7 @@ export const EmbedModalContentStatusBar = ({
       direction="row"
       align="center"
       gap="0.5rem"
+      data-testid="embed-modal-content-status-bar"
     >
       <Text>
         {!isPublished

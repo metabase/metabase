@@ -14,7 +14,7 @@
 (def current-dependency-analysis-version
   "Current version of the dependency analysis logic.
   This should be incremented when the dependency analysis logic changes."
-  4)
+  6)
 
 (methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
 
@@ -74,6 +74,11 @@
      :key-seq               key-seq
      :destination-filter-fn destination-filter-fn
      :source-filter-fn      source-filter-fn})))
+
+(defn direct-dependents
+  "Returns the direct dependents for the given entity key sequence."
+  [key-seq]
+  (key-dependents key-seq))
 
 (defn- key-dependencies
   "Get the dependency entity keys for the entity keys in `key-seq`.
@@ -157,12 +162,16 @@
    (filtered-graph key-dependents destination-filter-fn source-filter-fn)))
 
 (defn entities->nodes
-  "Converts a map of entities `{entity-type [{:id 1, ...} ...]}` into a list of nodes `[[entity-type entity-id]]`."
+  "Converts a map of entities `{entity-type [{:id 1, ...} ...]}` or entity IDs `{entity-type [1]}` into a list of nodes
+  `[[entity-type entity-id]]`."
   [entities-map]
   (for [[entity-type entities] entities-map
         entity entities
-        :when (:id entity)]
-    [entity-type (:id entity)]))
+        :let [id (if (number? entity)
+                   entity
+                   (:id entity))]
+        :when id]
+    [entity-type id]))
 
 (defn group-nodes
   "Groups a list of nodes `[[entity-type entity-id]]` by their type."
@@ -259,3 +268,28 @@
         (t2/delete! :model/Dependency :id [:in to-remove]))
       (when (seq to-add)
         (t2/insert! :model/Dependency to-add)))))
+
+(defn swap-dependency!
+  "Efficiently swap a dependency from old-source to new-source during replacement operations.
+  This is more efficient than full dependency analysis since we know exactly what changed.
+
+  If the new dependency already exists, we just delete the old one (to avoid duplicate key violation).  If the old
+  dependency doesn't exist, this is a no-op.
+
+  Parameters:
+  - entity-type: The type of the entity whose dependency is changing (e.g., :card)
+  - entity-id: The ID of the entity
+  - old-source: The source being replaced, as [source-type source-id] (e.g., [:card 783])
+  - new-source: The new source, as [source-type source-id] (e.g., [:table 164])"
+  [entity-type entity-id [old-source-type old-source-id] [new-source-type new-source-id]]
+  (let [already-present? (t2/exists? :model/Dependency
+                                     :from_entity_type entity-type :from_entity_id entity-id
+                                     :to_entity_type new-source-type :to_entity_id new-source-id)]
+    (if already-present?
+      (t2/delete! :model/Dependency
+                  :from_entity_type entity-type :from_entity_id entity-id
+                  :to_entity_type old-source-type :to_entity_id old-source-id)
+      (t2/update! :model/Dependency
+                  {:from_entity_type entity-type :from_entity_id entity-id
+                   :to_entity_type old-source-type :to_entity_id old-source-id}
+                  {:to_entity_type new-source-type :to_entity_id new-source-id}))))

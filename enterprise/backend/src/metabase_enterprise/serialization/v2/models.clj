@@ -27,8 +27,7 @@
    "Document"
    "Glossary"
    "NativeQuerySnippet"
-   "Timeline"
-   "Transform"])
+   "Timeline"])
 
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
@@ -36,7 +35,9 @@
           content
           ["FieldValues"
            "Metabot"
+           "PythonLibrary"
            "Setting"
+           "Transform"
            "TransformJob"
            "TransformTag"]))
 
@@ -91,12 +92,16 @@
    "NotificationHandler"
    "NotificationRecipient"
    "NotificationSubscription"
+   "OAuthAccessToken"
+   "OAuthAuthorizationCode"
+   "OAuthClient"
+   "OAuthRefreshToken"
    "Permissions"
    "PermissionsGroup"
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
-   "PythonLibrary"
+   "PremiumFeaturesCache"
    "Pulse"
    "PulseCard"
    "PulseChannel"
@@ -108,6 +113,7 @@
    "QueryField"
    "QueryTable"
    "RecentViews"
+   "ReplacementRun"
    "RemoteSyncObject"
    "RemoteSyncTask"
    "Revision"
@@ -127,4 +133,17 @@
    "User"
    "UserKeyValue"
    "UserParameterValue"
-   "ViewLog"])
+   "ViewLog"
+   "Workspace"
+   ;; TODO (lbrdnk 2025-12-17) -- I've added rest of the workspace models. I believe some of those will be available for
+   ;; serialization, hence we should revisit this later in the project.
+   "WorkspaceInput"
+   "WorkspaceInputExternal"
+   "WorkspaceInputTransform"
+   "WorkspaceLog"
+   "WorkspaceMerge"
+   "WorkspaceMergeTransform"
+   "WorkspaceGraph"
+   "WorkspaceOutput"
+   "WorkspaceOutputExternal"
+   "WorkspaceTransform"])

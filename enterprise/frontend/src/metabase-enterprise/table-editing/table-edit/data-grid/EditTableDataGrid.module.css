@@ -2,7 +2,7 @@
 
 .tableRow {
   &:hover .tableBodyCell {
-    background-color: var(--mb-color-brand-alpha-04);
+    background-color: var(--mb-color-background-hover);
   }
 
   &:hover .tableHeaderCell {
@@ -11,7 +11,7 @@
   }
 
   &[data-row-selected="true"] .tableBodyCell {
-    background-color: var(--mb-color-brand-alpha-04);
+    background-color: var(--mb-color-background-hover);
   }
 }
 

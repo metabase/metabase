@@ -36,6 +36,7 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/PythonLibrary
+    :model/PremiumFeaturesCache
     :model/Query
     :model/QueryCache
     :model/QueryExecution
@@ -43,6 +44,7 @@
     :model/QueryTable
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/ReplacementRun
     :model/SearchIndexMetadata
     :model/SemanticSearchTokenTracking
     :model/SupportAccessGrantLog
@@ -58,7 +60,18 @@
     :model/TransformTag
     :model/TransformTransformTag
     :model/Undo
-    :model/UserKeyValue})
+    :model/UserKeyValue
+    :model/Workspace
+    :model/WorkspaceGraph
+    :model/WorkspaceInput
+    :model/WorkspaceInputExternal
+    :model/WorkspaceInputTransform
+    :model/WorkspaceLog
+    :model/WorkspaceMerge
+    :model/WorkspaceMergeTransform
+    :model/WorkspaceOutput
+    :model/WorkspaceOutputExternal
+    :model/WorkspaceTransform})
 
 (defn- all-model-names []
   (into (sorted-set)

@@ -14,11 +14,11 @@
 
 .isActive {
   border-color: var(--mb-color-brand);
-  background-color: var(--mb-color-brand-lighter);
+  background-color: var(--mb-color-background-brand);
 
   &.isOver {
     transform: scale(1.025);
-    background-color: var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-hover);
   }
 }
 

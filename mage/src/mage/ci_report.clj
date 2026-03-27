@@ -31,16 +31,37 @@
   [s]
   (-> s
       (str/replace #"\x1b\[[0-9;]*m" "")
+      (str/replace #"\x1b" "")  ;; Catch any stray ESC chars
       (str/replace #"\[J" "")
       (str/replace #"\[K" "")))
 
+(defn- resolve-carriage-returns
+  "Simulate carriage return behavior: for each line, keep only content after last \\r.
+   This handles terminal progress animations that use \\r to overwrite the line.
+   Also trims leading whitespace since terminal overwrites pad with spaces."
+  [s]
+  (->> (str/split-lines s)
+       (map (fn [line]
+              (if (str/includes? line "\r")
+                (str/triml (last (str/split line #"\r")))
+                line)))
+       (str/join "\n")))
+
+(def ^:private ^:dynamic *progress-log* nil)
+
 (defn- log-progress [msg]
-  (binding [*out* *err*]
-    (println (str "\u001b[34m→\u001b[0m " msg))))
+  (let [formatted (str "→ " msg)]
+    (when *progress-log*
+      (swap! *progress-log* conj formatted))
+    (binding [*out* *err*]
+      (println (str "\u001b[34m" formatted "\u001b[0m")))))
 
 (defn- log-success [msg]
-  (binding [*out* *err*]
-    (println (str "\u001b[32m✓\u001b[0m " msg))))
+  (let [formatted (str "✓ " msg)]
+    (when *progress-log*
+      (swap! *progress-log* conj formatted))
+    (binding [*out* *err*]
+      (println (str "\u001b[32m" formatted "\u001b[0m")))))
 
 ;;; GitHub API
 
@@ -100,16 +121,34 @@
            (take-last 2000)
            (str/join "\n")))))
 
-(defn- job-logs
-  "Fetch logs for a specific job ID"
+(defn- job-logs-raw
+  "Fetch raw logs for a specific job ID with retries"
   [job-id]
-  (try
-    (let [result (p/shell {:out :string :err :string :continue true}
-                          "timeout" "60" "gh" "api"
-                          (format "repos/%s/actions/jobs/%s/logs" repo job-id))]
-      (when (zero? (:exit result))
-        (extract-test-report-section (:out result))))
-    (catch Exception _ nil)))
+  (loop [attempt 1
+         delay-ms 1000]
+    (let [result (try
+                   (let [proc (p/process {:out :string :err :string}
+                                         "gh" "api"
+                                         (format "repos/%s/actions/jobs/%s/logs" repo job-id))
+                         result (deref proc 60000 ::timeout)]
+                     (when (= ::timeout result)
+                       (p/destroy-tree proc))
+                     (when (and (not= ::timeout result)
+                                (zero? (:exit result)))
+                       (:out result)))
+                   (catch Exception _ nil))]
+      (if result
+        result
+        ;; Retry up to 3 times with exponential backoff
+        (when (< attempt 3)
+          (Thread/sleep delay-ms)
+          (recur (inc attempt) (* delay-ms 2)))))))
+
+(defn- job-logs
+  "Fetch logs for a specific job ID, extracting test report section"
+  [job-id]
+  (when-let [raw (job-logs-raw job-id)]
+    (extract-test-report-section raw)))
 
 (defn- extract-job-id
   "Extract job ID from a check link URL"
@@ -119,10 +158,24 @@
 
 ;;; Log Parsing
 
+(defn- strip-timestamp
+  "Remove GitHub Actions timestamp prefix from log line.
+   Format: 2026-02-06T02:38:25.1443042Z <content>
+   Strips the timestamp plus one trailing space, preserves remaining indentation."
+  [line]
+  (str/replace line #"^\d{4}-\d{2}-\d{2}T[\d:.]+Z " ""))
+
 (defn- parse-trunk-report
   "Extract test failure info from Trunk test report section in logs"
   [logs]
-  (let [clean-logs (strip-ansi logs)
+  (let [clean-logs (-> logs
+                       strip-ansi
+                       ;; Trunk CLI uses \r for terminal overwrite - resolve to final content
+                       resolve-carriage-returns
+                       ;; Also strip GitHub Actions timestamps
+                       (->> str/split-lines
+                            (map strip-timestamp)
+                            (str/join "\n")))
         lines (str/split-lines clean-logs)
         ;; Find the test report section - look for 📚 emoji specifically
         in-report? (atom false)
@@ -182,6 +235,79 @@
                   text)))
          (str/join "\n"))))
 
+(defn- extract-failure-blocks
+  "Extract full FAIL/ERROR blocks from logs.
+   Splits on FAIL in|ERROR in|LONG TEST and keeps FAIL/ERROR blocks."
+  [logs]
+  (let [clean-logs (strip-ansi logs)
+        lines (->> (str/split-lines clean-logs)
+                   (map strip-timestamp))
+        ;; State: collecting lines for current block
+        current-block (atom [])
+        blocks (atom [])
+        in-block? (atom false)
+        block-type (atom nil)]
+    (doseq [line lines]
+      (cond
+        ;; Start of a FAIL block
+        (re-find #"^FAIL in " line)
+        (do
+          ;; Save previous block if it was FAIL/ERROR
+          (when (and @in-block? (#{:fail :error} @block-type))
+            (swap! blocks conj {:type @block-type :lines @current-block}))
+          (reset! current-block [line])
+          (reset! in-block? true)
+          (reset! block-type :fail))
+
+        ;; Start of an ERROR block
+        (re-find #"^ERROR in " line)
+        (do
+          (when (and @in-block? (#{:fail :error} @block-type))
+            (swap! blocks conj {:type @block-type :lines @current-block}))
+          (reset! current-block [line])
+          (reset! in-block? true)
+          (reset! block-type :error))
+
+        ;; LONG TEST - ends previous block, but we don't collect this one
+        (re-find #"LONG TEST" line)
+        (do
+          (when (and @in-block? (#{:fail :error} @block-type))
+            (swap! blocks conj {:type @block-type :lines @current-block}))
+          (reset! current-block [])
+          (reset! in-block? false)
+          (reset! block-type nil))
+
+        ;; Test summary - ends collection, but include the line (has duration)
+        (re-find #"^Ran \d+ tests in" line)
+        (do
+          (when @in-block?
+            (swap! current-block conj line)
+            (swap! current-block conj "")  ;; blank line after
+            (when (#{:fail :error} @block-type)
+              (swap! blocks conj {:type @block-type :lines @current-block})))
+          (reset! current-block [])
+          (reset! in-block? false)
+          (reset! block-type nil))
+
+        ;; Continue collecting if in a block
+        @in-block?
+        (swap! current-block conj line)))
+
+    ;; Don't forget the last block
+    (when (and @in-block? (#{:fail :error} @block-type) (seq @current-block))
+      (swap! blocks conj {:type @block-type :lines @current-block}))
+
+    @blocks))
+
+(defn- format-failure-blocks
+  "Format failure blocks as markdown"
+  [blocks]
+  (when (seq blocks)
+    (->> blocks
+         (map (fn [{:keys [lines]}]
+                (str/join "\n" lines)))
+         (str/join "\n\n---\n\n"))))
+
 ;;; Report Generation
 
 (defn- categorize-checks
@@ -192,40 +318,65 @@
    :passed (filter #(= "SUCCESS" (:state %)) checks)})
 
 (defn- fetch-failed-logs-parallel
-  "Fetch logs for failed checks in parallel"
-  [failed-checks]
+  "Fetch logs for failed checks in parallel using futures.
+   When detailed? is true, fetches full logs; otherwise just the test report section."
+  [failed-checks {:keys [detailed?]}]
   (let [job-ids (->> failed-checks
                      (map :link)
                      (map extract-job-id)
                      (filter some?)
                      distinct
-                     (take 15))]  ; Limit to 15 jobs
+                     vec)
+        fetch-fn (if detailed? job-logs-raw job-logs)]
     (when (seq job-ids)
-      (log-progress (format "  Fetching logs for %d failed job(s) in parallel..." (count job-ids)))
-      (->> job-ids
-           (pmap (fn [job-id]
-                   (when-let [logs (job-logs job-id)]
-                     [job-id logs])))
-           (filter some?)
-           (into {})))))
+      (log-progress (format "  Fetching logs for %d failed job(s) in parallel%s..."
+                            (count job-ids)
+                            (if detailed? " (with expected/actual)" "")))
+      ;; Launch all fetches as futures
+      (let [futures (mapv (fn [job-id]
+                            [job-id (future (fetch-fn job-id))])
+                          job-ids)]
+        ;; Collect results, with 60s timeout per job
+        (->> futures
+             (keep (fn [[job-id fut]]
+                     (try
+                       (when-let [logs (deref fut 60000 nil)]
+                         [job-id logs])
+                       (catch Exception _ nil))))
+             (into {}))))))
 
 (defn- generate-report
-  "Generate markdown report"
-  [pr-number pr-info checks logs-by-job-id]
+  "Generate markdown report.
+   pr-number and pr-info may be nil for branch/SHA reports."
+  [pr-number pr-info checks logs-by-job-id {:keys [detailed? progress-log branch sha]}]
   (let [{:keys [failed pending passed]} (categorize-checks checks)
-        branch (:headRefName pr-info)
-        sha (subs (:headRefOid pr-info) 0 7)
-        title (:title pr-info)
-        pr-url (:url pr-info)]
+        branch (or (:headRefName pr-info) branch)
+        sha    (or (:headRefOid pr-info) sha)]
 
-    (println (format "# CI Status Report for PR #%s" pr-number))
+    (if pr-number
+      (println (format "# CI Report for PR #%s: %s" pr-number (:title pr-info)))
+      (println (format "# CI Report for %s" (or branch sha))))
     (println)
-    (println (format "**Title:** %s" title))
+    (println "## Metadata")
     (println)
-    (println (format "**Branch:** `%s` | **Commit:** `%s`" branch sha))
+    (when pr-number
+      (println (format "- **PR:** [#%s](%s)" pr-number (:url pr-info))))
+    (when branch
+      (println (format "- **Branch:** `%s`" branch)))
+    (when sha
+      (println (format "- **SHA:** `%s`" sha)))
+    (println (format "- **Mode:** %s" (if detailed? "Detailed (with expected/actual)" "Summary")))
     (println)
-    (println (format "**PR:** %s" pr-url))
-    (println)
+
+    ;; Progress log section
+    (when (and progress-log (seq @progress-log))
+      (println "## Loading Data")
+      (println)
+      (println "```")
+      (doseq [msg @progress-log]
+        (println msg))
+      (println "```")
+      (println))
 
     ;; Summary table
     (println "## Summary")
@@ -271,15 +422,27 @@
         (let [job-id (extract-job-id (:link check))
               job-logs (get logs-by-job-id job-id)]
           (if job-logs
-            (let [report (parse-trunk-report job-logs)
-                  formatted (format-trunk-report report)]
-              (if (seq formatted)
-                (do (println "**Test Failures:**")
-                    (println)
-                    (println "````")
-                    (println formatted)
-                    (println "````"))
-                (println "_No test failures found in logs._")))
+            (if detailed?
+              ;; Detailed mode: show full FAIL/ERROR blocks
+              (let [blocks (extract-failure-blocks job-logs)
+                    formatted (format-failure-blocks blocks)]
+                (if (seq formatted)
+                  (do (println "**Test Failures:**")
+                      (println)
+                      (println "```")
+                      (println formatted)
+                      (println "```"))
+                  (println "_No test failures found in logs._")))
+              ;; Summary mode: show trunk report summary
+              (let [report (parse-trunk-report job-logs)
+                    formatted (format-trunk-report report)]
+                (if (seq formatted)
+                  (do (println "**Test Failures:**")
+                      (println)
+                      (println "````")
+                      (println formatted)
+                      (println "````"))
+                  (println "_No test failures found in logs._"))))
             (println "_Logs not yet available or run still in progress._")))
         (println)))
 
@@ -306,59 +469,154 @@
     (when (re-matches #"\d+" result)
       result)))
 
-(defn- parse-pr-arg
-  "Parse PR argument - could be a number or a URL"
+(defn- classify-arg
+  "Classify an argument as a PR number, commit SHA, or branch name.
+   Returns {:type (:pr|:branch|:sha), :value string}."
   [arg]
   (cond
-    ;; Already a number
-    (re-matches #"\d+" arg) arg
-    ;; GitHub PR URL - extract the number
+    ;; GitHub PR URL
     (re-find #"github\.com/.+/pull/(\d+)" arg)
-    (second (re-find #"github\.com/.+/pull/(\d+)" arg))
-    ;; Otherwise return as-is and let gh handle it
-    :else arg))
+    {:type :pr :value (second (re-find #"github\.com/.+/pull/(\d+)" arg))}
+    ;; All digits → PR number
+    (re-matches #"\d+" arg)
+    {:type :pr :value arg}
+    ;; Hex string 7-40 chars → commit SHA
+    (re-matches #"[0-9a-f]{7,40}" arg)
+    {:type :sha :value arg}
+    ;; Everything else → branch name
+    :else
+    {:type :branch :value arg}))
 
-(defn generate-report! [{:keys [arguments]}]
-  (let [pr-number (if (empty? arguments)
-                    ;; No args - try to get PR for current branch
-                    (do
-                      (log-progress "No PR specified, checking current branch...")
-                      (if-let [pr (get-current-branch-pr)]
-                        (do (log-success (format "Found PR #%s for current branch" pr))
-                            pr)
-                        (do
-                          (binding [*out* *err*]
-                            (println "Error: No PR found for current branch")
-                            (println "Usage: mage ci-report <pr-number or url>"))
-                          (System/exit 1))))
-                    ;; Parse the provided argument
-                    (parse-pr-arg (first arguments)))]
-    (log-progress (format "Fetching PR #%s info..." pr-number))
+(defn- normalize-check-state
+  "Map GitHub Check Runs API status/conclusion to the state strings
+   that categorize-checks expects (SUCCESS, FAILURE, PENDING, etc)."
+  [{:keys [status conclusion]}]
+  (if (= status "completed")
+    (case conclusion
+      "success"   "SUCCESS"
+      "skipped"   "SUCCESS"
+      "failure"   "FAILURE"
+      "timed_out" "FAILURE"
+      "cancelled" "FAILURE"
+      ;; action_required, stale, neutral
+      "FAILURE")
+    (case status
+      "in_progress" "IN_PROGRESS"
+      "queued"      "QUEUED"
+      "PENDING")))
 
-    (let [pr-info (pr-info pr-number)]
-      (when-not pr-info
-        (binding [*out* *err*]
-          (println (format "Error: Could not fetch PR #%s" pr-number)))
-        (System/exit 1))
+(defn- commit-check-runs
+  "Fetch check runs for a commit SHA. Returns vec of {:name :state :link} maps
+   matching the shape returned by pr-checks."
+  [sha]
+  (loop [page 1
+         all-runs []]
+    (when-let [result (gh-api (format "repos/%s/commits/%s/check-runs?per_page=100&page=%d"
+                                      repo sha page))]
+      (let [runs (:check_runs result)
+            accumulated (into all-runs runs)]
+        (if (< (count accumulated) (:total_count result))
+          (recur (inc page) accumulated)
+          (mapv (fn [run]
+                  {:name  (:name run)
+                   :state (normalize-check-state run)
+                   :link  (:html_url run)})
+                accumulated))))))
 
-      (log-success (format "Found PR on branch: %s" (:headRefName pr-info)))
-      (log-progress "Checking PR status...")
+(defn- resolve-branch-head
+  "Resolve a branch name to its latest CI commit SHA.
+   Uses the GitHub Actions runs API to find the most recent workflow run."
+  [branch]
+  (when-let [result (gh-api (format "repos/%s/actions/runs?branch=%s&per_page=1"
+                                    repo (java.net.URLEncoder/encode branch "UTF-8")))]
+    (get-in result [:workflow_runs 0 :head_sha])))
 
-      (let [checks (pr-checks pr-number)
-            {:keys [failed pending]} (categorize-checks checks)]
+(defn- run-pr-report!
+  "Generate report for a PR number. The original/primary code path."
+  [pr-number detailed?]
+  (log-progress (format "Fetching PR #%s info..." pr-number))
+  (let [info (pr-info pr-number)]
+    (when-not info
+      (binding [*out* *err*]
+        (println (format "Error: Could not fetch PR #%s" pr-number)))
+      (System/exit 1))
+    (log-success (format "Found PR on branch: %s" (:headRefName info)))
+    (log-progress "Checking PR status...")
+    (let [checks (pr-checks pr-number)
+          {:keys [failed pending]} (categorize-checks checks)]
+      (log-progress (format "Found %d failed, %d pending check(s)"
+                            (count failed) (count pending)))
+      (log-progress "Fetching failed job logs...")
+      (let [logs-by-job-id (if (pos? (count failed))
+                             (fetch-failed-logs-parallel failed {:detailed? detailed?})
+                             {})]
+        (when (seq logs-by-job-id)
+          (log-success "Retrieved logs"))
+        (log-progress (str "Generating report" (when detailed? " (detailed mode)") "..."))
+        (println)
+        (generate-report pr-number info checks logs-by-job-id
+                         {:detailed? detailed?
+                          :progress-log *progress-log*})
+        (log-success "Done!")))))
 
-        (log-progress (format "Found %d failed, %d pending check(s)"
-                              (count failed) (count pending)))
+(defn- run-commit-report!
+  "Generate report for a commit SHA (with optional branch name for display)."
+  [sha branch detailed?]
+  (log-progress (format "Fetching check runs for %s..." (subs sha 0 (min 12 (count sha)))))
+  (let [checks (commit-check-runs sha)]
+    (when-not checks
+      (binding [*out* *err*]
+        (println (format "Error: Could not fetch checks for %s" sha)))
+      (System/exit 1))
+    (let [{:keys [failed pending]} (categorize-checks checks)]
+      (log-progress (format "Found %d failed, %d pending check(s)"
+                            (count failed) (count pending)))
+      (log-progress "Fetching failed job logs...")
+      (let [logs-by-job-id (if (pos? (count failed))
+                             (fetch-failed-logs-parallel failed {:detailed? detailed?})
+                             {})]
+        (when (seq logs-by-job-id)
+          (log-success "Retrieved logs"))
+        (log-progress (str "Generating report" (when detailed? " (detailed mode)") "..."))
+        (println)
+        (generate-report nil nil checks logs-by-job-id
+                         {:detailed? detailed?
+                          :progress-log *progress-log*
+                          :branch branch
+                          :sha sha})
+        (log-success "Done!")))))
 
-        ;; Fetch logs for failed checks
-        (log-progress "Fetching failed job logs...")
-        (let [logs-by-job-id (if (pos? (count failed))
-                               (fetch-failed-logs-parallel failed)
-                               {})]
-          (when (seq logs-by-job-id)
-            (log-success "Retrieved logs"))
-
-          (log-progress "Generating report...")
-          (println)
-          (generate-report pr-number pr-info checks logs-by-job-id)
-          (log-success "Done!"))))))
+(defn generate-report! [{:keys [arguments options]}]
+  (binding [*progress-log* (atom [])]
+    (let [detailed? (:detailed options)
+          {:keys [type value]} (if (empty? arguments)
+                                 ;; No args: try PR first, fall back to branch
+                                 (do
+                                   (log-progress "No argument specified, checking current branch...")
+                                   (if-let [pr (get-current-branch-pr)]
+                                     (do (log-success (format "Found PR #%s for current branch" pr))
+                                         {:type :pr :value pr})
+                                     ;; No PR — use current branch name
+                                     (let [branch (sh "git" "rev-parse" "--abbrev-ref" "HEAD")]
+                                       (if branch
+                                         (do (log-progress (format "No PR found, using branch: %s" branch))
+                                             {:type :branch :value branch})
+                                         (do
+                                           (binding [*out* *err*]
+                                             (println "Error: No PR found and could not determine current branch")
+                                             (println "Usage: mage ci-report [--detailed] <pr-number|branch|sha>"))
+                                           (System/exit 1))))))
+                                 ;; Explicit argument
+                                 (classify-arg (first arguments)))]
+      (case type
+        :pr     (run-pr-report! value detailed?)
+        :branch (do
+                  (log-progress (format "Resolving branch '%s' to latest CI commit..." value))
+                  (let [sha (resolve-branch-head value)]
+                    (if sha
+                      (do (log-success (format "Resolved to SHA: %s" (subs sha 0 (min 12 (count sha)))))
+                          (run-commit-report! sha value detailed?))
+                      (do (binding [*out* *err*]
+                            (println (format "Error: No CI runs found for branch '%s'" value)))
+                          (System/exit 1)))))
+        :sha    (run-commit-report! value nil detailed?)))))

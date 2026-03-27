@@ -1,4 +1,4 @@
-/* eslint-disable no-color-literals */
+/* eslint-disable metabase/no-color-literals */
 
 import { match } from "ts-pattern";
 
@@ -20,7 +20,7 @@ export function printUsageProblemToConsole(problem: SdkUsageProblem | null) {
     .exhaustive();
 
   const message =
-    // eslint-disable-next-line no-literal-metabase-strings -- console messages should not be white-labelled
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- console messages should not be white-labelled
     `%cMetabase modular embedding SDK for React\n\n` +
     `%c${problem.message}\n` +
     `See the documentation for more information:\n\n` +

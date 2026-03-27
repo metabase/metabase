@@ -993,4 +993,17 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       );
     });
   });
+
+  it("should allow viewing the table preview (metabase#69038)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0);
+
+    cy.findByTestId("visualizer-view-as-table-button").click();
+
+    cy.findByTestId("visualizer-tabular-preview-modal").within(() => {
+      cy.findByText("Count").should("exist");
+    });
+  });
 });

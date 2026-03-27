@@ -116,7 +116,7 @@
          child-map {}]
     (let [new-children (children-of graph to-traverse)
           new-traverse (into #{}
-                             (comp (remove child-map) cat)
+                             (comp cat (remove child-map))
                              (vals new-children))
           new-child-map (into child-map new-children)]
       (if (seq new-traverse)
@@ -141,12 +141,13 @@
   [f :- [:-> ::node :any]
    children :- ::child-map]
   (let [all-nodes (all-map-nodes children)
-        full-parent-map (->> children
-                             (mapcat (fn [[parent current-children]]
-                                       (map (fn [child]
-                                              {child #{parent}})
-                                            current-children)))
-                             (apply merge-with into))]
+        full-parent-map (or (->> children
+                                 (mapcat (fn [[parent current-children]]
+                                           (map (fn [child]
+                                                  {child #{parent}})
+                                                current-children)))
+                                 (apply merge-with into))
+                            {})]
     (loop [nodes-remaining all-nodes
            parent-map full-parent-map
            ignored #{}

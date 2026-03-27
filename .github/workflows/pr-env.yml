@@ -16,7 +16,7 @@ on:
         default: false
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     if: github.event.pull_request.head.repo.full_name == github.repository
     name: Build Metabase Docker image
     timeout-minutes: 60
@@ -40,7 +40,8 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
       - name: Move uberjar to bin/docker
@@ -57,7 +58,7 @@ jobs:
           push: true
   deploy_pr:
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: PR Review ENV
     permissions:
       id-token: write
@@ -187,7 +188,7 @@ jobs:
             --atomic \
             --timeout 10m
   preview_links:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [deploy_pr]
     steps:
       - uses: marocchino/sticky-pull-request-comment@v2

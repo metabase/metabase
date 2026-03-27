@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "__support__/ui";
-import EntityMenuTrigger from "metabase/common/components/EntityMenuTrigger";
+import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 
 describe("EntityMenuTrigger", () => {
   it("should render the desired icon and call its onClick fn", () => {

@@ -34,10 +34,10 @@
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries-rest.api.card-test :as api.card-test]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
+   [metabase.query-processor.test :as qp]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -2088,7 +2088,7 @@
 (deftest update-cards-error-handling-test
   (testing "PUT /api/dashboard/:id"
     (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-      (testing "if a dashboard has tabs, check if all cards from the request has a tab_id"
+      (testing "if a dashboard has multiple tabs, check if all cards from the request has a tab_id"
         (is (= "This dashboard has tab, makes sure every card has a tab"
                (mt/user-http-request :crowberto :put 400 (format "dashboard/%d" dashboard-id)
                                      {:dashcards (conj
@@ -2099,6 +2099,30 @@
                                                    :col    1
                                                    :row    1})
                                       :tabs      (tabs dashboard-id)})))))))
+
+(deftest update-cards-auto-assign-single-tab-test
+  (testing "PUT /api/dashboard/:id - auto-assign null dashboard_tab_id to the single tab (metabase#67971)"
+    (mt/with-temp
+      [:model/Dashboard     {dashboard-id :id} {}
+       :model/Card          {card-id :id}      {}
+       :model/DashboardTab  {tab-id :id}       {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+       :model/DashboardCard _                  {:dashboard_id     dashboard-id
+                                                :card_id          card-id
+                                                :dashboard_tab_id tab-id}]
+      (testing "when dashboard has exactly one tab, cards with null dashboard_tab_id are auto-assigned to that tab"
+        (let [resp (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dashboard-id)
+                                         {:dashcards (conj
+                                                      (current-cards dashboard-id)
+                                                      {:id     -1
+                                                       :size_x 4
+                                                       :size_y 4
+                                                       :col    1
+                                                       :row    1
+                                                       :card_id card-id})
+                                          :tabs      [{:id tab-id :name "Tab 1"}]})
+              new-card (last (sort-by :id (:dashcards resp)))]
+          ;; The new card should have been auto-assigned to the single tab
+          (is (= tab-id (:dashboard_tab_id new-card))))))))
 
 (deftest update-tabs-track-snowplow-test
   (mt/with-temp
@@ -2891,7 +2915,7 @@
   (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
-        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
           (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is (= {:values [["African"] ["American"] ["Artisan"] ["Asian"]] :has_more_values false}
@@ -2899,7 +2923,7 @@
 
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
       (testing (str "\nGET /api/" url "\n")
-        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
           (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
               (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
@@ -3635,7 +3659,19 @@
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
                 (is (malli= (dashboard-card-query-expected-results-schema)
-                            (mt/user-http-request :rasta :post 202 (url)))))))
+                            (mt/user-http-request :rasta :post 202 (url))))))
+            (testing "Should return 403 if user does not have view-data permission (GHY-3228)"
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 (url))))))
+            (testing "Should return 403 for blocked view-data even with invalid parameters (GHY-3228)"
+              (mt/with-no-data-perms-for-all-users!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :post 403 (url)
+                                             {:parameters [{:id    "FAKE_PARAM"
+                                                            :value "fake"}]}))))))
           (testing "Validation"
             (testing "404s"
               (testing "Should return 404 if Dashboard doesn't exist"
@@ -3861,40 +3897,6 @@
                                  "type"      "query"}
                           :user-id (str (mt/user->id :crowberto))}
                          (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
-
-(deftest dashcard-http-action-execution-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [{:keys [action-id model-id]} {:type :http}]
-        (testing "Executing dashcard with action"
-          (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                         :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
-                                                                 :action_id action-id
-                                                                 :card_id model-id}]
-            (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
-                                       dashboard-id
-                                       dashcard-id)]
-              (testing "Should be able to execute an action"
-                (is (= {:the_parameter 1}
-                       (mt/user-http-request :crowberto :post 200 execute-path
-                                             {:parameters {"id" 1}}))))
-              (testing "Should handle errors"
-                (is (= {:remote-status 400
-                        :message       "oops"}
-                       (mt/user-http-request :crowberto :post 400 execute-path
-                                             {:parameters {"id" 1 "fail" "true"}}))))
-              (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"fail\"}"}
-                              (mt/user-http-request :crowberto :post 400 execute-path
-                                                    {:parameters {"extra" 1}}))))
-              (testing "Missing parameter should fail gracefully"
-                (is (has-valid-action-execution-error-message?
-                     (mt/user-http-request :crowberto :post 400 execute-path
-                                           {:parameters {}}))))
-              (testing "Sending an invalid number should fail gracefully"
-                (is (has-valid-action-execution-error-message?
-                     (mt/user-http-request :crowberto :post 400 execute-path
-                                           {:parameters {"id" "BAD"}})))))))))))
 
 (deftest dashcard-implicit-action-execution-insert-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -4516,7 +4518,8 @@
               (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
-  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+  (defn- test-handle-broken-subscription-notification!
+    [{:keys [disable-links? email-body-pattern match-email-body-pattern?]}]
     (let [param {:name "Source"
                  :slug "source"
                  :id   "_SOURCE_PARAM_ID_"
@@ -4547,10 +4550,11 @@
                                                                                          [:field (mt/id :people :source)
                                                                                           {:base-type :type/Text}]]}]}
 
-           :model/Pulse {bad-pulse-id :id} {:name         "Bad Pulse"
-                                            :dashboard_id dash-id
-                                            :creator_id   (mt/user->id :trashbird)
-                                            :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
+           :model/Pulse {bad-pulse-id :id} {:name          "Bad Pulse"
+                                            :dashboard_id  dash-id
+                                            :creator_id    (mt/user->id :trashbird)
+                                            :parameters    [(assoc param :value ["Twitter", "Facebook"])]
+                                            :disable_links disable-links?}
            :model/PulseCard _ {:pulse_id          bad-pulse-id
                                :card_id           card-id
                                :dashboard_card_id dash-card-id}
@@ -4562,10 +4566,11 @@
            :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                            :user_id          (mt/user->id :crowberto)}
            ;; Broken slack pulse
-           :model/Pulse {bad-slack-pulse-id :id} {:name         "Bad Slack Pulse"
-                                                  :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
-                                                  :parameters   [(assoc param :value ["LinkedIn"])]}
+           :model/Pulse {bad-slack-pulse-id :id} {:name          "Bad Slack Pulse"
+                                                  :dashboard_id  dash-id
+                                                  :creator_id    (mt/user->id :trashbird)
+                                                  :parameters    [(assoc param :value ["LinkedIn"])]
+                                                  :disable_links disable-links?}
            :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
                                :card_id           card-id
                                :dashboard_card_id dash-card-id}
@@ -4606,8 +4611,8 @@
                                        (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
                                                           (str/includes? title)))))
                                      (testing "The second email (about the broken slack pulse) was received"
-                                       (is (true? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
-                                                          (str/includes? "#my-channel"))))))]
+                                       (is (= match-email-body-pattern? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
+                                                                                (str/includes? email-body-pattern))))))]
               (testing "The dashboard parameters were removed"
                 (is (empty? parameters)))
               (testing "The broken pulse was archived"
@@ -4619,7 +4624,25 @@
                        (set (keys inbox)))))
               (testing "Notification emails were sent to the dashboard and pulse creators"
                 (emails-received? "rasta@metabase.com")
-                (emails-received? "trashbird@metabase.com")))))))))
+                (emails-received? "trashbird@metabase.com"))))))))
+
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
+    (test-handle-broken-subscription-notification!
+     {:disable-links?            false
+      :email-body-pattern        "#my-channel"
+      :match-email-body-pattern? true}))
+
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) with email links when disable_links: false"
+    (test-handle-broken-subscription-notification!
+     {:disable-links?            false
+      :email-body-pattern        "href="
+      :match-email-body-pattern? true}))
+
+  (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100) without email links when disable_links: true"
+    (test-handle-broken-subscription-notification!
+     {:disable-links?            true
+      :email-body-pattern        "href="
+      :match-email-body-pattern? false})))
 
 (deftest run-mlv2-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"

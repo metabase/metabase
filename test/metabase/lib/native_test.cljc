@@ -645,3 +645,15 @@
         {"mytag" {:type :dimension
                   :name "mytag"
                   :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}))))
+
+(defn- table-tag-query [mp template-tag-overrides]
+  (let [base-query (lib.native/native-query mp "select * from {{table}}")
+        template-tag (get (lib.native/template-tags base-query) "table")]
+    (lib.native/with-template-tags base-query
+      {"table" (merge template-tag {:type :table} template-tag-overrides)})))
+
+(deftest ^:parallel basic-native-query-table-references-test
+  (testing "should find id-based native query table references"
+    (is (= #{{:table (meta/id :orders)}}
+           (lib.native/native-query-table-references
+            (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)}))))))

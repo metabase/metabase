@@ -6,15 +6,10 @@ import { jt, msgid, ngettext, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Button, Checkbox, Flex, Modal } from "metabase/ui";
-import type { Channel, Pulse } from "metabase-types/api";
+import type { Channel } from "metabase-types/api";
+import type { DraftDashboardSubscription } from "metabase-types/store";
 
-interface PulseWithMetadata extends Pulse {
-  id?: number | null;
-  archived?: boolean;
-  name?: string;
-}
-
-function getConfirmItems(pulse: PulseWithMetadata): ReactNode[] {
+function getConfirmItems(pulse: DraftDashboardSubscription): ReactNode[] {
   return pulse.channels.map((c: Channel, index: number) =>
     c.channel_type === "email" ? (
       <span key={index}>
@@ -50,7 +45,7 @@ function getConfirmItems(pulse: PulseWithMetadata): ReactNode[] {
 }
 
 interface DeleteSubscriptionActionProps {
-  pulse: PulseWithMetadata;
+  pulse: DraftDashboardSubscription;
   handleArchive: () => void;
 }
 

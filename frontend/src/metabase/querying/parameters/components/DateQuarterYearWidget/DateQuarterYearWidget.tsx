@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 
-import { QuarterYearPicker } from "metabase/querying/filters/components/QuarterYearPicker";
-import type { QuarterYearPickerValue } from "metabase/querying/filters/types";
+import { QuarterYearPicker } from "metabase/querying/common/components/QuarterYearPicker";
+import type { QuarterYearPickerValue } from "metabase/querying/common/types";
 import {
   deserializeDateParameterValue,
   serializeDateParameterValue,

@@ -1,11 +1,12 @@
 import type { Deferred } from "metabase/lib/promise";
-import type { QueryModalType } from "metabase/query_builder/constants";
-import type { Widget } from "metabase/visualizations/components/ChartSettings/types";
+import type { QueryModalType } from "metabase/querying/constants";
+import type { Widget } from "metabase/visualizations/types";
 import type {
   Card,
   CollectionItemModel,
   Dataset,
   Field,
+  NativeQuerySnippet,
   ParameterValuesMap,
   TimelineEventId,
 } from "metabase-types/api";
@@ -21,6 +22,16 @@ export type InitialChartSettingState = {
 export type ForeignKeyReference = {
   status: number;
   value: number;
+};
+
+type Position = {
+  row: number;
+  column: number;
+};
+
+export type Range = {
+  start: Position;
+  end: Position;
 };
 
 export interface QueryBuilderUIControls {
@@ -40,8 +51,8 @@ export interface QueryBuilderUIControls {
   isShowingAIQuestionAnalysisSidebar: boolean;
   initialChartSetting: InitialChartSettingState;
   isShowingRawTable: boolean;
-  queryBuilderMode: QueryBuilderMode | false;
-  previousQueryBuilderMode: boolean;
+  queryBuilderMode: QueryBuilderMode;
+  previousQueryBuilderMode: QueryBuilderMode | null;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
@@ -49,9 +60,17 @@ export interface QueryBuilderUIControls {
   showSidebarTitle: boolean;
   modal: QueryModalType | null;
   modalContext: TimelineEventId | null;
-  dataReferenceStack: null;
+  modalSnippet?:
+    | NativeQuerySnippet
+    | Partial<Omit<NativeQuerySnippet, "id">>
+    | null;
+  dataReferenceStack: unknown[] | null;
   highlightedNativeQueryLineNumbers: number[];
   isShowingListViewConfiguration: boolean;
+  scrollToLastColumn?: boolean;
+  questionDetailsTimelineDrawerState: string | null;
+  recentlySaved?: boolean;
+  nativeEditorSelectedRange: Range[];
 }
 
 export interface QueryBuilderLoadingControls {
@@ -94,4 +113,6 @@ export interface QueryBuilderState {
     cardId?: number;
     serializedCard: string;
   } | null;
+
+  visibleTimelineEventIds: TimelineEventId[];
 }

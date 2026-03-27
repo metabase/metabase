@@ -11,6 +11,8 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.tracing.core :as tracing]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -18,7 +20,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
@@ -36,15 +37,19 @@
   variables. This might require updating `can-read?` and `can-write?` to take explicit perms sets instead of relying
   on dynamic variables."
   {:style/indent 0}
-  [current-user-perms & body]
-  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
+  [current-user-id current-user-perms & body]
+  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-id*)              ~current-user-id
+                   (requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
      ~@body))
 
-(defn- can-write? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-write? instance)))
+(defn- can-write? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-write? instance)))
 
-(defn- can-read? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-read? instance)))
+(defn- can-read? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-read? instance)))
+
+(defn- can-query? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-query? instance)))
 
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
@@ -59,25 +64,11 @@
     (can-write? search-ctx instance)
     true))
 
-(defmethod check-permissions-for-model :transform
-  [search-ctx instance]
-  (and (:is-superuser? search-ctx)
-       (premium-features/enable-transforms?)
-       (if (:archived? search-ctx)
-         (can-write? search-ctx instance)
-         true)))
-
 ;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
 ;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
   [search-ctx instance]
-  ;; we've already filtered out tables w/o collection permissions in the query itself.
-  (let [instance-id (:id instance)
-        user-id     (:current-user-id search-ctx)
-        db-id       (database/table-id->database-id instance-id)]
-    (and
-     (perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
-     (perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
+  (can-query? search-ctx (assoc instance :db_id (:database_id instance))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [search-ctx instance]
@@ -94,6 +85,12 @@
     (can-read? search-ctx instance)))
 
 (defmethod check-permissions-for-model :segment
+  [search-ctx instance]
+  (if (:archived? search-ctx)
+    (can-write? search-ctx instance)
+    (can-read? search-ctx instance)))
+
+(defmethod check-permissions-for-model :measure
   [search-ctx instance]
   (if (:archived? search-ctx)
     (can-write? search-ctx instance)
@@ -326,6 +323,7 @@
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
+                        :enabled-transform-source-types      (transforms.gating/enabled-source-types)
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
                                                                  (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?
@@ -443,19 +441,22 @@
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   [search-ctx :- search.config/SearchContext]
-  (let [reducible-results (search.engine/results search-ctx)
-        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
-        xf                (comp
-                           (take search.config/*db-max-results*)
-                           (map normalize-result)
-                           (filter (partial check-permissions-for-model search-ctx))
-                           (map (partial normalize-result-more search-ctx))
-                           (keep #(search.engine/score scoring-ctx %)))
-        total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
-                            true hydrate-dashboards
-                            true hydrate-user-metadata
-                            (:include-metadata? search-ctx) (add-metadata)
-                            (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
-                            true (add-collection-effective-location)
-                            true (map serialize))]
-    (search-results search-ctx search.engine/model-set total-results)))
+  (tracing/with-span :search "search.execute" {:search/engine       (name (:search-engine search-ctx))
+                                               :search/query-length (count (:search-string search-ctx))
+                                               :search/model-count  (count (:models search-ctx))}
+    (let [reducible-results (search.engine/results search-ctx)
+          scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
+          xf                (comp
+                             (take search.config/*db-max-results*)
+                             (map normalize-result)
+                             (filter (partial check-permissions-for-model search-ctx))
+                             (map (partial normalize-result-more search-ctx))
+                             (keep #(search.engine/score scoring-ctx %)))
+          total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
+                              true hydrate-dashboards
+                              true hydrate-user-metadata
+                              (:include-metadata? search-ctx) (add-metadata)
+                              (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
+                              true (add-collection-effective-location)
+                              true (map serialize))]
+      (search-results search-ctx search.engine/model-set total-results))))

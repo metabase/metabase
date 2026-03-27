@@ -119,7 +119,7 @@ describe("ObjectDetail utils", () => {
 
   describe("getObjectName", () => {
     const question = new Question(card, metadata);
-    const table = question.legacyQueryTable();
+    const table = metadata.table(ORDERS_ID);
 
     it("should get an entity name when there is an entity name column", () => {
       const name = getObjectName({

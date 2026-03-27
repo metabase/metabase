@@ -4,7 +4,7 @@
   gap: var(--mantine-spacing-xs);
   align-items: center;
   border: 1px dashed var(--mb-color-saturated-blue) !important;
-  background-color: var(--mb-color-background-hover-light);
+  background-color: var(--mb-color-background-brand);
   border-radius: var(--mantine-radius-md);
   transition: box-shadow 250ms ease;
   min-height: 3.25rem;

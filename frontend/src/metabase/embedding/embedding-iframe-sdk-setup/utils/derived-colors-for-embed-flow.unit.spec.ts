@@ -23,10 +23,14 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
 
       expect(colors?.background).toBe("#ffffff");
       expect(colors?.["text-primary"]).toBe("#333333");
-      expect(colors?.["background-hover"]).toBe("rgb(252, 252, 252)");
+      expect(colors?.["background-secondary"]).toBe("rgb(250, 250, 250)");
       expect(colors?.["background-disabled"]).toBe("rgb(247, 247, 247)");
       expect(colors?.["text-secondary"]).toBe("rgb(66, 66, 66)");
       expect(colors?.["text-tertiary"]).toBe("rgb(82, 82, 82)");
+
+      // Should no longer derive background-hover as it is color-mix'd
+      // in the colors configuration
+      expect(colors?.["background-hover"]).toBeUndefined();
     });
 
     it("derives colors for dark theme", () => {
@@ -45,10 +49,14 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
 
       expect(colors?.background).toBe("#1a1a1a");
       expect(colors?.["text-primary"]).toBe("#ffffff");
-      expect(colors?.["background-hover"]).toBe("rgb(39, 39, 39)");
+      expect(colors?.["background-secondary"]).toBe("rgb(21, 21, 21)");
       expect(colors?.["background-disabled"]).toBe("rgb(31, 31, 31)");
       expect(colors?.["text-secondary"]).toBe("rgb(179, 179, 179)");
       expect(colors?.["text-tertiary"]).toBe("rgb(102, 102, 102)");
+
+      // Should no longer derive background-hover as it is color-mix'd
+      // in the colors configuration
+      expect(colors?.["background-hover"]).toBeUndefined();
     });
 
     it("uses the default text-primary color if only background is defined", () => {
@@ -70,7 +78,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
         colors: {
           background: "#ffffff",
           "text-primary": "#333333",
-          "background-hover": "#existing-color",
+          "background-secondary": "#existing-color",
         },
       };
 
@@ -81,7 +89,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
 
       expect(colors?.background).toBe("#ffffff");
       expect(colors?.["text-primary"]).toBe("#333333");
-      expect(colors?.["background-hover"]).toBe("#existing-color");
+      expect(colors?.["background-secondary"]).toBe("#existing-color");
     });
 
     it("derives color from white-labeled colors", () => {
@@ -98,7 +106,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
         applicationColors,
       });
 
-      expect(colors?.["background-hover"]).toBe("rgb(68, 72, 72)");
+      expect(colors?.["background-secondary"]).toBe("rgb(36, 38, 38)");
     });
 
     it("derives default colors for empty themes", () => {
@@ -108,7 +116,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
       });
 
       expect(colors).toBeDefined();
-      expect(colors?.["background-hover"]).toBeDefined();
+      expect(colors?.["background-secondary"]).toBeDefined();
       expect(colors?.["text-secondary"]).toBeDefined();
     });
   });

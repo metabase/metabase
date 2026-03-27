@@ -8,6 +8,7 @@ import {
 import cx from "classnames";
 import { type MouseEvent, memo, useContext } from "react";
 
+import CS from "metabase/css/core/index.css";
 import {
   Box,
   Card,
@@ -67,13 +68,13 @@ export const GraphNode = memo(function ItemNode({
         onClick={handleClick}
       >
         <Stack gap="sm">
-          <Group c={typeInfo.color} gap="xs">
+          <Group c={typeInfo.color} gap="xs" wrap="nowrap">
             <FixedSizeIcon name={getNodeIcon(node)} />
             <Box fz="sm" fw="bold" lh="1rem">
               {typeInfo.label}
             </Box>
           </Group>
-          <Box fw="bold" lh="1rem">
+          <Box className={CS.textWrap} fw="bold" lh="1rem">
             {label}
           </Box>
         </Stack>

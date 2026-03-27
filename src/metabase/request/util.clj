@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.util :as embed.util]
    [metabase.request.settings :as request.settings]
@@ -23,6 +24,11 @@
   "Is this ring request an API call (does path start with `/api`)?"
   [{:keys [^String uri]}]
   (str/starts-with? uri "/api"))
+
+(defn auth-call?
+  "Is this ring request an auth call (does path start with `/auth`)?"
+  [{:keys [^String uri]}]
+  (str/starts-with? uri "/auth"))
 
 (defn public?
   "Is this ring request one that will serve `public.html`?"
@@ -152,11 +158,14 @@
                                             :socket-timeout     gecode-ip-address-timeout-ms
                                             :connection-timeout gecode-ip-address-timeout-ms})
                              :body
-                             json/decode+kw)]
-            (into {} (for [info response]
-                       [(:ip info) {:description (or (describe-location info)
-                                                     "Unknown location")
-                                    :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+                             json/decode+kw)
+                result (into {} (for [info response]
+                                  [(:ip info) {:description (or (describe-location info)
+                                                                "Unknown location")
+                                               :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}]))]
+            (analytics/inc! :metabase-geocoding/requests)
+            result)
           (catch Throwable e
+            (analytics/inc! :metabase-geocoding/errors)
             (log/error e "Error geocoding IP addresses" {:url url})
             nil))))))

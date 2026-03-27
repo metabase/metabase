@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
-   [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -17,7 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]
@@ -74,7 +73,7 @@
   - `can-write=true` - filter to only tables the user can edit metadata for"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           can-query can-write]}
+           can-query can-write include-transform-targets]}
    :- [:map
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -85,7 +84,8 @@
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
-       [:can-write {:optional true} [:maybe ms/BooleanValue]]]]
+       [:can-write {:optional true} [:maybe ms/BooleanValue]]
+       [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
   (let [like       (fn [field pattern]
                      (case (app-db/db-type)
                        (:h2 :postgres) [:ilike field pattern]
@@ -96,7 +96,9 @@
                            (str/replace "%" "\\%")
                            (str/replace "*" "%")
                            (cond-> (not (str/ends-with? term "%")) (str "%")))
-        where      (cond-> [:and [:= :active true]]
+        where      (cond-> [:and (if include-transform-targets
+                                   [:or [:= :active true] [:= :transform_target true]]
+                                   [:= :active true])]
                      (not (str/blank? term)) (conj [:or
                                                     (like :name pattern)
                                                     (like :display_name pattern)
@@ -116,7 +118,7 @@
                                                   [:= :d.to_entity_type "table"]]}]))
         query      {:where where, :order-by [[:name :asc]]}
         hydrations (cond-> [:db]
-                     (premium-features/has-feature? :transforms) (conj :transform))]
+                     (premium-features/has-feature? :transforms-basic) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
@@ -233,12 +235,9 @@
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
-      ;; Publish update events for remote sync tracking, only when ee extensions are available to provide
-      ;; a handler for these events
-      (when config/ee-available?
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-update {:object  table
-                                                      :user-id api/*current-user-id*})))
+      (doseq [table updated-tables]
+        (events/publish-event! :event/table-update {:object  table
+                                                    :user-id api/*current-user-id*}))
       updated-tables)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

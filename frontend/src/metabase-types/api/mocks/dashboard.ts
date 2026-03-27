@@ -1,6 +1,7 @@
 import type {
   ActionDashboardCard,
   Dashboard,
+  DashboardParameterMapping,
   DashboardQueryMetadata,
   DashboardTab,
   QuestionDashboardCard,
@@ -23,6 +24,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   can_write: true,
   can_restore: false,
   can_delete: false,
+  can_set_cache_policy: true,
   description: "",
   cache_ttl: null,
   "last-edit-info": {
@@ -78,6 +80,15 @@ export const createMockDashboardCard = (
   updated_at: "2020-01-01T12:30:30.000000",
   inline_parameters: null,
   parameter_mappings: [],
+  ...opts,
+});
+
+export const createMockParameterMapping = (
+  opts?: Partial<DashboardParameterMapping>,
+): DashboardParameterMapping => ({
+  card_id: 1,
+  target: ["variable", ["template-tag", "foo"]],
+  parameter_id: "foo",
   ...opts,
 });
 

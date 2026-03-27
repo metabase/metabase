@@ -21,7 +21,8 @@
     background-color: var(--mb-color-background-hover);
   }
 
-  &:focus {
+  &:focus,
+  &[aria-selected="true"] {
     outline: none;
     background-color: var(--mb-color-background-hover);
     border: none;

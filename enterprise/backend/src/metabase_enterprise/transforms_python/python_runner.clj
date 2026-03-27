@@ -3,18 +3,20 @@
    [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.util :as transforms.u]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.instrumentation :as transforms.instrumentation]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -198,12 +200,16 @@
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
-  [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs]}]
+  [{:keys [server-url code request-id run-id source-tables shared-storage timeout-secs]}]
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
         url-for-path             (fn [path] (:url (get objects path)))
-        table-name->url          (update-vals table-name->id #(url-for-path [:table % :data]))
-        table-name->manifest-url (update-vals table-name->id #(url-for-path [:table % :manifest]))
+        table-name->url          (into {} (map (fn [{:keys [alias table_id]}]
+                                                 [alias (url-for-path [:table table_id :data])]))
+                                       source-tables)
+        table-name->manifest-url (into {} (map (fn [{:keys [alias table_id]}]
+                                                 [alias (url-for-path [:table table_id :manifest])]))
+                                       source-tables)
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
                                   :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
@@ -268,13 +274,13 @@
 
 (defn- build-table-query
   "Build a mbql query for table, might add a proper filter for incremental transforms."
-  [table-id source-incremental-strategy transform-id limit]
+  [table-id source-incremental-strategy source-range-params limit]
   (let [db-id             (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
         metadata-provider (lib-be/application-database-metadata-provider db-id)
-        table-metadata    (lib.metadata/table metadata-provider table-id)
-        transform         (t2/select-one :model/Transform transform-id)]
-    (cond-> (lib/query metadata-provider table-metadata)
-      source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy (transforms.u/next-checkpoint transform))
+        table-metadata    (lib.metadata/table metadata-provider table-id)]
+    (cond-> (-> (lib/query metadata-provider table-metadata)
+                lib/disable-default-limit)
+      source-incremental-strategy (transforms-base.u/preprocess-incremental-query source-range-params)
       limit                       (lib/limit limit))))
 
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.
@@ -286,24 +292,23 @@
            source
            cancel-chan
            limit
-           transform-id]}]
+           source-range-params]}]
   (when (and (:source-incremental-strategy source)
              (> (count (:source-tables source)) 1))
     (throw (ex-info "Incremental transforms for python only supports one source table" {})))
-  (doseq [[table-name v] (:source-tables source)
-          :let [table-id                                (if (int? v) v (:table_id v))
-                {:keys [s3-client bucket-name objects]} shared-storage
-                {data-path :path}                       (get objects [:table table-id :data])
-                {manifest-path :path}                   (get objects [:table table-id :manifest])]]
+  (doseq [{:keys [alias table_id]} (:source-tables source)
+          :let [{:keys [s3-client bucket-name objects]} shared-storage
+                {data-path :path}                       (get objects [:table table_id :data])
+                {manifest-path :path}                   (get objects [:table table_id :manifest])]]
     (let [tmp-data-file (File/createTempFile data-path "")
           tmp-meta-file (File/createTempFile manifest-path "")]
       (try
-        (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
+        (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table_id)
               driver      (t2/select-one-fn :engine :model/Database db-id)
-              fields-meta (fields-metadata driver table-id)
-              manifest    (generate-manifest table-id fields-meta)]
+              fields-meta (fields-metadata driver table_id)
+              manifest    (generate-manifest table_id fields-meta)]
           (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]
-            (let [query (build-table-query table-id (:source-incremental-strategy source) transform-id limit)]
+            (let [query (build-table-query table_id (:source-incremental-strategy source) source-range-params limit)]
               (write-query-data-to-file!
                {:query       query
                 :fields-meta fields-meta
@@ -321,10 +326,80 @@
         (catch InterruptedException ie (throw ie))
         (catch Throwable t
           (throw (ex-info "An error occurred while copying table data to S3"
-                          {:table-id table-id
+                          {:table-id table_id
                            :transform-message (or (:transform-message (ex-data t))
-                                                  (i18n/tru "Failed to copy table contents to shared storage {0} ({1})" table-name table-id))}
+                                                  ;; Cast table-id to string manually, to avoid thousands separators.
+                                                  (i18n/tru "Failed to copy table contents to shared storage: {0} ({1})" alias (str table_id)))}
                           t)))
         (finally
           (safe-delete tmp-data-file)
           (safe-delete tmp-meta-file))))))
+
+(defn execute-and-read-output!
+  "Execute Python code and return output rows without persisting to a database.
+   Used for dry-run/preview/test-run scenarios.
+
+   Args:
+     :code          - Python code to execute
+     :source-tables - Sequential of source-table entries [{:alias ... :table_id ...} ...]
+     :row-limit     - Max rows to return (also limits input rows)
+     :timeout-secs  - Optional timeout override
+
+   Returns:
+     {:status  :succeeded/:failed
+      :cols    [{:name ...} ...]      ; on success
+      :rows    [[...] ...]            ; on success, values in column order
+      :logs    [{:message ...} ...]   ; events from Python execution
+      :message \"error message\"}     ; on failure
+"
+  [{:keys [code source-tables per-input-limit row-limit timeout-secs]}]
+  (with-open [shared-storage-ref (s3/open-shared-storage! source-tables)]
+    (let [server-url (transforms-python.settings/python-runner-url)
+          _          (copy-tables-to-s3! {:shared-storage @shared-storage-ref
+                                          :source         {:source-tables source-tables}
+                                          :limit          (or per-input-limit row-limit)})
+          {:keys [status body]}
+          (execute-python-code-http-call!
+           {:server-url     server-url
+            :code           code
+            :request-id     (u/generate-nano-id)
+            :source-tables  source-tables
+            :timeout-secs   timeout-secs
+            :shared-storage @shared-storage-ref})
+          events (read-events @shared-storage-ref)]
+      (cond
+        (:timeout body)
+        {:status  :failed
+         :logs    events
+         :message (i18n/deferred-tru "Python execution timed out")}
+
+        (not= 200 status)
+        {:status  :failed
+         :logs    events
+         :message (i18n/deferred-tru "Python execution failure (exit code {0})" (:exit_code body "?"))}
+
+        :else
+        (let [output-manifest (read-output-manifest @shared-storage-ref)
+              {:keys [fields]} output-manifest]
+          ;; TODO (Chris 2026-01-27) -- Disabled this check to match behavior in master, but *real* execution does it.
+          ;;      It seems we added the check as part of DRY-ing up transforms code to reuse with workspaces.
+          #_(if-not (seq fields)
+              {:status  :failed
+               :logs    events
+               :message (i18n/deferred-tru "No fields in output metadata")})
+          (with-open [in  (open-output @shared-storage-ref)
+                      rdr (io/reader in)]
+            (let [cols (mapv (fn [c]
+                               {:name      (:name c)
+                                :base_type (some-> c :base_type keyword)})
+                             fields)
+                  rows (into []
+                             (comp
+                              (remove str/blank?)
+                              (take row-limit)
+                              (map json/decode))
+                             (line-seq rdr))]
+              {:status :succeeded
+               :cols   cols
+               :rows   rows
+               :logs   events})))))))

@@ -8,7 +8,7 @@ import {
   SetByEnvVar,
 } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Stack, TextInput } from "metabase/ui";
 import type { HelpLinkSetting } from "metabase-types/api";
 

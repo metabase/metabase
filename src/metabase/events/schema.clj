@@ -195,6 +195,8 @@
 (mr/def :event/table-create ::table)
 (mr/def :event/table-update ::table)
 (mr/def :event/table-delete ::table)
+(mr/def :event/table-publish ::table)
+(mr/def :event/table-unpublish ::table)
 
 (mr/def ::permission-failure
   [:map {:closed true}

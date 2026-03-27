@@ -1,10 +1,10 @@
 import { exec as execCallback } from "child_process";
 import path from "path";
+import { promisify } from "util";
 
 import { detect } from "detect-package-manager";
 import ora from "ora";
 import { match } from "ts-pattern";
-import { promisify } from "util";
 
 const exec = promisify(execCallback);
 

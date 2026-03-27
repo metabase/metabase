@@ -1,3 +1,4 @@
+import { addPremiumAutoRefreshTests } from "../../shared-tests/auto-refresh.spec";
 import { addPremiumSubscriptionsTests } from "../../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
@@ -13,7 +14,7 @@ const setupPremium = async (
     tokenFeatures: {
       embedding_sdk: true,
     },
-    enterprisePlugins: ["sdk_subscriptions"],
+    enterprisePlugins: ["sdk_notifications"],
     component: InteractiveDashboard,
   });
 };
@@ -22,4 +23,5 @@ console.warn = () => {};
 
 describe("InteractiveDashboard", () => {
   addPremiumSubscriptionsTests(setupPremium);
+  addPremiumAutoRefreshTests(setupPremium);
 });

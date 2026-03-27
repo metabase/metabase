@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.schema :as queries.schema]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -43,19 +44,27 @@
             query-deps
             param-card-ids)))
 
+(mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
+  "Given a Toucan `:model/Transform`, return its upstream dependencies as a map from the kind to a set of IDs."
+  [{{tables :source-tables} :source :as _py-transform}
+   :- [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]
+  {:table (into #{} (keep :table_id) tables)})
+
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
-  [{{:keys [query], source-type :type} :source :as transform} :-
+  [{{:keys [query]} :source :as transform} :-
    [:map
     [:source [:multi {:dispatch (comp keyword :type)}
               [:query
                [:map [:query ::lib.schema/query]]]
               [:python
-               [:map]]]]]]
-  (if (= (keyword source-type) :query)
-    (upstream-deps:query query)
-    (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
-        {})))
+               [:map [:source-tables {:optional true} [:sequential ::transforms-base.u/source-table-entry]]]]]]]]
+  (let [source-type (transforms-base.u/transform-type transform)]
+    (case source-type
+      :query (upstream-deps:query query)
+      :python (upstream-deps:python-transform transform)
+      (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
+          {}))))
 
 (mu/defn upstream-deps:snippet :- ::deps.schema/upstream-deps
   "Given a native query snippet, return its upstream dependencies in the usual `{entity-type #{1 2 3}}` format."

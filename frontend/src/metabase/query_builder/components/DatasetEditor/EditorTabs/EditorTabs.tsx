@@ -25,9 +25,10 @@ export function EditorTabs({
       className={EditorTabsS.TabBar}
       style={
         {
-          "--active-tab-color": "var(--mb-color-brand-dark)",
+          // TODO: Re-write this component to use actual buttons and better semantic colors
+          "--active-tab-color": "var(--mb-color-text-hover)",
           "--inactive-tab-color":
-            "color-mix(in srgb, var(--mb-color-brand-dark) 30%, transparent )",
+            "color-mix(in srgb, var(--mb-color-text-hover) 30%, transparent )",
         } as CSSProperties
       }
     >

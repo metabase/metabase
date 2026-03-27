@@ -17,6 +17,7 @@ import {
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
   screen,
@@ -48,11 +49,13 @@ describe("ValuesSourceModal", () => {
         createMockField({
           id: 1,
           base_type: "type/Text",
+          effective_type: "type/Text",
           semantic_type: "type/Category",
         }),
         createMockField({
           id: 2,
           base_type: "type/Text",
+          effective_type: "type/Text",
           semantic_type: "type/Category",
         }),
       ],
@@ -213,14 +216,18 @@ describe("ValuesSourceModal", () => {
               result_metadata: [
                 createMockField({
                   id: 1,
+                  name: "id",
                   display_name: "ID",
                   base_type: "type/BigInteger",
+                  effective_type: "type/BigInteger",
                   semantic_type: "type/PK",
                 }),
                 createMockField({
                   id: 2,
+                  name: "category",
                   display_name: "Category",
                   base_type: "type/Text",
+                  effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
               ],
@@ -241,7 +248,7 @@ describe("ValuesSourceModal", () => {
         await userEvent.click(screen.getByRole("button", { name: "Done" }));
         expect(onSubmit).toHaveBeenCalledWith("card", {
           card_id: 1,
-          value_field: ["field", 2, null],
+          value_field: ["field", "category", { "base-type": "type/Text" }],
         });
       });
 
@@ -266,6 +273,7 @@ describe("ValuesSourceModal", () => {
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
+                  effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
               ],
@@ -333,6 +341,7 @@ describe("ValuesSourceModal", () => {
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
+                  effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
               ],
@@ -367,6 +376,7 @@ describe("ValuesSourceModal", () => {
                   id: 2,
                   display_name: "Category",
                   base_type: "type/Text",
+                  effective_type: "type/Text",
                   semantic_type: "type/Category",
                 }),
               ],
@@ -481,10 +491,12 @@ describe("ValuesSourceModal", () => {
         createMockField({
           id: 1,
           base_type: "type/Integer",
+          effective_type: "type/Integer",
         }),
         createMockField({
           id: 2,
           base_type: "type/Integer",
+          effective_type: "type/Integer",
         }),
       ],
     });
@@ -815,6 +827,10 @@ const setup = async ({
     {
       storeInitialState: createMockState({
         currentUser,
+        entities: createMockEntitiesState({
+          databases: [createMockDatabase()],
+          questions: cards,
+        }),
         settings: mockSettings({
           "show-metabase-links": showMetabaseLinks,
           "token-features": createMockTokenFeatures({ whitelabel: true }),

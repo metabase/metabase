@@ -65,7 +65,9 @@ export default {
 };
 
 export const Default = {
-  render: (storyArgs: ComponentProps<typeof ReorderableTagsInput>) => {
+  render: function Render(
+    storyArgs: ComponentProps<typeof ReorderableTagsInput>,
+  ) {
     const [value, setValue] = useState<string[]>(
       [storyArgs.data[0]?.value, storyArgs.data[1]?.value].filter(Boolean),
     );
@@ -78,7 +80,7 @@ export const Default = {
 
 export const DragBetweenTwoInputs = {
   name: "Drag between two inputs",
-  render: () => {
+  render: function Render() {
     const allOptions = useMemo(() => makeOptions(), []);
 
     // Two controlled lists

@@ -1,6 +1,6 @@
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { isNotNull } from "metabase/lib/types";
 import { isCartesianChart } from "metabase/visualizations";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getDefaultDimensionFilter,
@@ -160,7 +160,7 @@ export function getInitialStateForCardDataSource(
         // Using state.display to get viz settings
         // relevant to a new visualization vs. original card
         // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
-        card: { ...card, display: state.display },
+        card: { ...card, display: state.display ?? card.display },
       },
     ]);
 

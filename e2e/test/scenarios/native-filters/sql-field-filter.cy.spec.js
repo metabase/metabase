@@ -149,7 +149,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
     it("should work despite it not showing up in the widget type list", () => {
       H.createNativeQuestion(questionDetails, { visitQuestion: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 42 rows");
 
       H.clearFilterWidget();
@@ -161,14 +161,14 @@ describe("scenarios > filters > sql filters > field filter", () => {
       });
 
       cy.findByTestId("qb-header").find(".Icon-play").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 51 rows");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Open Editor").click();
       cy.icon("variable").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter widget type")
         .parent()
         .findByTestId("filter-widget-type-select")

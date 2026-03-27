@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import type { CollectionId } from "metabase-types/api";
 
 import { NewButton, NewButtonText } from "./NewItemButton.styled";

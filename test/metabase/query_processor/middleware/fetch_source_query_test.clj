@@ -11,10 +11,10 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
@@ -43,7 +43,7 @@
 
 (defn- remove-irrelevant-keys [col]
   (as-> col col
-    (dissoc col :field_ref)
+    (dissoc col :field_ref :source)
     (m/filter-keys simple-keyword? col)))
 
 (defn- default-result-with-inner-query

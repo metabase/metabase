@@ -12,7 +12,7 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries, Series } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
-import RowChart from "./RowChart";
+import { RowChart } from "./RowChart";
 
 export default {
   title: "viz/RowChart",

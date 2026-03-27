@@ -1,12 +1,14 @@
 import { RuleTester } from "eslint";
 
-import noUnconditionalMetabaseLinksRender from "../eslint-rules/no-unconditional-metabase-links-render";
+import rule from "../eslint-plugin-metabase/rules/no-unconditional-metabase-links-render";
 
 const ruleTester = new RuleTester({
-  parserOptions: {
+  languageOptions: {
     ecmaVersion: 2015,
     sourceType: "module",
-    ecmaFeatures: { jsx: true },
+    parserOptions: {
+      ecmaFeatures: { jsx: true },
+    },
   },
 });
 
@@ -63,23 +65,11 @@ function MyComponent() {
   },
   {
     code: `
-function MyComponent() {
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Only shows for admins.
-  return <a href="https://www.metabase.com/learn/getting-started/">Getting started</a>;
-}`,
-  },
-  {
-    code: `
 const { url, showMetabaseLinks } = useDocsUrl("permissions/data");`,
   },
   {
     code: `
 const { url: docsUrl, showMetabaseLinks: shouldShowLink } = useDocsUrl("permissions/data");`,
-  },
-  {
-    code: `
-// eslint-disable-next-line no-unconditional-metabase-links-render -- Only shows for admins.
-const { url } = useDocsUrl("permissions/data");`,
   },
 ];
 const INVALID_CASES = [
@@ -144,26 +134,6 @@ function MyComponent() {
       /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
   },
   {
-    name: "Detect disabled rule next line",
-    code: `
-function MyComponent() {
-  // eslint-disable-next-line no-unconditional-metabase-links-render
-  return <a href="https://www.metabase.com/learn/getting-started/">Getting started</a>;
-}`,
-    error:
-      /Please add comment to indicate the reason why this rule needs to be disabled./,
-  },
-  {
-    name: "Detect disabled rule block",
-    code: `
-/* eslint-disable no-unconditional-metabase-links-render */
-
-function MyComponent() {
-  return <a href="https://www.metabase.com/learn/getting-started/">Getting started</a>;
-}`,
-    error: "Please use inline disable with comments instead.",
-  },
-  {
     code: `
 function MyComponent() {
   const { url } = useDocsUrl("permissions/data");
@@ -176,29 +146,12 @@ function MyComponent() {
 const { url: docsUrl } = useDocsUrl("permissions/data");`,
     error: /Metabase links must be rendered conditionally/,
   },
-  {
-    code: `
-// eslint-disable-next-line no-unconditional-metabase-links-render
-const { url } = useDocsUrl("permissions/data");`,
-    error:
-      /Please add comment to indicate the reason why this rule needs to be disabled./,
-  },
 ];
 
-ruleTester.run(
-  "no-unconditional-metabase-links-render",
-  noUnconditionalMetabaseLinksRender,
-  {
-    valid: VALID_CASES,
-    invalid: INVALID_CASES.map((invalidCase) => {
-      return {
-        code: invalidCase.code,
-        errors: [
-          {
-            message: invalidCase.error,
-          },
-        ],
-      };
-    }),
-  },
-);
+ruleTester.run("no-unconditional-metabase-links-render", rule, {
+  valid: VALID_CASES,
+  invalid: INVALID_CASES.map((invalidCase) => ({
+    code: invalidCase.code,
+    errors: [{ message: invalidCase.error }],
+  })),
+});

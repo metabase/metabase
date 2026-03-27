@@ -2,15 +2,15 @@ import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { ResizableBoxProps } from "react-resizable";
 
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
+import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
+import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
+import type { QueryModalType } from "metabase/querying/constants";
 import type {
   SelectionRange,
   SidebarFeatures,
-} from "metabase/query_builder/components/NativeQueryEditor/types";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
-import type { QueryModalType } from "metabase/query_builder/constants";
+} from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import { Box } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -154,7 +154,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>
-      <Box ref={footerRef}>
+      <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
         <ViewFooter className={CS.flexNoShrink} />
       </Box>

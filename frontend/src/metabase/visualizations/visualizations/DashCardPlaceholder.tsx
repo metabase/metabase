@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   QuestionPickerModal,
-  type QuestionPickerValueItem,
-} from "metabase/common/components/Pickers/QuestionPicker";
+  isInDbTree,
+} from "metabase/common/components/Pickers";
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
 import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 
-import type { VisualizationProps } from "../types";
+import type { VisualizationDefinition, VisualizationProps } from "../types";
 
 type Props = VisualizationProps & {
   dashcard: VirtualDashboardCard;
@@ -28,9 +29,13 @@ function DashCardPlaceholderInner({
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
 
-  const handleSelectQuestion = (nextCard: QuestionPickerValueItem) => {
-    dispatch(replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }));
-    setQuestionPickerOpen(false);
+  const handleSelectQuestion = (nextCard: OmniPickerItem) => {
+    if (typeof nextCard.id === "number") {
+      dispatch(
+        replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }),
+      );
+      setQuestionPickerOpen(false);
+    }
   };
 
   if (!isDashboard) {
@@ -38,6 +43,20 @@ function DashCardPlaceholderInner({
   }
 
   const pointerEvents = isEditingParameter ? "none" : "all";
+
+  const shouldDisableItem = (item: OmniPickerItem) => {
+    // don't allow adding items that are already saved in a different dashboard
+    // proably only applicable to search and recents
+    if (!isInDbTree(item) && item.dashboard_id) {
+      if (item.dashboard_id !== dashboard.id) {
+        return true;
+      }
+    }
+    if (item.model === "dashboard" && item.id !== dashboard.id) {
+      return true;
+    }
+    return false;
+  };
 
   return (
     <>
@@ -56,27 +75,38 @@ function DashCardPlaceholderInner({
           >
             <Button
               onClick={() => setQuestionPickerOpen(true)}
-              onMouseDown={preventDragging}
               style={{ pointerEvents }}
+              onMouseDown={preventDragging}
+              onPointerDown={preventDragging}
             >{t`Select question`}</Button>
           </Flex>
         )}
       </Flex>
       {isQuestionPickerOpen && (
-        <QuestionPickerModal
-          title={t`Pick what you want to replace this with`}
-          value={
-            dashboard.collection_id
-              ? {
-                  id: dashboard.collection_id,
-                  model: "collection",
-                }
-              : undefined
-          }
-          models={["card", "dataset", "metric"]}
-          onChange={handleSelectQuestion}
-          onClose={() => setQuestionPickerOpen(false)}
-        />
+        <div
+          style={{ display: "contents" }}
+          onMouseDown={preventDragging}
+          onPointerDown={preventDragging}
+        >
+          <QuestionPickerModal
+            title={t`Pick what you want to replace this with`}
+            value={
+              dashboard.collection_id
+                ? {
+                    id: dashboard.collection_id,
+                    model: "collection",
+                  }
+                : undefined
+            }
+            options={{ hasConfirmButtons: false }}
+            // TODO: account for restrictions on adding personal
+            // questions to public dashboards
+            models={["card", "dataset", "metric", "dashboard"]}
+            onChange={handleSelectQuestion}
+            onClose={() => setQuestionPickerOpen(false)}
+            isDisabledItem={shouldDisableItem}
+          />
+        </div>
       )}
     </>
   );
@@ -84,11 +114,21 @@ function DashCardPlaceholderInner({
 
 DashCardPlaceholderInner.displayName = "DashCardPlaceholder";
 
-function preventDragging(e: React.MouseEvent<HTMLButtonElement>) {
+/**
+ * Prevents React portal event bubbling from triggering grid item drags.
+ *
+ * React portals (used by modals) bubble synthetic events through the React
+ * component tree, not the DOM tree. This means clicks inside a modal rendered
+ * by this component would bubble up to DraggableCore on the grid item and
+ * initiate a drag. We stop both mousedown and pointerdown because Cypress
+ * (and browsers) dispatch both events, and React processes them as separate
+ * synthetic event dispatches — stopPropagation on one doesn't affect the other.
+ */
+function preventDragging(e: React.SyntheticEvent) {
   e.stopPropagation();
 }
 
-export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
+const PlaceholderViz: VisualizationDefinition = {
   getUiName: () => t`Empty card`,
   identifier: "placeholder",
   iconName: "table",
@@ -102,4 +142,9 @@ export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
   checkRenderable: () => {
     // always renderable
   },
-});
+};
+
+export const DashCardPlaceholder = Object.assign(
+  DashCardPlaceholderInner,
+  PlaceholderViz,
+);

@@ -1,5 +1,5 @@
 import { render, screen } from "__support__/ui";
-import Select, { Option } from "metabase/common/components/Select";
+import { Option, Select } from "metabase/common/components/Select";
 
 describe("Select", () => {
   it("should render selected option", () => {

@@ -8,7 +8,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSettings,
@@ -38,8 +38,11 @@ const setupEndpoints = ({
   remoteSyncType = "read-only" as const,
   remoteSyncBranch = "main",
   remoteSyncAutoImport = false,
+  remoteSyncTransforms = false,
   libraryCollection = null as Collection | null,
   dirty = [] as any[],
+  rootCollectionItems = [] as CollectionItem[],
+  settingsError,
 }: {
   remoteSyncEnabled?: boolean;
   remoteSyncUrl?: string;
@@ -47,8 +50,11 @@ const setupEndpoints = ({
   remoteSyncType?: "read-only" | "read-write";
   remoteSyncBranch?: string;
   remoteSyncAutoImport?: boolean;
+  remoteSyncTransforms?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
+  rootCollectionItems?: CollectionItem[];
+  settingsError?: { status: number; message: string };
 } = {}) => {
   const settings = createMockSettings({
     "remote-sync-enabled": remoteSyncEnabled,
@@ -57,15 +63,22 @@ const setupEndpoints = ({
     "remote-sync-type": remoteSyncType,
     "remote-sync-branch": remoteSyncBranch,
     "remote-sync-auto-import": remoteSyncAutoImport,
+    "remote-sync-transforms": remoteSyncTransforms,
   });
 
   setupPropertiesEndpoints(settings);
   setupSettingsEndpoints([]);
-  setupRemoteSyncEndpoints({ dirty, branches: [remoteSyncBranch] });
+  setupRemoteSyncEndpoints({
+    dirty,
+    branches: [remoteSyncBranch],
+    ...(settingsError && {
+      settingsResponse: { error: settingsError },
+    }),
+  });
 
   fetchMock.get("express:/api/ee/library", libraryCollection ?? { data: null });
 
-  setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
+  setupRootCollectionItemsEndpoint({ rootCollectionItems });
 };
 
 const createStoreState = ({
@@ -93,9 +106,12 @@ interface SetupOpts {
   remoteSyncToken?: string;
   remoteSyncType?: "read-only" | "read-write";
   remoteSyncBranch?: string;
+  remoteSyncTransforms?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
+  rootCollectionItems?: CollectionItem[];
   variant?: RemoteSyncSettingsFormProps["variant"];
+  settingsError?: { status: number; message: string };
 }
 
 export const setup = ({
@@ -105,9 +121,12 @@ export const setup = ({
   remoteSyncToken = "",
   remoteSyncType = "read-only",
   remoteSyncBranch = "main",
+  remoteSyncTransforms = false,
   libraryCollection = null,
   dirty = [],
+  rootCollectionItems = [],
   variant,
+  settingsError,
 }: SetupOpts = {}) => {
   setupEndpoints({
     remoteSyncEnabled,
@@ -115,8 +134,11 @@ export const setup = ({
     remoteSyncToken,
     remoteSyncType,
     remoteSyncBranch,
+    remoteSyncTransforms,
     libraryCollection,
     dirty,
+    rootCollectionItems,
+    settingsError,
   });
 
   renderWithProviders(

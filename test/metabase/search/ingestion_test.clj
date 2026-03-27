@@ -1,6 +1,11 @@
 (ns metabase.search.ingestion-test
   (:require
+   [clojure.core.cache :as cache]
    [clojure.test :refer :all]
+   [metabase.lib-be.metadata.jvm :as metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.test :as mt]))
@@ -106,3 +111,71 @@
                        :model/Dashboard  _    {:name "Test Dashboard 2" :collection_id (:id coll)}]
           (let [n (search.ingestion/search-items-count)]
             (is (= 4 n))))))))
+
+(def ^:private fake-provider
+  (reify lib.metadata.protocols/MetadataProvider
+    (database [_this] nil)
+    (metadatas [_this _metadata-spec] nil)
+    (setting [_this _setting-name] nil)))
+
+(defn- counting-factory
+  "Returns a factory fn that counts calls in `counter-atom` and returns `fake-provider`."
+  [counter-atom]
+  (fn [_db-id]
+    (swap! counter-atom inc)
+    fake-provider))
+
+(defn- simulate-metadata-lookups
+  "Simulates what happens during indexing: the engine function calls
+   `application-database-metadata-provider` several times for the same database-id,
+   as it would when processing multiple cards from the same database."
+  []
+  ;; Three lookups for the same db — mimics processing multiple cards from one database.
+  (metadata.jvm/application-database-metadata-provider 1)
+  (metadata.jvm/application-database-metadata-provider 1)
+  (metadata.jvm/application-database-metadata-provider 1)
+  {"card" 3})
+
+(deftest bulk-ingest!-caches-metadata-providers-test
+  (testing "bulk-ingest! caches metadata providers so the factory is only called once per database-id"
+    (let [factory-calls (atom 0)]
+      (with-redefs [search.engine/active-engines                                (fn []
+                                                                                  (simulate-metadata-lookups)
+                                                                                  nil)
+                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+        (search.ingestion/bulk-ingest! [])
+        (is (= 1 @factory-calls)
+            "Factory should be called once, not once per metadata-provider lookup")))))
+
+(deftest bulk-ingest!-preserves-existing-cache-test
+  (testing "bulk-ingest! reuses an outer cache and does not rebuild providers already in it"
+    (let [factory-calls  (atom 0)
+          existing-cache (atom (cache/basic-cache-factory {}))]
+      (with-redefs [search.engine/active-engines (fn []
+                                                   (simulate-metadata-lookups)
+                                                   nil)
+                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+        (binding [metadata.jvm/*metadata-provider-cache* existing-cache]
+          (metadata.jvm/application-database-metadata-provider 1)
+          (let [pre-calls @factory-calls]
+            (search.ingestion/bulk-ingest! [])
+            (is (= pre-calls @factory-calls)
+                "Factory should not be called again — the provider was already cached")))))))
+
+(deftest multiple-databases-cached-separately-test
+  (testing "Within a single indexing operation, each database-id gets its own cached provider"
+    (let [factory-calls (atom 0)]
+      (with-redefs [search.engine/active-engines (constantly [:search.engine/appdb])
+                    search.engine/init!          (fn [_engine _opts]
+                                                   ;; Simulate cards from 3 different databases, 2 lookups each
+                                                   (metadata.jvm/application-database-metadata-provider 1)
+                                                   (metadata.jvm/application-database-metadata-provider 2)
+                                                   (metadata.jvm/application-database-metadata-provider 3)
+                                                   (metadata.jvm/application-database-metadata-provider 1)
+                                                   (metadata.jvm/application-database-metadata-provider 2)
+                                                   (metadata.jvm/application-database-metadata-provider 3)
+                                                   {"card" 6})
+                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+        (search/init-index!)
+        (is (= 3 @factory-calls)
+            "Factory should be called once per unique database-id, not once per lookup")))))

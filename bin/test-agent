@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Agent-friendly test runner for Metabase backend (Clojure) tests.
+#
+# Differences from a normal `clj -X:dev:test` run:
+#   - Uses HAWK_MODE=cli/ci so eftest.report.pretty is used instead of the
+#     progress-bar reporter.  Failures print inline as they happen.
+#   - Strips ANSI escape codes from output so results are plain text.
+#   - Filters Maven download noise and reflection warnings.
+#
+# Usage:
+#   bin/test-agent :only '[metabase.foo-test]'
+#   bin/test-agent :only '[metabase.foo-test/some-test]'
+#   bin/test-agent                          # runs all tests (rarely what you want)
+#
+# Any extra arguments are forwarded directly to `clojure -X:dev:ee:ee-dev:test`.
+# The :test alias uses port 0 (OS-assigned random port) so parallel runs never collide.
+
+set -euo pipefail
+
+export HAWK_MODE=cli/ci
+
+# Filter noise and strip ANSI escape sequences
+clean_output() {
+  grep -v '^Downloading: ' \
+  | grep -v '^Reflection warning,' \
+  | grep -v '^Excluding directory' \
+  | grep -v '^Looking for test namespaces in directory' \
+  | sed $'s/\033[\[(][0-9;]*[A-Za-z]//g; s/\033[^[]*//g'
+}
+
+exec clojure -X:dev:ee:ee-dev:test "$@" 2>&1 | clean_output

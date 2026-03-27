@@ -2,9 +2,9 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import type { ColorName } from "metabase/lib/colors/types";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 interface MenuItemProps {

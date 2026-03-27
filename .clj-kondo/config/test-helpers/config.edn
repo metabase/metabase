@@ -3,7 +3,7 @@
   ;; TODO -- seems silly to maintain different blacklists and whitelists here than we use for the deftest `^:parallel`
   ;; checker...
   {:explicitly-safe
-   #{ ;; these toucan methods might actually set global values if it's used outside of a transaction,
+   #{;; these toucan methods might actually set global values if it's used outside of a transaction,
      ;; but since mt/with-temp runs in a transaction, so we'll ignore them in this case.
      toucan2.core/delete!
      toucan2.core/update!
@@ -110,6 +110,7 @@
      metabase.settings.models.setting-test/test-user-local-allowed-setting!
      metabase.settings.models.setting-test/test-user-local-only-setting!
      metabase.settings.models.setting.cache/restore-cache!
+     metabase.settings.models.setting/log-deprecated-env-var-usage!
      metabase.settings.models.setting/set!
      metabase.settings.models.setting/validate-settings-formatting!
      metabase.setup.core/create-token!

@@ -1,6 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Group, Popover } from "metabase/ui";
 
 import { BadgeListItem } from "../util/BadgeList/BadgeListItem";
@@ -17,6 +19,7 @@ const DropdownFilterBadgeListContent = ({
 } & FilterProps) => {
   const [opened, { open, close }] = useDisclosure(false);
   const tc = useTranslateContent();
+  const { locale } = useLocale();
 
   return (
     <Popover opened={opened} onClose={close}>
@@ -24,7 +27,11 @@ const DropdownFilterBadgeListContent = ({
         <BadgeListItem
           onClick={open}
           onRemoveItem={() => item.onRemoveFilter()}
-          name={tc(item.displayName)}
+          name={PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+            displayName: item.displayName,
+            tc,
+            locale,
+          })}
         />
       </Popover.Target>
       <Popover.Dropdown>

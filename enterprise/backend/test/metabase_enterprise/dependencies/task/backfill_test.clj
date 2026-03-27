@@ -59,7 +59,7 @@
                                                             :source {:type "query"
                                                                      :query (mt/mbql-query nil
                                                                               {:source-table (str "card__" card-id)})}
-                                                            :target {:type "table" :name "test_table"}
+                                                            :target {:type "table" :name (mt/random-name)}
                                                             :dependency_analysis_version 0}]
           (is (t2/exists? :model/Card :id card-id :dependency_analysis_version 0))
           (is (t2/exists? :model/Transform :id transform-id :dependency_analysis_version 0))

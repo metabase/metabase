@@ -24,7 +24,7 @@ import { checkNotNull } from "metabase/lib/types";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import SegmentApp from "./SegmentApp";
+import { SegmentApp } from "./SegmentApp";
 
 const TestHome = () => <div />;
 
@@ -40,8 +40,10 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
   setupCardDataset({
-    data: {
-      rows: [[null]],
+    dataset: {
+      data: {
+        rows: [[1, 2, 3]],
+      },
     },
   });
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
@@ -144,6 +146,8 @@ describe("SegmentApp", () => {
 
     await waitForLoaderToBeRemoved();
 
+    await userEvent.click(await screen.findByText("Databases"));
+    await userEvent.click(await screen.findByText("Sample Database"));
     await userEvent.click(await screen.findByText("Orders"));
 
     await waitForLoaderToBeRemoved();

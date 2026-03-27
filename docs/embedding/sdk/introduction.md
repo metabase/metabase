@@ -18,6 +18,12 @@ To give you an idea of what's possible with the SDK, we've put together example 
 
 Here's the [Shoppy source code](https://github.com/metabase/shoppy).
 
+## Modular embedding SDK playground
+
+![Modular embedding SDK playground](../images/embedding-sdk-playground.png)
+
+Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground.metabase.com/), no setup required. The playground lets you experiment with components, theming, and interactivity in your browser.
+
 ## Modular embedding SDK prerequisites
 
 - React application using React 18 or React 19.
@@ -38,7 +44,7 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Enable the SDK in Metabase
 
-1. Enable the Modular embedding SDK by going to **Admin settings > Embedding**.
+1. Enable the Modular embedding SDK by going to **Admin > Embedding**.
 2. Toggle on **Modular embedding SDK**.
 3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
@@ -118,9 +124,7 @@ The SDK doesn't support:
 
 - Verified content
 - Official collections
-- Subscriptions
-- Alerts
-- Click behavior with custom destinations to other items in the same Metabase (like to other questions or dashboards)
+- Dashboard link cards
 - Server-side rendering (SSR)
 
 Other limitations:

@@ -2,9 +2,16 @@ name: Fetch artifact
 description: Fetches a specific artifact and downloads it to the current directory
 
 inputs:
-  name:
-    description: The name of the artifact to fetch
+  commit:
+    description: Commit SHA for the artifact
     required: true
+  edition:
+    description: Metabase edition (ee or oss)
+    required: true
+  release:
+    description: Whether this is a release artifact (uses metabase-release- prefix)
+    required: false
+    default: "false"
   output-name:
     description: Optional custom name for the output jar file (defaults to metabase.jar)
     required: false
@@ -25,25 +32,44 @@ runs:
         script: | # js
           const fs = require('fs');
 
+          const isRelease = "${{ inputs.release }}" === "true";
+          const prefix = isRelease ? "metabase-release" : "metabase";
+          const artifactName = `${prefix}-${{ inputs.edition }}-${{ inputs.commit }}-uberjar`;
+          console.log(`Looking for artifact: ${artifactName}`);
+
           const artifacts = await github.rest.actions.listArtifactsForRepo({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            name: "${{ inputs.name }}",
+            name: artifactName,
             per_page: 1,
           });
 
           if (!artifacts.data?.artifacts?.[0]?.id) {
-            throw new Error(`No artifacts found for ${{ inputs.name }}`);
+            core.setFailed(`No artifacts found for ${artifactName}`);
+            return;
           }
 
           const artifact_id = artifacts.data.artifacts[0].id;
 
-          const download = await github.rest.actions.downloadArtifact({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            artifact_id: artifact_id,
-            archive_format: 'zip',
-          });
+          let download;
+          const maxAttempts = 3;
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+              download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact_id,
+                archive_format: 'zip',
+              });
+              break;
+            } catch (err) {
+              console.log(`Attempt ${attempt}/${maxAttempts} failed: ${err.message}`);
+              if (attempt === maxAttempts) throw err;
+              const delay = attempt * 15000; // 15s, 30s
+              console.log(`Retrying in ${delay / 1000}s...`);
+              await new Promise(r => setTimeout(r, delay));
+            }
+          }
 
           fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
 

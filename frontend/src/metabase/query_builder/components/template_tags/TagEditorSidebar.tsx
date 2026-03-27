@@ -2,8 +2,8 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Box, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -13,6 +13,7 @@ import type {
   NativeDatasetQuery,
   Parameter,
   ParameterId,
+  ParameterValuesConfig,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -31,12 +32,17 @@ interface TagEditorSidebarProps {
   query: NativeQuery;
   databases?: Database[];
   question: Question;
-  sampleDatabaseId: DatabaseId;
+  sampleDatabaseId?: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig?: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   onClose: () => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
+  parametersAreUserVisible?: boolean;
 }
 
 export function TagEditorSidebar({
@@ -46,9 +52,11 @@ export function TagEditorSidebar({
   sampleDatabaseId,
   setDatasetQuery,
   setTemplateTag,
+  setTemplateTagConfig,
   setParameterValue,
   onClose,
   getEmbeddedParameterVisibility,
+  parametersAreUserVisible = true,
 }: TagEditorSidebarProps) {
   const [section, setSection] = useState<TabId>(() => {
     const tags = query.variableTemplateTags();
@@ -85,8 +93,10 @@ export function TagEditorSidebar({
             database={database}
             databases={databases as Database[]}
             setTemplateTag={setTemplateTag}
+            setTemplateTagConfig={setTemplateTagConfig}
             setParameterValue={setParameterValue}
             getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
+            parametersAreUserVisible={parametersAreUserVisible}
           />
         ) : (
           <Box p="lg">
@@ -109,8 +119,13 @@ interface SettingsPaneProps {
   databases: Database[];
   parametersById: Record<ParameterId, Parameter>;
   setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig?: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
+  parametersAreUserVisible?: boolean;
 }
 
 const SettingsPane = ({
@@ -119,8 +134,10 @@ const SettingsPane = ({
   database,
   databases,
   setTemplateTag,
+  setTemplateTagConfig,
   setParameterValue,
   getEmbeddedParameterVisibility,
+  parametersAreUserVisible = true,
 }: SettingsPaneProps) => {
   return tags.map((tag) => (
     <div key={tag.id}>
@@ -136,7 +153,9 @@ const SettingsPane = ({
         database={database}
         databases={databases}
         setTemplateTag={setTemplateTag}
+        setTemplateTagConfig={setTemplateTagConfig}
         setParameterValue={setParameterValue}
+        parametersAreUserVisible={parametersAreUserVisible}
       />
     </div>
   ));

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 
-import { RelativeDateShortcutPicker } from "metabase/querying/filters/components/RelativeDateShortcutPicker";
-import type { RelativeDatePickerValue } from "metabase/querying/filters/types";
+import { RelativeDateShortcutPicker } from "metabase/querying/common/components/RelativeDateShortcutPicker";
+import type { RelativeDatePickerValue } from "metabase/querying/common/types";
 import {
   deserializeDateParameterValue,
   serializeDateParameterValue,

@@ -5,9 +5,15 @@ import { getName } from "metabase/lib/name";
 import { useDispatch } from "metabase/lib/redux";
 import { RecentsListContent } from "metabase/nav/components/search/RecentsList/RecentsListContent";
 import { Paper } from "metabase/ui";
-import type { RecentItem, UnrestrictedLinkEntity } from "metabase-types/api";
+import type {
+  RecentContexts,
+  RecentItem,
+  UnrestrictedLinkEntity,
+} from "metabase-types/api";
 
 import { getItemUrl, recentsFilter } from "./util";
+
+const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = ["selections", "views"];
 
 type RecentsListProps = {
   onClick?: (elem: UnrestrictedLinkEntity) => void;
@@ -16,7 +22,7 @@ type RecentsListProps = {
 
 export const RecentsList = ({ onClick, className }: RecentsListProps) => {
   const { data = [], isLoading: isRecentsListLoading } = useListRecentsQuery(
-    undefined,
+    { context: DEFAULT_RECENTS_CONTEXT },
     { refetchOnMountOrArgChange: true },
   );
 

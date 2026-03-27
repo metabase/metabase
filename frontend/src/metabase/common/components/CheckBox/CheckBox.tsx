@@ -8,8 +8,8 @@ import type {
 } from "react";
 import { forwardRef, isValidElement, useRef } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { Flex, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import {
   CheckBoxContainer,
@@ -149,9 +149,6 @@ function CheckboxTooltip({
 /**
  * @deprecated: use Checkbox from "metabase/ui"
  */
-const Checkbox = Object.assign(BaseCheckBox, {
+export const CheckBox = Object.assign(BaseCheckBox, {
   Label: CheckBoxLabel,
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Checkbox;

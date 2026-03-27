@@ -18,13 +18,17 @@ export const getSankeyChartOption = (
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
   const { data, formatters } = chartModel;
+
   const nodes = data.nodes.map((node) => {
     const formattedName = formatters.node(node);
+    const formattedDisplayName = !node.hasOutputs
+      ? formatters.target(node.displayName)
+      : formatters.source(node.displayName);
 
     return {
       ...node,
       name: formattedName,
-      value: formattedName,
+      value: formattedDisplayName,
       itemStyle: {
         color: chartModel.nodeColors[String(node.rawName)],
       },

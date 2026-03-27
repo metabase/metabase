@@ -448,9 +448,9 @@
 
 (defmethod columns-for-model "measure"
   [_]
-  ;; Measure excludes created_at and creator_id from search (see search spec)
-  [:id :name :description :archived :updated_at
+  [:id :name :description :archived :created_at :updated_at
    :table_id
+   :creator_id
    [:table.db_id       :database_id]
    [:table.schema      :table_schema]
    [:table.name        :table_name]

@@ -28,6 +28,7 @@ function mapStateToProps(state: State) {
 
 function PublicApp({ errorPage, children }: Props) {
   const applicationName = useSelector(getApplicationName);
+
   usePageTitle(applicationName, { titleIndex: 0 });
 
   useLayoutEffect(() => {

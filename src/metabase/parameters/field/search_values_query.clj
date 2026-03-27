@@ -36,8 +36,7 @@
           query-xform  (fn query-xform  [query]
                          (-> query
                              (cond-> (some? value)
-                               (lib/filter (-> (lib/contains search-field value)
-                                               (lib/update-options assoc :case-sensitive false))))
+                               (lib/filter (lib/ignore-case (lib/contains search-field value))))
                              ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
                              ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
                              ;; identifiers/aliases

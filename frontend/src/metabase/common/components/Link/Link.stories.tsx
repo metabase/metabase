@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import Link, { type LinkProps } from "./";
+import { Link, type LinkProps } from "./";
 
 export default {
   title: "Deprecated/Components/Link",

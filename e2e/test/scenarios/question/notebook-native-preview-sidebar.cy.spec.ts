@@ -283,7 +283,6 @@ describe(
         "should be possible to save a question and `Explore results` (metabase#32121)",
       );
       H.saveQuestion("foo", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
       cy.findByTestId("qb-header").findByText("Explore results").click();

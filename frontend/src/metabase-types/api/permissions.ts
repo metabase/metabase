@@ -51,12 +51,17 @@ export type DownloadTablePermission =
   | DownloadPermission
   | { [key: TableId]: DownloadPermission };
 
+export type TransformsPermission =
+  | DataPermissionValue.NO
+  | DataPermissionValue.YES;
+
 export type DatabasePermissions = {
   [DataPermission.VIEW_DATA]: SchemasPermissions;
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
   [DataPermission.DATA_MODEL]?: DataModelPermissions;
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
   [DataPermission.DETAILS]?: DetailsPermissions;
+  [DataPermission.TRANSFORMS]?: TransformsPermission;
 };
 
 export type DataModelPermissions = {

@@ -3,9 +3,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
-import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import Radio from "metabase/common/components/Radio";
-import Toggle from "metabase/common/components/Toggle";
+import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { Radio } from "metabase/common/components/Radio";
+import { Toggle } from "metabase/common/components/Toggle";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { TextInput } from "metabase/ui/components/inputs/TextInput";
 import type {

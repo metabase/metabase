@@ -3,11 +3,14 @@ import type { ComponentProps } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import type * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -23,7 +26,10 @@ const metadata = createMockMetadata({
 
 type SetupOpts = Partial<ComponentProps<typeof NotebookStepList>>;
 
-function setup(opts: SetupOpts = {}, query: Lib.Query = createQuery()) {
+function setup(
+  opts: SetupOpts = {},
+  query: Lib.Query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+) {
   const database = createSampleDatabase();
   const reportTimezone = "UTC";
   const question = new Question(createMockCard(), metadata).setQuery(query);
@@ -54,8 +60,13 @@ function setup(opts: SetupOpts = {}, query: Lib.Query = createQuery()) {
 
 describe("NotebookStepList", () => {
   it("renders a list of actions for Summarize step with no breakouts", () => {
-    const query = createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
     });
     setup({}, query);
 

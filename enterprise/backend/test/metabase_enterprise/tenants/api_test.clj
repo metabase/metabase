@@ -641,7 +641,7 @@
 
 (deftest shared-tenant-collections-appear-in-trash-test
   (testing "GET /api/collection/:id/items for trash collection"
-    (testing "archived collections with shared-tenant-collection and tenant-specific namespaces appear in trash"
+    (testing "archived collections with shared-tenant-collection namespace appear in trash"
       (mt/with-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true]
           (mt/with-temp [:model/Collection {normal-id :id}     {:name "Normal Collection"}
@@ -658,3 +658,87 @@
                                    (into #{}))]
               (is (= #{"Normal Collection" "Shared Tenant Collection" "Tenant Specific Collection"}
                      trash-items)))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                            Tenant Deactivation Archives Collections Tests                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest tenant-collection-archived-when-tenant-deactivated-test
+  (testing "Tenant-specific root collection is archived when tenant is deactivated"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test-archive"}]
+          (testing "initially the collection is not archived"
+            (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id))))
+          (testing "deactivate the tenant"
+            (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false}))
+          (testing "tenant collection is now archived"
+            (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
+
+(deftest tenant-collection-children-archived-when-tenant-deactivated-test
+  (testing "Children of tenant-specific collection are also archived when tenant is deactivated"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test-children"}]
+          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+            (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
+                                                             :namespace :tenant-specific
+                                                             :location (collection/children-location tenant-coll)}
+                           :model/Collection {grandchild-id :id} {:name "Grandchild Collection"
+                                                                  :namespace :tenant-specific
+                                                                  :location (str (collection/children-location tenant-coll)
+                                                                                 child-id "/")}]
+              (testing "initially none of the collections are archived"
+                (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
+                (is (false? (t2/select-one-fn :archived :model/Collection :id child-id)))
+                (is (false? (t2/select-one-fn :archived :model/Collection :id grandchild-id))))
+              (testing "deactivate the tenant"
+                (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false}))
+              (testing "all collections are now archived"
+                (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
+                (is (true? (t2/select-one-fn :archived :model/Collection :id child-id)))
+                (is (true? (t2/select-one-fn :archived :model/Collection :id grandchild-id)))))))))))
+
+(deftest tenant-collection-unarchived-when-tenant-reactivated-test
+  (testing "Tenant-specific root collection is unarchived when tenant is reactivated"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test-unarchive"}]
+          ;; First deactivate
+          (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false})
+          (testing "collection is archived after deactivation"
+            (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id))))
+          ;; Then reactivate
+          (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active true})
+          (testing "collection is unarchived after reactivation"
+            (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))))))))
+
+(deftest tenant-collection-children-unarchived-when-tenant-reactivated-test
+  (testing "Children of tenant-specific collection are also unarchived when tenant is reactivated"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Tenant {tenant-id :id
+                                      tenant-collection-id :tenant_collection_id} {:name "Tenant Test" :slug "test-children-unarchive"}]
+          (let [tenant-coll (t2/select-one :model/Collection :id tenant-collection-id)]
+            (mt/with-temp [:model/Collection {child-id :id} {:name "Child Collection"
+                                                             :namespace :tenant-specific
+                                                             :location (collection/children-location tenant-coll)}
+                           :model/Collection {grandchild-id :id} {:name "Grandchild Collection"
+                                                                  :namespace :tenant-specific
+                                                                  :location (str (collection/children-location tenant-coll)
+                                                                                 child-id "/")}]
+              ;; First deactivate
+              (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active false})
+              (testing "all collections are archived after deactivation"
+                (is (true? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
+                (is (true? (t2/select-one-fn :archived :model/Collection :id child-id)))
+                (is (true? (t2/select-one-fn :archived :model/Collection :id grandchild-id))))
+              ;; Then reactivate
+              (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" tenant-id) {:is_active true})
+              (testing "all collections are unarchived after reactivation"
+                (is (false? (t2/select-one-fn :archived :model/Collection :id tenant-collection-id)))
+                (is (false? (t2/select-one-fn :archived :model/Collection :id child-id)))
+                (is (false? (t2/select-one-fn :archived :model/Collection :id grandchild-id)))))))))))

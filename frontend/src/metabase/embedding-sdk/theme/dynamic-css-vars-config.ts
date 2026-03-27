@@ -1,3 +1,6 @@
+// WARNING: This file is referenced by CssVarsDeclarationPlugin.
+// If you move or rename it, update the path in css-vars-declaration-plugin.js.
+
 import type { DynamicCssVarConfig } from "../types/private/css-variables";
 
 /**
@@ -16,12 +19,6 @@ export const DYNAMIC_CSS_VARIABLES: DynamicCssVarConfig = {
   "--mb-color-notebook-step-bg-hover": {
     light: { source: "background", darken: 0.1 },
     dark: { source: "background", lighten: 0.4 },
-  },
-  "--mb-color-background-hover": {
-    dark: { source: "background", lighten: 0.5 },
-  },
-  "--mb-color-background-error": {
-    dark: { source: "negative", alpha: 0.1 },
   },
   "--mb-color-cartesian-grid-line": {
     light: { source: "border", alpha: 0.5 },

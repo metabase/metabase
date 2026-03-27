@@ -14,7 +14,7 @@ concurrency:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       release_source: ${{ steps.changes.outputs.release_source }}
@@ -30,43 +30,58 @@ jobs:
   release-type-check:
     needs: files-changed
     if: needs.files-changed.outputs.release_source == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: "release"
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.7"
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: prepare dependencies in release directory
-        run: yarn --cwd release --frozen-lockfile
+        run: bun install --cwd release --frozen-lockfile
       - name: Run frontend type-check
-        run: yarn --cwd release type-check
+        run: bun run --cwd release type-check
 
   release-tests-unit:
     needs: files-changed
     if: needs.files-changed.outputs.release_source == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: "release"
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.7"
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: prepare dependencies in release directory
-        run: yarn --cwd release --frozen-lockfile
+        run: bun install --cwd release --frozen-lockfile
       - name: Run release unit tests
-        run: yarn --cwd release test:unit
+        run: bun run --cwd release test:unit
 
   release-test-build:
     needs: files-changed
     if: needs.files-changed.outputs.release_source == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: "release"
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.7"
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: prepare dependencies in release directory
-        run: yarn --cwd release --frozen-lockfile
+        run: bun install --cwd release --frozen-lockfile
       - name: Build release bundle
-        run: yarn --cwd release build
+        run: bun run --cwd release build
       - name: Smoke test release bundle
         run: node release/dist/index.cjs

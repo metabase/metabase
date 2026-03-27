@@ -85,7 +85,7 @@ describe("LicenseTokenForm", () => {
     setup();
 
     const infoIcon = screen.getByLabelText("Token details information");
-    userEvent.hover(infoIcon);
+    await userEvent.hover(infoIcon);
 
     await waitFor(() => {
       expect(

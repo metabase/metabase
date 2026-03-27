@@ -133,7 +133,14 @@
       (if-not ingested
         (do
           (when-not (serdes/load-find-local path)
-            (throw (ex-info "Failed to read file" {:path (serdes/log-path-str path)})))
+            (let [missing (last path)
+                  model (:model missing)
+                  id    (:id missing)]
+              (throw (ex-info (format "%s '%s' was not found" model id)
+                              {:path  (serdes/log-path-str path)
+                               :model model
+                               :id    id
+                               :error ::not-found}))))
           (log/debug "Local" {:path (serdes/log-path-str path)})
           ctx)
         (let [_                  (log/info "Loading" (cond-> {:path (serdes/log-path-str path)}
@@ -209,8 +216,18 @@
         ;; guide the import, and make sure all containers are imported before contents, etc.
         (when backfill?
           (serdes.backfill/backfill-ids!))
-        (let [contents (serdes.ingest/ingest-list ingestion)
-              ctx (new-context ingestion)]
+        (let [contents      (serdes.ingest/ingest-list ingestion)
+              ingest-errors (serdes.ingest/ingest-errors ingestion)
+              ctx           (cond-> (new-context ingestion)
+                              (seq ingest-errors) (update :errors into ingest-errors))]
+          (when (and (seq ingest-errors) (not continue-on-error))
+            (let [file-names (mapv #(or (:file (ex-data %)) (ex-message %)) ingest-errors)]
+              (throw (ex-info (format "Failed to read %d file(s) during ingestion: %s"
+                                      (count ingest-errors)
+                                      (str/join ", " file-names))
+                              {:ingest-errors ingest-errors
+                               :files         file-names}
+                              (first ingest-errors)))))
           (log/infof "Starting deserialization, total %s documents" (count contents))
           (reduce (fn [ctx item]
                     (try

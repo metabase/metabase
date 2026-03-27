@@ -4,8 +4,8 @@ import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link";
-import List from "metabase/common/components/List";
+import { Link } from "metabase/common/components/Link";
+import { List } from "metabase/common/components/List";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
@@ -16,12 +16,14 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import { Formula } from "metabase/reference/components/Formula";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getShallowFields as getFields,
+  getMetadata,
+} from "metabase/selectors/metadata";
 
 import S from "../components/Detail.module.css";
 import {
   getError,
-  getFields,
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,
@@ -282,4 +284,5 @@ const SegmentDetail = (props) => {
 
 SegmentDetail.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(SegmentDetail);

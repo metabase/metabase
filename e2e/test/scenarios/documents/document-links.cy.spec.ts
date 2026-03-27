@@ -163,18 +163,8 @@ describe("Links in documents", () => {
 
       H.modal().within(() => {
         cy.findByText("Choose an item to link").should("be.visible");
-        cy.findByTestId("tabs-view")
-          .should("be.visible")
-          .within(() => {
-            cy.findByText("Recents").should("be.visible");
-            cy.findByText("Tables").should("be.visible");
-            cy.findByText("Questions").should("be.visible");
-            cy.findByText("Models").should("be.visible");
-            cy.findByText("Dashboards").should("be.visible");
-            cy.findByText("Collections").should("be.visible");
-          });
 
-        cy.findByText("Dashboards").click();
+        cy.findByText("Our analytics").click();
         cy.findByText("Orders in a dashboard").click();
         cy.button("Select").should("be.visible").and("be.enabled").click();
       });
@@ -191,7 +181,6 @@ describe("Links in documents", () => {
 
       openLinkSuggestionBrowseAllPicker();
       H.modal().within(() => {
-        cy.findByText("Collections").click();
         cy.findByText("All personal collections").click();
 
         cy.log(
@@ -221,19 +210,8 @@ describe("Links in documents", () => {
 
       H.modal().within(() => {
         cy.findByText("Choose an item to link").should("be.visible");
-        cy.findByTestId("tabs-view")
-          .should("be.visible")
-          .within(() => {
-            cy.findByText("Recents").should("be.visible");
-            cy.findByText("Tables").should("be.visible");
-            cy.findByText("Questions").should("be.visible");
-            cy.findByText("Models").should("be.visible");
-            cy.findByText("Dashboards").should("be.visible");
-            cy.findByText("Collections").should("be.visible");
-          });
 
-        cy.findByText("Tables").click();
-        cy.findByText("Products").click();
+        H.pickEntity({ path: ["Databases", "Sample Database", "Products"] });
         cy.button("Select").should("be.visible").and("be.enabled").click();
       });
 

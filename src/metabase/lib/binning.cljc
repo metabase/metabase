@@ -217,9 +217,9 @@
            :min-value value
            :max-value (+ value bin-width)})))))
 
-(defn- binning_info->binning-options
-  [binning_info]
-  (-> binning_info
+(defn- binning-info->binning-options
+  [binning-info]
+  (-> binning-info
       u/normalize-map
       (set/rename-keys {:binning-strategy :strategy})))
 
@@ -245,6 +245,6 @@
   [column]
   (if (:binning_info column)
     (update column :display_name #(ensure-ends-with-binning %1
-                                                            (binning_info->binning-options (:binning_info column))
+                                                            (binning-info->binning-options (:binning_info column))
                                                             (:semantic_type column)))
     column))

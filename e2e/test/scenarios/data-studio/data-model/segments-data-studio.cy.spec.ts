@@ -13,6 +13,7 @@ describe(
   () => {
     beforeEach(() => {
       H.restore();
+      H.resetSnowplow();
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
@@ -98,6 +99,13 @@ describe(
         cy.log("navigate to new segment page");
         SegmentList.getNewSegmentLink().scrollIntoView().click();
 
+        cy.log("verify segment_create_started event was tracked");
+        H.expectUnstructuredSnowplowEvent({
+          event: "segment_create_started",
+          triggered_from: "data_studio_segments",
+          target_id: ORDERS_ID,
+        });
+
         cy.log("fill in segment name");
         SegmentEditor.getNameInput().type("Premium Orders");
 
@@ -118,6 +126,13 @@ describe(
         cy.log("save segment");
         SegmentEditor.getSaveButton().click();
         cy.wait("@createSegment");
+
+        cy.log("verify segment_created event was tracked");
+        H.expectUnstructuredSnowplowEvent({
+          event: "segment_created",
+          triggered_from: "data_studio_segments",
+          result: "success",
+        });
 
         cy.log("verify redirect to edit page and toast");
         H.undoToast().should("contain.text", "Segment created");

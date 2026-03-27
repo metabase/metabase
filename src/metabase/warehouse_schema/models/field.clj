@@ -6,7 +6,7 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.field :as lib.field]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -328,15 +328,15 @@
 
   This does one important thing: if `:has_field_values` is already present and set to `:auto-list`, it is replaced by
   `:list` -- presumably because the frontend doesn't need to know `:auto-list` even exists?
-  See [[lib.field/infer-has-field-values]] for more info."
+  See [[lib/infer-has-field-values]] for more info."
   [_model k field]
   (when field
-    (let [has-field-values (lib.field/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
+    (let [has-field-values (lib/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
       (assoc field k has-field-values))))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
   "Always (re-)hydrate `:has_field_values`. This is used to convert an existing value of `:auto-list` to
-  `:list` (see [[infer-has-field-values]])."
+  `:list` (see [[lib/infer-has-field-values]])."
   [_model _k _field]
   true)
 

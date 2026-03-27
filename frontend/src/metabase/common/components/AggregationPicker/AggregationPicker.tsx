@@ -5,7 +5,7 @@ import {
   AccordionList,
   type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import {
   HoverParent,
   PopoverDefaultIcon,
@@ -18,7 +18,7 @@ import { useSelector } from "metabase/lib/redux";
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
-} from "metabase/query_builder/components/expressions";
+} from "metabase/querying/components/expressions";
 import {
   type DefinedClauseName,
   type MBQLClauseFunctionConfig,

@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.transforms.test-util :as transforms.test-util]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -11,6 +10,7 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms.test-util :as transforms.test-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -64,8 +64,10 @@
     (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
-  {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
-   :service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)})
+  (if tx/*use-routing-details*
+    {:service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)}
+    {:project-id           (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
+     :service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)}))
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."

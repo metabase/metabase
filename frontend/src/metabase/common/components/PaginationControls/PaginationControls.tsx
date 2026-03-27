@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { Group, Text } from "metabase/ui";
 
 const isLastPage = (pageIndex: number, pageSize: number, total: number) =>

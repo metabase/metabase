@@ -239,7 +239,7 @@
 
 (mu/defn- source-card-id [card-or-question :- [:map
                                                [:dataset_query ::ads/query]]]
-  (lib/source-card-id (:dataset_query card-or-question)))
+  (lib/primary-source-card-id (:dataset_query card-or-question)))
 
 (mu/defn- nested-query?
   "Is this card or question derived from another model or question?"

@@ -76,4 +76,15 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  it("should show Security and Appearance in related settings", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: true,
+      isEmbeddingSimpleEnabled: true,
+      showSdkEmbedTerms: false,
+    });
+
+    expect(screen.getByText("Security")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
+  });
 });

@@ -11,6 +11,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -599,35 +600,37 @@
           (jdbc/reducible-query {:connection conn} sql))))
 
 (defmethod driver/describe-database* :presto-jdbc
-  [driver {{:keys [catalog schema] :as _details} :details :as database}]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
-                       (all-schemas driver conn catalog))]
-       {:tables (reduce set/union #{} schemas)}))))
+  [driver database]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
+                         (all-schemas driver conn catalog))]
+         {:tables (reduce set/union #{} schemas)})))))
 
 (defmethod driver/describe-table :presto-jdbc
-  [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (let [sql (describe-table-sql driver catalog schema table-name)]
-       (log/tracef "Running statement in describe-table: %s" sql)
-       {:schema schema
-        :name   table-name
-        :fields (into
-                 #{}
-                 (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                {:name              column
-                                 :database-type     type
-                                 :base-type         (presto-type->base-type type)
-                                 :database-position idx}))
-                 (jdbc/reducible-query {:connection conn} sql))}))))
+  [driver database {schema :schema, table-name :name}]
+  (let [{:keys [catalog]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [sql (describe-table-sql driver catalog schema table-name)]
+         (log/tracef "Running statement in describe-table: %s" sql)
+         {:schema schema
+          :name   table-name
+          :fields (into
+                   #{}
+                   (map-indexed (fn [idx {:keys [column type] :as _col}]
+                                  {:name              column
+                                   :database-type     type
+                                   :base-type         (presto-type->base-type type)
+                                   :database-position idx}))
+                   (jdbc/reducible-query {:connection conn} sql))})))))
 
 ;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`
 ;;; implementation doesn't try to use it.

@@ -6,9 +6,9 @@ import {
   usePersistDatabaseMutation,
   useUnpersistDatabaseMutation,
 } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
-import { Box, Flex, Switch, Tooltip } from "metabase/ui";
+import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
 import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 import type { Database } from "metabase-types/api";
 
@@ -68,19 +68,14 @@ export function ModelCachingControl({ database, disabled }: Props) {
     <div>
       <Flex align="center" justify="space-between" mb="xs">
         <Label htmlFor="model-persistence-toggle">{t`Model persistence`}</Label>
-        <Tooltip
-          label={t`Model persistence can not be enabled if database routing is enabled.`}
-          disabled={!disabled}
-        >
-          <Box>
-            <Switch
-              id="model-persistence-toggle"
-              checked={isEnabled}
-              onChange={handleCachingChange}
-              disabled={disabled}
-            />
-          </Box>
-        </Tooltip>
+        <Box>
+          <Switch
+            id="model-persistence-toggle"
+            checked={isEnabled}
+            onChange={handleCachingChange}
+            disabled={disabled}
+          />
+        </Box>
       </Flex>
       <Box maw="22.5rem">
         {error ? <Error>{error}</Error> : null}
@@ -93,6 +88,18 @@ export function ModelCachingControl({ database, disabled }: Props) {
           )}`}
         </Description>
       </Box>
+      {disabled && (
+        <Box>
+          <Alert
+            variant="light"
+            color="info"
+            icon={<Icon name="info" />}
+            mb="md"
+          >
+            {t`Model persistence can't be enabled when database routing is enabled.`}
+          </Alert>
+        </Box>
+      )}
     </div>
   );
 }

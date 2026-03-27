@@ -1,125 +1,129 @@
-import { useLayoutEffect, useState } from "react";
+import cx from "classnames";
+import { useState } from "react";
+import { t } from "ttag";
 
-import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import type * as Urls from "metabase/lib/urls";
-import { Center, Flex, Stack } from "metabase/ui";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
+import * as Urls from "metabase/lib/urls";
 import {
-  useListBrokenGraphNodesQuery,
-  useListUnreferencedGraphNodesQuery,
-} from "metabase-enterprise/api";
-import type {
-  DependencyEntry,
-  DependencySortingOptions,
-} from "metabase-types/api";
+  Box,
+  Breadcrumbs,
+  Card,
+  FixedSizeIcon,
+  Group,
+  Menu,
+  Stack,
+} from "metabase/ui";
+import type { DependencyNode } from "metabase-types/api";
 
-import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
+import {
+  getNodeIcon,
+  getNodeLabel,
+  getNodeLink,
+  getNodeLocationInfo,
+  getNodeViewCount,
+  getNodeViewCountLabel,
+} from "../../utils";
 
 import S from "./DependencyList.module.css";
-import { ListBody } from "./ListBody";
-import { ListHeader } from "./ListHeader";
-import { ListPaginationControls } from "./ListPaginationControls";
-import { ListSearchBar } from "./ListSearchBar";
-import { ListSidebar } from "./ListSidebar";
-import { PAGE_SIZE } from "./constants";
-import type { DependencyListMode } from "./types";
-import { getAvailableGroupTypes } from "./utils";
 
 type DependencyListProps = {
-  mode: DependencyListMode;
-  params: Urls.DependencyListParams;
-  onParamsChange: (params: Urls.DependencyListParams) => void;
+  nodes: DependencyNode[];
+  onGraphOpened?: (node: DependencyNode) => void;
 };
 
-export function DependencyList({
-  mode,
-  params,
-  onParamsChange,
-}: DependencyListProps) {
-  const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
+export function DependencyList({ nodes, onGraphOpened }: DependencyListProps) {
+  return (
+    <Card p={0} shadow="none" withBorder>
+      {nodes.map((node, index) => (
+        <DependentItem key={index} node={node} onGraphOpened={onGraphOpened} />
+      ))}
+    </Card>
+  );
+}
 
-  const useListGraphNodesQuery =
-    mode === "broken"
-      ? useListBrokenGraphNodesQuery
-      : useListUnreferencedGraphNodesQuery;
+type DependentItemProps = {
+  node: DependencyNode;
+  onGraphOpened?: (node: DependencyNode) => void;
+};
 
-  const {
-    query,
-    groupTypes = getAvailableGroupTypes(mode),
-    includePersonalCollections = true,
-    sorting,
-    page = 0,
-  } = params;
+function DependentItem({ node, onGraphOpened }: DependentItemProps) {
+  const [isOpened, setIsOpened] = useState(false);
+  const label = getNodeLabel(node);
+  const link = getNodeLink(node);
+  const icon = getNodeIcon(node);
+  const location = getNodeLocationInfo(node);
+  const viewCount = getNodeViewCount(node);
 
-  const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
-    query,
-    types: getDependencyTypes(groupTypes),
-    card_types: getCardTypes(groupTypes),
-    include_personal_collections: includePersonalCollections,
-    sort_column: sorting?.column,
-    sort_direction: sorting?.direction,
-    offset: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
-  });
-
-  const nodes = data?.data ?? [];
-  const totalNodesCount = data?.total ?? 0;
-
-  const selectedNode =
-    selectedEntry != null
-      ? nodes.find((node) => isSameNode(node, selectedEntry))
-      : undefined;
-
-  const handleSortingChange = (
-    sorting: DependencySortingOptions | undefined,
-  ) => {
-    onParamsChange({ ...params, sorting });
+  const handleGraphOpened = () => {
+    onGraphOpened?.(node);
   };
 
-  useLayoutEffect(() => {
-    if (selectedEntry != null && selectedNode == null) {
-      setSelectedEntry(undefined);
-    }
-  }, [selectedEntry, selectedNode]);
-
   return (
-    <Flex h="100%">
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
-        <ListHeader />
-        <ListSearchBar
-          mode={mode}
-          params={params}
-          hasLoader={isFetching && !isLoading}
-          onParamsChange={onParamsChange}
-        />
-        {error != null ? (
-          <Center flex={1}>
-            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
-          </Center>
-        ) : (
-          <ListBody
-            nodes={nodes}
-            mode={mode}
-            sorting={sorting}
-            isLoading={isLoading}
-            onSelect={setSelectedEntry}
-            onSortingChange={handleSortingChange}
-          />
+    <Menu opened={isOpened} onChange={setIsOpened}>
+      <Menu.Target>
+        <Stack
+          className={cx(S.item, { [S.active]: isOpened })}
+          p="md"
+          gap="sm"
+          aria-label={label}
+        >
+          <Group gap="sm" justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap">
+              <FixedSizeIcon name={icon} />
+              <Box className={CS.textWrap} lh="1rem">
+                {label}
+              </Box>
+            </Group>
+            {viewCount != null && (
+              <Box
+                className={CS.textNoWrap}
+                c="text-secondary"
+                fz="sm"
+                lh="1rem"
+              >
+                {getNodeViewCountLabel(viewCount)}
+              </Box>
+            )}
+          </Group>
+          {location != null && (
+            <Breadcrumbs
+              separator={<FixedSizeIcon name="chevronright" size={12} />}
+              c="text-secondary"
+              ml="1rem"
+              pl="sm"
+            >
+              {location.links.map((link, linkIndex) => (
+                <Box key={linkIndex} className={CS.textWrap} lh="1rem">
+                  {link.label}
+                </Box>
+              ))}
+            </Breadcrumbs>
+          )}
+        </Stack>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {link && (
+          <Menu.Item
+            component={ForwardRefLink}
+            to={link.url}
+            target="_blank"
+            leftSection={<FixedSizeIcon name="external" />}
+          >
+            {t`Go to this`}
+          </Menu.Item>
         )}
-        {!isLoading && error == null && (
-          <ListPaginationControls
-            params={params}
-            pageNodesCount={nodes.length}
-            totalNodesCount={totalNodesCount}
-            onParamsChange={onParamsChange}
-          />
-        )}
-      </Stack>
-      {selectedNode != null && (
-        <ListSidebar
-          node={selectedNode}
-          onClose={() => setSelectedEntry(undefined)}
-        />
-      )}
-    </Flex>
+        <Menu.Item
+          component={ForwardRefLink}
+          to={Urls.dependencyGraph({ entry: node })}
+          target="_blank"
+          leftSection={<FixedSizeIcon name="dependencies" />}
+          onClickCapture={handleGraphOpened}
+          onAuxClick={handleGraphOpened}
+        >
+          {t`View in dependency graph`}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
   );
 }

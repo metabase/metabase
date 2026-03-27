@@ -1,9 +1,11 @@
 (ns metabase.lib.card
   (:refer-clojure :exclude [mapv select-keys empty? not-empty])
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.computed :as lib.computed]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -72,16 +74,21 @@
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
                                 (perf/update-keys u/->kebab-case-en))
-        ;; use the (possibly user-specified) display name as the "original display name" going forward ONLY IF THE
-        ;; CARD THIS CAME FROM WAS A MODEL! BUT DON'T USE IT IF IT ALREADY CONTAINS A `→`!!!
+        ;; For model columns, preserve the (possibly user-edited) display name as
+        ;; :lib/original-display-name so it takes priority in the display name pipeline.
+        ;; But only when it does NOT contain " → " — arrow-prefixed names from inner joins
+        ;; should be skipped here; the underlying field metadata already provides a clean
+        ;; :lib/original-display-name (e.g. "Name" for a joined "C → Name: Auto binned: Month").
         source-metadata-col (cond-> source-metadata-col
                               (and (:display-name source-metadata-col)
+                                   (not (str/includes? (:display-name source-metadata-col)
+                                                       lib.display-name/join-display-name-separator))
                                    ;; TODO (Cam 6/23/25) -- a little silly to fetch this Card like 100 times, maybe we
                                    ;; should just change this function to take `card` instead.
                                    (when card-id
                                      (when-some [card (lib.metadata/card metadata-providerable card-id)]
                                        (= (:type card) :model))))
-                              (assoc :lib/model-display-name (:display-name source-metadata-col)))
+                              (assoc :lib/original-display-name (:display-name source-metadata-col)))
         col (merge
              {:base-type :type/*, :lib/type :metadata/column}
              field-metadata
@@ -89,8 +96,8 @@
              {:lib/type                :metadata/column
               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
         col (cond-> col
-              (:metabase.lib.field/temporal-unit source-metadata-col)
-              (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit source-metadata-col)))
+              (:lib/temporal-unit source-metadata-col)
+              (assoc :inherited-temporal-unit (keyword (:lib/temporal-unit source-metadata-col)))
 
               ;; If the incoming source-metadata-col doesn't have `:semantic-type :type/FK`, drop
               ;; `:fk-target-field-id`. This comes up with metadata on SQL cards, which might be linked to their
@@ -147,7 +154,7 @@
   #{})
 
 (defn- updated-result-metadata
-  "Get `:result-metadata` from Card, but merge in updated values of `:active`."
+  "Get `:result-metadata` from Card, but merge in updated values of `:active` and `:visibility-type`."
   [metadata-providerable card]
   (when-let [saved-metadata-cols (not-empty (:result-metadata card))]
     (let [ids                       (into #{} (keep :id) saved-metadata-cols)
@@ -156,7 +163,11 @@
               (merge
                saved-metadata-col
                (when-let [metadata-provider-col (id->metadata-provider-col (:id saved-metadata-col))]
-                 (select-keys metadata-provider-col [:active]))))
+                 (let [legacy? (contains? saved-metadata-col :base_type)]
+                   (cond-> (select-keys metadata-provider-col [:active])
+                     (contains? metadata-provider-col :visibility-type)
+                     (assoc (if legacy? :visibility_type :visibility-type)
+                            (:visibility-type metadata-provider-col)))))))
             saved-metadata-cols))))
 
 (mu/defn card->underlying-query :- ::lib.schema/query
@@ -190,6 +201,8 @@
    card                  :- ::lib.schema.metadata/card]
   (when-let [card-query (some->> (:dataset-query card) not-empty (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
+      ;; TODO (eric 2026-01-29): this self-reference check is not reachable from the current callers.
+      ;; I suggest we delete this check.
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
           (when (= (:type source-card) :model)
@@ -205,42 +218,54 @@
   (cond-> [:description :display-name :semantic-type :fk-target-field-id :settings :visibility-type :lib/source-display-name]
     native-model? (conj :id)))
 
-;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.field/previous-stage-metadata]] as
-;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
+;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility
+;;; with [[metabase.lib.field.resolution/previous-stage-metadata]] as well
+;;; as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
 (mu/defn merge-model-metadata :- [:sequential ::lib.schema.metadata/column]
   "Merge metadata from source model metadata into result cols.
 
-  Overrides `:id` for native models only."
-  [result-cols   :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   model-cols    :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   native-model? :- :boolean]
-  (cond
-    (and (seq result-cols)
-         (empty? model-cols))
-    result-cols
+  Options:
+  - `:native-model?`    — when true, also overrides `:id` from model metadata.
+  - `:own-model-query?` — when true, aggregation columns are also merged (the model's own aggregation results should
+    preserve user-customized names). When false (default), aggregation columns are skipped because the computed name
+    (e.g. 'Sum of Price') is better than the model's custom name when the model is used as a source for an outer query."
+  ([result-cols model-cols]
+   (merge-model-metadata result-cols model-cols {}))
+  ([result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
+    model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
+    {:keys [native-model? own-model-query?]
+     :or   {native-model? false, own-model-query? false}}]
+   (cond
+     (empty? model-cols)
+     (not-empty result-cols)
 
-    (and (empty? result-cols)
-         (seq model-cols))
-    model-cols
+     (empty? result-cols)
+     (not-empty model-cols)
 
-    (and (seq result-cols)
-         (seq model-cols))
-    (let [name->model-col (m/index-by :name model-cols)]
-      (mapv (fn [result-col]
-              (merge
-               result-col
-               ;; if the result col is aggregating something in the source column then don't flow display name and what
-               ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
-               (when-not (= (:lib/source result-col) :source/aggregations)
-                 (when-let [model-col (get name->model-col (:name result-col))]
-                   (let [model-col     (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
-                         temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
-                         binning       (lib.binning/binning result-col)
-                         semantic-type ((some-fn model-col result-col) :semantic-type)]
-                     (cond-> model-col
-                       temporal-unit (update :display-name lib.temporal-bucket/ensure-ends-with-temporal-unit temporal-unit)
-                       binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
-            result-cols))))
+     :else ; both not empty
+     (let [name->model-col (m/index-by :name model-cols)]
+       (mapv (fn [result-col]
+               (merge
+                result-col
+                ;; if the result col is aggregating something in the source column then don't flow display name and what
+                ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
+                (when (or own-model-query?
+                          (not= (:lib/source result-col) :source/aggregations))
+                  (when-let [model-col (get name->model-col (:name result-col))]
+                    (let [model-col (-> (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
+                                        (assoc :lib/from-model? true))]
+                      ;; For the model's own query, preserve the user-customized display name as-is.
+                      ;; For outer queries using the model as source, append temporal/binning suffixes
+                      ;; because the outer query may apply its own bucketing on top of the model columns.
+                      (if own-model-query?
+                        model-col
+                        (let [temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
+                              binning       (lib.binning/binning result-col)
+                              semantic-type ((some-fn model-col result-col) :semantic-type)]
+                          (cond-> model-col
+                            temporal-unit (update :display-name lib.temporal-bucket/ensure-ends-with-temporal-unit temporal-unit)
+                            binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))))
+             result-cols)))))
 
 (mu/defn card-returned-columns :- [:maybe ::maybe-columns]
   "Get a normalized version of the saved metadata associated with Card metadata."
@@ -268,7 +293,7 @@
                ;; See [[metabase.lib.card-test/propagate-crazy-long-identifiers-from-card-metadata-test]]
                (lib.field.util/add-source-and-desired-aliases-xform metadata-providerable (lib.util.unique-name-generator/non-truncating-unique-name-generator))
                (cond-> result-cols
-                 (seq model-cols) (merge-model-metadata model-cols native-model?))))))))
+                 (seq model-cols) (merge-model-metadata model-cols {:native-model? native-model?}))))))))
 
 (mu/defn saved-question-metadata :- ::maybe-columns
   "Metadata associated with a Saved Question with `card-id`."
@@ -303,9 +328,7 @@
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."
   [query :- ::lib.schema/query]
-  (when-let [card-id (lib.util/source-card-id query)]
-    (when-let [card (lib.metadata/card query card-id)]
-      (:type card))))
+  (some-> query lib.metadata.calculation/primary-source-card :type))
 
 (mu/defn source-card-is-model? :- :boolean
   "Is the query's source-card a model?"

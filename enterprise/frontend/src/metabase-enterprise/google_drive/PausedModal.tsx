@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting, useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -23,7 +23,7 @@ function PausedModal({ onClose }: { onClose: () => void }) {
         </Text>
         <Text c="text-secondary">
           {isAdmin
-            ? // eslint-disable-next-line no-literal-metabase-strings -- admin only
+            ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only
               t`Add more storage to your Metabase or connect a database to store the uploaded files.`
             : t`Please contact your admin to add more storage.`}
         </Text>

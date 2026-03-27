@@ -1,12 +1,12 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/common/components/Link";
-import { alpha, darken } from "metabase/lib/colors";
+import { Link } from "metabase/common/components/Link";
 import {
   breakpointMaxLarge,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
+import { alpha, darken } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
@@ -46,7 +46,9 @@ export const MobileHide = styled.div`
 
 export const AdminMobileNavbar = styled.div`
   ${breakpointMaxMedium} {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   display: none;

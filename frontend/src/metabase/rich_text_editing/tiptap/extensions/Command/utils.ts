@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
-import { PLUGIN_METABOT } from "metabase/plugins";
-
 import type { CommandSection } from "./types";
 
-export const getAllCommandSections = (): CommandSection[] => {
+export const getAllCommandSections = (
+  isMetabotEnabled: boolean,
+): CommandSection[] => {
   return [
     {
       items: [
-        ...(PLUGIN_METABOT.isEnabled()
+        ...(isMetabotEnabled
           ? ([
               {
                 icon: "metabot" as const,

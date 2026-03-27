@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import {
   formatChangeWithSign,
   formatNumber,
@@ -12,10 +11,7 @@ import {
 } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { isNotNull } from "metabase/lib/types";
-import {
-  calculateFunnelSteps,
-  calculateStepOpacity,
-} from "metabase/static-viz/components/FunnelChart/utils/funnel";
+import { color } from "metabase/ui/colors";
 import {
   FunnelNormalRoot,
   FunnelStart,
@@ -25,6 +21,10 @@ import {
   Subtitle,
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
+import {
+  calculateFunnelSteps,
+  calculateStepOpacity,
+} from "metabase/visualizations/lib/funnel/utils";
 import type {
   ClickObject,
   HoveredObject,

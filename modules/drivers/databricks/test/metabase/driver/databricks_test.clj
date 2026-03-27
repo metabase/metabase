@@ -12,7 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -177,10 +177,20 @@
     :databricks
     (mt/dataset
       dataset-with-ntz
-      (testing "timestamp column was ignored during sync"
-        (let [columns (t2/select :model/Field :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id)))]
-          (is (= 1 (count columns)))
-          (is (= "id" (:name (first columns)))))))))
+      (testing "timestamp_ntz column is synced with correct types"
+        (let [columns (t2/select :model/Field :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id)))
+              col-type-info (into {}
+                                  (map (fn [col]
+                                         [(:name col)
+                                          (select-keys col [:base_type :effective_type :database_type])]))
+                                  columns)]
+          (is (= {"id" {:base_type :type/Integer
+                        :effective_type :type/Integer
+                        :database_type "int"}
+                  "timestamp" {:base_type :type/DateTime
+                               :effective_type :type/DateTime
+                               :database_type "timestamp_ntz"}}
+                 col-type-info)))))))
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver
@@ -475,3 +485,12 @@
                       (assoc :use-m2m true
                              :client-id (tx/db-test-env-var-or-throw :databricks :client-id)
                              :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))
+
+(deftest ^:parallel mulit-line-comment-test
+  (mt/test-driver :databricks
+    (testing "queries with multi line block comments work (#68667)"
+      (is (= [[1]]
+             (->> "/*\n*/\nselect 1;"
+                  (lib/native-query (mt/metadata-provider))
+                  (qp/process-query)
+                  (mt/rows)))))))

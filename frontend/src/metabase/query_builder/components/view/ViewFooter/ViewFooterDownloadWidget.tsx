@@ -2,7 +2,7 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import QuestionDownloadPopover from "metabase/query_builder/components/QuestionDownloadPopover";
+import { QuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover";
 import {
   getFirstQueryResult,
   getQuestion,
@@ -16,6 +16,7 @@ export const ViewFooterDownloadWidget = () => {
 
   return (
     question &&
+    result &&
     QuestionDownloadPopover.shouldRender({ result }) && (
       <QuestionDownloadPopover
         className={cx(CS.hide, CS.smShow)}

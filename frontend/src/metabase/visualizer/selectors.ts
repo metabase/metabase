@@ -151,8 +151,9 @@ const getVisualizerFlatRawSeries = createSelector(
     getVisualizerRawSettings,
     getVisualizerDatasetData,
     getCards,
+    getVisualizerColumnValuesMapping,
   ],
-  (display, settings, data, cards): RawSeries => {
+  (display, settings, data, cards, columnValuesMapping): RawSeries => {
     if (!display) {
       return [];
     }
@@ -168,6 +169,8 @@ const getVisualizerFlatRawSeries = createSelector(
         } as Card,
 
         data,
+
+        columnValuesMapping,
 
         // Certain visualizations memoize settings computation based on series keys
         // This guarantees a visualization always rerenders on changes
@@ -203,10 +206,7 @@ export const getVisualizerRawSeries = createSelector(
         )
       : flatSeries;
 
-    return series.map((s) => ({
-      ...s,
-      columnValuesMapping,
-    }));
+    return series;
   },
 );
 

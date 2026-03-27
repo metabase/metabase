@@ -172,22 +172,6 @@
                                 (assoc-in [:user-data :is_active] true)
                                 (assoc :user-provisioning-enabled? provisioning-enabled?))))))
 
-(defn- group-names->ids
-  "Translate a user's group names to a set of MB group IDs using the configured mappings"
-  [group-names]
-  (->> (cond-> group-names (string? group-names) vector)
-       (map keyword)
-       (mapcat (sso-settings/saml-group-mappings))
-       set))
-
-(defn- all-mapped-group-ids
-  "Returns the set of all MB group IDs that have configured mappings"
-  []
-  (-> (sso-settings/saml-group-mappings)
-      vals
-      flatten
-      set))
-
 (methodical/defmethod auth-identity/login! :after :provider/saml
   "Sync SAML group memberships after successful login.
 
@@ -201,5 +185,5 @@
       (when (sso-settings/saml-group-sync)
         (when-let [group-names (:group-names saml-data)]
           (sso/sync-group-memberships! user
-                                       (group-names->ids group-names)
-                                       (all-mapped-group-ids)))))))
+                                       (sso-utils/group-names->ids group-names (sso-settings/saml-group-mappings))
+                                       (sso-utils/all-mapped-group-ids (sso-settings/saml-group-mappings))))))))

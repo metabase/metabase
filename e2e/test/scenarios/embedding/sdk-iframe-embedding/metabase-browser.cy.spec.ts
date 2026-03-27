@@ -165,7 +165,15 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
 
       cy.findByText("Pick your starting data").should("be.visible");
 
+      cy.intercept("POST", "/api/dataset/query_metadata").as("datasetMetadata");
       cy.findByText("Orders").click();
+
+      // Wait for the dataset metadata POST triggered by updateQuestionSdk
+      // to complete before clicking the breadcrumb. Without this, the stale
+      // updateQuestion dispatch can race with loadAndQueryQuestion and
+      // overwrite the reset state.
+      cy.wait("@datasetMetadata");
+      cy.findByTestId("data-step-cell").should("have.text", "Orders");
 
       cy.findByTestId("sdk-breadcrumbs").findByText("New exploration").click();
 

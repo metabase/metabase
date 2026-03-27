@@ -23,12 +23,6 @@ const TEST_USER = createMockUser();
 
 jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
 
-const mockSdkDispatchFn = jest.fn();
-jest.mock("embedding-sdk-bundle/store", () => ({
-  ...jest.requireActual("embedding-sdk-bundle/store"),
-  useSdkDispatch: () => mockSdkDispatchFn,
-}));
-
 jest.mock("metabase/embedding-sdk/config", () => ({
   ...jest.requireActual("metabase/embedding-sdk/config"),
   EMBEDDING_SDK_CONFIG: {

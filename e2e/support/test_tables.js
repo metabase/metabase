@@ -272,7 +272,7 @@ export const many_schemas = async (dbClient) => {
     }),
   );
 
-  Object.entries(schemas).forEach(async ([schemaName, details]) => {
+  for (const [schemaName, details] of Object.entries(schemas)) {
     const [table, rows] = details;
     await dbClient.schema.createSchemaIfNotExists(schemaName);
     await dbClient.schema.withSchema(schemaName).dropTableIfExists(table);
@@ -283,9 +283,15 @@ export const many_schemas = async (dbClient) => {
     });
 
     await dbClient(`${schemaName}.${table}`).insert(rows);
-  });
+  }
 
   return schemas;
+};
+
+export const empty_schema = async (dbClient) => {
+  const schemaName = "empty_schema";
+  await dbClient.schema.createSchemaIfNotExists(schemaName);
+  return null;
 };
 
 export const cached_table = async (dbClient) => {

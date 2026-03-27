@@ -1,5 +1,6 @@
-import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
+
+import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
 import { Questions } from "metabase/entities/questions";
@@ -187,7 +188,7 @@ async function fetchAndPrepareAdHocQuestionCards(
 
 type ResolveCardsResult = {
   card: Card;
-  originalCard?: Card;
+  originalCard?: Card | null;
 };
 
 export async function resolveCards({
@@ -306,7 +307,7 @@ async function handleQBInit(
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
-    : null;
+    : undefined;
 
   let { card, originalCard } = await resolveCards({
     cardId,
@@ -426,6 +427,7 @@ async function handleQBInit(
       updateUrl(question, {
         replaceState: true,
         preserveParameters: hasCard,
+        preserveNavbarState: true,
         objectId,
       }),
     );

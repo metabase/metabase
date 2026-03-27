@@ -1,8 +1,8 @@
 /* NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
  * NOTE: KEEP SYNCHRONIZED WITH:
  * frontend/src/metabase/ui/utils/colors.ts
- * frontend/src/metabase/lib/colors/palette.ts
- * frontend/src/metabase/lib/colors/colors.ts
+ * frontend/src/metabase/ui/colors/palette.ts
+ * frontend/src/metabase/ui/colors/colors.ts
  * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
  * frontend/src/metabase/styled-components/theme/css-variables.ts
  */
@@ -87,9 +87,8 @@
   color: var(--mb-color-text-tertiary);
 }
 
-.bgBrandLighter,
-.bgBrandLighterHover:hover {
-  background-color: var(--mb-color-brand-lighter);
+.bgBrandHover:hover {
+  background-color: var(--mb-color-background-hover);
 }
 
 .bgLight,

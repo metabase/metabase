@@ -60,6 +60,7 @@
                :database-is-auto-increment true
                :database-is-generated      false
                :database-is-nullable       false
+               :jdbc-type                  java.sql.Types/BIGINT
                :json-unfolding             false}
               {:name                       "NAME"
                :database-type              "CHARACTER VARYING"
@@ -69,6 +70,7 @@
                :database-is-auto-increment false
                :database-is-generated      false
                :database-is-nullable       true
+               :jdbc-type                  java.sql.Types/VARCHAR
                :json-unfolding             false}
               {:name                       "CATEGORY_ID"
                :database-type              "INTEGER"
@@ -78,6 +80,7 @@
                :database-is-auto-increment false
                :database-is-generated      false
                :database-is-nullable       true
+               :jdbc-type                  java.sql.Types/INTEGER
                :json-unfolding             false}
               {:name                       "LATITUDE"
                :database-type              "DOUBLE PRECISION"
@@ -87,6 +90,7 @@
                :database-is-auto-increment false
                :database-is-generated      false
                :database-is-nullable       true
+               :jdbc-type                  java.sql.Types/FLOAT
                :json-unfolding             false}
               {:name                       "LONGITUDE"
                :database-type              "DOUBLE PRECISION"
@@ -96,6 +100,7 @@
                :database-is-auto-increment false
                :database-is-generated      false
                :database-is-nullable       true
+               :jdbc-type                  java.sql.Types/FLOAT
                :json-unfolding             false}
               {:name                       "PRICE"
                :database-type              "INTEGER"
@@ -105,6 +110,7 @@
                :database-is-auto-increment false
                :database-is-generated      false
                :database-is-nullable       true
+               :jdbc-type                  java.sql.Types/INTEGER
                :json-unfolding             false}}}
            (driver/describe-table :h2 (mt/db) {:name "VENUES"})))))
 
@@ -128,6 +134,7 @@
                          :database-position          0
                          :database-required          false
                          :database-type              "INTEGER"
+                         :jdbc-type                  java.sql.Types/INTEGER
                          :name                       "id"
                          :pk?                        true
                          :json-unfolding             false}
@@ -138,6 +145,7 @@
                          :database-position          1
                          :database-required          false
                          :database-type              "INTEGER"
+                         :jdbc-type                  java.sql.Types/INTEGER
                          :name                       "count"
                          :json-unfolding             false}
                         {:base-type                  :type/Integer
@@ -147,6 +155,7 @@
                          :database-position          2
                          :database-required          true
                          :database-type              "INTEGER"
+                         :jdbc-type                  java.sql.Types/INTEGER
                          :name                       "rank"
                          :json-unfolding             false}}
               :name "employee_counter"}

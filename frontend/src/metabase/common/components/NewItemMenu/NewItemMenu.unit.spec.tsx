@@ -15,7 +15,7 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import NewItemMenu from "./NewItemMenu";
+import { NewItemMenu } from "./NewItemMenu";
 
 console.warn = jest.fn();
 console.error = jest.fn();

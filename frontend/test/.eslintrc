@@ -1,9 +1,0 @@
-{
-  "rules": {
-    "import/no-commonjs": 0,
-    "no-color-literals": 0
-  },
-  "env": {
-    "node": true
-  }
-}

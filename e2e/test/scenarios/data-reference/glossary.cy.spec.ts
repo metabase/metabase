@@ -3,23 +3,27 @@ const { H } = cy;
 function executeCreateGlossaryTermFlow() {
   cy.intercept("POST", "/api/glossary", (req) => {
     expect(req.body).to.deep.equal({
-      term: "Bird",
-      definition: "A thing with wings.",
+      term: "Boat",
+      definition: "A small vessel for traveling on water.",
     });
   }).as("createGlossary");
 
   cy.findByRole("button", { name: /new term/i }).click();
 
-  cy.findByPlaceholderText(/bird/i).type("  Bird  ");
-  cy.findByPlaceholderText(/a warm-blooded.*/i).type("  A thing with wings.  ");
+  cy.findByPlaceholderText(/boat/i).type("  Boat  ");
+  cy.findByPlaceholderText(/a small vessel.*/i).type(
+    "  A small vessel for traveling on water.  ",
+  );
 
   cy.findByLabelText("Save").click();
 
   cy.wait("@createGlossary");
 
   cy.get("table").within(() => {
-    cy.findByText("Bird").should("be.visible");
-    cy.findByText("A thing with wings.").should("be.visible");
+    cy.findByText("Boat").should("be.visible");
+    cy.findByText("A small vessel for traveling on water.").should(
+      "be.visible",
+    );
   });
 }
 
@@ -43,8 +47,8 @@ function executeUpdateGlossaryTermFlow(visitPageFn: VoidFunction) {
       cy.findByText("Cat").click();
     });
 
-    cy.findByPlaceholderText(/bird/i).clear().type("Kitten");
-    cy.findByPlaceholderText(/a warm-blooded.*/i)
+    cy.findByPlaceholderText(/boat/i).clear().type("Kitten");
+    cy.findByPlaceholderText(/a small vessel.*/i)
       .clear()
       .type("Young cat");
 

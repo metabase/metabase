@@ -1,6 +1,7 @@
+import { parse as parseUrl } from "url";
+
 import type { LocationDescriptor } from "history";
 import { push, replace } from "react-router-redux";
-import { parse as parseUrl } from "url";
 
 import { isEqualCard } from "metabase/lib/card";
 import { createThunkAction } from "metabase/lib/redux";
@@ -34,6 +35,7 @@ export const updateUrl = createThunkAction(
       dirty,
       replaceState,
       preserveParameters = true,
+      preserveNavbarState = false,
       queryBuilderMode,
       datasetEditorTab,
       objectId,
@@ -77,7 +79,9 @@ export const updateUrl = createThunkAction(
         datasetEditorTab = getDatasetEditorTab(getState());
       }
 
-      const card = isAdHocModelOrMetric ? getCard(getState()) : question.card();
+      const card = isAdHocModelOrMetric
+        ? getCard(getState())!
+        : question.card();
       const newState = {
         card,
         cardId: question.id(),
@@ -127,7 +131,13 @@ export const updateUrl = createThunkAction(
 
       try {
         if (replaceState) {
-          dispatch(replace(locationDescriptor));
+          const replaceDescriptor = preserveNavbarState
+            ? {
+                ...locationDescriptor,
+                state: { ...locationDescriptor.state, preserveNavbarState },
+              }
+            : locationDescriptor;
+          dispatch(replace(replaceDescriptor));
         } else {
           dispatch(push(locationDescriptor));
         }

@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import ExternalLink from "metabase/common/components/ExternalLink/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -13,11 +13,9 @@ import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
 } from "metabase/dashboard/selectors";
-import {
-  getVirtualCardType,
-  isVirtualDashCard,
-} from "metabase/dashboard/utils";
+import { getVirtualCardType } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { isVirtualDashCard } from "metabase/lib/dashboard";
 import { duration } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
@@ -169,7 +167,7 @@ const DashCardLoadingView = ({
  *
  * @param series the series to sanitize
  */
-function sanitizeSeriesData(series: RawSeries | { card: Card }[]) {
+function sanitizeSeriesData(series: Series): Series {
   return series.map((s) => {
     if ("data" in s) {
       // If the series already has data, we're good
@@ -177,6 +175,7 @@ function sanitizeSeriesData(series: RawSeries | { card: Card }[]) {
     }
 
     return {
+      // @ts-expect-error according to TS this branch is impossible
       ...s,
       data: { cols: [], rows: [] },
     };
@@ -257,6 +256,7 @@ export function DashCardVisualization({
     isFullscreen = false,
     isEditingParameter,
     onChangeLocation,
+    enableEntityNavigation,
   } = useDashboardContext();
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
@@ -514,21 +514,33 @@ export function DashCardVisualization({
   const actionButtons = useMemo(() => {
     const result = series[0] as unknown as Dataset;
 
-    if (
-      !question ||
-      !DashCardMenu.shouldRender({
+    const showMenu =
+      question &&
+      DashCardMenu.shouldRender({
         question,
         dashboard,
         dashcardMenu,
         result,
-      })
-    ) {
+      });
+
+    const cardResult = dashcard.card_id
+      ? datasets?.[dashcard.card_id]
+      : undefined;
+    const errorStatus =
+      cardResult?.error && typeof cardResult.error === "object"
+        ? cardResult.error.status
+        : undefined;
+    const hasViewAccess = !cardResult || errorStatus !== 403;
+
+    const showInlineParams = inlineParameters.length > 0 && hasViewAccess;
+
+    if (!showMenu && !showInlineParams) {
       return null;
     }
 
     return (
       <Group>
-        {inlineParameters.length > 0 && (
+        {showInlineParams && (
           <CollapsibleDashboardParameterList
             className={S.InlineParametersList}
             triggerClassName={S.InlineParametersMenuTrigger}
@@ -539,13 +551,17 @@ export function DashCardVisualization({
             ref={parameterListRef}
           />
         )}
-        {!isEditing && (
+        {showMenu && !isEditing && (
           <DashCardMenu
             question={question}
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerDashboardCard(dashcard)}
-            onEditVisualization={onEditVisualization}
+            onEditVisualization={
+              isVisualizerDashboardCard(dashcard)
+                ? onEditVisualization
+                : undefined
+            }
             openUnderlyingQuestionItems={
               onChangeCardAndRun && (cardTitle ? undefined : titleMenuItems)
             }
@@ -558,6 +574,7 @@ export function DashCardVisualization({
     dashboard,
     dashcard,
     dashcardMenu,
+    datasets,
     isEditing,
     inlineParameters,
     onChangeCardAndRun,
@@ -625,6 +642,8 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          enableEntityNavigation={enableEntityNavigation}
+          autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>
     </div>

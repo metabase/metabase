@@ -1,3 +1,4 @@
+import type { CurrencyStyle } from "metabase/lib/formatting";
 import type {
   EmbeddingParameters,
   EmbeddingType,
@@ -6,6 +7,7 @@ import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
+import type { ClickBehavior } from "./click-behavior";
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
   DashCardId,
@@ -14,6 +16,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
@@ -32,7 +35,9 @@ import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 
-export type CardType = "model" | "question" | "metric";
+export const CARD_TYPES = ["model", "question", "metric"] as const;
+export type CardType = (typeof CARD_TYPES)[number];
+
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
@@ -87,6 +92,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   view_count?: number;
 
   download_perms?: DownloadPermission;
+  displayIsLocked?: boolean;
 }
 
 export interface PublicCard {
@@ -111,6 +117,7 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 
   // Not part of the card API contract, a field used by query builder for showing lineage
   original_card_id?: number;
+  displayIsLocked?: boolean;
 }
 
 export type LineSize = "S" | "M" | "L";
@@ -119,13 +126,14 @@ export type SeriesSettings = {
   title?: string;
   color?: string;
   show_series_values?: boolean;
-  display?: string;
+  display?: VisualizationDisplay;
   axis?: string;
   "line.size"?: LineSize;
   "line.style"?: "solid" | "dashed" | "dotted";
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
+  show_series_trendline?: boolean;
 };
 
 export type SeriesOrderSetting = {
@@ -164,7 +172,7 @@ export type ColumnSingleFormattingSetting = {
   operator: ColumnFormattingOperator;
   color: string;
   highlight_row: boolean;
-  value: string | number;
+  value: RowValue;
 };
 export type ColumnRangeFormattingSetting = {
   columns: string[];
@@ -224,6 +232,10 @@ export type StackValuesDisplay = "total" | "all" | "series";
 export const numericScale = ["linear", "pow", "log"] as const;
 export type NumericScale = (typeof numericScale)[number];
 
+export type BoxPlotWhiskerType = "tukey" | "min-max";
+export type BoxPlotPointsMode = "none" | "outliers" | "all";
+export type BoxPlotShowValuesMode = "median" | "all";
+
 export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
@@ -232,6 +244,8 @@ export interface ColumnSettings {
   column_title?: string;
   number_separators?: string;
   currency?: string;
+  currency_style?: CurrencyStyle;
+  click_behavior?: ClickBehavior;
 
   // some options are untyped
   [key: string]: any;
@@ -268,6 +282,7 @@ export type VisualizationSettings = {
     | "rotate-90";
 
   // Y-axis
+  "graph.y_axis.auto_range"?: boolean;
   "graph.y_axis.title_text"?: string;
   "graph.y_axis.scale"?: YAxisScale;
   "graph.y_axis.axis_enabled"?: boolean;
@@ -282,6 +297,9 @@ export type VisualizationSettings = {
 
   // Trend
   "graph.show_trendline"?: boolean;
+
+  // Split panels
+  "graph.split_panels"?: boolean;
 
   // Series
   "graph.dimensions"?: string[];
@@ -338,6 +356,12 @@ export type VisualizationSettings = {
   "sankey.show_edge_labels"?: boolean;
   "sankey.label_value_formatting"?: "auto" | "full" | "compact";
 
+  // BoxPlot settings
+  "boxplot.whisker_type"?: BoxPlotWhiskerType;
+  "boxplot.points_mode"?: BoxPlotPointsMode;
+  "boxplot.show_mean"?: boolean;
+  "boxplot.show_values_mode"?: BoxPlotShowValuesMode;
+
   // List view settings
   "list.columns"?: ListViewColumns; // set of columns selected for custom list view
   "list.entity_icon_enabled"?: boolean; // display/hide first list item column rendering image/icon
@@ -352,7 +376,10 @@ export type EmbedVisualizationSettings = {
   iframe?: string;
 };
 
-export type VisualizationSettingKey = keyof VisualizationSettings;
+export type VisualizationSettingKey = Exclude<
+  keyof VisualizationSettings,
+  number // TS infers number because of `[key: string]: any` in VisualizationSettings
+>;
 
 export type CardId = number;
 
@@ -379,7 +406,7 @@ export interface ListCardsRequest {
 }
 
 export interface GetCardRequest {
-  id: CardId;
+  id: CardId | EntityToken;
   context?: "collection";
   ignore_view?: boolean;
   ignore_error?: boolean;
@@ -495,8 +522,8 @@ export type ListViewColumns = {
 };
 
 export type ScalarSegment = {
-  min: number;
-  max: number;
+  min: number | null;
+  max: number | null;
   color: string;
   label?: string;
 };

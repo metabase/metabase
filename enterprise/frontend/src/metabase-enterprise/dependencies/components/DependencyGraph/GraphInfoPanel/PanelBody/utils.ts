@@ -1,11 +1,7 @@
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import type {
-  DependencyEntry,
-  DependencyNode,
-  Field,
-} from "metabase-types/api";
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import type { NodeTableInfo } from "./types";
 
@@ -52,30 +48,4 @@ export function getNodeTableInfo(
         ]
       : null,
   };
-}
-
-export function getNodeFields(node: DependencyNode): Field[] {
-  switch (node.type) {
-    case "card":
-      return node.data.result_metadata ?? [];
-    case "table":
-      return node.data.fields ?? [];
-    case "transform":
-    case "sandbox":
-      return node.data.table?.fields ?? [];
-    case "snippet":
-    case "dashboard":
-    case "document":
-    case "segment":
-    case "measure":
-      return [];
-  }
-}
-
-export function getNodeFieldsLabel(fieldCount: number) {
-  return ngettext(
-    msgid`${fieldCount} field`,
-    `${fieldCount} fields`,
-    fieldCount,
-  );
 }

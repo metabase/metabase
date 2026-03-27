@@ -23,6 +23,7 @@
   make-handler]
  [metabase.server.instance
   instance
+  server-port
   start-web-server!
   stop-web-server!]
   ;; TODO -- I think all of this stuff probably belongs in [[metabase.request.*]]

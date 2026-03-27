@@ -273,6 +273,10 @@ export function dataStudioMetric(cardId: CardId) {
   return `${dataStudioLibrary()}/metrics/${cardId}`;
 }
 
+export function dataStudioMetricOverview(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/overview`;
+}
+
 export function dataStudioMetricQuery(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/query`;
 }
@@ -285,8 +289,16 @@ export function dataStudioMetricCaching(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/caching`;
 }
 
+export function dataStudioMetricHistory(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/history`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
+}
+
+export function dataStudioGitSync() {
+  return `${dataStudio()}/git-sync`;
 }
 
 export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
@@ -299,6 +311,24 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 
 export function newDataStudioSnippet() {
   return `${dataStudioLibrary()}/snippets/new`;
+}
+
+export function dataStudioArchivedSnippets() {
+  return `${dataStudioLibrary()}/snippets/archived`;
+}
+
+export function dataStudioWorkspaceList() {
+  return `${ROOT_URL}/workspaces`;
+}
+
+export function dataStudioWorkspace(
+  workspaceId: number,
+  transformId?: number | string,
+) {
+  if (transformId) {
+    return `${dataStudioWorkspaceList()}/${workspaceId}?transformId=${transformId}`;
+  }
+  return `${dataStudioWorkspaceList()}/${workspaceId}`;
 }
 
 export function dataStudioSegment(segmentId: SegmentId) {

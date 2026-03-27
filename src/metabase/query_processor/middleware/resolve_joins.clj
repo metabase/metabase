@@ -15,10 +15,7 @@
 
 (mu/defn- merge-defaults :- ::lib.schema.join/join
   [join]
-  ;;; TODO (Cam 9/16/25) -- if we made `:strategy` a required key with a `:default` value in
-  ;;; `:metabase.lib.schema.join/join` then Lib normalization could handle this for us and we wouldn't need QP
-  ;;; middleware to do it. Seems like the better way to deal with defaults. (QUE-2469)
-  (merge {:strategy :left-join}
+  (merge {:strategy lib.schema.join/default-strategy}
          (when (str/starts-with? (:alias join) lib/legacy-default-join-alias)
            {:qp/keep-default-join-alias true})
          join))

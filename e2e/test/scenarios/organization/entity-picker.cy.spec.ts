@@ -43,12 +43,11 @@ describe("scenarios > organization > entity picker", () => {
           H.entityPickerModalItem(0, "Databases").click();
           enterSearchText({
             text: "prod",
-            placeholder: "Search this database or everywhere…",
+            placeholder: "Search…",
           });
-          localSearchTab("Sample Database").should("be.checked");
+          localSearchTab("Databases").should("be.checked");
           assertSearchResults({
             foundItems: ["Products"],
-            totalFoundItemsCount: 1,
           });
           cy.findByText("Products").click();
         });
@@ -62,96 +61,12 @@ describe("scenarios > organization > entity picker", () => {
           H.entityPickerModalItem(0, "Databases").click();
           enterSearchText({
             text: "prod",
-            placeholder: "Search this database or everywhere…",
+            placeholder: "Search…",
           });
           selectGlobalSearchTab();
           assertSearchResults({
             foundItems: ["Products"],
             totalFoundItemsCount: 3,
-          });
-          cy.findByText("Products").click();
-        });
-        H.getNotebookStep("data").findByText("Products").should("be.visible");
-      });
-
-      it("should switch between recents and table tabs", () => {
-        cy.signInAsAdmin();
-        H.startNewQuestion();
-
-        cy.log("create a recent item");
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalItem(0, "Databases").click();
-          cy.findByText("Products").click();
-        });
-
-        cy.log(
-          "should search globally for recents and locally for tables by default",
-        );
-        H.getNotebookStep("data").findByText("Products").click();
-        H.miniPickerHeader().click();
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          cy.log("local -> global transition without changing search text");
-          H.entityPickerModalTab("Data").click();
-          enterSearchText({
-            text: "Orders",
-            placeholder: "Search this database or everywhere…",
-          });
-          localSearchTab("Sample Database").should("be.checked");
-          H.entityPickerModalTab("Recents").click();
-          existingSearchTab().click();
-          globalSearchTab().should("not.exist");
-          localSearchTab("Sample Database").should("not.exist");
-          assertSearchResults({
-            foundItems: ["Orders, Count", "Orders Model"],
-          });
-
-          cy.log("global -> local transition without changing search text");
-          H.entityPickerModalTab("Data").click();
-          existingSearchTab().click();
-          localSearchTab("Sample Database").should("be.checked");
-          assertSearchResults({
-            foundItems: ["Orders"],
-            totalFoundItemsCount: 1,
-          });
-
-          cy.log("local -> global transition with changing search text");
-          H.entityPickerModalTab("Recents").click();
-          enterSearchText({
-            text: "people",
-            placeholder: "Search…",
-          });
-          globalSearchTab().should("not.exist");
-          localSearchTab("Sample Database").should("not.exist");
-          assertSearchResults({
-            foundItems: ["People"],
-          });
-
-          cy.log("return to the previous tab when the search input is cleared");
-          cy.findByPlaceholderText("Search…").clear();
-          H.entityPickerModalTab("Recents").should(
-            "have.attr",
-            "aria-selected",
-            "true",
-          );
-        });
-      });
-
-      it("should search for tables in the only database", () => {
-        H.startNewQuestion();
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalItem(0, "Databases").click();
-          enterSearchText({
-            text: "prod",
-            placeholder: "Search this database or everywhere…",
-          });
-          localSearchTab("Sample Database").should("be.checked");
-          assertSearchResults({
-            foundItems: ["Products"],
-            notFoundItems: ["Orders"],
-            totalFoundItemsCount: 1,
           });
           cy.findByText("Products").click();
         });
@@ -172,23 +87,21 @@ describe("scenarios > organization > entity picker", () => {
           H.entityPickerModalItem(0, "Databases").click();
           enterSearchText({
             text: "Orders",
-            placeholder: "Search this database or everywhere…",
+            placeholder: "Search…",
           });
-          localSearchTab("Sample Database").should("be.checked");
+          localSearchTab("Databases").should("be.checked");
           assertSearchResults({
             notFoundItems: ["Orders"],
-            totalFoundItemsCount: 0,
           });
-          cy.findByText("Didn't find anything").should("be.visible");
         });
 
         cy.log("display table name should be used to search for a table");
         H.entityPickerModal().within(() => {
           enterSearchText({
             text: "Events",
-            placeholder: "Search this database or everywhere…",
+            placeholder: "Search…",
           });
-          localSearchTab("Sample Database").should("be.checked");
+          localSearchTab("Databases").should("be.checked");
           assertSearchResults({
             foundItems: ["Events"],
             notFoundItems: ["Orders"],
@@ -208,53 +121,31 @@ describe("scenarios > organization > entity picker", () => {
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
-          cy.log("first database - pre-selected");
+          cy.log("first database");
           H.startNewQuestion();
           H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
             H.entityPickerModalItem(0, "Databases").click();
             enterSearchText({
               text: "prod",
-              placeholder: "Search this database or everywhere…",
+              placeholder: "Search…",
             });
-            localSearchTab("Sample Database").should("be.checked");
+            localSearchTab("Databases").should("be.checked");
             assertSearchResults({
               foundItems: ["Products"],
-              notFoundItems: ["Orders"],
-              totalFoundItemsCount: 1,
             });
           });
 
           cy.log("second database");
           H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Data").click();
-            cy.findByText("Writable Postgres12").click();
+            H.entityPickerModalItem(0, "Databases").click();
             enterSearchText({
               text: "s",
-              placeholder: "Search this schema or everywhere…",
+              placeholder: "Search…",
             });
-            localSearchTab("Domestic").should("be.checked");
+            localSearchTab("Databases").should("be.checked");
             assertSearchResults({
-              foundItems: ["Animals"],
-              notFoundItems: ["Birds"],
-              totalFoundItemsCount: 1,
-            });
-          });
-
-          cy.log("first database - manually selected");
-          H.startNewQuestion();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Data").click();
-            cy.findByText("Sample Database").click();
-            enterSearchText({
-              text: "prod",
-              placeholder: "Search this database or everywhere…",
-            });
-            localSearchTab("Sample Database").should("be.checked");
-            assertSearchResults({
-              foundItems: ["Products"],
-              notFoundItems: ["Orders"],
-              totalFoundItemsCount: 1,
+              foundItems: ["Birds"],
             });
           });
         },
@@ -269,38 +160,20 @@ describe("scenarios > organization > entity picker", () => {
           cy.signInAsAdmin();
           H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
-          cy.log("first schema");
           H.startNewQuestion();
           H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
             H.entityPickerModalItem(0, "Databases").click();
             cy.findByText("Writable Postgres12").click();
             enterSearchText({
-              text: "s",
-              placeholder: "Search this schema or everywhere…",
+              text: "anim",
+              placeholder: "Search…",
             });
-            localSearchTab("Domestic").should("be.checked");
-            assertSearchResults({
-              foundItems: ["Animals"],
-              notFoundItems: ["Birds"],
-              totalFoundItemsCount: 1,
-            });
-          });
-
-          cy.log("second schema");
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Data").click();
-            cy.findByText("Writable Postgres12").click();
-            cy.findByText("Wild").click();
-            enterSearchText({
-              text: "s",
-              placeholder: "Search this schema or everywhere…",
-            });
-            localSearchTab("Wild").should("be.checked");
-            assertSearchResults({
-              foundItems: ["Animals", "Birds"],
-              totalFoundItemsCount: 2,
-            });
+            localSearchTab("Databases").should("be.checked");
+            cy.findByRole("link", { name: /animals.*wild/i }).should("exist");
+            cy.findByRole("link", { name: /animals.*domestic/i }).should(
+              "exist",
+            );
           });
         },
       );
@@ -318,22 +191,18 @@ describe("scenarios > organization > entity picker", () => {
             cy.findByText("QA MySQL8").click();
             enterSearchText({
               text: "orders",
-              placeholder: "Search this database or everywhere…",
+              placeholder: "Search…",
             });
-            localSearchTab("QA MySQL8").should("be.checked");
-            assertSearchResults({
-              foundItems: ["Orders"],
-              notFoundItems: ["Products"],
-              totalFoundItemsCount: 1,
-            });
+            localSearchTab("Databases").should("be.checked");
+            cy.findByRole("link", { name: /orders.*QA MySQL8/i }).should(
+              "exist",
+            );
           });
         },
       );
     });
 
     describe("cards", () => {
-      const tabs = ["Data"];
-
       it("should select a card from local search results", () => {
         cy.signInAsAdmin();
         createTestCards();
@@ -357,6 +226,7 @@ describe("scenarios > organization > entity picker", () => {
           H.startNewQuestion();
           H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
+            H.entityPickerModalItem(0, "Our analytics").click();
             enterSearchText({
               text: cardName,
               placeholder: /Search/,
@@ -366,23 +236,6 @@ describe("scenarios > organization > entity picker", () => {
           H.getNotebookStep("data").findByText(sourceName).should("be.visible");
           H.visualize();
         });
-
-        cy.log("scope search in a dashboard");
-        H.startNewQuestion();
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Data").click();
-          H.entityPickerModalItem(1, "Orders in a dashboard").click();
-          enterSearchText({
-            text: "Orders",
-            placeholder: "Search this dashboard or everywhere…",
-          });
-          cy.findByText("Orders Dashboard question 2").click();
-        });
-        H.getNotebookStep("data")
-          .findByText("Orders Dashboard question 2")
-          .should("be.visible");
-        H.visualize();
       });
 
       it("should select a card from global search results", () => {
@@ -404,13 +257,10 @@ describe("scenarios > organization > entity picker", () => {
             sourceName: "Orders",
           },
         ];
-        testCases.forEach(({ cardName, sourceName }, i) => {
+        testCases.forEach(({ cardName, sourceName }) => {
           H.startNewQuestion();
           H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
-            if (i > 0) {
-              H.entityPickerModalTab("Data").click();
-            }
             enterSearchText({
               text: cardName,
               placeholder: /Search/,
@@ -426,10 +276,9 @@ describe("scenarios > organization > entity picker", () => {
         H.startNewQuestion();
         H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Data").click();
           enterSearchText({
             text: "Dashboard question 1",
-            placeholder: "Search this collection or everywhere…",
+            placeholder: "Search…",
           });
           selectGlobalSearchTab();
           cy.findByText("Orders Dashboard question 1").click();
@@ -446,7 +295,7 @@ describe("scenarios > organization > entity picker", () => {
         cy.signInAsNormalUser();
         H.startNewQuestion();
         H.miniPickerBrowseAll().click();
-        testCardSearchForNormalUser({ tabs });
+        testCardSearchForNormalUser();
       });
 
       it("should search for cards when there is no access to the root collection", () => {
@@ -461,10 +310,7 @@ describe("scenarios > organization > entity picker", () => {
         cy.signIn("nocollection");
         H.startNewQuestion();
         H.miniPickerBrowseAll().click();
-        testCardSearchForInaccessibleRootCollection({
-          tabs,
-          isRootSelected: true,
-        });
+        testCardSearchForInaccessibleRootCollection();
       });
 
       it("should not allow local search for `all personal collections`", () => {
@@ -478,25 +324,22 @@ describe("scenarios > organization > entity picker", () => {
   });
 
   describe("question picker", () => {
-    const tabs = ["Questions", "Models", "Metrics"];
-
     it("should select a card from local search results", () => {
       cy.signInAsAdmin();
       createTestCards();
       cy.signInAsNormalUser();
 
       const testCases = [
-        { tab: "Questions", cardName: "Root question 1" },
-        { tab: "Models", cardName: "Root model 2" },
-        { tab: "Metrics", cardName: "Root metric 1" },
+        { cardName: "Root question 1" },
+        { cardName: "Root model 2" },
+        { cardName: "Root metric 1" },
       ];
-      testCases.forEach(({ tab, cardName }) => {
+      testCases.forEach(({ cardName }) => {
         selectQuestionFromDashboard();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab(tab).click();
           enterSearchText({
             text: cardName,
-            placeholder: "Search this collection or everywhere…",
+            placeholder: "Search…",
           });
           cy.findByText(cardName).click();
         });
@@ -510,17 +353,16 @@ describe("scenarios > organization > entity picker", () => {
       cy.signInAsNormalUser();
 
       const testCases = [
-        { tab: "Questions", cardName: "Regular question 1" },
-        { tab: "Models", cardName: "Regular model 2" },
-        { tab: "Metrics", cardName: "Regular metric 1" },
+        { cardName: "Regular question 1" },
+        { cardName: "Regular model 2" },
+        { cardName: "Regular metric 1" },
       ];
-      testCases.forEach(({ tab, cardName }) => {
+      testCases.forEach(({ cardName }) => {
         selectQuestionFromDashboard();
         H.entityPickerModal().within(() => {
-          H.entityPickerModalTab(tab).click();
           enterSearchText({
             text: cardName,
-            placeholder: "Search this collection or everywhere…",
+            placeholder: "Search…",
           });
           selectGlobalSearchTab();
           cy.findByText(cardName).click();
@@ -534,7 +376,7 @@ describe("scenarios > organization > entity picker", () => {
       createTestCards();
       cy.signInAsNormalUser();
       selectQuestionFromDashboard();
-      testCardSearchForNormalUser({ tabs });
+      testCardSearchForNormalUser();
     });
 
     it("should search for cards when there is no access to the root collection", () => {
@@ -548,10 +390,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.signIn("nocollection");
       selectQuestionFromDashboard({ collection_id: FIRST_COLLECTION_ID });
-      testCardSearchForInaccessibleRootCollection({
-        tabs,
-        isRootSelected: false,
-      });
+      testCardSearchForInaccessibleRootCollection();
     });
 
     it("should not allow local search for `all personal collections`", () => {
@@ -569,15 +408,16 @@ describe("scenarios > organization > entity picker", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
+        H.pickEntity({ path: ["Our analytics", "First collection"] });
         enterSearchText({
-          text: "first",
-          placeholder: "Search this collection or everywhere…",
+          text: "second",
+          placeholder: "Search…",
         });
-        localSearchTab("Our analytics").should("be.checked");
-        cy.findByText("First collection").click();
+        localSearchTab("First collection").should("be.checked");
+        cy.findByText("Second collection").click();
         cy.button("Move").click();
       });
-      H.undoToast().findByText("First collection").should("be.visible");
+      H.undoToast().findByText("Second collection").should("be.visible");
     });
 
     it("should select a collection from global search results", () => {
@@ -586,9 +426,10 @@ describe("scenarios > organization > entity picker", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
+        H.pickEntity({ path: ["Our analytics", "First collection"] });
         enterSearchText({
           text: "second",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
         selectGlobalSearchTab();
         cy.findByText("Second collection").click();
@@ -605,54 +446,36 @@ describe("scenarios > organization > entity picker", () => {
       H.openQuestionActions();
       H.popover().findByText("Move").click();
 
-      cy.log("root collection - automatically selected");
       H.entityPickerModal().within(() => {
+        cy.findByText("First collection").click();
         enterSearchText({
           text: "collection",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
-        localSearchTab("Our analytics").should("be.checked");
+        localSearchTab("First collection").should("be.checked");
         assertSearchResults({
-          foundItems: ["First collection"],
-          notFoundItems: ["Second collection"],
+          foundItems: ["Second collection"],
+          // notFoundItems: ["First collection"],
         });
         selectGlobalSearchTab();
         assertSearchResults({
           foundItems: ["First collection", "Second collection"],
         });
-        selectLocalSearchTab("Our analytics");
-        assertSearchResults({
-          foundItems: ["First collection"],
-          notFoundItems: ["Second collection"],
-        });
-      });
-
-      cy.log("regular collection");
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
-        cy.findByText("First collection").click();
-        enterSearchText({
-          text: "collection",
-          placeholder: "Search this collection or everywhere…",
-        });
-        localSearchTab("First collection").should("be.checked");
+        selectLocalSearchTab("First collection");
         assertSearchResults({
           foundItems: ["Second collection"],
-          notFoundItems: ["First collection", "Third collection"],
+          // notFoundItems: ["First collection"],
         });
       });
 
       cy.log("personal collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
         cy.findByText(/Personal Collection/).click();
         enterSearchText({
           text: "personal collection 1",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
-        localSearchTab("Robert Tableton's Personal Collection").should(
-          "be.checked",
-        );
+        localSearchTab(/robert tableton/i).should("be.checked");
         assertSearchResults({
           foundItems: ["Normal personal collection 1"],
           notFoundItems: [
@@ -693,37 +516,23 @@ describe("scenarios > organization > entity picker", () => {
         cy.findByText("Collections").click();
         enterSearchText({
           text: "collection",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
-        localSearchTab("Collections").should("be.checked");
+        globalSearchTab().should("be.checked");
         assertSearchResults({
           foundItems: ["Another collection"],
-          notFoundItems: [
-            "No Collection Tableton's Personal Collection",
-            "First Collection",
-          ],
-        });
-        selectGlobalSearchTab();
-        assertSearchResults({
-          foundItems: [
-            "Another collection",
-            "No Collection Tableton's Personal Collection",
-          ],
           notFoundItems: ["First Collection"],
         });
       });
 
       cy.log("personal collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
-        cy.findByText(/Personal Collection/).click();
+        H.entityPickerModalItem(0, /Personal Collection/).click();
         enterSearchText({
           text: "personal collection 2",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
-        localSearchTab("No Collection Tableton's Personal Collection").should(
-          "be.checked",
-        );
+        localSearchTab(/no collection/i).should("be.checked");
         assertSearchResults({
           foundItems: ["No collection personal collection 2"],
           notFoundItems: [
@@ -743,7 +552,6 @@ describe("scenarios > organization > entity picker", () => {
       H.popover().findByText("Move").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
         cy.findByText("All personal collections").click();
         enterSearchText({
           text: "personal collection",
@@ -773,7 +581,6 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(0, "All personal collections").click();
         H.entityPickerModalItem(
           1,
@@ -791,7 +598,6 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
         H.entityPickerModalItem(0, "All personal collections").should(
           "have.attr",
           "data-active",
@@ -823,7 +629,6 @@ describe("scenarios > organization > entity picker", () => {
         .should("contain.text", "Orders in a dashboard")
         .click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Browse").click();
         H.entityPickerModalItem(0, "Bobby Tables's Personal Collection").should(
           "be.visible",
         );
@@ -846,21 +651,24 @@ describe("scenarios > organization > entity picker", () => {
 
   describe("dashboard picker", () => {
     it("should select a dashboard from local search results", () => {
+      cy.signInAsAdmin();
+      createTestDashboards();
+      cy.signInAsNormalUser();
+
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       H.openQuestionActions();
       H.popover().findByText("Add to dashboard").click();
-
       H.entityPickerModal().within(() => {
-        cy.findByText("Our analytics").click();
+        H.pickEntity({ path: ["Our analytics", "First collection"] });
         enterSearchText({
           text: "dashboard",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
-        localSearchTab("Our analytics").should("be.checked");
-        cy.findByText("Orders in a dashboard").click();
+        localSearchTab("First collection").should("be.checked");
+        cy.findByText("Regular dashboard 1").click();
         cy.button("Select").click();
       });
-      H.getDashboardCard(1).findByText("Orders, Count").should("be.visible");
+      H.getDashboardCard(0).findByText("Orders, Count").should("be.visible");
     });
 
     it("should select a dashboard from global search results", () => {
@@ -872,7 +680,7 @@ describe("scenarios > organization > entity picker", () => {
         cy.findByText("Our analytics").click();
         enterSearchText({
           text: "dashboard",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
         selectGlobalSearchTab();
         cy.findByText("Orders in a dashboard").click();
@@ -889,63 +697,40 @@ describe("scenarios > organization > entity picker", () => {
       H.openQuestionActions();
       H.popover().findByText("Add to dashboard").click();
 
-      cy.log("root collection - automatically selected");
       H.entityPickerModal().within(() => {
-        cy.findByText("Our analytics").click();
+        cy.findByText("First collection").click();
         enterSearchText({
           text: "dashboard 1",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
-        localSearchTab("Our analytics").should("be.checked");
+        localSearchTab("First collection").should("be.checked");
         assertSearchResults({
-          foundItems: ["Root dashboard 1"],
-          notFoundItems: ["Root dashboard 2", "Regular dashboard 1"],
+          foundItems: ["Regular dashboard 1"],
+          notFoundItems: ["Regular dashboard 2", "Root dashboard 1"],
         });
         selectGlobalSearchTab();
         assertSearchResults({
           foundItems: ["Root dashboard 1", "Regular dashboard 1"],
         });
-        selectLocalSearchTab("Our analytics");
+        selectLocalSearchTab("First collection");
         assertSearchResults({
-          foundItems: ["Root dashboard 1"],
+          foundItems: ["Regular dashboard 1"],
           notFoundItems: [
-            "Root dashboard 2",
-            "Regular dashboard 1",
+            "Regular dashboard 2",
+            "Root dashboard 1",
             "Personal dashboard 1",
-          ],
-        });
-      });
-
-      cy.log("regular collection");
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
-        cy.findByText("First collection").click();
-        enterSearchText({
-          text: "dashboard 2",
-          placeholder: "Search this collection or everywhere…",
-        });
-        localSearchTab("First collection").should("be.checked");
-        assertSearchResults({
-          foundItems: ["Regular dashboard 2"],
-          notFoundItems: [
-            "Regular dashboard 1",
-            "Root dashboard 2",
-            "Personal dashboard 2",
           ],
         });
       });
 
       cy.log("personal collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
         cy.findByText(/Personal Collection/).click();
         enterSearchText({
           text: "personal dashboard 1",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
-        localSearchTab("Robert Tableton's Personal Collection").should(
-          "be.checked",
-        );
+        localSearchTab(/robert tableton/i).should("be.checked");
         assertSearchResults({
           foundItems: ["Normal personal dashboard 1"],
           notFoundItems: [
@@ -979,38 +764,23 @@ describe("scenarios > organization > entity picker", () => {
         cy.findByText("Collections").click();
         enterSearchText({
           text: "dashboard 1",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
-        localSearchTab("Collections").should("be.checked");
+        globalSearchTab().should("be.checked");
         assertSearchResults({
-          notFoundItems: [
-            "Regular dashboard 1",
-            "Regular dashboard 2",
-            "Root dashboard 1",
-            "No collection personal dashboard 1",
-          ],
-        });
-        cy.findByText("Didn't find anything").should("be.visible");
-        selectGlobalSearchTab();
-        assertSearchResults({
-          foundItems: [
-            "Regular dashboard 1",
-            "No collection personal dashboard 1",
-          ],
+          foundItems: ["Regular dashboard 1"],
+          notFoundItems: ["Regular dashboard 2", "Root dashboard 1"],
         });
       });
 
       cy.log("personal collection");
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
-        cy.findByText(/Personal Collection/).click();
+        H.entityPickerModalItem(0, /Personal Collection/).click();
         enterSearchText({
           text: "personal dashboard 2",
-          placeholder: "Search this collection or everywhere…",
+          placeholder: "Search…",
         });
-        localSearchTab("No Collection Tableton's Personal Collection").should(
-          "be.checked",
-        );
+        localSearchTab(/no collection/i).should("be.checked");
         assertSearchResults({
           foundItems: ["No collection personal dashboard 2"],
           notFoundItems: [
@@ -1031,7 +801,6 @@ describe("scenarios > organization > entity picker", () => {
       H.popover().findByText("Add to dashboard").click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Dashboards").click();
         cy.findByText("All personal collections").click();
         enterSearchText({
           text: "personal dashboard",
@@ -1066,7 +835,6 @@ describe("scenarios > organization > entity picker", () => {
         .findByLabelText(/Collection it's saved in/)
         .click();
 
-      H.entityPickerModalTab("Collections").click();
       H.entityPickerModal()
         .button(/New collection/)
         .click();
@@ -1083,7 +851,6 @@ describe("scenarios > organization > entity picker", () => {
         .findByLabelText(/Which collection/)
         .click();
 
-      H.entityPickerModalTab("Collections").click();
       H.entityPickerModal()
         .button(/New collection/)
         .click();
@@ -1097,20 +864,13 @@ describe("scenarios > organization > entity picker", () => {
 
       H.newButton("Question").click();
       H.miniPickerBrowseAll().click();
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalLevel(3).findByText("People").click();
+      H.pickEntity({ path: ["Databases", "Sample Database", "People"] });
       H.queryBuilderHeader().findByRole("button", { name: "Save" }).click();
 
       H.modal()
         .findByLabelText(/Where do you/)
         .click();
-      H.entityPickerModalTab("Browse").click();
 
-      H.entityPickerModal()
-        .button(/New dashboard/)
-        .click();
-
-      closeAndAssertModal(H.dashboardOnTheGoModal);
       H.entityPickerModal()
         .button(/New collection/)
         .click();
@@ -1125,7 +885,6 @@ describe("scenarios > organization > entity picker", () => {
 
       H.visitQuestion(ORDERS_QUESTION_ID);
       H.openQuestionActions("Add to dashboard");
-      H.entityPickerModalTab("Dashboards").click();
 
       H.entityPickerModal()
         .button(/New dashboard/)
@@ -1138,7 +897,6 @@ describe("scenarios > organization > entity picker", () => {
       H.modal()
         .findByLabelText(/Where do you/)
         .click();
-      H.entityPickerModalTab("Browse").click();
 
       // wait for data to avoid flakiness
       H.entityPickerModalLevel(1).should("contain", "First collection");
@@ -1158,7 +916,6 @@ describe("scenarios > organization > entity picker", () => {
       cy.findByTestId("new-collection-modal")
         .findByLabelText(/Collection it's saved in/)
         .click();
-      H.entityPickerModalTab("Collections").click();
 
       //Initial width of entity picker
       cy.findByRole("dialog", { name: "Select a collection" })
@@ -1184,6 +941,48 @@ describe("scenarios > organization > entity picker", () => {
       cy.findByRole("dialog", { name: "Select a collection" })
         .should("have.css", "width")
         .and("eq", "1198px");
+    });
+
+    it("should restore previous path when clearing search from search results", () => {
+      cy.visit("/");
+      H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModal().within(() => {
+        H.pickEntity({ path: ["Databases", "Sample Database"] });
+        enterSearchText({
+          text: "1",
+          placeholder: "Search…",
+        });
+        cy.findByText(/Search results for/i).should("be.visible");
+        cy.findByTestId("clear-search").click();
+        H.entityPickerModalItem(1, "Sample Database").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+      });
+    });
+
+    it("should not restore previous path when clearing search outside of search results", () => {
+      cy.visit("/");
+      H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModal().within(() => {
+        H.pickEntity({ path: ["Databases", "Sample Database"] });
+        enterSearchText({
+          text: "1",
+          placeholder: "Search…",
+        });
+        cy.findByText(/Search results for/i).should("be.visible");
+        //after clicking on Our Analytics, I shouldn't be returned to Sample Database after clearing search
+        H.pickEntity({ path: ["Our analytics"] });
+        cy.findByTestId("clear-search").click();
+        H.entityPickerModalItem(0, "Our analytics").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+      });
     });
   });
 });
@@ -1340,10 +1139,6 @@ function enterSearchText({
   cy.findByPlaceholderText(placeholder).clear().type(text);
 }
 
-function existingSearchTab() {
-  return cy.findByText(/results? for/);
-}
-
 function globalSearchTab() {
   return cy.findByLabelText("Everywhere");
 }
@@ -1352,12 +1147,22 @@ function selectGlobalSearchTab() {
   cy.findByText("Everywhere").click();
 }
 
-function localSearchTab(selectedItem: string) {
-  return cy.findByLabelText(`“${selectedItem}”`);
+function localSearchTab(selectedItem: string | RegExp) {
+  return cy.findByLabelText(selectedItem);
 }
 
 function selectLocalSearchTab(selectedItem: string) {
-  cy.findByText(`“${selectedItem}”`).click();
+  cy.findByTestId("search-scope-selector").findByText(selectedItem).click();
+}
+
+function findSearchItem(item: string) {
+  //entityPickerModalItem can also match the search tab, so we need to scope down to the scroll container
+  return (
+    H.entityPickerModalLevel(1)
+      .findByTestId("scroll-container")
+      // see the comment in entityPickerModalItem
+      .findByText(item, { ignore: '[data-testid="picker-item-location"]' })
+  );
 }
 
 function assertSearchResults({
@@ -1370,217 +1175,141 @@ function assertSearchResults({
   totalFoundItemsCount?: number;
 }) {
   foundItems.forEach((item) => {
-    cy.findByText(item).should("exist");
+    findSearchItem(item).should("exist");
   });
 
   notFoundItems.forEach((item) => {
-    cy.findByText(item).should("not.exist");
+    findSearchItem(item).should("not.exist");
   });
 
   if (totalFoundItemsCount != null) {
-    const foundItemsCountMessage =
-      totalFoundItemsCount === 1
-        ? `${totalFoundItemsCount} result`
-        : `${totalFoundItemsCount} results`;
-    cy.findByTestId("entity-picker-search-result-count").should(
-      "have.text",
-      foundItemsCountMessage,
+    cy.findAllByTestId("result-item").should(
+      "have.length",
+      totalFoundItemsCount,
     );
   }
 }
 
-function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
-  tabs.forEach((tab) => {
-    cy.log("root collection - automatically selected");
-    H.entityPickerModal().within(() => {
-      if (tabs.length > 1) {
-        H.entityPickerModalTab(tab).click();
-      }
-      enterSearchText({
-        text: "2",
-        placeholder: "Search this collection or everywhere…",
-      });
-      localSearchTab("Our analytics").should("be.checked");
-      assertSearchResults({
-        foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
-        notFoundItems: [
-          "Root question 1",
-          "Regular question 2",
-          "Admin personal collection question 2",
-          "Normal personal collection question 2",
-        ],
-      });
+function testCardSearchForNormalUser() {
+  cy.log("root collection");
+  H.entityPickerModal().within(() => {
+    H.pickEntity({ path: ["Our analytics"] });
+    enterSearchText({
+      text: "2",
+      placeholder: "Search…",
     });
-
-    cy.log("regular collection");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(tab).click();
-      cy.findByText("First collection").click();
-      enterSearchText({
-        text: "1",
-        placeholder: "Search this collection or everywhere…",
-      });
-      localSearchTab("First collection").should("be.checked");
-      assertSearchResults({
-        foundItems: [
-          "Regular question 1",
-          "Regular model 1",
-          "Regular metric 1",
-        ],
-        notFoundItems: [
-          "Root question 1",
-          "Regular question 2",
-          "Admin personal collection question 1",
-          "Normal personal collection question 1",
-        ],
-      });
+    localSearchTab("Everywhere").should("be.checked");
+    assertSearchResults({
+      foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
+      notFoundItems: [
+        "Root question 1",
+        "Admin personal collection question 2",
+      ],
     });
+  });
 
-    cy.log("root collection - manually selected");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(tab).click();
-      cy.findByText("Our analytics").click();
-      enterSearchText({
-        text: "2",
-        placeholder: "Search this collection or everywhere…",
-      });
-      localSearchTab("Our analytics").should("be.checked");
-      assertSearchResults({
-        foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
-        notFoundItems: [
-          "Root model 1",
-          "Regular model 2",
-          "Admin personal collection model 2",
-          "Normal personal collection model 2",
-        ],
-      });
+  cy.log("regular collection");
+  H.entityPickerModal().within(() => {
+    H.pickEntity({ path: ["Our analytics", "First collection"] });
+    enterSearchText({
+      text: "1",
+      placeholder: "Search…",
     });
+    localSearchTab("First collection").should("be.checked");
+    assertSearchResults({
+      foundItems: ["Regular question 1", "Regular model 1", "Regular metric 1"],
+      notFoundItems: [
+        "Root question 1",
+        "Regular question 2",
+        "Admin personal collection question 1",
+        "Normal personal collection question 1",
+      ],
+    });
+  });
 
-    cy.log("personal collection");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(tab).click();
-      cy.findByText(/Personal Collection/).click();
-      enterSearchText({
-        text: "1",
-        placeholder: "Search this collection or everywhere…",
-      });
-      localSearchTab("Robert Tableton's Personal Collection").should(
-        "be.checked",
-      );
-      assertSearchResults({
-        foundItems: [
-          "Normal personal collection question 1",
-          "Normal personal collection model 1",
-          "Normal personal collection metric 1",
-        ],
-        notFoundItems: [
-          "Root metric 1",
-          "Regular metric 1",
-          "Admin personal collection metric 1",
-          "Normal personal collection metric 2",
-        ],
-      });
+  cy.log("personal collection");
+  H.entityPickerModal().within(() => {
+    cy.findByText(/Personal Collection/).click();
+    enterSearchText({
+      text: "2",
+      placeholder: "Search…",
+    });
+    localSearchTab(/robert tableton/i).should("be.checked");
+    assertSearchResults({
+      foundItems: [
+        "Normal personal collection question 2",
+        "Normal personal collection model 2",
+        "Normal personal collection metric 2",
+      ],
+      notFoundItems: [
+        "Root metric 2",
+        "Regular metric 2",
+        "Admin personal collection metric 2",
+        "Normal personal collection metric 1",
+      ],
     });
   });
 }
 
-function testCardSearchForInaccessibleRootCollection({
-  tabs,
-  isRootSelected,
-}: {
-  tabs: string[];
-  isRootSelected: boolean;
-}) {
-  tabs.forEach((tab) => {
-    if (isRootSelected) {
-      cy.log("inaccessible root collection - automatically selected");
-      H.entityPickerModal().within(() => {
-        enterSearchText({
-          text: "1",
-          placeholder: "Search this collection or everywhere…",
-        });
-        localSearchTab("Collections").should("be.checked");
-        assertSearchResults({
-          notFoundItems: [
-            "Root metric 1",
-            "Regular metric 1",
-            "Admin personal collection metric 1",
-            "Normal personal collection metric 2",
-          ],
-        });
-        cy.findByText("Didn't find anything").should("be.visible");
-      });
-    }
-
-    cy.log("regular collection");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(tab).click();
-      cy.findByText("First collection").click();
-      enterSearchText({
-        text: "1",
-        placeholder: "Search this collection or everywhere…",
-      });
-      localSearchTab("First collection").should("be.checked");
-      assertSearchResults({
-        foundItems: [
-          "Regular question 1",
-          "Regular model 1",
-          "Regular metric 1",
-        ],
-        notFoundItems: [
-          "Root question 1",
-          "Regular question 2",
-          "Admin personal collection question 1",
-          "Normal personal collection question 1",
-          "No collection personal collection question 1",
-        ],
-      });
+function testCardSearchForInaccessibleRootCollection() {
+  cy.log("regular collection");
+  H.entityPickerModal().within(() => {
+    H.pickEntity({ path: ["Collections", "First collection"] });
+    enterSearchText({
+      text: "1",
+      placeholder: "Search…",
     });
-
-    cy.log("inaccessible root collection - manually selected");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(tab).click();
-      H.entityPickerModalItem(0, "Collections").click();
-      enterSearchText({
-        text: "1",
-        placeholder: "Search this collection or everywhere…",
-      });
-      localSearchTab("Collections").should("be.checked");
-      assertSearchResults({
-        notFoundItems: [
-          "Root metric 1",
-          "Regular metric 1",
-          "Admin personal collection metric 1",
-          "Normal personal collection metric 2",
-        ],
-      });
-      cy.findByText("Didn't find anything").should("be.visible");
+    localSearchTab("First collection").should("be.checked");
+    assertSearchResults({
+      foundItems: ["Regular question 1", "Regular model 1", "Regular metric 1"],
+      notFoundItems: [
+        "Root question 1",
+        "Regular question 2",
+        "Admin personal collection question 1",
+        "Normal personal collection question 1",
+        "No collection personal collection question 1",
+      ],
     });
+  });
 
-    cy.log("personal collection");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab(tab).click();
-      cy.findByText(/Personal Collection/).click();
-      enterSearchText({
-        text: "1",
-        placeholder: "Search this collection or everywhere…",
-      });
-      localSearchTab("No Collection Tableton's Personal Collection").should(
-        "be.checked",
-      );
-      assertSearchResults({
-        foundItems: [
-          "No collection personal collection question 1",
-          "No collection personal collection model 1",
-          "No collection personal collection metric 1",
-        ],
-        notFoundItems: [
-          "Root metric 1",
-          "Regular metric 1",
-          "Admin personal collection metric 1",
-          "Normal personal collection metric 2",
-        ],
-      });
+  cy.log("inaccessible root collection");
+  H.entityPickerModal().within(() => {
+    H.entityPickerModalItem(0, "Collections").click();
+    enterSearchText({
+      text: "2",
+      placeholder: "Search…",
+    });
+    globalSearchTab().should("be.checked");
+    assertSearchResults({
+      notFoundItems: [
+        "Root metric 1",
+        "Regular metric 1",
+        "Admin personal collection metric 1",
+        "Normal personal collection metric 2",
+      ],
+    });
+  });
+
+  cy.log("personal collection");
+  H.entityPickerModal().within(() => {
+    H.entityPickerModalItem(0, /Personal Collection/).click();
+    enterSearchText({
+      text: "1",
+      placeholder: "Search…",
+    });
+    localSearchTab(/no collection/i).should("be.checked");
+    assertSearchResults({
+      foundItems: [
+        "No collection personal collection question 1",
+        "No collection personal collection model 1",
+        "No collection personal collection metric 1",
+      ],
+      notFoundItems: [
+        "Root metric 1",
+        "Regular metric 1",
+        "Admin personal collection metric 1",
+        "Normal personal collection metric 2",
+      ],
     });
   });
 }

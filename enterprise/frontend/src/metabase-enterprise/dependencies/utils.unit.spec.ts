@@ -14,8 +14,10 @@ import {
   createMockCardDependencyNodeData,
   createMockCollection,
   createMockDashboardDependencyNode,
+  createMockDashboardDependencyNodeData,
   createMockDatabase,
   createMockDocumentDependencyNode,
+  createMockDocumentDependencyNodeData,
   createMockMeasureDependencyNode,
   createMockSandboxDependencyNode,
   createMockSegmentDependencyNode,
@@ -35,6 +37,7 @@ import type {
   NodeLink,
 } from "./types";
 import {
+  canNodeHaveViewCount,
   getCardType,
   getCardTypes,
   getDependencyErrorGroups,
@@ -62,15 +65,11 @@ import {
   getNodeLastEditedBy,
   getNodeLink,
   getNodeLocationInfo,
+  getNodeSourceReplacementEntry,
   getNodeTypeInfo,
   getNodeViewCount,
   getSearchQuery,
   isSameNode,
-  parseBoolean,
-  parseEnum,
-  parseList,
-  parseNumber,
-  parseString,
 } from "./utils";
 
 registerVisualizations();
@@ -508,51 +507,64 @@ describe("getNodeLastEditedBy", () => {
   });
 });
 
+describe("canNodeHaveViewCount", () => {
+  it.each<{ type: DependencyType; expected: boolean }>([
+    { type: "card", expected: true },
+    { type: "dashboard", expected: true },
+    { type: "document", expected: true },
+    { type: "table", expected: false },
+    { type: "transform", expected: false },
+    { type: "segment", expected: false },
+    { type: "measure", expected: false },
+    { type: "snippet", expected: false },
+    { type: "sandbox", expected: false },
+  ])("should return $expected for $type", ({ type, expected }) => {
+    expect(canNodeHaveViewCount(type)).toBe(expected);
+  });
+});
+
 describe("getNodeViewCount", () => {
-  it("should return view count for question", () => {
-    const node = createMockCardDependencyNode({
-      data: createMockCardDependencyNodeData({
-        type: "question",
-        view_count: 100,
+  it.each<{ node: DependencyNode; expected: number | null }>([
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          view_count: 100,
+        }),
       }),
-    });
-    expect(getNodeViewCount(node)).toBe(100);
-  });
-
-  it("should return null for model", () => {
-    const node = createMockCardDependencyNode({
-      data: createMockCardDependencyNodeData({
-        type: "model",
-        view_count: 100,
+      expected: 100,
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "model",
+          view_count: 100,
+        }),
       }),
-    });
-    expect(getNodeViewCount(node)).toBeNull();
-  });
-
-  it("should return view count for dashboard", () => {
-    const node = createMockDashboardDependencyNode({
-      data: {
-        name: "Dashboard",
-        description: null,
-        created_at: "2020-01-01T00:00:00Z",
-        collection_id: null,
-        moderation_reviews: [],
-        view_count: 50,
-        "last-edit-info": {
-          id: 1,
-          email: "test@example.com",
-          first_name: "Test",
-          last_name: "User",
-          timestamp: "2020-01-01T00:00:00Z",
-        },
-      },
-    });
-    expect(getNodeViewCount(node)).toBe(50);
-  });
-
-  it("should return null for table", () => {
-    const node = createMockTableDependencyNode();
-    expect(getNodeViewCount(node)).toBeNull();
+      expected: 100,
+    },
+    {
+      node: createMockDashboardDependencyNode({
+        data: createMockDashboardDependencyNodeData({
+          view_count: 50,
+        }),
+      }),
+      expected: 50,
+    },
+    {
+      node: createMockDocumentDependencyNode({
+        data: createMockDocumentDependencyNodeData({
+          view_count: 25,
+        }),
+      }),
+      expected: 25,
+    },
+    {
+      node: createMockTableDependencyNode(),
+      expected: null,
+    },
+  ])("should return view count for $node.type", ({ node, expected }) => {
+    expect(getNodeViewCount(node)).toBe(expected);
   });
 });
 
@@ -862,78 +874,6 @@ describe("getDependentErrorNodesCount", () => {
   });
 });
 
-describe("parseString", () => {
-  it.each([
-    { value: "hello", expected: "hello" },
-    { value: "", expected: "" },
-    { value: 123, expected: undefined },
-    { value: null, expected: undefined },
-    { value: undefined, expected: undefined },
-  ])("should parse $value", ({ value, expected }) => {
-    expect(parseString(value)).toBe(expected);
-  });
-});
-
-describe("parseNumber", () => {
-  it.each<{ value: unknown; expected: number | undefined }>([
-    { value: "123", expected: 123 },
-    { value: "3.14", expected: 3.14 },
-    { value: "abc", expected: undefined },
-    { value: "", expected: undefined },
-    { value: "   ", expected: undefined },
-    { value: 123, expected: undefined },
-  ])("should parse $value", ({ value, expected }) => {
-    expect(parseNumber(value)).toBe(expected);
-  });
-});
-
-describe("parseBoolean", () => {
-  it.each([
-    { value: "true", expected: true },
-    { value: "false", expected: false },
-    { value: "yes", expected: undefined },
-    { value: true, expected: undefined },
-    { value: null, expected: undefined },
-  ])("should parse $value", ({ value, expected }) => {
-    expect(parseBoolean(value)).toBe(expected);
-  });
-});
-
-describe("parseEnum", () => {
-  const items: readonly string[] = ["a", "b", "c"];
-
-  it.each<{ value: unknown; expected: string | undefined }>([
-    { value: "a", expected: "a" },
-    { value: "b", expected: "b" },
-    { value: "d", expected: undefined },
-    { value: 123, expected: undefined },
-  ])("should parse $value", ({ value, expected }) => {
-    expect(parseEnum(value, items)).toBe(expected);
-  });
-});
-
-describe("parseList", () => {
-  it("should parse array of strings", () => {
-    const result = parseList(["a", "b"], parseString);
-    expect(result).toEqual(["a", "b"]);
-  });
-
-  it("should wrap single value in array", () => {
-    const result = parseList("single", parseString);
-    expect(result).toEqual(["single"]);
-  });
-
-  it("should filter out invalid items", () => {
-    const result = parseList(["a", 123, "b"], parseString);
-    expect(result).toEqual(["a", "b"]);
-  });
-
-  it("should return undefined for null/undefined", () => {
-    expect(parseList(null, parseString)).toBeUndefined();
-    expect(parseList(undefined, parseString)).toBeUndefined();
-  });
-});
-
 describe("getSearchQuery", () => {
   it.each([
     { value: "search term", expected: "search term" },
@@ -957,5 +897,65 @@ describe("getDependentErrorNodesLabel", () => {
 
   it("should default to plural form when called without arguments", () => {
     expect(getDependentErrorNodesLabel()).toBe("Broken dependents");
+  });
+});
+
+describe("getNodeDataSourceEntry", () => {
+  it.each<{
+    description: string;
+    node: DependencyNode;
+    expected: { id: number; type: string } | null;
+  }>([
+    {
+      description: "table node",
+      node: createMockTableDependencyNode({ id: 1 }),
+      expected: { id: 1, type: "table" },
+    },
+    {
+      description: "question card node",
+      node: createMockCardDependencyNode({
+        id: 2,
+        data: createMockCardDependencyNodeData({ type: "question" }),
+      }),
+      expected: { id: 2, type: "card" },
+    },
+    {
+      description: "model card node",
+      node: createMockCardDependencyNode({
+        id: 3,
+        data: createMockCardDependencyNodeData({ type: "model" }),
+      }),
+      expected: { id: 3, type: "card" },
+    },
+    {
+      description: "metric card node",
+      node: createMockCardDependencyNode({
+        id: 4,
+        data: createMockCardDependencyNodeData({ type: "metric" }),
+      }),
+      expected: null,
+    },
+    {
+      description: "dashboard node",
+      node: createMockDashboardDependencyNode({ id: 5 }),
+      expected: null,
+    },
+    {
+      description: "transform node",
+      node: createMockTransformDependencyNode({ id: 6 }),
+      expected: null,
+    },
+    {
+      description: "snippet node",
+      node: createMockSnippetDependencyNode({ id: 7 }),
+      expected: null,
+    },
+    {
+      description: "sandbox node",
+      node: createMockSandboxDependencyNode({ id: 8 }),
+      expected: null,
+    },
+  ])("should return $expected for $description", ({ node, expected }) => {
+    expect(getNodeSourceReplacementEntry(node)).toEqual(expected);
   });
 });

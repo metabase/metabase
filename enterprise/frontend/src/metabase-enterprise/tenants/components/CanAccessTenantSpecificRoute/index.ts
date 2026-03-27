@@ -1,0 +1,1 @@
+export { CanAccessTenantSpecificRoute } from "./CanAccessTenantSpecificRoute";

@@ -1,8 +1,8 @@
 import type { MouseEvent, ReactNode } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import {
   MenuExternalLink,
@@ -27,7 +27,7 @@ export interface EntityMenuItemProps {
   htmlId?: string;
 }
 
-const EntityMenuItem = ({
+export const EntityMenuItem = ({
   title,
   icon,
   action,
@@ -141,6 +141,3 @@ const LinkMenuItem = ({
     )}
   </Tooltip>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EntityMenuItem;

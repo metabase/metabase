@@ -77,3 +77,8 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
+
+// Signal that the bundle is ready. In the bootstrap flow (chunked loading),
+// rspack defers entry execution until all chunks are registered, so this event
+// fires only after everything is ready.
+document.dispatchEvent(new CustomEvent("metabase-sdk-bundle-loaded"));

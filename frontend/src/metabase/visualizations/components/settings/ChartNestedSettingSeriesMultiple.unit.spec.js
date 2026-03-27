@@ -27,7 +27,14 @@ function getSeries(display, index, changeSeriesName) {
         ["a", 1],
         ["b", 2],
       ],
-      cols: [{ name: "foo" }, { name: "bar" }],
+      cols: [
+        { name: "foo", display_name: "Foo", source: "breakout" },
+        {
+          name: `Test ${index}`,
+          display_name: `Test ${index}`,
+          source: "aggregation",
+        },
+      ],
     },
   };
 }

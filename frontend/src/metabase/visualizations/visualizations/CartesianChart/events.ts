@@ -66,6 +66,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   CardId,
@@ -140,7 +141,15 @@ export const getEventDimensions = (
   const dimensions: ClickObjectDimension[] = [];
 
   if (hasDimensionValue) {
-    const dimensionValue = datum[X_AXIS_DATA_KEY];
+    let dimensionValue = datum[X_AXIS_DATA_KEY];
+
+    if (isDate(dimensionColumn) && dimensionValue != null) {
+      const parsed = parseTimestamp(dimensionValue);
+      if (parsed.isValid()) {
+        dimensionValue = parsed.format("YYYY-MM-DDTHH:mm:ss");
+      }
+    }
+
     dimensions.push({
       column: dimensionColumn,
       value: dimensionValue,
@@ -230,7 +239,11 @@ const computeDiffWithPreviousPeriod = (
   const currentDate = getXAxisDataForComparison(datum);
   const previousValue = previousDatum?.[seriesModel.dataKey];
 
-  if (previousValue == null || currentValue == null || currentDate == null) {
+  if (
+    typeof previousValue !== "number" ||
+    typeof currentValue !== "number" ||
+    currentDate == null
+  ) {
     return null;
   }
 
@@ -271,15 +284,23 @@ export const canBrush = (
   series: RawSeries,
   settings: ComputedVisualizationSettings,
   onChangeCardAndRun?: OnChangeCardAndRun | null,
+  onBrush?: ((range: { start: number; end: number }) => void) | null,
 ) => {
-  const hasCombinedCards = series.length > 1;
   const hasBrushableDimension =
     settings["graph.x_axis.scale"] != null &&
     !["ordinal", "histogram"].includes(settings["graph.x_axis.scale"]);
 
+  if (!hasBrushableDimension) {
+    return false;
+  }
+
+  if (onBrush) {
+    return true;
+  }
+
+  const hasCombinedCards = series.length > 1;
   return (
     !!onChangeCardAndRun &&
-    hasBrushableDimension &&
     !hasCombinedCards &&
     (!isNative(series[0].card) || isSavedCard(series[0].card)) &&
     !isRemappedToString(series) &&

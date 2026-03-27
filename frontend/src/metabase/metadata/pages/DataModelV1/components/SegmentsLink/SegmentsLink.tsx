@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { Flex, Icon } from "metabase/ui";
 
 import S from "./SegmentsLink.module.css";

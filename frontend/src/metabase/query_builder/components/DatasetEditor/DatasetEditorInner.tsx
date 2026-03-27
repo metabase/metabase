@@ -14,12 +14,13 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListModelIndexesQuery } from "metabase/api";
-import ActionButton, {
+import {
+  ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
-import Button from "metabase/common/components/Button";
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
-import EditBar from "metabase/common/components/EditBar";
+import { Button } from "metabase/common/components/Button";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
+import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
@@ -32,12 +33,8 @@ import {
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
 import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
-import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import {
   getDatasetEditorTab,
   getIsListViewConfigurationShown,
@@ -48,6 +45,11 @@ import {
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
+import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
+import { MODAL_TYPES } from "metabase/querying/constants";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
 import {
@@ -80,8 +82,8 @@ import {
   DatasetEditorSettingsSidebar,
   type ModelSettings,
 } from "./DatasetEditorSettingsSidebar/DatasetEditorSettingsSidebar";
-import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
-import DatasetQueryEditor from "./DatasetQueryEditor";
+import { DatasetFieldMetadataSidebar } from "./DatasetFieldMetadataSidebar";
+import { DatasetQueryEditor } from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { EDITOR_TAB_INDEXES } from "./constants";
 type MetadataDiff = Record<string, Partial<Field>>;
@@ -128,6 +130,10 @@ export type DatasetEditorInnerProps = {
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
   forwardedRef?: React.Ref<HTMLDivElement>;
+
+  dataReferenceStack: DataReferenceItem[];
+  pushDataReferenceStack: (item: DataReferenceItem) => void;
+  popDataReferenceStack: () => void;
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
@@ -290,7 +296,7 @@ function getComputedVisualizationSettings(
   ) as ComputedVisualizationSettings;
 }
 
-const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
+const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const {
     question,
     visualizationSettings,
@@ -609,7 +615,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
               [DatasetEditorS.isSelected]: isSelected,
             })}
             size={14}
-            name={getSemanticTypeIcon(column.semantic_type, "ellipsis")}
+            name={getSemanticTypeIcon(column.semantic_type) ?? "ellipsis"}
           />
           <span>{column.display_name}</span>
         </Flex>
@@ -731,7 +737,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
                 {...props}
                 isActive={isEditingQuery}
                 height={editorHeight}
-                viewHeight={height}
+                availableHeight={height}
                 onResizeStop={handleResize}
               />
             )}
@@ -788,4 +794,4 @@ export const DatasetEditorInner = connect(
   mapDispatchToProps,
   null,
   { forwardRef: true },
-)(_DatasetEditorInner);
+)(DatasetEditorInnerView);

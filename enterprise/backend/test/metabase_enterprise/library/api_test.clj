@@ -2,12 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.collections.test-utils :refer [without-library]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (deftest get-library-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (mt/with-discard-model-updates! [:model/Collection]
       (without-library
        (testing "When there is no library, returns a message but still 200"

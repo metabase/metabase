@@ -20,7 +20,7 @@ version: '3.1'
 # ;; when you connect to data warehouses, you'll use docker networking to
 # ;; connect (e.g. metabasedb_postgres_14_data:5432 vs. localhost:15432).
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,dev-app docker-compose --file dev/docker-compose.yml up
-# ;; All of the above, and builds the frontend, too. No need for `yarn build-hot` locally.
+# ;; All of the above, and builds the frontend, too. No need for `bun run build-hot` locally.
 # ;; NOTE: See comment below on fe-builder service. This isn't quite ready yet.
 # COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file dev/docker-compose.yml up
 #
@@ -80,13 +80,14 @@ services:
     volumes:
       - ../:/dev/metabase
       - ~/.npm:/root/.npm
-      - ~/Library/Caches/Yarn/v6:/usr/local/share/.cache/yarn/v6
+      - ~/.bun/install/cache:/root/.bun/install/cache
     command:
       - /bin/sh
       - -c
       - |
-        yarn install
-        yarn build-hot
+        npm install -g bun
+        bun install
+        bun run build-hot
     profiles:
       - fe-builder
 

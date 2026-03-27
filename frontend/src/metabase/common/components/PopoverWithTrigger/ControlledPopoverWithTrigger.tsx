@@ -1,9 +1,8 @@
 import cx from "classnames";
-import type * as React from "react";
 import _ from "underscore";
 
 import type { ITippyPopoverProps } from "metabase/common/components/Popover/TippyPopover";
-import TippyPopover from "metabase/common/components/Popover/TippyPopover";
+import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 
 import { TriggerButton } from "./ControlledPopoverWithTrigger.styled";
 
@@ -47,7 +46,7 @@ type RenderTriggerArgs = {
 /**
  * @deprecated prefer Popover from "metabase/ui" instead
  */
-function ControlledPopoverWithTrigger({
+export function ControlledPopoverWithTrigger({
   triggerClasses,
   triggerStyle,
   triggerClassesOpen,
@@ -108,6 +107,3 @@ function ControlledPopoverWithTrigger({
     </TippyPopover>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ControlledPopoverWithTrigger;

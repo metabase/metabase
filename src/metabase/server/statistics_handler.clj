@@ -72,6 +72,7 @@
       (.. event getAsyncContext (addListener this)))
     (onTimeout [^AsyncEvent _]
       (prometheus/inc! :jetty/expires-total))
+    (onError [^AsyncEvent _])
     (onComplete [^AsyncEvent event]
       (let [request (.. ^AsyncContextEvent event getHttpChannelState getBaseRequest)
             time-ms (u/since-ms-wall-clock (.getTimeStamp request))]

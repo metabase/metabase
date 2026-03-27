@@ -36,3 +36,12 @@
   :feature :database-routing
   [db-id]
   (t2/delete! :model/DatabaseRouter :database_id db-id))
+
+(defenterprise db-routing-enabled?
+  "Returns whether or not the given database is either a router or destination database."
+  :feature :database-routing
+  :fallback :oss
+  [db-or-id]
+  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
+      (some->> (:router-database-id db-or-id)
+               (t2/exists? :model/DatabaseRouter :database_id))))

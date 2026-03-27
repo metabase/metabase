@@ -8,9 +8,9 @@ import { getErrorMessage } from "metabase/api/utils";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import {
   getGroupNameLocalized,
@@ -18,7 +18,6 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { regexpEscape } from "metabase/lib/string";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
   Box,
@@ -269,7 +268,7 @@ function GroupRow({
           gap="md"
         >
           <UserAvatar
-            user={{ first_name: getGroupNameLocalized(group) }}
+            user={{ name: getGroupNameLocalized(group) }}
             bg={backgroundColor}
           />
           <Box component="span" fw={700} c="brand">
@@ -497,8 +496,11 @@ export const GroupsListing = (props: GroupsListingProps) => {
 
   const { groups, isAdmin } = props;
 
-  const groupNameFilter = new RegExp(`\\b${regexpEscape(searchText)}`, "i");
-  const filteredGroups = groups.filter((g) => groupNameFilter.test(g.name));
+  const filteredGroups = searchText
+    ? groups.filter((g) =>
+        g.name.toLowerCase().includes(searchText.toLowerCase()),
+      )
+    : groups;
 
   return (
     <AdminPaneLayout

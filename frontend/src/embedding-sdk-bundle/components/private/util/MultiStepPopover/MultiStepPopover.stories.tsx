@@ -15,7 +15,7 @@ export default {
 };
 
 export const MultiStepPopoverStory = {
-  render() {
+  render: function Render() {
     const [count, handlers] = useCounter(0, {
       min: 0,
       max: 3,

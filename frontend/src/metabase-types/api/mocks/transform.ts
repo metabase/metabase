@@ -1,5 +1,8 @@
 import type {
   DatabaseId,
+  InspectorCard,
+  InspectorSource,
+  ListTransformRunsResponse,
   PythonTransformTableAliases,
   Transform,
   TransformJob,
@@ -11,7 +14,10 @@ import type {
   UpdateTransformRequest,
 } from "metabase-types/api";
 
-import { createMockStructuredDatasetQuery } from "./query";
+import {
+  createMockNativeDatasetQuery,
+  createMockStructuredDatasetQuery,
+} from "./query";
 
 export function createMockTransformOwner(
   opts?: Partial<TransformOwner>,
@@ -34,7 +40,7 @@ export function createMockTransformSource(): TransformSource {
 
 export function createMockPythonTransformSource({
   sourceDatabase = 1,
-  sourceTables = {},
+  sourceTables = [],
   body = "# Python script\nprint('Hello, world!')",
 }: {
   sourceDatabase?: DatabaseId;
@@ -78,15 +84,29 @@ export function createMockTransformTarget(
 }
 
 export function createMockTransform(opts?: Partial<Transform>): Transform {
+  const source = opts?.source ?? createMockTransformSource();
+
+  function getSourceType() {
+    if (source.type === "python") {
+      return "python";
+    } else if (source.type === "query" && "query" in source) {
+      return "native";
+    }
+
+    return "mbql";
+  }
+
   return {
     id: 1,
     name: "Transform",
     description: null,
     source: createMockTransformSource(),
-    target: createMockTransformTarget(),
+    source_type: opts?.source_type ?? getSourceType(),
+    target: opts?.target ?? createMockTransformTarget(),
     collection_id: null,
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
+    source_readable: true,
     ...opts,
   };
 }
@@ -105,6 +125,18 @@ export function createMockTransformRun(
   };
 }
 
+export function createMockListTransformRunsResponse(
+  opts?: Partial<ListTransformRunsResponse>,
+): ListTransformRunsResponse {
+  return {
+    data: [],
+    total: 0,
+    limit: null,
+    offset: null,
+    ...opts,
+  };
+}
+
 export function createMockTransformTag(
   opts?: Partial<TransformTag>,
 ): TransformTag {
@@ -113,6 +145,7 @@ export function createMockTransformTag(
     name: "Tag",
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
+    can_run: true,
     ...opts,
   };
 }
@@ -137,6 +170,33 @@ export function createMockUpdateTransformRequest(
 ): UpdateTransformRequest {
   return {
     id: 1,
+    ...opts,
+  };
+}
+
+export function createMockTransformInspectSource(
+  opts?: Partial<InspectorSource>,
+): InspectorSource {
+  return {
+    table_name: "Table",
+    column_count: 0,
+    fields: [],
+    ...opts,
+  };
+}
+
+export function createMockInspectorCard(
+  opts?: Partial<InspectorCard>,
+): InspectorCard {
+  return {
+    id: "card-1",
+    title: "Card",
+    display: "scalar",
+    dataset_query: createMockNativeDatasetQuery(),
+    metadata: {
+      card_type: "table_count",
+      dedup_key: ["table-1"],
+    },
     ...opts,
   };
 }

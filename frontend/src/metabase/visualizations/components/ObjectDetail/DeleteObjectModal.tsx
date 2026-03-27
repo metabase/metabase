@@ -2,8 +2,8 @@ import type { FunctionComponent } from "react";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import Button from "metabase/common/components/Button";
-import ModalContent from "metabase/common/components/ModalContent";
+import { Button } from "metabase/common/components/Button";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { ActionsApi } from "metabase/services";
 import type { WritebackActionId } from "metabase-types/api";

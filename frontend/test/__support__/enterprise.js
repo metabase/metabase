@@ -40,6 +40,11 @@ export function setupEnterprisePlugins() {
   initializePlugins?.();
 }
 
+export function setupSdkPlugins() {
+  const { initializePlugins } = require(`metabase-enterprise/sdk-plugins`);
+  initializePlugins?.();
+}
+
 /**
  * Import only the specified enterprise-only plugin and initialize it.
  *

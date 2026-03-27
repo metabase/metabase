@@ -2,6 +2,7 @@
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]
+   [hooks.clojure.core.def]
    [hooks.common]))
 
 (defn- end-with-exclamation?
@@ -49,6 +50,11 @@
             (= lang :clj))
     (non-thread-safe-form-should-end-with-exclamation* node config))
   {:node node})
+
+(defn lint-defn [x]
+  (non-thread-safe-form-should-end-with-exclamation x)
+  (hooks.clojure.core.def/lint-def* x)
+  x)
 
 (comment
   (require '[clj-kondo.core :as clj-kondo])

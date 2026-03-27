@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 
 import { useCallbackEffect } from "./use-callback-effect";
 
@@ -37,17 +37,16 @@ describe("useCallbackEffect", () => {
 
     render(<TestComponent callback={callback} />);
 
-    userEvent.click(screen.getByRole("button", { name: "Schedule" }));
+    const clickPromise = userEvent.click(
+      screen.getByRole("button", { name: "Schedule" }),
+    );
 
     expect(callback).not.toHaveBeenCalled();
     await screen.findByText("Status: scheduled");
 
-    await waitFor(() => {
-      expect(callback).toHaveBeenCalledTimes(1);
-    });
+    await clickPromise;
 
     expect(screen.getByText("Status: not scheduled")).toBeInTheDocument();
-
     expect(callback).toHaveBeenCalledTimes(1);
   });
 });

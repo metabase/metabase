@@ -14,10 +14,9 @@ import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
-  isQuestionCard,
-  isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isQuestionCard, isQuestionDashCard } from "metabase/lib/dashboard";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -309,22 +308,21 @@ function DashCardInner({
     dispatch(duplicateCard({ id: dashcard.id }));
   }, [dashcard.id, dispatch]);
 
-  const onEditVisualizationClick = useCallback(() => {
-    let initialState: VisualizerVizDefinitionWithColumns;
-
+  const getVisualizerInitialState = useCallback(() => {
     if (isVisualizerDashboardCard(dashcard)) {
-      initialState = getInitialStateForVisualizerCard(dashcard, datasets);
+      return getInitialStateForVisualizerCard(dashcard, datasets);
     } else if (series.length > 1) {
-      initialState = getInitialStateForMultipleSeries(series);
+      return getInitialStateForMultipleSeries(series);
     } else {
-      initialState = getInitialStateForCardDataSource(
-        series[0].card,
-        series[0],
-      );
+      return getInitialStateForCardDataSource(series[0].card, series[0]);
     }
+  }, [dashcard, datasets, series]);
+
+  const onEditVisualizationClick = useCallback(() => {
+    const initialState = getVisualizerInitialState();
 
     onEditVisualization(dashcard, initialState);
-  }, [dashcard, series, onEditVisualization, datasets]);
+  }, [dashcard, onEditVisualization, getVisualizerInitialState]);
 
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {

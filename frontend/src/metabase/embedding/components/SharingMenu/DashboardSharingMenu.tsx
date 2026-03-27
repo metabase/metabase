@@ -1,12 +1,7 @@
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
-import {
-  getIsDashCardsRunning,
-  getIsSharing as getIsDashboardSubscriptionSidebarOpen,
-} from "metabase/dashboard/selectors";
+import { getIsDashCardsRunning } from "metabase/dashboard/selectors";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
+import { useSelector } from "metabase/lib/redux";
 import { Flex, Menu } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
@@ -20,16 +15,6 @@ import { SharingMenu } from "./SharingMenu";
 import type { DashboardSharingModalType } from "./types";
 
 export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
-  const dispatch = useDispatch();
-
-  const isDashboardSubscriptionSidebarOpen = useSelector(
-    getIsDashboardSubscriptionSidebarOpen,
-  );
-  const toggleSubscriptionSidebar = () =>
-    dispatch(
-      setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
-    );
-
   const { modalType, setModalType } =
     useSharingModal<DashboardSharingModalType>({
       resource: dashboard,
@@ -51,10 +36,6 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   return (
     <Flex>
       <SharingMenu>
-        <DashboardSubscriptionMenuItem
-          onClick={toggleSubscriptionSidebar}
-          dashboard={dashboard}
-        />
         <ExportPdfMenuItem dashboard={dashboard} loading={isDashCardsRunning} />
         {canShare && (
           <>

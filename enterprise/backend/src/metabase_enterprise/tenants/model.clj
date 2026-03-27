@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -26,7 +27,7 @@
 
 (t2/define-before-insert :model/Tenant
   [tenant]
-  (let [tenant-collection-id (t2/insert-returning-pk! :model/Collection {:type "tenant-specific-root-collection"
+  (let [tenant-collection-id (t2/insert-returning-pk! :model/Collection {:type collection/tenant-specific-root-collection-type
                                                                          :name (format "Tenant Collection: %s" (:name tenant))
                                                                          :namespace "tenant-specific"})]
     (u/prog1 (assoc tenant :tenant_collection_id tenant-collection-id)
@@ -92,7 +93,7 @@
   :feature :tenants
   [collections]
   (let [tenant-collection-ids (keep (fn [c]
-                                      (when (= (:type c) "tenant-specific-root-collection")
+                                      (when (= (:type c) collection/tenant-specific-root-collection-type)
                                         (:id c)))
                                     collections)
         collection-id->tenant-name-and-id
@@ -102,7 +103,7 @@
                             :tenant_collection_id [:in tenant-collection-ids]))]
     (mapv (fn [{ttype :type id :id :as coll}]
             (cond-> coll
-              (= ttype "tenant-specific-root-collection")
+              (= ttype collection/tenant-specific-root-collection-type)
               (assoc :name (if-let [user-tenant-id (:tenant_id @api/*current-user*)]
                              (let [[_tenant-name tenant-id] (collection-id->tenant-name-and-id id)]
                                ;; this should never happen, but juuuuuust in case

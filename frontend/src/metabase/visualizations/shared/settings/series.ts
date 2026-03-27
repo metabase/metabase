@@ -1,6 +1,6 @@
 import { getIn } from "icepick";
 
-import { getColorsForValues } from "metabase/lib/colors/charts";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -10,7 +10,7 @@ export const SERIES_COLORS_SETTING_KEY = "series_settings.colors";
 export const getSeriesColors = (
   seriesVizSettingsKeys: string[],
   settings: VisualizationSettings,
-  seriesVizSettingsDefaultKeys: string[],
+  seriesVizSettingsDefaultKeys: (string | undefined)[],
 ) => {
   const assignments: Record<string, string> = {};
 
@@ -81,6 +81,10 @@ export const getSeriesDefaultLineMarker = (
 export const getSeriesDefaultLineMissing = (
   settings: ComputedVisualizationSettings,
 ) => settings["line.missing"] ?? "interpolate";
+
+export const getSeriesDefaultShowSeriesTrendline = (
+  settings: ComputedVisualizationSettings,
+) => settings["graph.show_trendline"];
 
 export const getSeriesDefaultShowSeriesValues = (
   settings: ComputedVisualizationSettings,

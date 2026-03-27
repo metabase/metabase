@@ -22,7 +22,7 @@ export const MetabaseAccountSection = () => {
 
   const isGuestEmbed = !!settings.isGuest;
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Only for admins
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only for admins
   const { url: setupSsoUrl } = useDocsUrl("embedding/sdk/authentication", {
     utm: utmTags,
   });
@@ -45,7 +45,7 @@ export const MetabaseAccountSection = () => {
         <Stack gap="md" p="xs">
           <Text size="lg" fw="bold">
             {
-              // eslint-disable-next-line no-literal-metabase-strings -- Public Facing string
+              // eslint-disable-next-line metabase/no-literal-metabase-strings -- Public Facing string
               t`Metabase account`
             }
           </Text>

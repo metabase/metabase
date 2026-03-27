@@ -37,12 +37,10 @@ describe("scenarios > admin > permissions", () => {
     cy.visit("/");
 
     // Go to the admin settings
-    cy.icon("gear").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").click();
+    H.goToAdmin();
 
     // Assert the Data Model page state
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Table Metadata");
     H.DataModel.TablePicker.getTable("Orders").click();
     cy.wait("@tableMetadataFetch");
@@ -86,12 +84,10 @@ describe("scenarios > admin > permissions", () => {
     cy.visit("/");
 
     // Go to the admin settings
-    cy.icon("gear").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").click();
+    H.goToAdmin();
 
     // Assert the Data Model page state
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Table Metadata");
     H.DataModel.TablePicker.getTables().should("have.length", 8);
     H.DataModel.TablePicker.getTable("Accounts").should("be.visible");

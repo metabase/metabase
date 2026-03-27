@@ -58,7 +58,7 @@ const PlaceholderPropTypes = {
   editorContext: PropTypes.oneOf(["action", "question"]),
 };
 
-const DataSourceSelectors = ({
+export const DataSourceSelectors = ({
   isNativeEditorOpen,
   query,
   question,
@@ -248,5 +248,3 @@ const Placeholder = ({ query, editorContext }) => {
 };
 
 Placeholder.propTypes = PlaceholderPropTypes;
-
-export default DataSourceSelectors;

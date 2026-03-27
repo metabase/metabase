@@ -8,7 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.collections-rest.api :as api.collection]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
@@ -94,7 +94,7 @@
   "For dashboards, we want `here` and `location` since they can contain cards as children."
   [dashboards]
   (for [{parent-coll :collection
-         :as dashboard} (api.collection/annotate-dashboards dashboards)]
+         :as dashboard} (collections/annotate-dashboards dashboards)]
     (assoc dashboard
            :location (or (some-> parent-coll collection/children-location)
                          "/")

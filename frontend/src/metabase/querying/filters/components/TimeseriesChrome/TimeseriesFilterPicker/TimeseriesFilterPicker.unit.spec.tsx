@@ -2,7 +2,11 @@ import _userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
 
 import { TimeseriesFilterPicker } from "./TimeseriesFilterPicker";
 
@@ -22,7 +26,7 @@ function createDateFilter(query: Lib.Query) {
 }
 
 function createQueryWithFilter(
-  initialQuery: Lib.Query = createQuery(),
+  initialQuery = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   clause = createDateFilter(initialQuery),
 ) {
   const query = Lib.filter(initialQuery, 0, clause);
@@ -42,7 +46,7 @@ const userEvent = _userEvent.setup({
 });
 
 function setup({
-  query = createQuery(),
+  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   column = findDateColumn(query),
   filter,
 }: SetupOpts = {}) {

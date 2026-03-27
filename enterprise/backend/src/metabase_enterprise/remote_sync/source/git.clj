@@ -10,6 +10,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
+   (java.net URI)
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
@@ -43,11 +44,30 @@
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
         (throw (clean-git-exception e command false))))))
 
-(defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
+(defmulti credentials-provider
+  "Creates a JGit CredentialsProvider based on the authentication method.
+
+  Dispatches on auth-method keyword. The credentials argument is method-specific
+  and can be any data structure appropriate for that authentication method.
+
+  Returns a CredentialsProvider instance or nil if no authentication is needed."
+  {:arglists '([remote-url credentials])}
+  (fn [remote-url _credentials] (keyword (u/lower-case-en (.getHost (URI. remote-url))))))
+
+(defmethod credentials-provider :default
+  [_remote-url ^String token]
+  (UsernamePasswordCredentialsProvider. "x-access-token" token))
+
+(defmethod credentials-provider :bitbucket.org
+  [_auth-method ^String token]
+  (when token
+    (UsernamePasswordCredentialsProvider. "x-token-auth" token)))
+
+(defn- call-remote-command [^TransportCommand command {:keys [^String token ^String remote-url]}]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
         ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
-        credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
+        credentials-provider (when token (credentials-provider remote-url token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
 
     (try
@@ -94,7 +114,7 @@
     (u/prog1 (call-remote-command (-> (Git/cloneRepository)
                                       (.setDirectory repo-path)
                                       (.setURI remote-url)
-                                      (.setBare true)) {:token token})
+                                      (.setBare true)) {:token token :remote-url remote-url})
       (log/info "Successfully cloned repository" {:repo-path repo-path}))
     (catch Exception e
       (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
@@ -232,13 +252,17 @@
 
   Takes a git-source map containing a :git Git instance.
 
-  Returns the default branch name as a string (without 'refs/heads/' prefix), or nil if no default branch is found."
-  [{:keys [^Git git]}]
-  (let [repo (.getRepository git)
-        head-ref (.findRef repo "HEAD")]
-    (when head-ref
-      (when-let [target-ref (.getTarget head-ref)]
-        (str/replace-first (.getName target-ref) "refs/heads/" "")))))
+  Returns the default branch name as a string (without 'refs/heads/' prefix).
+  Throws ExceptionInfo if no default branch is found."
+  [{:keys [^Git git] :as git-source}]
+  ;; Query the remote directly to get HEAD - lsRemote returns symbolic refs
+  (let [refs (call-remote-command (.lsRemote git) git-source)
+        head-ref (first (filter #(= "HEAD" (.getName ^Ref %)) refs))]
+    (or (when head-ref
+          (when (.isSymbolic ^Ref head-ref)
+            (when-let [target (.getTarget ^Ref head-ref)]
+              (str/replace-first (.getName ^Ref target) "refs/heads/" ""))))
+        (throw (ex-info "Failed to get a default branch for git repository." {:head-ref head-ref})))))
 
 (defn write-files!
   "Writes multiple files to the git repository and commits the changes.
@@ -416,13 +440,53 @@
   (version [this]
     (:version this)))
 
-(defn- snapshot
+(def ^:private jgit (atom {}))
+
+(defn- stale-cache-error?
+  "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
+  [^Exception e]
+  (some-> (ex-message e) (str/includes? "Missing commit")))
+
+(defn- clear-cached-repo!
+  "Clears a cached git repository from memory and disk."
+  [^File repo-path]
+  (log/info "Clearing stale git cache" {:repo-path (str repo-path)})
+  (swap! jgit dissoc (.getPath repo-path))
+  (FileUtils/deleteDirectory repo-path))
+
+(defn- get-jgit [^File path {:keys [remote-url token] :as args}]
+  (if-let [obj (get @jgit (.getPath path))]
+    obj
+    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
+                                                                     :token      token})
+                                             (when-not (has-data? (assoc args :git <>))
+                                               (FileUtils/deleteDirectory path)
+                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
+         (.getPath path))))
+
+(defn- snapshot*
+  "Internal snapshot implementation. Returns a GitSnapshot or throws."
   [source]
   (fetch! source)
   (let [version (commit-sha source (:branch source))]
     (if version
       (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source))
       (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
+
+(defn- snapshot
+  "Creates a snapshot, recovering from stale cache errors by re-cloning."
+  [{:keys [remote-url token] :as source}]
+  (try
+    (snapshot* source)
+    (catch Exception e
+      (if (stale-cache-error? e)
+        (let [path (repo-path {:remote-url remote-url :token token})]
+          (clear-cached-repo! path)
+          (let [fresh-git (get-jgit path {:remote-url remote-url :token token})
+                fresh-source (assoc source :git fresh-git)]
+            (log/info "Retrying snapshot after clearing stale cache")
+            (snapshot* fresh-source)))
+        (throw e)))))
 
 (defrecord GitSource [git remote-url branch token]
   source.p/Source
@@ -436,18 +500,6 @@
 
   (snapshot [this]
     (snapshot this)))
-
-(def ^:private jgit (atom {}))
-
-(defn- get-jgit [^File path {:keys [remote-url token] :as args}]
-  (if-let [obj (get @jgit (.getPath path))]
-    obj
-    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
-                                                                     :token      token})
-                                             (when-not (has-data? (assoc args :git <>))
-                                               (FileUtils/deleteDirectory path)
-                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
-         (.getPath path))))
 
 (defn git-source
   "Creates a new GitSource instance for a git repository.

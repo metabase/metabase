@@ -96,14 +96,14 @@ describe("HelpLinkSettings", () => {
 
     // empty input
     await userEvent.clear(input);
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     expect(
       await screen.findByText("This field can't be left empty."),
     ).toBeInTheDocument();
 
     // invalid url
     await userEvent.type(input, "invalid-url");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     expect(
       await screen.findByText(
         'This needs to be an "http://", "https://" or "mailto:" URL.',
@@ -127,7 +127,7 @@ describe("HelpLinkSettings", () => {
 
     await userEvent.clear(input);
     await userEvent.type(input, "https://help.com/help");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("https://help.com/help");
 
     const [{ url, body }] = await findRequests("PUT");

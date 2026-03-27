@@ -7,7 +7,7 @@ import {
   isActionDashCard,
   isQuestionDashCard,
   isVirtualDashCard,
-} from "metabase/dashboard/utils";
+} from "metabase/lib/dashboard";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
@@ -46,7 +46,7 @@ export type StructuredQuerySectionOption = {
   name: string;
   icon: string;
   target: StructuredParameterDimensionTarget;
-  isForeign: boolean;
+  isForeign?: boolean;
 };
 
 function buildStructuredQuerySectionOptions(

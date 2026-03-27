@@ -16,24 +16,27 @@ import { AutoSizer, Collection, Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { sumArray } from "metabase/lib/arrays";
-import {
-  COLUMN_SHOW_TOTALS,
-  isPivotGroupColumn,
-  multiLevelPivot,
-} from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { useMantineTheme } from "metabase/ui";
 import {
+  COLUMN_SHOW_TOTALS,
+  isPivotGroupColumn,
+  multiLevelPivot,
+} from "metabase/visualizations/lib/data_grid";
+import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  VisualizationDefinition,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import type { State } from "metabase-types/store";
 
 import {
@@ -603,7 +606,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
   },
 );
 
-const PivotTable = ExplicitSize<
+export const PivotTableView = ExplicitSize<
   VisualizationProps & {
     className?: string;
   }
@@ -612,8 +615,7 @@ const PivotTable = ExplicitSize<
   refreshMode: "debounceLeading",
 })(PivotTableInner);
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(connect(mapStateToProps)(PivotTable), {
+const PivotViz: VisualizationDefinition = {
   getUiName: () => t`Pivot Table`,
   identifier: "pivot",
   iconName: "pivot_table",
@@ -625,6 +627,9 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   settings,
   columnSettings,
   isLiveResizable: () => false,
-});
+};
 
-export { PivotTable };
+export const PivotTable = Object.assign(
+  connect(mapStateToProps)(PivotTableView),
+  PivotViz,
+);

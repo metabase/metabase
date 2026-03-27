@@ -1,9 +1,9 @@
 import { exec as execCallback } from "child_process";
+import { promisify } from "util";
 
 import { detect } from "detect-package-manager";
 import toggle from "inquirer-toggle";
 import ora from "ora";
-import { promisify } from "util";
 
 import { SDK_PACKAGE_NAME } from "embedding-sdk-package/cli/constants/config";
 import type { CliStepMethod } from "embedding-sdk-package/cli/types/cli";

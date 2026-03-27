@@ -2,16 +2,25 @@ import { Link } from "react-router";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { hasActionsEnabled, hasFeature } from "metabase/admin/databases/utils";
+import {
+  hasActionsEnabled,
+  hasFeature,
+  hasTableEditingEnabled,
+  hasWorkspacesEnabled,
+  hasWritableConnectionDetails,
+} from "metabase/admin/databases/utils";
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
 export const getDisabledFeatureMessage = (database: Database) => {
   return match({
     hasActionsEnabled: hasActionsEnabled(database),
+    hasWorkspacesEnabled: hasWorkspacesEnabled(database),
+    hasTableEditingEnabled: hasTableEditingEnabled(database),
     isPersisted: hasFeature(database, "persist-models-enabled"),
     isUploadDb: database.uploads_enabled,
     supportsRouting: !!database.features?.includes("database-routing"),
+    hasWritableConnection: hasWritableConnectionDetails(database),
   })
     .with(
       { supportsRouting: false },
@@ -35,6 +44,19 @@ export const getDisabledFeatureMessage = (database: Database) => {
       { isUploadDb: true },
       () =>
         t`Database routing can't be enabled if uploads are enabled for this database.`,
+    )
+    .with(
+      { hasWritableConnection: true },
+      () =>
+        t`Database routing can't be enabled when a Writable Connection is enabled.`,
+    )
+    .with(
+      { hasWorkspacesEnabled: true },
+      () => t`Database routing can't be enabled when workspaces are enabled.`,
+    )
+    .with(
+      { hasTableEditingEnabled: true },
+      () => t`Database routing can't be enabled when table editing is enabled.`,
     )
     .otherwise(() => undefined);
 };

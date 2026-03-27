@@ -94,10 +94,6 @@ describe("Recently Viewed > Entity Picker", () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Select a collection").click();
-      cy.findByRole("tab", { name: /Recents/ });
-      cy.findByRole("tab", { name: /Collections/ });
-
-      cy.findByText("Today");
       cy.findByText("My Fresh Collection");
     });
   });
@@ -111,10 +107,7 @@ describe("Recently Viewed > Entity Picker", () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText("Add this question to a dashboard").click();
-      cy.findByRole("tab", { name: /Recents/ });
-      cy.findByRole("tab", { name: /Dashboards/ });
-
-      cy.findByText("Today");
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders in a dashboard").click();
       cy.button("Select").click();
     });
@@ -153,10 +146,10 @@ describe("search > recently viewed > enterprise features", () => {
 });
 
 const assertRecentlyViewedItem = (index, title, type) => {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("recently-viewed-item-title")
     .eq(index)
     .should("have.text", title);
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("result-link-wrapper").eq(index).should("have.text", type);
 };

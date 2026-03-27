@@ -1,6 +1,16 @@
+import type { DatasetQuery } from "./query";
+
 export type RevisionId = number;
 
-export type FieldDiff = { before?: unknown; after?: unknown };
+export type FieldDiff = {
+  before?: unknown;
+  after?: unknown;
+};
+
+export type QueryDiff = {
+  before?: DatasetQuery;
+  after?: DatasetQuery;
+};
 
 export type SegmentRevisionDiff = {
   name?: FieldDiff;
@@ -14,6 +24,10 @@ export type CardOrDashboardRevisionDiff = {
 };
 
 export type RevisionDiff = SegmentRevisionDiff | CardOrDashboardRevisionDiff;
+
+export type RevisionDiffKey =
+  | keyof SegmentRevisionDiff
+  | keyof CardOrDashboardRevisionDiff;
 
 export interface Revision {
   id: RevisionId;

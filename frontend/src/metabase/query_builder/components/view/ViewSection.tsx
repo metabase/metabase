@@ -1,21 +1,19 @@
 import cx from "classnames";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 
-import Subhead from "metabase/common/components/type/Subhead";
+import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
-import { Flex, type FlexProps } from "metabase/ui";
+import { Flex, type FlexProps, type TextProps } from "metabase/ui";
 
 import S from "./ViewSection.module.css";
 
-export interface ViewSectionProps
-  extends HTMLAttributes<HTMLDivElement>,
-    FlexProps {
+export type ViewSectionProps = FlexProps & {
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
-}
+};
 
-const ViewSection = ({
+export const ViewSection = ({
   className,
   style,
   children,
@@ -26,9 +24,9 @@ const ViewSection = ({
   </Flex>
 );
 
-interface ViewHeadingProps extends HTMLAttributes<HTMLDivElement> {
+type ViewHeadingProps = TextProps & {
   children?: ReactNode;
-}
+};
 
 export const ViewHeading = ({ children, ...props }: ViewHeadingProps) => (
   <Subhead {...props}>{children}</Subhead>
@@ -43,6 +41,3 @@ export const ViewSubHeading = ({ children, ...props }: ViewSubHeadingProps) => (
     {children}
   </div>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ViewSection;

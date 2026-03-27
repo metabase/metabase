@@ -2,4 +2,5 @@
   (:require
    [metabase.premium-features.core]
    [metabase.premium-features.settings]
+   [metabase.premium-features.task.clear-token-cache]
    [metabase.premium-features.task.send-metering]))

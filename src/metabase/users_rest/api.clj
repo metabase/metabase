@@ -1,9 +1,9 @@
 (ns metabase.users-rest.api
   "/api/user endpoints"
   (:require
+   [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
@@ -12,34 +12,24 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
-   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
+   [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn check-self-or-superuser
-  "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
-  [user-id]
-  {:pre [(integer? user-id)]}
-  (api/check-403
-   (or
-    (= user-id api/*current-user-id*)
-    api/*is-superuser?*)))
 
 (defn check-not-internal-user
   "Check that `user-id` is not the id of the Internal User."
@@ -47,41 +37,6 @@
   {:pre [(integer? user-id)]}
   (api/check (not= user-id config/internal-mb-user-id)
              [400 (tru "Not able to modify the internal user")]))
-
-(defn- fetch-user [& query-criteria]
-  (apply t2/select-one (vec (cons :model/User user/admin-or-self-visible-columns)) query-criteria))
-
-(defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
-  (when (and new-groups-or-ids
-             (not (= (user/group-ids user-or-id)
-                     (set (map u/the-id new-groups-or-ids)))))
-    (api/check-superuser)
-    (user/set-permissions-groups! user-or-id new-groups-or-ids)))
-
-(mr/def ::user-group-membership
-  "Group Membership info of a User.
-  In which :is_group_manager is only included if `advanced-permissions` is enabled."
-  [:map
-   [:id ms/PositiveInt]
-   [:is_group_manager
-    {:optional true, :description "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key."}
-    :boolean]])
-
-(mu/defn- maybe-set-user-group-memberships!
-  [user-or-id
-   new-user-group-memberships :- [:maybe [:sequential ::user-group-membership]]
-   & [is-superuser?]]
-  (when new-user-group-memberships
-    ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
-    ;; agrees with is_superuser -- don't want to have ambiguous behavior
-    (when (some? is-superuser?)
-      (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms/admin-group))))
-                  "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
-    (if-let [f (and (premium-features/enable-advanced-permissions?)
-                    config/ee-available?
-                    (requiring-resolve 'metabase-enterprise.advanced-permissions.models.permissions.group-manager/set-user-group-memberships!))]
-      (f user-or-id new-user-group-memberships)
-      (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))))
 
 (defn- updated-user-name [user-before-update changes]
   (let [[previous current] (map #(select-keys % [:first_name :last_name]) [user-before-update changes])
@@ -173,10 +128,13 @@
     :else
     user/non-admin-or-self-visible-columns))
 
-(defn filter-clauses-without-paging
-  "Given a where clause, return a clause that can be used to count."
-  [clauses]
-  (dissoc clauses :order-by :limit :offset))
+(defn- just-me
+  "Return only the current user as a paginated response."
+  []
+  {:data   [(users/fetch-user :id api/*current-user-id*)]
+   :total  1
+   :limit  (request/limit)
+   :offset (request/offset)})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -188,7 +146,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of `Users` for admins or group managers.
-  By default returns only active users for admins and only active users within groups that the group manager is
+  By default returns only active users for admins/data-analysts and only active users within groups that the group manager is
   managing for group managers.
 
    - If `status` is `deactivated`, include deactivated users only.
@@ -210,7 +168,9 @@
 
   Takes `query` for filtering on first name, last name, email.
 
-  Also takes `group_id`, which filters on group id."
+  Also takes `group_id`, which filters on group id.
+
+  If the user is a sandboxed user, only return themselves regardless of the query parameters."
   [_route-params
    {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
    :- [:map
@@ -224,49 +184,54 @@
                                                    [:enum :all :internal :external]]]
        [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
+      api/*is-data-analyst?*
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
-  (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
-                 (tru "You cannot specify both `tenancy` and `tenant_id`"))
-  (let [clauses             (let [clauses (user/filter-clauses {:status                  status
-                                                                :query                   query
-                                                                :group-ids               (when group_id [group_id])
-                                                                :include-deactivated     include_deactivated
-                                                                :is-data-analyst?        is_data_analyst
-                                                                :can-access-data-studio? can_access_data_studio
-                                                                :limit                   (request/limit)
-                                                                :offset                  (request/offset)})]
-                              (cond
-                                (not api/*is-superuser?*)     (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
-                                (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
-                                (= tenancy :all)              clauses
-                                (= tenancy :external)         (sql.helpers/where clauses [:not= :tenant_id nil])
-                                :else                         (sql.helpers/where clauses [:= :tenant_id nil])))]
-    {:data (cond-> (t2/select
-                    (vec (cons :model/User (user-visible-columns)))
-                    (sql.helpers/order-by clauses
-                                          [:%lower.first_name :asc]
-                                          [:%lower.last_name :asc]
-                                          [:id :asc]))
-             ;; For admins also include the IDs of Users' Personal Collections
-             api/*is-superuser?*
-             (t2/hydrate :personal_collection_id :tenant_collection_id)
+  (if (perms/sandboxed-user?)
+    (just-me)
+    (do
+      (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
+                     (tru "You cannot specify both `tenancy` and `tenant_id`"))
+      (let [clauses (let [clauses (user/filter-clauses {:status                  status
+                                                        :query                   query
+                                                        :group-ids               (when group_id [group_id])
+                                                        :include-deactivated     include_deactivated
+                                                        :is-data-analyst?        is_data_analyst
+                                                        :can-access-data-studio? can_access_data_studio
+                                                        :limit                   (request/limit)
+                                                        :offset                  (request/offset)})]
+                      (cond
+                        (not api/*is-superuser?*) (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
+                        (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
+                        (= tenancy :all) clauses
+                        (= tenancy :external) (sql.helpers/where clauses [:not= :tenant_id nil])
+                        :else (sql.helpers/where clauses [:= :tenant_id nil])))]
+        {:data   (cond-> (t2/select
+                          (vec (cons :model/User (user-visible-columns)))
+                          (sql.helpers/order-by clauses
+                                                [:%lower.first_name :asc]
+                                                [:%lower.last_name :asc]
+                                                [:id :asc]))
+                   ;; For admins also include the IDs of Users' Personal Collections
+                   api/*is-superuser?*
+                   (t2/hydrate :personal_collection_id :tenant_collection_id)
 
-             (or api/*is-superuser?*
-                 api/*is-group-manager?*)
-             (t2/hydrate :group_ids)
-             ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple groups
-             group_id
-             distinct)
-     :total  (-> (t2/query
-                  (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                          :from   :core_user}
-                         (filter-clauses-without-paging clauses)))
-                 first
-                 :count)
-     :limit  (request/limit)
-     :offset (request/offset)}))
+                   (or api/*is-superuser?*
+                       api/*is-group-manager?*)
+                   (t2/hydrate :group_ids)
+                   ;; if there is a group_id clause, make sure the list is deduped in case the same user is in
+                   ;; multiple groups
+                   group_id
+                   distinct)
+         :total  (-> (t2/query
+                      (merge {:select [[[:count [:distinct :core_user.id]] :count]]
+                              :from   :core_user}
+                             (users/filter-clauses-without-paging clauses)))
+                     first
+                     :count)
+         :limit  (request/limit)
+         :offset (request/offset)}))))
 
 (defn- same-groups-user-ids
   "Return a list of all user-ids in the same group with the user with id `user-id`.
@@ -299,7 +264,7 @@
                                                              [:= :tenant_id (:tenant_id @api/*current-user*)])
                                   true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
-                     :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                     :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
@@ -308,13 +273,9 @@
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
-                              :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                              :total  (t2/count :model/User (users/filter-clauses-without-paging clauses))
                               :limit  (request/limit)
-                              :offset (request/offset)}))
-          (just-me [] {:data   [(fetch-user :id api/*current-user-id*)]
-                       :total  1
-                       :limit  (request/limit)
-                       :offset (request/offset)})]
+                              :offset (request/offset)}))]
     (cond
       ;; if they're sandboxed OR if they're a superuser, ignore the setting and just give them nothing or everything,
       ;; respectively.
@@ -335,21 +296,11 @@
   "Add `:can_create_queries` and `:can_create_native_queries` flags to user based on their create-queries
   permissions across non-sample databases."
   [user]
-  (let [db-ids              (t2/select-pks-set :model/Database)
-        _                   (perms/prime-db-cache db-ids)
-        create-query-perms  (into #{}
-                                  (map (fn [db-id]
-                                         (perms/most-permissive-database-permission-for-user
-                                          api/*current-user-id* :perms/create-queries db-id)))
-                                  db-ids)
-        can-create-queries? (or (some #(perms/at-least-as-permissive?
-                                        :perms/create-queries % :query-builder)
-                                      create-query-perms)
-                                (perms/user-has-any-published-table-permission?))
-        can-create-native?  (contains? create-query-perms :query-builder-and-native)]
+  (let [{:keys [can-create-queries can-create-native-queries]}
+        (perms/query-creation-capabilities (:id user))]
     (update user :permissions assoc
-            :can_create_queries        (boolean can-create-queries?)
-            :can_create_native_queries can-create-native?)))
+            :can_create_queries        can-create-queries
+            :can_create_native_queries can-create-native-queries)))
 
 (defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
@@ -443,44 +394,16 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (try
-    (check-self-or-superuser id)
+    (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
-  (-> (api/check-404 (fetch-user :id id))
+  (-> (api/check-404 (users/fetch-user :id id))
       (t2/hydrate :user_group_memberships)
       add-structured-attributes))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn invite-user
-  "Implementation for `POST /`, invites a user to Metabase."
-  [{:keys [email user_group_memberships source] :as body}]
-  (api/check-superuser)
-  (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
-              "email" (tru "Email address already in use."))
-  (api/checkp (not (and (:tenant_id body)
-                        (not (setting/get :use-tenants))))
-              "tenant_id"
-              (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
-  (t2/with-transaction [_conn]
-    (let [new-user-id (u/the-id
-                       (notification/with-skip-sending-notification (boolean (:tenant_id body))
-                         (user/create-and-invite-user!
-                          (u/select-keys-when body
-                                              :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
-                          @api/*current-user*
-                          (= source "setup"))))]
-      (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (when (= source "setup")
-        (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
-      (analytics/track-event! :snowplow/invite
-                              {:event           :invite-sent
-                               :invited-user-id new-user-id
-                               :source          (or source "admin")})
-      (-> (fetch-user :id new-user-id)
-          (t2/hydrate :user_group_memberships)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -494,11 +417,15 @@
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
-            [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
+            [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
-            [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]
+            [:source                 {:optional true, :default :admin} [:maybe keyword?]]
             [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
-  (invite-user body))
+  (users/invite-user! (set/rename-keys body {:first_name             :first-name
+                                             :last_name              :last-name
+                                             :user_group_memberships :user-group-memberships
+                                             :login_attributes       :login-attributes
+                                             :tenant_id              :tenant-id})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
@@ -529,7 +456,7 @@
   [user-id tenant-id]
   (perms/allow-changing-all-users-group-members
     (perms/allow-changing-all-external-users-group-members
-     (t2/delete! :model/PermissionsGroupMembership :user_id user-id)
+     (perms/remove-user-from-all-groups! user-id)
      (when tenant-id
        (perms/add-user-to-group! user-id (perms/all-external-users-group)))
      (when (nil? tenant-id)
@@ -551,7 +478,7 @@
        [:email                  {:optional true} [:maybe ms/Email]]
        [:first_name             {:optional true} [:maybe ms/NonBlankString]]
        [:last_name              {:optional true} [:maybe ms/NonBlankString]]
-       [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
+       [:user_group_memberships {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
        [:is_superuser           {:optional true} [:maybe :boolean]]
        [:is_data_analyst        {:optional true} [:maybe :boolean]]
        [:is_group_manager       {:optional true} [:maybe :boolean]]
@@ -559,12 +486,12 @@
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
        [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
   (try
-    (check-self-or-superuser id)
+    (users/check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
       (perms/check-group-manager)))
   (check-not-internal-user id)
   ;; only allow updates if the specified account is active
-  (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
+  (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (when (contains? body :email)
       (api/check-403 (valid-email-update? user-before-update email)))
@@ -605,8 +532,8 @@
             (if is_data_analyst
               (perms/add-user-to-group! id data-analyst-group-id)
               (perms/remove-user-from-group! id data-analyst-group-id)))))
-      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
-  (-> (fetch-user :id id)
+      (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
+  (-> (users/fetch-user :id id)
       (t2/hydrate :user_group_memberships)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -624,7 +551,7 @@
                                :ldap   (when (sso/ldap-enabled) :ldap)
                                (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
-  (fetch-user :id (u/the-id existing-user)))
+  (users/fetch-user :id (u/the-id existing-user)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -664,7 +591,7 @@
    {:keys [password old_password]} :- [:map
                                        [:password ms/ValidPassword]]
    request]
-  (check-self-or-superuser id)
+  (users/check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [:model/User :id :last_login :password_salt :password],
                                     :id id,
                                     :type :personal,
@@ -682,6 +609,25 @@
             response                        {:success    true
                                              :session_id (str session-key)}]
         (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                    Password Reset URL -- POST /api/user/:id/password-reset-url                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(api.macros/defendpoint :post "/:id/password-reset-url" :- [:map [:password_reset_url :string]]
+  "Generate a password reset URL for a user. Admins can share this URL directly with the user.
+  The link expires in 48 hours."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [user (api/check-404 (t2/select-one [:model/User :id :is_active :type] :id id))]
+    (api/check-404 (:is_active user))
+    (api/check-404 (= :personal (:type user)))
+    (let [reset-token        (auth-identity/create-password-reset! id)
+          password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
+      (events/publish-event! :event/password-reset-initiated
+                             {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id id))})
+      {:password_reset_url password-reset-url})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
@@ -718,7 +664,7 @@
   [{:keys [id modal]} :- [:map
                           [:id ms/PositiveInt]
                           [:modal [:enum "qbnewb" "datasetnewb"]]]]
-  (check-self-or-superuser id)
+  (users/check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb
                     "datasetnewb" :is_datasetnewb}

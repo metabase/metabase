@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
+import { fetchDataOrError } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
@@ -118,19 +119,21 @@ export const PublicOrEmbeddedQuestion = ({
     try {
       setResult(null);
 
-      let newResult;
+      let newResult: Dataset | { error: unknown };
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await maybeUsePivotEndpoint(
-          EmbedApi.cardQuery,
-          card,
-          metadataRef.current,
-        )({
-          token,
-          parameters: JSON.stringify(
-            getParameterValuesBySlug(parameters, parameterValues),
-          ),
-        });
+        newResult = (await fetchDataOrError(
+          maybeUsePivotEndpoint(
+            EmbedApi.cardQuery,
+            card,
+            metadataRef.current,
+          )({
+            token,
+            parameters: JSON.stringify(
+              getParameterValuesBySlug(parameters, parameterValues),
+            ),
+          }),
+        )) as Dataset | { error: unknown };
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(
@@ -140,19 +143,26 @@ export const PublicOrEmbeddedQuestion = ({
           [],
           { sparse: true },
         );
-        newResult = await maybeUsePivotEndpoint(
-          PublicApi.cardQuery,
-          card,
-          metadataRef.current,
-        )({
-          uuid,
-          parameters: JSON.stringify(datasetQuery.parameters),
-        });
+        newResult = (await fetchDataOrError(
+          maybeUsePivotEndpoint(
+            PublicApi.cardQuery,
+            card,
+            metadataRef.current,
+          )({
+            uuid,
+            parameters: JSON.stringify(datasetQuery.parameters),
+          }),
+        )) as Dataset | { error: unknown };
       } else {
         throw { status: 404 };
       }
 
-      setResult(newResult);
+      // If error is object it is because it was a non-query error
+      if (typeof newResult.error === "object") {
+        dispatch(setErrorPage(newResult.error));
+      } else {
+        setResult(newResult as Dataset);
+      }
     } catch (error) {
       console.error("error", error);
       dispatch(setErrorPage(error));

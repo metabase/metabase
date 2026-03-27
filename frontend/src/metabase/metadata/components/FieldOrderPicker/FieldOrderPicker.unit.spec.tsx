@@ -39,7 +39,7 @@ describe("FieldOrderPicker", () => {
 
     for (const label of TOOLTIP_LABELS) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
-      userEvent.hover(screen.getByLabelText(label));
+      await userEvent.hover(screen.getByLabelText(label));
 
       await waitFor(() => {
         expect(

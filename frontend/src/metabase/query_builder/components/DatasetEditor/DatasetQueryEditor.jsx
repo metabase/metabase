@@ -25,11 +25,12 @@ const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
 const propTypes = {
   question: PropTypes.object.isRequired,
   isActive: PropTypes.bool.isRequired, // if QB mode is set to "query"
+  availableHeight: PropTypes.number.isRequired,
   height: PropTypes.number.isRequired,
   onSetDatabaseId: PropTypes.func,
 };
 
-function DatasetQueryEditor({
+function DatasetQueryEditorInner({
   question,
   isActive,
   height,
@@ -97,6 +98,6 @@ function DatasetQueryEditor({
   );
 }
 
-DatasetQueryEditor.propTypes = propTypes;
+DatasetQueryEditorInner.propTypes = propTypes;
 
-export default memo(DatasetQueryEditor);
+export const DatasetQueryEditor = memo(DatasetQueryEditorInner);

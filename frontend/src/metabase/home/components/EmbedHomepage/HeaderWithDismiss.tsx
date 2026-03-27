@@ -13,7 +13,7 @@ export const HeaderWithDismiss = ({ onDismiss }: HeaderWithDismissProps) => {
     <Group gap="space-between">
       <Text
         fw="bold"
-        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
       >{t`Get started with Embedding Metabase in your app`}</Text>
       <Menu trigger="hover" closeDelay={200}>
         <Menu.Target>

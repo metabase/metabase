@@ -13,8 +13,6 @@
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.dependencies.init]
    [metabase-enterprise.gsheets.init]
-   [metabase-enterprise.llm.init]
-   [metabase-enterprise.metabot-v3.init]
    [metabase-enterprise.remote-sync.init]
    [metabase-enterprise.scim.init]
    [metabase-enterprise.semantic-search.init]
@@ -22,4 +20,4 @@
    [metabase-enterprise.stale.init]
    [metabase-enterprise.support-access-grants.init]
    [metabase-enterprise.transforms-python.init]
-   [metabase-enterprise.transforms.init]))
+   [metabase-enterprise.workspaces.init]))

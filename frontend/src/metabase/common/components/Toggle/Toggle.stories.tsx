@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import Toggle from "./Toggle";
+import { Toggle } from "./Toggle";
 
 export default {
   title: "Deprecated/Components/Toggle",

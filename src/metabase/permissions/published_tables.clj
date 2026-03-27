@@ -37,3 +37,10 @@
   metabase-enterprise.data-studio.permissions.published-tables
   [_table]
   false)
+
+(defenterprise published-table-visible-clause
+  "Returns a HoneySQL clause for published tables visible via collection permissions.
+  OSS implementation returns nil."
+  metabase-enterprise.data-studio.permissions.published-tables
+  [_table-id-column _user-info]
+  nil)

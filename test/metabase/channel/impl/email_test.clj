@@ -93,3 +93,39 @@
               (is (= 1 (count result)))
               (is (string? rendered-content))
               (is (str/includes? rendered-content "http://example.com/dashboard/42?state=CA&amp;state=NY&amp;state=NJ#scrollTo=456")))))))))
+
+(deftest render-body-prometheus-metric-test
+  (testing "rendering a user-provided template increments the template-render counter"
+    (mt/with-prometheus-system! [_ system]
+      (let [template {:details {:type :email/handlebars-text
+                                :subject "Test"
+                                :body "Hello {{name}}"}}]
+        (#'email.impl/render-body template {:name "World"})
+        (is (= 1.0 (mt/metric-value system :metabase-notification/template-render
+                                    {:template-type :email/handlebars-text
+                                     :channel-type  :channel/email}))))))
+
+  (testing "rendering a resource template also increments the counter with the correct label"
+    (mt/with-prometheus-system! [_ system]
+      (let [template {:details {:type :email/handlebars-resource
+                                :subject "Test"
+                                :path "metabase/channel/email/notification_card.hbs"}}]
+        ;; render-body will throw if the payload doesn't match the template, but the metric
+        ;; fires before the render, so we just need to not blow up
+        (try (#'email.impl/render-body template {})
+             (catch Exception _))
+        (is (= 1.0 (mt/metric-value system :metabase-notification/template-render
+                                    {:template-type :email/handlebars-resource
+                                     :channel-type  :channel/email})))))))
+
+(deftest render-body-logging-test
+  (testing "rendering a user-provided template logs the template body at debug level"
+    (mt/with-log-messages-for-level [messages :debug]
+      (let [template {:details {:type :email/handlebars-text
+                                :subject "Test"
+                                :body "Hello {{name}}"}}]
+        (#'email.impl/render-body template {:name "World"})
+        (is (some (fn [{:keys [message]}]
+                    (and (re-find #"Rendering user-provided template" message)
+                         (re-find #"Hello" message)))
+                  (messages)))))))

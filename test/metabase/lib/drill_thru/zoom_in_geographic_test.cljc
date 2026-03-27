@@ -397,12 +397,12 @@
                :type      :drill-thru/zoom-in.geographic,
                :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon,
                :latitude  {:column    {:name                       "LATITUDE"
-                                       :metabase.lib.field/binning {:strategy :default}}
+                                       :lib/binning {:strategy :default}}
                            :bin-width 1.0
                            :min       20.0
                            :max       30.0}
                :longitude {:column    {:name                       "LONGITUDE"
-                                       :metabase.lib.field/binning {:strategy :default}}
+                                       :lib/binning {:strategy :default}}
                            :bin-width 1.0
                            :min       50.0
                            :max       60.0}}

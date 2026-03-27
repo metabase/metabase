@@ -3,6 +3,7 @@
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
@@ -64,6 +65,27 @@
   []
   (or (not (settings/remote-sync-enabled))
       (= (settings/remote-sync-type) :read-write)))
+
+(defenterprise model-editable?
+  "Determines if a model instance is editable based on remote sync configuration."
+  :feature :none
+  [model-key instance]
+  (spec/model-editable? model-key instance))
+
+(defenterprise batch-model-editable?
+  "Batch version of model-editable?. Returns a map of instance-id -> editable? boolean."
+  :feature :none
+  [model-key instances]
+  (spec/batch-model-editable? model-key instances))
+
+(defenterprise batch-model-eligible?
+  "Batch check if model instances are eligible for remote sync based on spec rules.
+   Returns a map of instance-id -> eligible? boolean."
+  :feature :none
+  [model-key instances]
+  (if-let [spec (spec/spec-for-model-key model-key)]
+    (spec/batch-check-eligibility spec instances)
+    (into {} (map (fn [inst] [(:id inst) false])) instances)))
 
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state

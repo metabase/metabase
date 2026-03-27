@@ -6,7 +6,6 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.convert :as lib.convert]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
@@ -36,10 +35,10 @@
       (lib.util/query-stage normalized-definition -1))))
 
 (defmethod lib.ref/ref-method :metadata/metric
-  [{:keys [id], join-alias ::lib.join/join-alias, :as metric-metadata}]
+  [{:keys [id], join-alias :lib/join-alias, :as metric-metadata}]
   (let [effective-type (or ((some-fn :effective-type :base-type) metric-metadata)
                            (when-let [aggregation (first (:aggregation (metric-definition metric-metadata)))]
-                             (let [ag-effective-type (lib.schema.expression/type-of aggregation)]
+                             (let [ag-effective-type (lib.schema.expression/type-of-resolved aggregation)]
                                (when (isa? ag-effective-type :type/*)
                                  ag-effective-type))))
         options (cond-> {:lib/uuid (str (random-uuid))}
@@ -116,7 +115,7 @@
                                    (lib.aggregation/aggregations query stage-number))
          maybe-add-aggregation-pos (fn [metric-metadata]
                                      (let [aggregation-pos (-> metric-metadata
-                                                               ((juxt :id ::lib.join/join-alias))
+                                                               ((juxt :id :lib/join-alias))
                                                                metric-aggregations)]
                                        (cond-> metric-metadata
                                          aggregation-pos (assoc :aggregation-position aggregation-pos))))]

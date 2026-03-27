@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouses.models.database :as models.database]
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2])
   (:import
@@ -26,7 +27,8 @@
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
+                                                  models.database/assert-not-h2! (constantly nil)]
                         (thunk))))
 
 (defn- dir->contents-set [p ^File dir]
@@ -430,6 +432,7 @@
                   (is (= [{:id                   "abc",
                            :name                 "CATEGORY",
                            :type                 :category,
+                           :position             0,
                            :values_source_config {:card_id     (:entity_id card1s),
                                                   :value_field [:field
                                                                 ["my-db" nil "CUSTOMERS" (:name field1s)]
@@ -442,6 +445,7 @@
                            [{:id                   "abc",
                              :name                 "CATEGORY",
                              :type                 :category,
+                             :position             0,
                              :values_source_config {:card_id     (:entity_id card1s),
                                                     :value_field [:field
                                                                   ["my-db" nil "CUSTOMERS" (:name field1s)]
@@ -881,19 +885,43 @@
                                             :no-data-model true}) dump-dir)
 
           (spit (io/file dump-dir "collections" ".hidden.yaml") "serdes/meta: [{do-not: read}]")
-          (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
 
-          (testing "No exceptions when loading despite unreadable files"
-            (mt/with-log-messages-for-level [logs [metabase-enterprise :error]]
-              (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
-                               (map (comp second second))
-                               (map #(.getName ^File %))
-                               set)]
-                (testing "Hidden YAML wasn't read even though it's not throwing errors"
-                  (is (not (contains? files ".hidden.yaml")))))
-              (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
-                (is (=? [{:level :error, :e Throwable, :message "Error reading file unreadable.yaml"}]
-                        (logs)))))))))))
+          (testing "Hidden YAML files are still silently skipped"
+            (let [{:keys [entities]} (#'ingest/ingest-all (io/file dump-dir))
+                  files (->> entities
+                             (map (comp second second))
+                             (map #(.getName ^File %))
+                             set)]
+              (is (not (contains? files ".hidden.yaml")))))
+
+          (testing "Unparseable non-hidden YAML files are collected as ingestion errors"
+            (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
+            (let [{:keys [errors]} (#'ingest/ingest-all (io/file dump-dir))]
+              (is (= 1 (count errors))))))))))
+
+(deftest ingestion-errors-fail-import-test
+  (testing "Unparseable YAML files cause load-metabase! to fail by default"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (let [coll (ts/create! :model/Collection :name "coll")
+              _    (ts/create! :model/Card :name "card" :collection_id (:id coll))]
+          (storage/store! (extract/extract {:no-settings   true
+                                            :no-data-model true}) dump-dir)
+          (spit (io/file dump-dir "collections" "corrupt.yaml") "\0")
+
+          (testing "continue-on-error false (default) — throws on ingestion errors"
+            (is (thrown-with-msg? Exception #"Failed to read 1 file\(s\) during ingestion: corrupt\.yaml"
+                                  (serdes/with-cache
+                                    (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))))
+
+          (testing "continue-on-error true — collects ingestion errors without throwing"
+            (let [result (serdes/with-cache
+                           (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)
+                                                       {:continue-on-error true}))]
+              (is (= 1 (count (:errors result)))
+                  "Should have collected exactly 1 ingestion error")
+              (is (seq (:seen result))
+                  "Should have still loaded the valid entities"))))))))
 
 (deftest channel-test
   (mt/test-helpers-set-global-values!

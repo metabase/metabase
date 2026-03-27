@@ -1,12 +1,13 @@
 import type {
   DependencyEntry,
   DependencyGroupType,
-  DependencySortingOptions,
+  DependencySortColumn,
+  SortDirection,
 } from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
 const GRAPH_URL = `${BASE_URL}/dependencies`;
-const TASKS_URL = `${BASE_URL}/tasks`;
+const DIAGNOSTICS_URL = `${BASE_URL}/dependency-diagnostics`;
 
 export type DependencyGraphParams = {
   entry?: DependencyEntry;
@@ -26,27 +27,32 @@ export function dependencyGraph({
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
-export function dependencyTasks() {
-  return TASKS_URL;
+export function dependencyDiagnostics() {
+  return DIAGNOSTICS_URL;
 }
 
-export type DependencyListParams = {
+export type DependencyDiagnosticsParams = {
+  page?: number;
   query?: string;
   groupTypes?: DependencyGroupType[];
   includePersonalCollections?: boolean;
-  sorting?: DependencySortingOptions;
-  page?: number;
+  sortColumn?: DependencySortColumn;
+  sortDirection?: SortDirection;
 };
 
-function dependencyListQueryString({
+function dependencyDiagnosticsQueryString({
+  page,
   query,
   groupTypes,
   includePersonalCollections,
-  sorting,
-  page,
-}: DependencyListParams = {}) {
+  sortColumn,
+  sortDirection,
+}: DependencyDiagnosticsParams = {}) {
   const searchParams = new URLSearchParams();
 
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
   if (query != null) {
     searchParams.set("query", query);
   }
@@ -61,22 +67,21 @@ function dependencyListQueryString({
       String(includePersonalCollections),
     );
   }
-  if (sorting != null) {
-    searchParams.set("sort-column", sorting.column);
-    searchParams.set("sort-direction", sorting.direction);
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
   }
-  if (page != null) {
-    searchParams.set("page", String(page));
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
   }
 
   const queryString = searchParams.toString();
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export function brokenDependencies(params?: DependencyListParams) {
-  return `${dependencyTasks()}/broken${dependencyListQueryString(params)}`;
+export function brokenDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/broken${dependencyDiagnosticsQueryString(params)}`;
 }
 
-export function unreferencedDependencies(params?: DependencyListParams) {
-  return `${dependencyTasks()}/unreferenced${dependencyListQueryString(params)}`;
+export function unreferencedDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/unreferenced${dependencyDiagnosticsQueryString(params)}`;
 }

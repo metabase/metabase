@@ -14,7 +14,7 @@ export interface TabProps<T> extends HTMLAttributes<HTMLButtonElement> {
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
-const Tab = forwardRef(function Tab<T>(
+export const Tab = forwardRef(function Tab<T>(
   { value, icon, children, onClick, ...props }: TabProps<T>,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -47,6 +47,3 @@ const Tab = forwardRef(function Tab<T>(
     </TabRoot>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Tab;

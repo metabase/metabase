@@ -17,7 +17,7 @@ export const isNavigatingToCreateADashboardQuestion = (
     const isDashboardQuestion =
       deserializedCard && deserializedCard.dashboard_id !== null;
 
-    return isDashboardQuestion;
+    return Boolean(isDashboardQuestion);
   }
 
   return false;

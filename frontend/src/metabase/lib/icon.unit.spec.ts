@@ -36,6 +36,10 @@ describe("getIcon", () => {
     expect(getIcon({ model: "indexed-entity" })).toEqual({ name: "index" });
   });
 
+  it("should return the correct icon for a python library", () => {
+    expect(getIcon({ model: "pythonlibrary" })).toEqual({ name: "code_block" });
+  });
+
   it("should return the correct icon for a dashboard", () => {
     expect(getIcon({ model: "dashboard" })).toEqual({ name: "dashboard" });
   });

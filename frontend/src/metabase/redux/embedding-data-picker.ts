@@ -2,7 +2,12 @@ import type { PayloadAction } from "@reduxjs/toolkit";
 import { createSlice } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+/**
+ * This slice is only used in full-app embedding. As in modular embeddings, we'd pass the `entityTypes`
+ * and `dataPicker`as props to the data picker component, instead of relying on the global state.
+ */
 import type {
+  EmbeddingDataPicker,
   EmbeddingDataPickerState,
   EmbeddingEntityType,
 } from "metabase-types/store/embedding-data-picker";
@@ -14,6 +19,7 @@ export const DEFAULT_EMBEDDING_ENTITY_TYPES: EmbeddingEntityType[] = [
 
 export const DEFAULT_EMBEDDING_DATA_PICKER_STATE: EmbeddingDataPickerState = {
   entityTypes: DEFAULT_EMBEDDING_ENTITY_TYPES,
+  dataPicker: "flat",
 };
 
 const embeddingDataPickerSlice = createSlice({
@@ -31,6 +37,18 @@ const embeddingDataPickerSlice = createSlice({
         }
       }
     },
+    setDataPicker: (
+      state,
+      action: PayloadAction<EmbeddingDataPicker | undefined>,
+    ) => {
+      if (action.payload) {
+        state.dataPicker = action.payload;
+      }
+    },
+  },
+  selectors: {
+    getEntityTypes: (state) => state.entityTypes,
+    getDataPicker: (state) => state.dataPicker,
   },
 });
 
@@ -39,7 +57,7 @@ const embeddingDataPickerSlice = createSlice({
  * As it could not be empty, it needs at least a single valid value. e.g. `["model"]`, or `["model", "table"]`,
  * but never `[]`.
  */
-function normalizeEntityTypes(
+export function normalizeEntityTypes(
   entityTypes: EmbeddingEntityType[],
 ): EmbeddingEntityType[] {
   const ALLOWED_ENTITY_TYPES: EmbeddingEntityType[] = [
@@ -59,6 +77,10 @@ function normalizeEntityTypes(
   return filteredEntityTypes;
 }
 
-export const { setEntityTypes } = embeddingDataPickerSlice.actions;
+export const { setEntityTypes, setDataPicker } =
+  embeddingDataPickerSlice.actions;
+
+export const { getEntityTypes, getDataPicker } =
+  embeddingDataPickerSlice.selectors;
 
 export const { reducer } = embeddingDataPickerSlice;

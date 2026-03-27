@@ -5,7 +5,8 @@
    [clojure.string :as str]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.string :as u.str]))
 
 (def ^:private default-allowed-iframe-hosts
   "youtube.com,
@@ -74,3 +75,33 @@ x.com")
   :default    false
   :visibility :admin
   :export?    false)
+
+;; This is normally set via the env var `MB_THREAD_INTERRUPT_ESCALATION_TIMEOUT_MS`
+(defsetting thread-interrupt-escalation-timeout-ms
+  "By default, this is 0 and the thread interrupt escalation does not run."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    0
+  :doc "Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
+        This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.")
+
+(def ^:dynamic ^Long *thread-interrupt-escalation-timeout-ms*
+  "Timeout in milliseconds to wait after query cancellation before escalating to thread interruption."
+  (thread-interrupt-escalation-timeout-ms))
+
+(defsetting metabot-slack-signing-secret
+  (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")
+  :type       :string
+  :visibility :admin
+  :encryption :when-encryption-key-set
+  :export?    false
+  :audit      :no-value
+  :getter     (fn []
+                (-> (setting/get-value-of-type :string :metabot-slack-signing-secret)
+                    (u.str/mask 4))))
+
+(defn unobfuscated-metabot-slack-signing-secret
+  "Get the unobfuscated value of [[metabot-slack-signing-secret]]."
+  []
+  (setting/get-value-of-type :string :metabot-slack-signing-secret))

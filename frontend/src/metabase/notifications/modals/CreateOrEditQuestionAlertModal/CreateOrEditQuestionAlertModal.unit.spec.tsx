@@ -9,8 +9,8 @@ import {
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals";
 import type {
   ChannelApiResponse,
   Notification,
@@ -30,17 +30,24 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
-describe("CreateOrEditQuestionAlertModal", () => {
+const configuredAlerts = () => screen.findByTestId("alert-configured-channel");
+
+const expectConfigured = async (channel: string) =>
+  expect(
+    within(await configuredAlerts()).getByText(channel),
+  ).toBeInTheDocument();
+
+const expectNotConfigured = async (channel: string) =>
+  expect(
+    within(await configuredAlerts()).queryByText(channel),
+  ).not.toBeInTheDocument();
+
+describe("CreateOrEditQuestionAlertModalWithQuestion", () => {
   it("should display first available channel by default - Email", async () => {
-    setup({
-      isAdmin: true,
-    });
+    setup({ isAdmin: true });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("alert-create")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Email")).toBeInTheDocument();
+    expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+    await expectConfigured("Email");
   });
 
   it.each([{ isAdmin: true }, { isAdmin: false, userCanAccessSettings: true }])(
@@ -52,12 +59,9 @@ describe("CreateOrEditQuestionAlertModal", () => {
         ...setupConfig,
       });
 
-      await waitFor(() => {
-        expect(screen.getByTestId("alert-create")).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText("Email")).not.toBeInTheDocument();
-      expect(screen.getByText("Slack")).toBeInTheDocument();
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      await expectNotConfigured("Email");
+      await expectConfigured("Slack");
     },
   );
 
@@ -72,11 +76,8 @@ describe("CreateOrEditQuestionAlertModal", () => {
         ...setupConfig,
       });
 
-      await waitFor(() => {
-        expect(screen.getByTestId("alert-create")).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText("Email")).not.toBeInTheDocument();
+      expect(await screen.findByTestId("alert-create")).toBeInTheDocument();
+      await expectNotConfigured("Email");
       expect(screen.getByText(mockWebhook.name)).toBeInTheDocument();
     },
   );
@@ -454,7 +455,7 @@ function setup({
 
   if (editingNotification) {
     renderWithProviders(
-      <CreateOrEditQuestionAlertModal
+      <CreateOrEditQuestionAlertModalWithQuestion
         editingNotification={editingNotification}
         onAlertUpdated={onAlertUpdatedMock}
         onClose={jest.fn()}
@@ -465,7 +466,7 @@ function setup({
   }
 
   renderWithProviders(
-    <CreateOrEditQuestionAlertModal
+    <CreateOrEditQuestionAlertModalWithQuestion
       onAlertCreated={onAlertCreatedMock}
       onClose={jest.fn()}
     />,

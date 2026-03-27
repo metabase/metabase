@@ -1,6 +1,0 @@
-frontend/src/cljs
-frontend/src/cljs_release
-e2e/support/cypress_sample_database.js
-e2e/support/cypress_sample_instance_data.js
-frontend/src/metabase-types/openapi/types.gen.ts
-e2e/embedding-sdk-host-apps

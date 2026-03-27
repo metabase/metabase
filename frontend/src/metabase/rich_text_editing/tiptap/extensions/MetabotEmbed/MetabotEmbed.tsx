@@ -11,6 +11,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { useLazyMetabotGenerateContentQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
 import { trackDocumentAskMetabot } from "metabase/documents/analytics";
 import {
@@ -20,7 +21,8 @@ import {
 } from "metabase/documents/documents.slice";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 
@@ -151,8 +153,8 @@ export const MetabotComponent = memo(
     const controllerRef = useRef<AbortController | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
-    const [queryMetabot] = PLUGIN_METABOT.useLazyMetabotGenerateContentQuery();
-    const isMetabotEnabled = PLUGIN_METABOT.isEnabled();
+    const [queryMetabot] = useLazyMetabotGenerateContentQuery();
+    const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
 
     const handleRunMetabot = async () => {
       const serializePrompt =
@@ -337,9 +339,7 @@ export const MetabotComponent = memo(
               {isLoading ? (
                 <Text
                   flex={1}
-                  className={
-                    PLUGIN_METABOT.MetabotThinkingStyles.toolCallStarted
-                  }
+                  className={MetabotThinkingStyles.toolCallStarted}
                 >
                   {t`Working on it...`}
                 </Text>

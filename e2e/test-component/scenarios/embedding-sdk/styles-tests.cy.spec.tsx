@@ -511,11 +511,15 @@ describe("scenarios > embedding-sdk > styles", () => {
           });
         });
 
-        getSdkRoot().findByText("Tooltip test").click();
-        getSdkRoot().findByLabelText("Back to Test Dashboard").realHover();
+        // Set a value on the date filter to make the Clear button appear
+        getSdkRoot().findByText("Date filter").click();
+        H.popover().findByText("Today").click();
+
+        // Hover over the Clear button which has a Mantine Tooltip
+        getSdkRoot().findByRole("button", { name: "Clear" }).realHover();
 
         H.tooltip()
-          .findByText("Back to Test Dashboard")
+          .findByText("Clear")
           .should("have.css", "font-family", "Impact");
       });
 

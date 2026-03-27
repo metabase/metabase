@@ -42,4 +42,11 @@ export type UpdateDocumentRequest = Pick<Document, "id"> &
 
 export type DeleteDocumentRequest = Pick<Document, "id">;
 
+export type CopyDocumentRequest = {
+  id: DocumentId;
+  name?: string | null;
+  collection_id?: CollectionId | null;
+  collection_position?: number | null;
+};
+
 export type GetPublicDocument = Pick<Document, "id" | "name" | "public_uuid">;

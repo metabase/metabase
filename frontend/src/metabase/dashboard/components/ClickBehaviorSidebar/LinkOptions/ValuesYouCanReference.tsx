@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { AccordionList } from "metabase/common/components/AccordionList";
 import {
   isMappableColumn,
-  withUserAttributes,
+  useUserAttributes,
 } from "metabase/dashboard/components/ClickMappings";
 import { Flex, Icon, Popover, UnstyledButton } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -15,7 +15,6 @@ import S from "./ValuesYouCanReference.module.css";
 interface ValuesYouCanReferenceProps {
   dashcard: DashboardCard;
   parameters: UiParameter[];
-  userAttributes: string[];
 }
 
 interface Section {
@@ -34,12 +33,12 @@ function prefixIfNeeded(
   );
 }
 
-const ValuesYouCanReferenceComponent = ({
+export const ValuesYouCanReference = ({
   dashcard,
   parameters,
-  userAttributes,
 }: ValuesYouCanReferenceProps) => {
   const [opened, setOpened] = useState(false);
+  const userAttributes = useUserAttributes();
 
   const columnMetadata = dashcard.card.result_metadata || [];
   const columns = columnMetadata?.filter(isMappableColumn).map((c) => c.name);
@@ -91,7 +90,3 @@ const ValuesYouCanReferenceComponent = ({
     </Popover>
   );
 };
-
-export const ValuesYouCanReference = withUserAttributes(
-  ValuesYouCanReferenceComponent,
-);

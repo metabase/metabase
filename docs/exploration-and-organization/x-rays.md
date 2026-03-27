@@ -60,7 +60,7 @@ If you come across an X-ray that's particularly interesting, you can save its ca
 
 ## Disabling X-rays
 
-If for some reason X-rays aren't a good fit for your team or your data, administrators can turn them off completely by clicking on the gear icon in the upper right and going to **Admin settings** > **Settings** > **General** and toggling the option to **Enable X-ray features**.
+If for some reason X-rays aren't a good fit for your team or your data, administrators can turn them off completely by clicking on the grid icon in the upper right and going to **Admin** > **Settings** > **General** and toggling the option to **Enable X-ray features**.
 
 If you pin any dashboards in the "Our Analytics" collection, Metabase will hide the X-ray suggestions that appear on the homepage.
 

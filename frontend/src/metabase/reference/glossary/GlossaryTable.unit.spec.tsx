@@ -43,8 +43,8 @@ describe("GlossaryTable", () => {
 
     await user.click(screen.getByRole("button", { name: /new term/i }));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
-    const defInput = screen.getByPlaceholderText(/a warm-blooded.*/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
+    const defInput = screen.getByPlaceholderText(/a small vessel.*/i);
     await user.clear(termInput);
     await user.type(termInput, "  Bird  ");
     await user.type(defInput, "  Flies sometimes  ");
@@ -52,7 +52,7 @@ describe("GlossaryTable", () => {
     const table0 = screen.getByRole("table");
     const rows0 = within(table0).getAllByRole("row");
     const createRow0 = rows0.find((r) =>
-      within(r).queryByPlaceholderText(/bird/i),
+      within(r).queryByPlaceholderText(/boat/i),
     );
     expect(createRow0).toBeTruthy();
     const saveInCreate = within(createRow0 as HTMLElement).getByRole("button", {
@@ -82,8 +82,8 @@ describe("GlossaryTable", () => {
 
     await user.click(screen.getByText("Cat"));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
-    const defInput = screen.getByPlaceholderText(/a warm-blooded.*/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
+    const defInput = screen.getByPlaceholderText(/a small vessel.*/i);
 
     await user.clear(termInput);
     await user.type(termInput, "Kitten");
@@ -111,7 +111,7 @@ describe("GlossaryTable", () => {
 
     // Click term -> term input should be focused
     await user.click(screen.getByText("Dog"));
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     expect(termInput).toHaveFocus();
 
     await user.click(screen.getByRole("button", { name: /cancel/i }));
@@ -127,7 +127,7 @@ describe("GlossaryTable", () => {
     );
 
     await user.click(screen.getByText("Barks"));
-    const defInput = screen.getByPlaceholderText(/a warm-blooded.*/i);
+    const defInput = screen.getByPlaceholderText(/a small vessel.*/i);
     expect(defInput).toHaveFocus();
   });
 
@@ -227,7 +227,7 @@ describe("GlossaryTable", () => {
     const table2 = screen.getByRole("table");
     const rows2 = within(table2).getAllByRole("row");
     const createRow = rows2.find((r) =>
-      within(r).queryByPlaceholderText(/bird/i),
+      within(r).queryByPlaceholderText(/boat/i),
     );
     expect(createRow).toBeTruthy();
     const saveBtn = within(createRow as HTMLElement).getByRole("button", {
@@ -236,12 +236,12 @@ describe("GlossaryTable", () => {
     expect(saveBtn).toBeDisabled();
 
     // Fill only one field and still disabled
-    await user.type(screen.getByPlaceholderText(/bird/i), "Sparrow");
+    await user.type(screen.getByPlaceholderText(/boat/i), "Sparrow");
     expect(saveBtn).toBeDisabled();
 
     // Fill both fields and enabled
     await user.type(
-      screen.getByPlaceholderText(/a warm-blooded.*/i),
+      screen.getByPlaceholderText(/a small vessel.*/i),
       "Flies sometimes",
     );
     expect(saveBtn).toBeEnabled();
@@ -266,7 +266,7 @@ describe("GlossaryTable", () => {
 
     await user.click(screen.getByRole("button", { name: /new term/i }));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     await user.type(termInput, "Alpha");
 
     // Should show duplicate warning message
@@ -299,7 +299,7 @@ describe("GlossaryTable", () => {
 
     await user.click(screen.getByRole("button", { name: /new term/i }));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     await user.type(termInput, "ALPHA");
 
     // Should show duplicate warning (case insensitive)
@@ -325,7 +325,7 @@ describe("GlossaryTable", () => {
     await user.click(screen.getByText("Alpha"));
 
     // The term input should have "Alpha" and no duplicate warning
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     expect(termInput).toHaveValue("Alpha");
 
     // Should NOT show duplicate warning when editing the same term
@@ -356,7 +356,7 @@ describe("GlossaryTable", () => {
     // Click on "Alpha" to edit it
     await user.click(screen.getByText("Alpha"));
 
-    const termInput = screen.getByPlaceholderText(/bird/i);
+    const termInput = screen.getByPlaceholderText(/boat/i);
     await user.clear(termInput);
     await user.type(termInput, "Beta");
 

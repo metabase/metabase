@@ -4,7 +4,7 @@ import type ReactMarkdown from "react-markdown";
 import { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import { MarkdownRoot } from "./Markdown.styled";
 
@@ -33,7 +33,7 @@ export interface MarkdownProps
   components?: Record<string, any>;
 }
 
-const Markdown = ({
+export const Markdown = ({
   className,
   children = "",
   dark,
@@ -71,6 +71,3 @@ const Markdown = ({
     </MarkdownRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Markdown;

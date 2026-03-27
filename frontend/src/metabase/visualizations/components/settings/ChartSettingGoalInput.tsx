@@ -5,13 +5,13 @@ import { ActionIcon, Icon, Menu, NumberInput, TextInput } from "metabase/ui";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
-interface ChartSettingGoalInputProps {
+export type ChartSettingGoalInputProps = {
   id: string;
   value: number | string;
   onChange: (value: number | string) => void;
   columns?: DatasetColumn[];
   valueField?: string;
-}
+};
 
 export const ChartSettingGoalInput = ({
   id,

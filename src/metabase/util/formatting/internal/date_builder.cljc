@@ -42,7 +42,10 @@
    :minute-dd         "mm"                          ; 07, 39
    :second-dd         "ss"                          ; 08, 45
    :millisecond-ddd   "SSS"                         ; 001, 423
-   :day-of-year       #?(:cljs "DDD"  :clj "D")     ; 235
+   ;; Day of year: In Java we use "D". In CLJS we use a placeholder that will be replaced
+   ;; by special handling in the formatter since dayjs doesn't have a format token for day-of-year.
+   ;; The placeholder is escaped with [] so dayjs doesn't interpret it as format tokens.
+   :day-of-year       #?(:cljs "[__DAY_OF_YEAR__]"  :clj "D")     ; 235
    :week-of-year      #?(:cljs "wo"   :clj "w")})   ; 34th in CLJS, 34 in CLJ. No ordinal numbers in Java.
 
 (defn- format-string-literal [lit]
@@ -64,6 +67,10 @@
                                                                  {:bad-element fmt
                                                                   :format      format-list}))))
         fmt-str   (apply str parts)]
-    #?(:cljs #(.format % fmt-str)
+    #?(:cljs (if (str/includes? fmt-str "__DAY_OF_YEAR__")
+               ;; Special handling for day-of-year since dayjs doesn't have a format token for it
+               (fn [^js t]
+                 (str/replace (.format t fmt-str) "__DAY_OF_YEAR__" (str (.dayOfYear t))))
+               #(.format % fmt-str))
        :clj  (let [formatter (DateTimeFormatter/ofPattern fmt-str)]
                #(.format formatter %)))))
