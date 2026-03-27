@@ -9,6 +9,12 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *defer-in-transaction?*
+  "When true (the default), messages published inside a transaction are deferred
+  until after the transaction commits. Bind to false in sync/test mode where
+  listeners must process inline."
+  true)
+
 (defprotocol MessageBuffer
   "Protocol for buffering messages before publishing."
   (put [this msg]
@@ -46,16 +52,19 @@
 
 (defn defer-in-transaction!
   "Accumulates msgs in *transaction-state* under [::deferred-messages channel].
-   Registers flush-deferred-messages! as an after-commit callback once per transaction."
+   Registers flush-deferred-messages! as an after-commit callback once per transaction.
+   If *defer-in-transaction?* is false (set in tests), immediately publishes"
   [channel msgs]
-  (let [state     (mdb/transaction-state)
-        old-state (first (swap-vals! state
-                                     (fn [s]
-                                       (-> s
-                                           (update-in [::deferred-messages channel] (fnil into []) msgs)
-                                           (assoc ::flush-registered? true)))))]
-    (when-not (::flush-registered? old-state)
-      (mdb/after-commit! flush-deferred-messages!))))
+  (if *defer-in-transaction?*
+    (let [state     (mdb/transaction-state)
+          old-state (first (swap-vals! state
+                                       (fn [s]
+                                         (-> s
+                                             (update-in [::deferred-messages channel] (fnil into []) msgs)
+                                             (assoc ::flush-registered? true)))))]
+      (when-not (::flush-registered? old-state)
+        (mdb/after-commit! flush-deferred-messages!)))
+    (publish! channel msgs)))
 
 (defn run-with-buffer
   "Runs `body-fn` with a MessageBuffer. On success, publishes collected messages —

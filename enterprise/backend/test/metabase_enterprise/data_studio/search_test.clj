@@ -6,14 +6,13 @@
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.search.core :as search]
    [metabase.search.impl :as search.impl]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.random :refer [random-name]]))
 
 (deftest published-table-collection-filter-test
-  (search.tu/with-sync-search-indexing
+  (search.tu/with-temp-index-table-for-http
     (mt/with-premium-features #{:library}
       (testing "Published tables are included in collection-filtered search"
         (mt/with-temp
@@ -26,7 +25,7 @@
            :model/Table      {table-3 :id}     {:name "Unpublished Table" :is_published false}
            :model/Table      {table-4 :id}     {:name "Root Published Table" :is_published true :collection_id nil}]
         ;; Initialize search index for appdb engine
-          (search/async-reindex! {:in-place? true})
+          (search.impl/sync-reindex! {:in-place? true})
           (doseq [engine ["in-place" "appdb"]]
             (testing (str "with engine " engine)
               (testing "Global search"
@@ -84,7 +83,7 @@
       (testing "Published tables in root collection (collection_id=nil) appear in unfiltered search"
         (mt/with-temp
           [:model/Table {root-table :id} {:name "Root Published Searchable" :is_published true :collection_id nil}]
-          (search/async-reindex! {:in-place? true})
+          (search.impl/sync-reindex! {:in-place? true})
           (doseq [engine ["in-place" "appdb"]]
             (testing (str "with engine " engine)
               (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Root Published Searchable" :search_engine engine)]
@@ -101,7 +100,7 @@
            :model/Table      {unpub-table :id} {:name "ContextTestTableUnpub"
                                                 :db_id db-id
                                                 :is_published false}]
-          (search/async-reindex! {:in-place? true})
+          (search.impl/sync-reindex! {:in-place? true})
           (doseq [engine ["in-place" "appdb"]]
             (testing (str "with engine " engine)
               (let [results (mt/user-http-request :crowberto :get 200 "search"
@@ -131,7 +130,7 @@
               (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
               (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
               (doseq [engine ["in-place" "appdb"]]
-                (search/async-reindex! {:in-place? true})
+                (search.impl/sync-reindex! {:in-place? true})
                 (mt/with-non-admin-groups-no-root-collection-perms
                   (let [results (mt/user-http-request :rasta :get 200 "search"
                                                       :q search-term :models "table" :search_engine engine)

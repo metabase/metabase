@@ -49,12 +49,17 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-new-search-if-available*
-  "Create a temporary index table for the duration of the body."
+  "Create a temporary index table for the duration of the body.
+  Also exposes the temp table to server threads so HTTP-based tests work."
   [& body]
   `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/appdb)]
      (with-temp-index-table
-       (search.impl/sync-reindex! {:in-place? true})
-       ~@body)))
+       (let [restore-fn# (search.index/expose-temp-table-to-server-threads!)]
+         (try
+           (search.impl/sync-reindex! {:in-place? true})
+           ~@body
+           (finally
+             (restore-fn#)))))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-new-search-if-available-otherwise-legacy

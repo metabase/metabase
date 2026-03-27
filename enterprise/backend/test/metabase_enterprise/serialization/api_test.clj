@@ -9,6 +9,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
+   [metabase.search.impl :as search.impl]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
@@ -94,6 +95,7 @@
                                                   :dataset_query {:type     :native
                                                                   :database (t2/select-one-pk :model/Database)
                                                                   :native   {:query "SELECT 1"}}}]
+           (search.impl/sync-reindex! {:in-place? true})
            ~@body)))))
 
 (defn- do-export

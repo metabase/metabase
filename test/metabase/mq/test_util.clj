@@ -1,6 +1,7 @@
 (ns metabase.mq.test-util
   (:require
    [metabase.mq.listener :as listener]
+   [metabase.mq.publish :as publish]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.sync]
@@ -18,11 +19,12 @@
   (let [[listeners & body] (if (map? (first body))
                              body
                              (cons {} body))]
-    `(binding [q.backend/*backend*         :queue.backend/sync
-               listener/*listeners*         (atom {})
+    `(binding [q.backend/*backend*              :queue.backend/sync
+               listener/*listeners*              (atom {})
                publish-buffer/*publish-buffer*    (atom {})
                publish-buffer/*publish-buffer-ms* 0
-               topic.backend/*backend*     :topic.backend/sync]
+               publish/*defer-in-transaction?*    false
+               topic.backend/*backend*            :topic.backend/sync]
        ;; Register all listen!/batch-listen! implementations into the fresh test atoms
        (listener/register-listeners!)
        ;; Merge any explicitly-provided listeners on top
