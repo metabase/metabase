@@ -7,4 +7,3 @@ serdes/meta:
 - id: metabotmetabotmetabot
   model: Metabot
 prompts: []
-use_verified_content: false

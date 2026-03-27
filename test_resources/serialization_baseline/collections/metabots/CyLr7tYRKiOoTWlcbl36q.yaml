@@ -7,4 +7,3 @@ serdes/meta:
 - id: CyLr7tYRKiOoTWlcbl36q
   model: Metabot
 prompts: []
-use_verified_content: false

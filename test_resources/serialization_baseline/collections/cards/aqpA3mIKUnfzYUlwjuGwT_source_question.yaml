@@ -19,5 +19,5 @@ serdes/meta:
 - id: aqpA3mIKUnfzYUlwjuGwT
   label: source_question
   model: Card
-metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+metabase_version: v1.58.0-SNAPSHOT (d5e5626)
 type: model

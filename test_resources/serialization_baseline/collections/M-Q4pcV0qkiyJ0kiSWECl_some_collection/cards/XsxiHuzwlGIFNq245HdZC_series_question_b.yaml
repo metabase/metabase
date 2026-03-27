@@ -15,5 +15,5 @@ serdes/meta:
 - id: XsxiHuzwlGIFNq245HdZC
   label: series_question_b
   model: Card
-metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+metabase_version: v1.58.0-SNAPSHOT (d5e5626)
 type: question

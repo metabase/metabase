@@ -2012,7 +2012,6 @@
                    :description "A test metabot"
                    :entity_id metabot-eid
                    :collection_id coll-eid
-                   :use_verified_content false
                    :prompts [{:prompt "A sample prompt"
                               :model "model"
                               :entity_id metabot-prompt-eid
@@ -2023,6 +2022,7 @@
                    :created_at string?}
                   ser))
           (is (not (contains? ser :id)))
+          (is (not (contains? ser :use_verified_content)))
 
           (testing "metabot depends on its model entities"
             (is (= #{[{:model "Card" :id model-eid}]}
@@ -2059,7 +2059,6 @@
                    :description "A test metabot"
                    :entity_id metabot-eid
                    :collection_id coll-eid
-                   :use_verified_content false
                    :prompts [{:prompt "A sample prompt"
                               :model "model"
                               :entity_id metabot-prompt-eid
@@ -2070,6 +2069,7 @@
                    :created_at string?}
                   ser))
           (is (not (contains? ser :id)))
+          (is (not (contains? ser :use_verified_content)))
 
           (testing "metabot depends on its prompts' cards"
             (is (= #{[{:model "Card" :id card-eid}]}
