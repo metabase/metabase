@@ -126,7 +126,7 @@
                 (is (= (serdes/parent-ref)
                        (get-in inner-spec [:transform backward-fk]))))))
 
-          (testing ":default-values match actual DB field defaults\n"
+          (testing ":default-values match actual DB field defaults"
             (let [serialized-fields (set (concat (:copy spec) (keys (:transform spec))))
                   declared-defaults (or (:default-values spec) {})]
               ;; Every DB field with a boolean default that is serialized should be in :default-values
