@@ -11,24 +11,15 @@ import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getSessionTokenState } from "../selectors";
 
-// Module-level promise for preventing concurrent refreshes
 let refreshGuestSessionPromise: ReturnType<
   AsyncThunkAction<string | null, unknown, any>
 > | null = null;
 
-/**
- * Sets the initial guest embed token when a component first loads.
- * This is different from refreshing - it stores the token that was
- * passed as a prop to the dashboard or question component.
- */
+// Sets the initial guest embed token when a component first loads.
 export const setInitialGuestToken = createAction<string>(
   "sdk/guest-embed/SET_INITIAL_TOKEN",
 );
 
-/**
- * Records a token fetch error so dashboard/question components can display it
- * via the existing tokenFetchError path, even before the component has mounted.
- */
 export const setGuestTokenFetchError = createAction<SerializedError | null>(
   "sdk/guest-embed/SET_TOKEN_FETCH_ERROR",
 );
@@ -44,10 +35,10 @@ export const refreshGuestSession = createAsyncThunk(
     authConfig,
     expiredToken,
   }: {
-    authConfig: MetabaseAuthConfig & { guestEmbedProviderUri?: string };
+    authConfig: MetabaseAuthConfig;
     expiredToken: string;
   }): Promise<string> => {
-    if (!authConfig.guestEmbedProviderUri) {
+    if (authConfig.isGuest && !authConfig.guestEmbedProviderUri) {
       throw new Error(
         "guestEmbedProviderUri is required for guest embed token refresh",
       );
@@ -60,34 +51,31 @@ export const refreshGuestSession = createAsyncThunk(
       );
     }
 
-    const token = await requestSessionTokenFromEmbedJs({ expiredToken });
-    return token;
+    return await requestSessionTokenFromEmbedJs({ expiredToken });
   },
 );
 
-/**
- * Gets or refreshes the current guest token.
- * Unlike the SSO counterpart, returns the raw JWT string, not the decoded session object.
- */
+// Unlike the SSO counterpart, returns the raw JWT string, not the decoded session object.
 export const getOrRefreshGuestSession = createAsyncThunk(
   "sdk/guest-embed/GET_OR_REFRESH_TOKEN",
-  async (
-    authConfig: MetabaseAuthConfig & { guestEmbedProviderUri?: string },
-    { dispatch, getState },
-  ) => {
+  async (authConfig: MetabaseAuthConfig, { dispatch, getState }) => {
     const state = getState() as SdkStoreState;
     const tokenState = getSessionTokenState(state);
     const currentToken = tokenState.rawToken;
 
-    // No token in Redux yet — useEffect hasn't run. Skip; initial JWTs are rarely expired in the first load.
+    // No token in Redux yet, so we can't check expiration.
     if (!currentToken) {
       return null;
     }
 
     const session = decodeJwt(currentToken);
 
-    // Cypress can't mock time inside an iframe, so we support a window flag
-    // that forces a token refresh for testing purposes.
+    /**
+     * Cypress can't mock time inside an iframe, so we support a window flag
+     * that forces a token refresh for testing purposes.
+     *
+     * We also, couldn't check window.CYPRESS because that only exists in the parent window.
+     */
     let forceRefreshForCypress;
     if (typeof window !== "undefined") {
       forceRefreshForCypress =
@@ -102,7 +90,7 @@ export const getOrRefreshGuestSession = createAsyncThunk(
       !session ||
       (typeof session?.exp === "number" && session.exp * 1000 < Date.now());
 
-    if (!shouldRefreshToken || !authConfig.guestEmbedProviderUri) {
+    if (!shouldRefreshToken) {
       return currentToken;
     }
 

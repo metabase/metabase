@@ -15,7 +15,6 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
   async (authConfig: MetabaseAuthConfig, { dispatch }) => {
     overrideRequestsForGuestEmbeds();
 
-    // Check `isGuest` to narrow the type.
     if (authConfig.isGuest && authConfig.guestEmbedProviderUri) {
       // Replaces the request token with the newly refreshed guest embed token.
       PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshGuestSessionHandler =
@@ -24,6 +23,7 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
             getOrRefreshGuestSession(authConfig),
           ).unwrap();
 
+          // The URL is templated (e.g. /api/embed/card/:entityIdentifier/params/:paramId/values or /api/embed/card/:token/query)
           if (newToken && "entityIdentifier" in config.data) {
             return merge(config, {
               data: {
