@@ -128,6 +128,18 @@
            (deftest-validate-warnings
              "(deftest ^:synchronized my-test (is (= 1 1)))")))))
 
+(deftest ^:parallel no-suggestion-for-sequential-test
+  (testing "^:sequential test gets no suggestion"
+    (is (= []
+           (deftest-validate-warnings
+             "(deftest ^:sequential my-test (is (= 1 1)))")))))
+
+(deftest ^:parallel no-suggestion-for-old-migrations-test
+  (testing "^:mb/old-migrations-test test gets no suggestion"
+    (is (= []
+           (deftest-validate-warnings
+             "(deftest ^:mb/old-migrations-test my-test (is (= 1 1)))")))))
+
 (deftest ^:parallel check-driver-keywords-test
   (testing "Make sure we keep hooks.clojure.test/driver-keywords up to date"
     (let [driver-keywords (-> (slurp ".clj-kondo/config.edn")
