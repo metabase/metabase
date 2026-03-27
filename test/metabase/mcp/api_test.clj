@@ -528,7 +528,7 @@
                                 {"mcp-session-id" session-id})]
       (is (= 200 (:status response)))
       (is (= -32602 (get-in response [:body :error :code])))
-      (is (= "Resource not found or insufficient scope"
+      (is (= "Resource not found"
              (get-in response [:body :error :message]))))))
 
 (deftest agent-api-preserves-token-scopes-test
