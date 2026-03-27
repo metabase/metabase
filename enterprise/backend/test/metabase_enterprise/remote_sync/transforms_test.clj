@@ -314,9 +314,9 @@ is_sample: false
           (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 coll-entity-id      "transforms-coll-xxxxx"
                 transform-entity-id "test-transform-xxxxxx"
-                test-files {"main" {(str "collections/transforms/transforms/transforms.yaml")
+                test-files {"main" {"collections/transforms/transforms/transforms.yaml"
                                     (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
-                                    (str "collections/transforms/transforms/test_transform.yaml")
+                                    "collections/transforms/transforms/test_transform.yaml"
                                     (test-helpers/generate-transform-yaml transform-entity-id "Test Transform" :collection-id coll-entity-id)}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 result (impl/import! (source.p/snapshot mock-source) task-id)]
@@ -336,9 +336,9 @@ is_sample: false
                 transform-entity-id "python-legacy-fmt-01x"
                 ;; Use old map format: {alias: table_id} — this is how pre-unification exports look
                 source-tables-yaml  (format "{orders: %d}" (mt/id :orders))
-                test-files {"main" {(str "collections/transforms/transforms/transforms.yaml")
+                test-files {"main" {"collections/transforms/transforms/transforms.yaml"
                                     (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
-                                    (str "collections/transforms/transforms/python_transform.yaml")
+                                    "collections/transforms/transforms/python_transform.yaml"
                                     (test-helpers/generate-python-transform-yaml transform-entity-id "Python Transform"
                                                                                  "test-data (h2)" source-tables-yaml
                                                                                  :collection-id coll-entity-id)}}
@@ -376,7 +376,7 @@ is_sample: false
                            {:name "Child Transform"
                             :collection_id coll-id
                             :entity_id "child-transform-xxxxx"}
-                           :model/Transform {root-transform-id :id root-transform-eid :entity_id}
+                           :model/Transform {root-transform-id :id}
                            {:name "Root Transform"
                             :collection_id nil
                             :entity_id "root-transform-xxxxxx"}
@@ -397,9 +397,9 @@ is_sample: false
                                                           :model_collection_id nil
                                                           :status "create"
                                                           :status_changed_at (t/offset-date-time)}]
-              (let [initial-files {"main" {(str "collections/transforms/transforms_collection/transforms_collection.yaml")
+              (let [initial-files {"main" {"collections/transforms/transforms_collection/transforms_collection.yaml"
                                            (generate-transforms-namespace-collection-yaml coll-eid "Transforms Collection")
-                                           (str "collections/transforms/transforms_collection/child_transform.yaml")
+                                           "collections/transforms/transforms_collection/child_transform.yaml"
                                            (test-helpers/generate-transform-yaml transform-eid "Child Transform" :collection-id coll-eid)}}
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)]
                 (is (some #(str/includes? % "transforms_collection") (keys (get @(:files-atom mock-source) "main"))))
@@ -454,7 +454,7 @@ is_sample: false
                                                                   :entity_id local-coll-entity-id
                                                                   :location "/"}]
               (is (t2/exists? :model/Collection :id local-coll-id))
-              (let [test-files {"main" {(str "collections/transforms/remote_transforms/remote_transforms.yaml")
+              (let [test-files {"main" {"collections/transforms/remote_transforms/remote_transforms.yaml"
                                         (generate-transforms-namespace-collection-yaml remote-coll-entity-id "Remote Transforms")}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id)]
@@ -484,9 +484,9 @@ is_sample: false
             (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform]
               (is (t2/exists? :model/Collection :id coll-id))
               (is (t2/exists? :model/Transform :id local-transform-id))
-              (let [test-files {"main" {(str "collections/transforms/transforms_collection/transforms_collection.yaml")
+              (let [test-files {"main" {"collections/transforms/transforms_collection/transforms_collection.yaml"
                                         (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms Collection")
-                                        (str "collections/transforms/transforms_collection/remote_transform.yaml")
+                                        "collections/transforms/transforms_collection/remote_transform.yaml"
                                         (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)]
                 (testing "fails with `conflict` status because local transforms will be deleted"
@@ -519,7 +519,7 @@ is_sample: false
                                                                       :collection_id local-coll-id}]
               (is (t2/exists? :model/Collection :id local-coll-id))
               (is (t2/exists? :model/Transform :id local-transform-id))
-              (let [test-files {"main" {(str "collections/transforms/remote_transforms/remote_transforms.yaml")
+              (let [test-files {"main" {"collections/transforms/remote_transforms/remote_transforms.yaml"
                                         (generate-transforms-namespace-collection-yaml remote-coll-entity-id "Remote Transforms")}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
@@ -615,7 +615,7 @@ serdes/meta:
         (mt/with-model-cleanup [:model/RemoteSyncTask]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 lib-entity-id (u/generate-nano-id)
-                test-files {"main" {(str "python_libraries/common_py.yaml")
+                test-files {"main" {"python_libraries/common_py.yaml"
                                     (generate-python-library-yaml lib-entity-id "common.py" "def shared_func():\n    return 42")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)
                 snapshot (source.p/snapshot mock-source)
@@ -679,7 +679,7 @@ serdes/meta:
                 local-entity-id (:entity_id local-library)]
             (is (t2/exists? :model/PythonLibrary :path "common.py")
                 "Local PythonLibrary should exist before import")
-            (let [test-files {"main" {(str "python_libraries/common_py.yaml")
+            (let [test-files {"main" {"python_libraries/common_py.yaml"
                                       (generate-python-library-yaml local-entity-id "common.py" "# remote version\ndef new_func():\n    pass")}}
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
                   result (impl/import! (source.p/snapshot mock-source) task-id)]
@@ -716,7 +716,7 @@ serdes/meta:
               (is (t2/exists? :model/Collection :id coll-id)
                   "Local transforms collection should exist before import")
               (let [remote-coll-entity-id (u/generate-nano-id)
-                    test-files {"main" {(str "collections/main/remote_collection/remote_collection.yaml")
+                    test-files {"main" {"collections/main/remote_collection/remote_collection.yaml"
                                         (test-helpers/generate-collection-yaml remote-coll-entity-id "Remote Collection")}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id)]
@@ -752,9 +752,9 @@ serdes/meta:
                   "Local transform should exist before import")
               (is (t2/exists? :model/TransformTag :id local-tag-id)
                   "Local tag should exist before import")
-              (let [test-files {"main" {(str "collections/transforms/remote_transforms/remote_transforms.yaml")
+              (let [test-files {"main" {"collections/transforms/remote_transforms/remote_transforms.yaml"
                                         (generate-transforms-namespace-collection-yaml remote-coll-entity-id "Remote Transforms")
-                                        (str "collections/transforms/remote_transforms/remote_transform.yaml")
+                                        "collections/transforms/remote_transforms/remote_transform.yaml"
                                         (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id remote-coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result-without-force (impl/import! (source.p/snapshot mock-source) task-id)
@@ -800,7 +800,7 @@ serdes/meta:
               (is (t2/exists? :model/Collection :id coll-id)
                   "Local transforms collection should exist before import")
               (let [remote-coll-entity-id (u/generate-nano-id)
-                    test-files {"main" {(str "collections/main/remote_collection/remote_collection.yaml")
+                    test-files {"main" {"collections/main/remote_collection/remote_collection.yaml"
                                         (test-helpers/generate-collection-yaml remote-coll-entity-id "Remote Collection")}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id)]
@@ -833,9 +833,9 @@ serdes/meta:
                   "remote-sync-transforms should be disabled initially")
               (is (t2/exists? :model/Transform :id local-transform-id)
                   "Local transform should exist before import")
-              (let [test-files {"main" {(str "collections/transforms/remote_transforms/remote_transforms.yaml")
+              (let [test-files {"main" {"collections/transforms/remote_transforms/remote_transforms.yaml"
                                         (generate-transforms-namespace-collection-yaml remote-coll-entity-id "Remote Transforms")
-                                        (str "collections/transforms/remote_transforms/remote_transform.yaml")
+                                        "collections/transforms/remote_transforms/remote_transform.yaml"
                                         (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id remote-coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
                     result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
@@ -858,12 +858,11 @@ serdes/meta:
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
                                                         :namespace collection/transforms-ns
                                                         :location "/"}
-                       :model/Transform {transform-id :id transform-eid :entity_id} {:name "Test Transform"
-                                                                                     :collection_id coll-id}
-                       :model/TransformTag {tag-id :id tag-eid :entity_id} {:name "Test Tag"
-                                                                            :built_in_type nil}]
-          (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})
-                lib-eid (:entity_id library)]
+                       :model/Transform {transform-id :id} {:name "Test Transform"
+                                                            :collection_id coll-id}
+                       :model/TransformTag {tag-id :id} {:name "Test Tag"
+                                                         :built_in_type nil}]
+          (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
             (is (t2/exists? :model/Transform :id transform-id))
             (is (t2/exists? :model/TransformTag :id tag-id))
             (is (t2/exists? :model/PythonLibrary :id (:id library)))
@@ -890,10 +889,10 @@ serdes/meta:
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
-        (mt/with-temp [:model/TransformTag {custom-tag-id :id custom-tag-eid :entity_id} {:name "Custom Tag"
-                                                                                          :built_in_type nil}
-                       :model/TransformTag {builtin-tag-id :id builtin-tag-eid :entity_id} {:name "Built-in Tag"
-                                                                                            :built_in_type "target"}]
+        (mt/with-temp [:model/TransformTag {custom-tag-id :id} {:name "Custom Tag"
+                                                                :built_in_type nil}
+                       :model/TransformTag {builtin-tag-id :id} {:name "Built-in Tag"
+                                                                 :built_in_type "target"}]
           (is (t2/exists? :model/TransformTag :id custom-tag-id))
           (is (t2/exists? :model/TransformTag :id builtin-tag-id))
           (settings/sync-transform-tracking! true)
@@ -954,8 +953,8 @@ serdes/meta:
         (mt/with-temp [:model/PythonLibrary _ {:path "common.py"
                                                :source "# builtin"
                                                :entity_id transforms-python/builtin-entity-id}
-                       :model/PythonLibrary custom-lib {:path "custom.py"
-                                                        :source "# custom"}]
+                       :model/PythonLibrary _ {:path "custom.py"
+                                               :source "# custom"}]
           (settings/sync-transform-tracking! true)
           (settings/sync-transform-tracking! false)
           (let [paths (spec/build-all-removal-paths)]

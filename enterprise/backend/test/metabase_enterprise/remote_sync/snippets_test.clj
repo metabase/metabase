@@ -283,12 +283,12 @@ is_sample: false
         (mt/with-temporary-setting-values [remote-sync-type :read-write
                                            remote-sync-enabled true]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-            (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}
+            (mt/with-temp [:model/Collection {coll-id :id}
                            {:name "Snippets Collection"
                             :namespace :snippets
                             :entity_id "snippets-coll-xxxxx"
                             :location "/"}
-                           :model/NativeQuerySnippet {snippet-id :id snippet-eid :entity_id}
+                           :model/NativeQuerySnippet {snippet-id :id}
                            {:name "Test Snippet"
                             :content "SELECT 1"
                             :collection_id coll-id
@@ -322,9 +322,9 @@ is_sample: false
           (mt/with-temporary-setting-values [remote-sync-enabled true]
             (let [coll-entity-id "snippets-coll-importx"
                   snippet-entity-id "test-snippet-importxx"
-                  test-files {"main" {(str "collections/snippets/snippets_collection/snippets_collection.yaml")
+                  test-files {"main" {"collections/snippets/snippets_collection/snippets_collection.yaml"
                                       (generate-snippets-namespace-collection-yaml coll-entity-id "Snippets Collection")
-                                      (str "collections/snippets/snippets_collection/test_snippet.yaml")
+                                      "collections/snippets/snippets_collection/test_snippet.yaml"
                                       (test-helpers/generate-snippet-yaml snippet-entity-id "Test Snippet" "SELECT 42" :collection-id coll-entity-id)}}
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
                   result (impl/import! (source.p/snapshot mock-source) task-id)]

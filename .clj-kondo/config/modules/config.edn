@@ -1091,7 +1091,8 @@
            metabase.lib.schema.validate
            metabase.lib.types.isa
            metabase.lib.util
-           metabase.lib.util.match}
+           metabase.lib.util.match
+           metabase.lib.util.unique-name-generator}
    :uses #{config
            graph
            legacy-mbql

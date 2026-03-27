@@ -997,7 +997,6 @@
       (mt/with-empty-h2-app-db!
         ;; Write YAML files using the OLD path format (entity_id_slug, cards/ subfolder)
         (let [coll-eid   "old-test-coll-xxxxxxx"
-              card-eid   "old-test-card-xxxxxxx"
               coll-dir   (io/file dump-dir "collections" (str coll-eid "_test_collection"))
               coll-yaml  {:serdes/meta [{:model "Collection" :id coll-eid :label "test_collection"}]
                           :name "Test Collection" :entity_id coll-eid :namespace nil

@@ -296,7 +296,7 @@
 
 (deftest import-collection-reference-error-test
   (testing "Import fails with 500 when collection reference is invalid"
-    (with-serialization-test-data! [coll _dash card]
+    (with-serialization-test-data! [coll _dash _card]
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
@@ -327,7 +327,7 @@
 
 (deftest import-continue-on-error-test
   (testing "Import with continue_on_error=true succeeds partially despite errors"
-    (with-serialization-test-data! [coll _dash card]
+    (with-serialization-test-data! [coll _dash _card]
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
