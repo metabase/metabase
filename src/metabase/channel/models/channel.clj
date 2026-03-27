@@ -73,9 +73,9 @@
 
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
-  {:copy      [:name :description :type :details :active]
-   :transform {:created_at (serdes/date)}
-   :default-values  {:active true}})
+  {:copy           [:name :description :type :details :active]
+   :transform      {:created_at (serdes/date)}
+   :default-values {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/ChannelTemplate                                    ;;
