@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
@@ -45,9 +45,11 @@ export const ChartTypeSidebar = ({
     }
   };
 
+  // Pinned to mount so chart type grouping stays stable while browsing (metabase#70013)
+  const initialResultRef = useRef(result);
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
-    () => getSensibleVisualizations({ result }),
-    [result],
+    () => getSensibleVisualizations({ result: initialResultRef.current }),
+    [],
   );
 
   const { selectedVisualization, updateQuestionVisualization } =
