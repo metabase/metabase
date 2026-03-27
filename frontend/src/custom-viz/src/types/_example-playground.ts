@@ -1,7 +1,5 @@
 import { defineSetting } from "../lib";
 
-import { isDate } from "../column-types";
-import { formatValue } from "../format";
 import type {
   CreateCustomVisualization,
   CustomStaticVisualizationProps,
