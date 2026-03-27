@@ -684,6 +684,7 @@ describe("scenarios - embedding hub", () => {
         cy.findByTestId("admin-layout-content")
           .findByText("Configure data permissions and enable tenants")
           .closest("button")
+          .scrollIntoView()
           .findByText("Done")
           .should("be.visible");
 
