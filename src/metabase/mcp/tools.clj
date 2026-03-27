@@ -200,8 +200,6 @@
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
-   Special-cases visualize_query (returns structuredContent with query);
-   delegates all other tools to the agent-API dispatch.
    `token-scopes` from the original MCP session are propagated to the synthetic
    agent-api request so that scope restrictions are preserved.
    Returns MCP content maps (text-content on success, error-content on failure)."
