@@ -142,7 +142,8 @@
 
 (def all-yes-permissions
   "Permissions map granting all permissions. Used for superuser context."
-  {:permission/metabot-sql-generation :yes
+  {:permission/metabot                :yes
+   :permission/metabot-sql-generation :yes
    :permission/metabot-nql            :yes
    :permission/metabot-other-tools    :yes
    :permission/metabot-model          :large})

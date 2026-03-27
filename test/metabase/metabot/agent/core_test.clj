@@ -34,9 +34,11 @@
              :fn        test-search-tool}})
 
 (defn- run-agent-loop!
-  "run-agent-loop for side effects, discarding results"
+  "run-agent-loop for side effects, discarding results.
+  Runs as admin so the base metabot permission check passes."
   [opts]
-  (reduce (fn [_ _]) nil (agent/run-agent-loop opts)))
+  (mt/as-admin
+    (reduce (fn [_ _]) nil (agent/run-agent-loop opts))))
 
 (deftest has-tool-calls-test
   (testing "detects tool calls in parts"
@@ -67,7 +69,8 @@
       (is (not (#'agent/should-continue? 0 max-iter []))))))
 
 (deftest run-agent-loop-with-mock-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/as-admin
+   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
     (testing "runs agent loop with mocked LLM returning text"
       (with-redefs [openrouter/openrouter (fn [_]
                                             (mut/mock-llm-response
@@ -131,7 +134,7 @@
                                   :profile-id :embedding_next
                                   :context    {}})))]
         ;; Should get error message
-          (is (some #(= :error (:type %)) result)))))))
+          (is (some #(= :error (:type %)) result))))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
 ;; Message building is tested via messages_test.clj
@@ -162,7 +165,8 @@
 ;; Here we test the full agent loop behavior.
 
 (deftest integration-run-agent-loop-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/as-admin
+   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
     (testing "runs full agent loop without external calls"
       (with-redefs [openrouter/openrouter (fn [_]
                                             (mut/mock-llm-response
@@ -179,7 +183,7 @@
         ;; Should have state data part (finish is handled by aisdk-line-xf, not emitted as part)
           (is (some #(and (= :data (:type %))
                           (map? (:data %)))
-                    result)))))))
+                    result))))))))
 
 ;;; Query and Chart extraction tests
 
@@ -273,7 +277,8 @@
           (mut/mock-llm-response [{:type :text :text ""}]))))))
 
 (deftest integration-search-query-chart-flow-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/as-admin
+   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
     (testing "Scenario 1: Search → Query → Chart (multi-turn happy path)"
     ;; User asks: "Show me the first 10 orders"
     ;; - Iteration 1: LLM calls search tool to find orders table
@@ -365,10 +370,11 @@
                                 :context    {}}))))))
             (testing "should complete 3 LLM iterations"
               (is (= 3 @llm-call-count)
-                  "Should have exactly 3 LLM calls (search, construct, final text)"))))))))
+                  "Should have exactly 3 LLM calls (search, construct, final text)")))))))))
 
 (deftest cumulative-usage-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/as-admin
+   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
     (testing "usage parts are cumulative across agent loop iterations"
       (let [call-count (atom 0)]
         (with-redefs [openrouter/openrouter
@@ -438,10 +444,11 @@
                      (:usage (first usages))))
               (is (= "model-b" (:model (second usages))))
               (is (= {:promptTokens 200 :completionTokens 40}
-                     (:usage (second usages)))))))))))
+                     (:usage (second usages))))))))))))
 
 (deftest run-agent-loop-retries-on-rate-limit-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/as-admin
+   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
     (testing "agent loop retries when LLM returns 429 and then succeeds"
       (let [call-count (atom 0)]
         (with-redefs [self/retry-delay-ms   (constantly 0)
@@ -462,7 +469,7 @@
                             :context    {}}))))
               "Should get the response from the successful retry")
           (is (= 2 @call-count)
-              "Should have called LLM twice (1 failure + 1 success"))))))
+              "Should have called LLM twice (1 failure + 1 success")))))))
 
 ;;; ===================== Prometheus Metrics Tests =====================
 
@@ -797,33 +804,36 @@
 ;;; Profile permission checks
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest check-profile-permission-test
-  (let [check! #'agent/check-profile-permission!]
-    (testing "sql profile blocked when sql-generation is :no"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
-            (check! :sql {:permission/metabot-sql-generation :no}))))
-    (testing "sql profile allowed when sql-generation is :yes"
-      (is (check! :sql {:permission/metabot-sql-generation :yes})))
-    (testing "nlq profile blocked when nql is :no"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
-            (check! :nlq {:permission/metabot-nql :no}))))
-    (testing "nlq profile allowed when nql is :yes"
-      (is (check! :nlq {:permission/metabot-nql :yes})))
-    (testing "transforms_codegen blocked when sql-generation is :no"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
-            (check! :transforms_codegen {:permission/metabot-sql-generation :no}))))
-    (testing "transforms_codegen allowed when sql-generation is :yes"
-      (is (check! :transforms_codegen {:permission/metabot-sql-generation :yes})))
-    (testing "document-generate-content blocked when other-tools is :no"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
-            (check! :document-generate-content {:permission/metabot-other-tools :no}))))
-    (testing "document-generate-content allowed when other-tools is :yes"
-      (is (check! :document-generate-content {:permission/metabot-other-tools :yes})))
-    (testing "internal profile has no gate — always passes"
-      (is (nil? (check! :internal {:permission/metabot-sql-generation :no
-                                   :permission/metabot-nql            :no
-                                   :permission/metabot-other-tools    :no}))))
-    (testing "slackbot profile has no gate — always passes"
-      (is (nil? (check! :slackbot {:permission/metabot-sql-generation :no
-                                   :permission/metabot-nql            :no
-                                   :permission/metabot-other-tools    :no}))))))
+(deftest check-metabot-access-test
+  (let [check! #'agent/check-metabot-access!]
+    (testing "base metabot permission"
+      (testing "metabot :no blocks any profile"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+              (check! :internal {:permission/metabot :no})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+              (check! :sql {:permission/metabot :no})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+              (check! :slackbot {:permission/metabot :no})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+              (check! :embedding_next {:permission/metabot :no}))))
+      (testing "metabot :yes allows non-gated profiles"
+        (is (nil? (check! :internal {:permission/metabot :yes})))
+        (is (nil? (check! :slackbot {:permission/metabot :yes})))
+        (is (nil? (check! :embedding_next {:permission/metabot :yes})))))
+    (testing "profile-specific permissions (with metabot :yes)"
+      (testing "sql profile"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+              (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :no})))
+        (is (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
+      (testing "nlq profile"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+              (check! :nlq {:permission/metabot :yes :permission/metabot-nql :no})))
+        (is (check! :nlq {:permission/metabot :yes :permission/metabot-nql :yes})))
+      (testing "transforms_codegen profile"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+              (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :no})))
+        (is (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
+      (testing "document-generate-content profile"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+              (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :no})))
+        (is (check! :document-generate-content {:permission/metabot :yes :permission/metabot-other-tools :yes}))))))

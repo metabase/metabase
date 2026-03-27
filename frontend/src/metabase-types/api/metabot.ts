@@ -320,7 +320,6 @@ export enum AIToolKey {
   Metabot = "permission/metabot",
   Model = "permission/metabot-model",
   NLQ = "permission/metabot-nql",
-  SemanticSearch = "permission/metabot-semantic-search",
   SQLGeneration = "permission/metabot-sql-generation",
   OtherTools = "permission/metabot-other-tools",
 }

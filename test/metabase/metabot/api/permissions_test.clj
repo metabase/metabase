@@ -5,7 +5,8 @@
    [toucan2.core :as t2]))
 
 (def ^:private all-perm-types
-  #{"permission/metabot-model"
+  #{"permission/metabot"
+    "permission/metabot-model"
     "permission/metabot-sql-generation"
     "permission/metabot-nql"
     "permission/metabot-other-tools"})
@@ -51,7 +52,7 @@
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "metabot/permissions"
-                                   [{:group_id 1 :perm_type "permission/metabot-model" :perm_value "large"}]))))
+                                   {:permissions [{:group_id 1 :perm_type "permission/metabot-model" :perm_value "large"}]}))))
     (testing "upserts permissions across multiple groups"
       (mt/with-temp [:model/PermissionsGroup {group-a :id} {:name "Group A"}
                      :model/PermissionsGroup {group-b :id} {:name "Group B"}
@@ -59,9 +60,9 @@
                                                   :perm_type  :permission/metabot-model
                                                   :perm_value :small}]
         (let [response (mt/user-http-request :crowberto :put 200 "metabot/permissions"
-                                             [{:group_id group-a :perm_type "permission/metabot-model" :perm_value "large"}
-                                              {:group_id group-a :perm_type "permission/metabot-sql-generation" :perm_value "yes"}
-                                              {:group_id group-b :perm_type "permission/metabot-nql" :perm_value "yes"}])
+                                             {:permissions [{:group_id group-a :perm_type "permission/metabot-model" :perm_value "large"}
+                                                            {:group_id group-a :perm_type "permission/metabot-sql-generation" :perm_value "yes"}
+                                                            {:group_id group-b :perm_type "permission/metabot-nql" :perm_value "yes"}]})
               perms-a  (->> (:permissions response)
                             (filter #(= (:group_id %) group-a)))
               perms-b  (->> (:permissions response)
@@ -78,7 +79,7 @@
     (testing "returns full permissions for all groups with defaults filled in"
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
         (let [response (mt/user-http-request :crowberto :put 200 "metabot/permissions"
-                                             [{:group_id group-id :perm_type "permission/metabot-nql" :perm_value "yes"}])
+                                             {:permissions [{:group_id group-id :perm_type "permission/metabot-nql" :perm_value "yes"}]})
               perms    (->> (:permissions response)
                             (filter #(= (:group_id %) group-id)))]
           ;; Should return all perm types for the group, not just the one updated

@@ -544,10 +544,15 @@
    :transforms_codegen        :permission/metabot-sql-generation
    :document-generate-content :permission/metabot-other-tools})
 
-(defn- check-profile-permission!
+(defn- check-metabot-access!
   "Throw a 403 if the user's metabot permissions do not grant access to the
-  requested profile."
+  requested profile. First checks the base metabot on/off permission, then
+  the profile-specific permission."
   [profile-id perms]
+  ;; Base metabot on/off check — blocks ALL profiles when metabot is disabled
+  (api/check (= :yes (:permission/metabot perms))
+             [403 "You do not have permission to use the AI assistant."])
+  ;; Profile-specific permission check
   (when-let [required-perm (profile-id->required-permission profile-id)]
     (api/check (= :yes (get perms required-perm))
                [403 (format "You do not have permission to use the %s assistant." (name profile-id))])))
@@ -582,7 +587,7 @@
         scopes             (if api/*is-superuser?*
                              scope/unrestricted
                              (scope/user-metabot-perms->scopes perms))
-        _                  (check-profile-permission! profile-id perms)]
+        _                  (check-metabot-access! profile-id perms)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot.agent/run-agent-loop

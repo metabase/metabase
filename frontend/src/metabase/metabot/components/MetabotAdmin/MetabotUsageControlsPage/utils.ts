@@ -16,7 +16,6 @@ import {
 export const getAIToolItems = (): Array<{ key: AIToolKey; label: string }> => {
   return [
     { key: AIToolKey.Metabot, label: t`Metabot` },
-    { key: AIToolKey.SemanticSearch, label: t`Semantic search` },
     { key: AIToolKey.SQLGeneration, label: t`SQL generation` },
     { key: AIToolKey.NLQ, label: t`NLQ` },
     { key: AIToolKey.OtherTools, label: t`Other tools` },
