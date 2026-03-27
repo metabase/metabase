@@ -521,9 +521,59 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     await this._authManager.authenticate();
   }
 
+  private async _fetchInitialGuestToken(): Promise<void> {
+    try {
+      const token = await this._callGuestTokenProvider();
+      this._updateSettings({
+        token,
+        /**
+         * Clear these so SdkIframeEmbedRoute routes via the guest token branch, not the
+         * other branches (which matches on dashboardId/questionId). This applies to the
+         * call below too.
+         */
+        dashboardId: undefined,
+        questionId: undefined,
+      });
+    } catch (error) {
+      this.sendMessage("metabase.embed.reportAuthenticationError", {
+        error:
+          error instanceof MetabaseError
+            ? error
+            : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+                url: this.properties.guestEmbedProviderUri ?? "",
+                message: error instanceof Error ? error.message : String(error),
+              }),
+      });
+      // Send settings without a token so ComponentProvider can mount and display the error.
+      this._updateSettings({
+        dashboardId: undefined,
+        questionId: undefined,
+      });
+    }
+  }
+
+  private async _refreshGuestToken(expiredToken: string): Promise<void> {
+    try {
+      const token = await this._callGuestTokenProvider(expiredToken);
+      this.sendMessage("metabase.embed.submitRefreshedGuestToken", {
+        guestToken: token,
+      });
+    } catch (error) {
+      this.sendMessage("metabase.embed.reportAuthenticationError", {
+        error:
+          error instanceof MetabaseError
+            ? error
+            : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+                url: this.properties.guestEmbedProviderUri ?? "",
+                message: error instanceof Error ? error.message : String(error),
+              }),
+      });
+    }
+  }
+
   /**
    * Handles token refresh, and the initial token fetch if no static token is provided.
-   * Unlike the SSO counterpart which lives in the plugin system (EE-only),
+   * Unlike the SSO counterpart which lives in the plugin system (AuthManager.ts),
    * guest embeds are OSS so this is implemented directly here in embed.ts.
    */
   private async _callGuestTokenProvider(
@@ -590,51 +640,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     return data.jwt;
-  }
-
-  /**
-   * Fetches the initial guest token when no static token is provided.
-   * Stores the result and sends settings to the iframe.
-   */
-  private async _fetchInitialGuestToken(): Promise<void> {
-    try {
-      const token = await this._callGuestTokenProvider();
-      this._updateSettings({ token });
-    } catch (error) {
-      this.sendMessage("metabase.embed.reportAuthenticationError", {
-        error:
-          error instanceof MetabaseError
-            ? error
-            : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
-                url: this.properties.guestEmbedProviderUri ?? "",
-                message: error instanceof Error ? error.message : String(error),
-              }),
-      });
-      // Send settings without a token so ComponentProvider can mount and display the error.
-      this._updateSettings(this.properties);
-    }
-  }
-
-  /**
-   * Called when the iframe requests a token refresh.
-   */
-  private async _refreshGuestToken(expiredToken: string): Promise<void> {
-    try {
-      const token = await this._callGuestTokenProvider(expiredToken);
-      this.sendMessage("metabase.embed.submitRefreshedGuestToken", {
-        guestToken: token,
-      });
-    } catch (error) {
-      this.sendMessage("metabase.embed.reportAuthenticationError", {
-        error:
-          error instanceof MetabaseError
-            ? error
-            : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
-                url: this.properties.guestEmbedProviderUri ?? "",
-                message: error instanceof Error ? error.message : String(error),
-              }),
-      });
-    }
   }
 }
 

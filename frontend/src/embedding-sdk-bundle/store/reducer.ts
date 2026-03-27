@@ -59,6 +59,7 @@ const initialState: SdkState = {
   metabaseInstanceVersion: null,
   token: {
     token: null,
+    rawToken: null,
     loading: false,
     error: null,
   },
@@ -79,6 +80,7 @@ export const sdk = createReducer(initialState, (builder) => {
   builder.addCase(refreshTokenAsync.fulfilled, (state, action) => {
     state.token = {
       token: action.payload,
+      rawToken: null,
       loading: false,
       error: null,
     };
@@ -160,7 +162,6 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setInitialGuestToken, (state, action) => {
-    // Store the raw JWT string
     state.token = {
       ...state.token,
       rawToken: action.payload,
@@ -175,7 +176,6 @@ export const sdk = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(refreshGuestSession.fulfilled, (state, action) => {
-    // Store the raw JWT string returned from refresh
     state.token = {
       ...state.token,
       rawToken: action.payload,
@@ -186,7 +186,6 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(refreshGuestSession.rejected, (state, action) => {
     const error = action.error;
-    console.error("Failed to refresh guest token:", error);
     state.token = {
       ...state.token,
       loading: false,

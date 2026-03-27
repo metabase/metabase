@@ -20,8 +20,6 @@ export function requestSessionTokenFromEmbedJs(options: {
 export function requestSessionTokenFromEmbedJs(options?: {
   expiredToken: string;
 }): Promise<MetabaseEmbeddingSessionToken | string> {
-  const isGuestRefresh = Boolean(options?.expiredToken);
-
   return new Promise<MetabaseEmbeddingSessionToken | string>(
     (resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -73,13 +71,15 @@ export function requestSessionTokenFromEmbedJs(options?: {
       window.addEventListener("message", handler);
 
       // Send appropriate request message based on flow
-      if (isGuestRefresh) {
+      if (options?.expiredToken) {
+        // is guest embed token refresh flow
         const guestEmbedSessionRefreshMessage: SdkIframeEmbedTagMessage = {
           type: "metabase.embed.requestGuestTokenRefresh",
-          data: { expiredToken: options!.expiredToken },
+          data: { expiredToken: options.expiredToken },
         };
         window.parent.postMessage(guestEmbedSessionRefreshMessage, "*");
       } else {
+        // SSO flow
         const requestTokenMessage: SdkIframeEmbedTagMessage = {
           type: "metabase.embed.requestSessionToken",
         };

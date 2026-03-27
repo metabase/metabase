@@ -54,6 +54,12 @@ export function useSdkIframeEmbedEventBus({
             embedHostUrl: data.embedHostUrl,
           });
         })
+
+        /**
+         * This handler is needed for the guest embed initial token flow. It also handles
+         * the refresh flow, but `request-session-token.ts` handles that too — that file
+         * covers both the SSO and the JWT refresh token flows.
+         */
         .with(
           { type: "metabase.embed.reportAuthenticationError" },
           ({ data }) => {

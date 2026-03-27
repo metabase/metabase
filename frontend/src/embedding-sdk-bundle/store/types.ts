@@ -20,7 +20,7 @@ import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
   token: MetabaseEmbeddingSessionToken | null;
-  rawToken?: string | null; // Raw JWT string for guest embeds
+  rawToken: string | null; // Raw JWT string for guest embeds token refresh
   loading: boolean;
   error: SerializedError | null;
 };

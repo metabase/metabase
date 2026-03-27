@@ -52,6 +52,7 @@ createTracker(store);
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({
     onSettingsChanged,
+    store,
   });
 
   const adjustedTheme = useMemo(
@@ -94,6 +95,7 @@ export const SdkIframeEmbedRoute = () => {
     isGuest: embedSettings.isGuest,
     metabaseInstanceUrl: embedSettings.instanceUrl,
     apiKey: embedSettings.apiKey,
+    guestEmbedProviderUri: embedSettings.guestEmbedProviderUri,
   } as MetabaseAuthConfig;
 
   return (

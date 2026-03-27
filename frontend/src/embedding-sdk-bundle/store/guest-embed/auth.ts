@@ -5,7 +5,7 @@ import { createAction } from "@reduxjs/toolkit";
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/request-session-token";
-import { isWithinIframe } from "metabase/lib/dom";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { decodeJwt } from "metabase/lib/jwt";
 import { createAsyncThunk } from "metabase/lib/redux";
 
@@ -44,14 +44,13 @@ export const refreshGuestSession = createAsyncThunk(
       );
     }
 
-    // For iframe embeds, delegate refresh to embed.js (avoids CSP)
-    if (!isWithinIframe()) {
-      throw new Error(
-        "Guest embed token refresh is only supported in iframe embeds",
-      );
+    if (isEmbeddingEajs()) {
+      return await requestSessionTokenFromEmbedJs({ expiredToken });
     }
 
-    return await requestSessionTokenFromEmbedJs({ expiredToken });
+    throw new Error(
+      "Guest embed token refresh is only supported in iframe embeds",
+    );
   },
 );
 
