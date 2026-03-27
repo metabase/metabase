@@ -1,9 +1,14 @@
-import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
+import {
+  IndexRedirect,
+  IndexRoute,
+  Redirect,
+  Route,
+  createRoutes,
+} from "react-router";
 
 import App from "metabase/App.tsx";
 import { getAccountRoutes } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
-import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
@@ -28,14 +33,11 @@ import { DashboardCopyModalConnected } from "metabase/dashboard/components/Dashb
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
-import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
-import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
-import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
-import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
+import { lazyComponent } from "metabase/lazy";
 import { trackPageView } from "metabase/lib/analytics";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -47,25 +49,75 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
-import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
-import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
-import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
-import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
-import FieldListContainer from "metabase/reference/databases/FieldListContainer";
-import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
-import TableListContainer from "metabase/reference/databases/TableListContainer";
-import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
-import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
-import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
-import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
-import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
-import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
-import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
-import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+
+// Lazily-loaded heavy route components
+const QueryBuilder = lazyComponent(
+  () => import("metabase/query_builder/containers/QueryBuilder"),
+  "QueryBuilder",
+);
+const DashboardApp = lazyComponent(
+  () => import("metabase/dashboard/containers/DashboardApp/DashboardApp"),
+  "DashboardApp",
+);
+const TableDetailPage = lazyComponent(
+  () => import("metabase/detail-view/pages/TableDetailPage"),
+  "TableDetailPage",
+);
+const DocumentPageOuter = lazyComponent(
+  () => import("metabase/documents/routes"),
+  "DocumentPageOuter",
+);
+const CommentsSidesheet = lazyComponent(
+  () => import("metabase/documents/components/CommentsSidesheet"),
+  "CommentsSidesheet",
+);
+const DatabaseDetailContainer = lazyComponent(
+  () => import("metabase/reference/databases/DatabaseDetailContainer"),
+);
+const DatabaseListContainer = lazyComponent(
+  () => import("metabase/reference/databases/DatabaseListContainer"),
+);
+const FieldDetailContainer = lazyComponent(
+  () => import("metabase/reference/databases/FieldDetailContainer"),
+);
+const FieldListContainer = lazyComponent(
+  () => import("metabase/reference/databases/FieldListContainer"),
+);
+const TableDetailContainer = lazyComponent(
+  () => import("metabase/reference/databases/TableDetailContainer"),
+);
+const TableListContainer = lazyComponent(
+  () => import("metabase/reference/databases/TableListContainer"),
+);
+const TableQuestionsContainer = lazyComponent(
+  () => import("metabase/reference/databases/TableQuestionsContainer"),
+);
+const GlossaryContainer = lazyComponent(
+  () => import("metabase/reference/glossary/GlossaryContainer"),
+  "GlossaryContainer",
+);
+const SegmentDetailContainer = lazyComponent(
+  () => import("metabase/reference/segments/SegmentDetailContainer"),
+);
+const SegmentFieldDetailContainer = lazyComponent(
+  () => import("metabase/reference/segments/SegmentFieldDetailContainer"),
+);
+const SegmentFieldListContainer = lazyComponent(
+  () => import("metabase/reference/segments/SegmentFieldListContainer"),
+);
+const SegmentListContainer = lazyComponent(
+  () => import("metabase/reference/segments/SegmentListContainer"),
+);
+const SegmentQuestionsContainer = lazyComponent(
+  () => import("metabase/reference/segments/SegmentQuestionsContainer"),
+);
+const SegmentRevisionsContainer = lazyComponent(
+  () => import("metabase/reference/segments/SegmentRevisionsContainer"),
+);
 
 import {
   CanAccessDataModel,
@@ -391,8 +443,18 @@ export const getRoutes = (store) => {
           {/* ACCOUNT */}
           {getAccountRoutes(store, IsAuthenticated)}
 
-          {/* ADMIN */}
-          {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
+          {/* ADMIN - lazy loaded */}
+          <Route
+            path="/admin"
+            component={CanAccessSettings}
+            getChildRoutes={(_partialNextState, cb) => {
+              import("metabase/admin/routes").then(({ getRoutes }) => {
+                const adminJsx = getRoutes(store, CanAccessSettings, IsAdmin);
+                const config = createRoutes(adminJsx);
+                cb(null, config[0].childRoutes || []);
+              });
+            }}
+          />
 
           {/* DATA STUDIO */}
           {getDataStudioRoutes(

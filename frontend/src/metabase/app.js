@@ -48,7 +48,6 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { ThemeProvider } from "metabase/ui";
-import registerVisualizations from "metabase/visualizations/register";
 
 import { HistoryProvider } from "./history";
 import { RouterProvider } from "./router";
@@ -103,7 +102,7 @@ function _init(reducers, getRoutes, callback) {
     </MetabaseReduxProvider>,
   );
 
-  registerVisualizations();
+  import("metabase/visualizations/register").then((m) => m.default());
 
   store.dispatch(refreshSiteSettings());
 
