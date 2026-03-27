@@ -36,6 +36,12 @@ const baseConfig = {
      * As we use SDK components in new iframe embedding, we need to import them here.
      **/
     "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.ts",
+    /**
+     * Docs snippets are loaded as raw text (asset/source) in rspack.
+     * In Jest, mock them as plain strings.
+     */
+    "^docs/embedding/sdk/snippets/(.*)$":
+      "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [

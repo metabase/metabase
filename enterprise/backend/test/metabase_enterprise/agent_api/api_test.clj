@@ -1,10 +1,8 @@
 (ns metabase-enterprise.agent-api.api-test
+  "Agent API tests that require enterprise features (JWT authentication, scopes)."
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
-   [environ.core :as env]
-   [java-time.api :as t]
-   [medley.core :as m]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -12,48 +10,36 @@
    [metabase.metabot.settings] ; for setting definitions
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.search.test-util :as search.tu]
-   [metabase.session.models.session :as session.models]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
-   [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :test-users))
+(use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(defn- current-epoch-seconds []
-  (int (/ (System/currentTimeMillis) 1000)))
-
-(defn- sign-jwt
-  "Sign a JWT with the test secret. Automatically adds `iat` claim if not present,
-   which is required for max-age validation."
-  [claims]
-  (jwt/sign (merge {:iat (current-epoch-seconds)} claims) sso.test-setup/default-jwt-secret))
-
-(defmacro with-agent-api-setup!
-  "Sets up JWT authentication for Agent API tests.
-   Reuses the SSO JWT test setup which handles premium features and settings correctly."
+(defmacro ^:private with-agent-api-setup!
+  "Sets up JWT authentication and premium features for Agent API tests."
   [& body]
   `(sso.test-setup/with-jwt-default-setup!
      (mt/with-additional-premium-features #{:agent-api :metabot-v3}
        ~@body)))
 
+(defn- current-epoch-seconds []
+  (quot (System/currentTimeMillis) 1000))
+
+(defn- sign-jwt [claims]
+  (jwt/sign (merge {:iat (current-epoch-seconds)} claims) sso.test-setup/default-jwt-secret))
+
 (defn- auth-headers
-  "Create authorization headers with a signed JWT for the given email."
-  ([]
-   (auth-headers "rasta@metabase.com"))
+  ([] (auth-headers "rasta@metabase.com"))
   ([email]
    {"authorization" (str "Bearer " (sign-jwt {:email email}))}))
 
 (defn- agent-client
-  "Helper for making authenticated agent API requests, similar to mt/user-http-request.
-   Takes a test user keyword (e.g. :rasta, :crowberto), method, expected status, endpoint,
-   and optional body for POST/PUT requests."
+  "Helper for making authenticated agent API requests using JWT."
   [user method expected-status endpoint & [body]]
   (let [email   (:username (mt/user->credentials user))
         headers (auth-headers email)]
@@ -120,28 +106,6 @@
              (client/client :get 401 "agent/v1/ping"
                             {:request-options {:headers (auth-headers "nobody@example.com")}}))))))
 
-(deftest agent-api-session-token-auth-test
-  (with-agent-api-setup!
-    (testing "Session tokens via X-Metabase-Session header authenticate successfully"
-      (let [session-key (session.models/generate-session-key)
-            _           (t2/insert! :model/Session
-                                    {:id          (session.models/generate-session-id)
-                                     :user_id     (mt/user->id :rasta)
-                                     :session_key session-key})
-            response    (client/client :get 200 "agent/v1/ping"
-                                       {:request-options {:headers {"x-metabase-session" session-key}}})]
-        (is (= {:message "pong"} response))))
-
-    (testing "Invalid session token returns 401"
-      (let [fake-session-key (str (random-uuid))
-            response         (client/client :get 401 "agent/v1/ping"
-                                            {:request-options {:headers {"x-metabase-session" fake-session-key}}})]
-        ;; Invalid session means standard middleware doesn't set metabase-user-id,
-        ;; so our middleware sees no auth and returns missing_authorization
-        (is (= {:error   "missing_authorization"
-                :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
-               response))))))
-
 (deftest agent-api-inactive-user-test
   (with-agent-api-setup!
     (testing "JWT for deactivated user returns same error as invalid token (no information disclosure)"
@@ -150,22 +114,6 @@
                 :message "Invalid or expired JWT token."}
                (client/client :get 401 "agent/v1/ping"
                               {:request-options {:headers (auth-headers email)}})))))))
-
-(deftest agent-api-expired-session-test
-  (testing "Expired sessions are rejected by the standard session middleware"
-    (with-agent-api-setup!
-      ;; Set max-session-age to 1 minute for this test
-      (with-redefs [env/env (assoc env/env :max-session-age "1")]
-        (let [session-key (session.models/generate-session-key)
-              old-time    (t/minus (t/instant) (t/minutes 2))]
-          (mt/with-temp [:model/Session _ {:user_id     (mt/user->id :rasta)
-                                           :session_key session-key
-                                           :created_at  old-time}]
-            (testing "Session older than max-session-age is rejected"
-              (is (= {:error   "missing_authorization"
-                      :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
-                     (client/client :get 401 "agent/v1/ping"
-                                    {:request-options {:headers {"x-metabase-session" session-key}}}))))))))))
 
 (deftest agent-api-user-binding-test
   (with-agent-api-setup!
@@ -391,111 +339,6 @@
                                              (t2/select-one :model/QueryExecution :executor_id user-id))]
           (is (= :agent (:context query-execution))))))))
 
-(deftest get-metric-field-values-test
-  (with-agent-api-setup!
-    (ensure-fresh-field-values! (mt/id :orders :quantity))
-    (mt/with-temp [:model/Card metric {:name          "Test Metric"
-                                       :type          :metric
-                                       :database_id   (mt/id)
-                                       :dataset_query (orders-count-query)}]
-      (testing "Returns field statistics for a field that has statistics"
-        (let [metric-details (agent-client :rasta :get 200 (str "agent/v1/metric/" (:id metric)))
-              quantity-field (m/find-first #(= (:name %) "QUANTITY") (:queryable_dimensions metric-details))]
-          (is (some? quantity-field) "Quantity field should be in queryable_dimensions")
-          (when-let [field-id (:field_id quantity-field)]
-            (is (=? {:value_metadata {:statistics   map?
-                                      :field_values sequential?}}
-                    (agent-client :rasta :get 200
-                                  (format "agent/v1/metric/%d/field/%s/values" (:id metric) field-id)))))))
-
-      (testing "Returns 404 for non-existent metric"
-        (is (= "Not found."
-               (agent-client :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
-
-      (testing "Returns 400 for field-id from wrong entity type"
-        ;; Using a table field-id (t-prefix) when querying a metric should fail
-        (is (re-find #"does not match expected prefix"
-                     (agent-client :rasta :get 400 (format "agent/v1/metric/%d/field/t123-0/values" (:id metric)))))))))
-
-(deftest construct-metric-query-test
-  (with-agent-api-setup!
-    (mt/with-temp [:model/Card metric {:name          "Test Metric"
-                                       :type          :metric
-                                       :database_id   (mt/id)
-                                       :dataset_query (orders-count-query)}]
-      (testing "Constructs a query from a metric"
-        (let [response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                     {:metric_id (:id metric)})]
-          (is (string? (:query response)) "Response should contain a query string")
-          (let [decoded (decode-query response)]
-            (is (= :mbql/query (lib/normalized-query-type decoded)))
-            (is (= (mt/id) (lib/database-id decoded))))))
-
-      (testing "Returns 404 for non-existent metric"
-        (is (= "Not found."
-               (agent-client :rasta :post 404 "agent/v1/construct-query"
-                             {:metric_id 999999})))))))
-
-(deftest construct-query-with-count-aggregation-test
-  (with-agent-api-setup!
-    (testing "Count aggregation without field_id produces a valid query"
-      (let [table-id (mt/id :orders)
-            response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                   {:table_id     table-id
-                                    :aggregations [{:function "count"}]
-                                    :limit        10})]
-        (is (string? (:query response)))
-        (let [decoded (decode-query response)]
-          (is (= 1 (count (lib/aggregations decoded)))))))
-
-    (testing "Count aggregation with field_id still works"
-      (let [table-id (mt/id :orders)
-            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
-            field-id (-> table :fields first :field_id)
-            response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                   {:table_id     table-id
-                                    :aggregations [{:function "count" :field_id field-id}]
-                                    :limit        10})]
-        (is (string? (:query response)))
-        (let [decoded (decode-query response)]
-          (is (= 1 (count (lib/aggregations decoded)))))))))
-
-(deftest construct-query-with-filters-test
-  (with-agent-api-setup!
-    (testing "Constructs a query with filters"
-      (let [table-id (mt/id :orders)
-            ;; Get table details to find a valid field_id
-            table    (agent-client :rasta :get 200 (str "agent/v1/table/" table-id))
-            field-id (-> table :fields first :field_id)
-            response (agent-client :rasta :post 200 "agent/v1/construct-query"
-                                   {:table_id table-id
-                                    :filters  [{:field_id  field-id
-                                                :operation "is-not-null"}]
-                                    :limit    10})]
-        (is (string? (:query response)))
-        (let [decoded (decode-query response)]
-          (is (seq (lib/filters decoded)) "Query should have filters"))))))
-
-(deftest get-table-details-with-measures-test
-  (with-agent-api-setup!
-    (let [measure-def (-> (lib/query (mt/metadata-provider)
-                                     (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
-                          (lib/aggregate (lib/sum (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total)))))]
-      (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
-                                                      :table_id   (mt/id :orders)
-                                                      :definition measure-def}]
-        (testing "with-measures=false (default) does not include measures"
-          (let [table (agent-client :rasta :get 200 (str "agent/v1/table/" (mt/id :orders)))]
-            (is (nil? (:measures table)))))
-
-        (testing "with-measures=true includes measures for the table"
-          (let [table (agent-client :rasta :get 200
-                                    (str "agent/v1/table/" (mt/id :orders) "?with-measures=true"))]
-            (is (sequential? (:measures table)))
-            (is (=? [{:id   measure-id
-                      :name "Total Revenue"}]
-                    (:measures table)))))))))
-
 (deftest agent-api-scope-enforcement-test
   (with-agent-api-setup!
     (let [table-id (mt/id :orders)]
@@ -545,69 +388,6 @@
                  (client/client :get 403 (str "agent/v1/table/" table-id)
                                 {:request-options {:headers headers}}))))))))
 
-(deftest combined-query-test
-  (with-agent-api-setup!
-    (testing "Returns results for a table query"
-      (let [table-id (mt/id :orders)
-            field-id (visible-field-id table-id "ID")
-            response (agent-client :rasta :post 202 "agent/v1/query"
-                                   {:table_id table-id
-                                    :order_by [{:field {:field_id field-id} :direction "asc"}]
-                                    :limit    5})]
-        (is (=? {:status             "completed"
-                 :row_count          5
-                 :continuation_token string?
-                 :data               {:cols sequential?
-                                      :rows (fn [rows] (= 5 (count rows)))}}
-                response))))
-
-    (testing "Continuation token returns next page of results"
-      (let [table-id (mt/id :orders)
-            field-id (visible-field-id table-id "ID")
-            page1    (agent-client :rasta :post 202 "agent/v1/query"
-                                   {:table_id table-id
-                                    :order_by [{:field {:field_id field-id} :direction "asc"}]
-                                    :limit    5})
-            page2    (agent-client :rasta :post 202 "agent/v1/query"
-                                   {:continuation_token (:continuation_token page1)})]
-        (is (=? {:row_count          5
-                 :continuation_token string?
-                 :data               {:rows (fn [rows] (= 5 (count rows)))}}
-                page1))
-        (is (=? {:row_count          5
-                 :continuation_token string?
-                 :data               {:rows (fn [rows] (= 5 (count rows)))}}
-                page2))
-        (is (not= (get-in page1 [:data :rows])
-                  (get-in page2 [:data :rows]))
-            "Pages should return different rows")))
-
-    (testing "No continuation_token when all rows are returned"
-      (is (=? {:status             "completed"
-               :continuation_token nil?}
-              (agent-client :rasta :post 202 "agent/v1/query"
-                            {:table_id     (mt/id :orders)
-                             :aggregations [{:function "count"}]}))))
-
-    (testing "Constraint cap limits results to 200 rows"
-      (is (=? {:status    "completed"
-               :row_count (fn [n] (<= n 200))}
-              (agent-client :rasta :post 202 "agent/v1/query"
-                            {:table_id (mt/id :orders)
-                             :limit    1000}))))))
-
-(deftest combined-query-metric-test
-  (with-agent-api-setup!
-    (mt/with-temp [:model/Card metric {:name          "Test Metric"
-                                       :type          :metric
-                                       :database_id   (mt/id)
-                                       :dataset_query (orders-count-query)}]
-      (testing "Returns results for a metric query"
-        (is (=? {:status    "completed"
-                 :row_count pos?}
-                (agent-client :rasta :post 202 "agent/v1/query"
-                              {:metric_id (:id metric)})))))))
-
 (deftest combined-query-scope-test
   (with-agent-api-setup!
     (testing "agent:query scope grants access to combined query endpoint"
@@ -634,16 +414,3 @@
                (client/client :post 403 "agent/v1/query"
                               {:request-options {:headers headers}}
                               {:table_id (mt/id :orders) :limit 1})))))))
-
-(deftest search-finds-metrics-test
-  (with-agent-api-setup!
-    (search.tu/with-new-search-if-available-otherwise-legacy
-      (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"
-                                          :type          :metric
-                                          :database_id   (mt/id)
-                                          :dataset_query (orders-count-query)}]
-        (testing "Returns metrics in search results"
-          (is (=? {:data        [{:type "metric" :name "AgentSearchTestMetric"}]
-                   :total_count 1}
-                  (agent-client :rasta :post 200 "agent/v1/search"
-                                {:term_queries ["AgentSearchTestMetric"]}))))))))

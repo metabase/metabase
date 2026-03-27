@@ -199,15 +199,12 @@
                            file module model (or defining-module "unknown") (name violation-type))
             (is (nil? violation-type)))))
       (testing ":model-exports and :model-imports reference valid models"
-        (doseq [[module module-config] config]
-          (when (set? (:model-exports module-config))
-            (doseq [model (:model-exports module-config)]
-              (testing (format "\n'%s' :model-exports %s should be a known model" module model)
-                (is (contains? known-models model)))))
-          (when (set? (:model-imports module-config))
-            (doseq [model (:model-imports module-config)]
-              (testing (format "\n'%s' :model-imports %s should be a known model" module model)
-                (is (contains? known-models model)))))))
+        (doseq [[module module-config] config
+                config-key [:model-exports :model-imports]
+                :when (set? (get module-config config-key))
+                model (get module-config config-key)]
+          (testing (format "\n'%s' %s %s should be a known model" module config-key model)
+            (is (contains? known-models model)))))
       (testing ":model-exports only lists models owned by the module"
         (doseq [[module module-config] config
                 :when                  (set? (:model-exports module-config))

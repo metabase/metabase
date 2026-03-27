@@ -262,7 +262,7 @@ export function hasLatitudeAndLongitudeColumns(cols: FieldTypeInfo[]) {
 }
 
 export const getIsPKFromTablePredicate =
-  (tableId: TableId | undefined) =>
+  (tableId: TableId | null | undefined) =>
   (column: FieldTypeInfo & { table_id?: TableId }): boolean => {
     const isPrimaryKey = isPK(column);
 

@@ -110,14 +110,17 @@
 
 (defn- deliver-agent-api-response
   "Dispatch to agent API routes and deliver response to promise.
+   For POST requests, `params` is sent as the request body.
+   For GET/DELETE requests, `params` is sent as parsed query params.
    Materializes StreamingResponse bodies in-process before delivering."
-  [result method path token-scopes body]
+  [result method path token-scopes params]
   (agent-api/routes
    (cond-> {:request-method   method
             :uri              path
             :metabase-user-id api/*current-user-id*
             :token-scopes     token-scopes}
-     body (assoc :body body))
+     (and (seq params) (= :post method))    (assoc :body params)
+     (and (seq params) (not= :post method)) (assoc :query-params params))
    (fn [{resp-body :body :as response}]
      (deliver result (if (instance? StreamingResponse resp-body)
                        (capture-streaming-response resp-body)
@@ -127,12 +130,13 @@
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
    Returns MCP content (text-content on success, error-content on failure).
+   For POST, `params` becomes the request body; for GET/DELETE, `params` becomes query-params.
 
    Propagates `token-scopes` from the original MCP request so that scope restrictions
    are preserved through the synthetic request."
-  [method path token-scopes & [body]]
+  [method path token-scopes params]
   (let [result (promise)]
-    (deliver-agent-api-response result method path token-scopes body)
+    (deliver-agent-api-response result method path token-scopes params)
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
       (cond
         ;; Already materialized from a StreamingResponse
@@ -169,17 +173,6 @@
   [path]
   (str/replace-first path #"^/api/agent" ""))
 
-(defn- invoke-agent-api-with-params
-  "Invoke an Agent API endpoint with query parameters for GET/DELETE requests.
-   Appends `params` as a query string to `path`."
-  [method path token-scopes params]
-  (if (and (seq params) (not= :post method))
-    (let [query-string (->> params
-                            (map (fn [[k v]] (str (name k) "=" (URLEncoder/encode (str v) "UTF-8"))))
-                            (str/join "&"))]
-      (invoke-agent-api method (str path "?" query-string) token-scopes))
-    (invoke-agent-api method path token-scopes (when (= :post method) params))))
-
 (defn- dispatch-via-agent-api
   "Generic dispatch for tools whose responseFormat is \"json\".
    Looks up method/path from the tool definition, interpolates path params,
@@ -191,7 +184,7 @@
         [resolved-path
          remaining-args]      (interpolate-path path arguments)
         api-path              (strip-api-prefix resolved-path)]
-    (invoke-agent-api-with-params method api-path token-scopes remaining-args)))
+    (invoke-agent-api method api-path token-scopes remaining-args)))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.

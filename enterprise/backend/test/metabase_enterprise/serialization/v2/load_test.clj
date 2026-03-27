@@ -357,6 +357,22 @@
                        :database (:id @db1d)}
                       (:definition @seg1d))))))))))
 
+(defn- pmbql-query
+  "Create a simple pMBQL query for the given database and table."
+  [db-id table-id]
+  (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+        table (lib.metadata/table metadata-provider table-id)]
+    (lib/query metadata-provider table)))
+
+(defn- pmbql-segment-definition
+  "Create a simple pMBQL segment definition with a filter."
+  [db-id table-id field-id]
+  (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+        table (lib.metadata/table metadata-provider table-id)
+        query (lib/query metadata-provider table)
+        field (lib.metadata/field metadata-provider field-id)]
+    (lib/filter query (lib/< field 18))))
+
 (defn- pmbql-measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [db-id table-id field-id]
@@ -1855,3 +1871,213 @@
                  Exception
                  #"source-only-db|not found|Failed"
                  (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))))
+
+(deftest segment-minimal-required-properties-test
+  (testing "Segment deserialized with only: entity_id, name, definition, creator_id"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "customers" :db_id (:id db))
+                field    (ts/create! :model/Field :name "age" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
+                                     :definition (pmbql-segment-definition (:id db) (:id table) (:id field))
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Segment" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name :definition :creator_id])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [segment (t2/select-one :model/Segment :name "Minors")
+                  table   (t2/select-one :model/Table :name "customers")]
+              (is (some? segment))
+              (is (= (:id table) (:table_id segment))))))))))
+
+(deftest measure-minimal-required-properties-test
+  (testing "Measure deserialized with only: entity_id, name, definition, creator_id"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "sales" :db_id (:id db))
+                field    (ts/create! :model/Field :name "amount" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
+                                     :definition (pmbql-measure-definition (:id db) (:id table) (:id field))
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Measure" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name :definition :creator_id])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [measure (t2/select-one :model/Measure :name "Total Sales")
+                  table   (t2/select-one :model/Table :name "sales")]
+              (is (some? measure))
+              (is (= (:id table) (:table_id measure))))))))))
+
+(deftest card-minimal-required-properties-test
+  (testing "Card deserialized with only: entity_id, name, display, dataset_query, visualization_settings, creator_id"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _card (ts/create! :model/Card
+                                  :collection_id nil
+                                  :creator_id    (:id user)
+                                  :name          "Example Card"
+                                  :dataset_query (pmbql-query (:id db) (:id table))
+                                  :display       :line)]
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Card" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name :display :dataset_query
+                                                     :visualization_settings :creator_id])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [card  (t2/select-one :model/Card :name "Example Card")
+                  db    (t2/select-one :model/Database :name "my-db")
+                  table (t2/select-one :model/Table :name "customers")]
+              (is (some? card))
+              (is (= (:id db) (:database_id card)))
+              (is (= (:id table) (:table_id card)))
+              (is (nil? (:source_card_id card)))
+              (is (= :query (:query_type card))))))))))
+
+(deftest transform-minimal-required-properties-test
+  (testing "Transform deserialized with only: serdes/meta, entity_id, name, source, target"
+    (mt/with-premium-features #{:transforms-basic}
+      (let [serialized (atom nil)]
+        (ts/with-dbs [source-db dest-db]
+          (ts/with-db source-db
+            (t2/delete! :model/TransformTag)
+            (let [db    (ts/create! :model/Database :name "my-db")
+                  table (ts/create! :model/Table :name "customers" :db_id (:id db))
+                  coll  (ts/create! :model/Collection :name "Transform Collection" :namespace :transforms)
+                  _transform (ts/create! :model/Transform
+                                         :name "Test Transform"
+                                         :description "A test transform"
+                                         :collection_id (:id coll)
+                                         :source {:query (pmbql-query (:id db) (:id table))
+                                                  :type "query"}
+                                         :target {:database (:id db)
+                                                  :type "table"
+                                                  :schema "public"
+                                                  :name "target_table"})]
+              (reset! serialized (into [] (serdes.extract/extract {})))))
+
+          (let [minimal (mapv (fn [entity]
+                                (if (= "Transform" (-> entity :serdes/meta last :model))
+                                  (select-keys entity [:serdes/meta :entity_id :name
+                                                       :source :target])
+                                  entity))
+                              @serialized)]
+            (ts/with-db dest-db
+              (t2/delete! :model/TransformTag)
+              (serdes.load/load-metabase! (ingestion-in-memory minimal))
+              (let [transform (t2/select-one :model/Transform :name "Test Transform")
+                    db        (t2/select-one :model/Database :name "my-db")]
+                (is (some? transform))
+                (is (= (:id db) (:source_database_id transform)))))))))))
+
+(deftest dashboard-minimal-required-properties-test
+  (testing "Dashboard deserialized with only: serdes/meta, entity_id, name, creator_id"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [_dash (ts/create! :model/Dashboard :name "Test Dashboard")]
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Dashboard" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name :creator_id])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [dashboard (t2/select-one :model/Dashboard :name "Test Dashboard")]
+              (is (some? dashboard)))))))))
+
+(deftest dashboard-with-dashcard-minimal-required-properties-test
+  (testing "DashboardCard minimal required properties: serdes/meta, entity_id, row, col, size_x, size_y"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [dash (ts/create! :model/Dashboard :name "Test Dashboard")
+                _dc  (ts/create! :model/DashboardCard :dashboard_id (:id dash))]
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (let [minimal (mapv (fn [entity]
+                              (let [model (-> entity :serdes/meta last :model)]
+                                (case model
+                                  "Dashboard" (-> (select-keys entity [:serdes/meta :entity_id :name :creator_id
+                                                                       :dashcards])
+                                                  (update :dashcards
+                                                          (fn [dcs]
+                                                            (mapv #(select-keys % [:serdes/meta :entity_id
+                                                                                   :row :col :size_x :size_y])
+                                                                  dcs))))
+                                  entity)))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [dashboard (t2/select-one :model/Dashboard :name "Test Dashboard")
+                  dashcards (t2/select :model/DashboardCard :dashboard_id (:id dashboard))]
+              (is (some? dashboard))
+              (is (= 1 (count dashcards))))))))))
+
+(deftest dashcard-series-minimal-required-properties-test
+  (testing "DashboardCardSeries minimal required properties: card_id, position"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [dash         (ts/create! :model/Dashboard :name "Test Dashboard")
+                card         (ts/create! :model/Card :name "Main Card")
+                series-card  (ts/create! :model/Card :name "Series Card")
+                dc           (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
+                _series      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dc)
+                                         :card_id (:id series-card) :position 0)]
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (let [minimal (mapv (fn [entity]
+                              (let [model (-> entity :serdes/meta last :model)]
+                                (case model
+                                  "Dashboard"     (-> (select-keys entity [:serdes/meta :entity_id :name :creator_id
+                                                                           :dashcards])
+                                                      (update :dashcards
+                                                              (fn [dcs]
+                                                                (mapv (fn [dc]
+                                                                        (-> (select-keys dc [:serdes/meta :entity_id
+                                                                                             :row :col :size_x :size_y
+                                                                                             :card_id :series])
+                                                                            (update :series
+                                                                                    (fn [ss]
+                                                                                      (mapv #(select-keys % [:card_id :position])
+                                                                                            ss)))))
+                                                                      dcs))))
+                                  entity)))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [dashboard (t2/select-one :model/Dashboard :name "Test Dashboard")
+                  dashcards (t2/select :model/DashboardCard :dashboard_id (:id dashboard))
+                  series    (t2/select :model/DashboardCardSeries :dashboardcard_id (:id (first dashcards)))]
+              (is (some? dashboard))
+              (is (= 1 (count dashcards)))
+              (is (= 1 (count series))))))))))
