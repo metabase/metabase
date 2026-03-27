@@ -39,6 +39,8 @@
 ;; Notebook / Query
 (api-scope/defscope agent-notebook-create "agent:notebook:create"
   (deferred-tru "Create notebook queries"))
+(api-scope/defscope agent-query "agent:query"
+  (deferred-tru "Construct and execute queries"))
 (api-scope/defscope agent-query-construct "agent:query:construct"
   (deferred-tru "Construct queries"))
 (api-scope/defscope agent-query-execute "agent:query:execute"
