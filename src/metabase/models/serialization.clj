@@ -420,33 +420,21 @@
   - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
     on `extract-one` and `xform-one`. There are a number of transformers, see this field for `fk` and similar.
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
+  - `:default-values`: a map like `{:field-name value}`; fields whose exported values match their defaults are omitted
+    from the output. All fields are assumed to default to `nil`; only specify non-nil defaults here.
 
   Example (search codebase for more examples):
 
   (defmethod serdes/make-spec \"ModelName\" [_model-name _opts]
-    {:copy [:name :description]
+    {:copy [:name :description :archived]
      :skip [;; please leave a comment why a field is skipped
             :internal_data]
-     :transform {:card_id (serdes/fk :model/Card)}})"
+     :transform {:card_id (serdes/fk :model/Card)}
+     :default-values {:archived false}})"
   {:arglists '([model-name opts])}
   (fn [model-name _opts] model-name))
 
 (defmethod make-spec :default [_ _] nil)
-
-(defmulti default-values
-  "Return a map of default values for serialized fields. During export, fields whose values match their defaults
-  are omitted from the output.
-
-  By default all fields are assumed to default to `nil`, so you only need to specify non-nil defaults here.
-
-  Example:
-  (defmethod serdes/default-values \"Dashboard\" [_model-name]
-    {:archived false
-     :auto_apply_filters true})"
-  {:arglists '([model-name])}
-  identity)
-
-(defmethod default-values :default [_model-name] {})
 
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
@@ -494,7 +482,7 @@
   [model-name opts instance]
   (try
     (let [spec     (make-spec model-name opts)
-          defaults (default-values model-name)]
+          defaults (or (:default-values spec) {})]
       (assert spec (str "No serialization spec defined for model " model-name))
       (-> (into {}
                 (remove (fn [[k v]] (= v (get defaults k))))

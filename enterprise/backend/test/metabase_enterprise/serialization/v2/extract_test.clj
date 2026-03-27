@@ -1072,8 +1072,8 @@
                            [{:model "Collection" :id coll-eid}])))))
       (testing "unpublished table without collection_id"
         (let [ser (ts/extract-one "Table" unpub-table-id)]
-          (testing "is_published defaults to false"
-            (is (false? (:is_published ser))))
+          (testing "is_published is omitted (default false)"
+            (is (not (contains? ser :is_published))))
           (testing "collection_id is nil"
             (is (nil? (:collection_id ser))))
           (testing "does not depend on any collection"
@@ -1081,8 +1081,8 @@
                            (serdes/dependencies ser)))))))
       (testing "regular table without publishing fields set"
         (let [ser (ts/extract-one "Table" table-id)]
-          (testing "is_published defaults to false"
-            (is (false? (:is_published ser))))
+          (testing "is_published is omitted (default false)"
+            (is (not (contains? ser :is_published))))
 
           (testing "collection_id is nil"
             (is (nil? (:collection_id ser)))))))))

@@ -16,6 +16,16 @@
 (comment
   metabase-enterprise.impersonation.model/keep-me)
 
+(defn- parse-default-value
+  "Parse a default value string into a Clojure value.
+  Only cares about boolean defaults (TRUE/FALSE/'true'/'false'); returns nil for everything else."
+  [default-value]
+  (when default-value
+    (case (u/upper-case-en default-value)
+      ("TRUE" "'TRUE'")   true
+      ("FALSE" "'FALSE'") false
+      nil)))
+
 (def ^:private datetime? #{"timestamptz"
                            "TIMESTAMP WITH TIME ZONE"
                            "timestamp"})
@@ -114,4 +124,36 @@
                                          inner-spec (serdes/make-spec (name model) nil)]]
               (testing (format "%s has %s declared as `parent-ref`" model backward-fk)
                 (is (= (serdes/parent-ref)
-                       (get-in inner-spec [:transform backward-fk])))))))))))
+                       (get-in inner-spec [:transform backward-fk]))))))
+
+          (testing ":defaults match actual DB column defaults\n"
+            (let [column-names   (set (concat (:copy spec) (keys (:transform spec))))
+                  default-values (:default-values spec)]
+              ;; Every declared default must match the actual DB column default
+              (doseq [[column-name expected-default-value] default-values
+                      :let [field-name           (u/upper-case-en (name column-name))
+                            field                (get fields field-name)
+                            actual-default-value (some-> field :default parse-default-value)]]
+                (testing (format "declared :defaults for `%s.%s` matches DB" m (name column-name))
+                  (is (some? field)
+                      (format "Column %s not found in table" (name column-name)))
+                  (is (= expected-default-value actual-default-value)
+                      (format "Declared default for %s.%s is %s but DB default is %s (raw: %s)"
+                              m
+                              (name column-name)
+                              (pr-str expected-default-value)
+                              (pr-str actual-default-value)
+                              (pr-str (:default field))))))
+              ;; Every non-nil DB column default for a serialized field should be declared
+              (doseq [[field-name field] fields
+                      :let [column-name          (keyword (u/lower-case-en field-name))
+                            actual-default-value (some-> field :default parse-default-value)]
+                      :when (and (some? actual-default-value)
+                                 (contains? column-names column-name))]
+                (testing (format "DB default for `%s.%s` should be in :defaults" m (name column-name))
+                  (is (contains? default-values column-name)
+                      (format "DB default for %s.%s is %s (raw: %s) but is not declared in :defaults"
+                              m
+                              (name column-name)
+                              (pr-str actual-default-value)
+                              (pr-str (:default field)))))))))))))

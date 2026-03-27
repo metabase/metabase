@@ -218,10 +218,8 @@
    :transform {:created_at (serdes/date)
                :table_id (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import import-measure-definition}}})
-
-(defmethod serdes/default-values "Measure" [_model-name]
-  {:archived false})
+               :definition {:export serdes/export-mbql :import import-measure-definition}}
+   :default-values {:archived false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

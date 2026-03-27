@@ -5,9 +5,7 @@ db_id: test-data (h2)
 schema: PUBLIC
 entity_type: entity/GenericTable
 active: true
-is_upload: false
 field_order: database
-show_in_getting_started: false
 initial_sync_status: complete
 serdes/meta:
 - id: test-data (h2)
@@ -17,4 +15,4 @@ serdes/meta:
 - id: VENUES
   model: Table
 data_authority: unconfigured
-is_published: false
+data_layer: internal

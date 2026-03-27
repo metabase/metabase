@@ -454,10 +454,8 @@
                :parameter_mappings     {:export serdes/export-parameter-mappings
                                         :import serdes/import-parameter-mappings}
                :visualization_settings {:export serdes/export-visualization-settings
-                                        :import serdes/import-visualization-settings}}})
-
-(defmethod serdes/default-values "Action" [_model-name]
-  {:archived false})
+                                        :import serdes/import-visualization-settings}}
+   :default-values {:archived false}})
 
 (defmethod serdes/dependencies "Action" [action]
   (set
