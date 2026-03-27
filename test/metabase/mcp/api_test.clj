@@ -347,19 +347,35 @@
       (is (true? (:isError result)))
       (is (str/includes? (:text (first (:content result))) "Missing required path parameter")))))
 
-(deftest tools-list-defs-inlined-test
-  (testing "tools with $ref in inputSchema have $defs inlined"
+(deftest tools-list-no-refs-test
+  (testing "tool inputSchemas have no $ref, no $defs, and root type is always object"
     (let [tools (mcp.tools/list-tools nil)]
       (doseq [tool tools]
-        (let [schema (:inputSchema tool)
-              refs   (into #{} (map second) (re-seq #"#/\$defs/([A-Za-z0-9._-]+)" (pr-str schema)))]
-          (when (seq refs)
-            (testing (str (:name tool) " has $defs for all $ref targets")
-              (is (map? (:$defs schema))
-                  (str (:name tool) " is missing $defs"))
-              (doseq [def-name refs]
-                (is (contains? (:$defs schema) def-name)
-                    (str (:name tool) " missing def: " def-name))))))))))
+        (when-let [schema (:inputSchema tool)]
+          (let [as-str (pr-str schema)]
+            (testing (:name tool)
+              (is (not (re-find #"\$ref" as-str))
+                  (str (:name tool) " should have no $ref"))
+              (is (not (contains? schema :$defs))
+                  (str (:name tool) " should have no $defs"))
+              (is (= "object" (:type schema))
+                  (str (:name tool) " root type should be object")))))))))
+
+(deftest tools-call-get-table-query-params-test
+  (testing "get_table passes query params correctly (with-fields default true)"
+    (let [result (mt/with-current-user (mt/user->id :crowberto)
+                   (mcp.tools/call-tool nil "get_table" {:id (mt/id :orders)}))]
+      (is (not (:isError result)))
+      (let [table-data (json/decode+kw (:text (first (:content result))))]
+        (is (seq (:fields table-data))
+            "with-fields defaults to true, so fields should be present"))))
+  (testing "get_table with with-fields=false omits fields"
+    (let [result (mt/with-current-user (mt/user->id :crowberto)
+                   (mcp.tools/call-tool nil "get_table" {:id (mt/id :orders) :with-fields false}))]
+      (is (not (:isError result)))
+      (let [table-data (json/decode+kw (:text (first (:content result))))]
+        (is (empty? (:fields table-data))
+            "with-fields=false should return no fields")))))
 
 (deftest tools-call-execute-query-test
   (testing "execute_query returns a streaming response captured as MCP text content"
@@ -488,16 +504,16 @@
       (let [result (mt/with-current-user (mt/user->id :crowberto)
                      ;; Bypass the MCP scope check by calling invoke-agent-api directly
                      ;; with scopes that don't match the endpoint's required scope (agent:table:read)
-                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:search"}))]
+                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:search"} nil))]
         (is (=? {:isError true} result)
             "Agent API should reject when token scopes don't include the required scope")))
     (testing "matching scopes are accepted by Agent API"
       (let [result (mt/with-current-user (mt/user->id :crowberto)
-                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:table:read"}))]
+                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{"agent:table:read"} nil))]
         (is (not (:isError result))
             "Agent API should accept when token scopes include the required scope")))
     (testing "unrestricted scopes are accepted by Agent API"
       (let [result (mt/with-current-user (mt/user->id :crowberto)
-                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted}))]
+                     (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted} nil))]
         (is (not (:isError result))
             "Agent API should accept unrestricted scopes")))))

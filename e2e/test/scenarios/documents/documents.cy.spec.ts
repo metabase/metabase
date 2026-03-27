@@ -1849,10 +1849,9 @@ describe("documents", () => {
       cy.intercept("GET", "/api/document/*").as("documentReload");
       cy.findByTestId("document-history-list")
         .findByText(/created this/)
-        .parent()
-        .within(() => {
-          cy.findByTestId("question-revert-button").click();
-        });
+        .closest('[data-testid="revision-history-event"]')
+        .findByTestId("question-revert-button")
+        .click();
       cy.wait(["@revert", "@documentReload"]);
 
       cy.log("Verify document was reverted");

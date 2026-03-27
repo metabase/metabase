@@ -226,7 +226,10 @@
             [:context ::metabot.context/context]
             [:conversation_id ms/UUIDString]
             [:history [:maybe ::metabot.schema/messages]]
-            [:state :map]
+            [:state [:map
+                     [:queries {:optional true} [:map-of :string :any]]
+                     [:charts {:optional true} [:map-of :string :any]]
+                     [:chart-configs {:optional true} [:map-of :string :any]]]]
             [:debug {:optional true} [:maybe :boolean]]]]
   (metabot.context/log body :llm.log/fe->be)
   (streaming-request body))

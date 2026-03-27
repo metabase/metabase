@@ -4,7 +4,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
@@ -36,34 +35,6 @@
     (generate-manifest)
     @manifest-delay))
 
-(defn- collect-refs
-  "Walk a JSON Schema and return a set of def names referenced via $ref."
-  [schema]
-  (let [refs (volatile! #{})]
-    (walk/postwalk
-     (fn [x]
-       (when-let [ref (and (map? x) (:$ref x))]
-         (when-let [[_ def-name] (re-matches #"#/\$defs/(.+)" ref)]
-           (vswap! refs conj def-name)))
-       x)
-     schema)
-    @refs))
-
-(defn- referenced-defs
-  "Return the subset of `all-defs` transitively referenced from `schema`."
-  [schema all-defs]
-  (loop [to-visit (collect-refs schema)
-         visited  #{}
-         result   {}]
-    (if-let [def-name (first to-visit)]
-      (if (visited def-name)
-        (recur (disj to-visit def-name) visited result)
-        (let [def-schema (get all-defs def-name)]
-          (recur (into (disj to-visit def-name) (when def-schema (collect-refs def-schema)))
-                 (conj visited def-name)
-                 (cond-> result def-schema (assoc def-name def-schema)))))
-      result)))
-
 (defn- scope-matches?
   "Does `token-scopes` grant access to a tool with the given `tool-scope`?
    - nil token-scopes → always matches (internal callers)
@@ -84,24 +55,15 @@
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
-   Inlines referenced `$defs` into each tool's `inputSchema` so that `$ref` pointers resolve.
    When `token-scopes` is provided, only tools whose scope matches are included."
   [token-scopes]
-  (let [{:keys [tools $defs]} (manifest)]
+  (let [{:keys [tools]} (manifest)]
     (into []
           (comp (filter #(scope-matches? token-scopes (:scope %)))
                 (map (fn [tool]
-                       (let [input (:inputSchema tool)
-                             used  (when (and (seq $defs) input)
-                                     (referenced-defs input $defs))]
-                         (cond-> {:name        (:name tool)
-                                  :description (:description tool)
-                                  :inputSchema (cond-> input
-                                                 ;; the root object of an MCP tool inputSchema MUST be an
-                                                 ;; "object" malli.json-schema rightly doesn't set type: "object"
-                                                 ;; on a :or schema.
-                                                 (not (:type input)) (assoc :type "object"))}
-                           (seq used) (update :inputSchema assoc :$defs used))))))
+                       {:name        (:name tool)
+                        :description (:description tool)
+                        :inputSchema (:inputSchema tool)})))
           tools)))
 
 (defn- build-tool-index
@@ -148,14 +110,17 @@
 
 (defn- deliver-agent-api-response
   "Dispatch to agent API routes and deliver response to promise.
+   For POST requests, `params` is sent as the request body.
+   For GET/DELETE requests, `params` is sent as parsed query params.
    Materializes StreamingResponse bodies in-process before delivering."
-  [result method path token-scopes body]
+  [result method path token-scopes params]
   (agent-api/routes
    (cond-> {:request-method   method
             :uri              path
             :metabase-user-id api/*current-user-id*
             :token-scopes     token-scopes}
-     body (assoc :body body))
+     (and (seq params) (= :post method))    (assoc :body params)
+     (and (seq params) (not= :post method)) (assoc :query-params params))
    (fn [{resp-body :body :as response}]
      (deliver result (if (instance? StreamingResponse resp-body)
                        (capture-streaming-response resp-body)
@@ -165,12 +130,13 @@
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
    Returns MCP content (text-content on success, error-content on failure).
+   For POST, `params` becomes the request body; for GET/DELETE, `params` becomes query-params.
 
    Propagates `token-scopes` from the original MCP request so that scope restrictions
    are preserved through the synthetic request."
-  [method path token-scopes & [body]]
+  [method path token-scopes params]
   (let [result (promise)]
-    (deliver-agent-api-response result method path token-scopes body)
+    (deliver-agent-api-response result method path token-scopes params)
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
       (cond
         ;; Already materialized from a StreamingResponse
@@ -207,17 +173,6 @@
   [path]
   (str/replace-first path #"^/api/agent" ""))
 
-(defn- invoke-agent-api-with-params
-  "Invoke an Agent API endpoint with query parameters for GET/DELETE requests.
-   Appends `params` as a query string to `path`."
-  [method path token-scopes params]
-  (if (and (seq params) (not= :post method))
-    (let [query-string (->> params
-                            (map (fn [[k v]] (str (name k) "=" (URLEncoder/encode (str v) "UTF-8"))))
-                            (str/join "&"))]
-      (invoke-agent-api method (str path "?" query-string) token-scopes))
-    (invoke-agent-api method path token-scopes (when (= :post method) params))))
-
 (defn- dispatch-via-agent-api
   "Generic dispatch for tools whose responseFormat is \"json\".
    Looks up method/path from the tool definition, interpolates path params,
@@ -229,7 +184,7 @@
         [resolved-path
          remaining-args]      (interpolate-path path arguments)
         api-path              (strip-api-prefix resolved-path)]
-    (invoke-agent-api-with-params method api-path token-scopes remaining-args)))
+    (invoke-agent-api method api-path token-scopes remaining-args)))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.

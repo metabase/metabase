@@ -51,7 +51,10 @@
   "Return `color` if it looks like a safe CSS color value (hex or named color),
    otherwise return the default brand color. Prevents CSS injection via `h/raw` interpolation."
   [color]
-  (if (and (string? color) (re-matches #"#[0-9a-fA-F]{3,8}|[a-zA-Z]+" color))
+  (if (and (string? color)
+           (or (re-matches #"[a-zA-Z]+" color)
+               ;; 3-8 hex chars is permissive (valid lengths are 3,4,6,8) but no injection risk
+               (re-matches #"#[0-9a-fA-F]{3,8}" color)))
     color
     default-brand-color))
 
@@ -82,7 +85,7 @@
        [:head
         [:meta {:charset "UTF-8"}]
         [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
-        [:title "Authorize " client-name]
+        [:title "Authorize " (or client-name "Unknown Application")]
         [:style {:nonce nonce} (h/raw
                                 (str
                                  (font-face-css font-family)
@@ -114,7 +117,7 @@
             (h/raw svg)
             [:img {:src logo-url :alt "Logo" :height "32"}])]
          [:h1 "Authorize " (or client-name "Unknown Application") "?"]
-         [:p.client-id client-id]
+         (when client-id [:p.client-id client-id])
          [:p.subtitle "This MCP client is requesting to be authorized. If you approve, it will be able to access resources from "
           [:strong (appearance/application-name)] " on your behalf."]
          [:form {:method "POST" :action "/oauth/authorize/decision"}

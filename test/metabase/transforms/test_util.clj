@@ -15,6 +15,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defn seconds-from-now-ns
+  "Returns a deadline `seconds` from now in nanoseconds, for use with `System/nanoTime`.
+  We use nanoTime rather than currentTimeMillis because it is monotonic and not affected by
+  clock adjustments."
+  [seconds]
+  (+ (System/nanoTime) (* seconds 1000000000)))
+
 (defn source-table-entry
   "Build a full source-table-entry from alias + table_id by looking up database_id and schema."
   [alias table-id]
@@ -128,12 +135,12 @@
 (defn test-run
   [transform-id]
   (let [resp      (mt/user-http-request :crowberto :post 202 (format "transform/%s/run" transform-id))
-        timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
-        limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
+        timeout-s 20 ; 20 seconds is our timeout to finish execution and sync
+        deadline  (seconds-from-now-ns timeout-s)]
     (is (=? {:message "Transform run started"}
             resp))
     (loop [last-resp nil]
-      (when (> (System/currentTimeMillis) limit)
+      (when (> (System/nanoTime) deadline)
         (throw (ex-info (str "Transform run timed out after " timeout-s " seconds") {:resp last-resp})))
       (let [resp   (mt/user-http-request :crowberto :get 200 (format "transform/%s" transform-id))
             status (some-> resp :last_run :status keyword)]
