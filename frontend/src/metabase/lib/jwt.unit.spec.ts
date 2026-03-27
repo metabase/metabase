@@ -54,7 +54,7 @@ describe("extractResourceIdFromJwtToken", () => {
       resource: { other: "value" },
     });
 
-    expect(extractResourceIdFromJwtToken(token)).toBeUndefined();
+    expect(extractResourceIdFromJwtToken(token)).toBeNull();
   });
 
   it("should return null for invalid base64 payload", () => {
