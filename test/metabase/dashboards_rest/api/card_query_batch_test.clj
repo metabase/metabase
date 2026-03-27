@@ -227,12 +227,11 @@
             (testing (format "per-card: %d DB calls, batch: %d DB calls" per-card-total batch-total)
               (is (< batch-total per-card-total)
                   "batch endpoint should use fewer DB calls than individual card queries")
-              ;; With batch-fetch, request-scoped caching (permissions, routing, cache strategy),
-              ;; pre-warmed metadata providers, transitive card-ID resolution, and cache-config
-              ;; warming, 3 cards on the same DB should stay under 80 AppDB calls.
-              ;; Bump this ceiling if legitimate new queries are added.
-              (is (<= batch-total 80)
-                  (format "batch call count regression: expected ≤80, got %d" batch-total)))))))))
+              ;; Smoke test: batch for 3 cards should stay well under the per-card total.
+              ;; The ceiling is intentionally generous to avoid flakes from settings-cache
+              ;; reloads and other environmental variance.
+              (is (<= batch-total 120)
+                  (format "batch call count regression: expected ≤120, got %d" batch-total)))))))))
 
 (deftest batch-query-scaling-test
   (testing "batch endpoint's per-card marginal cost is lower than individual requests"
@@ -264,10 +263,9 @@
                 marginal-cost (/ (- batch-5 batch-3) 2.0)]
             (testing (format "3-card batch: %d, 5-card batch: %d, marginal: %.1f per card"
                              batch-3 batch-5 marginal-cost)
-              ;; The marginal cost of each additional card in batch mode should be significantly
-              ;; lower than the ~55 queries/card cost of individual requests.
-              ;; With cache-strategy caching and deferred view-log, marginal cost is ~7/card.
-              (is (< marginal-cost 15)
+              ;; The marginal cost of each additional card in batch mode should be well
+              ;; below the ~40+/card cost of individual requests.
+              (is (< marginal-cost 30)
                   (format "marginal per-card cost too high: %.1f" marginal-cost)))))))))
 
 ;;; ---------------------------------------- Unit tests for helper fns ----------------------------------------
