@@ -204,12 +204,18 @@
     (catch Throwable e
       (raise e))))
 
-(defn- image-content-type
-  "Return the MIME content type for an image file, or nil if not a recognized image."
+(defn- asset-content-type
+  "Return the MIME content type for an allowed asset file, or nil if not recognized.
+   Allows image files and JSON files (for locale translations)."
   [^String path]
-  (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
-    (when (and ct (str/starts-with? ct "image/"))
-      ct)))
+  (cond
+    (str/ends-with? path ".json")
+    "application/json"
+
+    :else
+    (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
+      (when (and ct (str/starts-with? ct "image/"))
+        ct))))
 
 (defn- validate-asset-path
   "Validate that an asset path is a simple filename (no directory traversal).
@@ -238,9 +244,9 @@
   (check-custom-viz-enabled)
   (try
     (let [asset-path   (validate-asset-path path)
-          content-type (image-content-type asset-path)]
+          content-type (asset-content-type asset-path)]
       (when-not content-type
-        (throw (ex-info "Only image assets are served" {:status-code 404})))
+        (throw (ex-info "Unsupported asset type" {:status-code 404})))
       (let [_plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
             dev?    (contains? @dev-bundle-urls id)
             bytes   (cache/resolve-asset id asset-path)]
