@@ -481,11 +481,10 @@
   - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
   [model-name opts instance]
   (try
-    (let [spec     (make-spec model-name opts)
-          defaults (or (:default-values spec) {})]
+    (let [spec (make-spec model-name opts)]
       (assert spec (str "No serialization spec defined for model " model-name))
       (-> (into {}
-                (remove (fn [[k v]] (= v (get defaults k))))
+                (remove (fn [[k v]] (= v (get-in spec [:default-values k]))))
                 (select-keys instance (:copy spec)))
           ;; won't assoc if `generate-path` returned `nil`
           (m/assoc-some :serdes/meta (generate-path model-name instance))
@@ -497,7 +496,7 @@
                             f-context (:export-with-context transform)
                             res       (if f (f input) (f-context instance k input))]
                       :when (and (not= res ::skip)
-                                 (not= res (get defaults export-k)))]
+                                 (not= res (get-in spec [:default-values export-k])))]
                   (do
                     (when-not (contains? instance k)
                       (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)

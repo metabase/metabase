@@ -5,8 +5,7 @@ creator_id: ann@heart.band
 default: false
 entity_id: jqbQYdaqb_vXFlZnjvshP
 events:
-- archived: false
-  created_at: '2024-08-28T14:31:56.942571Z'
+- created_at: '2024-08-28T14:31:56.942571Z'
   creator_id: ann@heart.band
   icon: star
   name: First Event

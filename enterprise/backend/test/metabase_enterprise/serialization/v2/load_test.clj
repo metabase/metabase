@@ -887,7 +887,7 @@
                                                               [:timezone                     :string]
                                                               [:time_matters                 :boolean]
                                                               [:name                         :string]
-                                                              [:archived                     :boolean]
+                                                              [:archived {:optional true}    :boolean]
                                                               [:description {:optional true} [:maybe :string]]
                                                               [:creator_id                   :string]
                                                               [:created_at                   :string]
