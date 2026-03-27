@@ -604,7 +604,7 @@
    :examples [["./bin/mage -crisptrutski-ci-retry" "Watch current branch's PR"]
               ["./bin/mage -crisptrutski-ci-retry 12345" "Watch PR #12345"]
               ["./bin/mage -crisptrutski-ci-retry -s" "Include failing test names and trunk links"]]
-   :options [["-s" "--summarize-failures" "Show failing test names and trunk links on final failure (fetches full job logs, may be slow)"]]
+   :options [["-s" "--summarize-failures" "Show failing test names and trunk links (fetches full job logs on each failed attempt, may be slow)"]]
    :arg-schema [:or [:tuple] [:tuple [:string {:name "pr-number"}]]]
    :task (task! (ci-retry/ci-retry! parsed))}
 
