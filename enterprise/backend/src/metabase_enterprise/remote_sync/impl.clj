@@ -243,6 +243,7 @@
               last-imported-version (remote-sync.task/last-version)
               first-import? (nil? last-imported-version)
               path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
+                            ;; python-libraries is the old name for python_libraries, support both for backwards compatibility
                             #"transforms/.*" #"python[_-]libraries/.*" #"snippets/.*"]
               base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
               has-transforms? (snapshot-has-transforms? base-ingestable)

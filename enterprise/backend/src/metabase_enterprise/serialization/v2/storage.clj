@@ -3,7 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :refer [spit-yaml!]]
-   [metabase.lib.util.unique-name-generator :as unique-name-generator]
+   [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -42,7 +42,7 @@
       (let [{:keys [label key]} (first remaining)
             slug (slugify-name label)
             gen  (or (get @generators parent-key)
-                     (let [g (unique-name-generator/non-truncating-unique-name-generator)]
+                     (let [g (lib/non-truncating-unique-name-generator)]
                        (swap! generators assoc parent-key g)
                        g))
             unique-name (gen key slug)]
