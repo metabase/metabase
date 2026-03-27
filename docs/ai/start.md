@@ -21,3 +21,7 @@ Use your own API key to generate SQL from natural language on self-hosted Metaba
 ## [Agent API](./agent-api.md)
 
 A REST API for building headless, agentic BI applications on top of Metabase's semantic layer.
+
+## [Metabot in Slack](./metabot-slack.md)
+
+Chat with Metabot directly in Slack — ask questions, get charts, and manage subscriptions without leaving Slack.
