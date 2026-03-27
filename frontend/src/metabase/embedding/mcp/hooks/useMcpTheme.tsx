@@ -1,5 +1,7 @@
-import type { MetabaseTheme } from "embedding-sdk-package";
-import type { MetabaseColor } from "metabase/embedding-sdk/theme";
+import type {
+  MetabaseColor,
+  MetabaseTheme,
+} from "metabase/embedding-sdk/theme";
 import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
 
 import { resolveConcreteColor } from "../utils/resolveConcreteColor";
