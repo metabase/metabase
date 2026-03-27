@@ -36,10 +36,13 @@ const ChartSettingsWidgetList = ({
         <div key={`group-${groupIndex}`}>
           {group && (
             <Badge
-              mb="1.5rem"
-              ml="1.5rem"
+              mb="lg"
+              ml="lg"
+              fz="0.75rem"
+              px="0.5rem"
               tt="none"
               radius="xs"
+              size="lg"
               c="text-primary"
             >
               {group}
@@ -53,7 +56,9 @@ const ChartSettingsWidgetList = ({
                 {...extraWidgetProps}
               />
             ))}
-            {!lastGroup && <ChartSettingsWidgetListDivider />}
+            <ChartSettingsWidgetListDivider
+              style={lastGroup ? { marginBottom: 0 } : undefined}
+            />
           </div>
         </div>
       );
