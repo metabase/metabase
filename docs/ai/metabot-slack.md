@@ -43,7 +43,7 @@ To chat with Metabot, people will need to link their Slack account to their Meta
 
 ## Chatting with Metabot in Slack
 
-- **DM Metabot** for private conversations with your data. No @mention needed.
+- **Message Metabot directly** for private conversations with your data. No @mention needed.
 - **@Metabot in a channel** so your team can see the question and answer. Metabot only responds to messages that @mention it in channels.
 - **Add Metabot as an AI app** in Slack's sidebar for quick access.
 
