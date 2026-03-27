@@ -14,7 +14,7 @@ on:
         description: "Maximum number of Claude turns"
         required: false
         type: number
-        default: 50
+        default: 75
 
 jobs:
   resolve-conflicts:
@@ -136,7 +136,7 @@ jobs:
           # TODO: get a dedicated API key, sharing repro bot's key for now
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_BACKPORT_FIX }}
           model: "claude-sonnet-4-20250514"
-          max_turns: "${{ github.event.inputs.max_turns || '50' }}"
+          max_turns: "${{ github.event.inputs.max_turns || '75' }}"
           allowed_tools: "Read,Edit,Write,Bash(git:*),Bash(grep:*),Bash(find:*),Bash(ls:*),Bash(cat:*),Bash(clojure:*),Bash(${{ steps.pkg.outputs.mgr }} run type-check-pure:*),Bash(${{ steps.pkg.outputs.mgr }} run lint-eslint:*),Bash(./bin/mage cljfmt:*),Glob,Grep"
           prompt: |
             You are resolving git cherry-pick merge conflicts for a Metabase backport PR.
@@ -201,8 +201,61 @@ jobs:
 
             IMPORTANT: Do not skip any conflicted files. Every conflict marker must be resolved.
 
+      - name: Check for max turns exceeded
+        if: always() && steps.claude.outcome != 'skipped'
+        id: check-failure
+        run: |
+          if [ -f "${{ steps.claude.outputs.execution_file }}" ]; then
+            SUBTYPE=$(jq -r '.[] | select(.type == "result") | .subtype' "${{ steps.claude.outputs.execution_file }}" | tail -1)
+            if [ "$SUBTYPE" = "error_max_turns" ]; then
+              echo "max_turns_exceeded=true" >> $GITHUB_OUTPUT
+            else
+              echo "max_turns_exceeded=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "max_turns_exceeded=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get commit details
+        if: always() && steps.claude.outcome == 'success' && steps.check-failure.outputs.max_turns_exceeded != 'true'
+        id: commit-info
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          FILES=$(git diff --name-only HEAD~1)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Comment on PR (success)
-        if: always() && steps.claude.outcome == 'success'
+        if: always() && steps.claude.outcome == 'success' && steps.check-failure.outputs.max_turns_exceeded != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            const sha = '${{ steps.commit-info.outputs.sha }}';
+            const changedFiles = `${{ steps.commit-info.outputs.changed_files }}`.trim().split('\n').map(f => `- \`${f}\``).join('\n');
+            await github.rest.issues.createComment({
+              issue_number: ${{ steps.pr.outputs.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: [
+                '🤖 Backport conflicts have been automatically resolved and force-pushed.',
+                '',
+                `**Commit:** [\`${sha.substring(0, 10)}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha})`,
+                '',
+                '<details>',
+                '<summary>Changed files</summary>',
+                '',
+                changedFiles,
+                '',
+                '</details>',
+                '',
+                'Please review the changes to make sure the resolution is correct before merging.',
+              ].join('\n')
+            });
+
+      - name: Comment on PR (max turns exceeded)
+        if: always() && steps.check-failure.outputs.max_turns_exceeded == 'true'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -212,14 +265,16 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: [
-                '🤖 Backport conflicts have been automatically resolved and force-pushed.',
+                '🤖 Auto-resolution of backport conflicts stopped because Claude reached the maximum number of turns (${{ github.event.inputs.max_turns || '75' }}).',
                 '',
-                'Please review the changes to make sure the resolution is correct before merging.',
+                'The conflicts may be too complex for automatic resolution, or Claude needed more turns to finish.',
+                '',
+                'You can try again with more turns by manually running the [resolve-backport-conflicts workflow](https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/actions/workflows/resolve-backport-conflicts.yml) with a higher `max_turns` value, or resolve the conflicts manually by checking out the branch and running `./backport.sh`.',
               ].join('\n')
             });
 
       - name: Comment on PR (failure)
-        if: always() && steps.claude.outcome == 'failure'
+        if: always() && steps.claude.outcome == 'failure' && steps.check-failure.outputs.max_turns_exceeded != 'true'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
