@@ -4,10 +4,13 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -92,9 +95,9 @@
       nil)))
 
 (defn- resolve-table-link
-  "Resolve a metabase://table/{id} link to a table page URL.
-  Note: This differs from ai-service (which links to /question#... by fetching database_id).
-  We avoid a DB lookup during streaming by linking directly to the table."
+  "Resolve a metabase://table/{id} link to an ad-hoc question URL.
+  Looks up the table's database_id and generates a /question#<base64> URL
+  with a query using that table as the source table."
   [table-id]
   (let [parsed-id (cond
                     (int? table-id) table-id
@@ -105,7 +108,14 @@
       (do
         (log/warn "Invalid table id for link resolution" {:table-id table-id})
         nil)
-      (str "/table/" parsed-id))))
+      (if-let [db-id (t2/select-one-fn :db_id :model/Table :id parsed-id)]
+        (let [mp    (lib.metadata.jvm/application-database-metadata-provider db-id)
+              table (lib.metadata/table mp parsed-id)
+              query (lib/query mp table)]
+          (str "/question#" (query->url-hash query)))
+        (do
+          (log/warn "Table not found for link resolution" {:table-id parsed-id})
+          nil)))))
 
 ;;; Main Link Resolution
 
