@@ -9,6 +9,7 @@
   then we can use the information on the tables to track information about the embedding client,
   and TODO: send it out in `summarize-execution`."
   (:require
+   [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -56,14 +57,34 @@
   (or (= client embedding-sdk-client)
       (= client embedding-iframe-client)))
 
+(def my-requests (atom []))
+
+(def route-client-mapping
+  [["/api/public/" "public"]
+   ["/api/embed/" "guest-embed"]
+   ; TODO Is this the client value that we want?
+   ["/api/preview-embed/" "guest-embed"]
+   ["/api/metabot/" "metabot"]
+   ["/api/agent/" "agent-api"]])
+
+(defn- derived-client
+  [{:keys [uri metabase-client-header]}]
+  (let [route-client (first (keep (fn [[prefix client]]
+                                    (when (str/starts-with? (or uri "") prefix) client))
+                                  route-client-mapping))]
+    (or route-client metabase-client-header)))
+
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
   [handler]
   (fn embedding-mw-fn
     [request respond raise]
-    (let [sdk-client (get-in request [:headers "x-metabase-client"])
+    (swap! my-requests conj request)
+    (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
           version (get-in request [:headers "x-metabase-client-version"])
-          preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")]
+          preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
+          sdk-client (derived-client {:uri (:uri request) :metabase-client-header metabase-client-header})]
+      ; TODO Is it correct to add "-preview" to the route-client-mapping values we're getting from the route URIs?
       (binding [*client* (if preview? (str sdk-client "-preview") sdk-client)
                 *version* version]
         (handler request
