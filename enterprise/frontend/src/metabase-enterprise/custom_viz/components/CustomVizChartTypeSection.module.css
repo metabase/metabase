@@ -1,0 +1,11 @@
+.moreChartsHeader {
+  width: fit-content;
+  border-radius: var(--mantine-radius-md);
+  padding: 0.25rem 0.75rem;
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-background-hover);
+  }
+}

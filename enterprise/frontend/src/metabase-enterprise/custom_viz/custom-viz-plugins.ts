@@ -3,21 +3,20 @@ import * as jsxRuntime from "react/jsx-runtime";
 import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import {
   measureText,
   measureTextHeight,
   measureTextWidth,
 } from "metabase/lib/measure-text";
+import visualizations, { registerVisualization } from "metabase/visualizations";
+import type { Visualization } from "metabase/visualizations/types/visualization";
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
 
 import { buildCustomVizProps } from "./custom-viz-props";
-import type { Visualization } from "./types/visualization";
-
-import visualizations, { registerVisualization } from ".";
 
 type CustomVizPluginDefinition = {
   VisualizationComponent: Visualization;
@@ -156,8 +155,7 @@ function useCustomVizDevReload(
 export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   loading: boolean;
 } {
-  const customVizEnabled = useSetting("custom-viz-enabled");
-  const plugins = useCustomVizPlugins({ enabled: customVizEnabled });
+  const plugins = useCustomVizPlugins();
   const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef<string | null>(null);

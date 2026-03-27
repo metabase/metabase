@@ -37,8 +37,9 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
-import { getPluginAssetUrl } from "metabase/visualizations/custom-viz-plugins";
 import type { CustomVizPlugin } from "metabase-types/api";
+
+import { getPluginAssetUrl } from "../custom-viz-plugins";
 
 import S from "./CustomVizPluginsSettingsPage.module.css";
 

@@ -309,6 +309,10 @@
   "Should we allow users to use workspaces?"
   :workspaces)
 
+(define-premium-feature enable-custom-viz?
+  "Should we enable custom visualizations?"
+  :custom-viz)
+
 (define-premium-feature enable-writable-connection?
   "Should we allow admins to configure separate write connection credentials?"
   :writable-connection)
@@ -324,6 +328,7 @@
    :config_text_file               (enable-config-text-file?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
+   :custom-viz                     (enable-custom-viz?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)

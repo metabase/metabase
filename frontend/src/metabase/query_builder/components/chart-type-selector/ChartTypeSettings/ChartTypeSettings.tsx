@@ -1,21 +1,16 @@
 import { t } from "ttag";
 
 import { CollapseSection } from "metabase/common/components/CollapseSection";
-import { Grid, Space, Stack, type StackProps, Text } from "metabase/ui";
-import type {
-  CardDisplayType,
-  CustomVizPluginRuntime,
-} from "metabase-types/api";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { Space, Stack, type StackProps, Text } from "metabase/ui";
 
 import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
-import { ChartTypeOption } from "../ChartTypeOption";
 
 import S from "./ChartTypeSettings.module.css";
 
 export type ChartTypeSettingsProps = {
   sensibleVisualizations: ChartTypeListProps["visualizationList"];
   nonSensibleVisualizations: ChartTypeListProps["visualizationList"];
-  customVizPlugins?: CustomVizPluginRuntime[];
 } & Pick<
   ChartTypeListProps,
   "selectedVisualization" | "onSelectVisualization" | "onOpenSettings"
@@ -28,7 +23,6 @@ export const ChartTypeSettings = ({
   sensibleVisualizations,
   nonSensibleVisualizations,
   onOpenSettings,
-  customVizPlugins,
   ...stackProps
 }: ChartTypeSettingsProps) => {
   return (
@@ -73,55 +67,11 @@ export const ChartTypeSettings = ({
           />
         </>
       </CollapseSection>
-      {customVizPlugins && customVizPlugins.length > 0 && (
-        <>
-          <Space h="xl" />
-          <CollapseSection
-            header={
-              <Text
-                fw="bold"
-                c="inherit"
-                tt="uppercase"
-                fz="sm"
-                data-testid="custom-viz-plugins-toggle"
-              >{t`Custom visualizations`}</Text>
-            }
-            headerClass={S.moreChartsHeader}
-            initialState="expanded"
-            iconPosition="right"
-            iconSize={10}
-          >
-            <>
-              <Space h="md" />
-              <Grid
-                data-testid="display-options-custom-viz"
-                align="flex-start"
-                justify="flex-start"
-                grow={false}
-              >
-                {customVizPlugins.map((plugin) => {
-                  const displayType =
-                    `custom:${plugin.identifier}` as CardDisplayType;
-                  return (
-                    <Grid.Col
-                      span={3}
-                      key={plugin.id}
-                      data-testid="chart-type-list-col"
-                    >
-                      <ChartTypeOption
-                        visualizationType={displayType}
-                        selectedVisualization={selectedVisualization}
-                        onSelectVisualization={onSelectVisualization}
-                        onOpenSettings={onOpenSettings}
-                      />
-                    </Grid.Col>
-                  );
-                })}
-              </Grid>
-            </>
-          </CollapseSection>
-        </>
-      )}
+      <PLUGIN_CUSTOM_VIZ.CustomVizChartTypeSection
+        selectedVisualization={selectedVisualization}
+        onSelectVisualization={onSelectVisualization}
+        onOpenSettings={onOpenSettings}
+      />
     </Stack>
   );
 };

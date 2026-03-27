@@ -322,6 +322,7 @@ export const tokenFeatures = [
   "cloud_custom_smtp",
   "content_translation",
   "content_verification",
+  "custom-viz",
   "disable_password_login",
   "embedding",
   "embedding_sdk",
@@ -540,7 +541,6 @@ interface PublicSettings {
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-geojson": CustomGeoJSONSetting;
-  "custom-viz-enabled": boolean;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;

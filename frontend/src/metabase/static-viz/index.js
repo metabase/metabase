@@ -3,8 +3,8 @@ import "fast-text-encoding";
 
 import { setPlatformAPI } from "echarts/core";
 import React from "react";
-import ReactDOMServer from "react-dom/server";
 import * as jsxRuntime from "react/jsx-runtime";
+import ReactDOMServer from "react-dom/server";
 
 // eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
@@ -16,6 +16,7 @@ window.__METABASE_VIZ_API__ = { React, jsxRuntime };
 
 import { updateStartOfWeek } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
@@ -29,9 +30,6 @@ import {
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 
-import visualizations, { registerVisualization } from "metabase/visualizations";
-
-import { customVizRegistry } from "./custom-viz-registry";
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
 setPlatformAPI({
@@ -102,29 +100,7 @@ function getVisualizerRawSeries(rawSeries, dashcardSettings) {
 }
 
 export function registerCustomVizPlugin(factory, identifier, assets) {
-  const assetMap = assets || {};
-  const getAssetUrl = (name) => assetMap[name] || "";
-  const vizDef = factory({ getAssetUrl });
-  const display = `custom:${identifier}`;
-  customVizRegistry.set(display, vizDef);
-
-  // Register in main visualizations Map so getVisualizationRaw() resolves
-  // the plugin's settings for getComputedSettingsForSeries()
-  const Component = vizDef.StaticVisualizationComponent ?? (() => null);
-  Object.assign(Component, {
-    identifier: display,
-    getUiName: () => identifier,
-    iconName: "area",
-    settings: vizDef.settings ?? {},
-    isSensible: vizDef.isSensible,
-    checkRenderable: vizDef.checkRenderable,
-    hidden: true,
-    noHeader: false,
-    canSavePng: false,
-  });
-  if (!visualizations.has(display)) {
-    registerVisualization(Component);
-  }
+  PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier, assets);
 }
 
 export function RenderChart(rawSeries, dashcardSettings, options) {

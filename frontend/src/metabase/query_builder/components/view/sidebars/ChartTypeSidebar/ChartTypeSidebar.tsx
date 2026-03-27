@@ -3,9 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import {
   onCloseChartType,
   onOpenChartSettings,
@@ -19,10 +20,6 @@ import {
   getSensibleVisualizations,
   useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
-import {
-  loadCustomVizPlugin,
-  useCustomVizPlugins,
-} from "metabase/visualizations/custom-viz-plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
@@ -39,8 +36,7 @@ export const ChartTypeSidebar = ({
 }: ChartTypeSidebarProps) => {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const customVizEnabled = useSetting("custom-viz-enabled");
-  const customVizPlugins = useCustomVizPlugins({ enabled: customVizEnabled });
+  const customVizPlugins = PLUGIN_CUSTOM_VIZ.useCustomVizPlugins();
   const [pluginsLoaded, setPluginsLoaded] = useState(false);
 
   const onInfo = useCallback(
@@ -59,7 +55,7 @@ export const ChartTypeSidebar = ({
     let cancelled = false;
     Promise.all(
       customVizPlugins.map((plugin) =>
-        loadCustomVizPlugin(plugin, undefined, onInfo),
+        PLUGIN_CUSTOM_VIZ.loadCustomVizPlugin(plugin, undefined, onInfo),
       ),
     ).then(() => {
       if (!cancelled) {
@@ -119,7 +115,6 @@ export const ChartTypeSidebar = ({
         onSelectVisualization={handleSelectVisualization}
         sensibleVisualizations={sensibleVisualizations}
         nonSensibleVisualizations={nonSensibleVisualizations}
-        customVizPlugins={customVizPlugins}
         onOpenSettings={onOpenVizSettings}
         gap={0}
         w="100%"

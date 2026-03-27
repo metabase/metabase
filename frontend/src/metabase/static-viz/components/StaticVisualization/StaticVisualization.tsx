@@ -1,4 +1,4 @@
-import { customVizRegistry } from "metabase/static-viz/custom-viz-registry";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -65,7 +65,7 @@ export const StaticVisualization = ({
   }
 
   if (typeof display === "string" && display.startsWith("custom:")) {
-    const customViz = customVizRegistry.get(display);
+    const customViz = PLUGIN_CUSTOM_VIZ.customVizRegistry.get(display);
     if (customViz?.StaticVisualizationComponent) {
       const { StaticVisualizationComponent } = customViz;
       return (
