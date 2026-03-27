@@ -9,6 +9,7 @@ import { CLEAR_TEMPORARY_PASSWORD, STORE_TEMPORARY_PASSWORD } from "./events";
 // ACTION CREATORS
 
 export const clearTemporaryPassword = createAction(CLEAR_TEMPORARY_PASSWORD);
+export const storeTemporaryPassword = createAction(STORE_TEMPORARY_PASSWORD);
 
 // REDUCERS
 
