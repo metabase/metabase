@@ -3,69 +3,85 @@
    that renders interactive Metabase visualizations via the Embedding SDK."
   (:require
    [metabase.config.core :as config]
-   [metabase.session.models.session :as session]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
-   [stencil.core :as stencil]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]
+   [stencil.core :as stencil]))
 
 (set! *warn-on-reflection* true)
 
-(def visualize-query-resource-uri
-  "The URI for the visualize-query MCP app resource."
-  "ui://metabase/visualize-query.html")
+(defonce ^:private resources (atom (sorted-map)))
 
-(def ^:private resource-mime-type "text/html;profile=mcp-app")
+(defonce ^:private ui-tools (atom (sorted-map)))
 
-(defn- csp-config []
-  (let [url (system/site-url)]
-    {:connectDomains  [url]
-     :resourceDomains [url]
-     :frameDomains    [url]}))
+(mu/defn- register-ui-resource!
+  [key      :- :keyword
+   uri      :- :string
+   resource :- [:map
+                [:name :string]
+                [:description :string]
+                [:render-fn fn?]]]
+  (swap! resources assoc key
+         (-> (assoc resource :uri uri)
+             (update :mimeType #(or % "text/html;profile=mcp-app")))))
 
-(defn create-embedding-session!
-  "Create a Metabase session for embedding SDK auth.
-   Returns the session key (the value the SDK uses as X-Metabase-Session)."
-  [user-id]
-  (let [session-key (session/generate-session-key)
-        session-id  (session/generate-session-id)]
-    (t2/insert! :model/Session
-                {:id          session-id
-                 :user_id     user-id
-                 :session_key session-key})
-    session-key))
+(mu/defn- register-ui-tool!
+  [resource-key :- :keyword
+   scope        :- :string
+   tool         :- [:map
+                    [:name :string]
+                    [:description :string]
+                    [:inputSchema :map]]]
+  (if-let [uri (get-in @resources [resource-key :uri])]
+    (->> (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})
+         (swap! ui-tools assoc (:name tool)))
+    (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
 
-(defn delete-embedding-session!
-  "Delete a Metabase session by its session key (hashed lookup)."
-  [session-key]
-  (t2/delete! :model/Session :key_hashed (session/hash-session-key session-key)))
-
-(defn- generate-visualize-html [opts]
-  (let [site-url    (system/site-url)
-        session-key (:session-key opts)]
-    (stencil/render-file
-     "frontend_client/embed-mcp.html"
-     {:instanceUrl     (json/encode site-url)
-      :instanceUrlRaw  site-url
-      :sessionToken    (when session-key (json/encode session-key))
-      :cacheBuster     (if config/is-dev?
-                         (str (System/currentTimeMillis))
-                         config/mb-version-hash)})))
+(defn list-ui-tools
+  "Return the list of MCP tools corresponding to UI components"
+  []
+  (vals @ui-tools))
 
 (defn list-resources
   "Return the list of available MCP resources."
   []
-  {:resources [{:uri         visualize-query-resource-uri
-                :name        "Visualize Query"
-                :description "Interactive Metabase SDK visualization for a query"
-                :mimeType    resource-mime-type
-                :_meta       {:ui {:csp (csp-config)}}}]})
+  {:resources (for [resource (vals @resources)]
+                (-> (select-keys resource [:uri :name :description :mimeType])
+                    (assoc :meta {:ui {:csp (let [url (system/site-url)]
+                                              {:connectDomains  [url]
+                                               :resourceDomains [url]
+                                               :frameDomains    [url]})}})))})
 
 (defn read-resource
   "Read an MCP resource by URI. Returns nil if the URI is not recognized."
   [uri opts]
-  (when (= uri visualize-query-resource-uri)
-    {:contents [{:uri      visualize-query-resource-uri
-                 :mimeType resource-mime-type
-                 :text     (generate-visualize-html opts)
-                 :_meta    {:ui {:csp (csp-config)}}}]}))
+  (when-let [{:keys [render-fn] :as resource} (get @resources uri)]
+    (assoc (select-keys resource [:uri :mimeType :text]) :text (render-fn opts))))
+
+;;; registrations
+
+(register-ui-resource!
+ :visualize-query
+ "ui://metabase/visualize-query.html"
+ {:name        "Visualize Query"
+  :description "Interactive Metabase SDK visualization for a query"
+  :render-fn   (fn [opts]
+                 (let [site-url    (system/site-url)
+                       session-key (:session-key opts)]
+                   (stencil/render-file
+                    "frontend_client/embed-mcp.html"
+                    {:instanceUrl    (json/encode site-url)
+                     :instanceUrlRaw site-url
+                     :sessionToken   (when session-key (json/encode session-key))
+                     :cacheBuster    (if config/is-dev?
+                                       (str (System/currentTimeMillis))
+                                       config/mb-version-hash)})))})
+
+(register-ui-tool!
+ :visualize-query
+ "agent:visualize"
+ {:name        "visualize_query"
+  :description "Visualize a previously constructed query as an interactive chart or table."
+  :inputSchema {:type       "object"
+                :properties {:query {:type "string" :minLength 1}}
+                :required   ["query"]}})

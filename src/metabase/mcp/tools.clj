@@ -54,29 +54,15 @@
                         (str/starts-with? tool-scope prefix))))
                   token-scopes)))))
 
-(def ^:private visualize-query-tool
-  {:name        "visualize_query"
-   :description "Visualize a previously constructed query as an interactive chart or table."
-   :inputSchema {:type       "object"
-                 :properties {:query {:type "string" :minLength 1}}
-                 :required   ["query"]}
-   :_meta       {:ui {:resourceUri mcp.resources/visualize-query-resource-uri}}})
-
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
    When `token-scopes` is provided, only tools whose scope matches are included."
   [token-scopes]
-  (let [{:keys [tools]} (manifest)
-        base-tools (into []
-                         (comp (filter #(scope-matches? token-scopes (:scope %)))
-                               (map (fn [tool]
-                                      {:name        (:name tool)
-                                       :description (:description tool)
-                                       :inputSchema (:inputSchema tool)})))
-                         tools)
-        vis-tool   (when (scope-matches? token-scopes "agent:visualize")
-                     [visualize-query-tool])]
-    (into base-tools vis-tool)))
+  (let [{:keys [tools]} (manifest)]
+    (into []
+          (comp (filter #(scope-matches? token-scopes (:scope %)))
+                (map #(select-keys % [:name :description :inputSchema :_meta])))
+          (concat tools (mcp.resources/list-ui-tools)))))
 
 (defn- build-tool-index
   "Build name->tool lookup from manifest tools."

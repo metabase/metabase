@@ -14,11 +14,13 @@
    [metabase.oauth-server.core :as oauth-server]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
+   [metabase.session.core :as session]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [oidc-provider.store :as oidc.store])
+   [oidc-provider.store :as oidc.store]
+   [toucan2.core :as t2])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
@@ -36,12 +38,17 @@
   "Sessions expire after 1 hour."
   (* 60 60 1000))
 
+(defn delete-embedding-session!
+  "Delete a Metabase session by its session key (hashed lookup)."
+  [session-key]
+  (t2/delete! :model/Session :key_hashed (session/hash-session-key session-key)))
+
 (defn- cleanup-embedding-sessions!
   "Delete any Metabase embedding sessions associated with an MCP session."
   [session]
   (doseq [key (:embedding-session-keys session)]
     (try
-      (mcp.resources/delete-embedding-session! key)
+      (delete-embedding-session! key)
       (catch Exception e
         (log/debugf "Failed to clean up embedding session: %s" (ex-message e))))))
 
@@ -137,9 +144,21 @@
 (defn- handle-resources-list [id _params]
   (jsonrpc-response id (mcp.resources/list-resources)))
 
+(defn create-embedding-session!
+  "Create a Metabase session for embedding SDK auth.
+   Returns the session key (the value the SDK uses as X-Metabase-Session)."
+  [user-id]
+  (let [session-key (session/generate-session-key)
+        session-id  (session/generate-session-id)]
+    (t2/insert! :model/Session
+                {:id          session-id
+                 :user_id     user-id
+                 :session_key session-key})
+    session-key))
+
 (defn- handle-resources-read [id params session-id]
   (let [user-id     api/*current-user-id*
-        session-key (when user-id (mcp.resources/create-embedding-session! user-id))]
+        session-key (when user-id (create-embedding-session! user-id))]
     ;; Track the embedding session key in the MCP session for cleanup
     (when session-key
       (swap! sessions update-in [session-id :embedding-session-keys] (fnil conj #{}) session-key))
