@@ -5,35 +5,16 @@ import { c, t } from "ttag";
 import expressSnippet from "docs/embedding/sdk/snippets/authentication/express-server-interactive-and-sdk";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
-import {
-  Anchor,
-  Box,
-  Button,
-  Code,
-  Group,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { useDocsUrl } from "metabase/common/hooks";
+import { Anchor, Box, Button, Code, Group, Stack, Text } from "metabase/ui";
 
 import S from "./SetupSsoPage.module.css";
 
 export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
-  const jwtSharedSecret = useSetting("jwt-shared-secret");
   const { url: jwtDocsUrl } = useDocsUrl("embedding/authentication");
 
   return (
     <Stack gap="lg">
-      <TextInput
-        label={t`JWT Signing Key`}
-        description={t`This secret is used to sign JWT tokens. Replace YOUR_SECRET_HERE in the below snippet with this value.`}
-        value={jwtSharedSecret ?? ""}
-        readOnly
-        rightSection={<CopyButton value={jwtSharedSecret ?? ""} />}
-        rightSectionWidth={40}
-      />
-
       <Stack gap="sm">
         <Text>{t`You'll need to add a library to your backend to sign your JSON Web Tokens.`}</Text>
         <Text>{t`For Node.js, we recommend jsonwebtoken:`}</Text>

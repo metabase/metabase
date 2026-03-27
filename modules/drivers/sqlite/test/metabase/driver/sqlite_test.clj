@@ -6,6 +6,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -254,3 +256,23 @@
                clojure.lang.ExceptionInfo
                #"SQL error or missing database \(no such table: fdw_test\.products\)"
                (qp/process-query (mt/native-query {:query "SELECT count(*) FROM fdw_test.products;"})))))))))
+
+(deftest ^:parallel non-date-in-date-columns-are-returned-test
+  (mt/test-driver :sqlite
+    (mt/dataset (mt/dataset-definition
+                 "sqlite_mixed_dates"
+                 [["mixed_dates_table"
+                   [{:field-name "dates"
+                     :base-type :type/Date}]
+                   [["2026-01-01"]
+                    ["not available"]
+                    ["2026-03-01"]]]])
+      (let [mp (mt/metadata-provider)]
+        (is (= [[1 "2026-01-01T00:00:00Z"]
+                [2 "not available"]
+                [3 "2026-03-01T00:00:00Z"]]
+               (->> (mt/id :mixed_dates_table)
+                    (lib.metadata/table mp)
+                    (lib/query mp)
+                    (qp/process-query)
+                    (mt/rows))))))))
