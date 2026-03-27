@@ -51,8 +51,7 @@
            ^Runnable (bound-fn* f)))
 
 (defn clear-slack-bot-settings!
-  "Clears all slackbot-related settings when Slack token is cleared.
-   This ensures enable-sso-slack? becomes false."
+  "Clears all slackbot-related settings when Slack token is cleared."
   []
   (setting/set-many! {:slack-connect-enabled        false
                       :slack-connect-client-id      nil
