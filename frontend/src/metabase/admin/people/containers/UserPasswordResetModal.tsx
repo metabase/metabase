@@ -22,7 +22,7 @@ import type { User } from "metabase-types/api";
 import { clearTemporaryPassword, storeTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
-interface UserPasswordResetModalProps {
+interface UserPasswordResetModalInnerProps {
   clearTemporaryPassword: () => void;
   storeTemporaryPassword: (id: number, password: string) => void;
   onClose: () => void;
@@ -38,7 +38,7 @@ const UserPasswordResetModalInner = ({
   onClose,
   temporaryPassword,
   user,
-}: UserPasswordResetModalProps) => {
+}: UserPasswordResetModalInnerProps) => {
   useUnmount(() => {
     clearTemporaryPassword();
   });
