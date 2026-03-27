@@ -27,7 +27,7 @@ export const EnableTransformsPage = () => {
       />
       <Center>
         <EnableTransformsCard
-          enableTransforms={enableTransforms}
+          onEnableClick={enableTransforms}
           loading={updateSettingLoading}
         />
       </Center>
