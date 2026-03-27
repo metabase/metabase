@@ -1072,7 +1072,7 @@
                                            remote-sync-enabled true]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 transform-entity-id "auto-enable-trans-xxx"
-                test-files {"main" {(str "transforms/" transform-entity-id "_test_transform.yaml")
+                test-files {"main" {"transforms/test_transform.yaml"
                                     (test-helpers/generate-transform-yaml transform-entity-id "Test Transform")}}
                 mock-source (test-helpers/create-mock-source :initial-files test-files)]
             (is (false? (remote-sync.settings/remote-sync-transforms))
@@ -1091,7 +1091,7 @@
                                            remote-sync-enabled true]
           (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
                 lib-entity-id "auto-enable-lib-xxxxx"
-                test-files {"main" {(str "python-libraries/" lib-entity-id ".yaml")
+                test-files {"main" {"python-libraries/uncommon.yaml"
                                     (format "path: uncommon.py
 source: |
   # shared code
@@ -1310,7 +1310,7 @@ serdes/meta:
       (mt/with-temp [:model/Transform _ {:name "Local Transform"}]
         (let [test-files {"main" {"collections/main/test_coll/test_coll.yaml"
                                   (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                                  "transforms/test-transform-_/test-transform.yaml"
+                                  "transforms/remote_transform.yaml"
                                   (test-helpers/generate-transform-yaml "test-transform-xxxxx" "Remote Transform")}}
               mock-source (test-helpers/create-mock-source :initial-files test-files)
               result (impl/import! (source.p/snapshot mock-source) task-id)]
@@ -1324,7 +1324,7 @@ serdes/meta:
       (mt/with-temp [:model/NativeQuerySnippet _ {:name "Local Snippet"}]
         (let [test-files {"main" {"collections/main/test_coll/test_coll.yaml"
                                   (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
-                                  "snippets/test-snippet-_/test-snippet.yaml"
+                                  "snippets/remote_snippet.yaml"
                                   (test-helpers/generate-snippet-yaml "test-snippet-xxxxxxx" "Remote Snippet" "SELECT 1")}}
               mock-source (test-helpers/create-mock-source :initial-files test-files)
               result (impl/import! (source.p/snapshot mock-source) task-id)]
