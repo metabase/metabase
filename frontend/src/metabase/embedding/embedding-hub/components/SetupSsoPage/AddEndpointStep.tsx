@@ -1,6 +1,6 @@
 /* eslint-disable metabase/no-unconditional-metabase-links-render, metabase/no-literal-metabase-strings, i18next/no-literal-string -- admin-only page */
 
-import { jt, t } from "ttag";
+import { c, t } from "ttag";
 
 import expressSnippet from "docs/embedding/sdk/snippets/authentication/express-server-interactive-and-sdk";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
@@ -43,15 +43,17 @@ export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
         </Code>
 
         <Text>
-          {jt`Next, set up an endpoint on your backend (e.g., ${(
+          {c("{0} is '/sso/metabase'")
+            .jt`Next, set up an endpoint on your backend (e.g., ${(
             <Code key="endpoint">/sso/metabase</Code>
           )}) that uses your Metabase JWT shared secret to generate a JWT for the authenticated user. `}
           <strong>
-            {t`This endpoint must return a JSON object with a `}
-            <Code>jwt</Code>
-            {t` property containing the signed JWT.`}
+            {c("{0} is 'jwt'")
+              .jt`This endpoint must return a JSON object with a ${(
+              <Code key="jwt-prop">jwt</Code>
+            )} property containing the signed JWT.`}
           </strong>
-          {jt` For example: ${(
+          {c('{0} is \'{ "jwt": "your-signed-jwt" }\'').jt` For example: ${(
             <Code key="example">{'{ "jwt": "your-signed-jwt" }'}</Code>
           )}.`}
         </Text>
@@ -74,9 +76,11 @@ export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
       </Box>
 
       <Text size="sm" c="text-secondary">
-        {jt`You can view more examples in the ${(
+        {c("{0} is a link labeled 'docs'")
+          .jt`You can view more examples in the ${(
           <Anchor key="docs-link" href={jwtDocsUrl} target="_blank">
-            {t`docs`}
+            {c("In the sentence 'You can view more examples in the docs'")
+              .t`docs`}
           </Anchor>
         )}.`}
       </Text>
