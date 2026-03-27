@@ -198,7 +198,7 @@
             (recur)))))))
 
 (defn- rerun-failed!
-  "Rerun all failed run IDs. Returns the set of run IDs that were rerun."
+  "Rerun all failed run IDs. Sleeps briefly after triggering reruns to allow GitHub to register them."
   [run-ids]
   (doseq [run-id run-ids]
     (log-info (format "Rerunning failed jobs for run %s…" run-id))
