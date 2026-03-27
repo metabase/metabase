@@ -8,6 +8,10 @@ on:
         required: true
         type: string
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   deploy:
     name: Publish Athena JDBC Driver
@@ -25,8 +29,7 @@ jobs:
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_S3_MAVEN_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_S3_MAVEN_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_MAVEN_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Deploy Athena JDBC driver
