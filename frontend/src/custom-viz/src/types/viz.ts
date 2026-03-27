@@ -168,7 +168,7 @@ export type CustomVisualizationProps<CustomVisualizationSettings> = {
     clickObject: ClickObject<CustomVisualizationSettings> | null,
   ) => void;
 
-  // onHoverChange: (hoverObject?: HoveredObject | null) => void;
+  onHoverChange: (hoverObject?: HoveredObject | null) => void;
 };
 
 export type ColorGetter = (colorName: string) => string;
@@ -212,3 +212,25 @@ export interface ClickObjectDimension {
   value: RowValue;
   column: Column;
 }
+
+export type HoveredDataPoint = {
+  key: string;
+  value: RowValue;
+  col: Column;
+};
+
+export type HoveredDimension = {
+  value: RowValue;
+  column: Column;
+};
+
+export type HoveredObject = {
+  index?: number;
+  seriesIndex?: number;
+  value?: unknown;
+  column?: Column;
+  data?: HoveredDataPoint[];
+  dimensions?: HoveredDimension[];
+  element?: Element;
+  event?: MouseEvent;
+};
