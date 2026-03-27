@@ -213,7 +213,7 @@
   (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
                                 sql from-dialect to-dialect))
 
-(defn validate-impersonated-native-query
-  "Wrapper around `sql-parsing/validate-impersonated-native-query`."
+(defn is-single-select-stmt?
+  "Wrapper around `sql-parsing/is-single-select-stmt`."
   [driver sql]
-  (sql-parsing/validate-impersonated-native-query (sqlglot/driver->dialect driver) sql))
+  (sql-parsing/is-single-select-stmt? (sqlglot/driver->dialect driver) sql))

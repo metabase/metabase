@@ -3,23 +3,27 @@
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
-(defn- validate-impersonated-native-query [query]
+(defn- validate-impersonated-query [query]
   (update query :stages
           (fn [stages]
             (mapv (fn [stage]
-                    (if (= (:lib/type stage) :mbql.stage/native)
-                      (let [{:keys [is_valid? sql]} (sql-tools/validate-impersonated-native-query driver/*driver* (:native stage))]
-                        (cond
-                          (true? is_valid?)  (assoc stage :native sql)
-                          (nil? is_valid?)   stage
-                          (false? is_valid?) (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
-                                                             {:sql (:native stage)}))))
+                    (if (lib.util/native-stage? stage)
+                      (let [{:keys [is_single_select? sql error]}
+                            (sql-tools/is-single-select-stmt? driver/*driver* (:native stage))]
+                        (when error
+                          (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage)))
+                        (if is_single_select?
+                          (assoc stage :native sql)
+                          (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
+                                          {:sql (:native stage)}))))
                       stage))
                   stages))))
 
@@ -34,7 +38,7 @@
     (do
       (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
       (-> query
-          validate-impersonated-native-query
+          validate-impersonated-query
           (assoc :impersonation/role role)))
     query))
 

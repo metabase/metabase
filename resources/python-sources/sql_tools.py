@@ -1601,21 +1601,16 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     return json.dumps(result)
 
-def validate_impersonated_native_query(sql: str, dialect: str = None) -> str:
-    """Validates that an impersonated native query is a single SELECT statement.
-
-    Returns a JSON string based on the validation result:
-    Valid query: {"is_valid?": True, "sql": "SELECT ..."}
-    Invalid query: {"is_valid?": False, "error": "..."}
-    Parse error: {"is_valid?": None, "error": "..."}
+def is_single_select_stmt(sql: str, dialect: str = None) -> str:
+    """Validates that a query is a single SELECT statement
+    and returns the query reconstructed from the parsed AST.
     """
     try:
         stmts = sqlglot.parse(sql, read=dialect)
-        num_stmts = len(stmts)
-        if num_stmts == 1 and isinstance(stmts[0], exp.Select):
-            reconstructed_sql = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
-            return json.dumps({"is_valid?": True, "sql": reconstructed_sql})
-        else:
-            return json.dumps({"is_valid?": False, "error": "Only single SELECT statements are supported."})
+        is_single_select = {"is_single_select?": False}
+        if len(stmts) == 1 and isinstance(stmts[0], exp.Select):
+            is_single_select["is_single_select?"] = True
+            is_single_select["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
+        return json.dumps(is_single_select)
     except Exception as e:
-        return json.dumps({"is_valid?": None, "error": str(e)})
+        return json.dumps({"is_single_select?": False, "error": str(e)})

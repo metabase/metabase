@@ -390,17 +390,13 @@
           (.execute ^Value (object-array [sql (json/encode replacements) dialect]))
           .asString))))
 
-(defn validate-impersonated-native-query
-  "Validates that an impersonated native query is a single SELECT statement.
-
-   Returns a JSON string based on the validation result:
-   Valid query: {:is-valid?: True, :sql: \"SELECT ...\"}
-   Invalid query: {:is-valid?: False, :error: ..., :count: N, :types: [...]}
-   Parse error: {:is-valid?: None, :error: ..., :count: 0, :types: []}"
+(defn is-single-select-stmt?
+  "Validates that a query is a single SELECT statement
+   and returns the query reconstructed from the parsed AST."
   [dialect sql]
   (-> (with-open [^Closeable ctx (python.pool/python-context)]
         (with-python-timeout ctx default-timeout-ms
-          (-> ^Value (common/eval-python ctx "sql_tools.validate_impersonated_native_query")
+          (-> ^Value (common/eval-python ctx "sql_tools.is_single_select_stmt")
               (.execute ^Value (object-array [sql dialect]))
               .asString)))
       json/decode+kw))
