@@ -80,7 +80,7 @@
       read-timestamps))
 
 (def legal-top-level-paths "Known top-level paths for directory with serialization output"
-  #{"actions" "collections" "databases" "glossary" "python-libraries" "snippets" "transforms"})
+  #{"actions" "collections" "databases" "glossary" "python_libraries" "python-libraries" "snippets" "transforms"})
 
 (defn- ingest-all
   "Returns {:entities {unlabeled-hierarchy [hierarchy File]}, :errors [Exception...]}.
