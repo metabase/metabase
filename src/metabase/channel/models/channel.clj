@@ -76,6 +76,9 @@
   {:copy      [:name :description :type :details :active]
    :transform {:created_at (serdes/date)}})
 
+(defmethod serdes/default-values "Channel" [_]
+  {:active true})
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/ChannelTemplate                                    ;;
 ;; ------------------------------------------------------------------------------------------------;;

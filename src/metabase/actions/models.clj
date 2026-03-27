@@ -456,6 +456,9 @@
                :visualization_settings {:export serdes/export-visualization-settings
                                         :import serdes/import-visualization-settings}}})
 
+(defmethod serdes/default-values "Action" [_]
+  {:archived false})
+
 (defmethod serdes/dependencies "Action" [action]
   (set
    (concat

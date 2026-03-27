@@ -2121,14 +2121,14 @@
                                         {:type "smartLink"
                                          :attrs {:entityId [{:model "Dashboard" :id (:entity_id dashboard)}]
                                                  :model "dashboard"}}]}
-                   :archived false
-                   :archived_directly false
                    :creator_id (:email user)
                    :collection_id (:entity_id collection)
                    :content_type "application/json+vnd.prose-mirror"
                    :updated_at string?
                    :created_at string?}
                   ser))
+          (is (not (contains? ser :archived)))
+          (is (not (contains? ser :archived_directly)))
           (is (not (contains? ser :id)))
 
           (testing "depends on its collection, cardEmbeds and smarkLinks "

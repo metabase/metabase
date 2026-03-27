@@ -220,6 +220,9 @@
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import import-measure-definition}}})
 
+(defmethod serdes/default-values "Measure" [_]
+  {:archived false})
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search/define-spec "measure"

@@ -395,13 +395,6 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod serdes/default-spec-values "Dashboard" [_]
-  {:archived              false
-   :archived_directly     false
-   :auto_apply_filters    true
-   :enable_embedding      false
-   :show_in_getting_started false})
-
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
   {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :embedding_type :entity_id :name
@@ -420,6 +413,13 @@
                :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
                :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
    :coerce {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}})
+
+(defmethod serdes/default-values "Dashboard" [_]
+  {:archived                false
+   :archived_directly       false
+   :auto_apply_filters      true
+   :enable_embedding        false
+   :show_in_getting_started false})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]

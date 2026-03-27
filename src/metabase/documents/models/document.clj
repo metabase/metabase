@@ -200,6 +200,10 @@
                :collection_id (serdes/fk :model/Collection)
                :creator_id (serdes/fk :model/User)}})
 
+(defmethod serdes/default-values "Document" [_]
+  {:archived          false
+   :archived_directly false})
+
 (defn- document-deps
   [{:keys [content_type] :as document}]
   (when (= content_type prose-mirror/prose-mirror-content-type)

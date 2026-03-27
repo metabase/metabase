@@ -467,6 +467,10 @@
                :parent_id          (serdes/fk :model/Field)
                :dimensions         (serdes/nested :model/Dimension :field_id opts)}})
 
+(defmethod serdes/default-values "Field" [_]
+  {:database_is_auto_increment false
+   :is_defective_duplicate     false})
+
 (defmethod serdes/storage-path "Field" [field _]
   (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))]
     (concat (serdes/storage-path-prefixes path)

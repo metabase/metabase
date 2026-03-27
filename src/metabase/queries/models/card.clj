@@ -1316,6 +1316,12 @@
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
     :result_metadata        {:export export-result-metadata :import import-result-metadata}}})
 
+(defmethod serdes/default-values "Card" [_]
+  {:archived            false
+   :archived_directly   false
+   :collection_preview  true
+   :enable_embedding    false})
+
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id source_card_id visualization_settings

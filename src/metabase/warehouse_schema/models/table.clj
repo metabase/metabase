@@ -683,6 +683,9 @@
                :collection_id  (serdes/fk :model/Collection)
                :transform_id   (serdes/fk :model/Transform)}})
 
+(defmethod serdes/default-values "Table" [_]
+  {:data_layer "internal"})
+
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))
           [(:name table)]))

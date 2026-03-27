@@ -669,6 +669,11 @@
                :router_database_id (serdes/fk :model/Database)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
+(defmethod serdes/default-values "Database" [_]
+  {:is_audit        false
+   :is_attached_dwh false
+   :uploads_enabled false})
+
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]
   (t2/reducible-select (keyword "model" model-name)

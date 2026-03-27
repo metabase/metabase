@@ -433,20 +433,20 @@
 
 (defmethod make-spec :default [_ _] nil)
 
-(defmulti default-spec-values
+(defmulti default-values
   "Return a map of default values for serialized fields. During export, fields whose values match their defaults
   are omitted from the output. During import, missing fields are filled in with these defaults.
 
   By default all fields are assumed to default to `nil`, so you only need to specify non-nil defaults here.
 
   Example:
-  (defmethod serdes/default-spec-values \"Dashboard\" [_]
+  (defmethod serdes/default-values \"Dashboard\" [_]
     {:archived false
      :auto_apply_filters true})"
   {:arglists '([model-name])}
   identity)
 
-(defmethod default-spec-values :default [_] {})
+(defmethod default-values :default [_] {})
 
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
@@ -494,7 +494,7 @@
   [model-name opts instance]
   (try
     (let [spec     (make-spec model-name opts)
-          defaults (default-spec-values model-name)]
+          defaults (default-values model-name)]
       (assert spec (str "No serialization spec defined for model " model-name))
       (-> (into {}
                 (remove (fn [[k v]] (= v (get defaults k))))
