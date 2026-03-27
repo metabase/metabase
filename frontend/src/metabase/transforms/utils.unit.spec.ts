@@ -70,7 +70,7 @@ describe("validateDatabase", () => {
       isValid: false,
       message: "Transforms can't be enabled on this database.",
     },
-  ])("returns isValid=$isValid for $label", ({ db, isValid, message }) => {
+  ])("should validate $label", ({ db, isValid, message }) => {
     const result = validateDatabase(db);
     expect(result.isValid).toBe(isValid);
     expect(result.message).toBe(message);
