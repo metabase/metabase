@@ -104,6 +104,51 @@
         (exception request identity identity)
         (is (= {} @prometheus-standin))))))
 
+(deftest extract-hostname-test
+  (testing "extracts hostname from various URL formats"
+    (are [url expected]
+         (= expected (sdk/extract-hostname url))
+      "https://app.example.com"             "app.example.com"
+      "https://app.example.com:8443"        "app.example.com"
+      "https://app.example.com/path?q=1"    "app.example.com"
+      "http://localhost:3000"               "localhost"
+      "http://192.168.1.1:8080"            "192.168.1.1"))
+  (testing "returns nil for nil, blank, or unparseable input"
+    (are [url]
+         (nil? (sdk/extract-hostname url))
+      nil
+      ""
+      "not a url")))
+
+(deftest extract-path-test
+  (testing "extracts path, stripping query params and fragment"
+    (are [url expected]
+         (= expected (sdk/extract-path url))
+      "https://example.com/dashboard/1"          "/dashboard/1"
+      "https://example.com/dash/1?foo=bar"       "/dash/1"
+      "https://example.com/dash/1#section"        "/dash/1"
+      "https://example.com/dash/1?a=b#section"   "/dash/1"))
+  (testing "returns nil for nil, blank, or root-only URLs"
+    (are [url]
+         (nil? (sdk/extract-path url))
+      nil
+      ""
+      "not a url")))
+
+(deftest pii-request-info-test
+  (testing "returns all fields from request values"
+    (is (= {:embedding_hostname   "app.example.com"
+            :embedding_path       "/dashboard/1"
+            :sanitized_user_agent "Mozilla/5.0"
+            :ip_address           "10.0.0.1"}
+           (sdk/pii-request-info {:origin     "https://app.example.com"
+                                  :referer    "https://app.example.com/dashboard/1?x=y"
+                                  :user-agent "Mozilla/5.0"
+                                  :ip-address "10.0.0.1"}))))
+  (testing "handles nil values gracefully"
+    (is (= {:embedding_hostname nil, :embedding_path nil, :sanitized_user_agent nil, :ip_address nil}
+           (sdk/pii-request-info {})))))
+
 (deftest include-analytics-is-idempotent
   (let [m (atom {})]
     (analytics/with-client! ["client-C"]

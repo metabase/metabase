@@ -52,7 +52,10 @@
 
   embedding-context?
   embedding-mw
+  extract-hostname
+  extract-path
   include-sdk-info
+  pii-request-info
   with-client! get-client
   with-version! get-version]
 

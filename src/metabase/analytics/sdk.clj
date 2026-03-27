@@ -12,7 +12,9 @@
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (java.net URI)))
 
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
 
@@ -39,6 +41,38 @@
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
       (update :embedding_version (fn [version] (or *version* version)))))
+
+(defn extract-hostname
+  "Extracts the hostname from a URL string. Returns nil if the URL is nil or unparseable."
+  [url]
+  (when url
+    (try
+      (let [host (.getHost (URI. url))]
+        (when-not (str/blank? host)
+          (subs host 0 (min (count host) 512))))
+      (catch Exception _
+        nil))))
+
+(defn extract-path
+  "Extracts the path from a URL string, stripping query params and fragment.
+  Returns nil if the URL is nil or unparseable."
+  [url]
+  (when url
+    (try
+      (let [path (.getPath (URI. url))]
+        (when-not (str/blank? path)
+          (subs path 0 (min (count path) 2048))))
+      (catch Exception _
+        nil))))
+
+(defn pii-request-info
+  "Pure function that computes GDPR-gated request metadata from individual request values.
+  Returns a map with `:embedding_hostname`, `:embedding_path`, `:sanitized_user_agent`, and `:ip_address`."
+  [{:keys [origin referer user-agent ip-address]}]
+  {:embedding_hostname   (extract-hostname origin)
+   :embedding_path       (extract-path referer)
+   :sanitized_user_agent (some-> user-agent (subs 0 (min (count user-agent) 512)))
+   :ip_address           ip-address})
 
 (def ^:private embedding-sdk-client "embedding-sdk-react")
 (def ^:private embedding-iframe-client "embedding-iframe")
