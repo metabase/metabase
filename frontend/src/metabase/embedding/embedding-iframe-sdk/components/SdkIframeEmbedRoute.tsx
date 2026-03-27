@@ -250,7 +250,7 @@ const SdkIframeEmbedView = ({
         },
         /**
          * Need for initial token flow with JWT provider when the provider returns errors.
-         * Without this, the InteractiveDashboard component will be rendered because
+         * Without this, nothing will be rendered because
          * there is no `token`, so it won't match this pattern.
          */
         {
@@ -265,6 +265,7 @@ const SdkIframeEmbedView = ({
             : {
                 questionId: settings.questionId ?? null,
               };
+
           return (
             <StaticQuestion
               key={rerenderKey}
