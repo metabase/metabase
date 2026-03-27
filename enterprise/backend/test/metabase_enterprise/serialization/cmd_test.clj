@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.cmd-test
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
@@ -93,7 +92,7 @@
                 ;; override that reliably
                 (with-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
                                                       (cond-> (ingest-file file)
-                                                        (str/includes? (.getName file) (:entity_id card))
+                                                        (= (.getName file) "card.yaml")
                                                         (assoc :collection_id "DoesNotExist")))]
                   (is (thrown? Exception
                                (cmd/import dump-dir)))

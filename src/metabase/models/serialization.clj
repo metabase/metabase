@@ -872,8 +872,11 @@
   (storage-default-collection-path entity ctx))
 
 (defn storage-base-context
-  "Creates the basic context for storage. `:collections` maps collection entity_id to a vector of
-  `{:label ... :key ...}` maps representing the collection hierarchy."
+  "Creates the basic context for storage.
+  - `:collections` maps collection entity_id to a vector of `{:label ... :key ...}` maps representing
+    the collection hierarchy.
+  - `:generators` is an atom of `{parent-key -> unique-name-generator}` used by the storage layer for
+    per-folder name deduplication."
   []
   (let [colls     (t2/select ['Collection :id :entity_id :location :name])
         id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
@@ -886,7 +889,8 @@
                                                           {:label (:name c) :key (:entity_id c)}))
                                                       all-ids)]]
                            [entity_id path-maps]))]
-    {:collections coll->path}))
+    {:collections coll->path
+     :generators  (atom {})}))
 
 ;;; # Utilities for implementing serdes
 ;;; Note that many of these use `^::cache` to cache their lookups during deserialization. This greatly reduces the

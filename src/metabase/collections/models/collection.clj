@@ -2070,8 +2070,9 @@
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [path      (get collections (:entity_id coll))
         ns-folder (case (:namespace coll)
-                    "snippets"   "snippets"
-                    "transforms" "transforms"
+                    :snippets   "snippets"
+                    :transforms "transforms"
+                    nil         "main"
                     "main")]
     (into [{:label "collections"} {:label ns-folder}]
           cat [path [(last path)]])))
