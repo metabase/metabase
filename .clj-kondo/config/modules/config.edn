@@ -146,7 +146,6 @@
            events
            models
            util}
-   :model-exports #{}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -303,7 +302,11 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database :model/Field :model/QueryCache :model/Secret :model/Setting}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/QueryCache
+                    :model/Secret
+                    :model/Setting}}
 
   appearance
   {:team "UX West"
@@ -385,10 +388,11 @@
            collections
            queries
            util}
-   :model-exports #{:model/CardBookmark
-                    :model/CollectionBookmark
-                    :model/DashboardBookmark}
-   :model-imports #{:model/Card :model/Collection :model/Dashboard :model/Document}}
+   :model-exports #{:model/CardBookmark :model/CollectionBookmark :model/DashboardBookmark}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document}}
 
   bug-reporting
   {:team "UX West"
@@ -421,7 +425,10 @@
            settings
            util}
    :model-exports #{:model/CacheConfig :model/QueryCache}
-   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/Database}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database}}
 
   ;; TODO -- way too many API namespaces.
   channel
@@ -463,7 +470,10 @@
            types
            util}
    :model-exports #{:model/Channel :model/ChannelTemplate}
-   :model-imports #{:model/Dashboard :model/Database :model/PulseChannel :model/User}}
+   :model-imports #{:model/Dashboard
+                    :model/Database
+                    :model/PulseChannel
+                    :model/User}}
 
   classloader
   {:team "DevEx"
@@ -723,7 +733,11 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Database :model/Dimension :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   database-routing
   {:team "UX West"
@@ -753,7 +767,11 @@
            util
            view-log}
    :model-exports #{:model/Document}
-   :model-imports #{:model/Card :model/Collection :model/Dashboard :model/Table :model/User}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table
+                    :model/User}}
 
   driver
   {:team "Querying Platform"
@@ -985,7 +1003,11 @@
            metabase.internal-stats.metabot}
    :uses #{app-db
            models}
-   :model-imports #{:model/Card :model/Dashboard :model/MetabotMessage :model/QueryExecution :model/User}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/MetabotMessage
+                    :model/QueryExecution
+                    :model/User}}
 
   legacy-mbql
   {:team "Querying Platform"
@@ -1337,9 +1359,7 @@
            tracing
            users
            util}
-   :model-exports #{:model/Notification
-                    :model/NotificationHandler
-                    :model/NotificationRecipient}
+   :model-exports #{:model/Notification :model/NotificationHandler :model/NotificationRecipient}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/ChannelTemplate
@@ -1358,8 +1378,7 @@
            models
            settings
            system
-           util}
-   :model-exports #{}}
+           util}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -1384,7 +1403,11 @@
            util
            warehouse-schema
            warehouses}
-   :model-imports #{:model/Card :model/Dashboard :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   permissions
   {:team "UX West"
@@ -1412,7 +1435,10 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/PermissionsRevision}
-   :model-imports #{:model/Collection :model/Database :model/Table :model/User}}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Table
+                    :model/User}}
 
   permissions-rest
   {:team "UX West"
@@ -1480,7 +1506,10 @@
            settings
            task
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Database :model/User}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Database
+                    :model/User}}
 
   public-sharing
   {:team "UX West"
@@ -1538,7 +1567,10 @@
            util
            enterprise/advanced-permissions
            enterprise/sandbox}
-   :model-exports #{:model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient}
+   :model-exports #{:model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/Collection
@@ -1809,7 +1841,11 @@
            tracing
            transforms
            util}
-   :model-imports #{:model/Card :model/Collection :model/Dashboard :model/Table :model/User}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table
+                    :model/User}}
 
   secrets
   {:team "Graphy"
@@ -2047,7 +2083,10 @@
            util
            warehouse-schema
            warehouses}
-   :model-imports #{:model/Database :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   system
   {:team "UX West"
@@ -2250,7 +2289,10 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   user-key-value
   {:team "UX West"
@@ -2414,7 +2456,11 @@
            util
            warehouse-schema
            xrays}
-   :model-imports #{:model/Database :model/Dimension :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   warehouses
   {:team "UX West"
@@ -2436,7 +2482,10 @@
            sync
            util}
    :model-exports #{:model/Database}
-   :model-imports #{:model/Card :model/Field :model/Table :model/User}}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Table
+                    :model/User}}
 
   warehouses-rest
   {:team "UX West"
@@ -2466,7 +2515,11 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}
-   :model-imports #{:model/Card :model/Collection :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   workspaces
   {:team "Metabot"
@@ -2520,7 +2573,10 @@
            query-processor
            util
            warehouse-schema}
-   :model-imports #{:model/Database :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   enterprise/advanced-config
   {:team "UX West"
@@ -2728,7 +2784,10 @@
            permissions
            premium-features
            util}
-   :model-imports #{:model/Collection :model/Dimension :model/Field :model/Table}}
+   :model-imports #{:model/Collection
+                    :model/Dimension
+                    :model/Field
+                    :model/Table}}
 
   enterprise/database-replication
   {:team "Cloud"
@@ -3181,7 +3240,10 @@
            transforms
            transforms-base
            util}
-   :model-imports #{:model/Database :model/Field :model/Table :model/Transform}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/Transform}}
 
   enterprise/transforms-python
   {:team "Graphy"
@@ -3205,7 +3267,10 @@
            transforms-base
            util}
    :model-exports #{:model/PythonLibrary}
-   :model-imports #{:model/Database :model/Field :model/Table :model/TransformRun}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/TransformRun}}
 
   enterprise/upload-management
   {:team "UX West"
