@@ -169,7 +169,7 @@
          all-ids    (set (keys card-id->card))]
     (let [source-ids (extract-source-card-ids (vals known-cards))
           new-ids    (set/difference source-ids all-ids)]
-      (if (empty? new-ids)
+      (if (perf/empty? new-ids)
         all-ids
         (let [new-cards (batch-fetch-cards new-ids)]
           (recur (merge known-cards new-cards)
