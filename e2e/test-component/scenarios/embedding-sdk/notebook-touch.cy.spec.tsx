@@ -7,10 +7,7 @@ import {
   disableTouchEmulation,
   enableTouchEmulation,
 } from "e2e/support/helpers/e2e-mobile-device-helpers";
-import {
-  mountInteractiveQuestion,
-  mountSdkContent,
-} from "e2e/support/helpers/embedding-sdk-component-testing";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
@@ -46,7 +43,7 @@ describe("scenarios > embedding-sdk > notebook touch support", () => {
     });
 
     it("remove step button should be visible without hover (EMB-1457)", () => {
-      cy.get<number>("@questionId").then(questionId => {
+      cy.get<number>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />);
       });
 
@@ -60,7 +57,7 @@ describe("scenarios > embedding-sdk > notebook touch support", () => {
     });
 
     it("notebook step buttons should respond to first tap (EMB-1457)", () => {
-      cy.get<number>("@questionId").then(questionId => {
+      cy.get<number>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />);
       });
 
@@ -70,9 +67,7 @@ describe("scenarios > embedding-sdk > notebook touch support", () => {
         // The question has a Summarize step. Clicking the existing
         // aggregation pill should open the popover on the first tap
         // without requiring a second tap.
-        cy.findByTestId("step-summarize-0-0")
-          .findByText("Count")
-          .click();
+        cy.findByTestId("step-summarize-0-0").findByText("Count").click();
 
         cy.findByTestId("clause-popover").should("be.visible");
       });
@@ -81,7 +76,7 @@ describe("scenarios > embedding-sdk > notebook touch support", () => {
 
   describe("desktop (non-touch)", () => {
     it("remove step button should be hidden until hover", () => {
-      cy.get<number>("@questionId").then(questionId => {
+      cy.get<number>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />);
       });
 
@@ -89,7 +84,11 @@ describe("scenarios > embedding-sdk > notebook touch support", () => {
         cy.findByTestId("notebook-button").click();
 
         // On desktop, the remove button should be hidden (visibility: hidden)
-        cy.findByLabelText("Remove step").should("have.css", "visibility", "hidden");
+        cy.findByLabelText("Remove step").should(
+          "have.css",
+          "visibility",
+          "hidden",
+        );
       });
     });
   });
