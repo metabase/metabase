@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.json :as json]
@@ -66,7 +67,12 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    [:type item-type-schema]]])
+    [:user_is_viewing
+     [:vector [:map
+               [:type item-type-schema]
+               [:query
+                {:optional true}
+                ::lib.schema/query]]]]]])
 
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
