@@ -30,16 +30,11 @@
   [#"([^/]+)?/$"                               :dir
    #"/settings.yaml$"                          :settings
    #"/export.log$"                             :log
-   #"/collections/metabots/(.*)\.yaml$"        :metabot
-   #"/collections/.*/cards/(.*)\.yaml$"        :card
-   #"/collections/.*/dashboards/(.*)\.yaml$"   :dashboard
-   #"/collections/.*collection/([^/]*)\.yaml$" :collection
-   #"/collections/([^/]*)\.yaml$"              :collection
-   #"/snippets/(.*)\.yaml"                     :snippet
+   #"/collections/(.*)\.yaml$"                 :collection-entity
    #"/databases/.*/schemas/(.*)"               :schema
    #"/databases/(.*)\.yaml"                    :database
    #"/transforms/(.*)\.yaml"                   :transform
-   #"/python-libraries/(.*)\.yaml"             :python-library])
+   #"/python_libraries/(.*)\.yaml"             :python-library])
 
 (defn- file-type
   "Find out entity type by file path"
@@ -128,7 +123,7 @@
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :dir :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export two collections"
@@ -137,25 +132,25 @@
                                               :data_model false :settings false)]
                   (is (= 2
                          (->> (tar-file-types f true)
-                              (filter #(= :collection (first %)))
+                              (filter #(= :collection-entity (first %)))
                               count)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :dir :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :dir :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
-                  (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database :python-library}
+                  (is (= #{:transform :log :dir :collection-entity :settings :schema :database :python-library}
                          (tar-file-types f)))))
 
               (testing "On exception API returns log"
@@ -310,7 +305,7 @@
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
-                                                                (str/includes? (.getName file) (:entity_id card))
+                                                                (= (.getName file) "frobinate.yaml")
                                                                 (assoc :collection_id "DoesNotExist"))))]
           (let [res (binding [api.serialization/*additive-logging* false]
                       (mt/user-http-request :crowberto :post 500 "ee/serialization/import"
@@ -341,7 +336,7 @@
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
-                                                                (str/includes? (.getName file) (:entity_id card))
+                                                                (= (.getName file) "frobinate.yaml")
                                                                 (assoc :collection_id "DoesNotExist"))))]
           (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
                                           {:request-options {:headers {"content-type" "multipart/form-data"}}}

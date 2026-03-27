@@ -33,7 +33,7 @@
         (snowplow-test/with-fake-snowplow-collector
           (ts/with-random-dump-dir [dump-dir "serdesv2-"]
             (let [coll (ts/create! :model/Collection :name "coll")
-                  card (ts/create! :model/Card :name "card" :collection_id (:id coll))]
+                  _card (ts/create! :model/Card :name "card" :collection_id (:id coll))]
               (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")
               (testing "Snowplow export event was sent"
                 (is (=? {"event"           "serialization"

@@ -233,7 +233,7 @@
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
       (t2/delete! :model/PythonLibrary)
-      (ts/with-temp-dpc [:model/PythonLibrary lib {:path "common" :source "def test(): pass"}]
+      (ts/with-temp-dpc [:model/PythonLibrary _lib {:path "common" :source "def test(): pass"}]
         (let [export (into [] (extract/extract {:no-settings true :no-data-model true}))]
           (storage/store! export dump-dir)
           (testing "python library stored at top-level python_libraries/"
