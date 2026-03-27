@@ -9,7 +9,6 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
-
 ## Connect an MCP client
 
 Point your MCP client at Metabase's MCP endpoint at `/api/mcp`:
@@ -35,7 +34,14 @@ A first-time connection will go something like this:
 
 ## Available tools
 
-You may need to allow access to these tools in your client. The MCP server builds on Metabase's [Agent API](./agent-api.md), so it has the same set of tools.
+You may need to allow access to these tools in your client. The MCP server builds on Metabase's [Agent API](./agent-api.md), and exposes the following tools:
+
+- **search**: Find tables and metrics using keyword or natural language search.
+- **get_table**: Get details about a table, including its fields, related tables, and metrics.
+- **get_table_field_values**: Get sample values and statistics for a field in a table.
+- **get_metric**: Get details about a metric, including its queryable dimensions.
+- **get_metric_field_values**: Get sample values and statistics for a field in a metric.
+- **query**: Query a table or metric and return results.
 
 ## Further reading
 

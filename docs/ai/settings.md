@@ -13,16 +13,12 @@ _Admin > AI_
 
 This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot.md).
 
-### Metabase Cloud
-
-On Cloud, you can either:
+On **Metabase Cloud** you can either:
 
 - [Purchase the Metabot add-on](#add-metabot-from-the-metabase-store) from the Metabase Store, or
 - [Bring your own API key](#bring-your-own-api-key) from a supported AI provider.
 
-### Metabase self-hosted
-
-On self-hosted Metabases, you can [bring your own API key](#bring-your-own-api-key) from a supported AI provider.
+On **self-hosted Metabases**: you can [bring your own API key](#bring-your-own-api-key) from a supported AI provider.
 
 ## Add Metabot from the Metabase Store
 
@@ -98,7 +94,7 @@ People can still @-mention items outside of this collection when prompting in AI
 
 ### Prompt suggestions
 
-When users open a new Metabot chat, Metabase shows a few suggested prompts based on popular models and metrics in your instance.
+When people open a new Metabot chat, Metabase shows a few suggested prompts.
 
 Click **Regenerate suggested prompts** to generate a fresh set of prompts. You can also run individual prompts to test Metabot's answers, or delete prompts that aren't useful.
 
@@ -132,13 +128,13 @@ Metabase will try to set semantic types automatically, but you should confirm th
 
 ### Define domain-specific terms in the glossary
 
-Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../exploration-and-organization/data-model-reference.md#glossary). When Metabot receives a prompt, it can look up terms in the glossary to better understand your request.
+Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../exploration-and-organization/data-model-reference.md#glossary). When you submit a prompt, Metabat can look up terms in the glossary to better understand your request.
 
 For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?" This is especially helpful for industry-specific jargon, internal product names, or abbreviations unique to your organization.
 
 ## Metabot permissions are Metabase permissions
 
-Metabot inherits the permissions of the current user, so you don't need to set permissions specifically for Metabot. Whenever someone uses Metabot, Metabot can only see what that person has permissions to see and do.
+Metabot inherits the permissions of the person it's chatting with, so you don't need to set permissions specifically for Metabot. Whenever someone uses Metabot, Metabot can only see what that person has permissions to see and do.
 
 In other words, to restrict what data Metabot can see for each person, simply apply [data](../permissions/data.md) and [collection](../permissions/collections.md) permissions to their groups as you would normally, and those permissions will apply to their use of Metabot as well.
 
@@ -158,7 +154,7 @@ Currently, Metabot is available to everyone who uses your Metabase.
 
 ## Choosing the AI model
 
-If you're using your own API key, you can choose which AI model Metabot uses in [Connection settings](#connection-settings).
+If you're using your own API key, you can choose which AI model Metabot uses in [Connection settings](#bring-your-own-api-key).
 
 On Metabase Cloud, Metabase's AI service selects models automatically. We use internal benchmarks to determine which AI models work best for different tasks, and we're constantly iterating to improve performance.
 

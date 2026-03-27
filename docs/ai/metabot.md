@@ -133,7 +133,7 @@ Metabot is getting smarter all the time, but there are some things it can't do y
 - **Goal lines.** Metabot can't add [goal lines](../questions/visualizations/line-bar-and-area-charts.md#goal-lines) to charts.
 - **Chart formatting.** Metabot can't change visualization settings like colors, axis labels, or number formatting.
 - **Slack alerts.** Metabot can't create Slack alerts directly. To send alerts via Slack, use Metabase's [Slack integration](../configuring-metabase/slack.md).
-- **Search.** Metabot can't search for documents, collections, segments, measures, actions, or indexed entities. It can however, incorporate segments and measures in its ad-hoc queries.
+- **Search.** Metabot can't search for documents, collections, segments, measures, actions, or indexed entities. It can, however, incorporate segments and measures in its ad-hoc queries.
 
 ## Metabot in Slack
 
