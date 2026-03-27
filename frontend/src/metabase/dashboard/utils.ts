@@ -1,7 +1,10 @@
 import type { Location } from "history";
 import _ from "underscore";
 
-import { isQuestionDashCard, isVirtualDashCard } from "metabase/utils/dashboard";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";

@@ -3,12 +3,15 @@ import _ from "underscore";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { findDashCardForInlineParameter } from "metabase/dashboard/utils";
-import { isQuestionDashCard, isVirtualDashCard } from "metabase/utils/dashboard";
 import {
   type ParameterMappingOption,
   getMappingOptionByTarget,
   getParameterMappingOptions,
 } from "metabase/parameters/utils/mapping-options";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
