@@ -250,8 +250,7 @@
   (span/with-span! {:name       "batch-dashboard-card-queries"
                     :attributes {:dashboard/id dashboard-id}}
     ;; === Shared work: done once ===
-    (let [dashboard              (fetch-dashboard-with-resolved-params dashboard-id)
-          _                      (api/read-check :model/Dashboard dashboard-id)
+    (let [dashboard              (api/read-check (fetch-dashboard-with-resolved-params dashboard-id))
           dashboard-param-id->param (build-dashboard-param-map dashboard)
           ;; Determine which cards to run
           cards                  (or (seq cards) (get-all-dashcards dashboard-id))
