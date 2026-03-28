@@ -45,7 +45,7 @@ To enable AI features with your own API key:
 
 1. Go to **Admin > AI > Connection settings**.
 2. Select your **Provider**.
-3. Enter your **API key**. If you need a key, click the link to create one on the provider's site.
+3. Enter your **API key**.
 4. Click **Connect**.
 5. Select a **Model** from the dropdown. Available models are fetched from the provider using your API key.
 
