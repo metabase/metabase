@@ -1,4 +1,4 @@
-(ns metabase.sql-tools.core-test
+(ns ^:mb/driver-tests metabase.sql-tools.core-test
   "Tests for sql-tools that run against both :macaw and :sqlglot backends.
 
    These tests verify that both parser implementations produce compatible results
