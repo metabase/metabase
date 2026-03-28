@@ -75,8 +75,26 @@
   :export?    true
   :doc        false)
 
-(defsetting metabot-system-prompt
-  (deferred-tru "Custom system prompt for Metabot.")
+(defsetting metabot-chat-system-prompt
+  (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :doc        false)
+
+(defsetting metabot-nlq-system-prompt
+  (deferred-tru "Custom system prompt for the natural language query (AI exploration) experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :doc        false)
+
+(defsetting metabot-sql-system-prompt
+  (deferred-tru "Custom system prompt for the SQL generation experience.")
   :type       :string
   :default    ""
   :visibility :admin

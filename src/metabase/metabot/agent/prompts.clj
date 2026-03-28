@@ -241,7 +241,14 @@
                                   :has_nql                  has-nql?
                                   :has_query_tools          (or has-sql? has-nql?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
-                                  :custom_instructions      (not-empty (metabot.settings/metabot-system-prompt))}]
+                                  :custom_instructions      (not-empty
+                                                             (case template-name
+                                                               "natural-language-querying-only.selmer"
+                                                               (metabot.settings/metabot-nlq-system-prompt)
+                                                               "sql-querying-only.selmer"
+                                                               (metabot.settings/metabot-sql-system-prompt)
+                                                               ;; default: internal.selmer and any other templates
+                                                               (metabot.settings/metabot-chat-system-prompt)))}]
         (render-system-prompt template template-context))
       ;; Fallback if template not found
       (do

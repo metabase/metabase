@@ -3,17 +3,20 @@ import { type ChangeEvent, useState } from "react";
 
 import { useAdminSetting } from "metabase/api/utils";
 
+export type SystemPromptSettingKey =
+  | "metabot-chat-system-prompt"
+  | "metabot-nlq-system-prompt"
+  | "metabot-sql-system-prompt";
+
 const DEBOUNCE_DELAY = 500;
 
-export function useSystemPromptInput() {
-  const { value: metabotSystemPrompt, updateSetting } = useAdminSetting(
-    "metabot-system-prompt",
-  );
-  const [inputText, setInputText] = useState<string>(metabotSystemPrompt || "");
+export function useSystemPromptInput(settingKey: SystemPromptSettingKey) {
+  const { value: systemPrompt, updateSetting } = useAdminSetting(settingKey);
+  const [inputText, setInputText] = useState<string>(systemPrompt || "");
 
   const debouncedUpdateSystemPrompt = useDebouncedCallback((value: string) => {
     updateSetting({
-      key: "metabot-system-prompt",
+      key: settingKey,
       value: value || null,
     });
   }, DEBOUNCE_DELAY);

@@ -596,7 +596,9 @@ interface PublicSettings {
   "metabot-icon": string | null;
   "metabot-tone": string;
   "metabot-show-illustrations": boolean;
-  "metabot-system-prompt": string | null;
+  "metabot-chat-system-prompt": string | null;
+  "metabot-nlq-system-prompt": string | null;
+  "metabot-sql-system-prompt": string | null;
   "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;

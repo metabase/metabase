@@ -1,1 +1,5 @@
-export { MetabotSystemPromptsPage } from "./MetabotSystemPromptsPage";
+export {
+  MetabotChatPromptPage,
+  NaturalLanguagePromptPage,
+  SqlGenerationPromptPage,
+} from "./MetabotSystemPromptsPage";

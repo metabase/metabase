@@ -239,22 +239,26 @@
      {})))
 
 (deftest custom-instructions-injected-when-set-test
-  (mt/with-temporary-setting-values [metabot-system-prompt "Always respond in French."]
-    (testing "internal template includes custom instructions"
+  (testing "internal/chat template uses metabot-chat-system-prompt"
+    (mt/with-temporary-setting-values [metabot-chat-system-prompt "Always respond in French."]
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (re-find #"Custom Instructions" rendered))
-        (is (re-find #"Always respond in French" rendered))))
-    (testing "sql template includes custom instructions"
+        (is (re-find #"Always respond in French" rendered)))))
+  (testing "sql template uses metabot-sql-system-prompt"
+    (mt/with-temporary-setting-values [metabot-sql-system-prompt "Always respond in French."]
       (let [rendered (render-template "sql-querying-only.selmer" all-yes-perms)]
         (is (re-find #"Custom Instructions" rendered))
-        (is (re-find #"Always respond in French" rendered))))
-    (testing "nlq template includes custom instructions"
+        (is (re-find #"Always respond in French" rendered)))))
+  (testing "nlq template uses metabot-nlq-system-prompt"
+    (mt/with-temporary-setting-values [metabot-nlq-system-prompt "Always respond in French."]
       (let [rendered (render-template "natural-language-querying-only.selmer" all-yes-perms)]
         (is (re-find #"Custom Instructions" rendered))
         (is (re-find #"Always respond in French" rendered))))))
 
 (deftest custom-instructions-absent-when-empty-test
-  (mt/with-temporary-setting-values [metabot-system-prompt ""]
+  (mt/with-temporary-setting-values [metabot-chat-system-prompt ""
+                                     metabot-nlq-system-prompt ""
+                                     metabot-sql-system-prompt ""]
     (testing "internal template has no custom instructions section"
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (not (re-find #"Custom Instructions" rendered)))))
@@ -264,3 +268,20 @@
     (testing "nlq template has no custom instructions section"
       (let [rendered (render-template "natural-language-querying-only.selmer" all-yes-perms)]
         (is (not (re-find #"Custom Instructions" rendered)))))))
+
+(deftest custom-instructions-isolated-per-template-test
+  (testing "chat prompt does not appear in sql template"
+    (mt/with-temporary-setting-values [metabot-chat-system-prompt "Chat only instruction."
+                                       metabot-sql-system-prompt ""]
+      (let [rendered (render-template "sql-querying-only.selmer" all-yes-perms)]
+        (is (not (re-find #"Chat only instruction" rendered))))))
+  (testing "sql prompt does not appear in nlq template"
+    (mt/with-temporary-setting-values [metabot-sql-system-prompt "SQL only instruction."
+                                       metabot-nlq-system-prompt ""]
+      (let [rendered (render-template "natural-language-querying-only.selmer" all-yes-perms)]
+        (is (not (re-find #"SQL only instruction" rendered))))))
+  (testing "nlq prompt does not appear in chat template"
+    (mt/with-temporary-setting-values [metabot-nlq-system-prompt "NLQ only instruction."
+                                       metabot-chat-system-prompt ""]
+      (let [rendered (render-template "internal.selmer" all-yes-perms)]
+        (is (not (re-find #"NLQ only instruction" rendered)))))))

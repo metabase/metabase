@@ -49,7 +49,11 @@ import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { MetabotCustomizationPage } from "./MetabotCustomizationPage";
 import { MetabotNavPane } from "./MetabotNavPane";
 import { MetabotSetup } from "./MetabotSetup";
-import { MetabotSystemPromptsPage } from "./MetabotSystemPromptsPage";
+import {
+  MetabotChatPromptPage,
+  NaturalLanguagePromptPage,
+  SqlGenerationPromptPage,
+} from "./MetabotSystemPromptsPage";
 import { MetabotUsageControlsPage } from "./MetabotUsageControlsPage";
 import { useMetabotIdPath } from "./utils";
 
@@ -69,9 +73,19 @@ export function getAdminRoutes() {
       component={MetabotCustomizationPage}
     />,
     <Route
-      key="system-prompts"
-      path=":metabotId/system-prompts"
-      component={MetabotSystemPromptsPage}
+      key="system-prompts-metabot-chat"
+      path=":metabotId/system-prompts/metabot-chat"
+      component={MetabotChatPromptPage}
+    />,
+    <Route
+      key="system-prompts-natural-language-queries"
+      path=":metabotId/system-prompts/natural-language-queries"
+      component={NaturalLanguagePromptPage}
+    />,
+    <Route
+      key="system-prompts-sql-generation"
+      path=":metabotId/system-prompts/sql-generation"
+      component={SqlGenerationPromptPage}
     />,
   ];
 }
