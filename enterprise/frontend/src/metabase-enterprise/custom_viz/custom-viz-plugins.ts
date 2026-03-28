@@ -320,7 +320,12 @@ export async function loadCustomVizPlugin(
     const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
     const getAssetUrl = (path: string) =>
       `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
+    const locale =
+      window.MetabaseUserLocalization?.headers?.language ??
+      window.MetabaseSiteLocalization?.headers?.language ??
+      "en";
     const props = buildCustomVizProps({
+      locale,
       getAssetUrl,
     });
     const vizDef = factory(props);

@@ -6,6 +6,7 @@
    [metabase.config.core :as config]
    [metabase.util.log :as log])
   (:import
+   (java.nio.file FileSystems)
    (org.semver4j Semver SemverException)))
 
 (set! *warn-on-reflection* true)
@@ -57,13 +58,52 @@
   (let [lower (str/lower-case path)]
     (some #(str/ends-with? lower %) image-extensions)))
 
+(def ^:private allowed-asset-extensions
+  "File extensions allowed for static asset serving (images + locale JSON)."
+  (into image-extensions #{".json"}))
+
+(defn- allowed-asset-file?
+  "Returns true if the file path has a recognized allowed extension."
+  [^String path]
+  (let [lower (str/lower-case path)]
+    (some #(str/ends-with? lower %) allowed-asset-extensions)))
+
+(defn- glob?
+  "Returns true if the path contains glob characters (*, ?, or {})."
+  [^String path]
+  (boolean (re-find #"[*?\[\{]" path)))
+
+(defn- path-matcher
+  "Create a java.nio.file PathMatcher for a glob pattern."
+  [^String pattern]
+  (.getPathMatcher (FileSystems/getDefault) (str "glob:" pattern)))
+
+(defn expand-globs
+  "Expand glob patterns in asset paths against a list of available file paths.
+   Non-glob paths are returned as-is (if they have an allowed extension).
+   Glob paths are matched against `available-paths` and only matches with
+   allowed extensions are returned."
+  [asset-entries available-paths]
+  (let [{globs true literals false} (group-by glob? asset-entries)]
+    (distinct
+     (concat
+      (filter allowed-asset-file? literals)
+      (when (seq globs)
+        (let [matchers (map path-matcher globs)]
+          (filter (fn [^String path]
+                    (and (allowed-asset-file? path)
+                         (let [p (java.nio.file.Path/of path (into-array String []))]
+                           (some #(.matches ^java.nio.file.PathMatcher % p) matchers))))
+                  available-paths)))))))
+
 (defn asset-paths
-  "List the static image asset names whitelisted by the manifest.
+  "List the static asset names whitelisted by the manifest.
    Includes names from the `assets` array and the `icon` (if it's an image filename).
-   Only image files are included. Returns simple filenames like `icon.svg`.
-   These map to `dist/assets/<name>` in the repo."
+   Supports glob patterns (e.g. `locales/*`) which are expanded by the caller.
+   Returns literal paths and glob patterns; use [[expand-globs]] to resolve globs
+   against available files."
   [manifest]
-  (let [declared  (filter image-file? (get manifest :assets []))
+  (let [declared  (get manifest :assets [])
         icon-name (when-let [icon (:icon manifest)]
                     (when (image-file? icon) icon))]
     (distinct (concat declared (when icon-name [icon-name])))))
