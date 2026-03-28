@@ -47,6 +47,7 @@ import type {
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { MetabotCustomizationPage } from "./MetabotCustomizationPage";
+import { MetabotFeatureAccessPage } from "./MetabotFeatureAccessPage";
 import { MetabotNavPane } from "./MetabotNavPane";
 import { MetabotSetup } from "./MetabotSetup";
 import {
@@ -54,7 +55,7 @@ import {
   NaturalLanguagePromptPage,
   SqlGenerationPromptPage,
 } from "./MetabotSystemPromptsPage";
-import { MetabotUsageControlsPage } from "./MetabotUsageControlsPage";
+import { MetabotUsageLimitsPage } from "./MetabotUsageLimitsPage";
 import { useMetabotIdPath } from "./utils";
 
 export function getAdminRoutes() {
@@ -63,9 +64,14 @@ export function getAdminRoutes() {
     <Route key="setup" path="setup" component={MetabotSetup} />,
     <Route key="metabot" path=":metabotId" component={MetabotAdminPage} />,
     <Route
-      key="usage-controls"
-      path=":metabotId/usage-controls"
-      component={MetabotUsageControlsPage}
+      key="ai-feature-access"
+      path=":metabotId/usage-controls/ai-feature-access"
+      component={MetabotFeatureAccessPage}
+    />,
+    <Route
+      key="ai-usage-limits"
+      path=":metabotId/usage-controls/ai-usage-limits"
+      component={MetabotUsageLimitsPage}
     />,
     <Route
       key="customization"

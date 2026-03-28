@@ -15,7 +15,7 @@ import { useMetabotGroupPermissions } from "./utils";
 
 type TabValue = "user-groups" | "tenant-groups";
 
-export function MetabotUsageControlsPage() {
+export function MetabotFeatureAccessPage() {
   const isUsingTenants = useSetting("use-tenants");
   const [activeTab, setActiveTab] = useState<TabValue>("user-groups");
 

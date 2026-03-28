@@ -18,6 +18,7 @@ export function useSystemPromptInput(settingKey: SystemPromptSettingKey) {
     updateSetting({
       key: settingKey,
       value: value || null,
+      toast: false,
     });
   }, DEBOUNCE_DELAY);
 

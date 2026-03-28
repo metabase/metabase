@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import {
@@ -6,17 +5,11 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
-import { getLocation } from "metabase/selectors/routing";
 import { Flex } from "metabase/ui";
 
 export function MetabotNavPane() {
   const isConfigured = useSetting("llm-metabot-configured?");
-  const location = useSelector(getLocation);
-  const isOnSystemPrompts = location?.pathname?.includes("/system-prompts");
-  const [isSystemPromptsOpen, { toggle: toggleSystemPrompts }] =
-    useDisclosure(isOnSystemPrompts);
 
   return (
     <Flex direction="column" flex="0 0 auto">
@@ -36,8 +29,17 @@ export function MetabotNavPane() {
             <AdminNavItem
               icon="lock"
               label={t`Usage controls`}
-              path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls`}
-            />
+              folderPattern="usage-controls"
+            >
+              <AdminNavItem
+                label={t`AI feature access`}
+                path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-feature-access`}
+              />
+              <AdminNavItem
+                label={t`AI usage limits`}
+                path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-usage-limits`}
+              />
+            </AdminNavItem>
             <AdminNavItem
               icon="palette"
               label={t`Customization`}
@@ -47,8 +49,6 @@ export function MetabotNavPane() {
               icon="document"
               label={t`System prompts`}
               folderPattern="system-prompts"
-              opened={isSystemPromptsOpen}
-              onClick={toggleSystemPrompts}
             >
               <AdminNavItem
                 label={t`Metabot chat`}
