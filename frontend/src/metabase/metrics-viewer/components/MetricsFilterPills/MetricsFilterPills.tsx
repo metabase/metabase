@@ -5,7 +5,10 @@ import { Group } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type { MetricSourceId, SourceColorMap } from "../../types/viewer-state";
+import type {
+  MetricSourceId,
+  SourceIdColorMap,
+} from "../../types/viewer-state";
 import { getSourceIcon } from "../../utils/source-ids";
 import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
 
@@ -13,7 +16,7 @@ import { MetricsFilterPillPopover } from "./MetricsFilterPillPopover";
 
 interface MetricsFilterPillsProps {
   definitions: DefinitionSource[];
-  sourceColors: SourceColorMap;
+  sourceColors: SourceIdColorMap;
   onUpdateDefinition: (
     id: MetricSourceId,
     definition: MetricDefinition,
@@ -91,7 +94,7 @@ export function MetricsFilterPills({
 
 function getFlatFilters(
   definitions: DefinitionSource[],
-  sourceColors: SourceColorMap,
+  sourceColors: SourceIdColorMap,
 ): FlattenedFilter[] {
   return definitions.flatMap((definition) => {
     const colors = sourceColors[definition.id] ?? ["var(--mb-color-brand)"];

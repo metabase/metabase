@@ -33,7 +33,7 @@ export interface LegendGroup {
 export function buildLegendGroups(
   formulaEntities: MetricsViewerFormulaEntity[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>,
+  breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>,
   sourceColors: SourceColorMap,
 ): LegendGroup[] {
   const hasAnyBreakout = formulaEntities.some((entity) => {
@@ -58,7 +58,12 @@ export function buildLegendGroups(
 
   const groups: LegendGroup[] = [];
 
-  for (const entity of formulaEntities) {
+  for (
+    let entityIndex = 0;
+    entityIndex < formulaEntities.length;
+    entityIndex++
+  ) {
+    const entity = formulaEntities[entityIndex];
     if (!isMetricEntry(entity)) {
       continue;
     }
@@ -68,7 +73,7 @@ export function buildLegendGroups(
       continue;
     }
 
-    const colors = sourceColors[entity.id];
+    const colors = sourceColors[entityIndex];
     if (!colors || colors.length === 0) {
       continue;
     }
@@ -80,7 +85,7 @@ export function buildLegendGroups(
     const breakoutProjection = getEntryBreakout(effectiveEntry);
 
     if (breakoutProjection) {
-      const response = breakoutValuesBySourceId.get(entity.id);
+      const response = breakoutValuesByEntityIndex.get(entityIndex);
       if (!response || response.values.length === 0) {
         continue;
       }

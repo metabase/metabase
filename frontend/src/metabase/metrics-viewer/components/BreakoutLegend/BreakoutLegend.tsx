@@ -16,14 +16,14 @@ import S from "./BreakoutLegend.module.css";
 type BreakoutLegendProps = {
   formulaEntities: MetricsViewerFormulaEntity[];
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
+  breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
   sourceColors: SourceColorMap;
 };
 
 export function BreakoutLegend({
   formulaEntities,
   definitions,
-  breakoutValuesBySourceId,
+  breakoutValuesByEntityIndex,
   sourceColors,
 }: BreakoutLegendProps) {
   const groups = useMemo(
@@ -31,10 +31,10 @@ export function BreakoutLegend({
       buildLegendGroups(
         formulaEntities,
         definitions,
-        breakoutValuesBySourceId,
+        breakoutValuesByEntityIndex,
         sourceColors,
       ),
-    [formulaEntities, definitions, breakoutValuesBySourceId, sourceColors],
+    [formulaEntities, definitions, breakoutValuesByEntityIndex, sourceColors],
   );
 
   if (groups.length === 0) {

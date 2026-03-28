@@ -4,7 +4,10 @@ import { Box, Popover } from "metabase/ui";
 import type { FilterClause, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type { MetricSourceId, SourceColorMap } from "../../types/viewer-state";
+import type {
+  MetricSourceId,
+  SourceIdColorMap,
+} from "../../types/viewer-state";
 
 import S from "./FilterPopover.module.css";
 import type { DefinitionSource } from "./FilterPopoverContent";
@@ -14,7 +17,7 @@ const POPOVER_MAX_HEIGHT = "37.5rem";
 
 interface FilterPopoverProps {
   definitions: DefinitionSource[];
-  metricColors: SourceColorMap;
+  metricColors: SourceIdColorMap;
   onUpdateDefinition: (
     id: MetricSourceId,
     definition: MetricDefinition,

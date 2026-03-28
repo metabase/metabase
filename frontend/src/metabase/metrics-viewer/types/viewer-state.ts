@@ -124,9 +124,18 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
 
 // ── Color mapping ──
 
-export type SourceColorMap = Partial<
-  Record<MetricSourceId | MetricExpressionId, string[]>
->;
+/**
+ * Maps each formula-entity index to its assigned colour(s).
+ * Keyed by position in `formulaEntities[]` so that two instances of the same
+ * metric get independent colour assignments.
+ */
+export type SourceColorMap = Record<number, string[]>;
+
+/**
+ * A source-ID–keyed color map used by components that work with deduplicated
+ * definitions (e.g. filter pills) rather than per-instance formula entities.
+ */
+export type SourceIdColorMap = Partial<Record<MetricSourceId, string[]>>;
 
 // ── Shared display types ──
 
@@ -144,6 +153,8 @@ export type SelectedMetric = {
 export type ExpressionItemResult = {
   /** The expression definition entry. */
   entry: ExpressionDefinitionEntry;
+  /** Per-source modified definitions used by this expression. */
+  modifiedDefinitions: Record<MetricSourceId, MetricDefinition>;
   result: Dataset | null;
   isExecuting: boolean;
   requestError: string | null; // error from http request

@@ -36,6 +36,8 @@ export function SourceColorIndicator({
   }
 
   return (
-    <Icon name={fallbackIcon} size={size} style={{ color: colors?.[0] }} />
+    <Flex align="center" data-testid="color-indicator-container">
+      <Icon name={fallbackIcon} size={size} style={{ color: colors?.[0] }} />
+    </Flex>
   );
 }

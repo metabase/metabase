@@ -11,6 +11,7 @@ import type { Dataset, TemporalUnit } from "metabase-types/api";
 
 import type {
   ExpressionItemResult,
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
@@ -26,6 +27,7 @@ import {
   buildArithmeticSeriesFromResult,
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
+  computeUniqueEntityNames,
 } from "../../../utils/series";
 import { getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
@@ -35,9 +37,9 @@ type MetricsViewerTabContentProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
   tab: MetricsViewerTabState;
-  resultsByDefinitionId: Map<MetricSourceId, Dataset>;
+  resultsByEntityIndex: Map<number, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
+  modifiedDefinitionsByIndex: Map<number, MetricDefinition>;
   sourceColors: SourceColorMap;
   isExecuting: (id: MetricSourceId) => boolean;
   /**
@@ -62,9 +64,9 @@ export function MetricsViewerTabContent({
   definitions,
   formulaEntities,
   tab,
-  resultsByDefinitionId,
+  resultsByEntityIndex,
   errorsByDefinitionId,
-  modifiedDefinitions,
+  modifiedDefinitionsByIndex,
   sourceColors,
   isExecuting,
   expressionItems = [],
@@ -77,32 +79,57 @@ export function MetricsViewerTabContent({
     [formulaEntities],
   );
 
+  const uniqueNames = useMemo(
+    () => computeUniqueEntityNames(formulaEntities, definitions),
+    [formulaEntities, definitions],
+  );
+
   const { series: rawSeries, cardIdToDimensionId } = useMemo(() => {
     // Build one arithmetic series per expression item that has a result.
-    const expressionSeries = expressionItems.flatMap((item) =>
-      item.result && item.entry.name
-        ? buildArithmeticSeriesFromResult(
-            definitions,
-            tab.dimensionMapping,
-            tab.display,
-            item.result,
-            modifiedDefinitions,
-            item.entry.name,
-          )
-        : [],
-    );
+    const expressionSeries = expressionItems.flatMap((item) => {
+      if (!item.result || !item.entry.name) {
+        return [];
+      }
+
+      // TODO: instead of this we should have a single cycle that iterates over "formulaEntities" and creates a series for a specific entity rather than metrics and expressions separately
+      const itemIndex = formulaEntities.findIndex(
+        (entity) =>
+          entity.type === "expression" && entity.name === item.entry.name,
+      );
+
+      return buildArithmeticSeriesFromResult(
+        definitions,
+        tab.dimensionMapping,
+        tab.display,
+        item.result,
+        item.modifiedDefinitions,
+        item.entry.name,
+        sourceColors[itemIndex],
+      );
+    });
 
     // Build individual series for standalone metric items (or all in pure
     // individual mode when there are no expression items).
+    const indexedMetrics = formulaEntities
+      .map((e, i) => ({ entry: e, entityIndex: i }))
+      .filter(
+        (item): item is { entry: MetricDefinitionEntry; entityIndex: number } =>
+          isMetricEntry(item.entry),
+      );
+
+    const totalEntityCount = indexedMetrics.length + expressionSeries.length;
+
     const { series: individualSeries, cardIdToDimensionId } =
       buildRawSeriesFromDefinitions(
-        formulaEntities.filter(isMetricEntry),
+        indexedMetrics,
         tab.dimensionMapping,
         tab.display,
-        resultsByDefinitionId,
-        modifiedDefinitions,
+        resultsByEntityIndex,
+        modifiedDefinitionsByIndex,
         sourceColors,
         definitions,
+        uniqueNames,
+        totalEntityCount,
       );
 
     return {
@@ -114,10 +141,11 @@ export function MetricsViewerTabContent({
     formulaEntities,
     tab.dimensionMapping,
     tab.display,
-    resultsByDefinitionId,
-    modifiedDefinitions,
+    resultsByEntityIndex,
+    modifiedDefinitionsByIndex,
     sourceColors,
     definitions,
+    uniqueNames,
   ]);
 
   const isLoading = useMemo(() => {
@@ -166,22 +194,39 @@ export function MetricsViewerTabContent({
       buildDimensionItemsFromDefinitions(
         definitions,
         tab.dimensionMapping,
-        modifiedDefinitions,
+        modifiedDefinitionsByIndex,
         sourceColors,
+        formulaEntities,
         dimensionFilter,
       ),
     [
       definitions,
       tab.dimensionMapping,
-      modifiedDefinitions,
+      modifiedDefinitionsByIndex,
       sourceColors,
+      formulaEntities,
       dimensionFilter,
     ],
   );
 
+  // Build sourceId → first entityIndex lookup for dimension-mapping-based lookups.
+  const sourceIdToEntityIndex = useMemo(() => {
+    const map = new Map<MetricSourceId, number>();
+    formulaEntities.forEach((e, i) => {
+      if (isMetricEntry(e) && !map.has(e.id)) {
+        map.set(e.id, i);
+      }
+    });
+    return map;
+  }, [formulaEntities]);
+
   const definitionForControls = useMemo((): MetricDefinition | null => {
     for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const modDef = modifiedDefinitions.get(sourceId);
+      const entityIndex = sourceIdToEntityIndex.get(sourceId);
+      if (entityIndex == null) {
+        continue;
+      }
+      const modDef = modifiedDefinitionsByIndex.get(entityIndex);
       if (!modDef) {
         continue;
       }
@@ -192,12 +237,16 @@ export function MetricsViewerTabContent({
       }
     }
     return null;
-  }, [tab.dimensionMapping, modifiedDefinitions]);
+  }, [tab.dimensionMapping, modifiedDefinitionsByIndex, sourceIdToEntityIndex]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
     for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const modDef = modifiedDefinitions.get(sourceId);
+      const entityIndex = sourceIdToEntityIndex.get(sourceId);
+      if (entityIndex == null) {
+        continue;
+      }
+      const modDef = modifiedDefinitionsByIndex.get(entityIndex);
       if (!modDef) {
         continue;
       }
@@ -207,7 +256,7 @@ export function MetricsViewerTabContent({
       }
     }
     return filterDimensions;
-  }, [tab.dimensionMapping, modifiedDefinitions]);
+  }, [tab.dimensionMapping, modifiedDefinitionsByIndex, sourceIdToEntityIndex]);
 
   const updateProjectionConfig = useCallback(
     (updates: Partial<MetricsViewerTabProjectionConfig>) => {

@@ -19,7 +19,10 @@ import type {
   MetricDefinition,
 } from "metabase-lib/metric";
 
-import type { MetricSourceId, SourceColorMap } from "../../types/viewer-state";
+import type {
+  MetricSourceId,
+  SourceIdColorMap,
+} from "../../types/viewer-state";
 
 import S from "./FilterPopover.module.css";
 import { filterDisplayGroupsBySearch } from "./utils";
@@ -46,7 +49,7 @@ type DisplayMetricGroup = {
 
 interface FilterPopoverContentProps {
   definitions: DefinitionSource[];
-  metricColors: SourceColorMap;
+  metricColors: SourceIdColorMap;
   onFilterApplied: (id: MetricSourceId, filter: FilterClause) => void;
 }
 

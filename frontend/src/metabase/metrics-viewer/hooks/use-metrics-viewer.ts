@@ -55,20 +55,20 @@ import { useViewerState } from "./use-viewer-state";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
 export interface UseMetricsViewerResult {
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>; // TODO: most likely we don't need this anymore - it was needed only to understand which metric names should be identified as metrics when we parse formula bar text. This could be just local state for MetricSearchInput
   formulaEntities: MetricsViewerFormulaEntity[];
   tabs: MetricsViewerTabState[];
   activeTab: MetricsViewerTabState | null;
   activeTabId: string | null;
 
   loadingIds: Set<MetricSourceId>;
-  resultsByDefinitionId: Map<MetricSourceId, Dataset>;
+  resultsByEntityIndex: Map<number, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
+  modifiedDefinitionsByIndex: Map<number, MetricDefinition>;
   isExecuting: (id: MetricSourceId) => boolean;
   expressionItems: ExpressionItemResult[];
   sourceColors: SourceColorMap;
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
+  breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
   selectedMetrics: SelectedMetric[];
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
@@ -217,10 +217,10 @@ export function useMetricsViewer({
   }, [state.tabs, state.selectedTabId]);
 
   const {
-    resultsByDefinitionId,
+    resultsByEntityIndex,
     errorsByDefinitionId,
-    modifiedDefinitions,
-    breakoutValuesBySourceId,
+    modifiedDefinitionsByIndex,
+    breakoutValuesByEntityIndex,
     isExecuting,
     expressionItems,
   } = useDefinitionQueries(state.definitions, state.formulaEntities, activeTab);
@@ -240,9 +240,9 @@ export function useMetricsViewer({
       computeSourceColors(
         state.formulaEntities,
         state.definitions,
-        breakoutValuesBySourceId,
+        breakoutValuesByEntityIndex,
       ),
-    [state.formulaEntities, state.definitions, breakoutValuesBySourceId],
+    [state.formulaEntities, state.definitions, breakoutValuesByEntityIndex],
   );
 
   const definitionsBySourceId = useMemo(
@@ -412,15 +412,15 @@ export function useMetricsViewer({
     activeTabId: state.selectedTabId,
 
     loadingIds,
-    resultsByDefinitionId,
+    resultsByEntityIndex,
     errorsByDefinitionId,
-    modifiedDefinitions,
+    modifiedDefinitionsByIndex,
     isExecuting,
 
     expressionItems,
 
     sourceColors,
-    breakoutValuesBySourceId,
+    breakoutValuesByEntityIndex,
     selectedMetrics,
     sourceOrder,
     sourceDataById,

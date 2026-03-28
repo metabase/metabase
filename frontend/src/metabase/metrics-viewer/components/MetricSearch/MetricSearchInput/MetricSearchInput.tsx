@@ -619,7 +619,7 @@ export function MetricSearchInput({
                   <span key={`${entry.id}-${entryIndex}`}>
                     <MetricPill
                       metric={metric}
-                      colors={metricColors[entry.id]}
+                      colors={metricColors[entryIndex]}
                       definitionEntry={defEntry}
                       onSwap={onSwapMetric}
                       onRemove={(_id, _sourceType) =>
@@ -634,25 +634,9 @@ export function MetricSearchInput({
               }
 
               if (isExpressionEntry(entry)) {
-                // One primary color per unique metric in the expression
-                const expressionColors = (() => {
-                  const seen = new Set<string>();
-                  const result: string[] = [];
-                  for (const tok of entry.tokens) {
-                    if (tok.type !== "metric") {
-                      continue;
-                    }
-                    const key = String(tok.sourceId);
-                    if (!seen.has(key)) {
-                      seen.add(key);
-                      const color = metricColors[tok.sourceId]?.[0];
-                      if (color !== undefined) {
-                        result.push(color);
-                      }
-                    }
-                  }
-                  return result.length > 0 ? result : undefined;
-                })();
+                const expressionColors = metricColors[entryIndex]
+                  ? [metricColors[entryIndex][0]]
+                  : undefined;
 
                 return (
                   <span key={`${entry.id}-${entryIndex}`}>
