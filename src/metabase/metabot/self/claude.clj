@@ -153,7 +153,7 @@
                                :content [{:type  "tool_use"
                                           :id    (:id part)
                                           :name  (:function part)
-                                          :input (:arguments part)}]}
+                                          :input (or (:arguments part) {})}]}
                  :tool-output {:role    "user"
                                :content [{:type        "tool_result"
                                           :tool_use_id (:id part)
