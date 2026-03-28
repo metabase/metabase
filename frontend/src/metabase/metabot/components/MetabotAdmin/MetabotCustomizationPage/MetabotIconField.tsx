@@ -9,6 +9,7 @@ import {
   Box,
   Button,
   Flex,
+  Group,
   Icon,
   Stack,
   Switch,
@@ -92,10 +93,10 @@ export function MetabotIconField() {
       <Flex
         align="center"
         className={cx(CS.bordered, CS.rounded, CS.alignSelfStart)}
-        gap="sm"
-        mb="sm"
-        mt="sm"
-        p="md"
+        gap="md"
+        my="sm"
+        py="sm"
+        px="md"
       >
         <Box
           className={cx(CS.bgLight, CS.bordered, CS.rounded)}
@@ -124,8 +125,8 @@ export function MetabotIconField() {
           multiple={false}
           onChange={handleIconUpload}
         />
-        <Button size="xs" onClick={() => fileInputRef.current?.click()}>
-          {t`Upload`}
+        <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+          {t`Upload a custom icon`}
         </Button>
         {iconFileName && (
           <Text fz="sm" c="text-secondary" truncate="end">
@@ -144,21 +145,29 @@ export function MetabotIconField() {
         )}
       </Flex>
       {!isDefaultIcon && (
-        <Switch
-          label={t`Show Metabot illustrations`}
-          description={t`Show default Metabot illustrations throughout the app.`}
-          checked={!!showIllustrations}
-          onChange={(e) =>
-            updateShowIllustrations({
-              key: "metabot-show-illustrations",
-              value: e.currentTarget.checked,
-            })
-          }
-          disabled={isLoadingIllustrations}
-          size="sm"
-          w="auto"
-          mb="sm"
-        />
+        <Stack mt="lg" gap="sm">
+          <Text fz="md" fw="bold">
+            {t`Metabot illustrations`}
+          </Text>
+          <Group gap="lg">
+            <Text fz="md" c="text-secondary">
+              {t`Show Metabot illustrations in chat sidebar and natural language query page`}
+            </Text>
+            <Switch
+              aria-label={t`Show Metabot illustrations`}
+              checked={!!showIllustrations}
+              onChange={(e) =>
+                updateShowIllustrations({
+                  key: "metabot-show-illustrations",
+                  value: e.currentTarget.checked,
+                  toast: false,
+                })
+              }
+              disabled={isLoadingIllustrations}
+              size="sm"
+            />
+          </Group>
+        </Stack>
       )}
     </Stack>
   );

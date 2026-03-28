@@ -66,15 +66,6 @@
   :export?    true
   :doc        false)
 
-(defsetting metabot-tone
-  (deferred-tru "The tone for Metabot responses.")
-  :type       :string
-  :default    ""
-  :visibility :admin
-  :encryption :no
-  :export?    true
-  :doc        false)
-
 (defsetting metabot-chat-system-prompt
   (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
   :type       :string

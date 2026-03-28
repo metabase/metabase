@@ -383,7 +383,6 @@ export const createMockSettings = (
   "slack-app-token": null,
   "slack-token-valid?": false,
   "start-of-week": "sunday",
-  "metabot-tone": "",
   "store-url": "https://store.staging.metabase.com",
   "subscription-allowed-domains": null,
   "token-features": createMockTokenFeatures(),
