@@ -6,6 +6,9 @@ title: Driver interface changelog
 
 ## Metabase 0.59.0
 
+- Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.
+  It should return the query if it is valid and throw otherwise.
+
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this method to customize how your SQL JDBC driver
   retrieves database type names from result set metadata. See the `:mysql` implementation for an example of remapping
   `TINYINT` to `BIT` based on precision.
