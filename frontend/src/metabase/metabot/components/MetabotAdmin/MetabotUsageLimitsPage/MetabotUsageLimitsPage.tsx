@@ -11,7 +11,7 @@ import { Group, Icon, Text } from "metabase/ui";
 export function MetabotUsageLimitsPage() {
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
-      <SettingsPageWrapper title={t`AI usage limits`} mt="xl">
+      <SettingsPageWrapper title={t`AI usage limits`} mt="sm">
         <SettingsSection>
           <Group>
             <Icon name="ai" />

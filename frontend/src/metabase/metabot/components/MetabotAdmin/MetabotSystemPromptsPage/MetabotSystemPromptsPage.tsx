@@ -31,7 +31,7 @@ function SystemPromptPage({
 
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
-      <SettingsPageWrapper title={title} mt="xl">
+      <SettingsPageWrapper title={title} mt="sm">
         <SettingsSection>
           <LoadingAndErrorWrapper loading={false}>
             <Text c="text-secondary" size="md" mb="lg">

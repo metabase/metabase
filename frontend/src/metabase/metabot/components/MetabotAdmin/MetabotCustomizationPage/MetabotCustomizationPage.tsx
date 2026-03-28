@@ -35,7 +35,7 @@ export function MetabotCustomizationPage() {
 
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
-      <SettingsPageWrapper title={t`Customize`} mt="xl">
+      <SettingsPageWrapper title={t`Customization`} mt="sm">
         <SettingsSection
           description={t`Customize how Metabot appears to users.`}
           title={t`Identity`}
