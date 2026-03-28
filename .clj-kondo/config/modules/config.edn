@@ -2939,7 +2939,6 @@
            models
            premium-features
            query-processor
-           sql-tools
            util
            warehouse-schema
            enterprise/sandbox}

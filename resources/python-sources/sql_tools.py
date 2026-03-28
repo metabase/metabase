@@ -1605,12 +1605,12 @@ def is_single_select_stmt(sql: str, dialect: str = None) -> str:
     """Validates that a query is a single SELECT statement
     and returns the query reconstructed from the parsed AST.
     """
+    is_single_select = {"is_single_select?": False}
     try:
         stmts = sqlglot.parse(sql, read=dialect)
-        is_single_select = {"is_single_select?": False}
         if len(stmts) == 1 and isinstance(stmts[0], exp.Select):
             is_single_select["is_single_select?"] = True
             is_single_select["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
-        return json.dumps(is_single_select)
     except Exception as e:
-        return json.dumps({"is_single_select?": False, "error": str(e)})
+        is_single_select["error"] = str(e)
+    return json.dumps(is_single_select)
