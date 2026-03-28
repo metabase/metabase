@@ -383,7 +383,7 @@ jobs:
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          echo //registry.npmjs.org/:_authToken=${NPM_RELEASE_TOKEN} > .npmrc
+          echo //registry.npmjs.org/:_authToken="${NPM_RELEASE_TOKEN}" > .npmrc
 
           TAG="${{ steps.compute-tag.outputs.masterTag }}"
           echo "Resolved npm tag: $TAG"

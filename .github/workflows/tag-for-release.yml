@@ -226,7 +226,7 @@ jobs:
           return version_path;
     - name: Upload to S3
       run: |
-        aws s3 cp ./metabase.jar s3://${AWS_S3_CLOUD_DEPLOY_BUCKET}/${{ steps.version_path.outputs.result }}/metabase.jar
+        aws s3 cp ./metabase.jar s3://"${AWS_S3_CLOUD_DEPLOY_BUCKET}"/${{ steps.version_path.outputs.result }}/metabase.jar
 
       env:
         AWS_S3_CLOUD_DEPLOY_BUCKET: ${{ secrets.AWS_S3_CLOUD_DEPLOY_BUCKET }}

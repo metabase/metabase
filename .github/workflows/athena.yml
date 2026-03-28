@@ -30,13 +30,13 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Deploy Athena JDBC driver
-        run: ./bin/athena.bb ${INPUT_VERSION} --deploy
+        run: ./bin/athena.bb "${INPUT_VERSION}" --deploy
         env:
           INPUT_VERSION: ${{ github.event.inputs.version }}
 
       - name: Verify deployment
         run: |
-          aws s3 ls s3://metabase-maven-downloads/com/metabase/athena-jdbc/${INPUT_VERSION}/
+          aws s3 ls s3://metabase-maven-downloads/com/metabase/athena-jdbc/"${INPUT_VERSION}"/
           echo "Athena JDBC driver version ${INPUT_VERSION} has been deployed"
 
         env:

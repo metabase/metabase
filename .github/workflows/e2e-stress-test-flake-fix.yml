@@ -155,7 +155,7 @@ jobs:
         run: |
           node e2e/runner/run_cypress_ci.js ${{ needs.determine-test-type.outputs.type }} \
           --spec '${{ github.event.inputs.spec }}' \
-          --env burn=${INPUT_BURN_IN} \
+          --env burn="${INPUT_BURN_IN}" \
           --config-file e2e/support/cypress-stress-test.config.js
 
       - name: Upload Cypress Artifacts upon failure

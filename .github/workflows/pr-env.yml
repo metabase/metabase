@@ -120,9 +120,9 @@ jobs:
       - name: Create app database if not exists
         run: |
           export PGPASSWORD='${{ secrets.PR_ENV_DB_PASSWORD }}'
-          export PGUSER=${PR_ENV_DB_USER}
-          export PGHOST=${PR_ENV_DB_HOST}
-          export PGDATABASE=${PR_ENV_DB_NAME}
+          export PGUSER="${PR_ENV_DB_USER}"
+          export PGHOST="${PR_ENV_DB_HOST}"
+          export PGDATABASE="${PR_ENV_DB_NAME}"
           psql -tc "SELECT 1 FROM pg_database WHERE datname = 'hosting_pr${{ github.event.number }}'" \
           | grep -q 1 \
           || psql -c "CREATE DATABASE hosting_pr${{ github.event.number }}"
@@ -181,8 +181,8 @@ jobs:
         if: ${{ inputs.self_hosting }}
         run: |
           helm registry login quay.io \
-            --username ${QUAY_USERNAME} \
-            --password ${QUAY_PASSWORD}
+            --username "${QUAY_USERNAME}" \
+            --password "${QUAY_PASSWORD}"
         env:
           QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
           QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}

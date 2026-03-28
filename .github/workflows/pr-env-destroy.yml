@@ -91,9 +91,9 @@ jobs:
         run: |
           PGPASSWORD='${{ secrets.PR_ENV_DB_PASSWORD }}' \
           psql \
-          -h ${PR_ENV_DB_HOST} \
-          -U ${PR_ENV_DB_USER} \
-          -d ${PR_ENV_DB_NAME} \
+          -h "${PR_ENV_DB_HOST}" \
+          -U "${PR_ENV_DB_USER}" \
+          -d "${PR_ENV_DB_NAME}" \
           -c "DROP DATABASE IF EXISTS hosting_pr${{ env.PR_NUMBER }};"
 
         env:
