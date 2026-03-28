@@ -16,10 +16,8 @@ type CustomWidgetProps = {
   options: boolean[];
 };
 
-const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
-  columnTypes: _columnTypes,
-  formatValue: _formatValue,
-  measureText: _measureText,
+export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
+  getAssetUrl: _getAssetUrl,
 }) => {
   return {
     id: "my-custom-viz",
