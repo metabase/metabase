@@ -2,7 +2,7 @@ import { type ChangeEvent, useMemo } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { Checkbox, Text } from "metabase/ui";
+import { Checkbox, Switch, Text } from "metabase/ui";
 import {
   AIToolKey,
   type GroupInfo,
@@ -26,9 +26,14 @@ type GroupPermissionRowProps = {
 export function GroupPermissionRow(props: GroupPermissionRowProps) {
   const { onPermissionChange, groupPermissions, group } = props;
 
+  const isAdminGroup = group.magic_group_type === "admin";
+
   const permissionMap = useMemo(() => {
     return _.indexBy(groupPermissions, "perm_type");
   }, [groupPermissions]);
+
+  const isMetabotEnabled =
+    isAdminGroup || permissionMap[AIToolKey.Metabot]?.perm_value === "yes";
 
   return (
     <tr
@@ -39,23 +44,47 @@ export function GroupPermissionRow(props: GroupPermissionRowProps) {
       <td className={S.Cell}>
         <Text>{group.name}</Text>
       </td>
-      {getAIToolItems().map(({ key, label }) => (
-        <td key={key} className={S.Cell}>
-          <Checkbox
-            aria-label={t`Allow ${group.name} user group to access ${label} AI tool.`}
-            size="sm"
-            checked={permissionMap[key]?.perm_value === "yes"}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              onPermissionChange(group.id, key, e.target.checked ? "yes" : "no")
-            }
-            classNames={{ body: S.InputBody }}
-            disabled={
-              permissionMap[AIToolKey.Metabot]?.perm_value === "no" &&
-              key !== AIToolKey.Metabot
-            }
-          />
-        </td>
-      ))}
+      {getAIToolItems().map(({ key, label }) => {
+        if (key === AIToolKey.Metabot) {
+          return (
+            <td key={key} className={`${S.Cell} ${S.AiFeatureCell}`}>
+              <Switch
+                aria-label={t`Allow ${group.name} user group to access AI features.`}
+                size="sm"
+                checked={isMetabotEnabled}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  onPermissionChange(
+                    group.id,
+                    key,
+                    e.target.checked ? "yes" : "no",
+                  )
+                }
+                classNames={{ body: S.InputBody }}
+                disabled={isAdminGroup}
+              />
+            </td>
+          );
+        }
+
+        return (
+          <td key={key} className={S.Cell}>
+            <Checkbox
+              aria-label={t`Allow ${group.name} user group to access ${label} AI tool.`}
+              size="md"
+              checked={isAdminGroup || permissionMap[key]?.perm_value === "yes"}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                onPermissionChange(
+                  group.id,
+                  key,
+                  e.target.checked ? "yes" : "no",
+                )
+              }
+              classNames={{ body: S.InputBody }}
+              disabled={isAdminGroup || !isMetabotEnabled}
+            />
+          </td>
+        );
+      })}
     </tr>
   );
 }

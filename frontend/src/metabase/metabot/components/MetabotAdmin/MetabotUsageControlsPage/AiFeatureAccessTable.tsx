@@ -3,33 +3,48 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { GroupInfo } from "metabase-types/api";
+import {
+  AIToolKey,
+  type GroupInfo,
+  type MetabotGroupPermission,
+  type MetabotModelSize,
+} from "metabase-types/api";
 
-import S from "./AiAccessControlsTable.module.css";
+import S from "./AiFeatureAccessTable.module.css";
 import { GroupPermissionRow } from "./GroupPermissionRow";
-import { getAIToolItems, useMetabotGroupPermissions } from "./utils";
+import { getAIToolItems } from "./utils";
 
-export type AiAccessControlsTableProps = {
+export type AiFeatureAccessTableProps = {
   groups: GroupInfo[];
+  groupPermissions: MetabotGroupPermission[];
+  onPermissionChange: (
+    groupId: number,
+    toolKey: AIToolKey,
+    value: "yes" | "no" | MetabotModelSize,
+  ) => void;
 };
 
-export function AiAccessControlsTable(props: AiAccessControlsTableProps) {
-  const { groups } = props;
+export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
+  const { groups, groupPermissions, onPermissionChange } = props;
   const toolItems = getAIToolItems();
-  const { groupPermissions, onPermissionChange } = useMetabotGroupPermissions();
   const permissionsByGroup = useMemo(
     () => _.groupBy(groupPermissions, "group_id"),
     [groupPermissions],
   );
 
   return (
-    <div className={S.CardContainer} data-testid="ai-access-controls-table">
+    <div className={S.CardContainer} data-testid="ai-feature-access-table">
       <table className={S.Table}>
         <thead>
           <tr>
             <th className={S.HeaderCell}>{t`Group`}</th>
             {toolItems.map(({ label, key }) => (
-              <th key={key} className={cx(S.HeaderCell, S.CenterText)}>
+              <th
+                key={key}
+                className={cx(S.HeaderCell, S.CenterText, {
+                  [S.AiFeatureCell]: key === AIToolKey.Metabot,
+                })}
+              >
                 {label}
               </th>
             ))}

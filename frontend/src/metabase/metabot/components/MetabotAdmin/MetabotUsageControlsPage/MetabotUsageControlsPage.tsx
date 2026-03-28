@@ -1,56 +1,72 @@
+import { useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Stack, Tabs, Text } from "metabase/ui";
+import { useSetting } from "metabase/common/hooks";
+import { Title } from "metabase/ui";
 
 import { MetabotNavPane } from "../MetabotNavPane";
 
-import { AiAccessControlsTable } from "./AiAccessControlsTable";
+import { AiFeatureAccessTable } from "./AiFeatureAccessTable";
+import { GroupCategoryTabs } from "./GroupCategoryTabs";
+import { useMetabotGroupPermissions } from "./utils";
+
+type TabValue = "user-groups" | "tenant-groups";
 
 export function MetabotUsageControlsPage() {
+  const isUsingTenants = useSetting("use-tenants");
+  const [activeTab, setActiveTab] = useState<TabValue>("user-groups");
+
   const {
-    data: groups,
-    isLoading,
-    error,
-  } = useListPermissionsGroupsQuery(undefined);
+    data: userGroups,
+    isLoading: isLoadingUserGroups,
+    error: userGroupsError,
+  } = useListPermissionsGroupsQuery(
+    isUsingTenants ? { tenancy: "internal" } : undefined,
+  );
+
+  const {
+    data: tenantGroups,
+    isLoading: isLoadingTenantGroups,
+    error: tenantGroupsError,
+  } = useListPermissionsGroupsQuery(
+    isUsingTenants ? { tenancy: "external" } : undefined,
+    { skip: !isUsingTenants },
+  );
+
+  const { groupPermissions, onPermissionChange } = useMetabotGroupPermissions();
+
+  const activeGroups =
+    activeTab === "tenant-groups" ? tenantGroups : userGroups;
+  const isLoading =
+    activeTab === "tenant-groups" ? isLoadingTenantGroups : isLoadingUserGroups;
+  const error =
+    activeTab === "tenant-groups" ? tenantGroupsError : userGroupsError;
 
   return (
-    <AdminSettingsLayout sidebar={<MetabotNavPane />} fullWidth>
-      <Box p="xl">
-        <Tabs defaultValue="permissions">
-          <Tabs.List>
-            <Tabs.Tab value="permissions">{t`Permissions`}</Tabs.Tab>
-            <Tabs.Tab value="usage-limits">{t`Usage limits`}</Tabs.Tab>
-          </Tabs.List>
+    <AdminSettingsLayout sidebar={<MetabotNavPane />} maw="50rem">
+      <Title order={1} mb="md" mt="sm">
+        {t`AI feature access`}
+      </Title>
 
-          <Tabs.Panel value="permissions">
-            <SettingsSection
-              description={t`Control which groups can use Metabot and which capabilities are available to them.`}
-              mt="xl"
-              title={t`AI access controls`}
-              titleProps={{ mb: "sm" }}
-            >
-              <LoadingAndErrorWrapper
-                loading={isLoading}
-                error={error ? t`Error loading groups` : null}
-              >
-                {groups && <AiAccessControlsTable groups={groups} />}
-              </LoadingAndErrorWrapper>
-            </SettingsSection>
-          </Tabs.Panel>
+      {isUsingTenants && (
+        <GroupCategoryTabs setActiveTab={setActiveTab} activeTab={activeTab} />
+      )}
 
-          <Tabs.Panel value="usage-limits">
-            <Stack gap="md" mt="xl">
-              <Text c="text-secondary" size="sm">
-                {t`Yet to be implemented.`}
-              </Text>
-            </Stack>
-          </Tabs.Panel>
-        </Tabs>
-      </Box>
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error ? t`Error loading groups` : null}
+      >
+        {activeGroups && (
+          <AiFeatureAccessTable
+            groups={activeGroups}
+            groupPermissions={groupPermissions}
+            onPermissionChange={onPermissionChange}
+          />
+        )}
+      </LoadingAndErrorWrapper>
     </AdminSettingsLayout>
   );
 }

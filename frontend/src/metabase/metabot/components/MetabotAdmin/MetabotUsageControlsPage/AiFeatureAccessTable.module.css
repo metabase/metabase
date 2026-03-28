@@ -14,8 +14,8 @@
   background: var(--mb-color-background-primary);
   border-bottom: 1px solid var(--mb-color-border);
   box-sizing: border-box;
-  color: var(--mb-color-text-secondary);
-  font-size: 0.75rem;
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
   font-weight: 600;
   padding: 0.5rem 1rem;
   vertical-align: middle;
@@ -24,5 +24,9 @@
 
   &.CenterText {
     text-align: center;
+  }
+
+  &.AiFeatureCell {
+    border-right: 1px solid var(--mb-color-border);
   }
 }

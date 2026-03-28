@@ -319,7 +319,7 @@ export type MetabotSlackSettings =
 export enum AIToolKey {
   Metabot = "permission/metabot",
   Model = "permission/metabot-model",
-  NLQ = "permission/metabot-nql",
+  ChatAndNLQ = "permission/metabot-nql",
   SQLGeneration = "permission/metabot-sql-generation",
   OtherTools = "permission/metabot-other-tools",
 }
