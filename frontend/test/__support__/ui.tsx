@@ -262,7 +262,10 @@ export function TestWrapper({
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProviderContext.Provider value={{ withCssVariables }}>
-          <ThemeProvider theme={theme} displayTheme={displayTheme}>
+          <ThemeProvider
+            theme={theme}
+            resolvedColorScheme={displayTheme ?? "light"}
+          >
             <GlobalStylesForTest />
 
             <MaybeKBar hasKBar={withKBar}>

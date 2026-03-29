@@ -34,6 +34,7 @@ import { useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
+import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { createTracker } from "metabase/lib/analytics";
@@ -46,9 +47,8 @@ import MetabaseSettings from "metabase/lib/settings";
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
-import { ThemeProvider } from "metabase/ui";
+import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import registerVisualizations from "metabase/visualizations/register";
 
 import { HistoryProvider } from "./history";
@@ -91,14 +91,14 @@ function _init(reducers, getRoutes, callback) {
     <MetabaseReduxProvider store={store}>
       <EmotionCacheProvider>
         <DragDropContextProvider backend={ModifiedBackend} context={{ window }}>
-          <ThemeProvider>
+          <AppThemeProvider>
             <GlobalStyles />
             <MetabotProvider>
               <HistoryProvider history={syncedHistory}>
                 <RouterProvider>{routes}</RouterProvider>
               </HistoryProvider>
             </MetabotProvider>
-          </ThemeProvider>
+          </AppThemeProvider>
         </DragDropContextProvider>
       </EmotionCacheProvider>
     </MetabaseReduxProvider>,
