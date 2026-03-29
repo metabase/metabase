@@ -23,7 +23,8 @@ post_create:
 {{BOT_POST_CREATE}}
   - mise trust mise.local.toml
   - bun install
-  - 'echo ''{"mcpServers":{"playwright":{"command":"npx","args":["-y","@playwright/mcp","--headless","--browser","chrome"]}}}'' > .mcp.json'
+  - npx -y @playwright/mcp@0.0.68 --version
+  - 'echo ''{"mcpServers":{"playwright":{"command":"npx","args":["-y","@playwright/mcp@0.0.68","--headless","--browser","chrome","--viewport-size","1440x900","--snapshot-mode","full","--block-service-workers","--isolated","--timeout-action","10000"]}}}'' > .mcp.json'
 
 pre_remove:
   - ./bin/mage -bot-dev-env --down

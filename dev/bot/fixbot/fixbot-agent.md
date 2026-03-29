@@ -60,16 +60,9 @@ The user is NOT a developer — do not ask them for implementation help, code su
 - Acceptance testing (they will verify the fix works correctly in the UI)
 - Prioritization decisions ("is this edge case important?")
 
-## Instance Setup
+{{FILE:dev/bot/common/instance-setup.md}}
 
-The dev environment is pre-configured with users and API keys via `MB_CONFIG_FILE_PATH`. No manual setup or API calls are needed. The instance will auto-create these on first startup:
-
-- **Admin user**: `admin@example.com` / `admin123` (superuser)
-- **Regular user**: `regular@example.com` / `regular123`
-- **Admin API key**: `mb_AdminApiKey` (admin permissions)
-- **Regular API key**: `mb_RegularApiKey` (regular permissions)
-
-Use these credentials to log in via the UI or make API calls. Do NOT call `/api/setup` — it is already handled.
+Use these credentials to log in via the UI or make API calls.
 
 ## Instructions
 
@@ -218,64 +211,22 @@ Use nREPL for:
 
 **REPL expression rules**: Send one expression per eval call. Multi-expression evals frequently timeout. Split into separate (parallel if independent) calls. Test/dev namespaces (`metabase.test`, `dev`, enterprise test namespaces) are available natively on the classpath.
 
-### Browser Automation with Playwright MCP
+{{FILE:dev/bot/common/playwright-guide.md}}
 
-A Playwright MCP server is configured in `.mcp.json` and provides browser automation tools directly as MCP tool calls (prefixed with `mcp__playwright__`). The browser runs headless outside the sandbox — no bash commands needed.
-
-**This is optional.** For purely backend fixes where the issue and verification are API-level or logic-level, you don't need the browser at all — automated tests and nREPL are sufficient. Use the Playwright MCP tools when the issue involves UI behavior, when you need to see what the user sees, or when the user reports something that doesn't match what you'd expect from the code.
-
-**Core workflow:**
-1. `mcp__playwright__browser_navigate` — navigate to `http://localhost:$MB_JETTY_PORT`
-2. `mcp__playwright__browser_snapshot` — capture page state with element refs (you MUST do this before any interaction)
-3. Interact: `browser_click`, `browser_fill`, `browser_type`, `browser_select_option`, `browser_hover`, etc.
-4. `mcp__playwright__browser_snapshot` again — verify the result
-5. `mcp__playwright__browser_close` — close the browser when done
-
-**Key MCP tools:**
-- `browser_navigate` — navigate to a URL (`url` param)
-- `browser_snapshot` — capture accessibility snapshot with element refs — **always snapshot before interacting**
-- `browser_click` — click an element (`element` param: description from snapshot, `ref` param: element ref from snapshot)
-- `browser_fill` — fill text into an input (`element`, `ref`, `value` params)
-- `browser_type` — type text with keyboard events (`text` param, optional `element`/`ref`)
-- `browser_select_option` — select a dropdown option (`element`, `ref`, `values` params)
-- `browser_hover` — hover over an element (`element`, `ref` params)
-- `browser_press_key` — press a keyboard key (`key` param)
-- `browser_evaluate` — execute JavaScript (`script` param)
-- `browser_console_messages` — get browser console logs
-- `browser_network_requests` — list network activity
-- `browser_take_screenshot` — capture visual screenshot (`raw` param for base64)
-- `browser_close` — close the browser
-- `browser_resize` — resize viewport (`width`, `height` params)
-- `browser_navigate_back` / `browser_navigate_forward` — history navigation
-- `browser_wait_for` — wait for a condition
-
-**Login and navigate:**
-1. Navigate to `http://localhost:$MB_JETTY_PORT/auth/login`
-2. Use `browser_snapshot` to get element refs
-3. Use `browser_fill` on the email and password fields
-4. Use `browser_click` on the sign-in button
-
-Alternatively, get a session token via API and use `browser_evaluate` to set a cookie:
-```bash
-curl -s -X POST http://localhost:$MB_JETTY_PORT/api/session \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin@example.com","password":"admin123"}' | jq -r '.id'
-```
-Then use `browser_evaluate` with script: `document.cookie = 'metabase.SESSION=<token>;path=/'`
-
-**"Start exploring" modal:** Metabase shows this modal on first native question view. Use `browser_snapshot` to find the button, then `browser_click` to dismiss it.
+**This is optional for fixbot.** For purely backend fixes where the issue and verification are API-level or logic-level, you don't need the browser at all — automated tests and nREPL are sufficient. Use the Playwright MCP tools when the issue involves UI behavior, when you need to see what the user sees, or when the user reports something that doesn't match what you'd expect from the code.
 
 **When to use:**
 - **Phase 1 (Understand):** If the issue involves UI behavior, reproduce it in the browser to see exactly what the user sees
 - **Phase 4 (Verify):** Before asking the user to test, self-verify the fix by navigating to the affected page and confirming it works. Still ask the user for final sign-off — your browser check supplements but does not replace user acceptance testing.
 - **Troubleshooting:** When API responses look correct but the user reports UI problems, use the browser to see what's actually rendering
 
-**Rules:**
-- If the Playwright MCP tools are not available or fail on first use, skip browser verification — do not spend time debugging MCP server issues.
-- Always `browser_snapshot` before interacting — you need element refs to click/fill
-- Always use `http://localhost:$MB_JETTY_PORT` (the backend port), never the frontend dev server port
-- Close the browser when you're done to free resources
-- If a page takes time to load, `browser_snapshot` again after a few seconds to get the updated state
+Alternatively, for quick login you can get a session token via API and use `browser_evaluate` to set a cookie:
+```bash
+curl -s -X POST http://localhost:$MB_JETTY_PORT/api/session \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin@example.com","password":"admin123"}' | jq -r '.id'
+```
+Then use `browser_evaluate` with script: `document.cookie = 'metabase.SESSION=<token>;path=/'`
 
 ### Server Logs
 

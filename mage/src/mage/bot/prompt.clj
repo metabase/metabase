@@ -1,7 +1,6 @@
 (ns mage.bot.prompt
   "Fill template placeholders and write agent prompts.
-   A single generic command — all intelligence (issue lookup, DB detection)
-   lives in the calling Claude command, not here."
+   Supports {{KEY}} for value replacement and {{FILE:path}} for file inclusion."
   (:require
    [clojure.string :as str]
    [mage.color :as c]
@@ -19,9 +18,24 @@
                    [(subs s 0 idx) (subs s (inc idx))])))
              set-args)))
 
+(defn- resolve-file-includes
+  "Replace all {{FILE:path}} placeholders with the contents of the referenced files.
+   Paths are relative to the project root."
+  [content]
+  (str/replace content
+               #"\{\{FILE:([^}]+)\}\}"
+               (fn [[_ path]]
+                 (let [full-path (str u/project-root-directory "/" (str/trim path))]
+                   (if (.exists (java.io.File. ^String full-path))
+                     (slurp full-path)
+                     (do
+                       (println (c/yellow "Warning: include file not found: " full-path))
+                       (str "<!-- FILE NOT FOUND: " path " -->")))))))
+
 (defn generate-prompt!
   "Fill a template with placeholders and write to output.
-   Expects --template, --output, and one or more --set KEY=VALUE options."
+   Expects --template, --output, and one or more --set KEY=VALUE options.
+   Also resolves {{FILE:path}} includes."
   [{:keys [options]}]
   (let [template-path (:template options)
         output-path   (:output options)
@@ -37,9 +51,12 @@
       (u/exit 1))
     (let [replacements (parse-set-args (or set-args []))
           template     (slurp template-path)
+          ;; First resolve {{FILE:...}} includes
+          with-files   (resolve-file-includes template)
+          ;; Then replace {{KEY}} placeholders
           content      (reduce-kv (fn [s k v]
                                     (str/replace s (str "{{" k "}}") v))
-                                  template
+                                  with-files
                                   replacements)]
       (.mkdirs (.getParentFile (java.io.File. ^String output-path)))
       (spit output-path content)

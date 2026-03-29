@@ -129,7 +129,7 @@
 
     ;; Regenerate .mcp.json
     (spit (str wt-path "/.mcp.json")
-          "{\"mcpServers\":{\"playwright\":{\"command\":\"npx\",\"args\":[\"-y\",\"@playwright/mcp\",\"--headless\",\"--browser\",\"chrome\"]}}}")
+          "{\"mcpServers\":{\"playwright\":{\"command\":\"npx\",\"args\":[\"-y\",\"@playwright/mcp@0.0.68\",\"--headless\",\"--browser\",\"chrome\",\"--viewport-size\",\"1440x900\",\"--snapshot-mode\",\"full\",\"--block-service-workers\",\"--isolated\",\"--timeout-action\",\"10000\"]}}}")
 
     ;; Start dev environment
     (println (c/yellow "Starting dev environment..."))

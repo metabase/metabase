@@ -4,7 +4,7 @@ Generate a UX testing report based on the tasks you've worked on in this session
 
 1. **Identify the reporting window**: Check for the most recent reset marker in `.uxbot/` (files named `reset-*.txt`). Only include activity that happened AFTER the last reset. If no reset file exists, include everything.
 
-2. **For each task the user gave you** (do NOT include casual questions or non-task interactions):
+2. **For each task the user gave you** (do NOT include casual questions, non-task interactions, or general setup work like waiting for the backend to start — unless setup issues actually blocked you from completing a task):
    - **Task**: What were you asked to do?
    - **Approach**: What did you try first? What was your thinking?
    - **Steps taken**: Walk through what you did, step by step
@@ -25,9 +25,12 @@ Generate a UX testing report based on the tasks you've worked on in this session
    - Example: `.uxbot/report-20260327-153000-create-question-and-dashboard.md`
    - Use relative paths for screenshot references (e.g., `screenshots/filename.png` relative to `.uxbot/`).
 
-5. **Generate PDF**: Run `npx --yes md-to-pdf .uxbot/report-<timestamp>-<slug>.md` to create a PDF with embedded screenshots alongside the markdown.
+5. **Generate PDF**: Run pandoc **from the `.uxbot/` directory** so relative screenshot paths resolve correctly:
+   ```
+   cd .uxbot && pandoc report-<timestamp>-<slug>.md -o report-<timestamp>-<slug>.pdf --pdf-engine=weasyprint
+   ```
 
-6. **Present a brief summary** to the user with paths to both the markdown and PDF reports.
+6. **Present a brief summary** to the user with **full absolute paths** to both the markdown and PDF reports (use `pwd` to get the worktree root, e.g., `/Users/.../metabase-4__worktrees/uxbot-master/.uxbot/report-...-slug.pdf`).
 
 ## Tone
 

@@ -5,10 +5,12 @@ You are the orchestrator for the uxbot workflow. Your job is to launch a UX test
 ### 1. Preflight checks
 
 Verify these are available by running each check (stop if any fail):
-- `workmux --version` — workmux is installed
+- `workmux --version` — workmux is installed (`cargo install workmux`)
 - `docker info` — Docker is running
 - Check `MB_PREMIUM_EMBEDDING_TOKEN` env var is set
-- `npx -y @playwright/mcp --version` — Playwright MCP is available
+- `npx -y @playwright/mcp --version` — Playwright MCP is available (auto-installs via npx)
+- `pandoc --version` — pandoc is installed (`brew install pandoc`)
+- `weasyprint --version` — weasyprint is installed (`pip3 install weasyprint`)
 - Check `node_modules/` exists in the project root (run `bun install` if not)
 
 ### 2. Parse arguments
