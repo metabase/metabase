@@ -224,7 +224,7 @@
                                   {"mcp-session-id" session-id})
             result   (get-in response [:body :result])]
         (is (= 200 (:status response)))
-        (is (nil? (:isError result)))
+        (is (not (:isError result)))
         (is (= "text" (:type (first (:content result)))))
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))
@@ -295,11 +295,12 @@
       (is (string? content-text))
       ;; Parse the content text as JSON and verify snake_case keys from Malli encoding
       (let [table-data (json/decode+kw content-text)]
-        (is (some? (:name table-data)))
-        (is (some? (:display_name table-data)))
-        (is (some? (:database_id table-data)))
-        (is (= "table" (:type table-data)))
-        (is (seq (:fields table-data)))))))
+        (is (=? {:name         string?
+                 :display_name string?
+                 :database_id  int?
+                 :type         "table"
+                 :fields       sequential?}
+                table-data))))))
 
 (deftest initialized-notification-compatibility-test
   (testing "requests succeed without notifications/initialized"
@@ -318,14 +319,11 @@
 
 (deftest full-handshake-test
   (testing "complete MCP handshake flow"
-    (let [[session-id init-response] (initialize!)
-          _ (is (= 200 (:status init-response)))
-          _ (is (some? session-id))
-          ;; tools/list should work after full handshake
-          list-response (mcp-request (jsonrpc-request "tools/list")
-                                     {"mcp-session-id" session-id})]
+    (let [[session-id _] (initialize!)
+          list-response  (mcp-request (jsonrpc-request "tools/list")
+                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status list-response)))
-      (is (pos? (count (get-in list-response [:body :result :tools])))))))
+      (is (seq (get-in list-response [:body :result :tools]))))))
 
 (deftest batch-with-notifications-test
   (testing "batch with mix of notifications and requests returns only request responses"
@@ -456,7 +454,7 @@
 
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]
-      (is (zero? (count tools))
+      (is (empty? tools)
           "Empty scopes should not grant access to scoped tools"))))
 
 (defn- insert-expired-oauth-token!

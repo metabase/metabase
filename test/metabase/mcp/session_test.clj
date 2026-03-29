@@ -25,11 +25,11 @@
           session-id (mcp.session/create! user-id)
           session    (mcp.session/get-valid session-id)]
       (is (string? session-id))
-      (is (some? session))
-      (is (= user-id (:user_id session)))
-      (is (false? (:initialized session)))
-      (is (nil? (:embedding_session_key session)))
-      (is (nil? (:embedding_session_id session))))))
+      (is (= {:user_id              user-id
+              :initialized          false
+              :embedding_session_key nil
+              :embedding_session_id  nil}
+             (select-keys session [:user_id :initialized :embedding_session_key :embedding_session_id]))))))
 
 (deftest delete-test
   (testing "delete! removes the session"
@@ -41,12 +41,11 @@
   (testing "delete! also removes the associated embedding session from core_session"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
-          _emb-key   (mcp.session/get-or-create-embedding-session-key! session-id user-id)
-          emb-id     (:embedding_session_id (t2/select-one :model/McpSession :id session-id))
-          _          (is (some? emb-id))
-          _          (is (= 1 (t2/count :model/Session :id emb-id)))]
+          _          (mcp.session/get-or-create-embedding-session-key! session-id user-id)
+          emb-id     (:embedding_session_id (t2/select-one :model/McpSession :id session-id))]
+      (is (t2/exists? :model/Session :id emb-id))
       (mcp.session/delete! session-id)
-      (is (zero? (t2/count :model/Session :id emb-id))
+      (is (not (t2/exists? :model/Session :id emb-id))
           "Embedding session should be deleted when MCP session is deleted"))))
 
 (deftest mark-initialized-test
@@ -60,14 +59,12 @@
   (testing "first call creates an embedding session key and stores the FK"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
-          key1       (mcp.session/get-or-create-embedding-session-key! session-id user-id)]
-      (is (string? key1))
-      (is (some? key1))
-      (is (some? (:embedding_session_id (t2/select-one :model/McpSession :id session-id)))
+          key        (mcp.session/get-or-create-embedding-session-key! session-id user-id)]
+      (is (string? key))
+      (is (:embedding_session_id (t2/select-one :model/McpSession :id session-id))
           "embedding_session_id FK should be set")
       (testing "subsequent calls return the same key"
-        (let [key2 (mcp.session/get-or-create-embedding-session-key! session-id user-id)]
-          (is (= key1 key2)))))))
+        (is (= key (mcp.session/get-or-create-embedding-session-key! session-id user-id)))))))
 
 (deftest get-valid-returns-nil-for-unknown-session-test
   (testing "get-valid returns nil for non-existent session IDs"
@@ -77,8 +74,7 @@
 
 (deftest get-valid-rejects-expired-session-test
   (testing "get-valid returns nil for sessions older than the TTL"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)]
+    (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
       (is (some? (mcp.session/get-valid session-id))
           "Session is valid immediately after creation")
       (t2/update! :model/McpSession :id session-id {:created_at (recently-expired)})
@@ -89,15 +85,15 @@
   (testing "sweep-expired! deletes expired MCP sessions and their embedding sessions"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
-          _emb-key   (mcp.session/get-or-create-embedding-session-key! session-id user-id)
+          _          (mcp.session/get-or-create-embedding-session-key! session-id user-id)
           emb-id     (:embedding_session_id (t2/select-one :model/McpSession :id session-id))]
       (t2/update! :model/McpSession :id session-id {:created_at (recently-expired)})
-      (is (= 1 (t2/count :model/Session :id emb-id))
+      (is (t2/exists? :model/Session :id emb-id)
           "Embedding session exists before sweep")
       (mcp.session/sweep-expired!)
-      (is (nil? (t2/select-one :model/McpSession :id session-id))
+      (is (not (t2/exists? :model/McpSession :id session-id))
           "Expired MCP session should be deleted")
-      (is (zero? (t2/count :model/Session :id emb-id))
+      (is (not (t2/exists? :model/Session :id emb-id))
           "Embedding session should be cleaned up by sweep"))))
 
 (deftest embedding-session-does-not-fire-login-event-test
@@ -112,12 +108,3 @@
       (is (empty? @login-events)
           "No :event/user-login should be published for internal embedding sessions"))))
 
-(deftest get-or-create-embedding-session-key-creates-valid-session-test
-  (testing "The embedding session in core_session is valid after get-or-create-embedding-session-key! returns"
-    (let [user-id    (mt/user->id :crowberto)
-          session-id (mcp.session/create! user-id)
-          _emb-key   (mcp.session/get-or-create-embedding-session-key! session-id user-id)
-          emb-id     (:embedding_session_id (t2/select-one :model/McpSession :id session-id))]
-      (is (some? emb-id))
-      (is (= 1 (t2/count :model/Session :id emb-id))
-          "The underlying core_session row should exist after CAS creation"))))
