@@ -9,7 +9,8 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [metabase.classloader.core :as classloader]
-   [metabase.config.core :as config])
+   [metabase.config.core :as config]
+   [metabase.util :as u])
   (:import
    (java.lang AutoCloseable)
    (java.util Queue)
@@ -124,11 +125,18 @@
 
 (defn level-enabled?
   "Is logging at `level` enabled for `a-namespace`? `level` may be a keyword (e.g. `:debug`)
-  or an org.apache.logging.log4j.Level."
+  or an org.apache.logging.log4j.Level.
+
+  Uses `clojure.tools.logging.impl/enabled?` so this works when `*logger-factory*` is rebound to a non-Log4j
+  implementation (e.g. [[metabase.task-history.models.task-history/log-capture-factory]])."
   ^Boolean [a-namespace level]
-  (let [^Logger logger (log.impl/get-logger log/*logger-factory* a-namespace)
-        ^Level level  (->Level level)]
-    (.isEnabled logger level)))
+  (let [logger   (log.impl/get-logger log/*logger-factory* a-namespace)
+        level-kw (if (instance? Level level)
+                   (or (log-level->keyword level)
+                       (keyword (u/lower-case-en (.name ^Level level))))
+                   (do (->Level level) ;; validate keyword / string same as before
+                       (keyword level)))]
+    (log.impl/enabled? logger level-kw)))
 
 (defn effective-ns-logger
   "Get the logger that will be used for the namespace named by `a-namespace`."
