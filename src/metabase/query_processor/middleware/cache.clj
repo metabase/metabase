@@ -15,6 +15,7 @@
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
+   [metabase.logger.core :as logger]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -119,7 +120,7 @@
              has-rows-val    @has-rows?
              meets-duration? (> duration-ms min-duration-ms)
              eligible?       (and has-rows-val meets-duration?)]
-         (when (log/enabled? :debug)
+         (when (logger/level-enabled? 'metabase.query-processor.middleware.cache :debug)
            (let [context         (describe-cache-context metadata query-hash)
                  duration-str     (u/format-milliseconds duration-ms)
                  min-duration-str (u/format-milliseconds min-duration-ms)]
