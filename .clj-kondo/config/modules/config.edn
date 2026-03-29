@@ -1722,9 +1722,9 @@
            events
            formatter
            legacy-mbql
-           logger
            lib
            lib-be
+           logger
            model-persistence
            models
            parameters
