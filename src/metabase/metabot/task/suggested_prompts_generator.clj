@@ -21,19 +21,21 @@
 
 (defn- maybe-generate-suggested-prompts! []
   (try
-    ;; Run as admin since this is a system task generating prompts for all content in scope.
-    ;; Users will only see prompts for content they have access to (filtered at query time).
-    (request/as-admin
-      (let [metabot-eid (get-in metabot.config/metabot-config
-                                [metabot.config/internal-metabot-id :entity-id])
-            metabot-id  (t2/select-one-pk :model/Metabot :entity_id metabot-eid)
-            suggested-prompts-cnt (t2/count :model/MetabotPrompt :metabot_id metabot-id)]
-        (if (zero? suggested-prompts-cnt)
-          (do
-            (log/info "No suggested prompts found. Generating suggested prompts.")
-            (metabot.suggested-prompts/generate-sample-prompts metabot-id)
-            (log/info "Suggested prompts generated successfully."))
-          (log/info "Suggested prompts are present. Not generating."))))
+    (if-not (metabot.config/any-metabot-enabled?)
+      (log/info "Metabot is disabled. Skipping suggested prompt generation.")
+      ;; Run as admin since this is a system task generating prompts for all content in scope.
+      ;; Users will only see prompts for content they have access to (filtered at query time).
+      (request/as-admin
+        (let [metabot-eid (get-in metabot.config/metabot-config
+                                  [metabot.config/internal-metabot-id :entity-id])
+              metabot-id  (t2/select-one-pk :model/Metabot :entity_id metabot-eid)
+              suggested-prompts-cnt (t2/count :model/MetabotPrompt :metabot_id metabot-id)]
+          (if (zero? suggested-prompts-cnt)
+            (do
+              (log/info "No suggested prompts found. Generating suggested prompts.")
+              (metabot.suggested-prompts/generate-sample-prompts metabot-id)
+              (log/info "Suggested prompts generated successfully."))
+            (log/info "Suggested prompts are present. Not generating.")))))
     (catch Exception e
       (log/errorf "Suggested prompts generation failed: %s" (.getMessage e)))))
 

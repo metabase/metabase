@@ -288,14 +288,14 @@ export const Messages = ({
   errorMessages,
   onRetryMessage,
   isDoingScience,
-  showFeedbackButtons,
+  showFeedbackButtons = false,
   onInternalLinkClick,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
   onRetryMessage?: (messageId: string) => void;
   isDoingScience: boolean;
-  showFeedbackButtons: boolean;
+  showFeedbackButtons?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
   const clipboard = useClipboard();

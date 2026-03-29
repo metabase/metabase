@@ -9,21 +9,26 @@
     :scatter :waterfall :sankey :scalar :smartscalar :gauge
     :progress :funnel :object :map})
 
-(defn- format-chart-for-llm
-  "Format chart data as XML for LLM consumption."
-  [{:keys [chart-id query-id chart-type query-content]}]
-  (str "<chart id=\"" chart-id "\">\n"
-       "The chart is powered by the following query:\n"
-       "<query id=\"" query-id "\">\n"
-       query-content "\n"
-       "</query>\n"
-       "<visualization>{\"chart_type\": \"" (name chart-type) "\"}</visualization>\n"
-       "</chart>"))
-
 (defn- format-chart-link
   "Format a metabase:// link to the chart."
   [chart-id]
   (str "metabase://chart/" chart-id))
+
+(defn- format-chart-for-llm
+  "Format chart data as XML for LLM consumption."
+  [{:keys [chart_id queries] :as chart-data}]
+  (apply str
+         (into ["<chart id=\"" chart_id "\">\n"
+                "The chart is powered by the following queries:\n"]
+               (comp cat
+                     (remove nil?))
+               [(for [query queries]
+                  (str "\n<query>\n"
+                       query "\n"
+                       "</query>\n"))
+                [(when-some [viz (get-in chart-data [:visualization_settings :chart_type])]
+                   (str "<visualization>{\"chart_type\": \"" (name viz) "\"}</visualization>\n"))
+                 "\n</chart>"]])))
 
 (defn edit-chart
   "Edit an existing chart's visualization settings.
@@ -33,12 +38,15 @@
   - new-chart-type: New chart type to use
   - charts-state: Map of chart-id to chart data from agent state
 
-  Returns a map with:
+  Returns a map with result and new-chart-data.
+
+  `new-chart-data`: format that could be stored directly in memory or state's :charts key.
+
+  `result`:
   - :chart-id - New unique ID for the edited chart
   - :chart-content - XML representation of the chart
   - :chart-link - Metabase link to the chart
-  - :chart-type - Type of chart created
-  - :query-id - ID of the source query"
+  - :chart-type - Type of chart created"
   [{:keys [chart-id new-chart-type charts-state]}]
   (log/info "Editing chart" {:chart-id chart-id :new-chart-type new-chart-type})
 
@@ -49,38 +57,25 @@
                     {:agent-error? true
                      :chart-type new-chart-type})))
 
-  ;; Look up chart from state
   (let [chart-data (get charts-state (str chart-id))]
     (when-not chart-data
       (throw (ex-info "Sorry, I have issues accessing the chart data. Is there anything else I can help you with?"
                       {:agent-error? true
                        :chart-id chart-id})))
 
-    (when-not (:query-id chart-data)
-      (throw (ex-info "Sorry, I have issues accessing the chart data. Is there anything else I can help you with?"
-                      {:agent-error? true
-                       :chart-id chart-id})))
+    (let [new-chart-data (-> chart-data
+                             (assoc :chart_id (str (random-uuid)))
+                             (assoc :visualization_settings {:chart_type new-chart-type}))]
 
-    ;; Create the new chart with updated settings
-    (let [new-chart-id (str (random-uuid))
-          query-id (:query-id chart-data)
-          query-content (or (:query-content chart-data) "")
-          new-chart-data {:chart-id new-chart-id
-                          :query-id query-id
-                          :chart-type new-chart-type
-                          :query-content query-content}]
-
-      (log/info "Edited chart" {:old-chart-id chart-id
-                                :new-chart-id new-chart-id
-                                :new-chart-type new-chart-type})
-
-      {:chart-id new-chart-id
-       :chart-content (format-chart-for-llm new-chart-data)
-       :chart-link (format-chart-link new-chart-id)
-       :chart-type new-chart-type
-       :query-id query-id
-       :instructions (str "Chart has been created successfully.\n\n"
-                          "Next steps to present the chart to the user:\n"
-                          "- Always provide a direct link using: `[Chart](" (format-chart-link new-chart-id) ")` "
-                          "where Chart is a meaningful link text\n"
-                          "- If creating multiple charts, present all chart links")})))
+      {:new-chart-data new-chart-data
+       :result {:chart-id (:chart_id new-chart-data)
+                :chart-content (format-chart-for-llm new-chart-data)
+                :chart-link (format-chart-link (:chart_id new-chart-data))
+                :chart-type new-chart-type
+                :instructions (str "Chart has been created successfully.\n\n"
+                                   "Next steps to present the chart to the user:\n"
+                                   "- Always provide a direct link using: `[Chart]("
+                                   (format-chart-link (:chart_id new-chart-data))
+                                   ")` "
+                                   "where Chart is a meaningful link text\n"
+                                   "- If creating multiple charts, present all chart links")}})))

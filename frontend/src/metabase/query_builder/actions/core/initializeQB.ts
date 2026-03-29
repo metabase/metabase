@@ -188,7 +188,7 @@ async function fetchAndPrepareAdHocQuestionCards(
 
 type ResolveCardsResult = {
   card: Card;
-  originalCard?: Card;
+  originalCard?: Card | null;
 };
 
 export async function resolveCards({
@@ -427,6 +427,7 @@ async function handleQBInit(
       updateUrl(question, {
         replaceState: true,
         preserveParameters: hasCard,
+        preserveNavbarState: true,
         objectId,
       }),
     );

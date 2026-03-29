@@ -49,8 +49,8 @@
                                               (reset! captured (json/decode+kw (:body opts)))
                                               (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
         (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
-                                           llm-openrouter-api-key "test-key"
-                                           llm-openai-api-key     "test-key"]
+                                           llm-openrouter-api-key "sk-or-v1-test-key"
+                                           llm-openai-api-key     "sk-test-key"]
           (doseq [[model expected] [["anthropic/test-model"  {:type "any"}]
                                     ["openrouter/test-model" "required"]
                                     ["openai/test-model"     "required"]]]

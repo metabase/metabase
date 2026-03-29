@@ -188,6 +188,28 @@ export type MetabotAgentResponse = {
   state: any;
 };
 
+export type MetabotProvider =
+  | "metabase"
+  | "anthropic"
+  | "openai"
+  | "openrouter";
+
+export interface MetabotSettingsResponse {
+  value: string | null;
+  "api-key-error"?: string | null;
+  models: {
+    id: string;
+    display_name: string;
+    group?: string | null;
+  }[];
+}
+
+export interface UpdateMetabotSettingsRequest {
+  provider: MetabotProvider;
+  model?: string;
+  "api-key"?: string | null;
+}
+
 /* Metabot - Suggested Prompts */
 
 export type SuggestedMetabotPrompt = {

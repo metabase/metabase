@@ -145,9 +145,12 @@ export function setup(
     metabotInitialState?: MetabotState;
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
+    isHosted?: boolean;
   } | void,
 ) {
-  mockSettings({
+  const settings = mockSettings({
+    "llm-metabot-configured?": true,
+    "is-hosted?": options?.isHosted ?? false,
     "token-features": createMockTokenFeatures({
       metabot_v3: true,
     }),
@@ -181,6 +184,7 @@ export function setup(
       storeInitialState: createMockState({
         currentUser: currentUser ? currentUser : undefined,
         metabot: metabotInitialState,
+        settings,
       }),
     },
   );

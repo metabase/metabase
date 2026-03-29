@@ -2,6 +2,7 @@
   "OAuth protocol endpoints. Mounted under `/oauth/`."
   (:require
    [buddy.core.codecs :as codecs]
+   [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
@@ -9,12 +10,14 @@
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.system.core :as system]
+   [metabase.util.log :as log]
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response])
   (:import
+   (clojure.lang ExceptionInfo)
    (java.net URLEncoder)))
 
 (set! *warn-on-reflection* true)
@@ -25,6 +28,71 @@
   "Generate a random 32-hex-char CSRF token."
   []
   (codecs/bytes->hex (nonce/random-bytes 16)))
+
+(defn- csrf-cookie-opts
+  "Cookie options for the CSRF cookie. Sets `:secure` when site-url is HTTPS."
+  [max-age]
+  (cond-> {:http-only true
+           :same-site :strict
+           :path      "/oauth/authorize"
+           :max-age   max-age}
+    (some-> (system/site-url) (str/starts-with? "https"))
+    (assoc :secure true)))
+
+(defn- canonical-params-string
+  "Deterministic serialization of oauth-params for HMAC signing.
+   Sorts by key name, uses pr-str for values to avoid ambiguity with special characters."
+  [oauth-params]
+  (->> oauth-params
+       (remove (comp nil? val))
+       (sort-by (comp name key))
+       (map (fn [[k v]] (str (name k) "=" (pr-str v))))
+       (str/join "\n")))
+
+(defn- sign-oauth-params
+  "HMAC-SHA256 the canonical oauth-params string using the CSRF token as key."
+  [csrf-token oauth-params]
+  (codecs/bytes->hex
+   (mac/hash (canonical-params-string oauth-params)
+             {:key csrf-token :alg :hmac+sha256})))
+
+(defn- verify-oauth-params-signature
+  "Verify that the HMAC signature matches the oauth-params."
+  [csrf-token oauth-params signature]
+  (mac/verify (canonical-params-string oauth-params)
+              (codecs/hex->bytes signature)
+              {:key csrf-token :alg :hmac+sha256}))
+
+(def ^:private oauth-param-keys
+  "The set of OAuth authorization parameters that are signed and verified."
+  [:client_id
+   :code_challenge
+   :code_challenge_method
+   :nonce
+   :redirect_uri
+   :resource
+   :response_type
+   :scope
+   :state])
+
+(defn- truncate
+  "Truncate a string to `max-len` characters, appending \"...\" if truncated."
+  [s max-len]
+  {:pre [(> max-len 3)]}
+  (if (> (count s) max-len)
+    (str (subs s 0 (- max-len 3)) "...")
+    s))
+
+(defn- redirect-authorization-decision
+  "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
+  [provider parsed approved request]
+  (let [url (if approved
+              (oidc/authorize provider parsed (str (:metabase-user-id request)))
+              (oidc/deny-authorization provider parsed "access_denied" "User denied the request"))]
+    (-> {:status  302
+         :headers {"Location" url}
+         :body    ""}
+        (response/set-cookie csrf-cookie-name "" (csrf-cookie-opts 0)))))
 
 (defn- login-redirect-url
   "Build a redirect URL to the login page that will redirect back to the given path after login.
@@ -80,7 +148,7 @@
                 {:status  201
                  :headers {"Content-Type" "application/json"}
                  :body    response})
-              (catch clojure.lang.ExceptionInfo e
+              (catch ExceptionInfo e
                 (reg/registration-error-response
                  (ex-message e)
                  (:error_description (ex-data e)))))))
@@ -115,34 +183,27 @@
      :body    ""}
     (or (when-let [provider (oauth-server/get-provider)]
           (try
-            (let [parsed     (oidc/parse-authorization-request provider query-params)
-                  client     (proto/get-client (:client-store provider) (:client_id parsed))
-                  csrf-token (generate-csrf-token)]
+            (let [parsed       (oidc/parse-authorization-request provider query-params)
+                  client       (proto/get-client (:client-store provider) (:client_id parsed))
+                  csrf-token   (generate-csrf-token)
+                  oauth-params (select-keys parsed oauth-param-keys)
+                  params-sig   (sign-oauth-params csrf-token oauth-params)]
               (-> {:status  200
                    :headers {"Content-Type" "text/html; charset=utf-8"}
                    :body    (consent-page/render-consent-page
-                             {:client-name  (or (:client-name client) "Unknown Application")
+                             {:client-name  (some-> (:client-name client) (truncate 64))
+                              :client-id    (:client_id parsed)
                               :nonce        (:nonce request)
                               :csrf-token   csrf-token
-                              :oauth-params {:client_id             (:client_id parsed)
-                                             :redirect_uri          (:redirect_uri parsed)
-                                             :response_type         (:response_type parsed)
-                                             :scope                 (:scope parsed)
-                                             :state                 (:state parsed)
-                                             :nonce                 (:nonce parsed)
-                                             :code_challenge        (:code_challenge parsed)
-                                             :code_challenge_method (:code_challenge_method parsed)
-                                             :resource              (:resource parsed)}})}
-                  (response/set-cookie csrf-cookie-name csrf-token
-                                       {:http-only true
-                                        :same-site :strict
-                                        :path      "/oauth/authorize"
-                                        :max-age   600})))
-            (catch clojure.lang.ExceptionInfo e
+                              :params-sig   params-sig
+                              :oauth-params oauth-params})}
+                  (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
+            (catch ExceptionInfo e
+              (log/warn e "OAuth authorize request failed")
               {:status  400
                :headers {"Content-Type" "application/json"}
                :body    {:error             "invalid_request"
-                         :error_description (ex-message e)}})))
+                         :error_description "The authorization request is invalid."}})))
         {:status 404 :body {:error "not_found"}})))
 
 (api.macros/defendpoint :post "/authorize/decision"
@@ -155,41 +216,36 @@
      :headers {"Content-Type" "application/json"}
      :body    {:error "unauthorized"}}
     (or (when-let [provider (oauth-server/get-provider)]
-          (let [cookie-token   (get-in request [:cookies csrf-cookie-name :value])
-                form-token     (str (:csrf_token body))]
+          (let [cookie-token (get-in request [:cookies csrf-cookie-name :value])
+                form-token   (some-> (:csrf_token body) str)
+                auth-params  (select-keys body oauth-param-keys)
+                params-sig   (some-> (:params_sig body) str)]
             (if (or (str/blank? cookie-token)
                     (str/blank? form-token)
                     (not (oidc-util/constant-time-eq? cookie-token form-token)))
               {:status  403
                :headers {"Content-Type" "application/json"}
                :body    {:error "csrf_validation_failed"}}
-              (let [approved     (= "true" (str (:approved body)))
-                    auth-params  (select-keys body [:client_id :redirect_uri :response_type :scope :state :nonce
-                                                    :code_challenge :code_challenge_method :resource])]
+              (let [approved (= "true" (str (:approved body)))]
                 (try
-                  (let [parsed (oidc/parse-authorization-request provider auth-params)]
-                    (if approved
-                      (let [url (oidc/authorize provider parsed (str (:metabase-user-id request)))]
-                        (-> {:status  302
-                             :headers {"Location" url}
-                             :body    ""}
-                            (response/set-cookie csrf-cookie-name "" {:http-only true
-                                                                      :same-site :strict
-                                                                      :path      "/oauth/authorize"
-                                                                      :max-age   0})))
-                      (let [url (oidc/deny-authorization provider parsed "access_denied" "User denied the request")]
-                        (-> {:status  302
-                             :headers {"Location" url}
-                             :body    ""}
-                            (response/set-cookie csrf-cookie-name "" {:http-only true
-                                                                      :same-site :strict
-                                                                      :path      "/oauth/authorize"
-                                                                      :max-age   0})))))
-                  (catch clojure.lang.ExceptionInfo e
+                  (let [parsed        (oidc/parse-authorization-request provider auth-params)
+                        ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
+                        ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
+                        parsed-params (select-keys parsed oauth-param-keys)]
+                    (if (or (str/blank? params-sig)
+                            (not (re-matches #"[a-fA-F0-9]+" params-sig))
+                            (odd? (count params-sig))
+                            (not (verify-oauth-params-signature cookie-token parsed-params params-sig)))
+                      {:status  403
+                       :headers {"Content-Type" "application/json"}
+                       :body    {:error "params_tampered"}}
+                      (redirect-authorization-decision provider parsed approved request)))
+                  (catch ExceptionInfo e
+                    (log/warn e "OAuth authorization decision failed")
                     {:status  400
                      :headers {"Content-Type" "application/json"}
                      :body    {:error             "invalid_request"
-                               :error_description (ex-message e)}}))))))
+                               :error_description "The authorization request is invalid."}}))))))
         {:status 404 :body {:error "not_found"}})))
 
 (api.macros/defendpoint :post "/token"
@@ -206,14 +262,16 @@
                          "Cache-Control" "no-store"
                          "Pragma"        "no-cache"}
                :body    response})
-            (catch clojure.lang.ExceptionInfo e
-              (let [data (ex-data e)]
-                {:status  (if (= (:error data) "invalid_client") 401 400)
+            (catch ExceptionInfo e
+              (log/warn e "OAuth token request failed")
+              (let [data  (ex-data e)
+                    error (or (:error data) "invalid_request")]
+                {:status  (if (= error "invalid_client") 401 400)
                  :headers {"Content-Type"  "application/json"
                            "Cache-Control" "no-store"
                            "Pragma"        "no-cache"}
-                 :body    {:error             (or (:error data) "invalid_request")
-                           :error_description (ex-message e)}})))))
+                 :body    {:error             error
+                           :error_description (or (:error_description data) "The token request is invalid.")}})))))
       {:status 404 :body {:error "not_found"}}))
 
 (api.macros/defendpoint :post "/revoke"
