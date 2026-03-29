@@ -125,12 +125,10 @@
 (defn level-enabled?
   "Is logging at `level` enabled for `a-namespace`? `level` may be a keyword (e.g. `:debug`)
   or an org.apache.logging.log4j.Level."
-  (^Boolean [level]
-   (level-enabled? *ns* level))
-  (^Boolean [a-namespace level]
-   (let [^Logger logger (log.impl/get-logger log/*logger-factory* a-namespace)
-         ^Level level  (->Level level)]
-     (.isEnabled logger level))))
+  ^Boolean [a-namespace level]
+  (let [^Logger logger (log.impl/get-logger log/*logger-factory* a-namespace)
+        ^Level level  (->Level level)]
+    (.isEnabled logger level)))
 
 (defn effective-ns-logger
   "Get the logger that will be used for the namespace named by `a-namespace`."

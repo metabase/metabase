@@ -97,10 +97,10 @@
         dashboard-id (get-in metadata [:preprocessed_query :info :dashboard-id])
         hash-str     (i/short-hex-hash query-hash)]
     (cond
-      (and card-id dashboard-id) (str "Card " card-id " (dashboard " dashboard-id "; hash " hash-str ")")
-      card-id                    (str "Card " card-id " (hash " hash-str ")")
-      dashboard-id               (str "Dashboard " dashboard-id " (hash " hash-str ")")
-      :else                      (str "Hash " hash-str))))
+      (and card-id dashboard-id) (format "Card %d (dashboard %d; hash %s)" card-id dashboard-id hash-str)
+      card-id                    (format "Card %d (hash %s)" card-id hash-str)
+      dashboard-id               (format "Dashboard %d (hash %s)" dashboard-id hash-str)
+      :else                      (format "Hash %s" hash-str))))
 
 (defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
   (let [has-rows? (volatile! false)]

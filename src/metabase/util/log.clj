@@ -207,7 +207,7 @@
 
 ;;; --------------------------------------------------- Public API ---------------------------------------------------
 (def ^:private keyword->level
-  "Keyword log level to Log4j Level. Used by [[enabled?]]."
+  "Keyword log level to Log4j Level. Used by [[-enabled?]]."
   {:off   Level/OFF
    :fatal Level/FATAL
    :error Level/ERROR
@@ -223,13 +223,20 @@
       (get keyword->level (keyword k))
       (throw (ex-info "Invalid log level" {:level k}))))
 
-(defn enabled?
-  "Returns true if logging at `level` is enabled for the current namespace. `level` may be a
-  keyword (e.g. `:debug`) or an org.apache.logging.log4j.Level."
-  [level]
-  (let [^Logger logger (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* *ns*)
+(defn -enabled?
+  "Implementation for [[enabled?]] macro."
+  [level ns-symb]
+  (let [^Logger logger (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* ns-symb)
         lvl            (->level level)]
     (.isEnabled logger lvl)))
+
+(defmacro enabled?
+  "Returns true if logging at `level` is enabled for the current namespace. `level` may be a
+  keyword (e.g. `:debug`) or an org.apache.logging.log4j.Level."
+  ([level]
+   `(enabled? ~level '~(symbol (ns-name *ns*))))
+  ([level ns-symb]
+   `(-enabled? ~level ~ns-symb)))
 
 (defmacro trace
   "Log one or more args at the `:trace` level."
