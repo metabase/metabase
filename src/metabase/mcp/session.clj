@@ -111,10 +111,9 @@
   "Create a new MCP session for `user-id`. Returns the session ID (a UUID string).
    Expired sessions are cleaned up by the background task, not inline."
   [user-id]
-  (let [session-id (str (UUID/randomUUID))]
-    (t2/insert! :model/McpSession {:id      session-id
-                                   :user_id user-id})
-    session-id))
+  (u/prog1 (str (UUID/randomUUID))
+    (t2/insert! :model/McpSession {:id      <>
+                                   :user_id user-id})))
 
 (defn delete!
   "Delete an MCP session and its associated embedding session.
