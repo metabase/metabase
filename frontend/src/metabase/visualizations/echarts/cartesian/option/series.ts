@@ -59,6 +59,15 @@ import { getSeriesYAxisIndex } from "./utils";
 
 const MIN_LABEL_SPACING_PX = 40;
 
+function findLastNonNullIndex(dataset: ChartDataset, dataKey: DataKey): number {
+  for (let i = dataset.length - 1; i >= 0; i--) {
+    if (dataset[i][dataKey] != null) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 const getBlurLabelStyle = (
   settings: ComputedVisualizationSettings,
   hasMultipleSeries: boolean,
@@ -158,12 +167,14 @@ export function getDataLabelFormatter(
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
   accessor?: (datum: Datum) => RowValue,
+  datasetLength?: number,
 ) {
   const getShowLabel = getShowLabelFn(
     chartWidth,
     dataKey,
     chartDataDensity,
     settings,
+    datasetLength,
   );
 
   return (params: CallbackDataParams) => {
@@ -183,12 +194,19 @@ function getShowLabelFn(
   dataKey: DataKey,
   chartDataDensity?: ChartDataDensity,
   settings?: ComputedVisualizationSettings,
+  datasetLength?: number,
 ): (params: CallbackDataParams) => boolean {
   if (!settings || !chartDataDensity) {
     return () => true;
   }
   if (settings["graph.label_value_frequency"] === "all") {
     return () => true;
+  }
+  if (settings["graph.label_value_frequency"] === "latest") {
+    const lastIndex = datasetLength ?? -1;
+    return (params: CallbackDataParams) => {
+      return params.dataIndex === lastIndex;
+    };
   }
 
   const { averageLabelWidth, totalNumberOfLabels } = chartDataDensity;
@@ -286,6 +304,7 @@ export const buildEChartsLabelOptions = (
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
   position?: LabelOption["position"],
+  datasetLength?: number,
 ): SeriesLabelOption => {
   const { fontSize } = renderingContext.theme.cartesian.label;
 
@@ -309,6 +328,8 @@ export const buildEChartsLabelOptions = (
         chartWidth,
         settings,
         chartDataDensity,
+        undefined,
+        datasetLength,
       ),
   };
 };
@@ -478,6 +499,7 @@ const buildEChartsBarSeries = (
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
   xAxisIndex?: number,
+  datasetLength?: number,
 ): BarSeriesOption | BarSeriesOption[] => {
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
   const isStacked = settings["stackable.stack_type"] != null;
@@ -530,6 +552,7 @@ const buildEChartsBarSeries = (
           settings,
           chartDataDensity,
           ["50%", 0],
+          datasetLength,
         ),
     labelLayout: isStacked
       ? getBarInsideLabelLayout(
@@ -581,6 +604,7 @@ const buildEChartsBarSeries = (
               const isZero = value === null && datum[labelDataKey] != null;
               return isZero ? 0 : value;
             },
+            datasetLength,
           ),
           ["50%", 0],
           renderingContext,
@@ -619,6 +643,7 @@ const buildEChartsLineAreaSeries = (
   labelFormatter: LabelFormatter | undefined,
   renderingContext: RenderingContext,
   xAxisIndex?: number,
+  datasetLength?: number,
 ): LineSeriesOption => {
   const isSymbolVisible = getShowSymbol(
     chartDataDensity,
@@ -689,6 +714,7 @@ const buildEChartsLineAreaSeries = (
       settings,
       chartDataDensity,
       "top",
+      datasetLength,
     ),
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
@@ -735,12 +761,14 @@ function getStackedDataLabelFormatter(
   chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   settings: ComputedVisualizationSettings,
+  datasetLength?: number,
 ) {
   const getShowStackedLabel = getShowStackedLabelFn(
     chartWidth,
     stackName,
     chartDataDensity,
     settings,
+    datasetLength,
   );
 
   return (params: CallbackDataParams) => {
@@ -767,12 +795,19 @@ function getShowStackedLabelFn(
   stackName: string | undefined,
   chartDataDensity: ComboChartDataDensity,
   settings: ComputedVisualizationSettings,
+  datasetLength?: number,
 ): (params: CallbackDataParams) => boolean {
   if (!settings || !chartDataDensity) {
     return () => true;
   }
   if (settings["graph.label_value_frequency"] === "all") {
     return () => true;
+  }
+  if (settings["graph.label_value_frequency"] === "latest") {
+    const lastIndex = datasetLength ?? -1;
+    return (params: CallbackDataParams) => {
+      return params.dataIndex === lastIndex;
+    };
   }
 
   const { averageLabelWidth, totalNumberOfLabels } = chartDataDensity;
@@ -879,6 +914,7 @@ export const getStackTotalsSeries = (
             chartModel.dataDensity,
             chartWidth,
             settings,
+            chartModel.transformedDataset.length - 1,
           ),
         "top",
         renderingContext,
@@ -897,6 +933,7 @@ export const getStackTotalsSeries = (
             chartModel.dataDensity,
             chartWidth,
             settings,
+            chartModel.transformedDataset.length - 1,
           ),
         "bottom",
         renderingContext,
@@ -977,6 +1014,10 @@ export const buildEChartsSeries = (
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
             panelIndex,
+            findLastNonNullIndex(
+              chartModel.transformedDataset,
+              seriesModel.dataKey,
+            ),
           );
         case "bar":
           return buildEChartsBarSeries(
@@ -996,6 +1037,10 @@ export const buildEChartsSeries = (
             chartModel.seriesLabelsFormatters?.[seriesModel.dataKey],
             renderingContext,
             panelIndex,
+            findLastNonNullIndex(
+              chartModel.transformedDataset,
+              seriesModel.dataKey,
+            ),
           );
       }
     })
