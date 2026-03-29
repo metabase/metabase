@@ -81,7 +81,7 @@ When displaying multiple series, it's important to keep legibility in mind. Comb
 
 Metabase allows you to add values to multi-series charts, but use this feature sparingly, especially on charts with many data points. Adding values to multiple series, each with many data points, can make charts _more_ difficult to read.
 
-From the **Visualization > Display** options, you can toggle the option: **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to show values for all data points by setting the **Values to show** to **All**.
+From the **Visualization > Display** options, you can toggle the option: **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to show values for all data points by setting the **Values to show** to **All**, or show only the most recent value for each series by selecting **Latest only**.
 
 ![Add values to multi-series chart](./images/add_values.png)
 
