@@ -3,7 +3,11 @@ import type {
   CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
 import { SERIES_COLORS_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
 import type { SingleSeries } from "metabase-types/api";
 import {
   createMockCard,
@@ -12,7 +16,11 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { getBreakoutDistinctValues, getCardsSeriesModels } from "./series";
+import {
+  getBreakoutDistinctValues,
+  getCardsSeriesModels,
+  getWaterfallChartDataDensity,
+} from "./series";
 
 const createMockComputedVisualizationSettings = (
   opts: Partial<ComputedVisualizationSettings> = {},
@@ -491,6 +499,81 @@ describe("series", () => {
 
       const result = getBreakoutDistinctValues(data, 1);
       expect(result).toEqual(["a", "b"]);
+    });
+  });
+});
+
+describe("getWaterfallChartDataDensity", () => {
+  const mockRenderingContext: RenderingContext = {
+    getColor: (name) => name,
+    measureText: () => 50,
+    measureTextHeight: () => 12,
+    fontFamily: "Lato",
+    theme: DEFAULT_VISUALIZATION_THEME,
+  };
+
+  const createSettings = (
+    frequency: string,
+    showValues = true,
+  ): ComputedVisualizationSettings => {
+    return createMockVisualizationSettings({
+      "graph.label_value_frequency": frequency,
+      "graph.show_values": showValues,
+      series: () => ({}),
+    }) as unknown as ComputedVisualizationSettings;
+  };
+
+  it('should return zero density when frequency is "latest"', () => {
+    const settings = createSettings("latest");
+    const dataset = [{ __x: 1, __waterfall_value: 100 }] as any;
+
+    const result = getWaterfallChartDataDensity(
+      dataset,
+      String,
+      settings,
+      mockRenderingContext,
+    );
+
+    expect(result).toEqual({
+      type: "waterfall",
+      averageLabelWidth: 0,
+      totalNumberOfLabels: 0,
+    });
+  });
+
+  it('should return zero density when frequency is "all"', () => {
+    const settings = createSettings("all");
+    const dataset = [{ __x: 1, __waterfall_value: 100 }] as any;
+
+    const result = getWaterfallChartDataDensity(
+      dataset,
+      String,
+      settings,
+      mockRenderingContext,
+    );
+
+    expect(result).toEqual({
+      type: "waterfall",
+      averageLabelWidth: 0,
+      totalNumberOfLabels: 0,
+    });
+  });
+
+  it("should return zero density when show_values is false", () => {
+    const settings = createSettings("fit", false);
+    const dataset = [{ __x: 1, __waterfall_value: 100 }] as any;
+
+    const result = getWaterfallChartDataDensity(
+      dataset,
+      String,
+      settings,
+      mockRenderingContext,
+    );
+
+    expect(result).toEqual({
+      type: "waterfall",
+      averageLabelWidth: 0,
+      totalNumberOfLabels: 0,
     });
   });
 });

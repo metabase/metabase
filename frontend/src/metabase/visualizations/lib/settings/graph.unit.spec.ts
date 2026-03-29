@@ -474,6 +474,25 @@ describe("GRAPH_DISPLAY_VALUES_SETTINGS", () => {
 
       expect(isHidden).toBe(false);
     });
+
+    it("should include 'Latest only' option", () => {
+      const getProps = checkNotNull(
+        GRAPH_DISPLAY_VALUES_SETTINGS["graph.label_value_frequency"]?.getProps,
+      );
+      const props = getProps(
+        [] as any,
+        {} as any,
+        jest.fn(),
+        undefined,
+        jest.fn(),
+      );
+      const optionValues = props.options?.map(
+        (opt: { value: string }) => opt.value,
+      );
+      expect(optionValues).toContain("fit");
+      expect(optionValues).toContain("all");
+      expect(optionValues).toContain("latest");
+    });
   });
 
   describe("graph.show_stack_values", () => {
