@@ -54,6 +54,11 @@
   (filter #(-> % :serdes/meta last :model (= model-name))
           entities))
 
+(defn- yaml-model-at
+  "Read a YAML file and return its serdes model name."
+  [^File base-dir path-vec]
+  (-> (apply io/file base-dir path-vec) yaml/from-file :serdes/meta last :model))
+
 (defn- file-set [^File dir]
   (let [^Path base (.toPath dir)]
     (set (for [^File file (file-seq dir)
@@ -213,10 +218,9 @@
 
             (testing "for Collections"
               ;; +1 for the Trash collection
-              (let [coll-count (count (for [f (file-set (io/file dump-dir))
-                                            :when (and (= (first f) "collections")
-                                                       (let [[a b] (take-last 2 f)]
-                                                         (= b (str a ".yaml"))))]
+              (let [colls-dir  (io/file dump-dir "collections")
+                    coll-count (count (for [f (file-set colls-dir)
+                                            :when (= "Collection" (yaml-model-at colls-dir f))]
                                         f))]
                 ;; +1 for Trash collection; exact count may vary by 1 depending on naming collisions
                 (is (<= 109 coll-count 111)
@@ -246,14 +250,12 @@
               ;; In the new storage format, cards/dashboards/timelines are stored directly
               ;; in collection directories (no per-type subfolders).
               ;; 100 cards + 10 simple-models + 150 dashboards + 10 timelines = 270
-              ;; We count all yaml files under collections/main/ that are NOT collection
-              ;; definitions. A collection definition file has a name matching its parent dir.
-              ;; 100 cards + 10 simple-models + 150 dashboards + 10 timelines = 270
+              ;; We count all yaml files under collections/main/ that are NOT collection definitions.
               ;; exact count may vary by 1 depending on naming collisions with collection names
-              (is (<= 269 (count (for [f (file-set (io/file dump-dir "collections" "main"))
-                                       :when (let [[a b] (take-last 2 f)]
-                                               (not= b (str a ".yaml")))]
-                                   f)) 271)))
+              (let [main-dir (io/file dump-dir "collections" "main")]
+                (is (<= 269 (count (for [f (file-set main-dir)
+                                         :when (not= "Collection" (yaml-model-at main-dir f))]
+                                     f)) 271))))
 
             (testing "for segments"
               (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
@@ -265,10 +267,10 @@
             (testing "for native query snippets"
               ;; Snippets are now under collections/snippets/ (not a top-level snippets/ dir).
               ;; Count non-collection yaml files under collections/snippets/.
-              (is (= 10 (count (for [f (file-set (io/file dump-dir "collections" "snippets"))
-                                     :when (let [[a b] (take-last 2 f)]
-                                             (not= b (str a ".yaml")))]
-                                 f)))))
+              (let [snippets-dir (io/file dump-dir "collections" "snippets")]
+                (is (= 10 (count (for [f (file-set snippets-dir)
+                                       :when (not= "Collection" (yaml-model-at snippets-dir f))]
+                                   f))))))
 
             (testing "for settings"
               (is (.exists (io/file dump-dir "settings.yaml")))))

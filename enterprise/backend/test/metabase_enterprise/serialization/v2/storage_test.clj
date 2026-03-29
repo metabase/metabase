@@ -30,10 +30,10 @@
         (let [export (into [] (extract/extract {:no-transforms true}))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
-            (is (= #{["main" "some_collection" "some_collection.yaml"]
-                     ["main" "some_collection" "child_collection" "child_collection.yaml"]}
+            (is (= #{["main" "some_collection.yaml"]
+                     ["main" "some_collection" "child_collection.yaml"]}
                    (file-set (io/file dump-dir "collections")))
-                "collections form a tree, with same-named files")
+                "collections form a tree, with files as siblings of their content folders")
             (is (contains? (file-set (io/file dump-dir))
                            ["settings.yaml"])
                 "A few top-level files are expected"))
@@ -44,7 +44,7 @@
                        (assoc :parent_id nil)
                        (update :created_at t/offset-date-time))
                    (-> (yaml/from-file (io/file dump-dir "collections" "main"
-                                                "some_collection" "some_collection.yaml"))
+                                                "some_collection.yaml"))
                        (dissoc :serdes/meta)
                        (update :created_at t/offset-date-time))))
 
@@ -53,7 +53,7 @@
                        (assoc :parent_id (:entity_id parent))
                        (update :created_at t/offset-date-time))
                    (-> (yaml/from-file (io/file dump-dir "collections" "main"
-                                                "some_collection" "child_collection" "child_collection.yaml"))
+                                                "some_collection" "child_collection.yaml"))
                        (dissoc :serdes/meta)
                        (update :created_at t/offset-date-time))))))))))
 
@@ -74,9 +74,9 @@
         (let [export (into [] (extract/extract {:no-transforms true}))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
-            (is (= #{["main" "grandparent_collection" "grandparent_collection.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "parent_collection.yaml"]
-                     ["main" "grandparent_collection" "parent_collection" "child_collection" "child_collection.yaml"]
+            (is (= #{["main" "grandparent_collection.yaml"]
+                     ["main" "grandparent_collection" "parent_collection.yaml"]
+                     ["main" "grandparent_collection" "parent_collection" "child_collection.yaml"]
                      ["main" "root_card.yaml"]
                      ["main" "grandparent_collection" "grandparent_card.yaml"]
                      ["main" "grandparent_collection" "parent_collection" "parent_card.yaml"]
@@ -105,9 +105,9 @@
                                                 :no-transforms true}))]
           (storage/store! export dump-dir)
           (testing "all snippet collections and snippets under collections/snippets/"
-            (is (= #{["snippets" "grandparent_collection" "grandparent_collection.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection" "parent_collection.yaml"]
-                     ["snippets" "grandparent_collection" "parent_collection" "child_collection" "child_collection.yaml"]
+            (is (= #{["snippets" "grandparent_collection.yaml"]
+                     ["snippets" "grandparent_collection" "parent_collection.yaml"]
+                     ["snippets" "grandparent_collection" "parent_collection" "child_collection.yaml"]
                      ["snippets" "root_snippet.yaml"]
                      ["snippets" "grandparent_collection" "grandparent_snippet.yaml"]
                      ["snippets" "grandparent_collection" "parent_collection" "parent_snippet.yaml"]

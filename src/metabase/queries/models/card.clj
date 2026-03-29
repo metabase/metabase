@@ -1281,6 +1281,23 @@
                                    (serdes/field->path (:fk_target_field_id m))))))
         (disj nil))))
 
+(defmethod serdes/storage-path "Card" [card ctx]
+  (let [base (serdes/storage-default-collection-path card ctx)]
+    (cond
+      (:dashboard_id card)
+      (let [dash-segment (get (:dashboards ctx) (:dashboard_id card))]
+        (if dash-segment
+          (into (vec (butlast base)) [dash-segment (last base)])
+          base))
+
+      (:document_id card)
+      (let [doc-segment (get (:documents ctx) (:document_id card))]
+        (if doc-segment
+          (into (vec (butlast base)) [doc-segment (last base)])
+          base))
+
+      :else base)))
+
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display

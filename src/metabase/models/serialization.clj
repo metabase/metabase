@@ -875,6 +875,8 @@
   "Creates the basic context for storage.
   - `:collections` maps collection entity_id to a vector of `{:label ... :key ...}` maps representing
     the collection hierarchy.
+  - `:dashboards` maps dashboard entity_id to `{:label ... :key ...}` for use as virtual subcollections.
+  - `:documents` maps document entity_id to `{:label ... :key ...}` for use as virtual subcollections.
   - `:generators` is an atom of `{parent-key -> unique-name-generator}` used by the storage layer for
     per-folder name deduplication."
   []
@@ -888,8 +890,16 @@
                                                         (let [c (id->coll cid)]
                                                           {:label (:name c) :key (:entity_id c)}))
                                                       all-ids)]]
-                           [entity_id path-maps]))]
+                           [entity_id path-maps]))
+        dashboards (into {}
+                         (for [{:keys [entity_id name]} (t2/select ['Dashboard :entity_id :name])]
+                           [entity_id {:label name :key entity_id}]))
+        documents  (into {}
+                         (for [{:keys [entity_id name]} (t2/select ['Document :entity_id :name])]
+                           [entity_id {:label name :key entity_id}]))]
     {:collections coll->path
+     :dashboards  dashboards
+     :documents   documents
      :generators  (atom {})}))
 
 ;;; # Utilities for implementing serdes

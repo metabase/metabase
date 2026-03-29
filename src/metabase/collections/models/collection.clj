@@ -2074,8 +2074,7 @@
                     :transforms "transforms"
                     nil         "main"
                     "main")]
-    (into [{:label "collections"} {:label ns-folder}]
-          cat [path [(last path)]])))
+    (into [{:label "collections"} {:label ns-folder}] path)))
 
 (defn- parent-id->location-path [parent-id]
   (if-not parent-id
