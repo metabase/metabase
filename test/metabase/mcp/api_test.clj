@@ -576,14 +576,10 @@
                                        (jsonrpc-request "resources/read"
                                                         {:uri "ui://metabase/visualize-query.html"} 1)]
                                       {"mcp-session-id" session-id})]
-      (is (= 200 (:status batch-response)))
-      (is (sequential? (:body batch-response)))
-      ;; Only the request (not the notification) produces a response
-      (is (= 1 (count (:body batch-response))))
-      (let [result (first (:body batch-response))]
-        (is (= 1 (:id result)))
-        (is (nil? (get-in result [:error])) "resources/read should not be rejected as uninitialized")
-        (is (some? (get-in result [:result :contents])))))))
+      (is (=? {:status 200
+               :body   [{:id     1
+                         :result {:contents some?}}]}
+              batch-response)))))
 
 (deftest embedding-key-encryption-round-trip-test
   (testing "embedding session key survives encrypt/decrypt round-trip through the database"
