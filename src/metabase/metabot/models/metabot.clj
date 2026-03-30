@@ -47,4 +47,4 @@
                :updated_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :prompts       (serdes/nested :model/MetabotPrompt :metabot_id opts)}
-   :default-values {:use_verified_content false}})
+   :defaults {:use_verified_content false}})

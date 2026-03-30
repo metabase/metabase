@@ -466,12 +466,12 @@
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
                :dimensions         (serdes/nested :model/Dimension :field_id opts)}
-   :default-values {:active                     true
-                    :database_is_auto_increment false
-                    :database_required          false
-                    :is_defective_duplicate     false
-                    :json_unfolding             false
-                    :preview_display            true}})
+   :defaults {:active                     true
+              :database_is_auto_increment false
+              :database_required          false
+              :is_defective_duplicate     false
+              :json_unfolding             false
+              :preview_display            true}})
 
 (defmethod serdes/storage-path "Field" [field _]
   (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))]

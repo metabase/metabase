@@ -75,7 +75,7 @@
   [_model-name _opts]
   {:copy           [:name :description :type :details :active]
    :transform      {:created_at (serdes/date)}
-   :default-values {:active true}})
+   :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/ChannelTemplate                                    ;;

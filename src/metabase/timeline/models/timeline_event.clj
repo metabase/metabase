@@ -132,4 +132,4 @@
                :creator_id  (serdes/fk :model/User)
                :timeline_id (serdes/parent-ref)
                :timestamp   (serdes/date)}
-   :default-values  {:archived false}})
+   :defaults {:archived false}})

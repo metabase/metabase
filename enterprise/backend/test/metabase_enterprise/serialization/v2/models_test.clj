@@ -126,10 +126,10 @@
                 (is (= (serdes/parent-ref)
                        (get-in inner-spec [:transform backward-fk]))))))
 
-          (testing ":default-values match actual DB field defaults"
+          (testing ":defaults match actual DB field defaults"
             (let [serialized-fields (set (concat (:copy spec) (keys (:transform spec))))
-                  declared-defaults (or (:default-values spec) {})]
-              ;; Every DB field with a boolean default that is serialized should be in :default-values
+                  declared-defaults (or (:defaults spec) {})]
+              ;; Every DB field with a boolean default that is serialized should be in :defaults
               (doseq [[field-name field] fields
                       :let [field-kw   (keyword (u/lower-case-en field-name))
                             db-default (some-> field :default parse-default-value)]
@@ -138,7 +138,7 @@
                 (testing (format "`%s.%s` has DB default %s" m (name field-kw) (pr-str db-default))
                   (is (contains? declared-defaults field-kw))
                   (is (= db-default (get declared-defaults field-kw)))))
-              ;; Every entry in :default-values should reference a serialized field
+              ;; Every entry in :defaults should reference a serialized field
               (doseq [field-kw (keys declared-defaults)]
-                (testing (format "`%s.%s` in :default-values is a serialized field" m (name field-kw))
+                (testing (format "`%s.%s` in :defaults is a serialized field" m (name field-kw))
                   (is (contains? serialized-fields field-kw)))))))))))

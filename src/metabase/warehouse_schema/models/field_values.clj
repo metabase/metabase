@@ -602,7 +602,7 @@
                               :import-with-context (fn [current _ _]
                                                      (let [field-ref (field-path->field-ref (serdes/path current))]
                                                        (serdes/*import-field-fk* field-ref)))}}
-   :default-values  {:has_more_values false}})
+   :defaults {:has_more_values false}})
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.

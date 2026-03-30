@@ -703,10 +703,10 @@
                :db_id          (serdes/fk :model/Database :name)
                :collection_id  (serdes/fk :model/Collection)
                :transform_id   (serdes/fk :model/Transform)}
-   :default-values {:is_defective_duplicate  false
-                    :is_published            false
-                    :is_upload               false
-                    :show_in_getting_started false}})
+   :defaults {:is_defective_duplicate  false
+              :is_published            false
+              :is_upload               false
+              :show_in_getting_started false}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))

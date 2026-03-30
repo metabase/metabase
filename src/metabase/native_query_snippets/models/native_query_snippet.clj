@@ -172,7 +172,7 @@
    :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)}
-   :default-values {:archived false}})
+   :defaults {:archived false}})
 
 (defmethod serdes/required "NativeQuerySnippet"
   [_model id]

@@ -236,7 +236,7 @@
                :table_id   (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}
-   :default-values {:archived false :show_in_getting_started false}})
+   :defaults {:archived false :show_in_getting_started false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
