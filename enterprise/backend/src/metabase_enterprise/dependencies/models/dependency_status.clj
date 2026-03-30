@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase.app-db.query :as app-db]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
