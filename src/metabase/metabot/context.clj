@@ -68,6 +68,7 @@
    [:map-of :keyword :any]
    [:map
     [:user_is_viewing
+     {:optional true}
      [:vector [:map
                [:type item-type-schema]
                [:query
