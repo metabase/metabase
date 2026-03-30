@@ -16,6 +16,7 @@
 (set! *warn-on-reflection* true)
 
 ;; Re-export generic scope API so existing consumers can keep requiring metabot.scope
+#_{:clj-kondo/ignore [:aliased-namespace-symbol]}
 (p/import-vars
  [metabase.api-scope.core
   registered-scope?

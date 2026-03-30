@@ -8,15 +8,6 @@
 ;;; Helpers
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn- make-tool-var
-  "Create a fake tool var with the given metadata and function."
-  [tool-name scope-str]
-  (let [f  (fn [_args] {:output (str "ran " tool-name)})
-        v  (with-meta (var-get #'identity) ;; need a real var for meta
-                      {:tool-name tool-name
-                       :schema    [:=> [:cat :map] :map]
-                       :scope     scope-str})]
-    v))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Tool list filtering by scope (via profiles/filter-by-scope)
@@ -26,12 +17,12 @@
   (let [;; We test the filtering behavior through wrap-tools-with-state
         ;; since filter-by-scope is private. Instead, we test the scope
         ;; matching behavior that filter-by-scope relies on.
-        sql-tool    (with-meta (fn [_] {:output "sql"})
-                               {:tool-name "create_sql" :schema [:=> [:cat :map] :map] :scope "agent:sql:create"})
-        search-tool (with-meta (fn [_] {:output "search"})
-                               {:tool-name "search" :schema [:=> [:cat :map] :map] :scope "agent:search"})
-        no-scope    (with-meta (fn [_] {:output "legacy"})
-                               {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
+        _sql-tool    (with-meta (fn [_] {:output "sql"})
+                                {:tool-name "create_sql" :schema [:=> [:cat :map] :map] :scope "agent:sql:create"})
+        _search-tool (with-meta (fn [_] {:output "search"})
+                                {:tool-name "search" :schema [:=> [:cat :map] :map] :scope "agent:search"})
+        no-scope     (with-meta (fn [_] {:output "legacy"})
+                                {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
 
     (testing "with unrestricted scope, all tools pass"
       (binding [scope/*current-user-scope* scope/unrestricted]

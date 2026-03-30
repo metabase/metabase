@@ -67,7 +67,7 @@
   [perms]
   (into {} (map (fn [[k v]] [(name k) (name v)])) perms))
 
-(api.macros/defendpoint :get "/user-permissions"
+(api.macros/defendpoint :get "/user-permissions" :- [:map [:permissions [:map-of :string :string]]]
   "Return the current user's resolved metabot permissions, taking the most
   permissive value across all their groups."
   []

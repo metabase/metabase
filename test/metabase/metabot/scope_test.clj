@@ -149,7 +149,7 @@
 ;;; validate-tool-var! rejects unregistered scopes
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn- make-tool-var
+(defn- make-tool-var!
   "Create a var with tool metadata for testing validate-tool-var!."
   [sym tool-meta]
   (let [v (intern *ns* sym (fn [_] nil))]
@@ -159,11 +159,11 @@
 (deftest validate-tool-var-rejects-unregistered-scope-test
   (let [validate! @(resolve 'metabase.metabot.agent.profiles/validate-tool-var!)]
     (testing "tool with registered scope passes validation"
-      (let [v (make-tool-var 'test-ok-tool {:tool-name "ok" :schema [:=> [:cat :map] :map] :scope "agent:sql:create"})]
+      (let [v (make-tool-var! 'test-ok-tool {:tool-name "ok" :schema [:=> [:cat :map] :map] :scope "agent:sql:create"})]
         (is (true? (validate! v)))))
     (testing "tool with unregistered scope throws"
-      (let [v (make-tool-var 'test-bad-tool {:tool-name "bad" :schema [:=> [:cat :map] :map] :scope "agent:bogus:scope"})]
+      (let [v (make-tool-var! 'test-bad-tool {:tool-name "bad" :schema [:=> [:cat :map] :map] :scope "agent:bogus:scope"})]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unregistered scope" (validate! v)))))
     (testing "tool without scope passes validation"
-      (let [v (make-tool-var 'test-legacy-tool {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
+      (let [v (make-tool-var! 'test-legacy-tool {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
         (is (true? (validate! v)))))))

@@ -1150,6 +1150,7 @@
    :api  #{metabase.mcp.api}
    :uses #{agent-api
            api
+           api-scope
            config
            oauth-server
            request
@@ -1217,6 +1218,7 @@
               task
               transforms
               transforms-base
+              users
               util
               warehouses}
    :model-exports #{:model/MetabotMessage}
