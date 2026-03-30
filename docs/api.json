@@ -33442,7 +33442,20 @@
                   },
                   "state" : {
                     "type" : "object",
-                    "properties" : { }
+                    "properties" : {
+                      "chart-configs" : {
+                        "type" : "object",
+                        "additionalProperties" : { }
+                      },
+                      "charts" : {
+                        "type" : "object",
+                        "additionalProperties" : { }
+                      },
+                      "queries" : {
+                        "type" : "object",
+                        "additionalProperties" : { }
+                      }
+                    }
                   }
                 },
                 "required" : [ "message", "context", "conversation_id", "history", "state" ]
@@ -33971,6 +33984,171 @@
           }
         },
         "tags" : [ "/api/metabot/metabot" ]
+      }
+    },
+    "/api/metabot/settings" : {
+      "get" : {
+        "operationId" : "get-api-metabot-settings",
+        "summary" : "GET /api/metabot/settings",
+        "description" : "Return available models for a provider using its configured API key.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "provider",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "anthropic", "openai", "openrouter" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "api-key-error" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "models" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "display_name" : {
+                            "type" : "string"
+                          },
+                          "group" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "display_name" ]
+                      }
+                    },
+                    "value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "value", "models" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metabot" ]
+      },
+      "put" : {
+        "operationId" : "put-api-metabot-settings",
+        "summary" : "PUT /api/metabot/settings",
+        "description" : "Update the Metabot provider API key and/or model setting and return the refreshed settings payload.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "api-key-error" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "models" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "display_name" : {
+                            "type" : "string"
+                          },
+                          "group" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "id" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "id", "display_name" ]
+                      }
+                    },
+                    "value" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "value", "models" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "api-key" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "model" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "provider" : {
+                    "type" : "string",
+                    "enum" : [ "anthropic", "openai", "openrouter" ]
+                  }
+                },
+                "required" : [ "provider" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metabot" ]
       }
     },
     "/api/metabot/slack/events" : {
@@ -42712,6 +42890,14 @@
                           "type" : "null"
                         } ]
                       },
+                      "target_table_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
                       "description" : {
                         "oneOf" : [ {
                           "type" : "string"
@@ -43032,6 +43218,14 @@
                     "run_trigger" : {
                       "oneOf" : [ {
                         "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "target_table_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
                       }, {
                         "type" : "null"
                       } ]
@@ -45097,6 +45291,14 @@
                         "type" : "null"
                       } ]
                     },
+                    "target_table_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "description" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -45425,6 +45627,14 @@
                     "run_trigger" : {
                       "oneOf" : [ {
                         "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "target_table_id" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 1
                       }, {
                         "type" : "null"
                       } ]
@@ -45894,6 +46104,14 @@
                       "run_trigger" : {
                         "oneOf" : [ {
                           "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "target_table_id" : {
+                        "oneOf" : [ {
+                          "type" : "integer",
+                          "minimum" : 1
                         }, {
                           "type" : "null"
                         } ]

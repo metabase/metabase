@@ -145,10 +145,12 @@ export function setup(
     metabotInitialState?: MetabotState;
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
+    isHosted?: boolean;
   } | void,
 ) {
   const settings = mockSettings({
     "llm-metabot-configured?": true,
+    "is-hosted?": options?.isHosted ?? false,
     "token-features": createMockTokenFeatures({
       metabot_v3: true,
     }),
