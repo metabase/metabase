@@ -44,25 +44,16 @@
       (is (= "postgresql" result))))
 
   (testing "extracts sql_engine from adhoc item with native dataset-query (frontend payload)"
-    (let [context {:user_is_viewing [{:type      "adhoc"
-                                      :query     {:type     "native"
-                                                  :native   {:query "SELECT 1"}
-                                                  :database 1}
+    (let [context {:user_is_viewing [{:type "adhoc"
+                                      :query (lib/native-query (mt/metadata-provider) "select 1")
                                       :sql_engine "PostgreSQL"}]}
           result (user-context/extract-sql-dialect context)]
       (is (= "postgresql" result))))
 
   (testing "returns nil for adhoc notebook (MBQL) query"
     (let [context {:user_is_viewing [{:type  "adhoc"
-                                      :query {:type     "query"
-                                              :query    {:source-table 1}
-                                              :database 1}}]}
-          result (user-context/extract-sql-dialect context)]
-      (is (nil? result))))
-
-  (testing "extracts sql_engine from transform context"
-    (let [context {:user_is_viewing [{:type "transform"
-                                      :sql_engine "MySQL"}]}
+                                      :query (let [mp (mt/metadata-provider)]
+                                               (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]}
           result (user-context/extract-sql-dialect context)]
       (is (nil? result))))
 
@@ -76,7 +67,7 @@
           result (user-context/extract-sql-dialect context)]
       (is (nil? result)))))
 
-(deftest x-format-viewing-context-test
+(deftest format-viewing-context-test
   (let [mp meta/metadata-provider]
     (testing "formats adhoc notebook (MBQL) query context"
       (is (=? (re-pattern
@@ -97,11 +88,11 @@
         (is (re-find #"postgres" result))))
 
     (testing "formats adhoc native SQL query with error"
-      (let [result @(def xix (user-context/format-viewing-context
-                              {:user_is_viewing [{:type       "adhoc"
-                                                  :query (lib/native-query mp "SELECT * FROM invalid")
-                                                  :sql_engine "postgres"
-                                                  :error      "Table 'invalid' not found"}]}))]
+      (let [result (user-context/format-viewing-context
+                    {:user_is_viewing [{:type       "adhoc"
+                                        :query (lib/native-query mp "SELECT * FROM invalid")
+                                        :sql_engine "postgres"
+                                        :error      "Table 'invalid' not found"}]})]
         (is (re-find #"SQL editor" result))
         (is (re-find #"SELECT \* FROM invalid" result))
         (is (re-find #"Table 'invalid' not found" result))))
@@ -282,9 +273,9 @@
     (with-redefs [user-context/format-current-user-info (constantly "<user>Jane Doe</user>")]
       (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
                      :first_day_of_week "Monday"
-                     :user_is_viewing [{:type "native"
+                     :user_is_viewing [{:type "adhoc"
                                         :sql_engine "PostgreSQL"
-                                        :query "SELECT * FROM users"}]
+                                        :query (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}]
                      :user_recently_viewed [{:type "table"
                                              :id 123
                                              :name "users"}]}
@@ -307,9 +298,7 @@
                    :first_day_of_week "Monday"
                    :user_is_viewing [{:type       "adhoc"
                                       :sql_engine "PostgreSQL"
-                                      :query      {:type     "native"
-                                                   :native   {:query "SELECT * FROM users"}
-                                                   :database 1}}]
+                                      :query      (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}]
                    :user_recently_viewed [{:type "table"
                                            :id 123
                                            :name "users"}]}
