@@ -12,6 +12,7 @@ import {
   within,
 } from "__support__/ui";
 import * as dashboardSelectors from "metabase/dashboard/selectors";
+import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
@@ -44,6 +45,7 @@ import type { DashCardProps } from "./DashCard";
 import { DashCard } from "./DashCard";
 
 registerVisualizations();
+registerDashboardVisualizations();
 
 const TEST_DATABASE_ID = 1;
 const TEST_TABLE_ID = 2;

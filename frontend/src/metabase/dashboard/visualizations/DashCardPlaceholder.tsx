@@ -9,9 +9,11 @@ import {
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Flex } from "metabase/ui";
+import type {
+  VisualizationDefinition,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
-
-import type { VisualizationDefinition, VisualizationProps } from "../types";
 
 type Props = VisualizationProps & {
   dashcard: VirtualDashboardCard;
