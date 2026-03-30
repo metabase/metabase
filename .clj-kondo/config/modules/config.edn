@@ -271,10 +271,10 @@
                     :model/User}}
 
   api-scope
-  {:team "Metabot"
-   :api  #{metabase.api-scope.core
-            metabase.api-scope.init}
-   :uses #{util}}
+  {:team  "Metabot"
+   :api   #{metabase.api-scope.core
+             metabase.api-scope.init}
+   :uses  #{util}}
 
   api-keys
   {:team "UX West"
@@ -3295,6 +3295,7 @@
   enterprise/workspaces
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
    :friends #{enterprise/agent-api}

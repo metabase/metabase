@@ -98,6 +98,18 @@
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"})
 
+(defn- wrap-with-scope-check
+  "Wrap a tool function with a scope check. Returns a function that checks
+  `*current-user-scope*` against `required-scope` before calling `f`.
+  Returns a denial message if the scope is not satisfied."
+  [f tool-name required-scope]
+  (fn [args]
+    (if (scope/scope-matches? scope/*current-user-scope* required-scope)
+      (f args)
+      (do (log/warnf "Scope check failed for tool %s — required: %s, granted: %s"
+                     tool-name required-scope scope/*current-user-scope*)
+          {:output "You do not have permission to use this tool."}))))
+
 (defn wrap-tools-with-state
   "Wrap state-dependent tools with access to the memory atom.
   Tools in `state-dependent-tools` will have access to the memory atom
@@ -113,32 +125,28 @@
   [tools memory-atom metabot-id]
   (reduce-kv
    (fn [acc tool-name tool-var]
-     (let [m        (meta tool-var)
-           tool-def {:tool-name            (:tool-name m)
-                     :doc                  (:doc m)
-                     :schema               (:schema m)
-                     :prompt               (:prompt m)
-                     :decode               (:decode m)
-                     :system-instructions  (:system-instructions m)
-                     :capabilities         (:capabilities m)
-                     :scope                (:scope m)
-                     :fn                   (let [base-fn (if (contains? state-dependent-tools tool-name)
-                                                           (fn [args]
-                                                             (binding [shared/*memory-atom* memory-atom
-                                                                       shared/*metabot-id*  metabot-id]
-                                                               (tool-var args)))
-                                                           (fn [args]
-                                                             (binding [shared/*metabot-id* metabot-id]
-                                                               (tool-var args))))
-                                                 tool-scope (:scope m)]
-                                             (if tool-scope
-                                               (fn [args]
-                                                 (if (scope/scope-matches? scope/*current-user-scope* tool-scope)
-                                                   (base-fn args)
-                                                   (do (log/warnf "Scope check failed for tool %s — required: %s, granted: %s"
-                                                                  tool-name tool-scope scope/*current-user-scope*)
-                                                       {:output "You do not have permission to use this tool."})))
-                                               base-fn))}]
+     (let [m          (meta tool-var)
+           base-fn    (if (contains? state-dependent-tools tool-name)
+                        (fn [args]
+                          (binding [shared/*memory-atom* memory-atom
+                                    shared/*metabot-id*  metabot-id]
+                            (tool-var args)))
+                        (fn [args]
+                          (binding [shared/*metabot-id* metabot-id]
+                            (tool-var args))))
+           tool-scope (:scope m)
+           tool-fn    (if tool-scope
+                        (wrap-with-scope-check base-fn tool-name tool-scope)
+                        base-fn)
+           tool-def   {:tool-name            (:tool-name m)
+                       :doc                  (:doc m)
+                       :schema               (:schema m)
+                       :prompt               (:prompt m)
+                       :decode               (:decode m)
+                       :system-instructions  (:system-instructions m)
+                       :capabilities         (:capabilities m)
+                       :scope                (:scope m)
+                       :fn                   tool-fn}]
        (assoc acc tool-name tool-def)))
    {}
    tools))
