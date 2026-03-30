@@ -1,0 +1,73 @@
+name: Re-check Migration Versions
+
+on:
+  push:
+    branches:
+      - master
+      - 'release-x.*.x'
+
+concurrency:
+  group: recheck-migration-versions-${{ github.ref_name }}
+  cancel-in-progress: true
+
+# This workflow needs a token with:
+#   actions: write    — to re-run workflow runs via `gh run rerun`
+#   pull-requests: read — to list open PRs and their changed files
+# The default GITHUB_TOKEN may not have actions:write depending on repo settings.
+# If re-runs fail with 403s, the repo owner needs to grant this permission.
+permissions:
+  actions: write
+  pull-requests: read
+
+jobs:
+  recheck-open-prs:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    steps:
+      - name: Re-trigger migration checks on affected PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          echo "Branch ${BRANCH} was updated — finding open PRs targeting it with migration changes..."
+
+          # Find open PRs targeting this branch that touch migration files.
+          # Uses the search API to filter in one call instead of looping per-PR.
+          pr_branches=$(gh pr list \
+            --repo "$REPO" \
+            --base "$BRANCH" \
+            --state open \
+            --json number,headRefName,files \
+            --jq '[.[] | select(.files | map(.path) | any(startswith("resources/migrations/"))) | {number, headRefName}]')
+
+          if [[ "$pr_branches" == "[]" || -z "$pr_branches" ]]; then
+            echo "No open PRs targeting ${BRANCH} with migration changes."
+            exit 0
+          fi
+
+          echo "Found PRs with migration changes:"
+          echo "$pr_branches" | jq -r '.[] | "  PR #\(.number) (\(.headRefName))"'
+          echo ""
+
+          echo "$pr_branches" | jq -c '.[]' | while IFS= read -r pr_json; do
+            pr_number=$(echo "$pr_json" | jq -r '.number')
+            head_branch=$(echo "$pr_json" | jq -r '.headRefName')
+
+            run_id=$(gh run list \
+              --repo "$REPO" \
+              --workflow "check-migration-version.yml" \
+              --branch "$head_branch" \
+              --json databaseId \
+              --jq '.[0].databaseId // empty')
+
+            if [[ -n "$run_id" ]]; then
+              gh run rerun "$run_id" --repo "$REPO" && \
+                echo "Re-triggered run ${run_id} for PR #${pr_number}." || \
+                echo "::warning::Failed to re-trigger run for PR #${pr_number}."
+            else
+              echo "No previous run found for PR #${pr_number} — it will be checked on next push."
+            fi
+          done
