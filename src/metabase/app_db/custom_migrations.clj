@@ -2181,4 +2181,3 @@
                       :definition_changed true}})
   (t2/query {:update :workspace
              :set    {:graph_version [:+ :graph_version 1]}}))
-
