@@ -51,10 +51,10 @@ export const setEditingPulse = createThunkAction(
           dispatch(setErrorPage(e));
         }
       } else {
-        // HACK: need a way to wait for form_input to finish loading
         let channels = getPulseFormInput(getState())?.channels;
         if (!channels) {
           try {
+            // HACK: need a way to wait for form_input to finish loading
             channels = (await PulseApi.form_input()).channels;
           } catch {
             // form_input can fail when the user lacks subscription
