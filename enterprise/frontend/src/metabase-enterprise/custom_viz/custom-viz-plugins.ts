@@ -123,9 +123,9 @@ export function useCustomVizPlugins({
 }
 
 /**
- * Dev mode: listen for Server-Sent Events from the Vite notify plugin.
- * The SSE server runs on the port after the dev_bundle_url port (e.g. 5175).
- * CSP must allow the SSE origin via MB_CUSTOM_VIZ_DEV_SERVER_URL env var.
+ * Dev mode: listen for Server-Sent Events from the custom viz dev server.
+ * The SSE endpoint is at /__sse on the same origin as dev_bundle_url.
+ * CSP must allow the dev server origin via MB_CUSTOM_VIZ_DEV_SERVER_URL env var.
  */
 function useCustomVizDevReload(
   display: string | undefined,
@@ -145,8 +145,7 @@ function useCustomVizDevReload(
     }
 
     const devUrl = new URL(plugin.dev_bundle_url);
-    const notifyPort = Number(devUrl.port) + 1;
-    const sseUrl = `http://${devUrl.hostname}:${notifyPort}`;
+    const sseUrl = `${devUrl.origin}/__sse`;
 
     const eventSource = new EventSource(sseUrl);
 
