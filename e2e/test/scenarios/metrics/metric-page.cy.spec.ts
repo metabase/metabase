@@ -216,6 +216,28 @@ describe("scenarios > metrics > metric page", () => {
     });
   });
 
+  it("should hide overview tab when metric has no dimensions", () => {
+    H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+      cy.intercept("GET", `/api/metric/${metric.id}`, (req) => {
+        req.continue((res) => {
+          res.body.dimensions = [];
+        });
+      });
+      H.visitMetric(metric.id);
+
+      H.MetricPage.aboutPage().should("be.visible");
+      H.MetricPage.aboutTab().should("be.visible");
+      H.MetricPage.overviewTab().should("not.exist");
+      H.MetricPage.historyTab().should("be.visible");
+
+      // Should redirect if visited by URL
+      cy.visit(`/metric/${metric.id}/overview`);
+
+      H.MetricPage.aboutPage().should("be.visible");
+      cy.location("pathname").should("not.include", "/overview");
+    });
+  });
+
   it("should edit, save, and cancel metric definition changes", () => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
 
