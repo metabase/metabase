@@ -11,7 +11,7 @@
     "network": {
       "allowLocalBinding": true,
       "allowAllUnixSockets": true,
-      "allowedDomains": ["github.com", "api.github.com", "*.blob.core.windows.net"]
+      "allowedDomains": ["github.com", "api.github.com", "*.blob.core.windows.net", "api.linear.app"]
     }
   },
   "permissions": {
