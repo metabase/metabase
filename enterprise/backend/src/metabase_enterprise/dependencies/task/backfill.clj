@@ -32,7 +32,7 @@
 
 (def ^:private max-retries 5)
 
-;;; ------------------------------------------------ Post-deps cleanup multimethod ------------------------------------------------
+;;; ------------------------------ Post-deps cleanup multimethod ------------------------------
 
 (defmulti post-deps-cleanup!
   "Perform entity-specific cleanup after dependencies have been replaced.
@@ -67,7 +67,7 @@
                   :to_entity_type   :transform
                   :to_entity_id     id))))
 
-;;; ------------------------------------------------ Backfill orchestration ------------------------------------------------
+;;; ------------------------------ Backfill orchestration ------------------------------
 
 (defn- processable-instances [entity-type batch-size]
   (deps.dependency-status/hydrate-for-deps
