@@ -70,6 +70,11 @@ databaseChangeLog:
       id: v60.mcp-session-user-fk
       author: christruter
       comment: Add foreign key from mcp_session.user_id to core_user.id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_mcp_session_user_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: mcp_session
@@ -87,6 +92,11 @@ databaseChangeLog:
       id: v60.mcp-session-created-at-idx
       author: christruter
       comment: Add index on mcp_session.created_at for TTL sweep queries
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_mcp_session_created_at
       changes:
         - createIndex:
             tableName: mcp_session
@@ -103,6 +113,11 @@ databaseChangeLog:
       id: v60.mcp-session-embedding-session-id-idx
       author: christruter
       comment: Add index on mcp_session.embedding_session_id for join-based cleanup deletes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_mcp_session_embedding_session_id
       changes:
         - createIndex:
             tableName: mcp_session
@@ -119,6 +134,11 @@ databaseChangeLog:
       id: v60.mcp-session-embedding-session-fk
       author: christruter
       comment: Add foreign key from mcp_session.embedding_session_id to core_session.id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_mcp_session_embedding_session_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: mcp_session
