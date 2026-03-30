@@ -2,9 +2,23 @@ Generate a UX testing report based on the tasks you've worked on in this session
 
 ## Instructions
 
-1. **Identify the reporting window**: Check for the most recent reset marker in `.uxbot/` (files named `reset-*.txt`). Only include activity that happened AFTER the last reset. If no reset file exists, include everything.
+1. **Gather environment info for the report header**: Run these commands and include the results at the top of the report:
+   - `git branch --show-current` — the worktree branch name
+   - `git rev-parse --short HEAD` — the current commit hash
+   - `grep MB_DB_TYPE mise.local.toml` — the database type (postgres, mysql, etc.)
+   - Note the current time as the report end time. The start time is when the first task in the reporting window was given.
 
-2. **For each task the user gave you** (do NOT include casual questions, non-task interactions, or general setup work like waiting for the backend to start — unless setup issues actually blocked you from completing a task):
+   Format the header as:
+   ```
+   **Date:** YYYY-MM-DD
+   **Branch:** <branch> (commit <hash>)
+   **Database:** <type>
+   **Session:** <start time> — <end time>
+   ```
+
+2. **Identify the reporting window**: Check for the most recent reset marker in `.uxbot/` (files named `reset-*.txt`). Only include activity that happened AFTER the last reset. If no reset file exists, include everything.
+
+3. **For each task the user gave you** (do NOT include casual questions, non-task interactions, or general setup work like waiting for the backend to start — unless setup issues actually blocked you from completing a task):
    - **Task**: What were you asked to do?
    - **Approach**: What did you try first? What was your thinking?
    - **Steps taken**: Walk through what you did, step by step
@@ -13,24 +27,24 @@ Generate a UX testing report based on the tasks you've worked on in this session
    - **Screenshots**: Link to any screenshots taken during this task (from `.uxbot/screenshots/`)
    - **Time spent**: Estimate how long this task took
 
-3. **Summary section** at the end:
+4. **Summary section** at the end:
    - Tasks completed vs. not completed
    - Top friction points (ranked by severity)
    - Features that were easy/intuitive to use
    - Suggestions for improvement (from the user's perspective, not a developer's)
 
-4. **Write the report** to `.uxbot/report-<timestamp>-<slug>.md` where:
+5. **Write the report** to `.uxbot/report-<timestamp>-<slug>.md` where:
    - `<timestamp>` is `YYYYMMDD-HHMMSS`
    - `<slug>` is a short kebab-case description of the tasks covered (e.g., `create-question-and-dashboard`, `filter-setup`, `admin-permissions`). Keep it under 40 characters.
    - Example: `.uxbot/report-20260327-153000-create-question-and-dashboard.md`
    - Use relative paths for screenshot references (e.g., `screenshots/filename.png` relative to `.uxbot/`).
 
-5. **Generate PDF**: Run pandoc **from the `.uxbot/` directory** so relative screenshot paths resolve correctly:
+6. **Generate PDF**: Run pandoc **from the `.uxbot/` directory** so relative screenshot paths resolve correctly:
    ```
    cd .uxbot && pandoc report-<timestamp>-<slug>.md -o report-<timestamp>-<slug>.pdf --pdf-engine=weasyprint
    ```
 
-6. **Present a brief summary** to the user with **full absolute paths** to both the markdown and PDF reports (use `pwd` to get the worktree root, e.g., `/Users/.../metabase-4__worktrees/uxbot-master/.uxbot/report-...-slug.pdf`).
+7. **Present a brief summary** to the user with **full absolute paths** to both the markdown and PDF reports (use `pwd` to get the worktree root, e.g., `/Users/.../metabase-4__worktrees/uxbot-master/.uxbot/report-...-slug.pdf`).
 
 ## Tone
 

@@ -4,53 +4,48 @@ A Playwright MCP server is configured in `.mcp.json`. Load the tool schemas firs
 
 If ToolSearch says "MCP servers still connecting," wait a few seconds and retry — the server takes a moment to start on first use.
 
-### The one rule: Snapshot → Act → Snapshot
-
-Every interaction follows this pattern:
+### Core pattern: Snapshot → Act → Check
 
 1. **`browser_snapshot`** — see what's on screen, get element refs
 2. **Act** — `browser_click`, `browser_fill`, `browser_type`, etc. using refs from the snapshot
-3. **`browser_snapshot`** — see what changed
+3. **Check the inline response** — every action returns a snapshot in its response. Read it.
 
-**The snapshot you take in step 3 is the only reliable way to see what happened.** The click/fill response may include a snapshot, but it's often stale — Metabase renders menus, modals, and popovers asynchronously, so they may not appear until you take a fresh snapshot. Never assume an action failed based on the inline response. Always take your own snapshot afterward.
+**When to take a separate `browser_snapshot` after acting:**
+- The inline response snapshot looks wrong, empty, or unchanged — take a fresh one (async rendering may not have completed)
+- You need refs for your NEXT action — the inline snapshot's refs are valid, use them directly
+- You're unsure if the action worked — take one more snapshot to confirm
 
-**Element refs go stale after every action.** Never reuse a ref from a snapshot that was taken before another action — always take a fresh snapshot and use the new refs.
+**When you do NOT need a separate snapshot after acting:**
+- The inline response already shows the expected change (e.g., you clicked a link and the response shows the new page)
+- You're about to take a screenshot anyway (`browser_take_screenshot` shows the current state)
+- You're doing a chain of actions on the same form (e.g., filling multiple fields) — snapshot once at the end, not after each fill
 
-If your post-action snapshot looks the same as before, take **one more snapshot** — the UI may still be rendering. If it's still unchanged after two post-action snapshots, then the action genuinely had no effect.
+**Element refs go stale after every action.** Use refs from the most recent snapshot or inline response — never from an earlier one.
 
 ### How to interact with Metabase's UI components
 
-Metabase uses Mantine UI components. These components handle events differently from native HTML elements, which affects how you interact with them.
+Metabase uses Mantine UI components. Most interactions work with a plain `browser_click`. The hover-before-click pattern is only needed for specific component types.
 
-**Buttons that open menus or popovers (e.g., "+ New", filter dropdowns, column pickers):**
+**Regular buttons, links, form inputs, checkboxes, tabs:**
+Just `browser_click` them directly. No hover needed.
 
-Always **hover before clicking** buttons that open dropdown menus:
+**Buttons that open dropdown menus (e.g., "+ New", "..." action menus, filter type pickers):**
+These use Mantine's `<Menu>` component which has a race condition with direct clicks. **Hover before clicking** these:
 1. `browser_hover` on the button
 2. `browser_click` on the button
-3. `browser_snapshot` to see the menu
+3. Check the inline response — if the menu appeared, use its refs directly
 
-Why: Mantine menus open on `pointerdown` but their outside-click detection fires on `mousedown`. A direct click can cause the menu to open and immediately close in the same event cycle. Hovering first establishes the pointer relationship and prevents this race condition.
-
-If hover-then-click still doesn't work, use **keyboard** instead:
-1. `browser_click` on the button (to focus it)
-2. `browser_press_key` with `Enter` or `Space`
-3. `browser_snapshot` to see the menu
+How to tell if a button opens a dropdown menu: it usually has a chevron/arrow icon, a "..." label, or is labeled as creating something new (like "+ New"). If unsure, try a direct click first — if it doesn't work, retry with hover.
 
 **Select and dropdown components (e.g., database picker, column picker):**
-
-Mantine Select/MultiSelect are NOT native `<select>` elements — they're built from `<input>` + `<div>` elements. `browser_select_option` will NOT work. Instead:
-1. `browser_click` on the input/trigger to open the dropdown
-2. `browser_snapshot` to see the options
-3. `browser_click` on the option `<div>` you want
+Mantine Select/MultiSelect are NOT native `<select>` elements. `browser_select_option` will NOT work. Instead:
+1. `browser_click` on the input/trigger
+2. `browser_click` on the option you want (use refs from the inline response)
 
 You can also type into the input to filter options before clicking.
 
 **Modals and dialogs:**
-
-To dismiss a modal, try in order:
-1. `browser_click` on the close button or primary action button
-2. `browser_press_key` with `Escape`
-3. `browser_click` on the overlay area outside the modal
+To dismiss: `browser_click` the close/action button, or `browser_press_key` with `Escape`.
 
 ### Key tools
 
@@ -82,12 +77,13 @@ To dismiss a modal, try in order:
 
 ### When clicks don't seem to work
 
-If snapshot → hover → click → snapshot shows no change:
+If a click had no effect (inline response shows no change):
 
-1. **Try keyboard** — `browser_click` the element (to focus), then `browser_press_key` with `Enter` or `Space`
-2. **Snapshot once more** — the UI may still be rendering
-3. **If nothing on the page responds** (not just one button — multiple elements are unresponsive), close the browser with `browser_close` and reopen it with `browser_navigate`. This resets the browser session and usually fixes initialization issues.
-4. **After 3 total attempts** on a specific element (hover+click, keyboard, browser restart), report it as a struggle and move on. Do NOT use JavaScript workarounds.
+1. **Take one fresh snapshot** — async rendering may not have completed
+2. **Try hover + click** — if the element is a menu trigger
+3. **Try keyboard** — `browser_click` to focus, then `browser_press_key` with `Enter` or `Space`
+4. **If nothing on the page responds at all**, `browser_close` and `browser_navigate` to restart the session
+5. **After 3 attempts**, report it as a struggle and move on. Do NOT use JavaScript workarounds.
 
 ### Configuration notes
 
@@ -102,3 +98,4 @@ The browser is pre-configured with:
 - Always use `http://localhost:$MB_JETTY_PORT` — never any other port
 - Close the browser when done to free resources
 - If the Playwright MCP tools are unavailable on first use, skip browser work entirely
+- **Be efficient with snapshots** — use the inline response snapshot when it shows what you need. Only take a separate `browser_snapshot` when the inline response is insufficient.

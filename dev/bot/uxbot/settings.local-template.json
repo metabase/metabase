@@ -17,6 +17,7 @@
     "allow": [
       "Read",
       "Write",
+      "Bash(*)",
       "mcp__playwright__*",
       "WebFetch(domain:metabase.com)"
     ]
