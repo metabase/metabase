@@ -25,8 +25,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.serialization.resolve :as resolve]
-   [metabase.util :as u]))
+   [metabase.models.serialization.resolve :as resolve]))
 
 (set! *warn-on-reflection* true)
 
@@ -580,7 +579,7 @@
               :kind       kind
               :error      (str "entity_id " ref " appears in " (count files) " files: "
                                (str/join ", " files))
-              :suggested-replacement (u/generate-nano-id)}]))))
+              }]))))
 
 (defn check-cards
   "Check card queries and collection_id refs across all entity types.
@@ -678,8 +677,6 @@
             (swap! lines conj (str "  sql error: " (pr-str (dissoc err :source-entity-type :source-entity-id))))))
         (when (:error result)
           (swap! lines conj (str "  error: " (:error result))))
-        (when-let [replacement (:suggested-replacement result)]
-          (swap! lines conj (str "  suggested replacement entity_id: " replacement)))
         (str/join "\n" @lines)))))
 
 (defn write-results!

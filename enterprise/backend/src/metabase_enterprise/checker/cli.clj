@@ -1,16 +1,13 @@
 (ns metabase-enterprise.checker.cli
-  "CLI entrypoints for the checker module.
+  "CLI entrypoint for the checker module.
 
    Invoked from metabase.core.bootstrap:
-     java -jar metabase.jar --mode checker --checker semantic --export /path/to/export --schema-dir /path/to/schemas
-     java -jar metabase.jar --mode checker --checker structural --export /path/to/export"
+     java -jar metabase.jar --mode checker --export /path/to/export --schema-dir /path/to/schemas"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
-   [metabase-enterprise.checker.semantic :as checker]
-   [metabase-enterprise.checker.structural :as structural]
-   [metabase.util :as u]))
+   [metabase-enterprise.checker.semantic :as checker]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,11 +31,11 @@
       (not (.isDirectory f))
       (fail! (str "Not a directory: " path)))))
 
-(defn- run-semantic-checker
-  "Run the semantic checker — validates that references resolve and queries make sense."
+(defn- run-checker
+  "Run the semantic checker."
   [export-dir {:keys [output errors-only schema-dir]}]
   (when-not schema-dir
-    (fail! "Missing --schema-dir option (required for semantic checker)"))
+    (fail! "Missing --schema-dir option"))
   (validate-directory! schema-dir)
   (let [{:keys [results]} (try
                             (checker/check export-dir schema-dir)
@@ -48,19 +45,10 @@
         failures (filter #(not= :ok (checker/result-status (second %))) results)]
     (if errors-only
       ;; Errors-only mode: just errors to stdout, nothing else
-      (do
-        (doseq [entry (sort-by (comp :name second) failures)
-                :let [error-str (checker/format-error entry)]
-                :when error-str]
-          (println error-str))
-        ;; Print spare entity_ids — one per duplicate, plus a few extra
-        (let [dupe-count (count (filter #(str/starts-with? (str (first %)) "duplicate:") failures))
-              spare-count (+ dupe-count 5)]
-          (when (pos? spare-count)
-            (println)
-            (println (str "spare entity_ids (" spare-count "):"))
-            (dotimes [_ spare-count]
-              (println (str "  " (u/generate-nano-id)))))))
+      (doseq [entry (sort-by (comp :name second) failures)
+              :let [error-str (checker/format-error entry)]
+              :when error-str]
+        (println error-str))
       ;; Normal mode: full output
       (do
         ;; Write to output file if specified
@@ -82,59 +70,18 @@
           (println "---------")
           (doseq [entry (sort-by (comp :name second) failures)]
             (println)
-            (println (checker/format-result entry))))
-        ;; Print spare entity_ids — one per duplicate, plus a few extra
-        (let [dupe-count (count (filter #(str/starts-with? (str (first %)) "duplicate:") failures))
-              spare-count (+ dupe-count 5)]
-          (when (pos? spare-count)
-            (println (str "\nSpare entity_ids (" spare-count "):"))
-            (dotimes [_ spare-count]
-              (println (str "  " (u/generate-nano-id))))))))
+            (println (checker/format-result entry))))))
     ;; Exit with appropriate code
     (flush)
     (System/exit (if (zero? (+ (:errors summary) (:unresolved summary) (:native-errors summary) (:issues summary)))
                    0
                    1))))
 
-(defn- format-structural-error
-  "Format a structural validation error concisely for LLM consumption."
-  [{:keys [file type error diagnostics raw-errors]}]
-  (let [lines (atom [(str "file: " file " (" (name type) ")")])]
-    (if error
-      (swap! lines conj (str "  " error))
-      (if (seq diagnostics)
-        (doseq [{:keys [message]} diagnostics]
-          (swap! lines conj (str "  " message)))
-        (swap! lines conj (str "  " (pr-str raw-errors)))))
-    (str/join "\n" @lines)))
-
-(defn- run-structural-checker
-  "Run the structural checker."
-  [export-dir {:keys [output errors-only]}]
-  (let [results (structural/check export-dir)
-        invalid-count (count (:invalid results))]
-    (if errors-only
-      ;; Errors-only mode: just errors to stdout
-      (doseq [inv (:invalid results)]
-        (println (format-structural-error inv)))
-      ;; Normal mode
-      (when output
-        (spit output (pr-str results))
-        (println "Results written to:" output)))
-    (flush)
-    (System/exit (if (zero? invalid-count) 0 1))))
-
-(def ^:private checkers
-  "Available checkers."
-  {"semantic"   run-semantic-checker
-   "structural" run-structural-checker})
-
 (def ^:private cli-spec
   "CLI options for checker mode."
   [[nil "--mode MODE" "Mode (handled by bootstrap, included here for completeness)"]
-   [nil "--checker CHECKER" "Which checker to run (semantic, structural)"]
    [nil "--export PATH" "Path to serdes export directory"]
-   [nil "--schema-dir PATH" "Path to database schema directory (required for semantic checker)"]
+   [nil "--schema-dir PATH" "Path to database schema directory"]
    [nil "--output PATH" "Path to output file for results"]
    [nil "--errors-only" "Output only errors to stdout (concise format for LLM consumption)"]
    ["-h" "--help" "Show this help"]])
@@ -142,16 +89,13 @@
 (defn- usage [summary]
   (str "Usage: java -jar metabase.jar --mode checker [options]\n\n"
        "Options:\n"
-       summary
-       "\n\nAvailable checkers:\n"
-       "  semantic    - Validate references resolve and queries are correct\n"
-       "  structural  - Validate YAML structure against schemas"))
+       summary))
 
 (defn -main
   "Main entrypoint for checker mode. Receives raw args."
   [args]
   (let [{:keys [options errors summary]} (cli/parse-opts args cli-spec)
-        {:keys [checker export help]} options]
+        {:keys [export help]} options]
     (cond
       help
       (do (println (usage summary))
@@ -159,11 +103,6 @@
 
       errors
       (fail! (str "Error parsing arguments:\n" (str/join "\n" errors))
-             ""
-             (usage summary))
-
-      (not checker)
-      (fail! "Missing --checker option"
              ""
              (usage summary))
 
@@ -175,8 +114,4 @@
       :else
       (do
         (validate-directory! export)
-        (if-let [checker-fn (get checkers checker)]
-          (checker-fn export options)
-          (fail! (str "Unknown checker: " checker)
-                 ""
-                 (usage summary)))))))
+        (run-checker export options)))))
