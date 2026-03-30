@@ -107,4 +107,3 @@
         (mcp.session/get-or-create-embedding-session-key! session-id user-id))
       (is (empty? @login-events)
           "No :event/user-login should be published for internal embedding sessions"))))
-
