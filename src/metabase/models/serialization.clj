@@ -1031,10 +1031,10 @@
           db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
       [db-name schema name])))
 
-(defn ^:dynamic ^::cache *import-table-fk*
+(mu/defn ^:dynamic ^::cache *import-table-fk*
   "Given a `table_id` as exported by [[export-table-fk]], resolve it back into a numeric `table_id`.
   The input might be nil, in which case so is the output. This is legal for a native question."
-  [[db-name schema table-name :as table-id]]
+  [[db-name schema table-name :as table-id] :- [:maybe [:tuple string? [:maybe string?] string?]]]
   (when table-id
     (if-let [db-id (t2/select-one-fn :id :model/Database :name db-name)]
       (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
@@ -1110,9 +1110,9 @@
           [db-name schema field-name] (*export-table-fk* (:table_id (first fields)))]
       (into [db-name schema field-name] (map :name fields)))))
 
-(defn ^:dynamic ^::cache *import-field-fk*
+(mu/defn ^:dynamic ^::cache *import-field-fk* :- [:maybe pos-int?]
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
-  [[db-name schema table-name & fields :as field-id]]
+  [[db-name schema table-name & fields :as field-id] :- [:maybe [:cat string? [:maybe string?] string? #_fields [:+ string?]]]]
   (when field-id
     (let [table-id (*import-table-fk* [db-name schema table-name])
           field-q  (recursively-find-field-q table-id (reverse fields))]
@@ -1144,7 +1144,7 @@
                                               (map? (second %)))}
                              [true  :mbql.clause/field]
                              [false ::mbql.s/field]] ; legacy MBQL clause
-                 :dimension ::lib.schema.parameter/target.dimension
+                 :dimension ::lib.schema.parameter/dimension
                  :metric    :mbql.clause/metric
                  :segment   :mbql.clause/segment
                  :measure   :mbql.clause/measure
@@ -1174,13 +1174,14 @@
     [:dimension (dim :guard vector?)]
     [:dimension (mbql-id->fully-qualified-name dim)]
 
-    [(tag :guard #{:metric :segment :measure}) opts (id :guard pos-int?)]
-    [tag
-     (mbql-id->fully-qualified-name opts)
-     (*export-fk* id (case tag
-                       :metric  'Card
-                       :segment 'Segment
-                       :measure 'Measure))]))
+    [:metric opts (id :guard pos-int?)]
+    [:metric (mbql-id->fully-qualified-name opts) (*export-fk* id 'Card)]
+
+    [:segment opts (id :guard pos-int?)]
+    [:segment (mbql-id->fully-qualified-name opts) (*export-fk* id 'Segment)]
+
+    [:measure opts (id :guard pos-int?)]
+    [:measure (mbql-id->fully-qualified-name opts) (*export-fk* id 'Measure)]))
 
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
@@ -1250,11 +1251,21 @@
     [#{:metric "metric"} opts (entity-id :guard portable-id?)]
     [:metric (mbql-fully-qualified-names->ids* opts) (*import-fk* entity-id 'Card)]
 
-    [#{:segment "segment"} opts (fully-qualified-name :guard portable-id?)]
-    [:segment (mbql-fully-qualified-names->ids* opts) (*import-fk* fully-qualified-name 'Segment)]
+    [#{:segment "segment"} opts (entity-id :guard portable-id?)]
+    [:segment (mbql-fully-qualified-names->ids* opts) (*import-fk* entity-id 'Segment)]
 
-    [#{:measure "measure"} opts (fully-qualified-name :guard portable-id?)]
-    [:measure (mbql-fully-qualified-names->ids* opts) (*import-fk* fully-qualified-name 'Measure)]
+    [#{:measure "measure"} opts (entity-id :guard portable-id?)]
+    [:measure (mbql-fully-qualified-names->ids* opts) (*import-fk* entity-id 'Measure)]
+
+    ;; support legacy MBQL 4 refs for things like the serialized Audit v2 queries
+    [#{:metric "metric"} (entity-id :guard portable-id?)]
+    [:metric (*import-fk* entity-id 'Card)]
+
+    [#{:segment "segment"} (entity-id :guard portable-id?)]
+    [:segment (*import-fk* entity-id 'Segment)]
+
+    [#{:measure "measure"} (entity-id :guard portable-id?)]
+    [:measure (*import-fk* entity-id 'Measure)]
 
     {:source-table (_ :guard vector?)}
     (-> &match
@@ -1264,6 +1275,12 @@
     {:source_table (_ :guard vector?)}
     (-> &match
         (update :source_table *import-table-fk*)
+        mbql-fully-qualified-names->ids*)
+
+    ;; support legacy MBQL 4 for the Audit v2 queries
+    {:source-table (id :guard portable-id?)}
+    (-> &match
+        (assoc :source-table (str "card__" (*import-fk* id 'Card)))
         mbql-fully-qualified-names->ids*)
 
     {:source-card (id :guard portable-id?)}
@@ -1289,15 +1306,27 @@
 
 (defn- mbql-deps-vector [entity]
   (match entity
-    [#{:field "field"}     (opts :guard map?)  (id :guard vector?)]               (into #{(field->path id)} (mbql-deps-map opts))
-    [#{:field "field"}     (id :guard vector?) (opts :guard (some-fn nil? map?))] (into #{(field->path id)} (mbql-deps-map opts))
-    [#{:metric "metric"}   (opts :guard map?)  (id :guard portable-id?)]          (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
-    [#{:segment "segment"} (opts :guard map?)  (id :guard portable-id?)]          (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
-    [#{:measure "measure"} (opts :guard map?)  (id :guard portable-id?)]          (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
+    [:field     (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
+    ["field"    (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
+    [:metric    (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
+    ["metric"   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
+    [:segment   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
+    ["segment"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
+    [:measure   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
+    ["measure"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
+    ;; legacy (MBQL 4) refs
+    [:field     (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
+    ["field"    (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
+    [:metric    (id :guard portable-id?)] #{[{:model "Card" :id id}]}
+    ["metric"   (id :guard portable-id?)] #{[{:model "Card" :id id}]}
+    [:segment   (id :guard portable-id?)] #{[{:model "Segment" :id id}]}
+    ["segment"  (id :guard portable-id?)] #{[{:model "Segment" :id id}]}
+    [:measure   (id :guard portable-id?)] #{[{:model "Measure" :id id}]}
+    ["measure"  (id :guard portable-id?)] #{[{:model "Measure" :id id}]}
     :else (reduce #(cond
                      (map? %2)    (into %1 (mbql-deps-map %2))
                      (vector? %2) (into %1 (mbql-deps-vector %2))
-                     :else        %1)
+                     :else %1)
                   #{}
                   entity)))
 
@@ -1309,6 +1338,7 @@
                          (string? v)
                          (not= v "database/__virtual"))        #{[{:model "Database" :id v}]}
                     (and (= k :source-table) (vector? v))      #{(table->path v)}
+                    (and (= k :source-table) (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-card)  (portable-id? v)) #{[{:model "Card" :id v}]}
                     (and (= k :source-field) (vector? v))      #{(field->path v)}
                     (and (= k :snippet-id)   (portable-id? v)) #{[{:model "NativeQuerySnippet" :id v}]}
@@ -1440,7 +1470,9 @@
 (defn- import-viz-click-behavior-link
   [{:keys [linkType type] :as click-behavior}]
   (cond-> click-behavior
-    (= type "link") (-> (update :targetId *import-fk* (link-card-model->toucan-model linkType))
+    (= type "link") (-> (u/update-some :targetId (fn [eid]
+                                                   (when-let [model (link-card-model->toucan-model linkType)]
+                                                     (*import-fk* eid model))))
                         (u/update-some :tabId *import-fk* :model/DashboardTab))))
 
 (defn- export-viz-click-behavior-mapping [mapping]
@@ -1813,13 +1845,6 @@
   "Serialize this field under the given key instead, typically because it has been logically transformed."
   [k xform]
   (assoc xform :as k))
-
-(def backfill-entity-id-transformer
-  "Backfills a missing `:entity_id` before export, and imports it as-is."
-  (constantly
-   {:export-with-context (fn [instance _key _eid]
-                           (backfill-entity-id instance))
-    :import              identity}))
 
 (defn- compose*
   "Given two functions that transform the value at `k` within `x`, return their composition."

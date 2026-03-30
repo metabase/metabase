@@ -391,12 +391,11 @@
                             [_tag dest-field-id _opts]     (normalize-field dest-field)]
                         [:field dest-field-id {:source-field source-field-id}])
     :field            (let [[_tag id-or-name opts] x]
-                        (assert ((some-fn nil? map?) opts)
-                                (format "OPTS SHOULD BE A MAP OR NIL! GOT: %s" (pr-str x)))
+                        (assert ((some-fn nil? map?) opts) "Attempted to normalize an MBQL 5 :field clause as MBQL 4")
                         ;; if someone accidentally nests `:field` clauses fix it for them
                         (if (and (sequential? id-or-name)
-                                 ((some-fn keyword? string?) id-or-name)
-                                 (= (keyword id-or-name) :field))
+                                 ((some-fn keyword? string?) (first id-or-name))
+                                 (= (keyword (first id-or-name)) :field))
                           (let [[_tag id-or-name recursive-opts] (normalize-field id-or-name)]
                             [:field id-or-name (not-empty (merge recursive-opts opts))])
                           [:field id-or-name (not-empty opts)]))
