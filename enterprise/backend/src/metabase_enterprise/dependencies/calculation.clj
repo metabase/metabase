@@ -11,11 +11,18 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(defmulti calculate-deps
-  "Calculate upstream dependencies for a single entity. Dispatches on entity-type keyword.
-  Returns a map of dependency-type -> set of entity IDs."
+(defmulti calculate-deps*
+  "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
+  Prefer calling [[calculate-deps]] which validates the return value."
   {:arglists '([entity-type entity])}
   (fn [entity-type _entity] entity-type))
+
+(mu/defn calculate-deps :- ::deps.schema/upstream-deps
+  "Calculate upstream dependencies for a single entity.
+  Returns a map of dependency-type -> set of entity IDs."
+  [entity-type :- keyword?
+   entity]
+  (calculate-deps* entity-type entity))
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -64,7 +71,7 @@
 
 ;;; ------------------------------------------------ defmethods ------------------------------------------------
 
-(defmethod calculate-deps :card
+(defmethod calculate-deps* :card
   [_ {query :dataset_query :as card}]
   {:pre [(some? query)]}
   (let [query-deps (upstream-deps:query query)
@@ -74,7 +81,7 @@
             query-deps
             param-card-ids)))
 
-(defmethod calculate-deps :transform
+(defmethod calculate-deps* :transform
   [_ {{:keys [query]} :source :as transform}]
   (let [source-type (transforms-base.u/transform-type transform)]
     (case source-type
@@ -83,7 +90,7 @@
       (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
           {}))))
 
-(defmethod calculate-deps :snippet
+(defmethod calculate-deps* :snippet
   [_ {:keys [template_tags] :as _snippet}]
   (let [type->id-key {:card :card-id, :snippet :snippet-id}
         dependencies (keep (fn [tag]
@@ -94,7 +101,7 @@
                            (vals template_tags))]
     (u/group-by first second conj #{} dependencies)))
 
-(defmethod calculate-deps :dashboard
+(defmethod calculate-deps* :dashboard
   [_ {:keys [dashcards] :as dashboard}]
   (let [card-ids (into #{} (keep :card_id dashcards))
         series-card-ids (into #{} (comp (mapcat :series) (map :id)) dashcards)
@@ -127,26 +134,26 @@
     {:card all-card-ids
      :dashboard all-dashboard-ids}))
 
-(defmethod calculate-deps :document
+(defmethod calculate-deps* :document
   [_ document]
   (reduce (fn [deps [dep-type dep-id]]
             (update deps dep-type (fnil conj #{}) dep-id))
           {}
           (document-deps document)))
 
-(defmethod calculate-deps :sandbox
+(defmethod calculate-deps* :sandbox
   [_ sandbox]
   (if-let [card-id (:card_id sandbox)]
     {:card #{card-id}}
     {}))
 
-(defmethod calculate-deps :segment
+(defmethod calculate-deps* :segment
   [_ {:keys [table_id definition] :as _segment}]
   {:segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
             table_id (conj table_id))})
 
-(defmethod calculate-deps :measure
+(defmethod calculate-deps* :measure
   [_ {:keys [table_id definition] :as _measure}]
   {:measure (or (lib/all-measure-ids definition) #{})
    :segment (or (lib/all-segment-ids definition) #{})

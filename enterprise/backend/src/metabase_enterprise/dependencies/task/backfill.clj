@@ -7,7 +7,6 @@
   outdated dependency_analysis_version. The backfill task computes dependencies and updates
   the dependency_status table."
   (:require
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
@@ -20,17 +19,9 @@
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan2.core :as t2])
-  (:import
-   (java.util Map Set)
-   (java.util.concurrent ConcurrentHashMap)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- current-millis
-  "Returns the current epoch millis. Uses java-time so that clock settings can be used in tests."
-  []
-  (t/to-millis-from-epoch (t/instant)))
 
 (def ^:private entity-types
   "The list of entity types to backfill.
@@ -38,15 +29,6 @@
   This is not the same as deps.dependency-types/models, because tables shouldn't be backfilled.  Instead, links
   involving tables are found via analysis of the other side of the relation."
   [:card :transform :snippet :dashboard :document :sandbox :segment :measure])
-
-;; In-memory state for tracking failed entities
-;; Stores {:entity-type {id {:fail-count N :next-retry-timestamp M}}}
-(def ^:private retry-state
-  (zipmap entity-types (repeatedly #(ConcurrentHashMap.))))
-
-;; Stores {:entity-type #{id1 id2 ...}} for entities that have exceeded MAX_RETRIES
-(def ^:private terminally-broken
-  (zipmap entity-types (repeatedly #(ConcurrentHashMap/newKeySet))))
 
 (def ^:private max-retries 5)
 
@@ -88,20 +70,9 @@
 ;;; ------------------------------------------------ Backfill orchestration ------------------------------------------------
 
 (defn- processable-instances [entity-type batch-size]
-  (let [terminally-broken-ids ^Set (terminally-broken entity-type)
-        retry-state-map ^Map (retry-state entity-type)
-        current-time (current-millis)]
-    (->> (deps.dependency-status/instances-for-dependency-calculation entity-type (* batch-size 2))
-         (into []
-               (comp
-                (filter (fn [instance]
-                          (let [id (:id instance)]
-                            (and (not (.contains terminally-broken-ids id))
-                                 (let [entity-retry-info (.get retry-state-map id)]
-                                   (or (nil? entity-retry-info)
-                                       (>= current-time (:next-retry-timestamp entity-retry-info))))))))
-                (take batch-size)))
-         (deps.dependency-status/hydrate-for-deps entity-type))))
+  (deps.dependency-status/hydrate-for-deps
+   entity-type
+   (deps.dependency-status/instances-for-dependency-calculation entity-type batch-size)))
 
 (defn- compute-deps-for-entity!
   "Compute and store dependencies for an entity, then update its dependency_status.
@@ -117,8 +88,6 @@
 (defn- backfill-entity-batch!
   [entity-type batch-size]
   (let [type-name (name entity-type)
-        retry-state-map ^Map (retry-state entity-type)
-        terminally-broken-set ^Set (terminally-broken entity-type)
         instances (processable-instances entity-type batch-size)]
     (when (seq instances)
       (log/infof "Processing a batch of %s %s(s)..." (count instances) type-name))
@@ -126,24 +95,21 @@
               (+ total
                  (try
                    (compute-deps-for-entity! entity-type entity)
-                   (.remove retry-state-map (:id entity))
+                   (deps.dependency-status/clear-failure! entity-type (:id entity))
                    1
                    (catch Exception e
-                     (let [id (:id entity)
-                           current-time (current-millis)
-                           entity-retry-info (.get retry-state-map id)
-                           failure-count (inc (:fail-count entity-retry-info 0))
-                           retry-minutes (* failure-count (deps.settings/dependency-backfill-delay-minutes))
-                           new-next-retry-timestamp (+ current-time (* retry-minutes 60 1000))]
-                       (if (> failure-count max-retries)
-                         (do (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
-                                         type-name id failure-count)
-                             (.add terminally-broken-set id)
-                             (.remove retry-state-map id))
-                         (do (log/warnf e "Entity %s %s failed, failure count: %d, next retry no sooner than %d minutes."
-                                        type-name id failure-count retry-minutes)
-                             (.put retry-state-map id {:fail-count failure-count
-                                                       :next-retry-timestamp new-next-retry-timestamp}))))
+                     (let [id (:id entity)]
+                       (deps.dependency-status/record-failure!
+                        entity-type id max-retries
+                        (deps.settings/dependency-backfill-delay-minutes))
+                       (let [{:keys [fail_count terminal]} (t2/select-one :model/DependencyStatus
+                                                                          :entity_type entity-type
+                                                                          :entity_id id)]
+                         (if terminal
+                           (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
+                                       type-name id fail_count)
+                           (log/warnf e "Entity %s %s failed, failure count: %d."
+                                      type-name id fail_count))))
                      0))))
             0
             instances)))
@@ -165,9 +131,7 @@
         (< 1))))
 
 (defn- has-pending-retries? []
-  (some (fn [^Map model-retry-state]
-          (not (.isEmpty model-retry-state)))
-        (vals retry-state)))
+  (deps.dependency-status/has-pending-retries?))
 
 (declare schedule-next-run!)
 

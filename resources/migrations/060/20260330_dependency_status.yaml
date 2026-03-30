@@ -43,6 +43,24 @@ databaseChangeLog:
                   remarks: True when the entity needs dependency recalculation
                   constraints:
                     nullable: false
+              - column:
+                  name: fail_count
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Number of consecutive failed dependency calculation attempts
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_retry_at
+                  type: ${timestamp_type}
+                  remarks: Earliest time at which a failed entity can be retried (null means immediately processable)
+              - column:
+                  name: terminal
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: True when the entity has exceeded max retries and should not be retried until modified
+                  constraints:
+                    nullable: false
       rollback:
         - dropTable:
             tableName: dependency_status
@@ -80,6 +98,8 @@ databaseChangeLog:
             indexName: idx_dependency_status_stale
 
   # 4-11. Migrate data from entity tables to dependency_status
+  # All entities are migrated. Entities with version > 0 (already analyzed) get stale=false.
+  # Entities with version = 0 (never analyzed) get stale=true so the backfill picks them up.
 
   - changeSet:
       id: v60.2026-03-17T00:00:03
@@ -89,8 +109,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
-              SELECT 'card', id, dependency_analysis_version, false FROM report_card
-              WHERE dependency_analysis_version > 0
+              SELECT 'card', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM report_card
       rollback:
         - sql:
             sql: DELETE FROM dependency_status WHERE entity_type = 'card'
@@ -103,8 +122,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
-              SELECT 'transform', id, dependency_analysis_version, false FROM transform
-              WHERE dependency_analysis_version > 0
+              SELECT 'transform', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM transform
       rollback:
         - sql:
             sql: DELETE FROM dependency_status WHERE entity_type = 'transform'
@@ -117,8 +135,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
-              SELECT 'snippet', id, dependency_analysis_version, false FROM native_query_snippet
-              WHERE dependency_analysis_version > 0
+              SELECT 'snippet', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM native_query_snippet
       rollback:
         - sql:
             sql: DELETE FROM dependency_status WHERE entity_type = 'snippet'
@@ -131,8 +148,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
-              SELECT 'dashboard', id, dependency_analysis_version, false FROM report_dashboard
-              WHERE dependency_analysis_version > 0
+              SELECT 'dashboard', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM report_dashboard
       rollback:
         - sql:
             sql: DELETE FROM dependency_status WHERE entity_type = 'dashboard'
@@ -145,8 +161,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
-              SELECT 'document', id, dependency_analysis_version, false FROM document
-              WHERE dependency_analysis_version > 0
+              SELECT 'document', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM document
       rollback:
         - sql:
             sql: DELETE FROM dependency_status WHERE entity_type = 'document'
@@ -159,8 +174,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
-              SELECT 'sandbox', id, dependency_analysis_version, false FROM sandboxes
-              WHERE dependency_analysis_version > 0
+              SELECT 'sandbox', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM sandboxes
       rollback:
         - sql:
             sql: DELETE FROM dependency_status WHERE entity_type = 'sandbox'
@@ -173,8 +187,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
-              SELECT 'segment', id, dependency_analysis_version, false FROM segment
-              WHERE dependency_analysis_version > 0
+              SELECT 'segment', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM segment
       rollback:
         - sql:
             sql: DELETE FROM dependency_status WHERE entity_type = 'segment'
@@ -187,8 +200,7 @@ databaseChangeLog:
         - sql:
             sql: >-
               INSERT INTO dependency_status (entity_type, entity_id, dependency_analysis_version, stale)
-              SELECT 'measure', id, dependency_analysis_version, false FROM measure
-              WHERE dependency_analysis_version > 0
+              SELECT 'measure', id, dependency_analysis_version, CASE WHEN dependency_analysis_version = 0 THEN true ELSE false END FROM measure
       rollback:
         - sql:
             sql: DELETE FROM dependency_status WHERE entity_type = 'measure'

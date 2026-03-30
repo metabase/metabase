@@ -189,6 +189,17 @@
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))))
 
+;; ## Checking dependents for breakage (analysis_finding staleness)
+;;
+;; This is a SEPARATE staleness system from the dependency_status table above.
+;; - dependency_status.stale: tracks whether an entity's upstream *dependency graph* needs recomputation.
+;;   Handled by the backfill job (task.backfill).
+;; - analysis_finding staleness: tracks whether an entity's dependents need re-analysis for *breakage detection*
+;;   (e.g., a model column was removed — are downstream cards broken?). Handled by the entity-check job
+;;   (task.entity-check).
+;;
+;; Both are triggered from the same entity events but serve different purposes and run independently.
+
 (derive ::check-card-dependents :metabase/event)
 (derive :event/card-create ::check-card-dependents)
 (derive :event/card-update ::check-card-dependents)
