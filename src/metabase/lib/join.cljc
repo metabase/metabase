@@ -2,8 +2,6 @@
   "Functions related to manipulating EXPLICIT joins in MBQL."
   (:refer-clojure :exclude [mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
-   ;; TODO: (bshepherdson, 2026/03/30) Make analytics.core into a CLJC module, even if the CLJS versions do nothing.
-   #?@(:clj ([metabase.analytics.core :as analytics]))
    [clojure.set :as set]
    [clojure.string :as str]
    [inflections.core :as inflections]
@@ -278,9 +276,10 @@
                                      (if (lib.column-key/from-join? (:lib/column-key col) join)
                                        (:lib/column-key col)
                                        (lib.column-key/explicitly-joined (:lib/column-key col) join))
-                                     (do
-                                       #?(:clj (analytics/inc! :metabase-query-processor/unresolvable-join-clause))
-                                       ::failed-to-resolve-join-clause))
+                                     ;; TODO: (bshepherdson, 2026/03/30) Including analytics.core causes a circular dep.
+                                     ;; Need a CLJC solution for analytics that lib can use. Add a counter for this join
+                                     ;; resolution failure once we have the infrastructure in place.
+                                     ::failed-to-resolve-join-clause)
         :lib/original-name         ((some-fn :lib/original-name :name) col)
         :lib/original-display-name (or (:lib/original-display-name col)
                                        (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
