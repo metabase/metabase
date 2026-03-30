@@ -73,7 +73,6 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.string :as u.str]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.realize :as t2.realize]))
@@ -851,34 +850,21 @@
     (t2/select-one model :entity_id id-str)
     (find-by-identity-hash model id-str)))
 
-(def ^:private max-label-length 100)
-(def ^:private max-label-bytes 200) ;; 255 is a limit in ext4
-
-(defn- truncate-label [^String s]
-  (-> s
-      (u.str/limit-bytes max-label-bytes)
-      (u.str/limit-chars max-label-length)))
-
-(defn- lower-plural [s]
-  (-> s u/lower-case-en (str "s")))
-
-(defn storage-leaf-file-name
-  "Captures the common pattern for leaf file names as `entityID_label`."
-  ([id]       (str id))
-  ([id label] (if (nil? label)
-                (storage-leaf-file-name id)
-                (str id "_" (truncate-label label)))))
-
 (defn storage-default-collection-path
-  "Implements the most common structure for [[storage-path]] - `collections/c1/c2/c3/models/entityid_label.ext`"
-  [entity {:keys [collections]}]
-  (let [{:keys [model id label]} (-> entity path last)]
-    (concat ["collections"]
-            (get collections (:collection_id entity)) ;; This can be nil, but that's fine - that's the root collection.
-            [(lower-plural model) (storage-leaf-file-name id label)])))
+  "Implements the most common structure for [[storage-path]].
+  Returns a vector of maps with `:label` and `:key` for each path segment.
+  Result: `[{:label \"collections\"} {:label ns-folder} <collection-hierarchy> {:label entity-name :key entity_id}]`"
+  ([entity ctx]
+   (storage-default-collection-path entity ctx "main"))
+  ([entity {:keys [collections]} ns-folder]
+   (into [{:label "collections"} {:label ns-folder}]
+         cat [(get collections (:collection_id entity))
+              [{:label (:name entity) :key (:entity_id entity)}]])))
 
 (defmulti storage-path
-  "Returns a seq of storage path components for a given entity. Dispatches on model name."
+  "Returns a vector of maps with `:label` and optional `:key` for each path segment.
+  `:label` is the human-readable name; `:key` is a deduplication identity (entity_id, name, or nil).
+  Dispatches on model name."
   {:arglists '([entity ctx])}
   (fn [entity _] (ingested-model entity)))
 
@@ -886,16 +872,35 @@
   (storage-default-collection-path entity ctx))
 
 (defn storage-base-context
-  "Creates the basic context for storage. This is a map with a single entry: `:collections` is a map from collection ID
-  to the path of collections."
+  "Creates the basic context for storage.
+  - `:collections` maps collection entity_id to a vector of `{:label ... :key ...}` maps representing
+    the collection hierarchy.
+  - `:dashboards` maps dashboard entity_id to `{:label ... :key ...}` for use as virtual subcollections.
+  - `:documents` maps document entity_id to `{:label ... :key ...}` for use as virtual subcollections.
+  - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
+    `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
-  (let [colls      (t2/select ['Collection :id :entity_id :location :slug])
-        coll-names (into {} (for [{:keys [id entity_id slug]} colls]
-                              [(str id) (storage-leaf-file-name entity_id slug)]))
-        coll->path (into {} (for [{:keys [entity_id id location]} colls
-                                  :let [parents (rest (str/split location #"/"))]]
-                              [entity_id (map coll-names (concat parents [(str id)]))]))]
-    {:collections coll->path}))
+  (let [colls     (t2/select ['Collection :id :entity_id :location :name])
+        id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
+        coll->path (into {}
+                         (for [{:keys [entity_id id location]} colls
+                               :let [parent-ids (rest (str/split location #"/"))
+                                     all-ids    (concat parent-ids [(str id)])
+                                     path-maps  (mapv (fn [cid]
+                                                        (let [c (id->coll cid)]
+                                                          {:label (:name c) :key (:entity_id c)}))
+                                                      all-ids)]]
+                           [entity_id path-maps]))
+        dashboards (into {}
+                         (for [{:keys [entity_id name]} (t2/select ['Dashboard :entity_id :name])]
+                           [entity_id {:label name :key entity_id}]))
+        documents  (into {}
+                         (for [{:keys [entity_id name]} (t2/select ['Document :entity_id :name])]
+                           [entity_id {:label name :key entity_id}]))]
+    {:collections coll->path
+     :dashboards  dashboards
+     :documents   documents
+     :unique-name-fns (atom {})}))
 
 ;;; # Utilities for implementing serdes
 ;;; Note that many of these use `^::cache` to cache their lookups during deserialization. This greatly reduces the
@@ -1040,14 +1045,14 @@
   Takes the :serdes/meta value for a `Table`!
   The return value includes the directory for the Table, but not the file for the Table itself.
 
-  With a schema: `[\"databases\" \"db_name\" \"schemas\" \"public\" \"tables\" \"customers\"]`
-  No schema:     `[\"databases\" \"db_name\" \"tables\" \"customers\"]`"
+  With a schema: `[{:label \"databases\"} {:label \"db_name\" :key \"db_name\"} {:label \"schemas\"} {:label \"public\" :key \"public\"} {:label \"tables\"} {:label \"customers\" :key \"customers\"}]`
+  No schema:     `[{:label \"databases\"} {:label \"db_name\" :key \"db_name\"} {:label \"tables\"} {:label \"customers\" :key \"customers\"}]`"
   [path]
-  (into [] cat
-        (for [entry path]
-          [(or (get storage-dirs (:model entry))
-               (throw (ex-info "Could not find dir name" {:entry entry})))
-           (:id entry)])))
+  (into [] (mapcat (fn [entry]
+                     [{:label (or (get storage-dirs (:model entry))
+                                  (throw (ex-info "Could not find dir name" {:entry entry})))}
+                      {:label (:id entry) :key (:id entry)}]))
+        path))
 
 ;;; ## Fields
 

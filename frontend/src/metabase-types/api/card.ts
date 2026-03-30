@@ -74,6 +74,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   parameter_usage_count?: number | null;
 
   result_metadata: Field[] | null;
+  param_fields?: Record<ParameterId, Field[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
 

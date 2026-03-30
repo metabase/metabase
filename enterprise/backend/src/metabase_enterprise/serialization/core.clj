@@ -33,4 +33,4 @@
   load-metabase!]
  [metabase-enterprise.serialization.v2.storage
   store!
-  escape-segment])
+  resolve-storage-path])
