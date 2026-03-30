@@ -1,0 +1,84 @@
+name: Sync Fork with Upstream
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # Every 6 hours
+  workflow_dispatch:
+    inputs:
+      release_branch_count:
+        description: "Number of most recent release branches to sync (0 to skip)"
+        required: false
+        default: "5"
+        type: number
+
+jobs:
+  sync-master:
+    # ONLY run on a fork — NEVER on the main Metabase repo
+    if: github.repository != 'metabase/metabase'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add upstream remote
+        run: git remote add metabase https://github.com/metabase/metabase.git
+
+      - name: Fetch upstream master
+        run: git fetch metabase master
+
+      - name: Force-sync master from upstream
+        run: |
+          if git diff --quiet master metabase/master; then
+            echo "master is already up to date — skipping push"
+          else
+            git checkout master
+            git reset --hard metabase/master
+            git push origin master --force
+          fi
+
+  sync-release-branches:
+    # ONLY run on a fork — NEVER on the main Metabase repo
+    if: github.repository != 'metabase/metabase'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add upstream remote
+        run: git remote add metabase https://github.com/metabase/metabase.git
+
+      - name: Fetch upstream release branches
+        run: git fetch metabase 'refs/heads/release-*:refs/remotes/metabase/release-*'
+
+      - name: Force-sync most recent release branches from upstream
+        env:
+          BRANCH_COUNT: ${{ inputs.release_branch_count || '5' }}
+        run: |
+          # Get only canonical release branches (release-x.NN.x), skip ad-hoc branches like backports
+          branches=$(git branch -r --list 'metabase/release-*' | sed 's|^ *||' | grep -E '^metabase/release-x\.[0-9]+\.x$' | sort -t. -k2,2rn | head -n "$BRANCH_COUNT")
+
+          for branch in $branches; do
+            branch_name="${branch#metabase/}"
+            echo "::group::$branch_name"
+
+            # Check if branch exists locally (on origin)
+            if git rev-parse --verify "origin/$branch_name" &>/dev/null; then
+              if git diff --quiet "origin/$branch_name" "$branch"; then
+                echo "$branch_name is already up to date — skipping push"
+                echo "::endgroup::"
+                continue
+              fi
+            fi
+
+            echo "Syncing $branch_name..."
+            git checkout -B "$branch_name" "$branch"
+            git push origin "$branch_name" --force
+            echo "::endgroup::"
+          done
