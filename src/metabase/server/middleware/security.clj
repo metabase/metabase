@@ -284,7 +284,8 @@
    (access-control-headers origin
                            (or
                             (setting/get-value-of-type :boolean :enable-embedding-sdk)
-                            (setting/get-value-of-type :boolean :enable-embedding-simple))
+                            (setting/get-value-of-type :boolean :enable-embedding-simple)
+                            (seq (embedding.settings/embedding-app-origins-sdk)))
                            (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
