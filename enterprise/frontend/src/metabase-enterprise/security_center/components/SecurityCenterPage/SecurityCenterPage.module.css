@@ -1,0 +1,7 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: var(--mantine-spacing-lg);
+  background-color: var(--mb-color-background-secondary);
+}
