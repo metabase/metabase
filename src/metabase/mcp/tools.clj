@@ -104,7 +104,7 @@
    For PUT/POST/PATCH/etc requests, `params` are sent as the request body.
    Materializes StreamingResponse bodies in-process before delivering."
   [result method path token-scopes params]
-  (let [use-params? (#{:get :head :delete})]
+  (let [use-params? (#{:get :head :delete} method)]
     (agent-api/routes
      (cond-> {:request-method   method
               :uri              path
