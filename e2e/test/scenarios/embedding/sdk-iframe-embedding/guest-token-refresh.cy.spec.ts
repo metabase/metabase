@@ -280,6 +280,7 @@ describe(
                           instanceUrl: "http://localhost:4000",
                           isGuest: true,
                           guestEmbedProviderUri: "${PROVIDER_PATH}",
+                          customContext: "test-custom-context",
                         });
                       </script>
                       <style>metabase-dashboard { height: 100vh; }</style>
@@ -290,6 +291,7 @@ describe(
                       expect(interception.request.body).to.deep.include({
                         entityType: "dashboard",
                         entityId: dashboardId,
+                        customContext: "test-custom-context",
                       });
                     });
 
@@ -309,7 +311,7 @@ describe(
           });
         });
 
-        it("shows an error in the embed when the provider returns an HTTP error", () => {
+        it("shows an error when the provider returns an HTTP error", () => {
           cy.get<number>("@dashboardId").then((dashboardId) => {
             signJwt({ dashboardId, expirationSeconds: -60 }).then(
               (expiredToken) => {
@@ -548,6 +550,7 @@ describe(
                       instanceUrl: "http://localhost:4000",
                       isGuest: true,
                       guestEmbedProviderUri: "${PROVIDER_PATH}",
+                      customContext: "test-custom-context",
                     });
                   </script>
                   <style>metabase-dashboard { height: 100vh; }</style>
@@ -559,6 +562,7 @@ describe(
                   expect(interception.request.body).to.deep.include({
                     entityType: "dashboard",
                     entityId: dashboardId,
+                    customContext: "test-custom-context",
                   });
                 });
 
@@ -576,7 +580,7 @@ describe(
           });
         });
 
-        it("shows an error when the initial token fetch fails", () => {
+        it("shows an error when the provider returns an HTTP error", () => {
           cy.get<number>("@dashboardId").then((dashboardId) => {
             cy.intercept(PROVIDER_INTERCEPT, (req) => {
               req.reply({ statusCode: 500 });
@@ -601,6 +605,41 @@ describe(
                 "Failed to fetch JWT token from /api/mock-guest-token-provider, status: 500.",
               )
               .should("be.visible");
+          });
+        });
+
+        it("shows an error when the provider returns a wrong response shape", () => {
+          cy.get<number>("@dashboardId").then((dashboardId) => {
+            signJwt({ dashboardId, expirationSeconds: 600 }).then(
+              (freshToken) => {
+                cy.intercept(PROVIDER_INTERCEPT, (req) => {
+                  req.reply({
+                    statusCode: 200,
+                    body: { token: freshToken },
+                  });
+                }).as("guestTokenProvider");
+
+                H.visitCustomHtmlPage(`
+                  ${H.getNewEmbedScriptTag({ loadType: "sync" })}
+                  <script>
+                    defineMetabaseConfig({
+                      instanceUrl: "http://localhost:4000",
+                      isGuest: true,
+                      guestEmbedProviderUri: "${PROVIDER_PATH}",
+                    });
+                  </script>
+                  <style>metabase-dashboard { height: 100vh; }</style>
+                  <metabase-dashboard dashboard-id="${dashboardId}" />
+                `);
+
+                cy.wait("@guestTokenProvider");
+                H.getSimpleEmbedIframeContent()
+                  .findByText(
+                    /Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":/,
+                  )
+                  .should("be.visible");
+              },
+            );
           });
         });
       });
@@ -631,6 +670,7 @@ describe(
                           instanceUrl: "http://localhost:4000",
                           isGuest: true,
                           guestEmbedProviderUri: "${PROVIDER_PATH}",
+                          customContext: "test-custom-context",
                         });
                       </script>
                       <style>metabase-question { height: 100vh; }</style>
@@ -643,6 +683,7 @@ describe(
                       expect(interception.request.body).to.deep.include({
                         entityType: "question",
                         entityId: questionId,
+                        customContext: "test-custom-context",
                       });
                     });
 
@@ -664,7 +705,7 @@ describe(
           });
         });
 
-        it("shows an error in the embed when the provider returns an HTTP error", () => {
+        it("shows an error when the provider returns an HTTP error", () => {
           cy.get<number>("@questionId").then((questionId) => {
             signJwt({ questionId, expirationSeconds: -60 }).then(
               (expiredToken) => {
@@ -903,6 +944,7 @@ describe(
                       instanceUrl: "http://localhost:4000",
                       isGuest: true,
                       guestEmbedProviderUri: "${PROVIDER_PATH}",
+                      customContext: "test-custom-context",
                     });
                   </script>
                   <style>metabase-question { height: 100vh; }</style>
@@ -914,6 +956,7 @@ describe(
                   expect(interception.request.body).to.deep.include({
                     entityType: "question",
                     entityId: questionId,
+                    customContext: "test-custom-context",
                   });
                 });
 
@@ -933,7 +976,7 @@ describe(
           });
         });
 
-        it("shows an error when the initial token fetch fails", () => {
+        it("shows an error when the provider returns an HTTP error", () => {
           cy.get<number>("@questionId").then((questionId) => {
             cy.intercept(PROVIDER_INTERCEPT, (req) => {
               req.reply({ statusCode: 500 });
@@ -958,6 +1001,41 @@ describe(
                 "Failed to fetch JWT token from /api/mock-guest-token-provider, status: 500.",
               )
               .should("be.visible");
+          });
+        });
+
+        it("shows an error when the provider returns a wrong response shape", () => {
+          cy.get<number>("@questionId").then((questionId) => {
+            signJwt({ questionId, expirationSeconds: 600 }).then(
+              (freshToken) => {
+                cy.intercept(PROVIDER_INTERCEPT, (req) => {
+                  req.reply({
+                    statusCode: 200,
+                    body: { token: freshToken },
+                  });
+                }).as("guestTokenProvider");
+
+                H.visitCustomHtmlPage(`
+                  ${H.getNewEmbedScriptTag({ loadType: "sync" })}
+                  <script>
+                    defineMetabaseConfig({
+                      instanceUrl: "http://localhost:4000",
+                      isGuest: true,
+                      guestEmbedProviderUri: "${PROVIDER_PATH}",
+                    });
+                  </script>
+                  <style>metabase-question { height: 100vh; }</style>
+                  <metabase-question question-id="${questionId}" />
+                `);
+
+                cy.wait("@guestTokenProvider");
+                H.getSimpleEmbedIframeContent()
+                  .findByText(
+                    /Your JWT server endpoint must return an object with the shape { jwt: string }, but instead received {"token":/,
+                  )
+                  .should("be.visible");
+              },
+            );
           });
         });
       });
