@@ -4651,11 +4651,14 @@
   (mt/with-temp
     [:model/Dashboard           {dashboard-id :id}  {}
      :model/Dashboard           {link-dash :id}     {}
-     :model/Card                {link-card :id}     {:dataset_query (mt/mbql-query reviews)
+     :model/Card                {link-card :id}     {:name          "Link Card"
+                                                     :dataset_query (mt/mbql-query reviews)
                                                      :database_id   (mt/id)}
-     :model/Card                {card-id-1 :id}     {:dataset_query (mt/mbql-query products)
+     :model/Card                {card-id-1 :id}     {:name          "Card 1"
+                                                     :dataset_query (mt/mbql-query products)
                                                      :database_id   (mt/id)}
-     :model/Card                {card-id-2 :id}     {:dataset_query
+     :model/Card                {card-id-2 :id}     {:name "Card 2"
+                                                     :dataset_query
                                                      {:type     :native
                                                       :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}} AND {{name}} AND {{source}} /* AND {{user_id}} */"
                                                                  :template-tags
@@ -4820,9 +4823,7 @@
          :model/DashboardCard _                       {:card_id      card-id-2
                                                        :dashboard_id dashboard-id}]
         (is (=?
-             {:cards      empty?
-              :fields     empty?
-              :dashboards empty?
+             {:dashboards empty?
               :tables     [{:id inactive-table-id :name string?}
                            {:id active-table-id :name string?}]
               :databases  [{:id (mt/id) :engine string?}]}

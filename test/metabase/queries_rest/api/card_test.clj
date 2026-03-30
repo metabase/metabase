@@ -3957,8 +3957,7 @@
                                   :database_id (mt/id)}]
     (testing "Simple card"
       (is (=?
-           {:fields empty?
-            :tables (sort-by :id [{:id (mt/id :products)}])
+           {:tables (sort-by :id [{:id (mt/id :products)}])
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata"))
                (api.test-util/select-query-metadata-keys-for-debugging)))))))

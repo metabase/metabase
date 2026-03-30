@@ -254,9 +254,11 @@
         ;; All the queries on all the cards
         card-queries (map :dataset_query cards)
         ;; Plus the card-level metadata of each card
-        queries (mapv (fn [{database-id :database_id, card-id :id, :as _card}]
-                        (let [mp (lib-be/application-database-metadata-provider database-id)]
-                          (lib/query mp (lib.metadata/card mp card-id))))
+        queries (into []
+                      (keep (fn [{database-id :database_id, card-id :id, :as _card}]
+                              (when (pos-int? card-id) ; might be missing for transient X-Ray dashboards
+                                (let [mp (lib-be/application-database-metadata-provider database-id)]
+                                  (lib/query mp (lib.metadata/card mp card-id))))))
                       cards)]
     (batch-fetch-query-metadata (concat card-queries queries))))
 
@@ -322,12 +324,20 @@
                              :let                  [all (conj series card)]
                              card                  all]
                          card)
-        card-ids       (into #{} (map :id) cards)
+        card-ids       (into #{}
+                             (comp (map :id)
+                                   ;; might be missing for transient X-Ray dashboards
+                                   (filter pos-int?))
+                             cards)
         links          (batch-fetch-dashboard-links dashcards)
         card-metadatas (->> (remove (comp card-ids :id) (:cards links))
                             (concat cards)
                             (filter some?)
                             batch-fetch-card-metadata)]
     (-> card-metadatas
-        (update :cards concat (or (:cards links) []))
+        (update :cards (fn [existing-cards]
+                         (into existing-cards
+                               (remove (comp (into #{} (map :id) existing-cards)
+                                             :id))
+                               (or (:cards links) []))))
         (assoc :dashboards (or (:dashboards links) [])))))
