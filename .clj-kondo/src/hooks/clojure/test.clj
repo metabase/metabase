@@ -36,10 +36,16 @@
                                symbol))
             :type :metabase/validate-deftest))))
 
+(defn- ns-excluded-from-parallel-suggestion?
+  "Check if the namespace is excluded from the ^:parallel suggestion based on the configured set of namespaces."
+  [ns-symb config]
+  (and ns-symb
+       (contains? (:parallel/exclude-namespaces config) ns-symb)))
+
 (defn- deftest-check-parallel
   "1. Check if test is marked ^:parallel / ^:synchronized correctly
    2. Make sure disallowed forms are not used in ^:parallel tests"
-  [{[_ test-name & body] :children, :as _node} config]
+  [{[_ test-name & body] :children, :as _node} config ns-symb]
   (let [test-metadata     (:meta test-name)
         metadata-sexprs   (map hooks/sexpr test-metadata)
         combined-metadata (transduce
@@ -68,13 +74,16 @@
        (assoc (meta test-name)
               :message "Test should be marked either ^:parallel or ^:synchronized"
               :type :metabase/deftest-not-marked-parallel-or-synchronized))
-      ;; suggest ^:parallel for unmarked tests that contain no thread-unsafe forms
-      (let [unsafe-forms (mapcat #(detect-disallowed-parallel-forms % config) body)]
-        (when (empty? unsafe-forms)
-          (hooks/reg-finding!
-           (assoc (meta test-name)
-                  :message "Test does not contain any thread-unsafe forms and should be marked ^:parallel"
-                  :type :metabase/validate-deftest)))))
+      ;; suggest ^:parallel for unmarked tests that contain no thread-unsafe forms.
+      ;; skip namespaces matching :parallel/exclude-ns-prefixes (e.g. driver tests that have their own parallelism
+      ;; constraints)
+      (when-not (ns-excluded-from-parallel-suggestion? ns-symb config)
+        (let [unsafe-forms (mapcat #(detect-disallowed-parallel-forms % config) body)]
+          (when (empty? unsafe-forms)
+            (hooks/reg-finding!
+             (assoc (meta test-name)
+                    :message "Test does not contain any thread-unsafe forms and should be marked ^:parallel"
+                    :type :metabase/validate-deftest))))))
     (when parallel?
       (doseq [form body]
         (warn-about-disallowed-parallel-forms form config)))))
@@ -156,12 +165,12 @@
                                      :message (format "All tests must live in a known module; %s is not a known module" (pr-str current-module))
                                      :type    :metabase/tests-must-live-in-known-modules)))))))
 
-(defn deftest [{:keys [node cljc lang config], :as input}]
+(defn deftest [{:keys [node cljc lang config], ns-symb :ns, :as input}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
   (when (or (not cljc)
             (= lang :clj))
-    (deftest-check-parallel node (get-in config [:linters :metabase/validate-deftest])))
+    (deftest-check-parallel node (get-in config [:linters :metabase/validate-deftest]) ns-symb))
   (deftest-check-not-horrifically-long node (get-in config [:linters :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]))
   (deftest-check-no-driver-keywords node (get-in config [:linters :metabase/disallow-hardcoded-driver-names-in-tests]))
   (deftest-check-in-valid-module input)
