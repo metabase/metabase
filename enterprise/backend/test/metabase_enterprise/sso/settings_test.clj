@@ -9,6 +9,7 @@
    [metabase.test.util :as tu]))
 
 (use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :each mt/test-helpers-set-global-values!)
 
 (def ^:private default-idp-uri "http://test.idp.metabase.com")
 (def ^:private default-idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))

@@ -41,7 +41,7 @@
   (binding [client/*url-prefix* ""]
     (thunk)))
 
-(use-fixtures :each disable-api-url-prefix)
+(use-fixtures :each disable-api-url-prefix mt/test-helpers-set-global-values!)
 
 (defn- do-with-other-sso-types-disabled! [thunk]
   (let [current-features (token-check/*token-features*)]

@@ -23,7 +23,7 @@
   (binding [client/*url-prefix* ""]
     (thunk)))
 
-(use-fixtures :each disable-api-url-prefix)
+(use-fixtures :each disable-api-url-prefix mt/test-helpers-set-global-values!)
 
 (def ^:private default-redirect-uri "/")
 

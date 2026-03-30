@@ -7,6 +7,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(use-fixtures :each mt/test-helpers-set-global-values!)
+
 (deftest show-static-embed-terms-test
   (mt/with-test-user :crowberto
     (testing "when hide-embed-branding? is true (Pro/EE with :embedding feature)"
