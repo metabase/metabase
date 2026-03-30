@@ -377,6 +377,30 @@
           xml (llm-rep/field-metadata->xml metadata)]
       (is (str/includes? xml "No metadata available to display")))))
 
+(deftest field-search-results->xml-test
+  (testing "formats search results with raw and remapped matches"
+    (let [xml (llm-rep/field-search-results->xml
+               {:field_id 123
+                :searches [{:query "highway"
+                            :matches [{:value "Highway"} {:value "Highway 1"}]
+                            :has_more false}
+                           {:query "mar"
+                            :matches [{:value 14 :display "Marilyne Mohr"}]
+                            :has_more true}]})]
+      (is (str/includes? xml "<field-search-results field_id=\"123\">"))
+      (is (str/includes? xml "<search query=\"highway\" count=\"2\" has_more=\"false\">"))
+      (is (str/includes? xml "<match value=\"Highway\"/>"))
+      (is (str/includes? xml "<search query=\"mar\" count=\"1\" has_more=\"true\">"))
+      (is (str/includes? xml "<match value=\"14\" display=\"Marilyne Mohr\"/>"))))
+
+  (testing "formats empty searches explicitly"
+    (let [xml (llm-rep/field-search-results->xml
+               {:field_id 123
+                :searches [{:query "zzz"
+                            :matches []
+                            :has_more false}]})]
+      (is (str/includes? xml "<no-matches/>")))))
+
 (deftest get-metadata-result->xml-test
   (testing "formats metadata with metrics, tables, and models"
     (let [result {:metrics [{:id 1 :name "M1" :description "Metric 1"}]

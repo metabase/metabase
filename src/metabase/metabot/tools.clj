@@ -46,7 +46,8 @@
  [tools.metadata
   list-available-data-sources-tool
   list-available-fields-tool
-  get-field-values-tool]
+  get-field-values-tool
+  search-field-values-tool]
  [tools.transforms
   get-transform-details-tool
   get-transform-python-library-details-tool

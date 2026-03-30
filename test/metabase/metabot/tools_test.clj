@@ -69,6 +69,7 @@
       (is (map? tools))
       (is (contains? tools "search"))
       (is (contains? tools "list_available_fields"))
+      (is (contains? tools "search_field_values"))
       (is (contains? tools "todo_write"))
       (is (contains? tools "todo_read"))))
 
@@ -93,6 +94,7 @@
       (is (contains? tools "list_available_data_sources"))
       (is (contains? tools "list_available_fields"))
       (is (contains? tools "get_field_values"))
+      (is (contains? tools "search_field_values"))
       (is (contains? tools "document_construct_model_chart"))
       (is (contains? tools "document_construct_sql_chart"))))
 
@@ -103,6 +105,7 @@
       (is (contains? tools "construct_notebook_query"))
       (is (contains? tools "list_available_fields"))
       (is (contains? tools "get_field_values"))
+      (is (contains? tools "search_field_values"))
       (is (contains? tools "static_viz"))
       (is (contains? tools "create_alert"))
       (is (contains? tools "create_dashboard_subscription"))))

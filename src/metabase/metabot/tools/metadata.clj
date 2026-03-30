@@ -8,6 +8,8 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.parameters.field :as params.field]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -128,6 +130,12 @@
    (llm-rep/field-metadata->xml {:field_id field_id :value_metadata value_metadata})
    instructions/field-metadata-instructions))
 
+(defn- format-field-search-output
+  [{:keys [field_id searches]}]
+  (format-with-instructions
+   (llm-rep/field-search-results->xml {:field_id field_id :searches searches})
+   instructions/field-search-instructions))
+
 (defn- add-output
   "Add :output to a tool result that has :structured-output, using the given format-fn."
   [result format-fn]
@@ -174,3 +182,53 @@
                                     :field-id field_id
                                     :limit nil})
    format-field-metadata-output))
+
+(def ^:private max-field-search-queries 5)
+
+(def ^:private search-field-values-schema
+  [:map {:closed true}
+   [:data_source [:enum "table" "model" "metric"]]
+   [:source_id :int]
+   [:field_id :string]
+   [:queries [:sequential {:min 1 :max max-field-search-queries} :string]]
+   [:limit {:optional true} [:maybe pos-int?]]])
+
+(defn- search-result->map
+  [value]
+  (if (sequential? value)
+    (let [[raw display] value]
+      (m/assoc-some {:value raw} :display display))
+    {:value value}))
+
+(mu/defn ^{:tool-name "search_field_values"}
+  search-field-values-tool
+  "Search for field values containing one or more query strings."
+  [{:keys [data_source source_id field_id queries limit]} :- search-field-values-schema]
+  (add-output
+   (try
+     (let [field-id      (:id (field-stats-tools/resolve-field {:entity-type data_source
+                                                                :entity-id   source_id
+                                                                :field-id    field_id}))
+           _             (when-not field-id
+                           (throw (ex-info "This field cannot be searched because it does not map to a concrete field."
+                                           {:agent-error? true :status-code 400})))
+           per-query-max (or limit 10)
+           searches      (mapv (fn [query]
+                                 (let [{:keys [values has_more_values]}
+                                       (params.field/search-values-from-field-id field-id query)]
+                                   {:query    query
+                                    :matches  (->> values
+                                                   (map search-result->map)
+                                                   (take per-query-max)
+                                                   vec)
+                                    :has_more has_more_values}))
+                               queries)]
+       {:structured-output {:result-type :field-search-results
+                            :field_id    field_id
+                            :resolved_field_id field-id
+                            :searches    searches}})
+     (catch Exception ex
+       (if (:agent-error? (ex-data ex))
+         (metabot.tools.u/handle-agent-error ex)
+         {:output (str "Search failed: " (or (ex-message ex) "Unknown error"))})))
+   format-field-search-output))

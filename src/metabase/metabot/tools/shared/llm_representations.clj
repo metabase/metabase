@@ -485,6 +485,26 @@
     :field_metadata_value_xml (when value_metadata
                                 (field-values-metadata->xml value_metadata))}))
 
+(defn field-search-results->xml
+  "Format targeted field search results as XML."
+  [{:keys [field_id searches]}]
+  (letfn [(match->xml [{:keys [value display]}]
+            (str "<match value=\"" (escape-xml value) "\""
+                 (when (some? display)
+                   (str " display=\"" (escape-xml display) "\""))
+                 "/>"))
+          (search->xml [{:keys [query matches has_more]}]
+            (str "<search query=\"" (escape-xml query)
+                 "\" count=\"" (count matches)
+                 "\" has_more=\"" has_more "\">\n"
+                 (if (seq matches)
+                   (str/join "\n" (map match->xml matches))
+                   "<no-matches/>")
+                 "\n</search>"))]
+    (str "<field-search-results field_id=\"" (escape-xml field_id) "\">\n"
+         (str/join "\n" (map search->xml searches))
+         "\n</field-search-results>")))
+
 (defn get-metadata-result->xml
   "Format get_metadata result for LLM consumption.
    Matches Python GetMetadataResultSchema.llm_representation exactly."

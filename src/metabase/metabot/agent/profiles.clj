@@ -104,6 +104,7 @@
                     #'tools/get-snippet-details-tool
                     #'tools/list-available-fields-tool
                     #'tools/get-field-values-tool
+                    #'tools/search-field-values-tool
                     #'tools/todo-write-tool
                     #'tools/todo-read-tool]})
 
@@ -143,6 +144,7 @@
   :tools           [#'tools/list-available-data-sources-tool
                     #'tools/list-available-fields-tool
                     #'tools/get-field-values-tool
+                    #'tools/search-field-values-tool
                     #'tools/document-schema-collect-tool
                     #'tools/document-construct-model-chart-tool
                     #'tools/document-construct-sql-chart-tool]})
@@ -156,6 +158,7 @@
                     #'tools/slackbot-construct-notebook-query-tool
                     #'tools/list-available-fields-tool
                     #'tools/get-field-values-tool
+                    #'tools/search-field-values-tool
                     #'tools/static-viz-tool
                     #'tools/create-alert-tool
                     #'tools/slackbot-create-dashboard-subscription-tool]})

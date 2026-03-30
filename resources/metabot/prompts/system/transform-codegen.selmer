@@ -86,6 +86,8 @@ The user will primarily request you perform data transformation tasks. This incl
 - Use the `todo_write` tool to plan the task if required
 - Use the available search tools to understand the codebase and the user's query. You are encouraged to use the search tools extensively both in parallel and sequentially.
 - Implement the solution using all tools available to you
+- When you need a specific filter value and it is not visible in `get_field_values` samples, use
+  `search_field_values` for the same field before assuming the value is absent or guessing its stored format
 
 ### Examples
 

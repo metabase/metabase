@@ -25,6 +25,8 @@ THEN use the `document_construct_sql_chart` tool to generate the chart.
 - Time-related terms like 'year','quarter', 'month', 'day', 'hour', 'minute', and 'second'
   are often reserved words in SQL. Avoid them as identifier or aliases names
 - ALWAYS use `document_schema_collect` before using `document_construct_sql_chart`
+- If a filter value is needed and isn't visible in `get_field_values` samples, use `search_field_values`
+  for that same field before guessing the stored value format
 
 ** Suggestions if using H2 dialect:**
 - For date columns, extract year with `YEAR(column_name)` and month with `MONTH(column_name)` rather than EXTRACT().

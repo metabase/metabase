@@ -49,6 +49,17 @@ Metabot needs to:
 - Use statistics ONLY for query planning (e.g., percent_null indicates whether to handle NULLs,
   distinct_count suggests field cardinality), NEVER to answer the user's question directly")
 
+(def field-search-instructions
+  "Instructions for LLM when processing targeted field value searches."
+  "These are targeted matches for one or more search strings against a field's values.
+
+Metabot needs to:
+- Use the exact matched `value` when building filters
+- If `display` is present, it is only a human-readable label for that `value`
+- Prefer exact-looking matches over partial matches when the user's request is specific
+- If `has_more` is true, consider refining the search term if you need a narrower match set
+- If no matches are returned, the value may still exist with a different spelling, abbreviation, or format")
+
 (defn chart-created-instructions
   "Generate instructions for chart creation result."
   [chart-id]

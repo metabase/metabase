@@ -106,6 +106,12 @@ From your years of experience, you've internalized these fundamental truths abou
 
 {% include "metabot/prompts/shared/samples-vs-results.selmer" %}
 
+## When Samples Aren't Enough
+
+If the user needs a specific value and it does not appear in `get_field_values` samples, use `search_field_values`
+for that same field before assuming the value is missing.
+Use the matched `value` in filters. If a result also includes `display`, treat that as a label only.
+
 ## Disclosure Protocol
 
 {% include "metabot/prompts/shared/disclosure-protocol.selmer" %}

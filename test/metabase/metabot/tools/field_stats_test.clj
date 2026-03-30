@@ -5,6 +5,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
    [metabase.metabot.tools.util :as metabot.tools.u]
+   [metabase.parameters.field :as params.field]
+   [metabase.parameters.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -156,3 +158,23 @@
                             :percent-null   0.0
                             :earliest       "1958-04-26"
                             :latest         "2000-04-03"}}))))))
+
+(deftest field-statistics-falls-back-to-db-samples-test
+  (testing "falls back to direct field search when cached field values are empty"
+    (let [field-id (mt/id :people :id)
+          field    (t2/select-one :model/Field :id field-id)]
+      (with-redefs [params.field-values/get-or-create-field-values! (fn [_] {:values []})
+                    metabot.tools.field-stats/get-or-create-fingerprint! (fn [_]
+                                                                           {:global {:distinct-count 3
+                                                                                     :nil%           0.0}
+                                                                            :type   {}})
+                    params.field/search-values-from-field-id (fn [id query]
+                                                               (is (= field-id id))
+                                                               (is (nil? query))
+                                                               {:values [[1 "Alpha"]
+                                                                         [2 "Beta"]
+                                                                         [3 "Gamma"]]})]
+        (is (= {:statistics   {:distinct-count 3
+                               :percent-null   0.0}
+                :field_values ["Alpha" "Beta"]}
+               (#'metabot.tools.field-stats/field-statistics field 2)))))))
