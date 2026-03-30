@@ -40,11 +40,7 @@ function DashCardPlaceholderInner({
   const pointerEvents = isEditingParameter ? "none" : "all";
 
   return (
-    <div
-      onMouseDown={preventDragging}
-      onPointerDown={preventDragging}
-      style={{ display: "contents" }}
-    >
+    <>
       <Flex
         p={2}
         style={{ flex: 1, pointerEvents }}
@@ -60,28 +56,36 @@ function DashCardPlaceholderInner({
           >
             <Button
               onClick={() => setQuestionPickerOpen(true)}
+              onMouseDown={preventDragging}
+              onPointerDown={preventDragging}
               style={{ pointerEvents }}
             >{t`Select question`}</Button>
           </Flex>
         )}
       </Flex>
       {isQuestionPickerOpen && (
-        <QuestionPickerModal
-          title={t`Pick what you want to replace this with`}
-          value={
-            dashboard.collection_id
-              ? {
-                  id: dashboard.collection_id,
-                  model: "collection",
-                }
-              : undefined
-          }
-          models={["card", "dataset", "metric"]}
-          onChange={handleSelectQuestion}
-          onClose={() => setQuestionPickerOpen(false)}
-        />
+        <div
+          style={{ display: "contents" }}
+          onMouseDown={preventDragging}
+          onPointerDown={preventDragging}
+        >
+          <QuestionPickerModal
+            title={t`Pick what you want to replace this with`}
+            value={
+              dashboard.collection_id
+                ? {
+                    id: dashboard.collection_id,
+                    model: "collection",
+                  }
+                : undefined
+            }
+            models={["card", "dataset", "metric"]}
+            onChange={handleSelectQuestion}
+            onClose={() => setQuestionPickerOpen(false)}
+          />
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
