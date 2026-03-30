@@ -14,7 +14,7 @@ require("metabase/lib/dayjs");
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 
 import { Global, css, useTheme } from "@emotion/react";
