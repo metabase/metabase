@@ -1,8 +1,20 @@
 import { match } from "ts-pattern";
 
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import type { ValidateEvent } from "metabase-types/analytics/event";
 
-import type { RegularClickAction } from "./types";
+import type { ClickActionSection, RegularClickAction } from "./types";
+
+type ClickActionPerformedEvent = ValidateEvent<{
+  event: "click_action";
+  triggered_from: ClickActionSection;
+}>;
+
+declare module "metabase-types/analytics/event" {
+  interface SimpleEventExtensions {
+    clickAction: ClickActionPerformedEvent;
+  }
+}
 
 export const trackClickActionPerformed = (action: RegularClickAction) => {
   trackSimpleEvent({

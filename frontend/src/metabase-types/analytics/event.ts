@@ -1,10 +1,3 @@
-import type { FormLocation } from "metabase/databases/types";
-import type {
-  ChecklistItemCTA,
-  ChecklistItemValue,
-} from "metabase/home/components/Onboarding/types";
-import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
-import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
   ConcreteTableId,
   Engine,
@@ -13,7 +6,7 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
-type SimpleEventSchema = {
+export type SimpleEventSchema = {
   event: string;
   target_id?: number | null;
   triggered_from?: string | null;
@@ -57,18 +50,7 @@ type OnboardingChecklistOpenedEvent = ValidateEvent<{
   event: "onboarding_checklist_opened";
 }>;
 
-type OnboardingChecklistItemExpandedEvent = ValidateEvent<{
-  event: "onboarding_checklist_item_expanded";
-  triggered_from: ChecklistItemValue;
-}>;
-
-type OnboardingChecklistItemCTAClickedEvent = ValidateEvent<{
-  event: "onboarding_checklist_cta_clicked";
-  triggered_from: ChecklistItemValue;
-  event_detail: ChecklistItemCTA;
-}>;
-
-type NewsletterToggleClickedEvent = ValidateEvent<{
+export type NewsletterToggleClickedEvent = ValidateEvent<{
   event: "newsletter-toggle-clicked";
   triggered_from: "setup";
   event_detail: "opted-in" | "opted-out";
@@ -139,12 +121,7 @@ type GsheetsImportClickedEvent = ValidateEvent<{
   triggered_from: "sheets-url-popup";
 }>;
 
-type KeyboardShortcutPerformEvent = ValidateEvent<{
-  event: "keyboard_shortcut_performed";
-  event_detail: KeyboardShortcutId;
-}>;
-
-type NewEntityInitiatedEvent = ValidateEvent<{
+export type NewEntityInitiatedEvent = ValidateEvent<{
   event: "plus_button_clicked";
   triggered_from: "model" | "metric" | "collection-header" | "collection-nav";
 }>;
@@ -255,17 +232,15 @@ type TableEditButtonClickedEvent = ValidateEvent<{
   triggered_from: "table-browser";
 }>;
 
-type ConnectionStringParsedSuccessEvent = ValidateEvent<{
-  event: "connection_string_parsed_success";
-  triggered_from: FormLocation;
+export type TableEditingRecordModifiedEvent = ValidateEvent<{
+  event: "edit_data_record_modified";
+  event_detail: "create" | "update" | "delete";
+  target_id: number;
+  triggered_from: "inline" | "modal";
+  result: "success" | "error";
 }>;
 
-type ConnectionStringParsedFailedEvent = ValidateEvent<{
-  event: "connection_string_parsed_failed";
-  triggered_from: FormLocation;
-}>;
-
-type TransformTriggerManualRunEvent = ValidateEvent<{
+export type TransformTriggerManualRunEvent = ValidateEvent<{
   event: "transform_trigger_manual_run";
   target_id: TransformId;
 }>;
@@ -524,12 +499,7 @@ type BookmarkDocumentEvent = ValidateEvent<{
   triggered_from: "collection_list" | "document_header";
 }>;
 
-type ClickActionPerformedEvent = ValidateEvent<{
-  event: "click_action";
-  triggered_from: ClickActionSection;
-}>;
-
-type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
+export type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
   event: "remote_sync_branch_switched";
   triggered_from: "admin-settings" | "app-bar";
 }>;
@@ -717,61 +687,19 @@ type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
-type MetricPageShowMoreClickedEvent = ValidateEvent<{
-  event: "metric_page_show_more_clicked";
-  target_id: number;
-}>;
-
-type MetricsViewerMetricAddedEvent = ValidateEvent<{
-  event: "metrics_viewer_metric_added";
-  target_id: number | null;
-  event_detail: "metric" | "measure";
-}>;
-
-type MetricsViewerMetricRemovedEvent = ValidateEvent<{
-  event: "metrics_viewer_metric_removed";
-  target_id: number | null;
-  event_detail: "metric" | "measure";
-}>;
-
-type MetricsViewerFilterAddedEvent = ValidateEvent<{
-  event: "metrics_viewer_filter_added";
-  triggered_from: "metric_filter" | "dimension_filter";
-}>;
-
-type MetricsViewerFilterEditedEvent = ValidateEvent<{
-  event: "metrics_viewer_filter_edited";
-  triggered_from: "metric_filter" | "dimension_filter";
-}>;
-
-type MetricsViewerFilterRemovedEvent = ValidateEvent<{
-  event: "metrics_viewer_filter_removed";
-  triggered_from: "metric_filter" | "dimension_filter";
-}>;
-
-type MetricsViewerDimensionTabAddedEvent = ValidateEvent<{
-  event: "metrics_viewer_dimension_tab_added";
-}>;
-
-type MetricsViewerDimensionTabSwitchedEvent = ValidateEvent<{
-  event: "metrics_viewer_dimension_tab_switched";
-}>;
-
-type MetricsViewerDimensionTabRemovedEvent = ValidateEvent<{
-  event: "metrics_viewer_dimension_tab_removed";
-}>;
-
-type MetricsViewerEvent =
-  | MetricsViewerMetricAddedEvent
-  | MetricsViewerMetricRemovedEvent
-  | MetricsViewerFilterAddedEvent
-  | MetricsViewerFilterEditedEvent
-  | MetricsViewerFilterRemovedEvent
-  | MetricsViewerDimensionTabAddedEvent
-  | MetricsViewerDimensionTabSwitchedEvent
-  | MetricsViewerDimensionTabRemovedEvent;
+// Feature modules can extend this interface via declaration merging
+// to add their own event types to SimpleEvent
+// Example:
+//   declare module "metabase-types/analytics/event" {
+//     interface SimpleEventExtensions {
+//       myFeatureEvent: ValidateEvent<{ event: "my_event"; ... }>;
+//     }
+//   }
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- extended via declaration merging in feature modules
+export interface SimpleEventExtensions {}
 
 export type SimpleEvent =
+  | SimpleEventExtensions[keyof SimpleEventExtensions]
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
   | CSVUploadClickedEvent
@@ -782,14 +710,11 @@ export type SimpleEvent =
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingChecklistOpenedEvent
-  | OnboardingChecklistItemExpandedEvent
-  | OnboardingChecklistItemCTAClickedEvent
   | MoveToTrashEvent
   | ErrorDiagnosticModalOpenedEvent
   | ErrorDiagnosticModalSubmittedEvent
   | GsheetsConnectionClickedEvent
   | GsheetsImportClickedEvent
-  | KeyboardShortcutPerformEvent
   | NewEntityInitiatedEvent
   | NewButtonClickedEvent
   | NewButtonItemClickedEvent
@@ -802,8 +727,6 @@ export type SimpleEvent =
   | DashboardFilterMovedEvent
   | EmbedWizardEvent
   | TableEditingEvent
-  | ConnectionStringParsedSuccessEvent
-  | ConnectionStringParsedFailedEvent
   | TransformTriggerManualRunEvent
   | TransformJobTriggerManualRunEvent
   | TransformCreatedEvent
@@ -828,9 +751,6 @@ export type SimpleEvent =
   | MetadataEditEvent
   | BookmarkEvent
   | RemoteSyncEvent
-  | ClickActionPerformedEvent
   | DataStudioEvent
   | UnsavedChangesWarningDisplayedEvent
-  | MetricPageShowMoreClickedEvent
-  | MetricsViewerEvent
   | { event: string; [key: string]: unknown };

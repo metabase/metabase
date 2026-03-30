@@ -2,11 +2,8 @@ import * as Snowplow from "@snowplow/browser-tracker";
 
 import { shouldLogAnalytics } from "metabase/env";
 import Settings from "metabase/lib/settings";
-import type {
-  SchemaEvent,
-  SchemaType,
-  SimpleEvent,
-} from "metabase-types/analytics";
+import type { SchemaEvent, SchemaType } from "metabase-types/analytics";
+import type { SimpleEvent } from "metabase-types/analytics/event";
 
 export * from "./analytics-untyped";
 
