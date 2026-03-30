@@ -44,3 +44,19 @@
       (mt/with-dynamic-fn-redefs
         [premium-features/premium-embedding-token (constantly nil)]
         (mt/user-http-request :rasta :post 400 "metabot/feedback" {:foo "bar"})))))
+
+(deftest usage-get-returns-quotas-test
+  (mt/with-premium-features #{:metabot-v3}
+    (with-redefs [premium-features/quotas (constantly [{:quota-type "queries"
+                                                        :usage 123
+                                                        :soft-limit 1000
+                                                        :hard-limit 1000}])]
+      (is (= {:quotas [{:quota-type "queries"
+                        :usage 123
+                        :soft-limit 1000
+                        :hard-limit 1000}]}
+             (mt/user-http-request :crowberto :get 200 "ee/metabot/usage"))))))
+
+(deftest usage-permissions-test
+  (mt/with-premium-features #{:metabot-v3}
+    (mt/user-http-request :rasta :get 403 "ee/metabot/usage")))

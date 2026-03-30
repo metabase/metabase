@@ -518,17 +518,18 @@
   "Pick the right auth map for an LLM request.
 
   - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured).
-  - Otherwise prefers the provider's BYOK `auth`, falls back to the proxy."
-  [llm-type auth ai-proxy?]
-  (if ai-proxy?
-    (or (when-let [base (llm/llm-proxy-base-url)]
-          {:url     base
-           :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})
-        (throw (ex-info (tru "AI proxy is not configured")
-                        {:api-error  true
-                         :error-code :proxy-not-configured})))
-    (or auth
-        (throw (missing-api-key-ex llm-type)))))
+   - Otherwise uses the provider's BYOK `auth`."
+  [provider-slug llm-type auth ai-proxy?]
+  (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
+                     {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
+                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})]
+    (if ai-proxy?
+      (or proxy-auth
+          (throw (ex-info (tru "AI proxy is not configured")
+                          {:api-error  true
+                           :error-code :proxy-not-configured})))
+      (or auth
+          (throw (missing-api-key-ex llm-type))))))
 
 (defn request
   "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."

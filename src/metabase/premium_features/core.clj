@@ -53,6 +53,7 @@
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?
+  enable-metabase-ai-provider?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?

@@ -28,6 +28,7 @@
                               :embedding-simple
                               :embedding-hub
                               :hosting
+                              :metabase-ai-provider
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -73,6 +74,7 @@
             :embedding_sdk                  true
             :embedding_simple               true
             :hosting                        true
+            :metabase-ai-provider           true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true

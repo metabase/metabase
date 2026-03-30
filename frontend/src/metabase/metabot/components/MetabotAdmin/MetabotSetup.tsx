@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,6 +15,7 @@ import {
   useAdminSettings,
 } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import {
   Badge,
   type ComboboxItem,
@@ -44,15 +45,69 @@ type MetabotModelOption = ComboboxItem & {
   group?: string | null;
 };
 
+function getSetupDescription({
+  provider,
+  isMetabaseProviderConnected,
+}: {
+  provider: MetabotProvider | undefined;
+  isMetabaseProviderConnected: boolean;
+}) {
+  if (isMetabaseProviderConnected) {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
+    return t`Metabase manages model selection and billing for your AI features.`;
+  }
+
+  if (provider === "metabase") {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
+    return t`Select your AI provider to get started with Metabot. The Metabase provider does not require an API key.`;
+  }
+
+  return t`Select your AI provider and configure your API key to get started with Metabot.`;
+}
+
+function getModelDescription(provider: MetabotProvider | undefined) {
+  if (provider === "metabase") {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
+    return t`Available models are provided by Metabase.`;
+  }
+
+  return t`Available models are fetched from the selected provider using its configured API key.`;
+}
+
+function shouldShowModelSelector({
+  provider,
+  needsApiKey,
+  isMetabaseProviderConnected,
+}: {
+  provider: MetabotProvider | undefined;
+  needsApiKey: boolean;
+  isMetabaseProviderConnected: boolean;
+}) {
+  return (
+    !needsApiKey && !isMetabaseProviderConnected && provider !== "metabase"
+  );
+}
+
 export function MetabotSetup() {
+  const isHosted = useSetting("is-hosted?");
+  const llmProxyBaseUrl = useSetting("llm-proxy-configured?");
+  const canUseLlmProxy = !!llmProxyBaseUrl && isHosted;
+  const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
+
   const { value, settingDetails } = useAdminSetting("llm-metabot-provider");
-  const config = useMemo(() => parseProviderAndModel(value), [value]);
   const isEnvSetting =
     !!settingDetails &&
     !!settingDetails.is_env_setting &&
     !!settingDetails.env_name;
   const envSettingName = isEnvSetting ? settingDetails?.env_name : undefined;
 
+  const [updateMetabotSettings, updateMetabotSettingsResult] =
+    useUpdateMetabotSettingsMutation();
+  const savedProviderValue = updateMetabotSettingsResult.data?.value ?? value;
+  const config = useMemo(
+    () => parseProviderAndModel(savedProviderValue),
+    [savedProviderValue],
+  );
   const [provider, setProvider] = useState<MetabotProvider | undefined>(
     config?.provider,
   );
@@ -65,8 +120,6 @@ export function MetabotSetup() {
   const metabotSettingsQuery = useGetMetabotSettingsQuery(
     provider ? { provider } : skipToken,
   );
-  const [updateMetabotSettings, updateMetabotSettingsResult] =
-    useUpdateMetabotSettingsMutation();
 
   const isConfigured = useSetting("llm-metabot-configured?");
   const { details: providerApiKeyDetails } = useAdminSettings([
@@ -76,12 +129,12 @@ export function MetabotSetup() {
   ] as const);
 
   const providerOptions = useMemo(() => {
-    const options = Object.values(getProviderOptions(false));
+    const options = Object.values(getProviderOptions(canUseLlmProxy));
     return options.map((o) => ({
       ...o,
       disabled: !isAvailableProvider(o.value),
     }));
-  }, []);
+  }, [canUseLlmProxy]);
 
   const modelOptions = useMemo(
     () => getLlmModelOptions(metabotSettingsQuery.currentData?.models ?? []),
@@ -113,11 +166,19 @@ export function MetabotSetup() {
     }
   };
 
-  const isConnected =
+  const handleMetabaseConnect = useCallback(async () => {
+    await updateMetabotSettings({ provider: "metabase", model: "" });
+  }, [updateMetabotSettings]);
+
+  const isConnected = Boolean(
     !updateMetabotSettingsResult.isLoading &&
-    config?.provider &&
-    config?.model &&
-    isConfigured;
+      config?.provider &&
+      config?.model &&
+      isConfigured,
+  );
+  const isMetabaseProviderConnected = Boolean(
+    isConnected && provider === "metabase" && config?.provider === "metabase",
+  );
 
   const selectedApiKeySetting =
     provider && isApiKeyMetabotProvider(provider)
@@ -128,6 +189,18 @@ export function MetabotSetup() {
     !!provider &&
     !!selectedApiKeySetting &&
     (!hasConfiguredSettingValue(selectedApiKeySetting) || !!apiKeyError);
+  const showModelSelector = shouldShowModelSelector({
+    provider,
+    needsApiKey,
+    isMetabaseProviderConnected,
+  });
+
+  const setupDescription = getSetupDescription({
+    provider,
+    isMetabaseProviderConnected,
+  });
+
+  const modelDescription = getModelDescription(provider);
 
   return (
     <SettingsSection
@@ -150,7 +223,7 @@ export function MetabotSetup() {
           )}
         </Flex>
       }
-      description={t`Select your AI provider and configure your API key to get started with Metabot.`}
+      description={setupDescription}
     >
       <Stack gap="md">
         <Select
@@ -181,11 +254,19 @@ export function MetabotSetup() {
           )}
         />
 
+        {provider === "metabase" && (
+          <MetabaseAIProviderSetup
+            isMetabaseProviderConnected={isMetabaseProviderConnected}
+            isSavingMetabaseConnection={updateMetabotSettingsResult.isLoading}
+            onConnect={handleMetabaseConnect}
+          />
+        )}
+
         {provider && isApiKeyMetabotProvider(provider) && (
           <MetabotProviderApiKey provider={provider} error={apiKeyError} />
         )}
 
-        {!needsApiKey && (
+        {showModelSelector && (
           <Select
             label={t`Model`}
             placeholder={
@@ -195,7 +276,7 @@ export function MetabotSetup() {
                   : t`Select a model`
                 : t`Select a provider first`
             }
-            description={t`Available models are fetched from the selected provider using its configured API key.`}
+            description={modelDescription}
             error={modelError}
             data={modelOptions}
             value={model}
