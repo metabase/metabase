@@ -186,6 +186,52 @@
                     (wait-for-condition processed? 10000)
                     (is (processed?))))))))))))
 
+(deftest ^:sequential backfill-error-logging-test
+  (testing "When calculate-deps throws, the error is logged and the entity remains stale"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        (mark-stale! :card card-id)
+        (with-redefs [env/env (assoc env/env
+                                     :mb-dependency-backfill-delay-minutes "0"
+                                     :mb-dependency-backfill-variance-minutes "0")
+                      deps.calculation/calculate-deps
+                      (fn [_ _] (throw (ex-info "Simulated error" {})))]
+          (backfill-dependencies-single-trigger!))
+        ;; Entity should still be stale — not processed, not lost
+        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+        ;; No dependencies should have been created
+        (is (empty? (t2/select :model/Dependency :from_entity_type :card :from_entity_id card-id)))
+        ;; Failure recorded in table
+        (is (= 1 (t2/select-one-fn :fail_count :model/DependencyStatus
+                                   :entity_type :card :entity_id card-id)))))))
+
+(deftest ^:sequential backfill-partial-batch-failure-test
+  (testing "A failure on one entity doesn't prevent other entities from being processed"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {good-card-id :id} {:dataset_query (mt/mbql-query orders)}
+                     :model/Card {bad-card-id :id} {:dataset_query (mt/mbql-query products)}]
+        (mark-stale! :card good-card-id)
+        (mark-stale! :card bad-card-id)
+        (let [original-calculate-deps deps.calculation/calculate-deps]
+          (with-redefs [env/env (assoc env/env
+                                       :mb-dependency-backfill-delay-minutes "0"
+                                       :mb-dependency-backfill-variance-minutes "0")
+                        deps.calculation/calculate-deps
+                        (fn [entity-type entity]
+                          (if (= (:id entity) bad-card-id)
+                            (throw (ex-info "Simulated error" {}))
+                            (original-calculate-deps entity-type entity)))]
+            (backfill-dependencies-single-trigger!)))
+        ;; Good card should be processed successfully
+        (assert-processed :card good-card-id)
+        (is (seq (t2/select :model/Dependency :from_entity_type :card :from_entity_id good-card-id)))
+        ;; Bad card should remain stale with failure recorded
+        (is (t2/exists? :model/DependencyStatus :entity_type :card :entity_id bad-card-id :stale true))
+        (is (= 1 (t2/select-one-fn :fail_count :model/DependencyStatus
+                                   :entity_type :card :entity_id bad-card-id)))))))
+
 (deftest ^:sequential backfill-terminal-failure-test
   (testing "Entities should be marked as terminally broken after MAX_RETRIES failures"
     (backfill-all-existing-entities!)
