@@ -61,6 +61,16 @@
 (defn extract-entity-id [file-path]
   (quick-extract file-path "entity_id" #"(?m)^entity_id:\s*(\S+)"))
 
+(defn extract-model
+  "Extract the serdes model from a YAML file (e.g., \"Collection\", \"Card\", \"Dashboard\").
+   Looks for the model field inside serdes/meta to avoid matching embedded refs."
+  [file-path]
+  (try
+    (let [content (slurp file-path)]
+      (when-let [[_ model] (re-find #"(?m)^serdes/meta:\s*\n\s*- id:.*\n\s+(?:label:.*\n\s+)?model:\s*(\S+)" content)]
+        (str/trim model)))
+    (catch Exception _ nil)))
+
 ;;; ===========================================================================
 ;;; File Walking - Build index of all entities
 ;;; ===========================================================================
@@ -168,40 +178,29 @@
 
       nil)))
 
-(defn- index-entity-id-files
-  "Index entries for cards/dashboards found by walking the file tree.
-   Assigns `kind` to each file whose path matches `pattern`."
-  [export-dir kind pattern]
-  (for [^File file (file-seq (io/file export-dir))
-        :when (.isFile file)
-        :let  [path (.getPath file)]
-        :when (re-find pattern path)
-        :let  [entity-id (extract-entity-id path)]
-        :when entity-id]
-    {:kind kind :ref entity-id :file path}))
+(def ^:private model->kind
+  "Map serdes model names to index kinds."
+  {"Card"       :card
+   "Dashboard"  :dashboard
+   "Collection" :collection
+   "Document"   :document})
 
-(defn- index-collection-files
-  "Index collection YAML files under collections/.
-   Collection files are those directly inside a collection directory
-   (not inside cards/, dashboards/, or transforms/ subdirs)
-   where the filename matches the directory name."
+(defn- index-collections-tree
+  "Walk the collections/ directory and index all entities by their serdes model.
+   Returns entries for cards, dashboards, and collections."
   [export-dir]
   (let [collections-dir (io/file export-dir "collections")]
     (when (.isDirectory collections-dir)
       (for [^File file (file-seq collections-dir)
             :when (.isFile file)
-            :let  [path (.getPath file)
-                   fname (.getName file)]
-            :when (str/ends-with? fname ".yaml")
-            ;; Exclude files in cards/, dashboards/, transforms/ subdirs
-            :when (not (re-find #"/(?:cards|dashboards|transforms)/[^/]+\.yaml$" path))
-            ;; Collection file: directory name matches filename (minus .yaml)
-            :let  [parent-name (.getName (.getParentFile file))
-                   base-name (str/replace fname ".yaml" "")]
-            :when (= parent-name base-name)
+            :let  [path (.getPath file)]
+            :when (str/ends-with? (.getName file) ".yaml")
+            :let  [model (extract-model path)
+                   kind  (get model->kind model)]
+            :when kind
             :let  [entity-id (extract-entity-id path)]
             :when entity-id]
-        {:kind :collection :ref entity-id :file path}))))
+        {:kind kind :ref entity-id :file path}))))
 
 (defn build-file-index
   "Build index of all entity files in an export directory.
@@ -213,9 +212,7 @@
   [export-dir]
   (let [entries (concat
                  (walk-layout (io/file export-dir) [] database-layout)
-                 (index-entity-id-files export-dir :card      #"/cards/[^/]+\.yaml$")
-                 (index-entity-id-files export-dir :dashboard #"/dashboards/[^/]+\.yaml$")
-                 (index-collection-files export-dir))
+                 (index-collections-tree export-dir))
         ;; Group by [kind ref] to find duplicates
         by-key  (reduce (fn [m {:keys [kind ref file]}]
                           (update m [kind ref] (fnil conj []) file))

@@ -25,7 +25,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.serialization.resolve :as resolve]))
+   [medley.core :as medley]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.models.serialization.resolve :as resolve]
+   [metabase.util.malli.fn :as mu.fn]))
 
 (set! *warn-on-reflection* true)
 
@@ -174,18 +177,93 @@
       (as-> c (let [ref (resolve/import-mbql (:field_ref col))]
                 (if (field-ref-has-nil? ref) (dissoc c :field_ref) (assoc c :field_ref ref)))))))
 
+(defn- mbql-operator?
+  "Does this string look like an MBQL operator rather than a portable ref element?
+   MBQL operators are lowercase/symbol strings like \"field\", \">\", \"case\", \"time-interval\".
+   Portable ref elements are database/table names that contain spaces or start with uppercase."
+  [^String s]
+  (and (not (str/blank? s))
+       (not (str/includes? s " "))
+       (let [c (.charAt s 0)]
+         (not (Character/isUpperCase c)))))
+
+(def ^:private temporal-unit-strings
+  "String values that should be keywordized when they appear as MBQL arguments.
+   These are temporal bucketing units and modes that YAML gives us as strings."
+  #{"day" "day-of-month" "day-of-week" "day-of-year" "default"
+    "hour" "hour-of-day" "millisecond" "minute" "minute-of-hour"
+    "month" "month-of-year" "quarter" "quarter-of-year"
+    "second" "second-of-minute" "week" "week-of-year" "year" "year-of-era"
+    ;; day-of-week modes
+    "iso" "us" "instance"
+    ;; relative-datetime
+    "current"})
+
+(defn- maybe-keywordize-arg
+  "Keywordize a string argument if it's a known keyword value (temporal unit, mode, etc.).
+   Leaves all other strings as-is (column names, search strings, etc.)."
+  [form]
+  (if (and (string? form) (contains? temporal-unit-strings form))
+    (keyword form)
+    form))
+
+(defn- keywordize-mbql-operators
+  "Walk a data structure and keywordize MBQL operators and known keyword arguments.
+   YAML parses everything as strings, but MBQL expects keyword operators
+   and keyword-valued arguments (temporal units, modes, etc.).
+
+   Operators (first position) are keywordized if they look like MBQL operators.
+   Arguments are only keywordized if they match a known set of keyword values
+   (temporal units, modes). This avoids incorrectly keywordizing string literals
+   like column names or search strings."
+  [form]
+  (cond
+    (and (vector? form) (seq form) (string? (first form)) (mbql-operator? (first form)))
+    (into [(keyword (first form))] (map #(-> % keywordize-mbql-operators maybe-keywordize-arg)) (rest form))
+
+    (vector? form)
+    (mapv keywordize-mbql-operators form)
+
+    (map? form)
+    (reduce-kv (fn [m k v] (assoc m k (keywordize-mbql-operators v))) {} form)
+
+    (sequential? form)
+    (map keywordize-mbql-operators form)
+
+    :else form))
+
 (defn- convert-dataset-query
   "Convert a dataset query from serdes format, resolving paths to IDs.
-   Uses sentinel IDs for unresolved refs so the query can be constructed
-   even when some fields/tables don't exist in the schema."
+
+   Pipeline:
+   1. keywordize-mbql-operators — turn string operators/args into keywords
+   2. resolve/import-mbql — resolve portable refs (path vectors) to integer IDs
+   3. mbql.normalize/normalize — normalize the fully-resolved query
+      (handles remaining string→keyword for temporal units, filter types, etc.)
+   4. Sentinel IDs assigned for unresolved refs so queries can still be constructed"
   [store !failures query]
   (when query
-    (let [db-name (:database query)
-          db-id   (when (string? db-name) (resolve-db-name store !failures db-name))
-          query   (if db-id (assoc query :database db-id) query)
-          resolver (make-import-resolver store !failures :sentinel? true)]
-      (binding [resolve/*import-resolver* resolver]
-        (resolve/import-mbql query)))))
+    (try
+      (let [;; Step 1: keywordize string operators and keyword args
+            query   (-> query
+                        (medley/update-existing :query keywordize-mbql-operators)
+                        (medley/update-existing :native keywordize-mbql-operators))
+            ;; Step 2: resolve portable refs to integer IDs
+            db-name (:database query)
+            db-id   (when (string? db-name) (resolve-db-name store !failures db-name))
+            query   (cond-> query db-id (assoc :database db-id))
+            resolver (make-import-resolver store !failures :sentinel? true)
+            query   (binding [resolve/*import-resolver* resolver]
+                      (resolve/import-mbql query))
+            ;; Step 3: legacy normalizer handles remaining string→keyword
+            query   (mbql.normalize/normalize query)]
+        query)
+      (catch Exception _
+        ;; If normalization/resolution fails, return the partially-processed query.
+        ;; The caller will handle the error downstream.
+        (let [db-name (:database query)
+              db-id   (when (string? db-name) (resolve-db-name store !failures db-name))]
+          (cond-> query db-id (assoc :database db-id)))))))
 
 (defn- ->card-metadata
   "Convert a cached card entity to lib metadata. Returns the metadata map with
@@ -427,20 +505,56 @@
                   dashcards))))
 
 ;;; ===========================================================================
+;;; Document-specific checks
+;;;
+;;; Documents contain ProseMirror content with embedded card references.
+;;; cardEmbed nodes have attrs.id which is a serdes portable ref:
+;;;   [{:model "Card" :id "entity-id"}]
+;;; ===========================================================================
+
+(defn- extract-card-embeds
+  "Walk a ProseMirror content tree and extract card entity-ids from cardEmbed nodes."
+  [node]
+  (when (map? node)
+    (let [embeds (when (= "cardEmbed" (:type node))
+                   (let [refs (get-in node [:attrs :id])]
+                     (keep (fn [ref]
+                             (when (and (map? ref) (= "Card" (:model ref)))
+                               (:id ref)))
+                           (if (sequential? refs) refs [refs]))))
+          child-embeds (mapcat extract-card-embeds (:content node))]
+      (concat embeds child-embeds))))
+
+(defn- check-document
+  "Run document-specific semantic checks. Validates that embedded card refs resolve."
+  [store data]
+  (let [doc       (:document data)
+        card-eids (extract-card-embeds doc)]
+    (into []
+          (keep (fn [card-eid]
+                  (when-not (store/in-index? store :card card-eid)
+                    {:type :document-card-ref
+                     :entity-id card-eid
+                     :message (str "document embeds card " card-eid " which is not in the export")})))
+          card-eids)))
+
+;;; ===========================================================================
 ;;; Non-card entity checking — load from files, run common + type-specific checks
 ;;; ===========================================================================
 
 (defn- check-entity-from-file
   "Load an entity YAML file from the index and run checks.
-   Runs common checks on all entities, plus dashboard-specific checks.
+   Runs common checks on all entities, plus type-specific checks.
    Returns [entity-id result-map] or nil if all checks pass."
   [store kind entity-id]
   (when-let [file (store/index-file store kind entity-id)]
     (try
       (let [data     (serdes/load-yaml file)
             failures (into (check-common store data)
-                           (when (= :dashboard kind)
-                             (check-dashboard store data)))]
+                           (case kind
+                             :dashboard (check-dashboard store data)
+                             :document  (check-document store data)
+                             nil))]
         (when (seq failures)
           [entity-id {:name       (or (:name data) entity-id)
                       :entity-id  entity-id
@@ -453,7 +567,7 @@
                     :error      (.getMessage e)}]))))
 
 (defn- check-non-card-entities
-  "Run checks on indexed dashboards and collections (not cards).
+  "Run checks on indexed dashboards, collections, and documents (not cards).
    Cards are checked inline in check-card since their data is already loaded.
    Returns a map of entity-id → result for entities with failures."
   [store]
@@ -461,7 +575,8 @@
         (keep identity)
         (concat
          (map #(check-entity-from-file store :dashboard %) (store/all-refs store :dashboard))
-         (map #(check-entity-from-file store :collection %) (store/all-refs store :collection)))))
+         (map #(check-entity-from-file store :collection %) (store/all-refs store :collection))
+         (map #(check-entity-from-file store :document %) (store/all-refs store :document)))))
 
 ;;; ===========================================================================
 ;;; Card validation
@@ -553,18 +668,25 @@
 (defn check-card
   "Check a single card: common checks (collection_id) + query validation."
   [store provider entity-id]
-  (let [data            (store/load-card! store entity-id)
-        common-failures (check-common store data)
-        query-result    (check-query store provider data)
-        all-unresolved  (into (or (:unresolved query-result) []) common-failures)]
-    (cond-> {:card-id    (:id data)
-             :name       (:name data)
-             :entity-id  entity-id}
-      (seq all-unresolved)          (assoc :unresolved all-unresolved)
-      (:refs query-result)          (assoc :refs (:refs query-result))
-      (:bad-refs query-result)      (assoc :bad-refs (:bad-refs query-result))
-      (:native-errors query-result) (assoc :native-errors (:native-errors query-result))
-      (:error query-result)         (assoc :error (:error query-result)))))
+  (try
+    (let [data            (store/load-card! store entity-id)
+          common-failures (check-common store data)
+          query-result    (check-query store provider data)
+          all-unresolved  (into (or (:unresolved query-result) []) common-failures)]
+      (cond-> {:card-id    (:id data)
+               :name       (:name data)
+               :entity-id  entity-id}
+        (seq all-unresolved)          (assoc :unresolved all-unresolved)
+        (:refs query-result)          (assoc :refs (:refs query-result))
+        (:bad-refs query-result)      (assoc :bad-refs (:bad-refs query-result))
+        (:native-errors query-result) (assoc :native-errors (:native-errors query-result))
+        (:error query-result)         (assoc :error (:error query-result))
+        (:warning query-result)       (assoc :warning (:warning query-result))))
+    (catch Exception e
+      (let [data (try (store/load-card! store entity-id) (catch Exception _ nil))]
+        {:entity-id entity-id
+         :name      (:name data)
+         :error     (.getMessage e)}))))
 
 (defn- check-duplicate-entity-ids
   "Check for duplicate entity_ids in the index. Returns a map of
@@ -589,14 +711,15 @@
    Card query validation uses the source and provider.
    Dashboard/collection collection_id validation loads YAML from files in the index."
   [source index card-ids]
-  (let [store    (store/make-store source index)
-        provider (make-provider store)
-        card-results (into {}
-                           (for [eid card-ids]
-                             [eid (check-card store provider eid)]))
+  (binding [mu.fn/*enforce* false]
+    (let [store    (store/make-store source index)
+          provider (make-provider store)
+          card-results (into {}
+                             (for [eid card-ids]
+                               [eid (check-card store provider eid)]))
         other-results (check-non-card-entities store)
-        dupe-results  (check-duplicate-entity-ids index)]
-    (merge card-results other-results dupe-results)))
+          dupe-results  (check-duplicate-entity-ids index)]
+      (merge card-results other-results dupe-results))))
 
 ;;; ===========================================================================
 ;;; Results processing — pure functions on result data
@@ -696,7 +819,7 @@
         src          (source/composite-source db-source export-source)
         db-index     (serdes/source-index db-source)
         export-index (serdes/source-index export-source)
-        index        (merge db-index (select-keys export-index [:card :dashboard :collection :duplicates]))]
+        index        (merge db-index (select-keys export-index [:card :dashboard :collection :document :duplicates]))]
     {:source src :index index :export-source export-source}))
 
 (defn check

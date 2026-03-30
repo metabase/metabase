@@ -63,13 +63,13 @@
   (contains? (get-in @store [:index kind]) ref))
 
 (defn index-kind-of
-  "Return the kind of an entity-id in the index, or nil if not found.
-   Checks :collection, :card, :dashboard."
+  "Return the kind of an entity-id in the index, or nil if not found."
   [store entity-id]
   (cond
     (in-index? store :collection entity-id) :collection
     (in-index? store :card entity-id)       :card
     (in-index? store :dashboard entity-id)  :dashboard
+    (in-index? store :document entity-id)   :document
     :else nil))
 
 (defn index-file
