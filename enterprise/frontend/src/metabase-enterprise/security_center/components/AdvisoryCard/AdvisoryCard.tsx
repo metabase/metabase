@@ -55,8 +55,10 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
               </Badge>
             )}
             <Badge
-              color={advisory.affected ? "error" : "success"}
-              variant={advisory.affected ? "filled" : "light"}
+              variant="outline"
+              className={
+                advisory.affected ? S.statusAffected : S.statusNotAffected
+              }
               data-testid="affected-status"
             >
               {advisory.affected ? t`Affected` : t`Not affected`}
@@ -77,7 +79,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
           </Text>
         </Group>
 
-        <Group gap="md">
+        <Group gap="md" h={28}>
           <Anchor
             href={advisory.advisoryUrl}
             target="_blank"

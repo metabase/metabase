@@ -21,3 +21,15 @@
   background-color: var(--mb-color-success);
   color: var(--mb-color-white);
 }
+
+.statusAffected {
+  background-color: var(--mb-color-background-error);
+  border-color: var(--mb-color-error);
+  color: var(--mb-color-error);
+}
+
+.statusNotAffected {
+  background-color: var(--mb-color-background-success);
+  border-color: var(--mb-color-success);
+  color: var(--mb-color-success);
+}
