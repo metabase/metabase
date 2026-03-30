@@ -9,6 +9,7 @@ import {
 
 const TRANSFORMS_PRODUCT_TYPES = ["transforms-basic"] as const;
 
+// TODO: Check for unused props in useTransformsBilling once basic and advanced transforms pricing has been updated
 export function useTransformsBilling() {
   const isAdmin = useSelector(getUserIsAdmin);
   const tokenStatus = useSetting("token-status");

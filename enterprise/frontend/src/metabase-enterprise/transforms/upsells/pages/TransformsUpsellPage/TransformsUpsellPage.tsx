@@ -7,6 +7,7 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
+import { formatNumber } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { getStoreUsers } from "metabase/selectors/store-users";
@@ -17,12 +18,13 @@ import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api/cloud-add
 import { TransformsSettingUpModal } from "../../components/TransformsSettingUpModal";
 import { useTransformsBilling } from "../../hooks/useTransformsBilling";
 
+const NOTIFICATION_THRESHOLD = 0.8;
+
 /**
- * Note: this upsell page should only be displayed to cloud customers since OSS and Self-hosted have
- * transforms enabled by default.
+ * Note: this upsell page should only be displayed to cloud customers since OSS and Self-hosted
+ * do not need to pay extra for basic transforms.
  */
 export function TransformsUpsellPage() {
-  // TODO: Check for unused props in useTransformsBilling
   const { error, hadTransforms, isLoading } = useTransformsBilling();
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
@@ -78,8 +80,8 @@ export function TransformsUpsellPage() {
 
   const freeUnits = 1000; // TODO: Get from api
   const freeUnitsStr = freeUnits.toLocaleString();
-  const notifyThreshold = 0.8; // TODO: Get from api
-  const perTransformRate = "TODO"; // TODO: Get from api
+  const batchPrice = 10; // TODO: Get from api
+  const batchSize = 1000; // TODO: Get from api
 
   return (
     <DottedBackground
@@ -111,23 +113,31 @@ export function TransformsUpsellPage() {
                   <Title
                     order={2}
                   >{t`${freeUnitsStr} free transform runs`}</Title>
+                  <Text c="text-secondary" fz="1rem" lh={1.4}>
+                    {jt`Your Cloud plan comes with ${freeUnitsStr} transform runs ${(
+                      <strong key="bold">{t`completely free`}</strong>
+                    )}. After that, you'll be charged ${formatNumber(
+                      batchPrice,
+                      {
+                        number_style: "currency",
+                        currency: "USD",
+                        currency_style: "symbol",
+                        minimumFractionDigits: 0,
+                      },
+                    )} per ${batchSize.toLocaleString()} runs. You only pay for what you use.`}
+                  </Text>
                   <Text
                     c="text-secondary"
                     fz="1rem"
                     lh={1.4}
-                  >{jt`Your cloud plan comes with ${freeUnitsStr} transform runs ${(<strong key="bold">{t`completely free`}</strong>)}. After you use your ${freeUnitsStr} runs you'll be charged ${perTransformRate} per run. You only pay for what you use.`}</Text>
-                  <Text
-                    c="text-secondary"
-                    fz="1rem"
-                    lh={1.4}
-                  >{t`We'll notify you when you've hit ${notifyThreshold * 100}% of your allotment.`}</Text>
+                  >{t`We'll notify you when you've hit ${NOTIFICATION_THRESHOLD * 100}% of your allotment.`}</Text>
                   <Button
                     loading={isPurchasing}
                     variant="primary"
                     onClick={handlePurchase}
                   >{t`Agree and continue`}</Button>
                   <Text c="text-secondary" lh={1.4}>
-                    {t`By clicking agree and continue you agree to be charged in accordance with our terms of service. Your free transforms never expire, so they'll be waiting here for you when you'r ready.`}
+                    {t`By clicking agree and continue, you agree to be charged in accordance with our terms of service. Your free transforms never expire, so they'll be waiting here for you when you're ready.`}
                   </Text>
                 </>
               )
