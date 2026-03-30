@@ -699,16 +699,16 @@
         id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
         target-fields (into []
-                            (comp (map (fn [{source-field-id :id
-                                             :keys [fk-target-field-id]
-                                             :as   source}]
-                                         ;; the target field might not exist
-                                         (when-let [target (id->target-fields fk-target-field-id)]
-                                           (assoc target
-                                                  ::fk-field-id   source-field-id
-                                                  ::fk-field-name (lib.field.util/inherited-column-name source)
-                                                  ::fk-column-key (:lib/column-key source)
-                                                  ::fk-join-alias (:lib/join-alias source)))))
+                            (comp (keep (fn [{source-field-id :id
+                                              :keys [fk-target-field-id]
+                                              :as   source}]
+                                          ;; the target field might not exist
+                                          (when-let [target (id->target-fields fk-target-field-id)]
+                                            (assoc target
+                                                   ::fk-field-id   source-field-id
+                                                   ::fk-field-name (lib.field.util/inherited-column-name source)
+                                                   ::fk-column-key (:lib/column-key source)
+                                                   ::fk-join-alias (:lib/join-alias source)))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata

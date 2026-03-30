@@ -368,8 +368,9 @@
   "Merge in snake-cased `:metadata/model-metadata`."
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
-  (let [model-metadata (some->> (get-in query [:info :metadata/model-metadata])
-                                (lib.card/->card-metadata-columns query))]
+  (let [card-id        (get-in query [:info :card-id])
+        model-metadata (some->> (get-in query [:info :metadata/model-metadata])
+                                (lib.card/->card-metadata-columns query card-id))]
     (if-not (seq model-metadata)
       cols ; If not a model, nothing to change
       (let [last-stage (lib.util/query-stage query -1)

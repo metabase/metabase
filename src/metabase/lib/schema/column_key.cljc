@@ -80,7 +80,7 @@
   [:map {:decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= :column/key]]
    ;; Optional for testing - some queries are analyzed as cards without having an ID.
-   [:column.card/card-id {:optional true} ::lib.schema.id/card]
+   [:column.card/card-id ::lib.schema.id/card]
    [:column.card.opaque/column-alias [:ref :metabase.lib.schema.metadata/desired-column-alias]]])
 
 (mr/def ::expression

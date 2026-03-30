@@ -71,7 +71,7 @@
   * `field-metadata`      = Field metadata (`:metadata/column`) from the metadata provider for the Field with ID"
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    source-metadata-col   :- :map
-   card-id               :- [:maybe ::lib.schema.id/card]
+   card-id               :- ::lib.schema.id/card
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
                                 (perf/update-keys u/->kebab-case-en))
@@ -107,11 +107,7 @@
               ;; original DB field but should not be treated as FKs unless the metadata is configured
               ;; accordingly.
               (not= (:semantic-type source-metadata-col) :type/FK)
-              (assoc :fk-target-field-id nil)
-
-              (not (:lib/column-key col))
-              (as-> $c (assoc $c :lib/column-key (mu/disable-enforcement
-                                                   (lib.column-key/opaque-on-card metadata-providerable $c)))))]
+              (assoc :fk-target-field-id nil))]
     (-> col
         lib.field.util/update-keys-for-col-from-previous-stage
         (merge (when card-id
@@ -127,27 +123,24 @@
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata.
 
   If the metadata does not have `:lib/column-key`, this will add one, treating the card's columns as opaque."
-  ([metadata-providerable cols]
-   (->card-metadata-columns metadata-providerable nil cols))
-
-  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    card-or-id-or-nil     :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
-    cols                  :- [:maybe [:or
-                                      [:sequential ::lib.schema.metadata/lib-or-legacy-column]
-                                      [:map
-                                       [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
-   ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
-   ;; contains` :columns` as well.
-   (when-let [cols (not-empty (cond
-                                (map? cols)        (:columns cols)
-                                (sequential? cols) cols))]
-     (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-           card-id           (when card-or-id-or-nil (u/the-id card-or-id-or-nil))
-           field-ids         (not-empty (into #{} (keep :id) cols))
-           fields            (when field-ids
-                               (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/column, :id field-ids}))
-           field-id->field   (m/index-by :id fields)]
-       (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols)))))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card-or-id            :- [:or ::lib.schema.id/card ::lib.schema.metadata/card]
+   cols                  :- [:maybe [:or
+                                     [:sequential ::lib.schema.metadata/lib-or-legacy-column]
+                                     [:map
+                                      [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
+  ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
+  ;; contains` :columns` as well.
+  (when-let [cols (not-empty (cond
+                               (map? cols)        (:columns cols)
+                               (sequential? cols) cols))]
+    (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+          card-id           (u/the-id card-or-id)
+          field-ids         (not-empty (into #{} (keep :id) cols))
+          fields            (when field-ids
+                              (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/column, :id field-ids}))
+          field-id->field   (m/index-by :id fields)]
+      (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols))))
 
 (mr/def ::column
   [:merge

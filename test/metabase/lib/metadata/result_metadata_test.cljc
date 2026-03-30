@@ -957,7 +957,8 @@
                                             :semantic-type (base-type->semantic-type (:base-type col))))]
       (testing "respect :metadata/model-metadata"
         (let [query (-> query
-                        (assoc-in [:info :metadata/model-metadata] user-edited))]
+                        (assoc-in [:info :metadata/model-metadata] user-edited)
+                        (assoc-in [:info :card-id] 123))]
           (is (=? [{:name "ID",          :description "user description", :display-name "user display name", :semantic-type :type/Quantity}
                    {:name "NAME",        :description "user description", :display-name "user display name", :semantic-type :type/Name}
                    {:name "CATEGORY_ID", :description "user description", :display-name "user display name", :semantic-type :type/Quantity}
@@ -987,7 +988,9 @@
                                          :id            (meta/id :orders :id)
                                          :table_id      (meta/id :orders)})
             ;; Add stale metadata to query
-            query-with-stale-metadata (assoc-in query [:info :metadata/model-metadata] stale-model-metadata)
+            query-with-stale-metadata (-> query
+                                          (assoc-in [:info :metadata/model-metadata] stale-model-metadata)
+                                          (assoc-in [:info :card-id] 123))
             result-cols               (result-metadata/returned-columns query-with-stale-metadata)]
         (is (= real-id (:id (first result-cols)))
             "MBQL models should use :id from query analysis, not stale model metadata")))
@@ -1001,7 +1004,9 @@
                                    :base_type    :type/BigInteger
                                    :id           (meta/id :venues :id)
                                    :table_id     (meta/id :venues)}]
-            query-with-metadata  (assoc-in native-query [:info :metadata/model-metadata] user-mapped-metadata)
+            query-with-metadata  (-> native-query
+                                     (assoc-in [:info :metadata/model-metadata] user-mapped-metadata)
+                                     (assoc-in [:info :card-id] 456))
             result-cols          (result-metadata/returned-columns query-with-metadata)]
         (is (= (meta/id :venues :id) (:id (first result-cols)))
             "Native models should preserve :id from model metadata (user mappings)")))))

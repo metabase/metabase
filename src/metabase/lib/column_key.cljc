@@ -59,29 +59,20 @@
    :column.implicit/fk-column     (->key fk-column-or-key)
    :column.implicit/target-column (->key target-column-or-key)})
 
-(mu/defn opaque-on-card
-  "Given a column or its `:lib/desired-column-alias` stage-unique string alias, returns the placeholder column key for
-  a column from a card whose definition we don't know at present."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   column-or-alias       :- [:or ::lib.schema.metadata/column ::lib.schema.metadata/desired-column-alias]]
-  {:lib/type                        :column/key
-   :column.card.opaque/column-alias (or (and (string? column-or-alias) column-or-alias)
-                                        (:lib/desired-column-alias column-or-alias)
-                                        (lib.field.util/inherited-column-name column-or-alias)
-                                        (lib.join.util/desired-alias metadata-providerable column-or-alias)
-                                        (throw (ex-info "Failed to identify the unique alias for an opaque column"
-                                                        {:column-or-alias column-or-alias})))})
-
 (mu/defn from-card :- ::lib.schema.metadata/column
   "Given **the complete `column-metadata`** for a column returned by a card, and the ID of the card, add the
-  `:lib/column-key` for the opaque column coming from the card.
-  as coming from the card."
-  [column-metadata       :- ::lib.schema.metadata/column
+  `:lib/column-key` for the opaque column coming from the card."
+  [column-metadata       ; :- ::lib.schema.metadata/column - Not actually a valid column - might not have a column key.
    metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card-id               :- [:maybe ::lib.schema.id/card]]
-  (let [column-key (cond-> (opaque-on-card metadata-providerable column-metadata)
-                     card-id (assoc :column.card/card-id card-id))]
-    (assoc column-metadata :lib/column-key column-key)))
+   card-id               :- ::lib.schema.id/card]
+  (assoc column-metadata :lib/column-key
+         {:lib/type                        :column/key
+          :column.card/card-id             card-id
+          :column.card.opaque/column-alias (or (:lib/desired-column-alias column-metadata)
+                                               (lib.field.util/inherited-column-name column-metadata)
+                                               (lib.join.util/desired-alias metadata-providerable column-metadata)
+                                               (throw (ex-info "Failed to find unique alias for an opaque column"
+                                                               {:column column-metadata})))}))
 
 (mu/defn breakout-key :- ::lib.schema.column-key/column-key
   "Given the `input-column-or-key` for a breakout's input column, and the breakout clause, return the column key for

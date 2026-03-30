@@ -283,7 +283,8 @@
       (testing "respect :metadata/model-metadata"
         (let [card  (lib.metadata/card edited-mp 1)
               query (-> (:dataset-query card)
-                        (assoc-in [:info :metadata/model-metadata] (:result-metadata card)))]
+                        (assoc-in [:info :metadata/model-metadata] (:result-metadata card))
+                        (assoc-in [:info :card-id]                 1))]
           (is (=? [{:name "ID",          :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
                    {:name "NAME",        :description "user description", :display_name "user display name", :semantic_type :type/Name}
                    {:name "CATEGORY_ID", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
