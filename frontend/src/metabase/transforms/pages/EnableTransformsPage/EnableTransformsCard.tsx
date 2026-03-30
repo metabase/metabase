@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api/database";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
   Alert,
@@ -19,14 +17,15 @@ import {
 
 export function EnableTransformsCard({
   onEnableClick,
+  permissionsErrorMessage,
   leftContent,
   loading,
 }: {
   onEnableClick: () => void;
+  permissionsErrorMessage?: React.ReactNode;
   leftContent?: React.ReactNode;
   loading?: boolean;
 }) {
-  const isAdmin = useSelector(getUserIsAdmin);
   const { data: databases } = useListDatabasesQuery();
   const hasDbThatSupportsTransforms =
     databases?.data.some(doesDatabaseSupportTransforms) ?? false;
@@ -43,7 +42,7 @@ export function EnableTransformsCard({
                 fz="1rem"
                 lh={1.4}
               >{t`Transforms let you create new tables within your connected databases, helping you make nicer and more self-explanatory datasets for your end users to look at and explore.`}</Text>
-              {isAdmin && (
+              {permissionsErrorMessage || (
                 <Stack gap="lg" align="start">
                   <Text
                     c="text-secondary"

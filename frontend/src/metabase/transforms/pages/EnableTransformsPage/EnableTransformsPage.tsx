@@ -1,14 +1,19 @@
 import { t } from "ttag";
 
 import { useUpdateSettingMutation } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { Center } from "metabase/ui";
+import { useSelector } from "metabase/lib/redux/hooks";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { Center, Text } from "metabase/ui";
 
 import { EnableTransformsCard } from "./EnableTransformsCard";
 
 export const EnableTransformsPage = () => {
+  const isAdmin = useSelector(getUserIsAdmin);
+  const adminEmail = useSetting("admin-email");
   const [updateSetting, { isLoading: updateSettingLoading }] =
     useUpdateSettingMutation();
 
@@ -28,6 +33,14 @@ export const EnableTransformsPage = () => {
       <Center>
         <EnableTransformsCard
           onEnableClick={enableTransforms}
+          permissionsErrorMessage={
+            !isAdmin && (
+              <Text fz="1rem" fw="bold">
+                {t`To enable Transforms, please contact your administrator`}
+                {adminEmail && ` (${adminEmail})`}.
+              </Text>
+            )
+          }
           loading={updateSettingLoading}
         />
       </Center>

@@ -7,7 +7,9 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
+import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
+import { getStoreUsers } from "metabase/selectors/store-users";
 import { EnableTransformsCard } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsCard";
 import { Button, Center, Flex, Text, Title } from "metabase/ui";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api/cloud-add-ons";
@@ -20,11 +22,9 @@ import { useTransformsBilling } from "../../hooks/useTransformsBilling";
  * transforms enabled by default.
  */
 export function TransformsUpsellPage() {
-  // TODO: Pass to EnableTransformsCard
-  // const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
-
   // TODO: Check for unused props in useTransformsBilling
   const { error, hadTransforms, isLoading } = useTransformsBilling();
+  const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const { sendErrorToast } = useMetadataToasts();
@@ -96,6 +96,15 @@ export function TransformsUpsellPage() {
         <LineDecorator pos="absolute" mah="100%">
           <EnableTransformsCard
             onEnableClick={onEnableClick}
+            permissionsErrorMessage={
+              !isStoreUser && (
+                <Text fz="1rem" fw="bold">
+                  {t`To enable Transforms, please contact a store administrator`}
+                  {anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`}
+                  .
+                </Text>
+              )
+            }
             leftContent={
               !shouldShowAgreement ? undefined : (
                 <>

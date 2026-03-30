@@ -1,6 +1,7 @@
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getIsHosted } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   useGetBillingInfoQuery,
   useListAddOnsQuery,
@@ -9,6 +10,7 @@ import {
 const TRANSFORMS_PRODUCT_TYPES = ["transforms-basic"] as const;
 
 export function useTransformsBilling() {
+  const isAdmin = useSelector(getUserIsAdmin);
   const tokenStatus = useSetting("token-status");
   const isHosted = useSelector(getIsHosted);
   const hasTransforms = useHasTokenFeature("transforms-basic");
@@ -19,7 +21,7 @@ export function useTransformsBilling() {
     error: addOnsError,
     isLoading: addOnsLoading,
   } = useListAddOnsQuery(undefined, {
-    skip: !isHosted,
+    skip: !isHosted || !isAdmin,
   });
 
   const {
