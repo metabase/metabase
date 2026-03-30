@@ -1,7 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
+import {
+  setupRemoteSyncBranchesEndpoint,
+  setupRemoteSyncDirtyEndpoint,
+  setupRemoteSyncEndpoints,
+  setupRemoteSyncImportEndpoint,
+  setupRemoteSyncSettingsEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 
 import { GitSyncControls } from "./GitSyncControls";
@@ -244,6 +250,53 @@ describe("GitSyncControls", () => {
       ).toBeInTheDocument();
       jest.advanceTimersByTime(10000);
       jest.useRealTimers();
+    });
+  });
+
+  describe("pull error handling", () => {
+    it("is disabled and shows error tooltip when remote changes check fails", async () => {
+      // Set up all endpoints except has-remote-changes manually
+      setupRemoteSyncBranchesEndpoint(["main", "develop"]);
+      setupRemoteSyncDirtyEndpoint({ dirty: [] });
+      setupRemoteSyncImportEndpoint();
+      setupRemoteSyncSettingsEndpoint();
+      fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
+      fetchMock.get("path:/api/ee/remote-sync/current-task", {
+        status: "idle",
+      });
+
+      // Set up has-remote-changes to return a 401 auth error
+      fetchMock.get("path:/api/ee/remote-sync/has-remote-changes", 401);
+
+      setupCollectionEndpoints();
+      setupSessionEndpoints({
+        remoteSyncEnabled: true,
+        currentBranch: "main",
+        syncType: "read-write",
+      });
+
+      renderWithProviders(<GitSyncControls />, {
+        storeInitialState: createRemoteSyncStoreState({
+          isAdmin: true,
+          remoteSyncEnabled: true,
+          currentBranch: "main",
+          syncType: "read-write",
+        }),
+      });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+
+      await userEvent.click(getBranchButton(/main/));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "Failed to check for changes — check your authentication token",
+          ),
+        ).toBeInTheDocument();
+      });
     });
   });
 

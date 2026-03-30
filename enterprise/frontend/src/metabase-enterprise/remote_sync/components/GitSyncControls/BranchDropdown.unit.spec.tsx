@@ -67,6 +67,28 @@ describe("BranchDropdown", () => {
     jest.clearAllMocks();
   });
 
+  describe("error handling", () => {
+    it("should show error message when branches fail to load", async () => {
+      const onChange = jest.fn();
+      fetchMock.get("path:/api/ee/remote-sync/branches", {
+        status: 401,
+        body: { message: "Unauthorized" },
+      });
+
+      renderWithProviders(
+        <WrapperComponent value="main" onChange={onChange} />,
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            "Failed to load branches — check your authentication token",
+          ),
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
   describe("rendering", () => {
     it("should render search input", async () => {
       setup();
