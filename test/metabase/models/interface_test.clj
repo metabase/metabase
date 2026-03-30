@@ -93,7 +93,7 @@
                          :pie.show_legend_perecent percent
                          :pie.show_data_labels     labels})))))))
 
-(deftest ^:parallel encrypted-data-with-no-secret-test
+(deftest encrypted-data-with-no-secret-test
   (encryption-test/with-secret-key nil
     (testing "Just parses string normally when there is no key and the string is JSON"
       (is (= {:a 1}

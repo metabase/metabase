@@ -560,7 +560,7 @@
 ;; Transforms are globally read-only when remote-sync is enabled and remote-sync-type is :read-only.
 ;; This is different from other models which use collection-based editability checks.
 
-(deftest ^:parallel transform-superuser-can-read-test
+(deftest transform-superuser-can-read-test
   (testing "can_read should be true for superusers"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :crowberto)
@@ -579,7 +579,7 @@
           (is (true? (mi/can-read? (t2/select-one :model/Transform :id transform-id)))
               "Superuser should be able to read transforms"))))))
 
-(deftest ^:parallel transform-non-superuser-cannot-read-test
+(deftest transform-non-superuser-cannot-read-test
   (testing "can_read should be false for non-superusers"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :rasta)

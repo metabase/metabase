@@ -267,7 +267,7 @@
                           :entity-types ["card"]
                           :search-native-query nil}))))))
 
-(deftest ^:parallel other-user-collection-test
+(deftest other-user-collection-test
   (testing "excludes entities from other users' collections"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
@@ -284,7 +284,7 @@
                           (map :name)
                           (set)))))))))))
 
-(deftest ^:parallel enrich-with-collection-descriptions-test
+(deftest enrich-with-collection-descriptions-test
   (mt/with-premium-features #{:content-verification}
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table
@@ -342,7 +342,7 @@
                           (is (= 1 (count results)))
                           (is (= "dashboard" (:type (first results)))))))))))))))))
 
-(deftest ^:parallel weight-override-test
+(deftest weight-override-test
   (testing "weights can be overridden on a per-tool-call basis"
     (mt/with-test-user :crowberto
       (search.tu/with-temp-index-table

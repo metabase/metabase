@@ -128,7 +128,7 @@
             (is (= {:conversation_id conversation-id :positive false}
                    (json/decode (get-in fb [:negative_button :value]) true)))))))))
 
-(deftest ^:parallel streaming-response-includes-feedback-blocks-test
+(deftest streaming-response-includes-feedback-blocks-test
   (testing "send-response passes feedback blocks to stop-stream"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event]

@@ -103,7 +103,7 @@
 
 ;;; ----------------------------------------- build-schema-context Tests -----------------------------------------
 
-(deftest ^:parallel build-schema-context-test
+(deftest build-schema-context-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database db     {}
                    :model/Table    table1 {:db_id (:id db) :name "orders" :schema "public"}
@@ -301,7 +301,7 @@
           (is (str/includes? result "products"))
           (is (str/includes? result "-- Product display name")))))))
 
-(deftest ^:parallel build-schema-context-with-fk-test
+(deftest build-schema-context-with-fk-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database db     {}
                    :model/Table    users  {:db_id (:id db) :name "users" :schema "public"}
@@ -319,7 +319,7 @@
           (is (some? result))
           (is (str/includes? result "FK->users.id")))))))
 
-(deftest ^:parallel build-schema-context-with-field-values-test
+(deftest build-schema-context-with-field-values-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database   db    {}
                    :model/Table      table {:db_id (:id db) :name "orders" :schema "public"}
@@ -338,7 +338,7 @@
           (is (str/includes? result "shipped"))
           (is (str/includes? result "delivered")))))))
 
-(deftest ^:parallel build-schema-context-with-table-description-test
+(deftest build-schema-context-with-table-description-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database db    {}
                    :model/Table    table {:db_id       (:id db)

@@ -76,7 +76,7 @@
     (mt/user-http-request :crowberto
                           :put 404 "document/99999" {:name "Non-existent Document" :document (documents.test-util/text->prose-mirror-ast "Doc")})))
 
-(deftest ^:parallel put-document-with-no-perms-test
+(deftest put-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Document {document-id :id} {:collection_id coll-id
                                                     :name "Test Document"
@@ -96,7 +96,7 @@
                                                :put 404 (format "document/%s" doc-id)
                                                {:name "Updated Name"}))))))))
 
-(deftest ^:parallel post-document-with-no-perms-test
+(deftest post-document-with-no-perms-test
   (mt/with-temp [:model/Collection {coll-id :id} {}]
     (mt/with-non-admin-groups-no-collection-perms coll-id
       (mt/user-http-request :rasta :post 403 "document/"
@@ -280,7 +280,7 @@
             ;; Other card should still be in old collection
             (is (= old-collection-id (:collection_id (t2/select-one :model/Card :id other-card-id))))))))))
 
-(deftest ^:parallel api-permission-edge-cases-test
+(deftest api-permission-edge-cases-test
   (testing "API permission validation edge cases"
     (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test@integration.com"}
                    :model/Collection {collection1-id :id} {:name "Permission Collection 1"}
@@ -1464,7 +1464,7 @@
             ;; Verify document is actually unarchived in database
           (is (false? (:archived (t2/select-one :model/Document :id doc-id)))))))))
 
-(deftest ^:parallel document-archive-with-cards-test
+(deftest document-archive-with-cards-test
   (testing "Document archiving includes associated cards"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Document with Cards"
@@ -1610,7 +1610,7 @@
         (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
         (is (false? (:archived (t2/select-one :model/Card :id standalone-card-id))))))))
 
-(deftest ^:parallel document-archived-directly-flag-test
+(deftest document-archived-directly-flag-test
   (testing "Document archived_directly flag behavior"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Test Document"
@@ -1680,7 +1680,7 @@
           (is (true? (:archived card)))
           (is (true? (:archived_directly card))))))))
 
-(deftest ^:parallel archived-documents-filtering-test
+(deftest archived-documents-filtering-test
   (testing "Archived documents are properly filtered from various endpoints"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {active-doc-id :id} {:name "Active Document"
@@ -1999,7 +1999,7 @@
                                                           :collection_id collection-id})]
             (is (nil? (:collection_position no-position-result)))))))))
 
-(deftest ^:parallel document-position-reconciliation-on-update-test
+(deftest document-position-reconciliation-on-update-test
   (testing "Position reconciliation works for document updates via API"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
       ;; Create documents with positions via API
@@ -2055,7 +2055,7 @@
               (let [doc2 (t2/select-one :model/Document :id doc2-id)]
                 (is (= 2 (:collection_position doc2)))))))))))
 
-(deftest ^:parallel document-collection-position-field-handling-test
+(deftest document-collection-position-field-handling-test
   (testing "Document model supports collection_position field via API"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
       (testing "collection_position is stored and retrieved correctly"

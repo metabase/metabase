@@ -60,7 +60,7 @@
                        entry))
                    (logger/messages))))))
 
-(deftest ^:parallel fork-logs-test
+(deftest fork-logs-test
   (testing "logger/for-ns works properly"
     (mt/with-temp-file [filename]
       (let [f (io/file filename)]
@@ -69,7 +69,7 @@
         (is (=? [#".*just a test.+"]
                 (line-seq (io/reader f))))))))
 
-(deftest ^:parallel fork-logs-test-2
+(deftest fork-logs-test-2
   (testing "logger/for-ns works properly"
     (let [baos (java.io.ByteArrayOutputStream.)]
       (with-open [_ (logger/for-ns baos 'metabase.logger.core-test {:additive false})]
@@ -79,7 +79,7 @@
         (is (=? [#".*just a test.+"]
                 (line-seq (io/reader (.toByteArray baos)))))))))
 
-(deftest ^:parallel fork-logs-test-3
+(deftest fork-logs-test-3
   (testing "We can capture few separate namespaces"
     (mt/with-temp-file [filename]
       (let [f (io/file filename)]

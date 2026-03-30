@@ -3098,14 +3098,14 @@
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
       (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card))))))))
 
-(deftest ^:parallel can-restore-collection-restorable-test
+(deftest can-restore-collection-restorable-test
   (testing "can_restore is correctly populated for collection when I can actually restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
       (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection))))))))
 
-(deftest ^:parallel can-restore-collection-not-restorable-parent-archived-test
+(deftest can-restore-collection-not-restorable-parent-archived-test
   (testing "can_restore is correctly populated for collection when I can't restore it because parent archived"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
@@ -3318,7 +3318,7 @@
       (is (= (str "/" a-id "/")
              (:location (t2/select-one :model/Collection c-id)))))))
 
-(deftest ^:parallel collection-deep-prune-multiple-ancestors
+(deftest collection-deep-prune-multiple-ancestors
   (mt/with-temp [:model/Collection {a-id :id :as a} {}
                  :model/Collection {b-id :id :as b} {:location (collection/children-location a)}
                  :model/Collection {c-id :id :as c} {:location (collection/children-location b)}

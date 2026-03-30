@@ -66,14 +66,14 @@
                             {:user_attribute "foo"})
       (is (not (t2/exists? :model/DatabaseRouter :database_id nonexistent-id :user_attribute "foo"))))))
 
-(deftest ^:parallel we-can-update-existing-router-databases-to-point-to-a-new-user-attribute
+(deftest we-can-update-existing-router-databases-to-point-to-a-new-user-attribute
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "foo"}]
     (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
                           {:user_attribute "bar"})
     (is (= "bar" (t2/select-one-fn :user_attribute :model/DatabaseRouter router-id)))))
 
-(deftest ^:parallel deleting-database-routers-works
+(deftest deleting-database-routers-works
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "foo"}
                  :model/Database {destination-db-id :id} {:router_database_id db-id}]
@@ -95,7 +95,7 @@
         (mt/user-http-request :rasta :put 403 (str "ee/database-routing/router-database/" db-id)
                               {:user_attribute "foo"})))))
 
-(deftest ^:parallel router-databases-have-a-router-user-attribute-on-the-get-api
+(deftest router-databases-have-a-router-user-attribute-on-the-get-api
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foobar"}]
     (is (= "foobar"
@@ -103,7 +103,7 @@
     (is (contains? (into #{} (map :router_user_attribute (:data (mt/user-http-request :crowberto :get 200 "database/"))))
                    "foobar"))))
 
-(deftest ^:parallel cannot-create-duplicate-names
+(deftest cannot-create-duplicate-names
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foobar"}
                  :model/Database _ {:name "fluffy" :router_database_id db-id}]
@@ -113,7 +113,7 @@
                                   :destinations [{:name "fluffy"
                                                   :details (:details (mt/db))}]})))))
 
-(deftest ^:parallel cannot-enable-db-routing-when-other-features-enabled
+(deftest cannot-enable-db-routing-when-other-features-enabled
   (mt/with-temp [:model/Database {db-id :id} {:settings {:persist-models-enabled true}}]
     (is (= "Cannot enable database routing for a database with model persistence enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
@@ -136,7 +136,7 @@
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"})))))
 
-(deftest ^:parallel can-delete-router-databases
+(deftest can-delete-router-databases
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Database {dest-db-id :id} {:router_database_id db-id}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}]
@@ -199,7 +199,7 @@
     (testing "GET /database/:id/schemas"
       (mt/user-http-request :crowberto :get 404 (str "database/" destination-db-id "/schemas")))))
 
-(deftest ^:parallel destination-databases-excluded-from-permissions-graph
+(deftest destination-databases-excluded-from-permissions-graph
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
                  :model/Database {destination-db-id :id} {:router_database_id db-id}]
@@ -214,7 +214,7 @@
                          (contains? db-perms destination-db-id))
                        api-graph)))))))
 
-(deftest ^:parallel new-group-does-not-get-destination-database-permissions
+(deftest new-group-does-not-get-destination-database-permissions
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/DatabaseRouter _ {:database_id db-id :user_attribute "foo"}
                  :model/Database {destination-db-id :id} {:router_database_id db-id}]

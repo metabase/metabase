@@ -179,7 +179,7 @@
                   other-tenant-user-id
                   normal-user-id} (get-recipient-ids :crowberto)))))))
 
-(deftest ^:parallel list-users-can-list-tenant-users
+(deftest list-users-can-list-tenant-users
   (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Tenant" :slug "tenant-slug"}
                  :model/Tenant {other-tenant-id :id} {:name "Other Tenant" :slug "other-tenant-slug"}
                  :model/User {tenant-user-id :id} {:tenant_id tenant-id}

@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest ^:parallel same-source-returns-failure-test
+(deftest same-source-returns-failure-test
   (testing "replacing a source with itself returns {:success false} with no errors or mappings"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id}]
@@ -21,7 +21,7 @@
              (replacement.source-check/check-replace-source
               [:card card-id] [:card card-id]))))))
 
-(deftest ^:parallel database-mismatch-table-test
+(deftest database-mismatch-table-test
   (testing "table sources in different databases produce :database-mismatch and no column_mappings"
     (mt/with-temp [:model/Database {db1-id :id} {}
                    :model/Database {db2-id :id} {}
@@ -36,7 +36,7 @@
         (is (nil? (:column_mappings result))
             "column_mappings should not be computed when databases differ")))))
 
-(deftest ^:parallel database-mismatch-card-test
+(deftest database-mismatch-card-test
   (testing "card sources in different databases produce :database-mismatch"
     (mt/with-temp [:model/Database {db1-id :id} {}
                    :model/Database {db2-id :id} {}
@@ -62,7 +62,7 @@
           (is (false? (:success result)))
           (is (some #{:cycle-detected} (:errors result))))))))
 
-(deftest ^:parallel implicit-joins-with-incoming-fks-test
+(deftest implicit-joins-with-incoming-fks-test
   (testing "table source with incoming FKs produces :incompatible-implicit-joins"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {t1-id :id} {:db_id db-id}
@@ -78,7 +78,7 @@
         (is (false? (:success result)))
         (is (some #{:incompatible-implicit-joins} (:errors result)))))))
 
-(deftest ^:parallel no-implicit-joins-without-incoming-fks-test
+(deftest no-implicit-joins-without-incoming-fks-test
   (testing "table source without incoming FKs does not produce :incompatible-implicit-joins"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {t1-id :id} {:db_id db-id}
@@ -91,7 +91,7 @@
                     [:table t1-id] [:table t2-id])]
         (is (nil? (some #{:incompatible-implicit-joins} (:errors result))))))))
 
-(deftest ^:parallel no-implicit-joins-for-card-source-test
+(deftest no-implicit-joins-for-card-source-test
   (testing "implicit joins check only applies to :table sources, not :card sources"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {t1-id :id} {:db_id db-id}
@@ -116,7 +116,7 @@
                     [:card c1-id] [:card c2-id])]
         (is (nil? (some #{:incompatible-implicit-joins} (:errors result))))))))
 
-(deftest ^:parallel no-implicit-joins-for-empty-table-test
+(deftest no-implicit-joins-for-empty-table-test
   (testing "table with no fields: has-incoming-fks? returns false via not-empty nil branch"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {t1-id :id} {:db_id db-id}
@@ -128,7 +128,7 @@
         (is (nil? (:column_mappings result))
             "no column_mappings when both tables have no fields")))))
 
-(deftest ^:parallel successful-replacement-test
+(deftest successful-replacement-test
   (testing "tables with matching columns produce a successful result with column_mappings"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {t1-id :id} {:db_id db-id}
@@ -150,7 +150,7 @@
           (is (:source m))
           (is (:target m)))))))
 
-(deftest ^:parallel missing-column-in-target-test
+(deftest missing-column-in-target-test
   (testing "source column with no matching target causes failure via has-missing?"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {t1-id :id} {:db_id db-id}
@@ -166,7 +166,7 @@
                   (:column_mappings result))
             "should have a mapping with source but no target for the missing column")))))
 
-(deftest ^:parallel column-type-mismatch-test
+(deftest column-type-mismatch-test
   (testing "columns with same name but different effective types produce column-level errors"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {t1-id :id} {:db_id db-id}
@@ -183,7 +183,7 @@
                   (:column_mappings result))
             "should have column-level errors for type mismatches")))))
 
-(deftest ^:parallel extra-column-in-target-test
+(deftest extra-column-in-target-test
   (testing "extra columns in target (not in source) do not cause failure"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {t1-id :id} {:db_id db-id}
@@ -221,7 +221,7 @@
           (is (some #{:cycle-detected} (:errors result)))
           (is (some #{:incompatible-implicit-joins} (:errors result))))))))
 
-(deftest ^:parallel database-mismatch-with-implicit-joins-test
+(deftest database-mismatch-with-implicit-joins-test
   (testing "db-mismatch and implicit-joins errors are both reported, still no column_mappings"
     (mt/with-temp [:model/Database {db1-id :id} {}
                    :model/Database {db2-id :id} {}
@@ -241,7 +241,7 @@
         (is (nil? (:column_mappings result))
             "column_mappings still not computed when databases differ")))))
 
-(deftest ^:parallel format-column-structure-test
+(deftest format-column-structure-test
   (testing "column_mappings entries have the expected structure from format-column"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {t1-id :id} {:db_id db-id}
@@ -272,7 +272,7 @@
             (is (string? (:base_type tgt)))
             (is (string? (:effective_type tgt)))))))))
 
-(deftest ^:parallel card-same-database-test
+(deftest card-same-database-test
   (testing "card sources in the same database do not produce :database-mismatch"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Card {c1-id :id} {:database_id db-id

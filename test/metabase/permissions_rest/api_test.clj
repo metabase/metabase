@@ -315,7 +315,7 @@
           (is (perm-test-util/validate-graph-api-groups (:groups graph)))
           (is (= #{db-id} (->> graph :groups vals (mapcat keys) set))))))))
 
-(deftest ^:parallel update-perms-graph-test
+(deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"
       (mt/with-temp [:model/PermissionsGroup group]
@@ -343,7 +343,7 @@
                   (mt/id :orders) :query-builder}
                  (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :create-queries "PUBLIC"]))))))))
 
-(deftest ^:parallel update-perms-graph-perms-for-new-db-test
+(deftest update-perms-graph-perms-for-new-db-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions for new db"
       (mt/with-temp [:model/PermissionsGroup group       {}
@@ -360,7 +360,7 @@
               :create-queries :query-builder}
              (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
-(deftest ^:parallel update-perms-graph-perms-for-new-db-with-no-tables-test
+(deftest update-perms-graph-perms-for-new-db-with-no-tables-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions for new db with no tables"
       (mt/with-temp [:model/PermissionsGroup group       {}
@@ -376,7 +376,7 @@
               :create-queries :query-builder}
              (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) db-id])))))))
 
-(deftest ^:parallel update-perms-graph-with-skip-graph-test
+(deftest update-perms-graph-with-skip-graph-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions graph is not returned when skip-graph"
       (mt/with-temp [:model/PermissionsGroup group       {}
@@ -403,7 +403,7 @@
             (is (mr/validate [:map {:closed true}
                               [:revision pos-int?]] no-returned-g))))))))
 
-(deftest ^:parallel update-perms-graph-force-test
+(deftest update-perms-graph-force-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions graph does not check revision number when force=true"
       (let [do-perm-put    (fn [url status] (mt/user-http-request
@@ -416,7 +416,7 @@
 
         (do-perm-put "permissions/graph?force=true" 200)))))
 
-(deftest ^:parallel can-revoke-permsissions-via-graph-test
+(deftest can-revoke-permsissions-via-graph-test
   (testing "PUT /api/permissions/graph"
     (let [table-id (mt/id :venues)]
       (mt/with-temp [:model/PermissionsGroup group]

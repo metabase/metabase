@@ -129,7 +129,7 @@
             ;; Priority table should appear first (if it appears at all)
             (is (= "orders" (-> tables first :name)))))))))
 
-(deftest ^:parallel find-matching-tables-test
+(deftest find-matching-tables-test
   (testing "find-matching-tables function"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
@@ -325,7 +325,7 @@
           (is (every? #(not= "hidden_table" (:name %)) tables))
           (is (some #(= "visible_table" (:name %)) tables)))))))
 
-(deftest ^:parallel enhanced-database-tables-test
+(deftest enhanced-database-tables-test
   (testing "enhanced-database-tables function with new format"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
@@ -394,7 +394,7 @@
     "alma llama"     "\"alma llama\""
     "\"alma\" llama" "\"\"\"alma\"\" llama\""))
 
-(deftest ^:parallel schema-sample-basic-functionality-test
+(deftest schema-sample-basic-functionality-test
   (testing "schema-sample with fewer tables than limit"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
@@ -462,7 +462,7 @@
           ;; Should not have schema prefix when schema is nil
           (is (not (re-find #"\.table1" ddl))))))))
 
-(deftest ^:parallel schema-sample-special-characters-test
+(deftest schema-sample-special-characters-test
   (testing "schema-sample handles tables with special characters in names"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "user-profiles", :schema "my schema", :active true, :visibility_type nil}

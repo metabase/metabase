@@ -44,7 +44,7 @@
           (is (= kind (:kind loaded)))
           (is (mt/secret-value-equals? value (:value loaded))))))))
 
-(deftest ^:parallel secret-retrieval-test
+(deftest secret-retrieval-test
   (testing "A secret value can be retrieved successfully"
     (testing " when there is NO encryption key in place"
       (encryption-test/with-secret-key nil
