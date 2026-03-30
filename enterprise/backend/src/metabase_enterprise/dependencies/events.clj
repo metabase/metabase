@@ -168,7 +168,8 @@
 
 (methodical/defmethod events/publish-event! ::segment-delete
   [_ {:keys [object]}]
-  (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object)))
+  (when (premium-features/has-feature? :dependencies)
+    (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))))
 
 ;; ### Measures
 (derive ::measure-deps :metabase/event)
