@@ -39,6 +39,7 @@
    [metabase.warehouses.models.database :as database])
   (:import
    (java.lang.management ManagementFactory)
+   (java.time OffsetDateTime)
    (sun.misc Signal SignalHandler)))
 
 (set! *warn-on-reflection* true)
@@ -246,7 +247,16 @@
                  (u/format-milliseconds jvm-to-complete-ms))
       (system/startup-time-millis! init-duration-ms)
       (prometheus/set! :metabase-startup/init-duration-millis init-duration-ms)
-      (prometheus/set! :metabase-startup/jvm-to-complete-millis jvm-to-complete-ms))))
+      (prometheus/set! :metabase-startup/jvm-to-complete-millis jvm-to-complete-ms)
+      (when-let [deploy-time-str (:hm-deploy-time env/env)]
+        (try
+          (let [epoch-seconds (.toEpochSecond (.toInstant (OffsetDateTime/parse deploy-time-str)))]
+            (log/infof "Recording deploy time from HM_DEPLOY_TIME: %s (epoch: %d)" deploy-time-str epoch-seconds)
+            (prometheus/set! :metabase-cloud/deploy-completed-at
+                             {:version config/mb-version-string}
+                             epoch-seconds))
+          (catch Exception e
+            (log/warnf e "Failed to parse HM_DEPLOY_TIME: %s" deploy-time-str)))))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 

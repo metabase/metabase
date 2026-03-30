@@ -239,6 +239,9 @@
                      {:description "Duration in milliseconds from JVM start to Metabase initialization complete."})
    (prometheus/gauge :metabase-startup/init-duration-millis
                      {:description "Duration in milliseconds of the init!* function execution."})
+   (prometheus/gauge :metabase-cloud/deploy-completed-at
+                     {:description "Unix epoch seconds when this instance was last deployed, from HM_DEPLOY_TIME."
+                      :labels [:version]})
    (prometheus/counter :metabase-csv-upload/failed
                        {:description "Number of failures when uploading CSV."})
    (prometheus/counter :metabase-email/messages
