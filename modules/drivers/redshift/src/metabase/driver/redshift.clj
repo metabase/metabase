@@ -758,3 +758,7 @@
 
 (defmethod driver/llm-sql-dialect-resource :redshift [_]
   "llm/prompts/dialects/redshift.md")
+
+(defmethod driver/validate-impersonated-query :redshift
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
