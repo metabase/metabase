@@ -469,8 +469,7 @@
          (serdes/mbql-deps dataset_query)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
-  (let [{:keys [id label]} (-> action serdes/path last)]
-    ["actions" (serdes/storage-leaf-file-name id label)]))
+  [{:label "actions"} {:label (:name action) :key (:entity_id action)}])
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
