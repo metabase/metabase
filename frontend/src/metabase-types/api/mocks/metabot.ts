@@ -1,4 +1,8 @@
-import type { MetabotInfo } from "../metabot";
+import type {
+  MetabotInfo,
+  UserMetabotPermissions,
+  UserMetabotPermissionsResponse,
+} from "../metabot";
 
 export const createMockMetabotInfo = (
   opts?: Partial<MetabotInfo>,
@@ -12,4 +16,17 @@ export const createMockMetabotInfo = (
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   ...opts,
+});
+
+export const createMockUserMetabotPermissions = (
+  opts?: Partial<UserMetabotPermissions>,
+): UserMetabotPermissionsResponse => ({
+  permissions: {
+    metabot: "yes",
+    "metabot-model": "medium",
+    "metabot-sql-generation": "yes",
+    "metabot-nql": "yes",
+    "metabot-other-tools": "yes",
+    ...opts,
+  },
 });

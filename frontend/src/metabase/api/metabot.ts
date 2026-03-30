@@ -13,6 +13,7 @@ import type {
   SuggestedMetabotPromptsResponse,
   UpdateMetabotPermissionsRequest,
   UpdateMetabotSettingsRequest,
+  UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -142,6 +143,16 @@ export const metabotApi = Api.injectEndpoints({
       }),
       providesTags: () => [listTag("metabot-permissions")],
     }),
+    getUserMetabotPermissions: builder.query<
+      UserMetabotPermissionsResponse,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/metabot/permissions/user-permissions",
+      }),
+      providesTags: () => [listTag("metabot-permissions")],
+    }),
     updateMetabotPermissions: builder.mutation<
       void,
       UpdateMetabotPermissionsRequest
@@ -168,5 +179,6 @@ export const {
   useSubmitMetabotFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
   useGetMetabotPermissionsQuery,
+  useGetUserMetabotPermissionsQuery,
   useUpdateMetabotPermissionsMutation,
 } = metabotApi;

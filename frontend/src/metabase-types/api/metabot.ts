@@ -345,3 +345,15 @@ export type MetabotPermissionsResponse = {
 export type UpdateMetabotPermissionsRequest = {
   permissions: MetabotGroupPermission[];
 };
+
+export type UserMetabotPermissions = {
+  metabot: "yes" | "no";
+  "metabot-model": MetabotModelSize;
+  "metabot-sql-generation": "yes" | "no";
+  "metabot-nql": "yes" | "no";
+  "metabot-other-tools": "yes" | "no";
+};
+
+export type UserMetabotPermissionsResponse = {
+  permissions: UserMetabotPermissions;
+};
