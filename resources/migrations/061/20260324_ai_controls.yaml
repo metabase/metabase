@@ -115,6 +115,7 @@ databaseChangeLog:
               - column:
                   name: group_id
                   type: int
+                  remarks: The ID of the associated permissions group
                   constraints:
                     nullable: false
                     unique: true
@@ -128,3 +129,34 @@ databaseChangeLog:
                   remarks: The maximum usage value, interpreted according to the metabot-limit-type setting
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v61.2026-03-30T00:00:00
+      author: edpaget
+      comment: Insert default metabot permissions (all yes/medium) for magic user groups
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabot_permissions (group_id, perm_type, perm_value)
+              SELECT pg.id, d.perm_type, d.perm_value
+              FROM permissions_group pg
+              CROSS JOIN (VALUES
+                ('permission/metabot', 'yes'),
+                ('permission/metabot-model', 'medium'),
+                ('permission/metabot-sql-generation', 'yes'),
+                ('permission/metabot-nql', 'yes'),
+                ('permission/metabot-other-tools', 'yes')
+              ) AS d(perm_type, perm_value)
+              WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+                AND NOT EXISTS (
+                  SELECT 1 FROM metabot_permissions mp
+                  WHERE mp.group_id = pg.id AND mp.perm_type = d.perm_type
+                )
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM metabot_permissions
+              WHERE group_id IN (
+                SELECT id FROM permissions_group
+                WHERE magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+              )
