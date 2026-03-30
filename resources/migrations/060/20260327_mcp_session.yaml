@@ -7,6 +7,11 @@ databaseChangeLog:
       id: v60.mcp-session-table
       author: christruter
       comment: Create mcp_session table for durable MCP session tracking
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: mcp_session
       changes:
         - createTable:
             tableName: mcp_session
