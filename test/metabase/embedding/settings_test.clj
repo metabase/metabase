@@ -4,7 +4,9 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.premium-features.token-check]
    [metabase.test :as mt]
+   [metabase.test.util.thread-local]
    [toucan2.core :as t2]))
 
 (deftest show-static-embed-terms-test
@@ -248,10 +250,20 @@
    (mt/discard-setting-changes [embedding-app-origins-interactive]
      (testing "can't change embedding-app-origins-interactive if :embedding feature is not available"
        (mt/with-premium-features #{}
-         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Setting embedding-app-origins-interactive is not enabled because feature :embedding is not available"
-              (embed.settings/embedding-app-origins-interactive! "https://metabase.com")))
+         (let [features-fn @#'metabase.premium-features.token-check/*token-features*
+               features    (features-fn)
+               has-embed?  (metabase.premium-features.token-check/has-feature? :embedding)
+               thread-local? metabase.test.util.thread-local/*thread-local*]
+           (println "DEBUG toggle-full-app-embedding-test:"
+                    "\n  *thread-local*:" thread-local?
+                    "\n  *token-features* fn:" features-fn
+                    "\n  features:" features
+                    "\n  has-feature? :embedding:" has-embed?
+                    "\n  thread:" (.getName (Thread/currentThread)))
+           (is (thrown-with-msg?
+                clojure.lang.ExceptionInfo
+                #"Setting embedding-app-origins-interactive is not enabled because feature :embedding is not available"
+                (embed.settings/embedding-app-origins-interactive! "https://metabase.com"))))
          (testing "even if env is set, return the default value"
            (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "https://metabase.com"]
              (is (nil? (embed.settings/embedding-app-origins-interactive))))))))))
