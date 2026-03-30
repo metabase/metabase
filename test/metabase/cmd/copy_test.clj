@@ -35,6 +35,7 @@
     :model/DashboardFavorite
     :model/DatabaseRouter
     :model/Dependency
+    :model/McpSession
     :model/PythonLibrary
     :model/PremiumFeaturesCache
     :model/Query
@@ -59,7 +60,6 @@
     :model/TransformJobTransformTag
     :model/TransformTag
     :model/TransformTransformTag
-    :model/McpSession
     :model/Undo
     :model/UserKeyValue
     :model/Workspace
