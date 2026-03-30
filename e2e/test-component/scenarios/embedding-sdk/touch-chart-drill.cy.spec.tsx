@@ -5,6 +5,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import { getEventTarget } from "metabase/lib/dom";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -64,7 +65,6 @@ describe("scenarios > embedding-sdk > touch chart drill popover", () => {
         touches: [],
       });
 
-      const { getEventTarget } = require("metabase/lib/dom");
       const target = getEventTarget(touchEvent);
 
       const left = parseFloat(target.style.left);
