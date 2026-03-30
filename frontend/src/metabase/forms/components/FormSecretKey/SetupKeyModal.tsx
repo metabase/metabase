@@ -3,7 +3,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useLazyGenerateRandomTokenQuery } from "metabase/api/util";
-import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
