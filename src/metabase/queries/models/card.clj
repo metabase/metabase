@@ -350,13 +350,7 @@
   [{query :dataset_query, :as card} :- ::queries.schema/card]
   (merge
    card
-   ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
-   ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
-   ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
-   ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
-   (when (and (seq query)
-              (map? query)
-              (not mi/*deserializing?*))
+   (when (and (seq query) (map? query))
      (merge
       ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
       {:source_card_id (source-card-id query)}
@@ -1330,7 +1324,7 @@
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
-    [[{:model "Database" :id database_id}]]
+    (when database_id [[{:model "Database" :id database_id}]])
     (when table_id #{(serdes/table->path table_id)})
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})

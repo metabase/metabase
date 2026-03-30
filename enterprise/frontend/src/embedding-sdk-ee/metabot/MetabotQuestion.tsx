@@ -12,10 +12,10 @@ import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdH
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import { useSetting } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import { Stack } from "metabase/ui";
-import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import { MetabotChatHistory } from "./MetabotChatHistory";
 import { MetabotChatInput } from "./MetabotChatInput";
@@ -44,7 +44,7 @@ const MetabotQuestionInner = ({
   isSaveEnabled = false,
   targetCollection,
 }: MetabotQuestionProps) => {
-  const isEmbeddedMetabotEnabled = useSetting("embedded-metabot-enabled?");
+  const isEmbeddedMetabotEnabled = useMetabotEnabledEmbeddingAware();
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
   const { ref: containerRef, width: containerWidth } = useElementSize();

@@ -117,12 +117,12 @@ describe("scenarios > question > view", () => {
         cy.findByText("Balistreri-Muller").click();
         cy.findByText("Add filter").click();
       });
-      cy.findAllByTestId("run-button").first().click();
       cy.findAllByText("CATEGORY").first().click();
       H.popover().within(() => {
         cy.findByText("Widget").click();
         cy.findByText("Add filter").click();
       });
+
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("run-button").last().click();
 

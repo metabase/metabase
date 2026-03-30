@@ -77,7 +77,7 @@
    [metabase.lib.filter.simplify-compound]
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
-   [metabase.lib.join.util]
+   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.measure :as lib.measure]
    [metabase.lib.metadata]
@@ -104,7 +104,10 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.serialize]
@@ -185,7 +188,7 @@
          metabase.lib.filter.simplify-compound/keep-me
          lib.filter/keep-me
          lib.join/keep-me
-         metabase.lib.join.util/keep-me
+         lib.join.util/keep-me
          lib.limit/keep-me
          metabase.lib.metadata/keep-me
          lib.metadata.calculation/keep-me
@@ -550,22 +553,606 @@
   aggregation-clause
   aggregations-metadata])
 
+;;; ## Breakouts
+;;; Breakouts (equivalent to SQL `GROUP BY`) divide the rows into 1 or more subsets of rows, where each set has the
+;;; same values for all the breakouts.
+;;;
+;;; Each breakout implicitly adds an Order By (ascending), in the same order as the breakouts. However, if the user
+;;; explicitly adds an Order By for the breakout column(s), then the order and direction (asc/desc) is preserved.
+;;;
+;;; Breakouts must be unique within the stage. That means there can be at most 1 breakout per input column, with one
+;;; exception: a temporal column can have multiple breakouts with different units.
+;;;
+;;; Finally, note that it's legal (though unusual) to create a query with breakouts but no aggregations. The results
+;;; are equivalent to `SELECT DISTINCT breakouts... FROM ... ORDER BY breakouts...`, ie. sorting and de-duplicating
+;;; by the breakouts.
+
+(mu/defn breakout :- ::lib.schema/query
+  "Add a breakout on the provided column to the target stage of `a-query`.
+
+  Silently does nothing if the requested breakout already exists. Multiple breakouts of a temporal column are allowed
+  provided they all set different `:temporal-unit`s.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query expr] (breakout a-query -1 expr))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    expr         :- some?]
+   (lib.breakout/breakout a-query stage-number expr)))
+
+(mu/defn breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
+  "Returns the list of breakouts on the target stage of `a-query`, or nil if there are none.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (breakouts a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.breakout/breakouts a-query stage-number)))
+
+(mu/defn breakout-column :- ::lib.schema.metadata/column
+  "Given `a-query` and a breakout `clause` as returned by [[breakouts]], returns the column metadata for this
+  breakout column.
+
+  Strictly speaking a breakout column should be distinct from its input column; in practice their metadata is identical
+  except that the breakout column has the `:temporal-unit` or `:binning` specified from the breakout clause.
+
+  **Code Health:** Healthy."
+  ([a-query breakout-clause] (breakout-column a-query -1 breakout-clause))
+  ([a-query         :- ::lib.schema/query
+    stage-number    :- :int
+    breakout-clause :- ::lib.schema.ref/ref]
+   (lib.breakout/breakout-column a-query stage-number breakout-clause)))
+
+(mu/defn breakoutable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Returns column metadata for all the columns on the target stage of `a-query` which could be used for a breakout.
+
+  The columns can be used for a breakout are, in this order:
+
+  1. Columns from the *source* - a table, card or previous stage.
+  2. *Expressions* in this stage of the query are allowed.
+  3. Columns from explicit joins on this stage.
+  4. All columns which are *implicitly joinable* via any FKs in the above.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query :- ::lib.schema/query] (breakoutable-columns a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.breakout/breakoutable-columns a-query stage-number)))
+
+(mu/defn remove-all-breakouts :- ::lib.schema/query
+  "Removes all breakouts (if any) from the target stage of `a-query`.
+
+  The removal is done properly per [[remove-clause]], so any references to the deleted breakouts will also be deleted.
+
+  **Code Health:** Healthy."
+  ([a-query] (remove-all-breakouts a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.breakout/remove-all-breakouts a-query stage-number)))
+
+;;; **Code Health:** Leak. These functions are only used in friends and tests, and should be avoided. To be unexported.
+(shared.ns/import-fns
+ [lib.breakout
+  breakouts-metadata])
+
+;;; ## Filters
+;;; Filters are boolean expressions based on a row of a query. A stage of a query only returns (or aggregates) those
+;;; rows for which the filters are `true`. They correspond to a SQL `WHERE` clause, of course.
+;;;
+;;; MBQL has a list of filter expressions, and they are implicitly `AND`ed together. The order of filters does not
+;;; matter.
+;;;
+;;; Note that filters are *pre-aggregation* within their stage. If you want to filter based on the results of an
+;;; aggregation, such a showing only those months with 1000+ orders, you need to [[append-stage]] and add the filter
+;;; to the stage *after* the aggregations. (SQL has the `HAVING` clause for this, but there's no equivalent in MBQL.)
+
+(mu/defn filter :- ::lib.schema/query
+  "Adds the given `boolean-expression` to the target stage of `a-query`.
+
+  If `boolean-expression` is an exact duplicate of an existing filter, this silently does nothing.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query boolean-expression] (filter a-query -1 boolean-expression))
+  ([a-query            :- ::lib.schema/query
+    stage-number       :- :int
+    boolean-expression :- some?]
+   (lib.filter/filter a-query stage-number boolean-expression)))
+
+(mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Returns the list of filters on the target stage of `a-query`, or nil if there are none.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (filters a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.filter/filters a-query stage-number)))
+
+(mu/defn filterable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Returns column metadata for all the columns that could be used for filtering on the target stage of `a-query`.
+
+  The columns which can be used for filters are, in this order:
+
+  1. Columns from the *source* - a table, a card or the previous stage.
+  2. *Expressions* on this stage of the query.
+  3. Columns from explicit joins on this stage.
+  4. Columns which can be *implicitly joined* via any FKs in the above columns.
+
+  Supports an optional third argument `options`, which can have these options:
+
+  - `:include-sensitive-fields? true` will return fields with `:visibility-type :sensitive`. (Default false.)"
+  ([a-query] (filterable-columns a-query -1))
+  ([a-query stage-number] (filterable-columns a-query stage-number nil))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    options      :- [:maybe [:map [:include-sensitive-fields? :boolean]]]]
+   (lib.filter/filterable-columns a-query stage-number options)))
+
+;;; ### Building filters in code
+;;; These functions build filter clauses in code. They're mainly used in tests, but they are a legitimate public API
+;;; to use from production code too.
+;;;
+;;; **Code Health:** Healthy. However, UIs should generally be using [[filter-parts]] and [[string-filter-clause]]
+;;; instead of calling these.
+(shared.ns/import-fns
+ [lib.filter
+  and
+  or
+  not
+  = !=
+  < <=
+  > >=
+  in not-in
+  between
+  inside
+  is-null not-null
+  is-empty not-empty
+  starts-with ends-with
+  contains does-not-contain
+  relative-time-interval
+  time-interval
+  segment]) ; TODO: Move segment to sit with the `lib.segment` functions.
+
+;;; ## Joins
+;;; Joins, often referred to as "explicit joins" to distinguish them from *implicit joins*, combine the source query
+;;; (the "left-hand side" or LHS) with a new source or subquery (the "right-hand side" or RHS).
+;;;
+;;; The columns of the RHS are added to those of the LHS. Combining the data rows is more complicated, and depends
+;;; on the *strategy* and *conditions*. Metabase supports four join strategies:
+;;;
+;;; - `:left-join` (the default) is a left outer join
+;;; - `:right-join` is a right outer join
+;;; - `:full-join` is a full outer join, the union of `:left-join` and `:right-join`
+;;; - `:inner-join` is an inner join, returning exactly the intersection without `NULL`s
+;;; - *Cross joins*, with one row for every pair of LHS and RHS rows regardless of the conditions, are not supported.
+;;;
+;;; Join *conditions* are similar to top-level filters, but there are three differences. First, only a handful of
+;;; operators are supported. Second, there are no literals - the first argument is always a LHS column and the second
+;;; always a RHS column. Third, one or both of those columns can have **temporal bucketing** applied before comparison.
+;;; This only applies to the condition; those columns are not bucketed elsewhere in the query.
+;;;
+;;; ### Aliases
+;;; Join *aliases* are stage-unique names for each join. They are not user editable in the current FE, though MBQL's
+;;; data model would support it. Aliases are an arbitrary string, and default to the *display name of the RHS* - a
+;;; table or card. If the aliases collides with another, it gets disambiguated as `foo_2`, `foo_3`, etc.
+
+(mu/defn join :- ::lib.schema/query
+  "Add an explicit join to the target stage of `a-query`.
+
+  The `a-join-or-joinable` can be either a proper join clause as returned by [[join-clause]], or any *joinable*. See
+  the docstring for [[join-clause]] for what can be passed in as a *joinable*.
+
+  The new join can be incomplete in several ways; this function populates any missing join parameters with defaults:
+  - Strategy defaults to `:left-join`.
+  - Join aliases default to the display name of the RHS - the table' or card's display name.
+  - Selected fields defaults to `:all` on the join, or nil if the target stage (of `a-query`) has aggregations or
+    breakouts.
+  - Conditions are complicated. See [[suggested-join-conditions]] for the details.
+
+  The new join is appended as the last on the target stage.
+
+  **Code Health:** Healthy. This is a core API."
+
+  ([a-query a-join-or-joinable] (join a-query -1 a-join-or-joinable))
+  ([a-query :- ::lib.schema/query
+    stage-number :- :int
+    a-join-or-joinable :- [:or ::lib.join.util/partial-join ::lib.join/joinable]]
+   (lib.join/join a-query stage-number a-join-or-joinable)))
+
+(mu/defn join-clause :- ::lib.join.util/partial-join
+  "Construct a join clause from `a-joinable`, which can serve as the RHS of a join. This clause is \"freestanding\";
+  it is not part of any particular query.
+
+  The returned clause is also partially populated, since some details (alias, etc.) can't be specified until the clause
+  is attached to a query.
+
+  Valid *joinables* include:
+
+  - Table metadata (`lib.metadata/table`)
+  - Card metadata (`lib.metadata/card`)
+  - Another query (MBQL or native)
+  - A join clause - it's an identity function
+
+  There are some optional arguments:
+
+  - `conditions` is a list of boolean expressions or expression editor ASTs; see [[with-join-conditions]].
+  - `strategy` is one of the strategy keywords: `:left-join`, `:right-join`, `:inner-join`, or `:full-join`.
+      - See also [[available-join-strategies]], since some engines only support certain kinds of joins.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-joinable] (lib.join/join-clause a-joinable))
+  ([a-joinable conditions] (lib.join/join-clause a-joinable conditions))
+  ([a-joinable conditions strategy] (lib.join/join-clause a-joinable conditions strategy)))
+
+(mu/defn joins :- [:maybe ::lib.schema.join/joins]
+  "Return the list of all explicit join clauses on the target stage of `a-query`, or nil if there are none.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (joins a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.join/joins a-query stage-number)))
+
+;;; ### Join Strategies
+
+(mu/defn join-strategy :- ::lib.schema.join/strategy.option
+  "Get the strategy (join type) of `a-join-clause`, a complete join clause either under construction with
+  [[join-clause]] or returned by [[joins]].
+
+  The return value is a map, not a bare keyword, to support [[display-name]] and similar functions.
+
+  **Code Health:** Healthy. This is a core API."
+  [a-join-clause :- ::lib.join.util/partial-join]
+  (lib.join/join-strategy a-join-clause))
+
+(mu/defn with-join-strategy :- ::lib.join.util/partial-join
+  "Sets the strategy of `a-join-clause` to the provided `strategy`.
+
+  The strategy can be either the raw keyword (e.g. `:left-join`) or a map from [[available-join-strategies]].
+
+  **Code Health:** Healthy. This is a core API."
+  [a-join-clause :- ::lib.join.util/partial-join
+   strategy      :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
+  (lib.join/with-join-strategy a-join-clause strategy))
+
+(mu/defn available-join-strategies :- [:sequential ::lib.schema.join/strategy.option]
+  "Get the list of available join strategies for `a-query`.
+
+  This doesn't really depend on the *query*, but on its target *database*, since different (versions of) database
+  engines support different kinds of joins.
+
+  The return value is a map, not a bare keyword. This allows the join strategies to answer [[display-name]] and similar
+  generic calls. See the schema `::lib.schema.join/strategy.option` for the full details.
+
+  `stage-number` is ignored and deprecated - the stage doesn't affect the possible joins.
+
+  **Code Health:** Healthy with one arg, Deprecated with two args."
+  ([a-query :- ::lib.schema/query]
+   (lib.join/available-join-strategies a-query))
+  ([a-query       :- ::lib.schema/query
+    _stage-number :- :int]
+   (available-join-strategies a-query)))
+
+;;; ### Join Conditions
+;;; Join conditions are a special case of boolean expressions. They differ from [[filters]] in three ways:
+;;;
+;;; - Only a few operators are supported (mainly `=` and similar)
+;;; - First arg is always a column from the LHS (the containing stage), second arg from the RHS.
+;;; - The columns can be bucketed by temporal unit, similar to breakouts, but without affecting the original columns.
+;;;
+;;; There can be multiple join conditions on a single join. The conditions are often based on a foreign key
+;;; relationship, but they don't need to be.
+
+(mu/defn join-conditions :- [:maybe ::lib.schema.join/conditions]
+  "Returns the list of conditions on `a-join-clause`, either under construction with [[join-clause]] or from [[joins]].
+  Nil if there are no conditions.
+
+  **Code Health:** Healthy. This is a core API."
+  [a-join-clause :- ::lib.join.util/partial-join]
+  (lib.join/join-conditions a-join-clause))
+
+(mu/defn with-join-conditions :- ::lib.join.util/partial-join
+  "Replaces the conditions on `a-join` with the provided `conditions`, returning the updated join clause.
+
+  Note that this **does not** update the query `a-join` is attached to! That requires a [[replace-clause]] call.
+  For a join clause still under construction, note that `conditions` can also be passed directly to [[join-clause]]
+  if that is more convenient.
+
+  The conditions should be a sequence of either MBQL clauses or expression editor ASTs from [[expression-clause]].
+  Passing `conditions` as nil will remove the conditions from this join clause.
+
+  **Code Health:** Healthy. This is a core API."
+  [a-join :- ::lib.join.util/partial-join
+   conditions :- [:maybe [:sequential [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]]]]
+  (lib.join/with-join-conditions a-join conditions))
+
+(mu/defn suggested-join-conditions :- [:maybe [:sequential {:min 1} ::lib.schema.expression/boolean]]
+  "Given `a-query` and `a-joinable` - the LHS and RHS of a (real or contemplated) join - return a suggested or default
+  join condition. See [[join-clause]] for the definition of *joinables*.
+
+  If `position` is provided, only joins at earlier indexes in [[joins]] than `position` are considered as sources of
+  the LHS column for the suggested condition. This is necessary when editing a join in the UI. When `position` is nil
+  (the default) then all joins on the target stage of `a-query` are considered.
+
+  There are two cases for suggested joins, which are checked in this order:
+
+  - A FK in the LHS points to a PK in the RHS, e.g. joining `Orders` to `Products` on `Orders.PRODUCT_ID`.
+  - A FK in the RHS points back at a PK in the LHS, e.g. joining `Products` to `Orders` on `Orders.PRODUCT_ID`.
+
+  When there are several FKs available which could be suggested, the *leftmost* is preferred. So FKs from the main
+  source have priority over joined FKs, and earlier joins have priority over later ones. Of course all such FKs are
+  *valid* join conditions! But the suggestion needs to pick just one, and it prefer the leftmost.
+
+  If no plausible FK/PK pairs are found, this function returns nil and the join does not get a default condition.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query a-joinable] (suggested-join-conditions a-query -1 a-joinable))
+  ([a-query stage-number a-joinable] (suggested-join-conditions a-query stage-number a-joinable nil))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    a-joinable   :- ::lib.join/join-or-joinable
+    position     :- [:maybe :int]]
+   (lib.join/suggested-join-conditions a-query stage-number a-joinable position)))
+
+(mu/defn join-condition-lhs-columns :- [:sequential ::lib.schema.metadata/column]
+  "Returns the list of column metadata for those columns which can be used as the left-hand-side (source column) in a
+  join condition for `a-joinable`.
+
+  This is the LHS counterpart to [[join-condition-rhs-columns]].
+
+  If `a-joinable` is a join clause already attached to the target stage of `a-query`, its own columns will be removed
+  from the list, since they cannot be the LHS column.
+
+  - `lhs-expression-or-nil` should be the current LHS column, if any. Then it can be marked as selected in the output.
+  - `rhs-expression-or-nil` should be the current RHS column, if any.
+      - Theoretically this could be used to return only LHS columns which can be compared with the chosen RHS.
+      - In practice, this parameter is *unused* - we don't grok the comparisons different DBs (dis)allow well enough.
+
+  **Code Health:** Healthy. This is the correct way to get the columns for software or a user to pick as the LHS of
+  a join condition."
+  ([a-query a-joinable lhs-expression-or-nil rhs-expression-or-nil]
+   (join-condition-lhs-columns a-query -1 a-joinable lhs-expression-or-nil rhs-expression-or-nil))
+  ([a-query               :- ::lib.schema/query
+    stage-number          :- :int
+    a-joinable            :- [:maybe ::lib.join/join-or-joinable]
+    lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
+   (lib.join/join-condition-lhs-columns a-query stage-number a-joinable lhs-expression-or-nil rhs-expression-or-nil)))
+
+(mu/defn join-condition-rhs-columns :- [:sequential ::lib.schema.metadata/column]
+  "Returns the list of column metadata for those columns which can be used as the right-hand-side (joined column) in a
+  join condition for `a-joinable`.
+
+  This is the RHS counterpart to [[join-condition-lhs-columns]].
+
+  - `rhs-expression-or-nil` should be the current RHS column, if any. Then it can be marked as selected in the output.
+  - `lhs-expression-or-nil` should be the current LHS column, if any.
+      - Theoretically this could be used to return only RHS columns which can be compared with the chosen LHS.
+      - In practice, this parameter is *unused* - we don't grok the comparisons different DBs (dis)allow well enough.
+
+  **Code Health:** Healthy. This is the correct way to get the columns for software or a user to pick as the RHS of
+  a join condition."
+  ([a-query a-joinable lhs-expression-or-nil rhs-expression-or-nil]
+   (join-condition-rhs-columns a-query -1 a-joinable lhs-expression-or-nil rhs-expression-or-nil))
+  ([a-query               :- ::lib.schema/query
+    stage-number          :- :int
+    a-joinable            :- ::lib.join/join-or-joinable
+    lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
+   (lib.join/join-condition-rhs-columns a-query stage-number a-joinable lhs-expression-or-nil rhs-expression-or-nil)))
+
+(mu/defn join-condition-operators :- [:sequential ::lib.schema.join/condition.operator]
+  "Return a sequence of filter clause operators that are valid for use in a join condition.
+
+  The `lhs-expression-or-nil` and `rhs-expression-or-nil` parameters should be set to the LHS and RHS columns for this
+  join condition, if already set. (See [[join-condition-lhs-columns]] and [[join-condition-rhs-columns]] for details.)
+  However, this inputs are **currently ignored** because we do not grok what operators can be used for what column types
+  on a given database well enough to get it right. See #31174.
+
+  The returned operators are maps, so that they can support [[display-name]] etc.
+
+  **Code Health:** Healthy."
+  ([a-query lhs-expression-or-nil rhs-expression-or-nil]
+   (join-condition-operators a-query -1 lhs-expression-or-nil rhs-expression-or-nil))
+  ([a-query               :- ::lib.schema/query
+    stage-number          :- :int
+    lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
+   (lib.join/join-condition-operators a-query stage-number lhs-expression-or-nil rhs-expression-or-nil)))
+
+(mu/defn join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
+  "Given a provided `join-condition` clause, and the context of `a-query` and target stage, adjusts the temporal
+  bucketing of the columns in this condition and returns the updated condition.
+
+  Note that this **does not** update the query, only return an adjusted condition clause.
+
+  The condition must be a *standard* join condition, of the kind returned by [[suggested-join-conditions]], or this
+  function will do nothing. That means the both arguments are simple columns and not subexpressions, constants, etc.
+
+  If either of the columns does not support the requested unit (e.g. bucketing a date by `:hour`) then the bucketing
+  of just that column is unchanged.
+
+  Passing an `option-or-unit` of nil will un-set the bucketing of both arguments.
+
+  **Code Health:** Healthy."
+  ([a-query join-condition option-or-unit]
+   (join-condition-update-temporal-bucketing a-query -1 join-condition option-or-unit))
+  ([a-query :- ::lib.schema/query
+    stage-number :- :int
+    join-condition :- [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]
+    option-or-unit :- [:maybe [:or ::lib.schema.temporal-bucketing/option ::lib.schema.temporal-bucketing/unit]]]
+   (lib.join/join-condition-update-temporal-bucketing a-query stage-number join-condition option-or-unit)))
+
+;;; ### Join columns and projection
+;;; Like a main source, joins support selecting only a subset of fields to return from a query. By default, when a join
+;;; clause is added to a query, all its fields are selected. The deselected fields are not returned, but they are not
+;;; *hidden* either. You can deselect a field but still use it in a filter or expression on the same stage.
+
+(mu/defn join-fields :- [:maybe ::lib.schema.join/fields]
+  "Returns the list of column references for the fields selected on `a-join`, or the keyword `:all`, or nil.
+
+  Nil means unspecified, which means \"none\" for joins. **Note** that this differs from the default on the main source!
+
+  **Code Health:** Healthy. This is a core API."
+  [a-join :- ::lib.join.util/partial-join]
+  (lib.join/join-fields a-join))
+
+(mu/defn with-join-fields :- ::lib.join.util/partial-join
+  "Updates `a-join` to set the fields it should be returning to the provided `fields`.
+
+  `fields` is one of the following:
+
+  - `:all`, to return all the fields
+  - `:none`, to confirm that no fields are returned
+  - Nil, to remove the fields setting entirely and rely on the default (return nothing)
+  - A list of column metadata or references for columns from the RHS of `a-join`.
+
+  To get a list of all columns this join *could* return in order to filter them, see [[join-fieldable-columns]].
+
+  **Code Health:** Healthy. This is a core API."
+  {:style/indent [:form]}
+  [a-join :- ::lib.join.util/partial-join
+   fields :- [:maybe [:or [:enum :all :none] [:sequential some?]]]] ;; TODO: More precise schema.
+  (lib.join/with-join-fields a-join fields))
+
+(mu/defn join-fieldable-columns :- ::lib.metadata.calculation/visible-columns
+  "Returns the list of column metadata for the columns which are *visible* on the RHS of `a-joinable`, such as a table,
+  card or join clause.
+
+  These columns are exactly those which can correctly be passed to [[with-join-fields]]. If `a-joinable` is properly a
+  join clause, the columns will be marked with `:selected true`.
+
+  Note that this ignores any [[join-fields]] setting - this is about the visible columns from the RHS, not those which
+  are selected to be returned.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query a-joinable] (join-fieldable-columns a-query -1 a-joinable))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    a-joinable   :- ::lib.join/join-or-joinable]
+   (lib.join/joinable-columns a-query stage-number a-joinable)))
+
+;;; ### Display names and aliases
+
+(mu/defn join-lhs-display-name :- ::lib.schema.common/non-blank-string
+  "Get the display name to use for the **LHS** of `a-joinable`.
+
+  The RHS gets its display name from the table, card, etc. being joined. But we render the LHS in the UI with a display
+  name based on *where the LHS column of the first join condition came from*, if we can determine that safely.
+
+  If we can't determine a good display name for the LHS, this function returns \"Previous results\".
+
+  **Code Health:** Healthy, Single Use. This exists to support UIs, but it's well-defined and safe to call."
+  ([a-query a-joinable]
+   (join-lhs-display-name a-query a-joinable nil))
+  ([a-query a-joinable condition-lhs-expression-or-nil]
+   (join-lhs-display-name a-query -1 a-joinable condition-lhs-expression-or-nil))
+  ([a-query :- ::lib.schema/query
+    stage-number :- :int
+    a-joinable :- [:maybe ::lib.join/join-or-joinable]
+    condition-lhs-expression-or-nil :- [:maybe [:or ::lib.schema.metadata/column :mbql.clause/field]]]
+   (lib.join/join-lhs-display-name a-query stage-number a-joinable condition-lhs-expression-or-nil)))
+
+(mu/defn current-join-alias :- [:maybe ::lib.schema.join/alias]
+  "Get the current join alias associated with a `column-or-join`, if it has one.
+
+  **Code Health:** Leak. Join aliases are an internal detail and should not be exported. They're arbitrary and opaque
+  on join clauses, and columns should come from lib already linked to their join. Don't roll your own column from
+  elsewhere and then set its join alias."
+  [field-or-join :- [:or
+                     ::lib.schema.metadata/column
+                     ::lib.join.util/partial-join
+                     [:ref :mbql.clause/field]]]
+  (lib.join.util/current-join-alias field-or-join))
+
+(mu/defn with-join-alias :- [:or
+                             ::lib.schema.metadata/column
+                             ::lib.join.util/partial-join
+                             [:ref :mbql.clause/field]]
+  "Add **or remove** a specific `join-alias` to `field-or-join`, which must be column metadata, a column ref, or a join
+  clause.
+
+  This works on columns and clauses, not on queries. In particular, this won't change any references to a join's columns
+  elsewhere in any query. If you want to update a join clause on a query *correctly*, making sure all its columns are
+  still referenced correctly, use this function to update the join's alias, then use [[replace-clause]] to correctly
+  update the query.
+
+  **Code Health:** Leak. Join aliases should be treated as opaque, unique strings, so there should be no need to set
+  them to any particular value on a join clause. For columns, the alias matters, but that should be internal to the lib.
+  Users of lib should be getting columns from [[filterable-columns]] et al, not manually setting join aliases on column
+  metadata or refs."
+  {:style/indent [:form]}
+  [field-or-join :- [:or
+                     ::lib.schema.metadata/column
+                     ::lib.join.util/partial-join
+                     [:ref :mbql.clause/field]]
+   join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
+  (lib.join/with-join-alias field-or-join join-alias))
+
+;;; **Code Health:** Leak. These helpers are only used from tests and the QP, and should be unexported.
+(shared.ns/import-fns
+ [lib.join
+  join-fields-to-add-to-parent-stage ;; TODO: Unexport this; it's only used from tests and QP.
+  raw-join-strategy])                ;; TODO: Unexport this; it's only used from tests.
+
+;;; # Working with Expressions as an AST
+;;; Several parts of the FE want to work with clauses in a "white box" way, so it can render the details of the
+;;; expression in a structured way, or convert the AST of the expression parser into an expression, aggregation or
+;;; filter.
+;;;
+;;; That requirement is **directly opposed to one of Lib's primary objectives:** to encapsulate the details of MBQL
+;;; queries and clauses.
+;;;
+;;; The solution to the dilemma is for Lib to publish a separate, non-MBQL syntax for expression ASTs, and to convert
+;;; between that and MBQL clauses. That is the purpose of the [[expression-parts]] and [[filter-parts]] systems.
+;;;
+;;; [[expression-parts]] turns an MBQL expression (or aggregation) clause into an AST built out of nested maps. The
+;;; only MBQL inside the AST is that MBQL *refs* are treated as opaque leaf nodes. See [[lib.fe-util/ExpressionParts]]
+;;; for details on the schema.
+;;;
+;;; [[expression-clause]] is the reverse direction: turning an `ExpressionParts` AST into an MBQL clause suitable to
+;;; pass to [[expression]] or [[aggregate]].
+
+;;; ## Filter Parts
+;;; In a similar vein to [[expression-parts]], [[filter-parts]] breaks down a filter expression to make it consumable
+;;; without exposing MBQL internals. Filters are simpler than expressions, since they are never nested and have at most
+;;; one column. See [[lib.filter/FilterParts]] for the output format.
+
+(mu/defn filter-parts :- ::lib.filter/filter-parts
+  "Exports an opaque MBQL filter clause as a transparent `::lib.filter/filter-parts` map.
+
+  `a-query` and the target stage are required for context, since the output contains complete column metadata.
+
+  See [[describe-filter-operator]] to get a human-readable, translated description of the filter operator keywords.
+
+  **Code Health:** Healthy. This is deliberately public, including the output format."
+  ([a-query a-filter-clause] (filter-parts a-query -1 a-filter-clause))
+  ([a-query         :- ::lib.schema/query
+    stage-number    :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (lib.filter/filter-parts a-query stage-number a-filter-clause)))
+
+(mu/defn describe-filter-operator :- :string
+  "Returns a human-readable, translated display name for a filter operation based on the `operator` keyword.
+  (For example, the `:operator` field of a [[filter-parts]] map.)
+
+  `variant` is optional, and controls how a few operators are displayed. Valid variants:
+
+  - `:default` (the default, naturally) uses \"Is (not)\", \"Greater than\" and \"Less than\"
+  - `:number` uses \"Equal to\" and \"Not equal to\"
+  - `:temporal` uses \"After\" and \"Before\" for `:>` and `:<`"
+  ([operator] (describe-filter-operator operator :default))
+  ([operator :- :keyword ; TODO: (bshepherdson 2026-03-06) This could be more specific, if the list were in a schema.
+    variant  :- [:enum :default :number :temporal]]
+   (lib.filter/describe-filter-operator operator variant)))
+
 ;;; # IGNORE ME!
 ;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
 ;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
 (shared.ns/import-fns
-
  [lib.binning
   available-binning-strategies
   binning
   with-binning]
- [lib.breakout
-  breakout
-  breakout-column
-  breakoutable-columns
-  breakouts
-  breakouts-metadata
-  remove-all-breakouts]
  [metabase.lib.card
   card->underlying-query
   model-preserved-keys]
@@ -638,29 +1225,7 @@
   with-fields]
  [metabase.lib.field.util
   update-keys-for-col-from-previous-stage]
- [lib.filter
-  add-filter-to-stage
-  filter
-  filters
-  filterable-columns
-  filter-parts
-  describe-filter-operator
-  and
-  or
-  not
-  = !=
-  < <=
-  > >=
-  in not-in
-  between
-  inside
-  is-null not-null
-  is-empty not-empty
-  starts-with ends-with
-  contains does-not-contain
-  relative-time-interval
-  time-interval
-  segment]
+
  [metabase.lib.filter.desugar
   desugar-filter-clause]
  [metabase.lib.filter.negate
@@ -672,29 +1237,6 @@
   update-lat-lon-filter
   update-numeric-filter
   update-temporal-filter]
- [lib.join
-  available-join-strategies
-  join
-  join-clause
-  join-condition-lhs-columns
-  join-condition-operators
-  join-condition-rhs-columns
-  join-condition-update-temporal-bucketing
-  join-conditions
-  join-fields
-  join-fields-to-add-to-parent-stage
-  join-lhs-display-name
-  join-strategy
-  joinable-columns
-  joins
-  raw-join-strategy
-  suggested-join-conditions
-  with-join-alias
-  with-join-fields
-  with-join-strategy
-  with-join-conditions]
- [metabase.lib.join.util
-  current-join-alias]
  [lib.metric
   available-metrics]
  [lib.limit

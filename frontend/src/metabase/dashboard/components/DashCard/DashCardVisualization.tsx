@@ -13,11 +13,9 @@ import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
 } from "metabase/dashboard/selectors";
-import {
-  getVirtualCardType,
-  isVirtualDashCard,
-} from "metabase/dashboard/utils";
+import { getVirtualCardType } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { isVirtualDashCard } from "metabase/lib/dashboard";
 import { duration } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";

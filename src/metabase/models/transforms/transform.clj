@@ -20,6 +20,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as ws.table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -117,7 +118,8 @@
       (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform
         (assoc-in [:target :database] target-db-id)
-        (cond-> table-id (assoc-in [:target :table_id] table-id))
+        (cond-> table-id (-> (assoc-in [:target :table_id] table-id)
+                             (assoc :target_table_id table-id)))
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
@@ -148,7 +150,8 @@
       (assoc :target_db_id target-db-id)
 
       table-id
-      (assoc-in [:target :table_id] table-id)
+      (-> (assoc-in [:target :table_id] table-id)
+          (assoc :target_table_id table-id))
 
       ;; Reset checkpoint when the incremental filter field changes
       (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
@@ -186,7 +189,17 @@
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
           last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
-      (for [transform transforms] (assoc transform :last_run (get last-runs (:id transform)))))))
+      (for [{transform-id :id :as transform} transforms]
+        (let [{:keys [status checkpoint_hi_value] :as last-run} (get last-runs transform-id)
+              transform (assoc transform :last_run last-run)]
+          (if (and (= status :succeeded) checkpoint_hi_value)
+            ;; ensure consistency of last_checkpoint_value with last_run
+            (if (:last_checkpoint_value transform)
+              (assoc transform :last_checkpoint_value checkpoint_hi_value)
+              ;; latest transform value wins, could be reset
+              (assoc transform :last_checkpoint_value
+                     (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id)))
+            transform))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
   "Add tag_ids to a transform, preserving the order defined by position"
@@ -245,9 +258,7 @@
   transform)
 
 (t2/define-before-delete :model/Transform [transform]
-  ;; TODO (Chris 2026-03-19) -- Once we have indexed FKs pointing from both global and workspace transforms
-  ;; to their target table, we should consider synchronously deleting orphaned provisional table rows
-  ;; (tables that have never been physically materialized). See gc-transform-target-tables! for the batch equivalent.
+  (ws.table/delete-orphaned-provisional-table! (:target_table_id transform) (:id transform))
   (events/publish-event! :event/delete-transform {:id (:id transform)})
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
@@ -321,27 +332,13 @@
   :table-with-db-and-fields
   "Fetch tables with their fields. The tables show up under the `:table` property."
   [transforms]
-  (let [table-key-fn (fn [{:keys [target] :as transform}]
-                       [(transforms-base.i/target-db-id transform) (:schema target) (:name target)])
-        table-keys (into #{} (map table-key-fn) transforms)
-        table-keys-with-schema (filter second table-keys)
-        table-keys-without-schema (keep (fn [[db-id schema table-name]]
-                                          (when-not schema
-                                            [db-id table-name]))
-                                        table-keys)
-        tables (when (or (seq table-keys-with-schema) (seq table-keys-without-schema))
-                 (-> (t2/select :model/Table
-                                {:where [:or
-                                         (when (seq table-keys-with-schema)
-                                           [:in [:composite :db_id :schema :name] table-keys-with-schema])
-                                         (when (seq table-keys-without-schema)
-                                           [:and
-                                            [:= :schema nil]
-                                            [:in [:composite :db_id :name] table-keys-without-schema]])]})
-                     (t2/hydrate :db :fields)))
-        table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
+  (let [table-ids (into #{} (keep :target_table_id) transforms)
+        id->table (when (seq table-ids)
+                    (m/index-by :id (-> (t2/select :model/Table :id [:in table-ids])
+                                        (t2/hydrate :db :fields))))]
     (for [transform transforms]
-      (assoc transform :table (get table-keys->table (table-key-fn transform))))))
+      (assoc transform :table
+             (get id->table (:target_table_id transform))))))
 
 (defmethod serdes/hash-fields :model/Transform
   [_transform]
@@ -350,7 +347,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value]
+   :skip      [:dependency_analysis_version :source_type :target_db_id :target_table_id :last_checkpoint_value]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

@@ -94,7 +94,8 @@ describe("scenarios > data studio > library", () => {
   it("should let you move metrics into the library, even when empty", () => {
     H.createLibrary();
     H.createQuestion(TRUSTED_ORDERS_METRIC, { visitQuestion: true });
-    H.openQuestionActions("Duplicate");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover().findByText("Duplicate").click();
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
 
     H.entityPickerModalItem(0, "Library").click();

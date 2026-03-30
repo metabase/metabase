@@ -795,7 +795,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :sso-slack :scim :sandboxes :email-allow-list :semantic-search]]
+  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list :semantic-search]]
     (map
      (fn [feature]
        {:name      feature
@@ -908,15 +908,6 @@
    {:name      :metabot-v3
     :available (premium-features/enable-metabot-v3?)
     :enabled   (premium-features/enable-metabot-v3?)}
-   {:name      :ai-entity-analysis
-    :available (premium-features/enable-ai-entity-analysis?)
-    :enabled   (premium-features/enable-ai-entity-analysis?)}
-   {:name      :ai-sql-fixer
-    :available (premium-features/enable-ai-sql-fixer?)
-    :enabled   (premium-features/enable-ai-sql-fixer?)}
-   {:name      :ai-sql-generation
-    :available (premium-features/enable-ai-sql-generation?)
-    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}

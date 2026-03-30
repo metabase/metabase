@@ -269,7 +269,10 @@ export const _columnSettings = {
     },
     widget: ChartSettingIconRadio,
     inline: true,
-    borderBottom: true,
+    getWrapperStyle: () => ({
+      paddingBottom: "1rem",
+      borderBottom: `1px solid var(--mb-color-border)`,
+    }),
     getProps: () => ({
       options: [
         {
