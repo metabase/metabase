@@ -56,13 +56,19 @@ databaseChangeLog:
             constraintName: fk_transform_target_table_id
 
   - changeSet:
-      id: v60.2026-03-10T00:00:30
+      id: v60.2026-03-10T00:00:25
       author: christruter
-      comment: Backfill transform.target_table_id from target JSON column
+      comment: >-
+        On rollback from v61, deletes the BackfillTransformTargetTableId changelog
+        entry so it re-runs on next upgrade when the supporting app code is present.
       changes:
-        - customChange:
-            class: metabase.app_db.custom_migrations.BackfillTransformTargetTableId
+        - sql:
+            sql: SELECT 1;
       rollback:
+        - sql:
+            sql: >-
+              DELETE FROM ${databasechangelog.name}
+              WHERE id = 'v60.2026-03-10T00:00:30';
 
   - changeSet:
       id: v60.2026-03-10T00:00:40

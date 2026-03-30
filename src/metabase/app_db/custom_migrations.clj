@@ -2182,27 +2182,3 @@
   (t2/query {:update :workspace
              :set    {:graph_version [:+ :graph_version 1]}}))
 
-(define-migration BackfillTransformTargetTableId
-  ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
-  ;; If table_id is present in the JSON, use it directly.
-  ;; If table_id is missing but name is present, look up the table by (db_id, schema, name).
-  (run! (fn [{:keys [id target target_db_id]}]
-          (let [target-map (json-out target false)
-                table-id   (or (get target-map "table_id")
-                               (when-let [table-name (get target-map "name")]
-                                 (find-table-id target_db_id (get target-map "schema") table-name)))]
-            (when table-id
-              (t2/query {:update :transform
-                         :set    {:target_table_id table-id}
-                         :where  [:= :id id]}))))
-        (t2/reducible-query {:select [:id :target :target_db_id]
-                             :from   [:transform]
-                             :where  [:and
-                                      [:not= :target_db_id nil]
-                                      [:= :target_table_id nil]]}))
-  ;; Invalidate workspace caches so they recalculate with target_table_id
-  (t2/query {:update :workspace_transform
-             :set    {:analysis_version [:+ :analysis_version 1]
-                      :definition_changed true}})
-  (t2/query {:update :workspace
-             :set    {:graph_version [:+ :graph_version 1]}}))
