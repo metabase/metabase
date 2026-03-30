@@ -75,7 +75,6 @@
   enable-sso-ldap?
   enable-sso-oidc?
   enable-sso-saml?
-  enable-sso-slack?
   enable-support-users?
   enable-basic-transforms?
   enable-python-transforms?
