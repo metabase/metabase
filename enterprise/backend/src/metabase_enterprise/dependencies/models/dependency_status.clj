@@ -40,11 +40,23 @@
      {:dependency_analysis_version models.dependency/current-dependency-analysis-version
       :stale false})))
 
+(defmulti hydrate-for-deps
+  "Hydrate a batch of instances with data needed for dependency calculation.
+  Dispatches on entity-type keyword. Default is identity (no hydration needed)."
+  {:arglists '([entity-type instances])}
+  (fn [entity-type _instances] entity-type))
+
+(defmethod hydrate-for-deps :default [_ instances] instances)
+
+(defmethod hydrate-for-deps :dashboard [_ instances]
+  (t2/hydrate instances [:dashcards :series]))
+
 (defn instances-for-dependency-calculation
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
   dependency calculation: stale=true OR version < current.
   Only processes entities that have a dependency_status entry.
-  Returns full entity objects. Prioritizes stale over outdated."
+  Returns full entity objects, hydrated for dependency calculation.
+  Prioritizes stale over outdated."
   [entity-type batch-size]
   (let [model (deps.dependency-types/dependency-type->model entity-type)
         table-name (t2/table-name model)

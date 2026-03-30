@@ -200,8 +200,8 @@
                                        :mb-dependency-backfill-delay-minutes "0"
                                        :mb-dependency-backfill-variance-minutes "0")
                         ;; Make compute-deps-for-entity! throw
-                        deps.calculation/upstream-deps:card
-                        (fn [_]
+                        deps.calculation/calculate-deps
+                        (fn [_ _]
                           (vswap! compute-attempts inc)
                           (throw (ex-info "Simulated computation error" {:card-id card-id})))]
             ;; fail MAX_RETRIES + 1 times
@@ -224,8 +224,8 @@
           (mark-stale! :card card-id)
           (with-redefs [env/env (assoc env/env
                                        :mb-dependency-backfill-delay-minutes "1")
-                        deps.calculation/upstream-deps:card
-                        (fn [_entity]
+                        deps.calculation/calculate-deps
+                        (fn [_ _entity]
                           (if (zero? @compute-attempts)
                             (do
                               (vswap! compute-attempts inc)

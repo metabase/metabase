@@ -50,22 +50,18 @@
 
 (def ^:private max-retries 5)
 
-(defn- processable-instances [entity-type batch-size]
-  (let [terminally-broken-ids ^Set (terminally-broken entity-type)
-        retry-state-map ^Map (retry-state entity-type)
-        current-time (current-millis)]
-    (into []
-          (comp
-           (filter (fn [instance]
-                     (let [id (:id instance)]
-                       (and (not (.contains terminally-broken-ids id))
-                            (let [entity-retry-info (.get retry-state-map id)]
-                              (or (nil? entity-retry-info)
-                                  (>= current-time (:next-retry-timestamp entity-retry-info))))))))
-           (take batch-size))
-          (deps.dependency-status/instances-for-dependency-calculation entity-type (* batch-size 2)))))
+;;; ------------------------------------------------ Post-deps cleanup multimethod ------------------------------------------------
 
-(defn- drop-outdated-target-dep! [{:keys [id target] :as transform}]
+(defmulti post-deps-cleanup!
+  "Perform entity-specific cleanup after dependencies have been replaced.
+  For example, transforms need to clean up outdated downstream table->transform dependencies.
+  Default is no-op."
+  {:arglists '([entity-type entity])}
+  (fn [entity-type _entity] entity-type))
+
+(defmethod post-deps-cleanup! :default [_ _entity] nil)
+
+(defmethod post-deps-cleanup! :transform [_ {:keys [id target] :as transform}]
   (let [db-id                (transforms/transform-source-database transform)
         downstream-table-ids (t2/select-fn-set :from_entity_id :model/Dependency
                                                :from_entity_type :table
@@ -89,34 +85,33 @@
                   :to_entity_type   :transform
                   :to_entity_id     id))))
 
+;;; ------------------------------------------------ Backfill orchestration ------------------------------------------------
+
+(defn- processable-instances [entity-type batch-size]
+  (let [terminally-broken-ids ^Set (terminally-broken entity-type)
+        retry-state-map ^Map (retry-state entity-type)
+        current-time (current-millis)]
+    (->> (deps.dependency-status/instances-for-dependency-calculation entity-type (* batch-size 2))
+         (into []
+               (comp
+                (filter (fn [instance]
+                          (let [id (:id instance)]
+                            (and (not (.contains terminally-broken-ids id))
+                                 (let [entity-retry-info (.get retry-state-map id)]
+                                   (or (nil? entity-retry-info)
+                                       (>= current-time (:next-retry-timestamp entity-retry-info))))))))
+                (take batch-size)))
+         (deps.dependency-status/hydrate-for-deps entity-type))))
+
 (defn- compute-deps-for-entity!
-  "Compute and store dependencies for an entity, then update its dependency_status."
+  "Compute and store dependencies for an entity, then update its dependency_status.
+  Entities are expected to be pre-hydrated by [[deps.dependency-status/hydrate-for-deps]]."
   [entity-type entity]
   (log/debug "Computing dependencies for" (name entity-type) (:id entity))
   (t2/with-transaction [_]
-    (let [deps-fn (case entity-type
-                    :card      deps.calculation/upstream-deps:card
-                    :transform deps.calculation/upstream-deps:transform
-                    :snippet   deps.calculation/upstream-deps:snippet
-                    :dashboard deps.calculation/upstream-deps:dashboard
-                    :document  deps.calculation/upstream-deps:document
-                    :sandbox   deps.calculation/upstream-deps:sandbox
-                    :segment   deps.calculation/upstream-deps:segment
-                    :measure   deps.calculation/upstream-deps:measure)
-          ;; For dashboards, load dashcards before computing deps
-          entity (if (= entity-type :dashboard)
-                   (let [dashboard-id (:id entity)
-                         dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)
-                         series-card-ids (when (seq dashcards)
-                                           (t2/select-fn-set :card_id :model/DashboardCardSeries
-                                                             :dashboardcard_id [:in (map :id dashcards)]))]
-                     (assoc entity :dashcards dashcards :series-card-ids series-card-ids))
-                   entity)
-          deps (deps-fn entity)]
+    (let [deps (deps.calculation/calculate-deps entity-type entity)]
       (models.dependency/replace-dependencies! entity-type (:id entity) deps)
-      ;; Entity-specific cleanup
-      (when (= entity-type :transform)
-        (drop-outdated-target-dep! entity))
+      (post-deps-cleanup! entity-type entity)
       (deps.dependency-status/upsert-status! entity-type (:id entity)))))
 
 (defn- backfill-entity-batch!
