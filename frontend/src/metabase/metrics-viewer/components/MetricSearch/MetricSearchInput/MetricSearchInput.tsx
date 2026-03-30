@@ -618,7 +618,7 @@ export function MetricSearchInput({
                 if (!metric) {
                   return null;
                 }
-                const defEntry = getEffectiveDefinitionEntry(
+                const definition = getEffectiveDefinitionEntry(
                   entry,
                   definitions,
                 );
@@ -627,7 +627,7 @@ export function MetricSearchInput({
                     <MetricPill
                       metric={metric}
                       colors={metricColors[entryIndex]}
-                      definitionEntry={defEntry}
+                      definitionEntry={definition}
                       onSwap={onSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)

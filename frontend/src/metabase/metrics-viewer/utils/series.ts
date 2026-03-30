@@ -589,20 +589,20 @@ export function buildDimensionItemsFromDefinitions(
   // Dimension items are per-source, so we just need a representative.
   const colorsBySourceId: Partial<Record<MetricSourceId, string[]>> = {};
   const modDefBySourceId = new Map<MetricSourceId, MetricDefinition>();
-  for (let i = 0; i < formulaEntities.length; i++) {
-    const e = formulaEntities[i];
-    if (isMetricEntry(e)) {
-      if (!(e.id in colorsBySourceId) && sourceColors[i]) {
-        colorsBySourceId[e.id] = sourceColors[i];
+
+  formulaEntities.forEach((entity, index) => {
+    if (isMetricEntry(entity)) {
+      if (!(entity.id in colorsBySourceId) && sourceColors[index]) {
+        colorsBySourceId[entity.id] = sourceColors[index];
       }
-      if (!modDefBySourceId.has(e.id)) {
-        const md = modifiedDefinitions.get(i);
+      if (!modDefBySourceId.has(entity.id)) {
+        const md = modifiedDefinitions.get(index);
         if (md) {
-          modDefBySourceId.set(e.id, md);
+          modDefBySourceId.set(entity.id, md);
         }
       }
     }
-  }
+  });
 
   return Object.values(definitions).flatMap((entry): DimensionItem[] => {
     if (!entry.definition) {

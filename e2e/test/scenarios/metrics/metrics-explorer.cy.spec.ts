@@ -1,4 +1,6 @@
 const { H } = cy;
+import Color from "color";
+
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -6,7 +8,6 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, ACCOUNTS_ID, FEEDBACK_ID } =
   SAMPLE_DATABASE;
 
@@ -186,18 +187,7 @@ describe("scenarios > metrics > explorer", () => {
    * Convert CSS rgb() color string to uppercase hex (#RRGGBB).
    */
   const rgbToHex = (rgb: string): string => {
-    const match = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-    if (!match) {
-      return rgb;
-    }
-    const [, r, g, b] = match;
-    return (
-      "#" +
-      [r, g, b]
-        .map((x) => parseInt(x, 10).toString(16).padStart(2, "0"))
-        .join("")
-        .toUpperCase()
-    );
+    return Color(rgb).hex().toUpperCase();
   };
 
   /**
@@ -207,6 +197,7 @@ describe("scenarios > metrics > explorer", () => {
   const getPillColors = (pillIndex: number): Cypress.Chainable<string[]> => {
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     return H.MetricsViewer.searchBarPills()
+      .should("have.length.greaterThan", pillIndex)
       .eq(pillIndex)
       .findByTestId("color-indicator-container")
       .children()
