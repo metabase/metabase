@@ -281,7 +281,7 @@
 
 ;;; ----------------------------------------- Enriched Context Integration Tests -----------------------------------------
 
-(deftest ^:parallel build-schema-context-with-description-test
+(deftest ^:synchronized build-schema-context-with-description-test
   (mt/with-test-user :crowberto
     (mt/with-temp [:model/Database db    {}
                    :model/Table    table {:db_id (:id db) :name "products" :schema "public"}

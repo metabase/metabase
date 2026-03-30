@@ -107,7 +107,7 @@
               :uri                 "/anyurl"}
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-key :uri]))))))
 
-(deftest ^:parallel current-user-info-for-api-key-test
+(deftest ^:synchronized current-user-info-for-api-key-test
   (mt/with-temp [:model/ApiKey _ {:name                  "An API Key"
                                   :user_id               (mt/user->id :lucky)
                                   :creator_id            (mt/user->id :lucky)
@@ -132,7 +132,7 @@
                                  :user-locale       nil})
                      (#'mw.session/merge-current-user-info req))))))))))
 
-(deftest ^:parallel current-user-info-for-api-key-test-1b
+(deftest ^:synchronized current-user-info-for-api-key-test-1b
   (testing "Various invalid API keys do not modify the request"
     (are [req] (= req (#'mw.session/merge-current-user-info req))
       ;; a matching prefix, invalid key
@@ -164,7 +164,7 @@
                :message   "Ignoring invalid API Key"}]
              (messages))))))
 
-(deftest ^:parallel current-user-info-for-api-key-test-2
+(deftest ^:synchronized current-user-info-for-api-key-test-2
   (mt/with-temp [:model/ApiKey _ {:name                  "An API Key without an internal user"
                                   :user_id               nil
                                   :creator_id            (mt/user->id :lucky)

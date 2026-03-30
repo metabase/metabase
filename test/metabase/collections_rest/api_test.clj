@@ -3354,7 +3354,7 @@
         (is (= "/" (:location (t2/select-one :model/Collection cid))))
         (is (:archived (t2/select-one :model/Collection cid)))))))
 
-(deftest ^:parallel collection-deletion-path-normalization-and-dashboard-cascade
+(deftest ^:synchronized collection-deletion-path-normalization-and-dashboard-cascade
   (mt/with-temp
     [:model/Collection {a-id :id :as a} {}
      :model/Dashboard {da-id :id} {:collection_id a-id}

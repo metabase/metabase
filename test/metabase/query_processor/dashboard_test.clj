@@ -122,7 +122,7 @@
                             #"Not found"
                             (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
-(deftest ^:parallel default-value-precedence-test-field-filters
+(deftest ^:synchronized default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
@@ -220,7 +220,7 @@
         1 [["11" 2 1]]
         2 []))))
 
-(deftest ^:parallel default-value-precedence-test-raw-values
+(deftest ^:synchronized default-value-precedence-test-raw-values
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
@@ -309,7 +309,7 @@
                                                     :parameters [{:id    "CATEGORY_2"
                                                                   :value ["Gadget"]}]))))))))))
 
-(deftest ^:parallel field-filters-should-work-if-no-value-is-specified-test
+(deftest ^:synchronized field-filters-should-work-if-no-value-is-specified-test
   (testing "Field Filters should not apply if no value is specified (metabase#20493)"
     (mt/dataset test-data
       (let [query (mt/native-query {:query         "SELECT COUNT(*) FROM \"PRODUCTS\" WHERE {{cat}}"

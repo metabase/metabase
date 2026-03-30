@@ -51,7 +51,7 @@
              :tenant_collection_id integer?}
             (mt/user-http-request :crowberto :get 200 (str "ee/tenant/" id1))))))
 
-(deftest ^:parallel can-update-tenant-name
+(deftest ^:synchronized can-update-tenant-name
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}
                  :model/Tenant _ {:name "Other Name" :slug "sluggy2"}]
     (is (=? {:id id
@@ -74,7 +74,7 @@
                :tenant_collection_id integer?}
               (mt/user-http-request :crowberto :put 200 (str "ee/tenant/" id) {:name "New Name"}))))))
 
-(deftest ^:parallel can-mark-tenant-as-active-or-inactive
+(deftest ^:synchronized can-mark-tenant-as-active-or-inactive
   (mt/with-temp [:model/Tenant {id :id} {:name "Tenant Name" :slug "sluggy"}]
     (is (=? {:id id
              :name "Tenant Name"

@@ -7,10 +7,6 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each (fn [thunk] (mt/test-helpers-set-global-values! (thunk))))
-
 (deftest show-static-embed-terms-test
   (mt/with-test-user :crowberto
     (testing "when hide-embed-branding? is true (Pro/EE with :embedding feature)"
@@ -247,7 +243,7 @@
           (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")
           (is (= "https://example.com" (embed.settings/embedding-app-origins-sdk))))))))
 
-(deftest toggle-full-app-embedding-test
+(deftest ^:synchronized toggle-full-app-embedding-test
   (mt/discard-setting-changes [embedding-app-origins-interactive]
     (testing "can't change embedding-app-origins-interactive if :embedding feature is not available"
       (mt/with-premium-features #{}
@@ -259,7 +255,7 @@
           (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "https://metabase.com"]
             (is (nil? (embed.settings/embedding-app-origins-interactive)))))))))
 
-(deftest toggle-full-app-embedding-test-2
+(deftest ^:synchronized toggle-full-app-embedding-test-2
   (mt/discard-setting-changes [embedding-app-origins-interactive]
     (testing "can change embedding-app-origins-interactive if :embedding is enabled"
       (mt/with-premium-features #{:embedding}

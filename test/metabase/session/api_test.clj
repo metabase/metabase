@@ -57,7 +57,7 @@
       (is (malli= SessionResponse
                   response)))))
 
-(deftest ^:parallel login-records-history-test
+(deftest ^:synchronized login-records-history-test
   (testing "POST /api/session - login records a LoginHistory item"
     (let [creds    (update (mt/user->credentials :rasta) :username u/upper-case-en)
           response (mt/client :post 200 "session" creds)]
@@ -71,7 +71,7 @@
                    [:active             [:= true]]]
                   (t2/select-one :model/LoginHistory :user_id (mt/user->id :rasta), :session_id (t2/select-one-fn :id :model/Session :key_hashed (session/hash-session-key (:id response)))))))))
 
-(deftest ^:parallel login-remember-me-sets-max-age-test
+(deftest ^:synchronized login-remember-me-sets-max-age-test
   (testing "POST /api/session - 'remember me' checkbox sets Max-Age attribute on session cookie"
     (let [body (assoc (mt/user->credentials :rasta) :remember true)
           response (mt/client-real-response :post 200 "session" body)]
@@ -118,7 +118,7 @@
             (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
                                                (assoc :password "something else")))))))
 
-(deftest ^:parallel login-throttling-test
+(deftest ^:synchronized login-throttling-test
   (testing (str "Test that people get blocked from attempting to login if they try too many times (Check that"
                 " throttling works at the API level -- more tests in the throttle library itself:"
                 " https://github.com/metabase/throttle)")
