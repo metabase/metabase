@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
 import {
@@ -115,8 +116,11 @@ export function isCustomVizDisplay(display: string | undefined): boolean {
 export function useCustomVizPlugins({
   enabled = true,
 }: { enabled?: boolean } = {}) {
+  const { token, uuid } = useEmbeddingEntityContext();
+  const isPublicOrStaticEmbed = Boolean(token || uuid);
+  const shouldLoad = enabled && !isPublicOrStaticEmbed;
   const { data: plugins } = useListCustomVizPluginsQuery(undefined, {
-    skip: !enabled,
+    skip: !shouldLoad,
   });
 
   return plugins;
