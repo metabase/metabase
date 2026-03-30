@@ -42,15 +42,6 @@ describe("scenarios > embedding-sdk > touch chart drill popover", () => {
   });
 
   it("should position popover anchor correctly for TouchEvents (iOS Safari)", () => {
-    // On iOS Safari, ECharts/zrender passes a TouchEvent through to
-    // getEventTarget(). TouchEvent lacks clientX/clientY (those live on
-    // individual Touch objects in changedTouches). Without the fix,
-    // the #popover-event-target gets "left: NaNpx; top: NaNpx" which
-    // the browser ignores, placing it far offscreen.
-    //
-    // CDP touch emulation in desktop Chrome doesn't reliably reproduce
-    // this because Chrome may fire PointerEvent instead of TouchEvent.
-    // So we call getEventTarget() directly with a real TouchEvent.
     cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
@@ -73,7 +64,6 @@ describe("scenarios > embedding-sdk > touch chart drill popover", () => {
         touches: [],
       });
 
-      // Access getEventTarget via the app's module system
       const { getEventTarget } = require("metabase/lib/dom");
       const target = getEventTarget(touchEvent);
 
