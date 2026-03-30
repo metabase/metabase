@@ -8,6 +8,7 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.column-key :as lib.schema.column-key]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -91,7 +92,7 @@
 
 (mu/defn expression-key :- ::lib.schema.column-key/column-key
   "Given an aggregation clause like `[:max ...]`, construct its column key."
-  [expr-clause :- :any] ;; FIXME: Get the right schema.
+  [expr-clause :- ::lib.schema.expression/expression]
   {:lib/type               :column/key
    :column.expression/uuid (lib.options/uuid expr-clause)})
 

@@ -346,8 +346,8 @@
     [:base-type {:default :type/*} ::lib.schema.common/base-type]
 
     ;; Include column keys everywhere because they need to be built up by construction, which mirrors how metadata is
-    ;; calculated. These are required, to make sure they are not missed on any path that constructs metadata.
-
+    ;; calculated. These should be required, they are always returned on every `foo-columns` list, but there are lots
+    ;; of internal functions that expect column metadata but the column key isn't defined yet.
     [:lib/column-key {:optional true} [:ref ::lib.schema.column-key/column-key]]
 
     ;; This is nillable because internal remap columns have `:id nil`.

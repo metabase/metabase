@@ -2,6 +2,8 @@
   "Functions related to manipulating EXPLICIT joins in MBQL."
   (:refer-clojure :exclude [mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
+   ;; TODO: (bshepherdson, 2026/03/30) Make analytics.core into a CLJC module, even if the CLJS versions do nothing.
+   #?@(:clj ([metabase.analytics.core :as analytics]))
    [clojure.set :as set]
    [clojure.string :as str]
    [inflections.core :as inflections]
@@ -254,7 +256,7 @@
                               [:lib/type [:= :metadata/column]]]
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
   ([query stage-number col join-alias]
-   (column-from-join query stage-number col join-alias (maybe-resolve-join query stage-number join-alias)))
+   (column-from-join query stage-number col join-alias nil))
   ([query        :- ::lib.schema/query
     stage-number :- :int
     col          :- [:map
@@ -276,7 +278,9 @@
                                      (if (lib.column-key/from-join? (:lib/column-key col) join)
                                        (:lib/column-key col)
                                        (lib.column-key/explicitly-joined (:lib/column-key col) join))
-                                     ::failed-to-resolve-join-clause)
+                                     (do
+                                       #?(:clj (analytics/inc! :metabase-query-processor/unresolvable-join-clause))
+                                       ::failed-to-resolve-join-clause))
         :lib/original-name         ((some-fn :lib/original-name :name) col)
         :lib/original-display-name (or (:lib/original-display-name col)
                                        (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))

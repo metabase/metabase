@@ -1055,7 +1055,8 @@
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.util.match}
-   :uses #{config
+   :uses #{analytics
+           config
            graph
            legacy-mbql
            types

@@ -259,6 +259,8 @@
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
    (prometheus/gauge   :metabase-query-processor/computed-weak-map-queries
                        {:description "Number of queries cached in lib.computed/weak-map."})
+   (prometheus/counter :metabase-query-processor/unresolvable-join-clause
+                       {:description "Number of times lib could not resolve a join alias to the join clause"})
    (prometheus/gauge   :metabase-card/unique-cards-failed-conversion
                        {:description "Number of distinct cards which have :dataset_query {}, meaning MBQL 4 to 5 conversion failed."})
    (prometheus/counter :metabase-card/conversions-requiring-cleaning
