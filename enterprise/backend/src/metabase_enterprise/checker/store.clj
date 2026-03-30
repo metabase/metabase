@@ -70,6 +70,8 @@
     (in-index? store :card entity-id)       :card
     (in-index? store :dashboard entity-id)  :dashboard
     (in-index? store :document entity-id)   :document
+    (in-index? store :measure entity-id)    :measure
+    (in-index? store :segment entity-id)    :segment
     :else nil))
 
 (defn index-file

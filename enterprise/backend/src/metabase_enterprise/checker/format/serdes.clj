@@ -183,7 +183,26 @@
   {"Card"       :card
    "Dashboard"  :dashboard
    "Collection" :collection
-   "Document"   :document})
+   "Document"   :document
+   "Measure"    :measure
+   "Segment"    :segment})
+
+(defn- index-measures-and-segments
+  "Walk a databases directory and index measure/segment YAML files by entity_id.
+   Only scans files under measures/ and segments/ subdirectories to avoid
+   reading every file in the database tree."
+  [databases-dir]
+  (when (.isDirectory (io/file databases-dir))
+    (for [^File file (file-seq (io/file databases-dir))
+          :when (.isFile file)
+          :let  [path (.getPath file)]
+          :when (str/ends-with? (.getName file) ".yaml")
+          :when (or (re-find #"/measures/[^/]+\.yaml$" path)
+                    (re-find #"/segments/[^/]+\.yaml$" path))
+          :let  [entity-id (extract-entity-id path)]
+          :when entity-id
+          :let  [kind (if (re-find #"/measures/" path) :measure :segment)]]
+      {:kind kind :ref entity-id :file path})))
 
 (defn- index-collections-tree
   "Walk the collections/ directory and index all entities by their serdes model.
@@ -210,8 +229,10 @@
    - `:duplicates` — a vector of {:kind :ref :files [path1 path2 ...]} for any
      ref that appears in multiple files"
   [export-dir]
-  (let [entries (concat
+  (let [databases-dir (io/file export-dir "databases")
+        entries (concat
                  (walk-layout (io/file export-dir) [] database-layout)
+                 (index-measures-and-segments databases-dir)
                  (index-collections-tree export-dir))
         ;; Group by [kind ref] to find duplicates
         by-key  (reduce (fn [m {:keys [kind ref file]}]
@@ -246,12 +267,14 @@
      [:insert nil table-layout]]]])
 
 (defn build-database-dir-index
-  "Build index of database/table/field entities from a directory that IS the
-   databases directory (contains db subdirectories directly, no `databases/` prefix).
+  "Build index of database/table/field/measure/segment entities from a directory
+   that IS the databases directory (contains db subdirectories directly).
 
-   Returns `{kind {ref file-path}}` with :database, :table, :field entries."
+   Returns `{kind {ref file-path}}` with :database, :table, :field, :measure, :segment entries."
   [databases-dir]
-  (let [entries (walk-layout (io/file databases-dir) [] databases-dir-layout)]
+  (let [entries (concat
+                 (walk-layout (io/file databases-dir) [] databases-dir-layout)
+                 (index-measures-and-segments databases-dir))]
     (reduce (fn [idx {:keys [kind ref file]}]
               (assoc-in idx [kind ref] file))
             {}
@@ -263,6 +286,8 @@
   {:databases      (count (:database index))
    :tables         (count (:table index))
    :fields         (count (:field index))
+   :measures       (count (:measure index))
+   :segments       (count (:segment index))
    :cards          (count (:card index))
    :dashboards     (count (:dashboard index))
    :collections    (count (:collection index))

@@ -370,6 +370,86 @@
           "Should have unresolved table ref"))))
 
 ;;; ===========================================================================
+;;; Measure and Segment reference tests
+;;; ===========================================================================
+
+(deftest measure-ref-resolved-test
+  (testing "Card referencing a known measure resolves without errors"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Uses Measure"
+                                      :entity_id "card-1"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]
+                                                              :aggregation [["measure" "mSrAvgProdPrice00008x"]]}}}}}
+          source (make-memory-source entities)
+          index (assoc (make-memory-index entities)
+                       :measure {"mSrAvgProdPrice00008x" :memory})
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (nil? (:error result)) (str "Should not error: " (:error result)))
+      (is (empty? (filter #(= :measure (:type %)) (or (:unresolved result) [])))
+          "Should not have unresolved measure refs"))))
+
+(deftest measure-ref-missing-test
+  (testing "Card referencing unknown measure is flagged"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Bad Measure Ref"
+                                      :entity_id "card-1"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]
+                                                              :aggregation [["measure" "xXxNoExIsT0MeAsUrExx1"]]}}}}}
+          source (make-memory-source entities)
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (some #(= :measure (:type %)) (or (:unresolved result) []))
+          "Should have unresolved measure ref"))))
+
+(deftest segment-ref-resolved-test
+  (testing "Card referencing a known segment resolves without errors"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Uses Segment"
+                                      :entity_id "card-1"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]
+                                                              :filter ["segment" "aB3kLmN9pQrStUvWxYz1a"]}}}}}
+          source (make-memory-source entities)
+          index (assoc (make-memory-index entities)
+                       :segment {"aB3kLmN9pQrStUvWxYz1a" :memory})
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (nil? (:error result)) (str "Should not error: " (:error result)))
+      (is (empty? (filter #(= :segment (:type %)) (or (:unresolved result) [])))
+          "Should not have unresolved segment refs"))))
+
+(deftest segment-ref-missing-test
+  (testing "Card referencing unknown segment is flagged"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables {["DB" "PUBLIC" "T"] {:name "T" :schema "PUBLIC"}}
+                    :fields {}
+                    :cards {"card-1" {:name "Bad Segment Ref"
+                                      :entity_id "card-1"
+                                      :dataset_query {:database "DB"
+                                                      :type "query"
+                                                      :query {:source-table ["DB" "PUBLIC" "T"]
+                                                              :filter ["segment" "xXxNoExIsT0SeGmEnTx12"]}}}}}
+          source (make-memory-source entities)
+          index (make-memory-index entities)
+          results (checker/check-cards source index ["card-1"])
+          result (get results "card-1")]
+      (is (some #(= :segment (:type %)) (or (:unresolved result) []))
+          "Should have unresolved segment ref"))))
+
+;;; ===========================================================================
 ;;; Collection reference tests
 ;;; ===========================================================================
 

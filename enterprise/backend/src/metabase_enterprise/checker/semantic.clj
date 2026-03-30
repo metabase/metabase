@@ -54,12 +54,17 @@
   [store kind ref !failures failure-info & {:keys [sentinel?]}]
   (when ref
     (or (store/ref->id store kind ref)
-        (let [resolve-fn (case kind
-                           :field    source/resolve-field
-                           :table    source/resolve-table
-                           :database source/resolve-database
-                           :card     source/resolve-card)]
-          (when (resolve-fn (store/source store) ref)
+        (case kind
+          (:field :table :database :card)
+          (let [resolve-fn (case kind
+                             :field    source/resolve-field
+                             :table    source/resolve-table
+                             :database source/resolve-database
+                             :card     source/resolve-card)]
+            (when (resolve-fn (store/source store) ref)
+              (store/get-or-assign! store kind ref)))
+          ;; For measures, segments, and other index-only kinds: check the index directly
+          (when (store/in-index? store kind ref)
             (store/get-or-assign! store kind ref)))
         (do (when !failures (swap! !failures conj failure-info))
             (when sentinel?
@@ -99,7 +104,9 @@
   (reify resolve/SerdesImportResolver
     (import-fk [_ eid model]
       (case model
-        (Card Segment Measure) (resolve-card-entity-id store !failures eid)
+        Card    (resolve-card-entity-id store !failures eid)
+        Segment (resolve-ref store :segment eid !failures {:type :segment :entity-id eid})
+        Measure (resolve-ref store :measure eid !failures {:type :measure :entity-id eid})
         (do (when !failures
               (swap! !failures conj {:type :unknown :model model :entity-id eid}))
             nil)))
@@ -567,7 +574,7 @@
                     :error      (.getMessage e)}]))))
 
 (defn- check-non-card-entities
-  "Run checks on indexed dashboards, collections, and documents (not cards).
+  "Run checks on indexed dashboards, collections, documents, measures, and segments.
    Cards are checked inline in check-card since their data is already loaded.
    Returns a map of entity-id → result for entities with failures."
   [store]
@@ -576,7 +583,9 @@
         (concat
          (map #(check-entity-from-file store :dashboard %) (store/all-refs store :dashboard))
          (map #(check-entity-from-file store :collection %) (store/all-refs store :collection))
-         (map #(check-entity-from-file store :document %) (store/all-refs store :document)))))
+         (map #(check-entity-from-file store :document %) (store/all-refs store :document))
+         (map #(check-entity-from-file store :measure %) (store/all-refs store :measure))
+         (map #(check-entity-from-file store :segment %) (store/all-refs store :segment)))))
 
 ;;; ===========================================================================
 ;;; Card validation
@@ -819,7 +828,7 @@
         src          (source/composite-source db-source export-source)
         db-index     (serdes/source-index db-source)
         export-index (serdes/source-index export-source)
-        index        (merge db-index (select-keys export-index [:card :dashboard :collection :document :duplicates]))]
+        index        (merge db-index (select-keys export-index [:card :dashboard :collection :document :measure :segment :duplicates]))]
     {:source src :index index :export-source export-source}))
 
 (defn check
