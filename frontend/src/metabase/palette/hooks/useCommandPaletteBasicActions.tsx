@@ -193,16 +193,7 @@ export const useCommandPaletteBasicActions = ({
         perform: () => {
           trackMetricCreateStarted("command_palette");
           dispatch(closeModal());
-          dispatch(push("metric/query"));
-          dispatch(
-            push(
-              Urls.newQuestion({
-                mode: "query",
-                cardType: "metric",
-                collectionId,
-              }),
-            ),
-          );
+          dispatch(push(Urls.newMetric({ collectionId })));
         },
       });
     }

@@ -2,7 +2,7 @@
   "A Measure is a saved MBQL 'macro', expanding to an `:aggregation` clause. It is tied to a table and contains
    exactly one aggregation expression."
   (:require
-   [clojure.set :as set]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -130,9 +130,10 @@
   (validate-mbql5-definition definition)
   (when (seq definition)
     (lib/check-measure-overwrite nil definition))
-  measure)
+  (cond-> measure
+    (seq definition) (m/assoc-some :table_id (lib/primary-source-table-id definition))))
 
-(t2/define-before-update :model/Measure [{:keys [id] :as measure}]
+(t2/define-before-update :model/Measure [{:keys [id definition] :as measure}]
   ;; throw an Exception if someone tries to update creator_id
   (when (contains? (t2/changes measure) :creator_id)
     (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Measure."))))
@@ -140,7 +141,11 @@
   (when-let [def-change (:definition (t2/changes measure))]
     (validate-mbql5-definition def-change)
     (lib/check-measure-overwrite id def-change))
-  measure)
+  (if (and (contains? (t2/changes measure) :definition)
+           (seq definition))
+    (m/assoc-some measure
+                  :table_id (lib/primary-source-table-id definition))
+    measure))
 
 (defmethod mi/perms-objects-set :model/Measure
   [measure read-or-write]
@@ -186,8 +191,8 @@
   [:name (serdes/hydrated-hash :table) :created_at])
 
 (defmethod serdes/dependencies "Measure" [{:keys [definition table_id]}]
-  (set/union #{(serdes/table->path table_id)}
-             (serdes/mbql-deps definition)))
+  (cond-> (serdes/mbql-deps definition)
+    table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]
   (let [{:keys [id label]} (-> measure serdes/path last)]

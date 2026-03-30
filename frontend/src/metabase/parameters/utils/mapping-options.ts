@@ -3,13 +3,13 @@ import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { getAllowedIframeAttributes } from "metabase/dashboard/visualizations/IFrameViz/utils";
 import {
   isActionDashCard,
   isQuestionDashCard,
   isVirtualDashCard,
-} from "metabase/dashboard/utils";
+} from "metabase/lib/dashboard";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
-import { getAllowedIframeAttributes } from "metabase/visualizations/visualizations/IFrameViz/utils";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";

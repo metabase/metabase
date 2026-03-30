@@ -1,6 +1,5 @@
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import type { MiniPickerTableItem } from "metabase/common/components/Pickers/MiniPicker/types";
-import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type {
   CardDisplayType,
   CardType,
@@ -11,6 +10,24 @@ import type {
   RecentCollectionItem,
   VisualizationSettings,
 } from "metabase-types/api";
+
+export type Location = {
+  row: number;
+  column: number;
+};
+
+export type SelectionRange = {
+  start: Location;
+  end: Location;
+};
+
+export type SidebarFeatures = {
+  dataReference?: boolean;
+  variables?: boolean;
+  snippets?: boolean;
+  promptInput?: boolean;
+  formatQuery?: boolean;
+};
 
 export type QueryEditorSidebarType =
   | "data-reference"

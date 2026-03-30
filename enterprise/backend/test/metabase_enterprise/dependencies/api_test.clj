@@ -1393,7 +1393,7 @@
                                :data {:name "Unreferenced Transform - unreftest"}}]}
                       response)))
             (finally
-              ;; Clean up provisional table rows created by define-after-insert
+              ;; Clean up provisional table rows created by define-before-insert
               (t2/delete! :model/Table :db_id (mt/id) :name [:in ["referenced_transform_table" "unreferenced_transform_table"]]))))))))
 
 (deftest ^:sequential unreferenced-snippets-test

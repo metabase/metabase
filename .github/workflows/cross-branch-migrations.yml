@@ -154,7 +154,6 @@ jobs:
     services:
       mariadb:
         image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
-        image: ${{ matrix.version.image }}
         ports:
           - "3306:3306"
         env:

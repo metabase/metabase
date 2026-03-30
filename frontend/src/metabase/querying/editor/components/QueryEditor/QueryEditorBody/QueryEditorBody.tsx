@@ -6,12 +6,7 @@ import { useWindowSize } from "react-use";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { useSetting } from "metabase/common/hooks";
-import {
-  NativeQueryEditor,
-  type SelectionRange,
-} from "metabase/query_builder/components/NativeQueryEditor";
-import type { QueryModalType } from "metabase/query_builder/constants";
-import type { QueryEditorDatabasePickerItem } from "metabase/querying/editor/types";
+import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -20,6 +15,12 @@ import type {
   NativeQuerySnippet,
   RecentCollectionItem,
 } from "metabase-types/api";
+
+import type { QueryModalType } from "../../../../constants";
+import type {
+  QueryEditorDatabasePickerItem,
+  SelectionRange,
+} from "../../../types";
 
 import S from "./QueryEditorBody.module.css";
 

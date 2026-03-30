@@ -6,33 +6,24 @@ import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
-import type { DatabaseId, ReferencedEntityId } from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 
 import S from "./MetabotInlineSQLPrompt.module.css";
-import { type SelectedTable, TablePillsInput } from "./TablePillsInput";
 
 interface MetabotInlineSQLPromptProps {
-  isTableBarEnabled: boolean;
   databaseId: DatabaseId | null;
   onClose: () => void;
   isLoading: boolean;
   error: string | undefined;
-  generate: (options: {
-    prompt: string;
-    sourceSql?: string;
-    referencedEntities?: ReferencedEntityId[];
-  }) => Promise<void>;
+  generate: (options: { prompt: string; sourceSql?: string }) => Promise<void>;
   cancelRequest: () => void;
   suggestionModels: SuggestionModel[];
-  getSourceSql?: () => string;
+  getSourceSql: () => string;
   value: string;
   onValueChange: (value: string) => void;
-  selectedTables: SelectedTable[];
-  onSelectedTablesChange: (tables: SelectedTable[]) => void;
 }
 
 export const MetabotInlineSQLPrompt = ({
-  isTableBarEnabled,
   databaseId,
   onClose,
   isLoading,
@@ -43,8 +34,6 @@ export const MetabotInlineSQLPrompt = ({
   getSourceSql,
   value,
   onValueChange,
-  selectedTables,
-  onSelectedTablesChange,
 }: MetabotInlineSQLPromptProps) => {
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
 
@@ -52,14 +41,8 @@ export const MetabotInlineSQLPrompt = ({
 
   const handleSubmit = useCallback(async () => {
     const prompt = promptInputRef.current?.getValue?.().trim() ?? "";
-    const sourceSql = getSourceSql?.();
-    const referencedEntities =
-      selectedTables.map((table) => ({
-        model: "table" as const,
-        id: table.id,
-      })) ?? [];
-    generate({ prompt, sourceSql, referencedEntities });
-  }, [generate, getSourceSql, selectedTables]);
+    return generate({ prompt, sourceSql: getSourceSql() });
+  }, [generate, getSourceSql]);
 
   const handleClose = useCallback(() => {
     cancelRequest();
@@ -87,28 +70,12 @@ export const MetabotInlineSQLPrompt = ({
 
   return (
     <Box className={S.container} data-testid="metabot-inline-sql-prompt">
-      {isTableBarEnabled && (
-        <Box className={S.tableBar}>
-          <TablePillsInput
-            disabled={isLoading}
-            databaseId={databaseId}
-            selectedTables={selectedTables}
-            onChange={onSelectedTablesChange}
-            onEnterPress={() => promptInputRef.current?.focus()}
-            autoFocus={isTableBarEnabled}
-          />
-        </Box>
-      )}
       <Box className={S.inputContainer}>
         <MetabotPromptInput
           ref={promptInputRef}
           value={value}
-          placeholder={
-            isTableBarEnabled
-              ? t`Then, ask for what you'd like to see. Type @ to mention an item.`
-              : t`Describe what SQL you want, type @ to mention an item.`
-          }
-          autoFocus={!isTableBarEnabled}
+          placeholder={t`Describe what SQL you want, type @ to mention an item.`}
+          autoFocus
           disabled={isLoading}
           onChange={onValueChange}
           onStop={handleClose}

@@ -1,6 +1,7 @@
 (ns metabase.internal-stats.core
   (:require
    [metabase.internal-stats.embedding :as embedding-stats]
+   [metabase.internal-stats.metabot :as metabot-stats]
    [metabase.internal-stats.query-executions :as query-execution-stats]
    [metabase.internal-stats.questions :as question-stats]
    [metabase.internal-stats.users :as user-stats]
@@ -26,3 +27,7 @@
 (p/import-vars
  [question-stats
   question-statistics-all-time])
+
+(p/import-vars
+ [metabot-stats
+  metabot-stats])

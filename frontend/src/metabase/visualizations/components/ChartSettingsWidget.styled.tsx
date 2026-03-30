@@ -4,28 +4,16 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 export const Root = styled.div<{
-  noPadding?: boolean;
   inline?: boolean;
-  marginBottom?: string;
-  borderBottom?: boolean;
 }>`
-  ${(props) =>
-    !props.noPadding &&
-    css`
-      margin-left: 2rem;
-      margin-right: 2rem;
-    `}
+  margin-left: 2rem;
+  margin-right: 2rem;
+  margin-bottom: 1.5em;
 
   ${(props) =>
     props.hidden &&
     css`
       display: none;
-    `}
-
-  ${(props) =>
-    !props.hidden &&
-    css`
-      margin-bottom: ${props.marginBottom || "1.5em"};
     `}
 
   ${(props) =>
@@ -36,13 +24,6 @@ export const Root = styled.div<{
       flex-direction: row;
       justify-content: space-between;
       align-items: center;
-    `}
-
-    ${(props) =>
-    props.borderBottom &&
-    css`
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--mb-color-border);
     `}
 
   input {

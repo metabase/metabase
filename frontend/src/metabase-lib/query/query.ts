@@ -172,3 +172,17 @@ export function createTestNativeQuery(
 ): Query {
   return ML.test_native_query(metadataProvider, nativeQuerySpec);
 }
+
+export function createTestJsQuery(
+  metadataProvider: MetadataProvider,
+  querySpec: TestQuerySpec,
+): OpaqueDatasetQuery {
+  return toJsQuery(createTestQuery(metadataProvider, querySpec));
+}
+
+export function createTestJsNativeQuery(
+  metadataProvider: MetadataProvider,
+  nativeQuerySpec: TestNativeQuerySpec,
+): OpaqueDatasetQuery {
+  return toJsQuery(createTestNativeQuery(metadataProvider, nativeQuerySpec));
+}

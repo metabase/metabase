@@ -55,15 +55,18 @@ describe("scenarios > dashboard cards > sections", () => {
       section_layout: "kpi_grid",
     });
 
+    // Verify placeholder cards can be dragged (metabase#UXW-3387)
+    assertPlaceholderCardCanBeDragged();
+
     selectQuestion("Orders, Count, Grouped by Created At (year)");
 
     overwriteDashCardTitle(
-      2,
+      1,
       "Orders, Count, Grouped by Created At (year)",
       "Line chart",
     );
     // TODO: if the mapping is done before the title is changed, the mapping is lost
-    mapDashCardToFilter(H.getDashboardCard(2), "Category");
+    mapDashCardToFilter(H.getDashboardCard(1), "Category");
 
     H.goToTab("Tab 1");
     H.saveDashboard();
@@ -101,7 +104,7 @@ describe("scenarios > dashboard cards > sections", () => {
     // Ensure parameter mapping is persisted
     H.editDashboard();
     filterPanel().findByText("Category").click();
-    H.getDashboardCard(2).findByText("Product.Category").should("exist");
+    H.getDashboardCard(1).findByText("Product.Category").should("exist");
   });
 });
 
@@ -162,4 +165,43 @@ function mapDashCardToFilter(dashcardElement, filterName) {
   filterPanel().findByText(filterName).click();
   H.selectDashboardFilter(dashcardElement, filterName);
   H.sidebar().button("Done").click();
+}
+
+function assertPlaceholderCardCanBeDragged() {
+  H.getDashboardCards().then(($cards) => {
+    const initialLeftValues = [...$cards].map(
+      (card) => card.getBoundingClientRect().left,
+    );
+
+    const $target = $cards
+      .filter((_i, card) =>
+        card
+          .querySelector("[data-testid='dashcard']")
+          ?.textContent?.includes("Select question"),
+      )
+      .first();
+
+    const rect = $target[0].getBoundingClientRect();
+
+    cy.wrap($target)
+      .trigger("mousedown", { button: 0, x: 10, y: 50 })
+      .trigger("mousemove", {
+        button: 0,
+        clientX: rect.left + 900,
+        clientY: rect.top + 200,
+      })
+      .wait(100)
+      .trigger("mouseup");
+
+    H.getDashboardCards().then(($afterCards) => {
+      const afterLeftValues = [...$afterCards].map(
+        (card) => card.getBoundingClientRect().left,
+      );
+
+      const someCardMoved = afterLeftValues.some(
+        (left, i) => left !== initialLeftValues[i],
+      );
+      expect(someCardMoved).to.eq(true);
+    });
+  });
 }

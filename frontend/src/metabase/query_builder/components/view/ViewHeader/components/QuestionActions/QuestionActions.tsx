@@ -5,12 +5,10 @@ import { t } from "ttag";
 import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
-import { DataStudioToolbarButton } from "metabase/data-studio/query-builder/components/DataStudioToolbarButton";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { useDispatch } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
-import type { QueryModalType } from "metabase/query_builder/constants";
+import type { QueryModalType } from "metabase/querying/constants";
 import { uploadFile } from "metabase/redux/uploads";
 import { Box, Divider, Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -98,9 +96,6 @@ export const QuestionActions = ({
     }
   };
 
-  const shouldShowDataStudioLink =
-    getLibraryCollectionType(question.collection()?.type) != null;
-
   return (
     <>
       <Divider orientation="vertical" my="xs" />
@@ -162,15 +157,12 @@ export const QuestionActions = ({
           </Box>
         </>
       )}
-      {!question.isArchived() && !shouldShowDataStudioLink && (
+      {!question.isArchived() && (
         <QuestionMoreActionsMenu
           question={question}
           onOpenModal={onOpenModal}
           onSetQueryBuilderMode={onSetQueryBuilderMode}
         />
-      )}
-      {shouldShowDataStudioLink && (
-        <DataStudioToolbarButton question={question} />
       )}
     </>
   );

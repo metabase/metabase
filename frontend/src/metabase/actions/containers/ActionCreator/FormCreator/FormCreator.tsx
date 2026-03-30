@@ -3,13 +3,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SidebarContent } from "metabase/common/components/SidebarContent";
 import type {
   DragEndEvent,
   RenderItemProps,
 } from "metabase/common/components/Sortable";
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import { Form, FormProvider } from "metabase/forms";
-import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import type {
   ActionFormSettings,
