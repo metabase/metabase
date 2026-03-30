@@ -1,4 +1,4 @@
-import { defineSetting } from "../lib";
+import { createDefineSetting } from "../lib";
 
 import type {
   CreateCustomVisualization,
@@ -10,9 +10,9 @@ type ThumbsVizSettings = {
   threshold?: number;
 };
 
-const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = ({
-  translate: _translate,
-}) => {
+const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = () => {
+  const defineSetting = createDefineSetting<ThumbsVizSettings>();
+
   return {
     id: "thumbs-viz",
     getName: () => "Thumbs",
