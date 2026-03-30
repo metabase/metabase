@@ -140,13 +140,13 @@ databaseChangeLog:
               INSERT INTO metabot_permissions (group_id, perm_type, perm_value)
               SELECT pg.id, d.perm_type, d.perm_value
               FROM permissions_group pg
-              CROSS JOIN (VALUES
-                ('permission/metabot', 'yes'),
-                ('permission/metabot-model', 'medium'),
-                ('permission/metabot-sql-generation', 'yes'),
-                ('permission/metabot-nql', 'yes'),
-                ('permission/metabot-other-tools', 'yes')
-              ) AS d(perm_type, perm_value)
+              CROSS JOIN (
+                SELECT 'permission/metabot' AS perm_type, 'yes' AS perm_value
+                UNION ALL SELECT 'permission/metabot-model', 'medium'
+                UNION ALL SELECT 'permission/metabot-sql-generation', 'yes'
+                UNION ALL SELECT 'permission/metabot-nql', 'yes'
+                UNION ALL SELECT 'permission/metabot-other-tools', 'yes'
+              ) AS d
               WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
                 AND NOT EXISTS (
                   SELECT 1 FROM metabot_permissions mp
