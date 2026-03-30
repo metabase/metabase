@@ -11,37 +11,46 @@ type PropsFromWidget<W> = W extends WidgetName
     ? P
     : never;
 
-export function defineSetting<
+export function createDefineSetting<
   CustomVisualizationSettings extends Record<string, unknown>,
-  TValue,
-  W extends WidgetName | ((props: any) => any),
->(settingDefinition: {
-  id: string;
-  section?: string;
-  title?: string;
-  group?: string;
-  index?: number;
-  inline?: boolean;
+>() {
+  return function defineSetting<
+    W extends WidgetName | ((props: any) => any),
+    Key extends keyof CustomVisualizationSettings,
+  >(settingDefinition: {
+    id: Key;
+    section?: string;
+    title?: string;
+    group?: string;
+    index?: number;
+    inline?: boolean;
 
-  persistDefault?: boolean;
-  set?: boolean;
+    persistDefault?: boolean;
+    set?: boolean;
 
-  readDependencies?: string[];
-  writeDependencies?: string[];
-  eraseDependencies?: string[];
+    readDependencies?: string[];
+    writeDependencies?: string[];
+    eraseDependencies?: string[];
 
-  widget: W;
+    widget: W;
 
-  isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
-  getDefault?: (
-    series: Series,
-    settings: CustomVisualizationSettings,
-  ) => TValue;
-  getProps(
-    object: Series,
-    vizSettings: CustomVisualizationSettings,
-  ): PropsFromWidget<W>;
-  getValue?: (series: Series, settings: CustomVisualizationSettings) => TValue;
-}): CustomVisualizationSettingDefinition<CustomVisualizationSettings> {
-  return settingDefinition as unknown as CustomVisualizationSettingDefinition<CustomVisualizationSettings>;
+    isValid?: (
+      series: Series,
+      settings: CustomVisualizationSettings,
+    ) => boolean;
+    getDefault?: (
+      series: Series,
+      settings: CustomVisualizationSettings,
+    ) => CustomVisualizationSettings[Key];
+    getProps(
+      object: Series,
+      vizSettings: CustomVisualizationSettings,
+    ): PropsFromWidget<W>;
+    getValue?: (
+      series: Series,
+      settings: CustomVisualizationSettings,
+    ) => CustomVisualizationSettings[Key];
+  }): CustomVisualizationSettingDefinition<CustomVisualizationSettings> {
+    return settingDefinition as unknown as CustomVisualizationSettingDefinition<CustomVisualizationSettings>;
+  };
 }
