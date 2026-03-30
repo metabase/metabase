@@ -4,14 +4,13 @@ import _ from "underscore";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Divider, Flex } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
+import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings/BaseChartSettings";
+import { ChartSettingsVisualization } from "metabase/visualizations/components/ChartSettings/ChartSettingsVisualization";
+import { useChartSettingsState } from "metabase/visualizations/components/ChartSettings/hooks";
 import { getClickBehaviorSettings } from "metabase/visualizations/lib/settings";
 import { sanitizeDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { VisualizationSettings } from "metabase-types/api";
-
-import { BaseChartSettings } from "../BaseChartSettings";
-import { ChartSettingsVisualization } from "../ChartSettingsVisualization";
-import { useChartSettingsState } from "../hooks";
 
 import type { DashboardChartSettingsProps } from "./types";
 

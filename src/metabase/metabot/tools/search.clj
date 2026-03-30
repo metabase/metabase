@@ -292,8 +292,8 @@
 
 (def ^:private search-schema
   [:map {:closed true}
-   [:semantic_queries {:feature :semantic-search} [:sequential :string]]
-   [:keyword_queries [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]])
 
@@ -305,8 +305,8 @@
 
 (def ^:private sql-search-schema
   [:map {:closed true}
-   [:semantic_queries {:feature :semantic-search} [:sequential :string]]
-   [:keyword_queries [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
    [:database_id :int]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model"]]]]])
@@ -320,8 +320,8 @@
 
 (def ^:private nlq-search-schema
   [:map {:closed true}
-   [:semantic_queries {:feature :semantic-search} [:sequential :string]]
-   [:keyword_queries [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "model" "metric" "table"]]]]])
 
@@ -334,8 +334,8 @@
 
 (def ^:private transform-search-schema
   [:map {:closed true}
-   [:semantic_queries {:feature :semantic-search} [:sequential :string]]
-   [:keyword_queries [:sequential :string]]
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
    [:search_native_query {:optional true} [:maybe :boolean]]
    [:entity_types {:optional true}
     [:maybe [:sequential [:enum "table" "model" "transform"]]]]])
