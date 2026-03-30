@@ -24,8 +24,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
-  useMetabotEnabledEmbeddingAware,
   useMetabotName,
+  useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
@@ -158,7 +158,7 @@ export const MetabotComponent = memo(
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = useLazyMetabotGenerateContentQuery();
-    const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+    const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
     const metabotName = useMetabotName();
 
     const handleRunMetabot = async () => {

@@ -23,8 +23,8 @@ import {
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useSelector } from "metabase/lib/redux";
 import {
-  useMetabotEnabledEmbeddingAware,
   useMetabotName,
+  useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { getBrowseAllItemIndex } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import type { SuggestionPickerViewMode } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
@@ -105,7 +105,7 @@ export const CommandSuggestion = forwardRef<
   CommandSuggestionProps
 >(function CommandSuggestionComponent({ command, editor, query }, ref) {
   const document = useSelector(getCurrentDocument);
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
   const metabotName = useMetabotName();
   const [selectedIndex, setSelectedIndex] = useState(0);
 

@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import type { Editor } from "@tiptap/core";
+import fetchMock from "fetch-mock";
 import { useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -22,6 +23,7 @@ import {
   createMockSearchResult,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserMetabotPermissions,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import type { SettingsState } from "metabase-types/store";
@@ -130,6 +132,10 @@ const setup = ({
   setupSearchEndpoints(SEARCH_ITEMS);
   setupRecentViewsEndpoints(RECENT_ITEMS);
   setupDatabasesEndpoints([MOCK_DATABASE]);
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    createMockUserMetabotPermissions(),
+  );
 
   renderWithProviders(
     <TestWrapper
@@ -148,6 +154,13 @@ const setup = ({
 };
 
 describe("CommandSuggestion", () => {
+  beforeEach(() => {
+    fetchMock.get(
+      "path:/api/metabot/permissions/user-permissions",
+      createMockUserMetabotPermissions(),
+    );
+  });
+
   it("renders with default commands", async () => {
     setup();
 
@@ -468,7 +481,7 @@ describe("CommandSuggestion", () => {
           }),
         });
 
-        expect(screen.getByText("Ask Metabot")).toBeInTheDocument();
+        expect(await screen.findByText("Ask Metabot")).toBeInTheDocument();
         await expectStandardCommandsToBePresent();
       });
     });

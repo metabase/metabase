@@ -5,7 +5,7 @@ import { useMount } from "react-use";
 import { useDispatch } from "metabase/lib/redux";
 import {
   useMetabotAgent,
-  useMetabotEnabledEmbeddingAware,
+  useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 
 export const getMetabotQuickLinks = () => {
@@ -14,7 +14,7 @@ export const getMetabotQuickLinks = () => {
       key="metabot"
       path="metabot/new"
       component={(props) => {
-        const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+        const { canUseMetabot } = useUserMetabotPermissions();
         const { submitInput } = useMetabotAgent("omnibot");
         const prompt = String(props.location.query?.q ?? "");
         const dispatch = useDispatch();
@@ -22,7 +22,7 @@ export const getMetabotQuickLinks = () => {
         useMount(() => {
           dispatch(replace("/"));
 
-          if (prompt && isMetabotEnabled) {
+          if (prompt && canUseMetabot) {
             submitInput(prompt, { focusInput: true });
           }
         });

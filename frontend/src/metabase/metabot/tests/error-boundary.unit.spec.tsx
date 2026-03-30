@@ -8,6 +8,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockTokenFeatures,
   createMockUser,
+  createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -48,6 +49,10 @@ function setup() {
   fetchMock.get(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: [], offset: 0, limit: 3, total: 0 },
+  );
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    createMockUserMetabotPermissions(),
   );
 
   renderWithProviders(
