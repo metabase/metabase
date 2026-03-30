@@ -61,6 +61,8 @@ Admins can optionally specify a string of text to add in front of the table that
 
 In order to upload CSVs, a person must be in a group with **View data** access of "Can view" and **Create queries** of Query builder access or higher to the schema you've selected to store your uploaded data. See [groups](../people-and-groups/managing.md) and [data permissions](../permissions/data.md).
 
+People also need [Curate access](../permissions/collections.md#curate-access) to any collection they want to upload to. The upload icon only appears in collections where they have Curate access. Everyone has Curate access to their [personal collection](../permissions/collections.md#personal-collections) by default.
+
 ## Note on uploading data to a MySQL database
 
 For speeding up uploads to a MySQL database, we recommend that you set a `local_infile` to `ON`. You'll need to set this `local_infile` in MySQL, not Metabase. The command-line format is `--local-infile=ON`.
