@@ -7,9 +7,9 @@
    [metabase.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
-   [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
    [metabase.mcp.resources :as mcp.resources]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json])
@@ -36,47 +36,15 @@
     (generate-manifest)
     @manifest-delay))
 
-(defn- scope-matches?
-  "Does `token-scopes` grant access to a tool with the given `tool-scope`?
-   - nil token-scopes → always matches (internal callers)
-   - ::scope/unrestricted in token-scopes → always matches
-   - nil tool-scope → only matches nil or unrestricted token-scopes
-   - wildcard scopes like \"agent:*\" match any tool scope starting with \"agent:\""
-  [token-scopes tool-scope]
-  (or (nil? token-scopes)
-      (contains? token-scopes ::scope/unrestricted)
-      (when (some? tool-scope)
-        (or (contains? token-scopes tool-scope)
-            (some (fn [s]
-                    (when (string? s)
-                      (when-let [prefix (when (str/ends-with? s ":*")
-                                          (subs s 0 (dec (count s))))]
-                        (str/starts-with? tool-scope prefix))))
-                  token-scopes)))))
-
-(def ^:private visualize-query-tool
-  {:name        "visualize_query"
-   :description "Visualize a previously constructed query as an interactive chart or table."
-   :inputSchema {:type       "object"
-                 :properties {:query {:type "string" :minLength 1}}
-                 :required   ["query"]}
-   :_meta       {:ui {:resourceUri mcp.resources/visualize-query-resource-uri}}})
-
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
    When `token-scopes` is provided, only tools whose scope matches are included."
   [token-scopes]
-  (let [{:keys [tools]} (manifest)
-        base-tools (into []
-                         (comp (filter #(scope-matches? token-scopes (:scope %)))
-                               (map (fn [tool]
-                                      {:name        (:name tool)
-                                       :description (:description tool)
-                                       :inputSchema (:inputSchema tool)})))
-                         tools)
-        vis-tool   (when (scope-matches? token-scopes "agent:visualize")
-                     [visualize-query-tool])]
-    (into base-tools vis-tool)))
+  (let [{:keys [tools]} (manifest)]
+    (into []
+          (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
+                (map #(select-keys % [:name :description :inputSchema :_meta])))
+          (concat tools (mcp.resources/list-ui-tools)))))
 
 (defn- build-tool-index
   "Build name->tool lookup from manifest tools."
@@ -204,13 +172,12 @@
    agent-api request so that scope restrictions are preserved.
    Returns MCP content maps (text-content on success, error-content on failure)."
   [token-scopes tool-name arguments]
-  (if (= "visualize_query" tool-name)
-    (if-not (scope-matches? token-scopes "agent:visualize")
+  (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
+    (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
       (error-content (str "Insufficient scope to call tool: " tool-name))
-      {:content          [{:type "text" :text "Visualizing query..."}]
-       :structuredContent {:query (:query arguments)}})
+      ((:response-fn ui-tool) arguments))
     (if-let [tool-def (get (tool-index) tool-name)]
-      (if-not (scope-matches? token-scopes (:scope tool-def))
+      (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
         (error-content (str "Insufficient scope to call tool: " tool-name))
         (try
           (dispatch-via-agent-api tool-def arguments token-scopes)
