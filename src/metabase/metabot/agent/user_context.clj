@@ -58,8 +58,7 @@
   [context]
   (when-let [viewing (:user_is_viewing context)]
     (some (fn [item]
-            (when (= "native" (effective-context-type item))
-              (some-> (:sql_engine item) u/lower-case-en)))
+            (some-> item :sql_engine u/lower-case-en))
           viewing)))
 
 ;;; Context Normalization
