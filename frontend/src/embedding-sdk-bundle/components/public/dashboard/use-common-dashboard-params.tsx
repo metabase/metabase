@@ -8,9 +8,9 @@ import {
 } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import { isJWT } from "metabase/lib/jwt";
 import { parseNumber } from "metabase/lib/number";
 import * as Urls from "metabase/lib/urls";
-import { isJWT } from "metabase/lib/utils";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
