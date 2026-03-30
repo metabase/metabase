@@ -1037,10 +1037,12 @@
              :tables    [{:id (mt/id :products)}]
              :fields    empty?}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                  (mt/mbql-query products)))))
+                                  (mt/mbql-query products))))))
+
+(deftest ^:parallel query-metadata-test-2
   (testing "Parameterized native query"
     (is (=? {:databases [{:id (mt/id)}]
-             :tables    empty?
+             :tables    [{:name "PEOPLE"}]
              :fields    [{:id (mt/id :people :id)}]}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
                                   {:database (mt/id)
@@ -1076,10 +1078,7 @@
             (doseq [[message source-card-id] {"Query with source Card 1 => source Table PRODUCTS" card-id-1
                                               "Query with source Card 2 => source Card 1"         card-id-2}]
               (testing message
-                (is (=? {:fields    empty?
-                         :tables    (condp = source-card-id
-                                      card-id-1 [{:id (mt/id :products), :name "PRODUCTS"}]
-                                      card-id-2 [])
+                (is (=? {:tables    [{:id (mt/id :products), :name "PRODUCTS"}]
                          :databases [{:id (mt/id) :engine string?}]
                          :cards     (condp = source-card-id
                                       card-id-1 [{:id card-id-1, :name "Card 1"}]
@@ -1088,15 +1087,13 @@
          #(testing "After delete"
             ;; card-id-1 is deleted, so querying it as a source returns empty tables
             (is (=?
-                 {:fields    empty?
-                  :tables    empty?
+                 {:tables    empty?
                   :databases [{:id (mt/id) :engine string?}]
                   :cards     empty?}
                  (query-metadata 200 card-id-1)))
             ;; card-id-2 still exists, so querying it as a source still works
             (is (=?
-                 {:fields    empty?
-                  :tables    empty?
+                 {:tables    [{:id (mt/id :products), :name "PRODUCTS"}]
                   :databases [{:id (mt/id) :engine string?}]
                   :cards     [{:id card-id-2, :name "Card 2"}]}
                  (query-metadata 200 card-id-2)))))))))

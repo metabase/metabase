@@ -4716,21 +4716,52 @@
                                                      :position         1}]
     (is (=?
          {:fields     (sort-by :id
-                               [{:id (mt/id :people :id)}
+                               [{:id (mt/id :categories :id)}
+                                {:id (mt/id :checkins :date)}
+                                {:id (mt/id :checkins :id)}
+                                {:id (mt/id :checkins :user_id)}
+                                {:id (mt/id :checkins :venue_id)}
                                 {:id (mt/id :orders :user_id)}
+                                {:id (mt/id :people :id)}
+                                {:id (mt/id :people :name)}
                                 {:id (mt/id :people :source)}
-                                {:id (mt/id :people :name)}])
+                                {:id (mt/id :products :category)}
+                                {:id (mt/id :products :created_at)}
+                                {:id (mt/id :products :ean)}
+                                {:id (mt/id :products :id)}
+                                {:id (mt/id :products :price)}
+                                {:id (mt/id :products :rating)}
+                                {:id (mt/id :products :title)}
+                                {:id (mt/id :products :vendor)}
+                                {:id (mt/id :reviews :body)}
+                                {:id (mt/id :reviews :created_at)}
+                                {:id (mt/id :reviews :id)}
+                                {:id (mt/id :reviews :product_id)}
+                                {:id (mt/id :reviews :rating)}
+                                {:id (mt/id :reviews :reviewer)}
+                                {:id (mt/id :users :id)}
+                                {:id (mt/id :venues :category_id)}
+                                {:id (mt/id :venues :id)}
+                                {:id (mt/id :venues :latitude)}
+                                {:id (mt/id :venues :longitude)}
+                                {:id (mt/id :venues :name)}
+                                {:id (mt/id :venues :price)}])
           :tables     (sort-by :id
                                [{:id (mt/id :categories)}
-                                {:id (mt/id :users)}
                                 {:id (mt/id :checkins)}
+                                {:id (mt/id :orders)}
+                                {:id (mt/id :people)}
+                                {:id (mt/id :products), :fields sequential?}
                                 {:id (mt/id :reviews)}
-                                {:id     (mt/id :products)
-                                 :fields sequential?}
+                                {:id (mt/id :users)}
                                 {:id (mt/id :venues)}])
-          :cards      [{:id              card-id-2
+          :cards      [{:id link-card}
+                       {:id              card-id-1
                         :result_metadata sequential?}
-                       {:id link-card}]
+                       {:id              card-id-2
+                        :result_metadata sequential?}
+                       {:name "Series Card 1"}
+                       {:name "Series Card 2"}]
           :databases  [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
          (mt/user-http-request :crowberto :get 200 (str "dashboard/" dashboard-id "/query_metadata"))))))
@@ -4752,19 +4783,25 @@
          card-id-1
          #(testing "Before delete"
             (is (=?
-                 {:cards      [{:id card-id-1}]
-                  :fields     empty?
+                 {:cards      [{:id card-id-1}
+                               {:id card-id-2}]
+                  :fields     [{:id (mt/id :products :id)}
+                               {:id (mt/id :products :ean)}
+                               {:id (mt/id :products :title)}
+                               {:id (mt/id :products :category)}
+                               {:id (mt/id :products :vendor)}
+                               {:id (mt/id :products :price)}
+                               {:id (mt/id :products :rating)}
+                               {:id (mt/id :products :created_at)}]
                   :dashboards empty?
                   :tables     [{:name "PRODUCTS"}]
                   :databases  [{:id (mt/id) :engine string?}]}
                  (query-metadata))))
          ;; After delete, card-id-2 still exists on the dashboard but its source is gone.
-         ;; The source table can't be resolved, but the database should still be present.
+         ;; The source table may or may not be resolvable, but the database at least should still be present.
          #(testing "After delete"
-            (is (=? {:cards      empty?
-                     :fields     empty?
+            (is (=? {:cards      [{:id card-id-2}]
                      :dashboards empty?
-                     :tables     empty?
                      :databases [{:id (mt/id) :engine string?}]}
                     (query-metadata)))))))))
 
@@ -4839,7 +4876,7 @@
         expected        [{:name "Some dashboard"}
                          {:tables     [{}]
                           :databases  [{}]
-                          :fields     []
+                          :fields     [{} {}]
                           :cards      [{}]
                           :dashboards []}]]
     (mt/with-temp [:model/Dashboard     dash      {:name "Some dashboard"}

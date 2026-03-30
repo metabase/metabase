@@ -63,7 +63,7 @@
 
 (deftest table-card-query-metadata-published-table-collection-perms-test
   (mt/with-premium-features #{:library}
-    (testing "GET /api/table/card__:id/query_metadata"
+    (testing "GET /api/card/:id/query_metadata"
       (testing "Should include Field metadata for published tables accessible via collection permissions"
         (mt/with-temp [:model/Collection table-coll {}
                        :model/Table table {:is_published true :collection_id (u/the-id table-coll)}
@@ -78,7 +78,7 @@
           (data-perms/set-database-permission! custom-group (mt/id) :perms/view-data :blocked)
           (perms/grant-collection-read-permissions! custom-group (u/the-id table-coll))
           (is (=? {:fields [{:id (u/the-id field) :name "test-field"}]}
-                  (mt/user-http-request :rasta :get 200 (format "table/card__%d/query_metadata" (u/the-id card))))))))))
+                  (mt/user-http-request :rasta :get 200 (format "card/%d/query_metadata" (u/the-id card))))))))))
 
 (deftest card-query-metadata-published-table-collection-perms-test
   (testing "GET /api/card/:id/query_metadata should include published tables that are queryable"

@@ -249,18 +249,14 @@
 
   Models and native queries need their definitions walked as well as their own, card-level metadata."
   [cards :- [:sequential ::queries.schema/card]]
-  (let [;; remove any Cards with empty queries
+  (let [ ;; remove any Cards with empty queries
         cards (remove #(empty? (:dataset_query %)) cards)
         ;; All the queries on all the cards
         card-queries (map :dataset_query cards)
-        ;; Plus the card-level metadata of each model and native query
-        queries (into []
-                      (comp (filter (fn [{query :dataset_query, card-type :type, :as _card}]
-                                      (or (= card-type :model)
-                                          (lib/native-only-query? query))))
-                            (map (fn [{database-id :database_id, card-id :id, :as _card}]
-                                   (let [mp (lib-be/application-database-metadata-provider database-id)]
-                                     (lib/query mp (lib.metadata/card mp card-id))))))
+        ;; Plus the card-level metadata of each card
+        queries (mapv (fn [{database-id :database_id, card-id :id, :as _card}]
+                        (let [mp (lib-be/application-database-metadata-provider database-id)]
+                          (lib/query mp (lib.metadata/card mp card-id))))
                       cards)]
     (batch-fetch-query-metadata (concat card-queries queries))))
 
