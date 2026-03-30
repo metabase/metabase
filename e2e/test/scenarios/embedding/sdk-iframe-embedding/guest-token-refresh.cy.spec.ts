@@ -280,11 +280,10 @@ describe(
                           instanceUrl: "http://localhost:4000",
                           isGuest: true,
                           guestEmbedProviderUri: "${PROVIDER_PATH}",
-                          customContext: "test-custom-context",
                         });
                       </script>
                       <style>metabase-dashboard { height: 100vh; }</style>
-                      <metabase-dashboard token="${expiredToken}" />
+                      <metabase-dashboard token="${expiredToken}" custom-context="test-custom-context" />
                     `);
 
                     cy.wait("@guestTokenProvider").then((interception) => {
@@ -329,9 +328,7 @@ describe(
                     });
                   </script>
                   <style>metabase-dashboard { height: 100vh; }</style>
-                  <metabase-dashboard
-                    token="${expiredToken}"
-                  />
+                  <metabase-dashboard token="${expiredToken}" />
                 `);
 
                 cy.wait("@guestTokenProvider");
@@ -550,11 +547,10 @@ describe(
                       instanceUrl: "http://localhost:4000",
                       isGuest: true,
                       guestEmbedProviderUri: "${PROVIDER_PATH}",
-                      customContext: "test-custom-context",
                     });
                   </script>
                   <style>metabase-dashboard { height: 100vh; }</style>
-                  <metabase-dashboard dashboard-id="${dashboardId}" />
+                  <metabase-dashboard dashboard-id="${dashboardId}" custom-context="test-custom-context" />
                 `);
 
                 cy.wait("@guestTokenProvider").then((interception) => {
@@ -670,13 +666,10 @@ describe(
                           instanceUrl: "http://localhost:4000",
                           isGuest: true,
                           guestEmbedProviderUri: "${PROVIDER_PATH}",
-                          customContext: "test-custom-context",
                         });
                       </script>
                       <style>metabase-question { height: 100vh; }</style>
-                      <metabase-question
-                        token="${expiredToken}"
-                      />
+                      <metabase-question token="${expiredToken}" custom-context="test-custom-context" />
                     `);
 
                     cy.wait("@guestTokenProvider").then((interception) => {
@@ -944,11 +937,10 @@ describe(
                       instanceUrl: "http://localhost:4000",
                       isGuest: true,
                       guestEmbedProviderUri: "${PROVIDER_PATH}",
-                      customContext: "test-custom-context",
                     });
                   </script>
                   <style>metabase-question { height: 100vh; }</style>
-                  <metabase-question question-id="${questionId}" />
+                  <metabase-question question-id="${questionId}" custom-context="test-custom-context" />
                 `);
 
                 cy.wait("@guestTokenProvider").then((interception) => {
