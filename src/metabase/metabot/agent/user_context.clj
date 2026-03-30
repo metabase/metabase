@@ -95,10 +95,7 @@
   Handles the fact that the frontend sends `type: \"adhoc\"` for both notebook
   and native SQL queries by inspecting the inner dataset-query type."
   [item]
-  (let [t (normalize-context-type (:type item))]
-    (if (and (= "adhoc" t) (native-query-item? item))
-      "native"
-      t)))
+  (normalize-context-type (:type item)))
 
 ;;; Entity Formatting
 
