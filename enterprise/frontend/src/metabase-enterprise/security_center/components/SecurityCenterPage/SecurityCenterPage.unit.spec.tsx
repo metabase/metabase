@@ -53,9 +53,7 @@ describe("SecurityCenterPage", () => {
   it("renders the empty state when there are no advisories", () => {
     setup([]);
 
-    expect(screen.getByTestId("empty-state")).toHaveTextContent(
-      "Your instance is up to date",
-    );
+    expect(screen.getByText(/Your instance is up to date/)).toBeInTheDocument();
   });
 
   it("renders advisory cards in the correct order (affected first, then by severity)", () => {

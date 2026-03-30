@@ -1,6 +1,5 @@
 .affectedCard {
   background-color: var(--mb-color-bg-error);
-  border-left: 3px solid var(--mb-color-error);
 }
 
 .severityCritical {
@@ -14,8 +13,8 @@
 }
 
 .severityMedium {
-  background-color: var(--mb-color-gold);
-  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-bronze);
+  color: var(--mb-color-white);
 }
 
 .severityLow {

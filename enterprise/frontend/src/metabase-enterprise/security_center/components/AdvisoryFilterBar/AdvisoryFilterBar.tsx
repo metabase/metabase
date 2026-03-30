@@ -2,18 +2,20 @@ import { t } from "ttag";
 
 import { Checkbox, Group, Select } from "metabase/ui";
 
-import type { AdvisoryFilter } from "../../types";
+import type { AdvisoryFilter, AdvisorySeverity } from "../../types";
 
 interface AdvisoryFilterBarProps {
   filter: AdvisoryFilter;
   onChange: (filter: AdvisoryFilter) => void;
 }
 
+type SelectOption<T extends string> = { value: T; label: string };
+
 export function AdvisoryFilterBar({
   filter,
   onChange,
 }: AdvisoryFilterBarProps) {
-  const severityOptions = [
+  const severityOptions: SelectOption<AdvisorySeverity | "all">[] = [
     { value: "all", label: t`All severities` },
     { value: "critical", label: t`Critical` },
     { value: "high", label: t`High` },
@@ -21,7 +23,7 @@ export function AdvisoryFilterBar({
     { value: "low", label: t`Low` },
   ];
 
-  const statusOptions = [
+  const statusOptions: SelectOption<AdvisoryFilter["status"]>[] = [
     { value: "all", label: t`All statuses` },
     { value: "affected", label: t`Affected` },
     { value: "not-affected", label: t`Not affected` },

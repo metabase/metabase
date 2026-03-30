@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { Stack, Text } from "metabase/ui";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Stack } from "metabase/ui";
 
 import type { Advisory } from "../../types";
 import { sortAdvisories } from "../../utils";
@@ -16,9 +17,10 @@ export function AdvisoryList({ advisories, onAcknowledge }: AdvisoryListProps) {
 
   if (sorted.length === 0) {
     return (
-      <Text c="text-secondary" data-testid="empty-state">
-        {t`Your instance is up to date — no known security issues affect your configuration.`}
-      </Text>
+      <EmptyState
+        icon="shield"
+        message={t`Your instance is up to date — no known security issues affect your configuration.`}
+      />
     );
   }
 
