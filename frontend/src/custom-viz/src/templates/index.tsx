@@ -2,6 +2,7 @@ import type {
   CreateCustomVisualization,
   CustomStaticVisualizationProps,
   CustomVisualizationProps,
+  createDefineSetting,
 } from "@metabase/custom-viz";
 
 type Settings = {
@@ -11,13 +12,17 @@ type Settings = {
 const createVisualization: CreateCustomVisualization<Settings> = ({
   getAssetUrl,
 }) => {
+  const defineSetting = createDefineSetting<Settings>();
+
   return {
     id: "__CUSTOM_VIZ_NAME__",
     getName: () => "__CUSTOM_VIZ_NAME__",
     minSize: { width: 1, height: 1 },
     defaultSize: { width: 2, height: 2 },
     isSensible({ cols, rows }) {
-      return cols.length === 1 && rows.length === 1 && typeof rows[0][0] === "number";
+      return (
+        cols.length === 1 && rows.length === 1 && typeof rows[0][0] === "number"
+      );
     },
     checkRenderable(series, settings) {
       if (series.length !== 1) {
@@ -47,7 +52,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
       }
     },
     settings: {
-      threshold: {
+      threshold: defineSetting({
         id: "1",
         title: "Threshold",
         widget: "number",
@@ -63,74 +68,76 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
             placeholder: "Set threshold",
           };
         },
-      },
+      }),
     },
     VisualizationComponent: makeVisualizationComponent(getAssetUrl),
     StaticVisualizationComponent: makeStaticVisualizationComponent(getAssetUrl),
   };
 };
 
-const makeVisualizationComponent = (getAssetUrl: (path: string) => string) => (props: CustomVisualizationProps<Settings>) => {
-  const { height, series, settings, width } = props;
-  const { threshold } = settings;
-  const value = series[0].data.rows[0][0];
+const makeVisualizationComponent =
+  (getAssetUrl: (path: string) => string) =>
+  (props: CustomVisualizationProps<Settings>) => {
+    const { height, series, settings, width } = props;
+    const { threshold } = settings;
+    const value = series[0].data.rows[0][0];
 
-  if (typeof value !== "number" || typeof threshold !== "number") {
-    throw new Error("Value and threshold need to be numbers");
-  }
+    if (typeof value !== "number" || typeof threshold !== "number") {
+      throw new Error("Value and threshold need to be numbers");
+    }
 
-  const emoji = value >= threshold ? "👍" : "👎";
+    const emoji = value >= threshold ? "👍" : "👎";
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        width,
-        height,
-        fontSize: "10rem",
-      }}
-    >
-      {emoji}
-    </div>
-  );
-};
-
-const makeStaticVisualizationComponent = (getAssetUrl: (path: string) => string) => (
-  props: CustomStaticVisualizationProps<Settings>,
-) => {
-  const width = 540;
-  const height = 360;
-  const { series, settings } = props;
-  const { threshold } = settings;
-  const value = series[0].data.rows[0][0];
-
-  if (typeof value !== "number" || typeof threshold !== "number") {
-    throw new Error("Value and threshold need to be numbers");
-  }
-
-  const emoji =
-    value >= threshold ? (
-      <img src={getAssetUrl("thumbs-up.png")} />
-    ) : (
-      <img src={getAssetUrl("thumbs-down.png")} />
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          width,
+          height,
+          fontSize: "10rem",
+        }}
+      >
+        {emoji}
+      </div>
     );
+  };
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        width,
-        height,
-        fontSize: "10rem",
-      }}
-    >
-      {emoji}
-    </div>
-  );
-};
+const makeStaticVisualizationComponent =
+  (getAssetUrl: (path: string) => string) =>
+  (props: CustomStaticVisualizationProps<Settings>) => {
+    const width = 540;
+    const height = 360;
+    const { series, settings } = props;
+    const { threshold } = settings;
+    const value = series[0].data.rows[0][0];
+
+    if (typeof value !== "number" || typeof threshold !== "number") {
+      throw new Error("Value and threshold need to be numbers");
+    }
+
+    const emoji =
+      value >= threshold ? (
+        <img src={getAssetUrl("thumbs-up.png")} />
+      ) : (
+        <img src={getAssetUrl("thumbs-down.png")} />
+      );
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          width,
+          height,
+          fontSize: "10rem",
+        }}
+      >
+        {emoji}
+      </div>
+    );
+  };
 
 export default createVisualization;
