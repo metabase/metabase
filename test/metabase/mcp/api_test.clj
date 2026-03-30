@@ -159,10 +159,31 @@
     "get_table_field_values"
     "query"
     "search"
-    "visualize_query"})
+    "visualize_query"
+    ;; Workspace tools
+    "archive_workspace"
+    "archive_workspace_transform"
+    "create_workspace_transform"
+    "delete_workspace_transform"
+    "dry_run_workspace_transform"
+    "execute_workspace_query"
+    "get_workspace"
+    "get_workspace_graph"
+    "get_workspace_log"
+    "get_workspace_problems"
+    "get_workspace_tables"
+    "get_workspace_transform"
+    "list_external_transforms"
+    "list_pending_inputs"
+    "list_workspace_transforms"
+    "run_workspace"
+    "run_workspace_transform"
+    "unarchive_workspace_transform"
+    "update_workspace_transform"
+    "validate_transform_target"})
 
 (deftest tools-list-test
-  (testing "tools/list returns the agent and UI tools"
+  (testing "tools/list returns the agent and workspace tools"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" session-id})
@@ -444,7 +465,7 @@
       (is (not (contains? tool-names "get_table")))
       (is (not (contains? tool-names "construct_query")))))
 
-  (testing "tools/list with wildcard scope matches all agent and UI tools"
+  (testing "tools/list with wildcard scope matches all tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
       (is (= all-tool-names (set (map :name tools))))))
 
