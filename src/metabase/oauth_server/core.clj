@@ -1,8 +1,7 @@
 (ns metabase.oauth-server.core
   (:require
    [clojure.string :as str]
-   [metabase.api.macros :as api.macros]
-   [metabase.mcp.resources :as mcp.resources]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.oauth-server.store :as store]
    [metabase.system.core :as system]
@@ -17,10 +16,7 @@
   "All supported OAuth scopes derived from defendpoint metadata on the agent API,
    plus scopes from MCP UI resources (e.g. visualize_query)."
   []
-  (into (mcp.resources/all-scopes)
-        (comp (keep #(get-in % [:form :metadata :scope]))
-              (filter string?))
-        (vals (api.macros/ns-routes 'metabase.agent-api.api))))
+  (mcp/all-scopes))
 
 (defn- build-provider-config
   "Build the configuration map for the OAuth provider from Metabase settings."
