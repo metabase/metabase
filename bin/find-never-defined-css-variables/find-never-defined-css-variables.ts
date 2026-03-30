@@ -67,9 +67,9 @@ export const extractVariableDefinitionsFromFileContent = (
     /['"`]--[a-zA-Z0-9-]+['"`]\s*:/g, // css-in-js: "--my-css-variable-in-emotion": blue
   ];
 
-  const matches = patterns.flatMap((pattern) => {
+  const matches = patterns.flatMap(pattern => {
     const found = fileContent.match(pattern) || [];
-    return found.map((match) => {
+    return found.map(match => {
       const cleaned = match.replace(/['"`{}:,\s]/g, "");
 
       return cleaned;
@@ -88,9 +88,7 @@ export const extractVariableUsagesFromFileContent = (
   content: string,
 ): Set<string> => {
   const pattern = /var\((--[a-zA-Z0-9-]+)\)/g;
-  const matches = Array.from(content.matchAll(pattern)).map(
-    (match) => match[1],
-  );
+  const matches = Array.from(content.matchAll(pattern)).map(match => match[1]);
 
   return new Set(matches);
 };
@@ -115,15 +113,15 @@ const main = () => {
   });
 
   // Find all variable definitions
-  files.forEach((file) => {
+  files.forEach(file => {
     const definitions = extractVariableDefinitions(file);
-    definitions.forEach((def) => allDefinitions.add(def));
+    definitions.forEach(def => allDefinitions.add(def));
   });
 
   // Find all variable usages
-  files.forEach((file) => {
+  files.forEach(file => {
     const usages = extractVariableUsages(file);
-    usages.forEach((usage) => {
+    usages.forEach(usage => {
       allUsages.add(usage);
       if (!usageLocations[usage]) {
         usageLocations[usage] = [];
@@ -134,21 +132,21 @@ const main = () => {
 
   // Filter out defined or whitelisted variables
   const undefinedVars = Array.from(allUsages)
-    .filter((usage) => !allDefinitions.has(usage) && !shouldWhiteList(usage))
+    .filter(usage => !allDefinitions.has(usage) && !shouldWhiteList(usage))
     .sort();
 
   if (undefinedVars.length > 0) {
     console.log("Found undefined CSS variables:\n");
-    undefinedVars.forEach((variable) => {
+    undefinedVars.forEach(variable => {
       console.log(`${variable} used in:`);
-      usageLocations[variable].forEach((location) => {
+      usageLocations[variable].forEach(location => {
         console.log(`  - ${location}`);
       });
       console.log("");
     });
 
     const filesWithUndefinedVars = new Set(
-      undefinedVars.map((variable) => usageLocations[variable]).flat(),
+      undefinedVars.map(variable => usageLocations[variable]).flat(),
     );
 
     console.log(
