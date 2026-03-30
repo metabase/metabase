@@ -1,5 +1,6 @@
 ---
 title: Setting up data uploads
+description: How admins can enable CSV uploads by connecting a database with write access, selecting an upload schema, and granting people data and collection permissions.
 ---
 
 # Setting up data uploads
