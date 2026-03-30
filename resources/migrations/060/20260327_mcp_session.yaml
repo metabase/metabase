@@ -31,9 +31,9 @@ databaseChangeLog:
                   type: text
                   remarks: >-
                     The embedding SDK session key, encrypted at the application level using
-                    MB_ENCRYPTION_SECRET_KEY (AES-256-CBC). Stored as text to accommodate the
-                    base64-encoded ciphertext. Falls back to plaintext when no encryption key
-                    is configured.
+                    MB_ENCRYPTION_SECRET_KEY (AES-256-CBC with HMAC-SHA512). Stored as text
+                    to accommodate the base64-encoded ciphertext. Falls back to plaintext
+                    when no encryption key is configured.
                   constraints:
                     nullable: true
               - column:

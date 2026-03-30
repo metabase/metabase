@@ -166,15 +166,18 @@
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
 (defn- require-valid-session
-  "Look up the MCP session by header value. Returns the session map or an error response."
-  [session-id]
+  "Look up the MCP session by header value and verify it belongs to `user-id`.
+   Returns the session map or an error response."
+  [user-id session-id]
   (cond
     (str/blank? session-id)
     {:error (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))}
 
     :else
     (if-let [session (mcp.session/get-valid session-id)]
-      {:session session}
+      (if (= (:user_id session) user-id)
+        {:session session}
+        {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))})
       {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))})))
 
 ;;; -------------------------------------------------- Handlers ---------------------------------------------------
@@ -210,7 +213,7 @@
 
       ;; All other requests require a valid session
       :else
-      (let [{:keys [session error]} (require-valid-session session-id)]
+      (let [{:keys [session error]} (require-valid-session user-id session-id)]
         (if error
           error
           (let [messages    (if batch? body [body])
@@ -231,9 +234,9 @@
 
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
-  [_user-id request respond raise]
+  [user-id request respond raise]
   (let [session-id (get-in request [:headers "mcp-session-id"])
-        {:keys [error]} (require-valid-session session-id)]
+        {:keys [error]} (require-valid-session user-id session-id)]
     (cond
       (some? error)
       (respond error)
@@ -255,9 +258,9 @@
 
 (defn- handle-delete
   "Handle a DELETE request to tear down a session."
-  [_user-id request]
+  [user-id request]
   (let [session-id (get-in request [:headers "mcp-session-id"])
-        {:keys [error]} (require-valid-session session-id)]
+        {:keys [error]} (require-valid-session user-id session-id)]
     (or error
         (do (mcp.session/delete! session-id)
             {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
