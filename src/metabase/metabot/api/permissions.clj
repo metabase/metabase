@@ -6,6 +6,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.core :as mdb]
    [metabase.metabot.models.metabot-permissions :as metabot-permissions]
+   [metabase.metabot.scope :as scope]
    [toucan2.core :as t2]))
 
 (defn- permissions-for-group
@@ -58,6 +59,22 @@
                                             :perm_type  perm-type-kw
                                             :perm_value perm-value-kw})))))
   (all-permissions))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(defn- simplify-permissions
+  "Convert a keyword-keyed permissions map to simple string keys and values for JSON.
+  e.g. {:permission/metabot :yes} → {\"metabot\" \"yes\"}"
+  [perms]
+  (into {} (map (fn [[k v]] [(name k) (name v)])) perms))
+
+(api.macros/defendpoint :get "/user-permissions"
+  "Return the current user's resolved metabot permissions, taking the most
+  permissive value across all their groups."
+  []
+  {:permissions (simplify-permissions
+                 (if api/*is-superuser?*
+                   scope/all-yes-permissions
+                   (scope/resolve-user-permissions api/*current-user-id*)))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/permissions` routes."
