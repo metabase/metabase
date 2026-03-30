@@ -72,6 +72,7 @@ function getTabs(
   }
 
   const isCacheableQuestion =
+    card.can_write &&
     PLUGIN_CACHING.isGranularCachingEnabled() &&
     PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
 
