@@ -25,7 +25,9 @@ export const PricingSummary = (props: PricingSummaryProps) => {
 
   const handlePurchase = useCallback(async () => {
     const productType =
-      selectedTier === "basic" ? "transforms-basic" : "transforms-advanced";
+      selectedTier === "basic"
+        ? "transforms-basic-metered"
+        : "transforms-advanced";
     settingUpModalHandlers.open();
     try {
       await purchaseCloudAddOn({
