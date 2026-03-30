@@ -219,7 +219,7 @@
         (is (=? {:message "Tenants is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"}
                 (mt/user-http-request :crowberto :post 402 "permissions/group" {:name "Tenant Group" :is_tenant_group true})))))))
 
-(deftest ^:parallel delete-group-test
+(deftest ^:synchronized delete-group-test
   (testing "DELETE /permissions/group/:id"
     (testing "happy path"
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test group"}]

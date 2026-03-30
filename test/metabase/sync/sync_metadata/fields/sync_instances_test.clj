@@ -171,12 +171,12 @@
     (run-cruft-test (map str (into [] "abcdefghijklmnoqprstuvwxyz"))
                     {:details-only 12})))
 
-(deftest ^:parallel auto-cruft-exact-field-name-test
+(deftest ^:synchronized auto-cruft-exact-field-name-test
   (testing "Make sure a db's settings.auto_cruft_fields mark fields as crufty for exact table names"
     (run-cruft-test ["^details$" "^age$"]
                     {:normal 10 :details-only 2})))
 
-(deftest ^:parallel auto-cruft-fields-with-multiple-patterns-test
+(deftest ^:synchronized auto-cruft-fields-with-multiple-patterns-test
   (testing "Make sure a db's settings.auto_cruft_fields mark fields as crufty against multiple patterns"
     (run-cruft-test ["a" "b" "c"]     {:normal 4 :details-only 8})
     (run-cruft-test ["c" "a" "t"]     {:normal 3 :details-only 9})
@@ -184,8 +184,8 @@
     (run-cruft-test ["b" "i" "r" "d"] {:normal 7 :details-only 5})
     (run-cruft-test ["x" "y" "z"]     {:normal 11 :details-only 1})))
 
-(deftest ^:parallel auto-cruft-fields-none-are-crufted-with-missing-pattern
+(deftest ^:synchronized auto-cruft-fields-none-are-crufted-with-missing-pattern
   (run-cruft-test [] {:normal 12}))
 
-(deftest ^:parallel auto-cruft-fields-none-are-crufted-with-no-hit-pattern
+(deftest ^:synchronized auto-cruft-fields-none-are-crufted-with-no-hit-pattern
   (run-cruft-test ["^it was the best$" "^of times it was$" "^the worst of times$"] {:normal 12}))

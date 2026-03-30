@@ -79,7 +79,7 @@
           (is (= schema-name
                  (t2/select-one-fn :schema :model/Table :id table-id))))))))
 
-(deftest ^:parallel identity-hash-test
+(deftest ^:synchronized identity-hash-test
   (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
     (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
                    :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
@@ -694,7 +694,7 @@
                    :model/Table    {table-id :id} {:name "Empty Table" :db_id db-id}]
       (is (= {} (serdes/descendants "Table" table-id {}))))))
 
-(deftest ^:parallel serdes-descendants-skip-archived-segments-test
+(deftest ^:synchronized serdes-descendants-skip-archived-segments-test
   (testing "Table descendants respects skip-archived option for Segments"
     (mt/with-temp [:model/Database {db-id :id}           {:name "Test DB"}
                    :model/Table    {table-id :id}        {:name "Test Table" :db_id db-id}

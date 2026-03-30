@@ -207,7 +207,7 @@
   (sync/sync-database! db)
   (find-values field-values-id))
 
-(deftest ^:parallel implicit-deduplication-test
+(deftest ^:synchronized implicit-deduplication-test
   (let [before (t/zoned-date-time)
         after  (t/plus before (t/millis 1))
         later  (t/plus after (t/millis 1))]
@@ -458,7 +458,7 @@
     (t2/update! :model/FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
 
-(deftest ^:parallel identity-hash-test
+(deftest ^:synchronized identity-hash-test
   (testing "Field hashes are composed of the name and the table's identity-hash"
     (mt/with-temp [:model/Database    db    {:name "field-db" :engine :h2}
                    :model/Table       table {:schema "PUBLIC" :name "widget" :db_id (:id db)}

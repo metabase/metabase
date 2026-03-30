@@ -39,7 +39,7 @@
            (mt/with-temp [:model/Field field {column unknown-type}]
              field))))))
 
-(deftest ^:parallel identity-hash-test
+(deftest ^:synchronized identity-hash-test
   (testing "Field hashes are composed of the name, the table's identity-hash, and the parent's identity-hash"
     (mt/with-temp [:model/Database db    {:name "field-db" :engine :h2}
                    :model/Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
@@ -49,7 +49,7 @@
                (serdes/raw-hash ["sku" table-hash "<none>"])
                (serdes/identity-hash field)))))))
 
-(deftest ^:parallel nested-field-names->field-id-test
+(deftest ^:synchronized nested-field-names->field-id-test
   (mt/with-temp
     [:model/Database {db-id :id}              {}
      :model/Table    {table-id :id}           {:db_id db-id}

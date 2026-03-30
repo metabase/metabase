@@ -485,7 +485,7 @@
           (is (string? ddl))
           (is (= "" ddl)))))))
 
-(deftest ^:parallel schema-sample-table-visibility-test
+(deftest ^:synchronized schema-sample-table-visibility-test
   (testing "schema-sample excludes inactive and hidden tables"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {table1-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
@@ -500,7 +500,7 @@
           (is (not (re-find #"inactive_table" ddl)))
           (is (not (re-find #"hidden_table" ddl))))))))
 
-(deftest ^:parallel schema-sample-empty-tables-test
+(deftest ^:synchronized schema-sample-empty-tables-test
   (testing "schema-sample handles tables without fields"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table {} {:db_id db-id, :name "empty_table", :schema "public", :active true, :visibility_type nil}]

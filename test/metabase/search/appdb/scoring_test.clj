@@ -166,7 +166,7 @@
                 ["card" 1 "card ancient"]]
                (search-results :recency "card")))))))
 
-(deftest ^:parallel view-count-test
+(deftest ^:synchronized view-count-test
   (testing "the more view count the better"
     (with-index-contents
       [{:model "card" :id 1 :name "card well known" :view_count 10}
@@ -177,7 +177,7 @@
               ["card" 1 "card well known"]]
              (search-results :view-count "card"))))))
 
-(deftest ^:parallel view-count-test-2
+(deftest ^:synchronized view-count-test-2
   (testing "don't error on fresh instances with no view count"
     (with-index-contents
       [{:model "card"      :id 1 :name "view card"      :view_count 0}
@@ -274,7 +274,7 @@
                     ["collection" c1 "collection normal"]]
                    (search-results :bookmarked "collection" {:current-user-id crowberto})))))))))
 
-(deftest ^:parallel user-recency-test
+(deftest ^:synchronized user-recency-test
   (let [user-id     (mt/user->id :crowberto)
         right-now   (Instant/now)
         long-ago    (.minus right-now 10 ChronoUnit/DAYS)
@@ -305,7 +305,7 @@
                   ["dataset" c3 "card unseen"]]
                  (search-results :user-recency "card" {:current-user-id user-id}))))))))
 
-(deftest ^:parallel mine-test
+(deftest ^:synchronized mine-test
   (let [crowberto (mt/user->id :crowberto)
         rasta     (mt/user->id :rasta)]
     (with-index-contents [{:model "card" :id 1 :name "crow's fly card" :creator_id crowberto}

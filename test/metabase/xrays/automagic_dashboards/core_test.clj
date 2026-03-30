@@ -1113,7 +1113,7 @@
         (is (= []
                (magic/candidate-tables db)))))))
 
-(deftest ^:parallel enhance-table-stats-test
+(deftest ^:synchronized enhance-table-stats-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table    {table-id :id} {:db_id db-id}
                  :model/Field    _ {:table_id table-id :semantic_type :type/PK}

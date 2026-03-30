@@ -49,7 +49,7 @@
                               {:active false})
         (is (= false (t2/select-one-fn :active :model/Channel (:id channel))))))))
 
-(deftest ^:parallel create-channel-with-existing-name-error-test
+(deftest ^:synchronized create-channel-with-existing-name-error-test
   (mt/with-temp [:model/Channel _chn default-test-channel]
     (is (= {:errors {:name "Channel with that name already exists"}}
            (mt/user-http-request :crowberto :post 409 "channel" default-test-channel)))))
@@ -116,7 +116,7 @@
                  (is (= #{chn-1}
                         (get-channels (:id user)))))))))))))
 
-(deftest ^:parallel ensure-channel-is-namespaced-test
+(deftest ^:synchronized ensure-channel-is-namespaced-test
   (testing "POST /api/channel return 400 if channel type is not namespaced"
     (is (=? {:errors {:type "Must be a namespaced channel. E.g: channel/http"}}
             (mt/user-http-request :crowberto :post 400 "channel"

@@ -2762,7 +2762,7 @@
         (migrate!)
         (is (= "zh_CN" (t2/select-one-fn :locale (t2/table-name :model/User) :id user-id)))))))
 
-(deftest ^:parallel migrate-password-auth-test
+(deftest ^:synchronized migrate-password-auth-test
   (testing "Migration v58.2025-11-04T23:10:03: Migrate password authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:11"] [migrate!]
       ;; Insert users with password auth before migration
@@ -2790,7 +2790,7 @@
                 {:first_name "NoPassword" :provider nil}]
                results))))))
 
-(deftest ^:parallel migrate-ldap-auth-test-2
+(deftest ^:synchronized migrate-ldap-auth-test-2
   (testing "Migration v58.2025-11-04T23:10:04: Migrate LDAP authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:12"] [migrate!]
       ;; Insert users with LDAP auth before migration (using sso_source='ldap' from current schema)
@@ -2843,7 +2843,7 @@
                 {:first_name "NoSSO" :provider nil}]
                results))))))
 
-(deftest ^:parallel migrate-saml-jwt-auth-test
+(deftest ^:synchronized migrate-saml-jwt-auth-test
   (testing "Migration v58.2025-11-04T23:10:06: Migrate SAML and JWT authentication to auth_identity table"
     (impl/test-migrations ["v58.2025-11-04T23:09:49" "v58.2025-11-12T00:00:14"] [migrate!]
       ;; Insert users with SAML and JWT before migration

@@ -3267,7 +3267,7 @@
             (is (t2/exists? :model/Collection :id (u/the-id child-collection) :archived true))
             (is (t2/exists? :model/Collection :id (u/the-id grandchild-collection) :archived true))))))))
 
-(deftest ^:parallel collections-can-be-deleted
+(deftest ^:synchronized collections-can-be-deleted
   (mt/with-temp [:model/Collection {coll-a-id :id :as coll-a} {}
                  :model/Dashboard {dash-a-id :id} {:collection_id coll-a-id}
                  :model/Collection {coll-b-id :id :as coll-b} {:location (collection/children-location coll-a)}
@@ -3301,7 +3301,7 @@
       (is (= (str "/" coll-c-id "/")
              (t2/select-one-fn :location :model/Collection coll-d-id))))))
 
-(deftest ^:parallel collection-delete-middle-hoists-survivor
+(deftest ^:synchronized collection-delete-middle-hoists-survivor
   (mt/with-temp [:model/Collection {a-id :id :as a} {}
                  :model/Collection {b-id :id :as b} {:location (collection/children-location a)}
                  :model/Collection {c-id :id :as _c} {:location (collection/children-location b)}]
