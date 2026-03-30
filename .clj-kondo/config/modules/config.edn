@@ -3098,6 +3098,14 @@
    :uses #{premium-features
            search}}
 
+  enterprise/security-center
+  {:team "Gadget"
+   :api  #{metabase-enterprise.security-center.models.security-advisory}
+   :uses #{models
+           premium-features
+           util}
+   :model-exports #{:model/SecurityAdvisory}}
+
   enterprise/semantic-search
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.api
