@@ -10,19 +10,6 @@
   pointer-events: none;
 }
 
-.closeButton {
-  pointer-events: auto;
-  margin-right: 0.125rem;
-  color: var(--mb-color-text-secondary);
-  background: var(--mb-color-bg-light);
-  border: 1px solid var(--mb-color-border);
-
-  &:hover {
-    color: var(--mb-color-text-primary);
-    background: var(--mb-color-bg-white);
-  }
-}
-
 .bubbleWrapper {
   max-width: 14rem;
 }
@@ -72,6 +59,7 @@
   100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-4px);
   }
