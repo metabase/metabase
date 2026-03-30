@@ -606,7 +606,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       : undefined;
     const entityId = attributeEntityId ?? tokenEntityId;
 
-    const customContext = this["custom-context"];
+    // Only works in React 19
+    const objectCustomContext = this["custom-context"];
+    const stringCustomContext = this.getAttribute("custom-context");
+    const customContext = objectCustomContext ?? stringCustomContext;
     const body = {
       entityType,
       entityId,

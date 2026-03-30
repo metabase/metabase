@@ -232,9 +232,8 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       if (token) {
         embed.setAttribute("token", token);
       }
-      // custom-context is a class property, not a reflected attribute
       if (customContext && embed instanceof MetabaseEmbedElement) {
-        embed["custom-context"] = customContext;
+        embed.setAttribute("custom-context", customContext);
       }
       document.body.appendChild(embed);
 
