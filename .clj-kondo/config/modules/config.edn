@@ -1150,7 +1150,9 @@
            server
            session
            system
-           util}}
+           util}
+   :model-imports #{:model/Session}
+   :model-exports #{:model/McpSession}}
 
   measures
   {:team "Graphy"
@@ -1377,6 +1379,7 @@
            metabase.oauth-server.init}
    :uses #{api
            appearance
+           mcp
            models
            settings
            system

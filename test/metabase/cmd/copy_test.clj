@@ -59,6 +59,7 @@
     :model/TransformJobTransformTag
     :model/TransformTag
     :model/TransformTransformTag
+    :model/McpSession
     :model/Undo
     :model/UserKeyValue
     :model/Workspace
