@@ -4,8 +4,7 @@ databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
 
   - changeSet:
-      # TODO: change back to v60.mcp-session-table after rebasing on master
-      id: v60.2026-03-27T00:00:00
+      id: v60.mcp-session-table
       author: christruter
       comment: Create mcp_session table for durable MCP session tracking
       changes:
@@ -63,8 +62,7 @@ databaseChangeLog:
             tableName: mcp_session
 
   - changeSet:
-      # TODO: change back to v60.mcp-session-user-fk after rebasing on master
-      id: v60.2026-03-27T00:00:01
+      id: v60.mcp-session-user-fk
       author: christruter
       comment: Add foreign key from mcp_session.user_id to core_user.id
       changes:
@@ -81,8 +79,7 @@ databaseChangeLog:
             constraintName: fk_mcp_session_user_id
 
   - changeSet:
-      # TODO: change back to v60.mcp-session-created-at-idx after rebasing on master
-      id: v60.2026-03-27T00:00:02
+      id: v60.mcp-session-created-at-idx
       author: christruter
       comment: Add index on mcp_session.created_at for TTL sweep queries
       changes:
@@ -98,8 +95,7 @@ databaseChangeLog:
             indexName: idx_mcp_session_created_at
 
   - changeSet:
-      # TODO: change back to v60.mcp-session-embedding-session-id-idx after rebasing on master
-      id: v60.2026-03-27T00:00:03
+      id: v60.mcp-session-embedding-session-id-idx
       author: christruter
       comment: Add index on mcp_session.embedding_session_id for join-based cleanup deletes
       changes:
@@ -115,8 +111,7 @@ databaseChangeLog:
             indexName: idx_mcp_session_embedding_session_id
 
   - changeSet:
-      # TODO: change back to v60.mcp-session-embedding-session-fk after rebasing on master
-      id: v60.2026-03-27T00:00:04
+      id: v60.mcp-session-embedding-session-fk
       author: christruter
       comment: Add foreign key from mcp_session.embedding_session_id to core_session.id
       changes:
