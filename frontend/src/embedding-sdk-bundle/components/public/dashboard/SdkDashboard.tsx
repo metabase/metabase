@@ -199,7 +199,7 @@ const SdkDashboardInner = ({
 }: SdkDashboardInnerProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
-
+  const [isFirstRender, setIsFirstRender] = useState(true);
   const { rawToken: tokenFromStore, error: tokenFetchError } =
     useSdkSelector(getSessionTokenState);
 
@@ -210,6 +210,10 @@ const SdkDashboardInner = ({
     }
   }, [rawToken, isGuestEmbed, dispatch]);
 
+  useEffect(() => {
+    setIsFirstRender(false);
+  }, []);
+
   const {
     resourceId: dashboardId,
     token,
@@ -217,7 +221,7 @@ const SdkDashboardInner = ({
   } = useExtractResourceIdFromJwtToken({
     isGuestEmbed,
     resourceId: rawDashboardId,
-    token: tokenFromStore ?? rawToken ?? undefined,
+    token: (!isFirstRender ? tokenFromStore : null) ?? rawToken ?? undefined,
   });
 
   useSetupContentTranslations({ token });
