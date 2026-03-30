@@ -4,10 +4,6 @@ const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { cartesianChartCircle, popover } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import {
-  disableTouchEmulation,
-  enableTouchEmulation,
-} from "e2e/support/helpers/e2e-mobile-device-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
@@ -47,70 +43,95 @@ describe("scenarios > embedding-sdk > touch chart drill popover", () => {
     );
   });
 
-  describe("touch device", () => {
-    beforeEach(() => {
-      cy.viewport("iphone-x");
-      enableTouchEmulation();
+  it("should show drill popover near the clicked data point", () => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
     });
 
-    afterEach(() => {
-      disableTouchEmulation();
-    });
+    cy.wait("@dashcardQuery");
 
-    it("should show drill popover near the tapped data point, not offscreen", () => {
-      cy.get<string>("@dashboardId").then((dashboardId) => {
-        mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    let circleRect: DOMRect;
+
+    getSdkRoot().within(() => {
+      H.getDashboardCard(0).within(() => {
+        cartesianChartCircle()
+          .first()
+          .then(($circle) => {
+            circleRect = $circle[0].getBoundingClientRect();
+          })
+          .click({ force: true });
       });
 
-      cy.wait("@dashcardQuery");
+      popover()
+        .should("be.visible")
+        .then(($popover) => {
+          const popoverRect = $popover[0].getBoundingClientRect();
 
-      // Use realTouch() from cypress-real-events to dispatch native touch
-      // events via CDP (Input.dispatchTouchEvent). This goes through the full
-      // browser pipeline — zrender receives real touchstart/touchend, simulates
-      // a click with the original TouchEvent, and our fix in getEventTarget()
-      // extracts clientX/clientY from changedTouches.
-      // Cypress .click() sends a MouseEvent which always has clientX/clientY
-      // and wouldn't exercise the TouchEvent code path.
-      let circleRect: DOMRect;
+          const MAX_DISTANCE = 300;
+          const popoverCenterX = popoverRect.left + popoverRect.width / 2;
+          const popoverCenterY = popoverRect.top + popoverRect.height / 2;
+          const circleCenterX = circleRect.left + circleRect.width / 2;
+          const circleCenterY = circleRect.top + circleRect.height / 2;
 
-      getSdkRoot().within(() => {
-        H.getDashboardCard(0).within(() => {
-          cartesianChartCircle()
-            .first()
-            .then(($circle) => {
-              circleRect = $circle[0].getBoundingClientRect();
-            })
-            .realTouch();
+          const distance = Math.sqrt(
+            (popoverCenterX - circleCenterX) ** 2 +
+              (popoverCenterY - circleCenterY) ** 2,
+          );
+          expect(
+            distance,
+            "popover should be near the clicked data point",
+          ).to.be.lessThan(MAX_DISTANCE);
         });
+    });
+  });
 
-        popover()
-          .should("be.visible")
-          .then(($popover) => {
-            const popoverRect = $popover[0].getBoundingClientRect();
+  it("should position popover anchor correctly for TouchEvents (iOS Safari)", () => {
+    // On iOS Safari, ECharts/zrender passes a TouchEvent through to
+    // getEventTarget(). TouchEvent lacks clientX/clientY (those live on
+    // individual Touch objects in changedTouches). Without the fix,
+    // the #popover-event-target gets "left: NaNpx; top: NaNpx" which
+    // the browser ignores, placing it far offscreen.
+    //
+    // CDP touch emulation in desktop Chrome doesn't reliably reproduce
+    // this because Chrome may fire PointerEvent instead of TouchEvent.
+    // So we call getEventTarget() directly with a real TouchEvent.
+    cy.get<string>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
 
-            // The popover should be positioned near the tapped data point,
-            // not at some arbitrary position far away. We allow a generous
-            // threshold because floating-ui may flip/shift the popover to
-            // keep it in the viewport, but it should remain in the vicinity
-            // of the data point (within 300px).
-            // Before the touch fix, the popover anchor received NaN
-            // coordinates on touch devices, placing it far offscreen.
-            const MAX_DISTANCE = 300;
-            const popoverCenterX = popoverRect.left + popoverRect.width / 2;
-            const popoverCenterY = popoverRect.top + popoverRect.height / 2;
-            const circleCenterX = circleRect.left + circleRect.width / 2;
-            const circleCenterY = circleRect.top + circleRect.height / 2;
+    cy.wait("@dashcardQuery");
 
-            const distance = Math.sqrt(
-              (popoverCenterX - circleCenterX) ** 2 +
-                (popoverCenterY - circleCenterY) ** 2,
-            );
-            expect(
-              distance,
-              "popover should be near the tapped data point",
-            ).to.be.lessThan(MAX_DISTANCE);
-          });
+    cy.window().then((win) => {
+      const expectedX = 150;
+      const expectedY = 200;
+
+      const touch = new win.Touch({
+        identifier: 0,
+        target: win.document.body,
+        clientX: expectedX,
+        clientY: expectedY,
       });
+
+      const touchEvent = new win.TouchEvent("touchend", {
+        changedTouches: [touch],
+        touches: [],
+      });
+
+      // Access getEventTarget via the app's module system
+      const { getEventTarget } = require("metabase/lib/dom");
+      const target = getEventTarget(touchEvent);
+
+      const left = parseFloat(target.style.left);
+      const top = parseFloat(target.style.top);
+
+      expect(left, "anchor left should not be NaN").to.not.be.NaN;
+      expect(top, "anchor top should not be NaN").to.not.be.NaN;
+      expect(left, "anchor left should match touch clientX").to.equal(
+        expectedX - 3,
+      );
+      expect(top, "anchor top should match touch clientY").to.equal(
+        expectedY - 3,
+      );
     });
   });
 });
