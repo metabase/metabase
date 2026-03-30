@@ -40,7 +40,7 @@
         (future (Thread/sleep 500) (a/>!! fin-chan :done))
         (is (nil? (sut/with-cluster-lock ::test-lock (Thread/sleep 1))))))))
 
-(deftest concurrent-lock-creation-race-test
+(deftest ^:synchronized concurrent-lock-creation-race-test
   (testing "Two threads racing to create the same lock for the first time"
     ;; h2 is not race-proof, but it is also not cross-process
     (when (not= (mdb/db-type) :h2)

@@ -41,6 +41,8 @@
   (binding [client/*url-prefix* ""]
     (thunk)))
 
+;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each disable-api-url-prefix mt/test-helpers-set-global-values!)
 
 (defn- do-with-other-sso-types-disabled! [thunk]
@@ -120,7 +122,7 @@
                                             (orig response (remove-validators options)))]
        (thunk)))))
 
-(deftest ^:parallel validate-certificate-test
+(deftest ^:synchronized validate-certificate-test
   (testing "make sure our test certificate is actually valid"
     (is (some? (#'sso-settings/validate-saml-idp-cert default-idp-cert)))))
 
@@ -171,7 +173,7 @@
    (for [^BasicNameValuePair pair (-> (URL. uri-str) .getQuery (URLEncodedUtils/parse StandardCharsets/UTF_8))]
      [(keyword (.getName pair)) (.getValue pair)])))
 
-(deftest ^:parallel uri->params-map-test
+(deftest ^:synchronized uri->params-map-test
   (is (= {:a "b", :c "d"}
          (uri->params-map "http://localhost?a=b&c=d"))))
 

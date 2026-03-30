@@ -5,11 +5,13 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [f]
                       (mt/with-temporary-setting-values [remote-sync-type :read-write]
                         (f))))
 
-(deftest api-update-dashboard-collection-id-remote-synced-dependency-checking-success-test
+(deftest ^:synchronized api-update-dashboard-collection-id-remote-synced-dependency-checking-success-test
   (testing "PUT /api/dashboard/:id with collection_id in remote-synced succeeds when all dependencies are in remote-synced"
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
                    :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :is_remote_synced true}
@@ -31,7 +33,7 @@
         (is (= target-id (:collection_id response))
             "Dashboard should be moved to remote-synced collection")))))
 
-(deftest api-update-dashboard-collection-id-remote-synced-dependency-checking-failure-test
+(deftest ^:synchronized api-update-dashboard-collection-id-remote-synced-dependency-checking-failure-test
   (testing "PUT /api/dashboard/:id with collection_id in remote-synced throws 400 when dependencies exist outside remote-synced"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
                    :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
@@ -59,7 +61,7 @@
         (is (= source-id (:collection_id unchanged-dash))
             "Dashboard collection_id should remain unchanged after failed move")))))
 
-(deftest api-update-dashboard-collection-id-remote-synced-dependency-checking-transaction-rollback-test
+(deftest ^:synchronized api-update-dashboard-collection-id-remote-synced-dependency-checking-transaction-rollback-test
   (testing "PUT /api/dashboard/:id transaction rollback when dependency check fails"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
                    :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
@@ -84,7 +86,7 @@
         (is (= source-id (:collection_id unchanged-dash))
             "Dashboard collection_id should remain unchanged after transaction rollback")))))
 
-(deftest api-update-dashboard-outside-remote-synced-no-dependency-checking-test
+(deftest ^:synchronized api-update-dashboard-outside-remote-synced-no-dependency-checking-test
   (testing "PUT /api/dashboard/:id to non-remote-synced collection does not check dependencies"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
                    :model/Collection {target-id :id} {:name "Target" :location "/" :type nil}
@@ -106,7 +108,7 @@
         (is (= target-id (:collection_id response))
             "Dashboard should be moved to new collection")))))
 
-(deftest api-copy-dashboard-into-remote-synced-dependency-checking-success-test
+(deftest ^:synchronized api-copy-dashboard-into-remote-synced-dependency-checking-success-test
   (testing "POST /api/dashboard/:id/copy into remote-synced succeeds when all dependencies are in remote-synced"
     (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
                    :model/Collection {target-id :id} {:name "Target" :location (format "/%d/" remote-synced-id) :is_remote_synced true}
@@ -130,7 +132,7 @@
         (is (not= dash-id (:id response))
             "Copied dashboard should have different ID")))))
 
-(deftest api-copy-dashboard-into-remote-synced-dependency-checking-failure-test
+(deftest ^:synchronized api-copy-dashboard-into-remote-synced-dependency-checking-failure-test
   (testing "POST /api/dashboard/:id/copy into remote-synced throws 400 when dependencies exist outside remote-synced"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
                    :model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
@@ -157,7 +159,7 @@
       (is (= 1 (t2/count :model/Dashboard :name "Dashboard to Copy"))
           "No new dashboard should be created after failed copy"))))
 
-(deftest api-copy-dashboard-outside-remote-synced-no-dependency-checking-test
+(deftest ^:synchronized api-copy-dashboard-outside-remote-synced-no-dependency-checking-test
   (testing "POST /api/dashboard/:id/copy to non-remote-synced collection does not check dependencies"
     (mt/with-temp [:model/Collection {non-remote-synced-id :id} {:name "Non-Remote-Synced" :location "/" :type nil}
                    :model/Collection {target-id :id} {:name "Target" :location "/" :type nil}

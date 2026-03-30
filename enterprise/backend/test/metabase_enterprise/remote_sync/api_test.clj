@@ -288,11 +288,11 @@
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
-(deftest current-task-returns-nil-when-no-tasks-test
+(deftest ^:synchronized current-task-returns-nil-when-no-tasks-test
   (testing "GET /api/ee/remote-sync/current-task returns nil when there are no tasks"
     (is (nil? (mt/user-http-request :crowberto :get 204 "ee/remote-sync/current-task")))))
 
-(deftest current-task-returns-active-task-test
+(deftest ^:synchronized current-task-returns-active-task-test
   (testing "GET /api/ee/remote-sync/current-task returns the current task when one exists"
     (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "export"
                                             :last_progress_report_at :%now
@@ -334,7 +334,7 @@
 
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
 
-(deftest cancel-task-errors-when-no-tasks-test
+(deftest ^:synchronized cancel-task-errors-when-no-tasks-test
   (testing "POST /api/ee/remote-sync/current-task/cancel errors when there are no tasks"
     (is (= "No active task to cancel"
            (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel")))))
@@ -357,7 +357,7 @@
       (is (= "No active task to cancel"
              (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))))
 
-(deftest cancel-active-task-test
+(deftest ^:synchronized cancel-active-task-test
   (testing "POST /api/ee/remote-sync/current-task/cancel successfully cancels active task"
     (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
                                                    :last_progress_report_at :%now
@@ -370,7 +370,7 @@
 
 ;;; ------------------------------------------------- Is Dirty Endpoint -------------------------------------------------
 
-(deftest is-dirty-returns-false-when-no-changes-test
+(deftest ^:synchronized is-dirty-returns-false-when-no-changes-test
   (testing "GET /api/ee/remote-sync/is-dirty returns false when no remote-synced collections have changes"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection _ {:name "Remote Collection"
@@ -380,7 +380,7 @@
         (is (= {:is_dirty false}
                (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))))))
 
-(deftest is-dirty-returns-true-when-changes-exist-test
+(deftest ^:synchronized is-dirty-returns-true-when-changes-exist-test
   (testing "GET /api/ee/remote-sync/is-dirty returns true when any remote-synced collection has changes"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
@@ -398,14 +398,14 @@
         (is (= {:is_dirty true}
                (mt/user-http-request :crowberto :get 200 "ee/remote-sync/is-dirty")))))))
 
-(deftest is-dirty-requires-superuser-test
+(deftest ^:synchronized is-dirty-requires-superuser-test
   (testing "GET /api/ee/remote-sync/is-dirty requires superuser permissions"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "ee/remote-sync/is-dirty")))))
 
 ;;; ------------------------------------------------- Dirty Models Endpoint -------------------------------------------------
 
-(deftest dirty-returns-empty-list-when-no-dirty-models-test
+(deftest ^:synchronized dirty-returns-empty-list-when-no-dirty-models-test
   (testing "GET /api/ee/remote-sync/dirty returns empty list when no dirty models"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection _ {:name "Remote Collection"
@@ -415,7 +415,7 @@
         (is (= {:dirty []}
                (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))))))
 
-(deftest dirty-returns-all-dirty-models-test
+(deftest ^:synchronized dirty-returns-all-dirty-models-test
   (testing "GET /api/ee/remote-sync/dirty returns all dirty models across remote-synced collections"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col1 {:name "Remote Collection 1"
@@ -458,7 +458,7 @@
           (is (= #{"card" "dashboard"}
                  (set (map :model dirty-items)))))))))
 
-(deftest dirty-returns-nested-collection-models-test
+(deftest ^:synchronized dirty-returns-nested-collection-models-test
   (testing "GET /api/ee/remote-sync/dirty returns dirty models from nested collections"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
@@ -481,7 +481,7 @@
           (is (= 1 (count dirty-items)))
           (is (= "Nested Card" (:name (first dirty-items)))))))))
 
-(deftest dirty-deduplicates-items-test
+(deftest ^:synchronized dirty-deduplicates-items-test
   (testing "GET /api/ee/remote-sync/dirty deduplicates items"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/Collection remote-col {:name "Remote Collection"
@@ -501,7 +501,7 @@
           (is (= 1 (count dirty-items)))
           (is (= "Test Card" (:name (first dirty-items)))))))))
 
-(deftest dirty-requires-superuser-test
+(deftest ^:synchronized dirty-requires-superuser-test
   (testing "GET /api/ee/remote-sync/dirty requires superuser permissions"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 "ee/remote-sync/dirty")))))
@@ -536,12 +536,12 @@
             (is (=? {:success true} response))
             (is (remote-sync.task/successful? task))))))))
 
-(deftest settings-requires-superuser-test
+(deftest ^:synchronized settings-requires-superuser-test
   (testing "PUT /api/ee/remote-sync/settings requires superuser permissions"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :put 403 "ee/remote-sync/settings" {})))))
 
-(deftest settings-handles-invalid-settings-test
+(deftest ^:synchronized settings-handles-invalid-settings-test
   (testing "PUT /api/ee/remote-sync/settings handles invalid settings"
     (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                          {:remote-sync-url "asdf://invalid-url"})]
@@ -691,7 +691,7 @@
           (is (= {:success true} response))
           (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))
 
-(deftest settings-collections-requires-superuser-test
+(deftest ^:synchronized settings-collections-requires-superuser-test
   (testing "PUT /api/ee/remote-sync/settings with collections requires superuser permissions"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
       (is (= "You don't have permissions to do that."
@@ -1064,7 +1064,7 @@
 
 ;;; ------------------------------------------- Dirty Endpoint with Transforms Root Tests -------------------------------------------
 
-(deftest dirty-returns-transforms-root-collection-test
+(deftest ^:synchronized dirty-returns-transforms-root-collection-test
   (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) when present"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
@@ -1079,7 +1079,7 @@
           (is (= "collection" (:model (first dirty-items))))
           (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
 
-(deftest dirty-returns-transforms-root-collection-with-delete-status-test
+(deftest ^:synchronized dirty-returns-transforms-root-collection-with-delete-status-test
   (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) with delete status"
     (test-helpers/with-clean-object
       (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"

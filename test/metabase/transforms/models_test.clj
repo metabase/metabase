@@ -33,7 +33,7 @@
         (let [job-ids (t2/select-fn-set :job_id :model/TransformJobTransformTag :tag_id (:id tag1))]
           (is (contains? job-ids (:id job)) "Should include the job"))))))
 
-(deftest cascade-delete-tag-test
+(deftest ^:synchronized cascade-delete-tag-test
   (testing "Deleting a tag cascades to associations"
     (mt/with-temp [:model/TransformTag tag {}
                    :model/TransformJob job {}
@@ -50,7 +50,7 @@
       (is (t2/exists? :model/TransformJob :id (:id job))
           "Job should still exist after tag deletion"))))
 
-(deftest cascade-delete-job-test
+(deftest ^:synchronized cascade-delete-job-test
   (testing "Deleting a job cascades to associations"
     (mt/with-temp [:model/TransformTag tag {}
                    :model/TransformJob job {}
@@ -286,7 +286,7 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Transform can only go in Collections in the :transforms namespace."
                                 (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))))))))))
 
-(deftest deleted-transform-preserves-runs-test
+(deftest ^:synchronized deleted-transform-preserves-runs-test
   (testing "Deleting a transform sets transform_id to NULL but preserves the run"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id

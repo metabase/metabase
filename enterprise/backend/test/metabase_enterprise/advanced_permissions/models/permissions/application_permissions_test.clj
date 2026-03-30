@@ -10,7 +10,7 @@
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
-(deftest application-permissions-graph-test
+(deftest ^:synchronized application-permissions-graph-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
     ;; clear the graph revisions
     (t2/delete! :model/ApplicationPermissionsRevision)

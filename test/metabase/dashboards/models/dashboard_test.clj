@@ -127,7 +127,7 @@
                :parameter_id              "_CATEGORY_NAME_"}
               (t2/select-one :model/ParameterCard :card_id card-id))))))
 
-(deftest parameter-card-test-3
+(deftest ^:synchronized parameter-card-test-3
   (testing "Removing a card_id deletes old ParameterCards"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter

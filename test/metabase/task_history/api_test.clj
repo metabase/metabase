@@ -74,7 +74,7 @@
     (is (= (mt/user-http-request :crowberto :get 200 "task/" :limit 50 :offset 100)
            (mt/user-http-request :crowberto :get 200 "task/" :offset 100)))))
 
-(deftest paging-test
+(deftest ^:synchronized paging-test
   (testing "Check that paging information is applied when provided and included in the response"
     (t2/delete! :model/TaskHistory)
     (let [[task-hist-1 task-hist-2 task-hist-3 task-hist-4] (generate-tasks 4)]
@@ -404,7 +404,7 @@
           (is (= 1 (-> response :data count)))
           (is (= "success" (-> response :data first :status))))))))
 
-(deftest sort-tasks-test
+(deftest ^:synchronized sort-tasks-test
   (t2/delete! :model/TaskHistory)
   (let [now (t/zoned-date-time)]
     (mt/with-temp
@@ -569,7 +569,7 @@
                                              :run-type "sync"
                                              :status "failed")))))))
 
-(deftest runs-get-single-test
+(deftest ^:synchronized runs-get-single-test
   (testing "non-superuser cannot access single run"
     (mt/with-temp [:model/TaskRun run {:run_type    :sync
                                        :entity_type :database

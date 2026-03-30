@@ -61,7 +61,7 @@
         (is (true? (mi/can-read? dashboard)))
         (is (true? (mi/can-write? dashboard)))))))
 
-(deftest dependency-test
+(deftest ^:synchronized dependency-test
   (testing "Deleting a dashtab should delete the associated dashboardcards"
     (with-dashtab-in-personal-collection {:keys [dashtab dashcard]}
       (t2/delete! dashtab)

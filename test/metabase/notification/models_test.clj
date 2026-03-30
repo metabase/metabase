@@ -70,7 +70,7 @@
            #"Update creator_id is not allowed."
            (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))))))
 
-(deftest delete-notification-clean-up-payload-test
+(deftest ^:synchronized delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"
     (notification.tu/with-card-notification [notification {}]
       (let [notification-card-id (-> notification :payload :id)]

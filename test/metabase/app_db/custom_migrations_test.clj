@@ -1155,7 +1155,7 @@
                                            :dashcard_visualization dash
                                            :card_visualization     card})))
 
-(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test
+(deftest ^:mb/old-migrations-test fix-click-through-test
   (testing "toplevel"
     (let [card {"some_setting:"       {"foo" 123}
                 "click_link_template" "http://example.com/{{col_name}}"
@@ -1167,7 +1167,7 @@
                                 "linkTemplate" "http://example.com/{{col_name}}"}}
              (fix-click-thru card dash))))))
 
-(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-2
+(deftest ^:mb/old-migrations-test fix-click-through-test-2
   (testing "top level disabled"
     (let [card {"some_setting:"       {"foo" 123}
                 "click_link_template" "http://example.com/{{col_name}}"
@@ -1179,7 +1179,7 @@
       ;; would be fine but isn't needed.
       (is (nil? (fix-click-thru card dash))))))
 
-(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-3
+(deftest ^:mb/old-migrations-test fix-click-through-test-3
   (testing "column settings"
     (let [card {"some_setting" {"foo" 123}
                 "column_settings"
@@ -1203,7 +1203,7 @@
                {"other_fun_formatting" 123}}}
              (fix-click-thru card dash))))))
 
-(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-4
+(deftest ^:mb/old-migrations-test fix-click-through-test-4
   (testing "manually updated new behavior"
     (let [card {"some_setting"        {"foo" 123}
                 "click_link_template" "http://example.com/{{col_name}}"
@@ -1214,7 +1214,7 @@
                                   "linkTemplate" "http://example.com/{{other_col_name}}"}}]
       (is (nil? (fix-click-thru card dash))))))
 
-(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-5
+(deftest ^:mb/old-migrations-test fix-click-through-test-5
   (testing "Manually updated to new behavior on Column"
     (let [card {"some_setting" {"foo" 123},
                 "column_settings"
@@ -1250,7 +1250,7 @@
                  "linkTemplate" "http://example.com/{{something_else}}"}}}}
              (fix-click-thru card dash))))))
 
-(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-6
+(deftest ^:mb/old-migrations-test fix-click-through-test-6
   (testing "If there is migration eligible on dash but also new style on dash, new style wins"
     (let [dash {"column_settings"
                 {"[\"ref\",[\"field-id\",4]]"
@@ -1266,7 +1266,7 @@
       ;; no change
       (is (nil? (fix-click-thru nil dash))))))
 
-(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-test-7
+(deftest ^:mb/old-migrations-test fix-click-through-test-7
   (testing "flamber case"
     (let [card {"column_settings"
                 {"[\"ref\",[\"field-id\",4]]"
@@ -1346,7 +1346,7 @@
               "table.pivot_column" "CATEGORY"}
              (fix-click-thru card dash))))))
 
-(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-general-test
+(deftest ^:mb/old-migrations-test fix-click-through-general-test
   (testing "general case"
     (let [card-vis              {"column_settings"
                                  {"[\"ref\",[\"field-id\",2]]"
@@ -1405,7 +1405,7 @@
                      :card_visualization     card-vis
                      :dashcard_visualization (:visualization_settings fixed)})))))))
 
-(deftest ^:mb/old-migrations-test ^:parallel fix-click-through-general-test-2
+(deftest ^:mb/old-migrations-test fix-click-through-general-test-2
   (testing "ignores columns when `view_as` is null"
     (let [card-viz {"column_settings"
                     {"normal"

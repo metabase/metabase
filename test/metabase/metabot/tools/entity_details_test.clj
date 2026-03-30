@@ -201,7 +201,7 @@
                 (is (= "Total Revenue" (:name measure)))
                 (is (map? (:definition measure)))))))))))
 
-(deftest get-table-details-with-segments-test
+(deftest ^:synchronized get-table-details-with-segments-test
   (testing "get-table-details returns segments when with_segments is true"
     (let [segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)]
       (mt/with-temp [:model/Segment {segment-id :id} {:name       "High Value Orders"
@@ -243,7 +243,7 @@
             (is (= 1 (count measures)))
             (is (= orders-measure-id (:id (first measures))))))))))
 
-(deftest get-metric-details-with-segments-test
+(deftest ^:synchronized get-metric-details-with-segments-test
   (testing "get-metric-details returns segments when with_segments is true"
     ;; Note: lib/available-segments requires the query to have a direct source-table-id.
     ;; For metrics, this means the underlying card must be based on a table (not another card).

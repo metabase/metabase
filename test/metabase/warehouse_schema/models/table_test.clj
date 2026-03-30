@@ -519,7 +519,7 @@
         (is (some? (t2/update! :model/Table table-id {:data_source nil})))
         (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id)))))))
 
-(deftest is-published-and-collection-id-test
+(deftest ^:synchronized is-published-and-collection-id-test
   (testing "is_published defaults to false"
     (mt/with-temp [:model/Table {table-id :id} {}]
       (is (false? (t2/select-one-fn :is_published :model/Table :id table-id)))))

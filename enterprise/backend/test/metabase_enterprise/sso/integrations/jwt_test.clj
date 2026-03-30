@@ -23,6 +23,8 @@
   (binding [client/*url-prefix* ""]
     (thunk)))
 
+;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each disable-api-url-prefix mt/test-helpers-set-global-values!)
 
 (def ^:private default-redirect-uri "/")

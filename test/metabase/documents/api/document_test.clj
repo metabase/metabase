@@ -1464,7 +1464,7 @@
             ;; Verify document is actually unarchived in database
           (is (false? (:archived (t2/select-one :model/Document :id doc-id)))))))))
 
-(deftest document-archive-with-cards-test
+(deftest ^:synchronized document-archive-with-cards-test
   (testing "Document archiving includes associated cards"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Document with Cards"
@@ -1610,7 +1610,7 @@
         (is (false? (:archived (t2/select-one :model/Card :id card2-id))))
         (is (false? (:archived (t2/select-one :model/Card :id standalone-card-id))))))))
 
-(deftest document-archived-directly-flag-test
+(deftest ^:synchronized document-archived-directly-flag-test
   (testing "Document archived_directly flag behavior"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {doc-id :id} {:name "Test Document"
@@ -1680,7 +1680,7 @@
           (is (true? (:archived card)))
           (is (true? (:archived_directly card))))))))
 
-(deftest archived-documents-filtering-test
+(deftest ^:synchronized archived-documents-filtering-test
   (testing "Archived documents are properly filtered from various endpoints"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Document {active-doc-id :id} {:name "Active Document"
@@ -1999,7 +1999,7 @@
                                                           :collection_id collection-id})]
             (is (nil? (:collection_position no-position-result)))))))))
 
-(deftest document-position-reconciliation-on-update-test
+(deftest ^:synchronized document-position-reconciliation-on-update-test
   (testing "Position reconciliation works for document updates via API"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
       ;; Create documents with positions via API
@@ -2055,7 +2055,7 @@
               (let [doc2 (t2/select-one :model/Document :id doc2-id)]
                 (is (= 2 (:collection_position doc2)))))))))))
 
-(deftest document-collection-position-field-handling-test
+(deftest ^:synchronized document-collection-position-field-handling-test
   (testing "Document model supports collection_position field via API"
     (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Collection"}]
       (testing "collection_position is stored and retrieved correctly"

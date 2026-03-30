@@ -72,7 +72,7 @@
 
 ;;; ------------------------------------------------- Functional Tests --------------------------------------------------
 
-(deftest get-table-details-test
+(deftest ^:synchronized get-table-details-test
   (testing "Returns table details for valid table ID"
     (let [table-id (mt/id :orders)]
       (is (=? {:type           "table"
@@ -106,7 +106,7 @@
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
       (is (some #(seq (:field_values %)) (:fields table))))))
 
-(deftest get-metric-details-test
+(deftest ^:synchronized get-metric-details-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
                                      :database_id   (mt/id)
@@ -179,7 +179,7 @@
       (is (= "Invalid field_id format: not-a-valid-id"
              (mt/user-http-request :crowberto :get 400 (format "agent/v1/table/%d/field/not-a-valid-id/values" table-id)))))))
 
-(deftest search-test
+(deftest ^:synchronized search-test
   (binding [search.ingestion/*force-sync* true]
     (search.tu/with-new-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Table _ {:name "AgentSearchTestTable"}]
@@ -194,7 +194,7 @@
   [response]
   (-> response :query u/decode-base64 json/decode+kw lib.normalize/normalize))
 
-(deftest construct-query-test
+(deftest ^:synchronized construct-query-test
   (testing "Constructs a simple query from a table"
     (let [table-id (mt/id :orders)
           response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
@@ -225,7 +225,7 @@
            (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
                                  {:table_id 999999})))))
 
-(deftest execute-query-test
+(deftest ^:synchronized execute-query-test
   (testing "Executes a query and returns results with column metadata"
     (let [table-id       (mt/id :orders)
           construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
@@ -278,7 +278,7 @@
       (is (re-find #"does not match expected prefix"
                    (mt/user-http-request :rasta :get 400 (format "agent/v1/metric/%d/field/t123-0/values" (:id metric))))))))
 
-(deftest construct-metric-query-test
+(deftest ^:synchronized construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
                                      :database_id   (mt/id)
@@ -296,7 +296,7 @@
              (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
                                    {:metric_id 999999}))))))
 
-(deftest construct-query-with-count-aggregation-test
+(deftest ^:synchronized construct-query-with-count-aggregation-test
   (testing "Count aggregation without field_id produces a valid query"
     (let [table-id (mt/id :orders)
           response (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
@@ -319,7 +319,7 @@
       (let [decoded (decode-query response)]
         (is (= 1 (count (lib/aggregations decoded))))))))
 
-(deftest construct-query-with-filters-test
+(deftest ^:synchronized construct-query-with-filters-test
   (testing "Constructs a query with filters"
     (let [table-id (mt/id :orders)
           ;; Get table details to find a valid field_id
@@ -334,7 +334,7 @@
       (let [decoded (decode-query response)]
         (is (seq (lib/filters decoded)) "Query should have filters")))))
 
-(deftest get-table-details-with-measures-test
+(deftest ^:synchronized get-table-details-with-measures-test
   (let [measure-def (-> (lib/query (mt/metadata-provider)
                                    (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
                         (lib/aggregate (lib/sum (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total)))))]
@@ -353,7 +353,7 @@
                     :name "Total Revenue"}]
                   (:measures table))))))))
 
-(deftest combined-query-test
+(deftest ^:synchronized combined-query-test
   (testing "Returns results for a table query"
     (let [table-id (mt/id :orders)
           field-id (visible-field-id table-id "ID")
@@ -403,7 +403,7 @@
                                   {:table_id (mt/id :orders)
                                    :limit    1000})))))
 
-(deftest combined-query-metric-test
+(deftest ^:synchronized combined-query-metric-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
                                      :database_id   (mt/id)
@@ -414,7 +414,7 @@
               (mt/user-http-request :rasta :post 202 "agent/v1/query"
                                     {:metric_id (:id metric)}))))))
 
-(deftest search-finds-metrics-test
+(deftest ^:synchronized search-finds-metrics-test
   (binding [search.ingestion/*force-sync* true]
     (search.tu/with-new-search-if-available-otherwise-legacy
       (mt/with-temp [:model/Card _metric {:name          "AgentSearchTestMetric"

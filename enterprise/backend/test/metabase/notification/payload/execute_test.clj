@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest viz-settings-is-correctly-returned
+(deftest ^:synchronized viz-settings-is-correctly-returned
   (testing (str "2 questions with the same query but different viz-settings on a dashboard "
                 "with caching enabled should returns the correct viz-settings #57793")
     (let [query (mt/mbql-query orders {:aggregation [[:count]

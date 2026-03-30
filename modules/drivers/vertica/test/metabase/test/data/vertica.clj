@@ -224,7 +224,7 @@
             ::tabledef tabledef
             ::filename filename}))))
 
-(deftest load-data-from-csv-test
+(deftest ^:synchronized load-data-from-csv-test
   (testing "Make sure the dump-data-to-CSV stuff actually works as expected"
     (mt/test-driver :vertica
       (let [dbdef    (tx/get-dataset-definition metabase.test.data.dataset-definitions/test-data)

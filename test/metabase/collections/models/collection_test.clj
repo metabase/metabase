@@ -1565,7 +1565,7 @@
            #"Collection does not exist"
            (collection/check-collection-namespace :model/Card Integer/MAX_VALUE))))))
 
-(deftest delete-collection-cascades
+(deftest ^:synchronized delete-collection-cascades
   (testing "When deleting a Collection, should delete things that used to be in that collection"
     (mt/with-temp [:model/Collection {coll-id :id}      {}
                    :model/Card       {card-id :id}      {:collection_id coll-id}

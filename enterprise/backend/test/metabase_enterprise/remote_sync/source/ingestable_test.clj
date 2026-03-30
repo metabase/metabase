@@ -13,7 +13,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest ingestable-snapshot-test
+(deftest ^:synchronized ingestable-snapshot-test
   (testing "IngestableSnapshot wraps a snapshot and provides Ingestable interface"
     (let [mock-source (test-helpers/create-mock-source)
           ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))]
@@ -38,7 +38,7 @@
           (is (map? @(:cache ingestable)) "Cache should be populated after ingest-list")
           (is (seq @(:cache ingestable)) "Cache should contain data"))))))
 
-(deftest callback-ingestable-test
+(deftest ^:synchronized callback-ingestable-test
   (testing "CallbackIngestable wraps an ingestable and calls callback on ingest-one"
     (let [mock-source (test-helpers/create-mock-source)
           base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))
@@ -121,7 +121,7 @@
               (is (< (abs (- (:progress final-task) (double normalize))) 0.01)
                   "Progress should equal normalize value when all items ingested"))))))))
 
-(deftest root-dependency-ingestable-test
+(deftest ^:synchronized root-dependency-ingestable-test
   (testing "RootDependencyIngestable filters items based on root dependencies"
     (let [mock-source (test-helpers/create-mock-source)
           base-ingestable (ingestable/->IngestableSnapshot (source.p/snapshot mock-source) (atom nil) (atom []))]
@@ -144,7 +144,7 @@
               wrapped (ingestable/wrap-root-dep-ingestable root-deps base-ingestable)]
           (is (map? @(:dep-cache wrapped)) "Should have dep-cache atom initialized as empty map"))))))
 
-(deftest ingest-errors-test
+(deftest ^:synchronized ingest-errors-test
   (testing "IngestableSnapshot collects parse errors and returns them via ingest-errors"
     (let [bad-yaml  "name: Bad Card\ndataset_query: [invalid\n"
           files     {"main" {"collections/coll01xxxxxxxxxxxxx_test/coll01xxxxxxxxxxxxx_test.yaml"

@@ -7,6 +7,8 @@
 
 (set! *warn-on-reflection* true)
 
+;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [thunk]
                       (binding [config.file/*supported-versions* {:min 1, :max 1}]
                         (mt/with-premium-features #{:config-text-file}

@@ -382,6 +382,8 @@
 (defn ws-fixtures!
   "Sets up test fixtures for workspace tests. Must be called at the top level of test namespaces."
   []
+  ;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
+  #_{:clj-kondo/ignore [:metabase/validate-deftest]}
   (use-fixtures :each (fn [tests]
                         (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
                           (mt/with-premium-features [:workspaces :dependencies :transforms-basic :transforms-python]

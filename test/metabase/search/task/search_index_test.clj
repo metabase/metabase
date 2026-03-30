@@ -25,7 +25,7 @@
     (testing "It will reuse an existing index"
       (is (not (task/init!))))))
 
-(deftest reindex!-test
+(deftest ^:synchronized reindex!-test
   (search.tu/with-temp-index-table
    ;; TODO this is coupled to appdb engines at the moment
     (t2/query (sql.helpers/drop-table (search.index/active-table)))

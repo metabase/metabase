@@ -7,6 +7,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each mt/test-helpers-set-global-values!)
 
 (deftest show-static-embed-terms-test

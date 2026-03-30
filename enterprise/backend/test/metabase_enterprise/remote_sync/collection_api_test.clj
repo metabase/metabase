@@ -7,6 +7,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each
   (fn [f]
     (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
@@ -39,7 +41,7 @@
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id parent-id)))
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id child-id))))))))
 
-(deftest ^:parallel api-move-collection-into-remote-synced-dependency-checking-success-test
+(deftest ^:synchronized api-move-collection-into-remote-synced-dependency-checking-success-test
   (testing "PUT /api/collection/:id - move collection into remote-synced"
     (testing "Moving a collection into remote-synced parent succeeds when no remote-sync violations"
       (mt/with-temp [:model/Collection remote-parent {:name "Remote Parent" :is_remote_synced true}
@@ -50,7 +52,7 @@
           (is (true? (:is_remote_synced response)))
           (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection)))))))))
 
-(deftest ^:parallel api-move-collection-into-remote-synced-dependency-checking-failure-test
+(deftest ^:synchronized api-move-collection-into-remote-synced-dependency-checking-failure-test
   (testing "PUT /api/collection/:id - move collection into remote-synced"
     (testing "Moving a collection into remote-synced parent fails when remote-sync violations exist"
       (mt/with-temp [:model/Collection remote-parent {:name "Remote Parent" :is_remote_synced true}
@@ -64,7 +66,7 @@
           (is (nil? (t2/select-one-fn :parent_id :model/Collection :id (:id regular-collection))))
           (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection)))))))))
 
-(deftest ^:parallel api-move-collection-into-remote-synced-dependency-checking-transaction-rollback-test
+(deftest ^:synchronized api-move-collection-into-remote-synced-dependency-checking-transaction-rollback-test
   (testing "PUT /api/collection/:id - move collection into remote-synced"
     (testing "Transaction rollback on dependency check failure leaves database unchanged"
       (mt/with-temp [:model/Collection remote-parent {:name "Remote Parent" :is_remote_synced true}
@@ -80,7 +82,7 @@
         (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id regular-collection))))
         (is (false? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id child-collection))))))))
 
-(deftest ^:parallel api-move-collection-outside-remote-synced-no-dependency-checking-test
+(deftest ^:synchronized api-move-collection-outside-remote-synced-no-dependency-checking-test
   (testing "PUT /api/collection/:id - move collection out of remote-synced"
     (testing "Moving a collection OUT of remote-synced parent does not check dependencies"
       (mt/with-temp [:model/Collection remote-parent {:name "Remote Parent" :is_remote_synced true}

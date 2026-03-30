@@ -16,6 +16,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:support-access-grants}
                               (with-redefs [api.session/throttling-disabled? true]
                                 (f)))))
@@ -109,7 +111,7 @@
                                     :token regular-token)]
             (is (true? (:valid response)) "Regular token should be valid")))))))
 
-(deftest ^:parallel password-reset-token-valid-with-invalid-token-test
+(deftest ^:synchronized password-reset-token-valid-with-invalid-token-test
   (testing "GET /api/session/password_reset_token_valid returns false for completely invalid token"
     (let [response (mt/client :get 200 "session/password_reset_token_valid"
                               :token "totally-invalid-token-12345")]

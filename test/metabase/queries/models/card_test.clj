@@ -576,7 +576,7 @@
           (is (= []
                  (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))))
 
-(deftest parameter-card-test-2
+(deftest ^:synchronized parameter-card-test-2
   (let [default-params {:name       "Category Name"
                         :slug       "category_name"
                         :id         "_CATEGORY_NAME_"

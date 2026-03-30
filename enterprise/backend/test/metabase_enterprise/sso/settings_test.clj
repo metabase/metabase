@@ -9,6 +9,8 @@
    [metabase.test.util :as tu]))
 
 (use-fixtures :once (fixtures/initialize :db))
+;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each mt/test-helpers-set-global-values!)
 
 (def ^:private default-idp-uri "http://test.idp.metabase.com")
@@ -257,6 +259,6 @@
     (mt/with-temporary-setting-values [google-auth-enabled false]
       (is (false? (sso.settings/sso-source-enabled? :google))))))
 
-(deftest ^:parallel sso-source-enabled?-unknown-test
+(deftest ^:synchronized sso-source-enabled?-unknown-test
   (testing "sso-source-enabled? returns false for unknown sources"
     (is (false? (sso.settings/sso-source-enabled? :unknown-provider)))))

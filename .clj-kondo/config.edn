@@ -197,7 +197,8 @@
      metabase.test.util.thread-local/do-test-helpers-set-global-values!
      metabase.test.util.thread-local/test-helpers-set-global-values!
      metabase.util/run-count!
-     next.jdbc/execute!}
+     next.jdbc/execute!
+     toucan2.core/delete!}
 
    ;; namespaces tagged ^:mb/driver-tests -- these have their own parallelism constraints (they run against
    ;; multiple drivers) so we skip the "should be marked ^:parallel" suggestion for them.

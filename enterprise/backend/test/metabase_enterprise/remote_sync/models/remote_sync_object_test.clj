@@ -18,11 +18,11 @@
 ;;; Tests for dirty?
 ;;; ------------------------------------------------------------------------------------------------
 
-(deftest dirty?-no-objects-test
+(deftest ^:synchronized dirty?-no-objects-test
   (testing "dirty? returns false when no remote sync objects exist"
     (is (false? (rs-object/dirty?)))))
 
-(deftest dirty?-synced-objects-test
+(deftest ^:synchronized dirty?-synced-objects-test
   (testing "dirty? returns false when all objects are synced"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -39,7 +39,7 @@
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (false? (rs-object/dirty?))))))
 
-(deftest dirty?-pending-objects-test
+(deftest ^:synchronized dirty?-pending-objects-test
   (testing "dirty? returns true when objects have pending status"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -56,7 +56,7 @@
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (true? (rs-object/dirty?))))))
 
-(deftest dirty?-error-objects-test
+(deftest ^:synchronized dirty?-error-objects-test
   (testing "dirty? returns true when objects have error status"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -73,7 +73,7 @@
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (true? (rs-object/dirty?))))))
 
-(deftest dirty?-mixed-status-test
+(deftest ^:synchronized dirty?-mixed-status-test
   (testing "dirty? returns true when some objects are not synced"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -104,11 +104,11 @@
 ;;; Tests for dirty-objects
 ;;; ------------------------------------------------------------------------------------------------
 
-(deftest dirty-objects-no-objects-test
+(deftest ^:synchronized dirty-objects-no-objects-test
   (testing "dirty-objects returns empty when no remote sync objects exist"
     (is (empty? (rs-object/dirty-objects)))))
 
-(deftest dirty-objects-synced-objects-test
+(deftest ^:synchronized dirty-objects-synced-objects-test
   (testing "dirty-objects returns empty when all objects are synced"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -125,7 +125,7 @@
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (empty? (rs-object/dirty-objects))))))
 
-(deftest dirty-objects-returns-dirty-items-test
+(deftest ^:synchronized dirty-objects-returns-dirty-items-test
   (testing "dirty-objects returns items with non-synced status"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -148,7 +148,7 @@
           (is (= "card" (:model item)))
           (is (= "pending" (:sync_status item))))))))
 
-(deftest dirty-objects-multiple-model-types-test
+(deftest ^:synchronized dirty-objects-multiple-model-types-test
   (testing "dirty-objects with multiple model types"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -179,7 +179,7 @@
           (is (= "pending" (:sync_status (first (get items-by-model "card")))))
           (is (= "error" (:sync_status (first (get items-by-model "dashboard"))))))))))
 
-(deftest dirty-objects-includes-collections-test
+(deftest ^:synchronized dirty-objects-includes-collections-test
   (testing "dirty-objects includes collection items"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -196,7 +196,7 @@
           (is (= "Test Collection" (:name item)))
           (is (= "collection" (:model item))))))))
 
-(deftest dirty-objects-filters-synced-items-test
+(deftest ^:synchronized dirty-objects-filters-synced-items-test
   (testing "dirty-objects filters out synced items"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -226,7 +226,7 @@
         (is (= 1 (count dirty-items)))
         (is (= #{"Pending Card"} names))))))
 
-(deftest dirty-objects-includes-snippets-test
+(deftest ^:synchronized dirty-objects-includes-snippets-test
   (testing "dirty-objects includes snippet items"
     (mt/with-temp
       [:model/Collection snip-collection {:name "Snippet Collection"
@@ -248,7 +248,7 @@
           (is (= "Test Snippet" (:name item)))
           (is (= "snippet" (:model item))))))))
 
-(deftest dirty-objects-includes-documents-test
+(deftest ^:synchronized dirty-objects-includes-documents-test
   (testing "dirty-objects includes document items"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -269,7 +269,7 @@
           (is (= "document" (:model item)))
           (is (= "error" (:sync_status item))))))))
 
-(deftest dirty-objects-all-model-types-test
+(deftest ^:synchronized dirty-objects-all-model-types-test
   (testing "dirty-objects handles all supported model types"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -326,7 +326,7 @@
 ;;; Integration Tests
 ;;; ------------------------------------------------------------------------------------------------
 
-(deftest dirty-functions-consistency-test
+(deftest ^:synchronized dirty-functions-consistency-test
   (testing "dirty? and dirty-objects are consistent"
     (testing "when no dirty items exist"
       (is (false? (rs-object/dirty?)))
@@ -353,7 +353,7 @@
 ;;; Tests for Table, Field, and Segment in dirty-state queries
 ;;; ------------------------------------------------------------------------------------------------
 
-(deftest dirty-objects-includes-tables-test
+(deftest ^:synchronized dirty-objects-includes-tables-test
   (testing "dirty-objects includes table items with table_id and table_name"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -380,7 +380,7 @@
           (is (= (:id table) (:table_id item)))
           (is (= "Test Table" (:table_name item))))))))
 
-(deftest dirty-objects-includes-fields-test
+(deftest ^:synchronized dirty-objects-includes-fields-test
   (testing "dirty-objects includes field items with table_id and table_name from parent table"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
@@ -413,7 +413,7 @@
           (is (= (:id table) (:table_id item)))
           (is (= "Test Table" (:table_name item))))))))
 
-(deftest dirty-objects-includes-segments-test
+(deftest ^:synchronized dirty-objects-includes-segments-test
   (testing "dirty-objects includes segment items with table_id and table_name from parent table"
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"

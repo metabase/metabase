@@ -1597,7 +1597,7 @@
 
 (define-setting-for-type :json)
 
-(deftest valid-json-setting-test
+(deftest ^:synchronized valid-json-setting-test
   (testing "Validation is a no-op if the JSON is valid"
     (is (nil? (get-parse-exception :json "[1, 2]")))))
 
@@ -1632,7 +1632,7 @@
 
 (define-setting-for-type :csv)
 
-(deftest valid-csv-setting-test
+(deftest ^:synchronized valid-csv-setting-test
   (testing "Validation is a no-op if the CSV is valid"
     (is (nil? (get-parse-exception :csv "1, 2")))))
 
@@ -1653,7 +1653,7 @@
 
 (define-setting-for-type :boolean)
 
-(deftest valid-boolean-setting-test
+(deftest ^:synchronized valid-boolean-setting-test
   (testing "Validation is a no-op if the string represents a boolean"
     (is (nil? (get-parse-exception :boolean "")))
     (is (nil? (get-parse-exception :boolean "true")))
@@ -1668,7 +1668,7 @@
 
 (define-setting-for-type :double)
 
-(deftest valid-double-setting-test
+(deftest ^:synchronized valid-double-setting-test
   (testing "Validation is a no-op if the string represents a double"
     (is (nil? (get-parse-exception :double "1")))
     (is (nil? (get-parse-exception :double "-1")))
@@ -1685,7 +1685,7 @@
 
 (define-setting-for-type :keyword)
 
-(deftest valid-keyword-setting-test
+(deftest ^:synchronized valid-keyword-setting-test
   (testing "Validation is a no-op if the string represents a keyword"
     (is (nil? (get-parse-exception :keyword "1")))
     (is (nil? (get-parse-exception :keyword "a")))
@@ -1697,7 +1697,7 @@
 
 (define-setting-for-type :integer)
 
-(deftest valid-integer-setting-test
+(deftest ^:synchronized valid-integer-setting-test
   (testing "Validation is a no-op if the string represents a integer"
     (is (nil? (get-parse-exception :integer "1")))
     (is (nil? (get-parse-exception :integer "-1")))))
@@ -1712,7 +1712,7 @@
 
 (define-setting-for-type :positive-integer)
 
-(deftest valid-positive-integer-setting-test
+(deftest ^:synchronized valid-positive-integer-setting-test
   (testing "Validation is a no-op if the string represents a positive-integer"
     (is (nil? (get-parse-exception :positive-integer "1")))
     ;; somewhat un-intuitively this is legal input, and parses to nil
@@ -1728,7 +1728,7 @@
 
 (define-setting-for-type :timestamp)
 
-(deftest valid-timestamp-setting-test
+(deftest ^:synchronized valid-timestamp-setting-test
   (testing "Validation is a no-op if the string represents a timestamp"
     (is (nil? (get-parse-exception :timestamp "2024-01-01")))))
 
