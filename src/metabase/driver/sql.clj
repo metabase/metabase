@@ -426,7 +426,7 @@
     (let [stmts (CCJSqlParserUtil/parseStatements sql)]
       (cond-> {:is-single-select? false}
         (and (= 1 (count stmts)) (some #(instance? % (first stmts)) [PlainSelect Select]))
-        (assoc :is-single-select? true :sql (.toString ^Object (first stmts)))))
+        (assoc :is-single-select? true :sql (str (first stmts)))))
     (catch Exception e
       {:is-single-select? false :error (.getMessage e)})))
 
