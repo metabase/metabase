@@ -168,6 +168,10 @@ const isWatch = process.argv.includes("--watch");
 export default defineConfig({
   plugins: [metabaseVizExternals(), ...(isWatch ? [metabaseDevServer()] : [])],
   publicDir: "public",
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("production"),
+    "process.env": JSON.stringify({}),
+  },
   build: {
     outDir: "dist",
     lib: {
