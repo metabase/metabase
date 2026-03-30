@@ -257,3 +257,80 @@
           (is (= #{["main" (str card-filename ".yaml")]}
                  (file-set (io/file dump-dir "collections")))
               "collections form a tree, with same-named files"))))))
+
+(deftest ^:parallel resolve-path-test
+  (let [resolve-path @#'storage/resolve-path]
+    (testing "basic slugification"
+      (let [fns (atom {})]
+        (is (= ["my_collection" "some_card"]
+               (resolve-path fns [{:label "My Collection" :key "coll-1"}
+                                  {:label "Some Card"     :key "card-1"}])))))
+
+    (testing "special characters are replaced with underscores"
+      (let [fns (atom {})]
+        (is (= ["hello_world_"]
+               (resolve-path fns [{:label "Hello World!" :key "a"}])))))
+
+    (testing "slashes are escaped"
+      (let [fns (atom {})]
+        (is (= ["orders__SLASH__invoices"]
+               (resolve-path fns [{:label "Orders/Invoices" :key "a"}])))))
+
+    (testing "backslashes are escaped"
+      (let [fns (atom {})]
+        (is (= ["c__BACKSLASH__d"]
+               (resolve-path fns [{:label "C\\D" :key "a"}])))))
+
+    (testing "deduplication within the same folder"
+      (let [fns (atom {})]
+        (is (= ["my_card"]
+               (resolve-path fns [{:label "My Card" :key "card-1"}])))
+        (is (= ["my_card_2"]
+               (resolve-path fns [{:label "My Card" :key "card-2"}]))
+            "second entity with same name in same folder gets _2 suffix")))
+
+    (testing "same name in different folders does not conflict"
+      (let [fns (atom {})]
+        (is (= ["folder_a" "readme"]
+               (resolve-path fns [{:label "Folder A" :key "f-a"}
+                                  {:label "README"   :key "doc-1"}])))
+        (is (= ["folder_b" "readme"]
+               (resolve-path fns [{:label "Folder B" :key "f-b"}
+                                  {:label "README"   :key "doc-2"}]))
+            "same leaf name under different parents is fine")))
+
+    (testing "same key with same slug is stable"
+      (let [fns (atom {})]
+        (is (= ["my_card"]
+               (resolve-path fns [{:label "My Card" :key "card-1"}])))
+        (is (= ["my_card"]
+               (resolve-path fns [{:label "My Card" :key "card-1"}]))
+            "re-resolving the same key+label returns the same result")))
+
+    (testing "unicode is preserved"
+      (let [fns (atom {})]
+        (is (= ["données"]
+               (resolve-path fns [{:label "Données" :key "a"}])))))
+
+    (testing "dots are preserved"
+      (let [fns (atom {})]
+        (is (= ["parent.child"]
+               (resolve-path fns [{:label "parent.child" :key "a"}])))))
+
+    (testing "duplicate parent folder names with different keys"
+      (let [fns (atom {})]
+        (is (= ["my_folder" "card_a"]
+               (resolve-path fns [{:label "My Folder" :key "folder-1"}
+                                  {:label "Card A"    :key "card-a"}])))
+        (is (= ["my_folder_2" "card_b"]
+               (resolve-path fns [{:label "My Folder" :key "folder-2"}
+                                  {:label "Card B"    :key "card-b"}]))
+            "second folder with same name gets _2 suffix")
+        (is (= ["my_folder_3" "card_c"]
+               (resolve-path fns [{:label "My Folder" :key "folder-3"}
+                                  {:label "Card C"    :key "card-c"}]))
+            "third folder with same name gets _3 suffix")))
+
+    (testing "empty path returns empty vector"
+      (let [fns (atom {})]
+        (is (= [] (resolve-path fns [])))))))

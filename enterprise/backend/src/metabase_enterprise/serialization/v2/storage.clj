@@ -32,8 +32,9 @@
 
 (defn- resolve-path
   "Given a storage path (vector of `{:label ... :key ...}` maps), resolves to a vector of strings
-  with deduplication per folder. Uses `generators` atom `{parent-key -> unique-name-generator}`."
-  [generators path]
+  with deduplication per folder. Uses `unique-name-fns` atom `{parent-key -> unique-name-fn}` where
+  each fn is a `lib/non-truncating-unique-name-generator`."
+  [unique-name-fns path]
   (loop [remaining  path
          parent-key nil
          resolved   []]
@@ -41,9 +42,9 @@
       resolved
       (let [{:keys [label key]} (first remaining)
             slug (slugify-name label)
-            gen  (or (get @generators parent-key)
+            gen  (or (get @unique-name-fns parent-key)
                      (let [g (lib/non-truncating-unique-name-generator)]
-                       (swap! generators assoc parent-key g)
+                       (swap! unique-name-fns assoc parent-key g)
                        g))
             unique-name (gen key slug)]
         (recur (rest remaining)
@@ -54,7 +55,7 @@
   "Given ctx and entity, returns a vector of resolved (slugified, deduplicated) path strings.
   The last element is the filename (without extension)."
   [ctx entity]
-  (resolve-path (:generators ctx) (serdes/storage-path entity ctx)))
+  (resolve-path (:unique-name-fns ctx) (serdes/storage-path entity ctx)))
 
 (defn- file ^File [ctx entity]
   (let [resolved    (resolve-storage-path ctx entity)

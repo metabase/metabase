@@ -877,8 +877,8 @@
     the collection hierarchy.
   - `:dashboards` maps dashboard entity_id to `{:label ... :key ...}` for use as virtual subcollections.
   - `:documents` maps document entity_id to `{:label ... :key ...}` for use as virtual subcollections.
-  - `:generators` is an atom of `{parent-key -> unique-name-generator}` used by the storage layer for
-    per-folder name deduplication."
+  - `:unique-name-fns` is an atom of `{parent-key -> unique-name-fn}` where each `unique-name-fn` is a
+    `lib/non-truncating-unique-name-generator`, used to deduplicate names within the same folder during export."
   []
   (let [colls     (t2/select ['Collection :id :entity_id :location :name])
         id->coll  (into {} (for [{:keys [id] :as coll} colls] [(str id) coll]))
@@ -900,7 +900,7 @@
     {:collections coll->path
      :dashboards  dashboards
      :documents   documents
-     :generators  (atom {})}))
+     :unique-name-fns (atom {})}))
 
 ;;; # Utilities for implementing serdes
 ;;; Note that many of these use `^::cache` to cache their lookups during deserialization. This greatly reduces the
