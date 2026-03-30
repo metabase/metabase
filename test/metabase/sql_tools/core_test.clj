@@ -179,10 +179,9 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))
-          orders (lib.metadata/table mp (mt/id :orders))
+          product-category (lib.metadata/field mp (mt/id :products :category))
           query (-> (lib/query mp products)
-                    (lib/join (lib/join-clause orders [(lib/= (mt/id :products :id)
-                                                              (mt/id :orders :product_id))])))
+                    (lib/filter (lib/= product-category "Widget")))
           native-query (:query (qp.compile/compile-with-inline-parameters query))]
       (testing "A single SELECT statement returns true and the reconstructed SQL"
         (are [sql] (=? {:is_single_select? true, :sql string?}
