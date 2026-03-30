@@ -357,3 +357,6 @@ export type UserMetabotPermissions = {
 export type UserMetabotPermissionsResponse = {
   permissions: UserMetabotPermissions;
 };
+
+export type MetabotLimitPeriod = "daily" | "weekly" | "monthly";
+export type MetabotLimitType = "token" | "conversation" | "dollar";

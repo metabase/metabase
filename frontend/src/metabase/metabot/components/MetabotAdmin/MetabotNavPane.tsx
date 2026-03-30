@@ -35,6 +35,10 @@ export function MetabotNavPane() {
                 label={t`AI feature access`}
                 path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-feature-access`}
               />
+              <AdminNavItem
+                label={t`AI usage limits`}
+                path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-usage-limits`}
+              />
             </AdminNavItem>
             <AdminNavItem
               icon="palette"
