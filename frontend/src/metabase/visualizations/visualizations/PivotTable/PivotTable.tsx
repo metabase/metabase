@@ -360,7 +360,10 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
 
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
     const bodyHeight = height - topHeaderHeight;
-    const topHeaderWidth = viewPortWidth - leftHeaderWidth;
+    const verticalScrollBarSize =
+      rowCount * CELL_HEIGHT > bodyHeight ? getScrollBarSize() : 0;
+    const topHeaderWidth =
+      viewPortWidth - leftHeaderWidth - verticalScrollBarSize;
 
     function getCellClickHandler(clicked: PivotTableClicked) {
       if (!clicked) {
@@ -464,6 +467,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                   </PivotTableTopLeftCellsContainer>
                   {/* top header */}
                   <Collection
+                    aria-label="pivot-table-top-header"
                     style={{ minWidth: `${topHeaderWidth}px` }}
                     ref={topHeaderRef}
                     className={CS.scrollHideAll}
