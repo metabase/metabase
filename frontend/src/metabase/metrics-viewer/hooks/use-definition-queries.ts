@@ -123,6 +123,9 @@ function buildArithmeticRequest(
     }
 
     const definition = definitions[token.sourceId];
+    if (!definition) {
+      return null; // definition not yet available (e.g. metric was just swapped)
+    }
     const modifiedDefinition = getModifiedDefinitionForTab(definition, tab);
     if (!modifiedDefinition) {
       if (!definition.definition) {

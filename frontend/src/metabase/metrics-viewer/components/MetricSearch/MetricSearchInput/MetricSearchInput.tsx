@@ -33,6 +33,7 @@ import {
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
+  reconcileBreakoutState,
   removeUnmatchedParens,
   validateExpression,
 } from "../utils";
@@ -203,9 +204,15 @@ export function MetricSearchInput({
       metricEntriesRef.current,
     );
 
+    // Preserve per-instance breakout definitions from old formula entities
+    const reconciledEntities = reconcileBreakoutState(
+      parsedEntities,
+      formulaEntitiesRef.current,
+    );
+
     // Find which metric sourceIds are referenced in the parsed entities
     const referencedSourceIds = new Set<MetricSourceId>();
-    for (const entry of parsedEntities) {
+    for (const entry of reconciledEntities) {
       if (isMetricEntry(entry)) {
         referencedSourceIds.add(entry.id);
       } else if (isExpressionEntry(entry)) {
@@ -233,7 +240,7 @@ export function MetricSearchInput({
       }
     }
 
-    onFormulaEntitiesChange(parsedEntities);
+    onFormulaEntitiesChange(reconciledEntities);
     isEditingSessionActiveRef.current = false;
     setIsFocused(false);
     setIsOpen(false);

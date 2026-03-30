@@ -298,10 +298,21 @@ export function useViewerState(): UseViewerStateResult {
           return prev;
         }
 
-        const { [oldId]: _, ...rest } = prev.definitions;
-        const newDefinitions = { ...rest, [newEntry.id]: newEntry };
+        // Check if any expression token still references the old sourceId.
+        // If so, keep the old definition so the expression remains valid.
+        const expressionStillReferencesOld = prev.formulaEntities.some(
+          (fe) =>
+            fe.type === "expression" &&
+            fe.tokens.some((t) => t.type === "metric" && t.sourceId === oldId),
+        );
 
-        // Update formulaEntities: replace the old metric ref with the new one
+        const { [oldId]: _oldDef, ...rest } = prev.definitions;
+        const newDefinitions = expressionStillReferencesOld
+          ? { ...prev.definitions, [newEntry.id]: newEntry }
+          : { ...rest, [newEntry.id]: newEntry };
+
+        // Update formulaEntities: replace standalone metric refs with the new one
+        // (expression tokens keep referencing the old sourceId)
         const newFormulaEntities = prev.formulaEntities.map((fe) => {
           if (fe.type === "metric" && fe.id === oldId) {
             return { ...newEntry, type: "metric" as const };

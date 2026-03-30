@@ -623,6 +623,89 @@ describe("scenarios > metrics > explorer", () => {
       assertPillColorsInChart(0);
       assertPillColorsInChart(1);
     });
+
+    it("should preserve breakout state when editing formula and re-running", () => {
+      cy.log("Set up: two instances of Count of orders with an expression");
+      cy.findByTestId("metrics-formula-input").click();
+
+      H.MetricsViewer.searchInput().type(", Count of orders");
+      cy.findByTestId("run-expression-button").click();
+
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+
+      cy.log("Apply breakout to first instance of Count of orders");
+      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.popover().findByText("Break out").click();
+      H.popover().findByText("Source").click();
+      cy.wait("@dataset");
+
+      cy.log("Verify breakout is applied — first pill has multiple colors");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+
+      cy.log("Enter formula edit mode and append a new metric");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(", Count of products");
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      cy.wait("@getMetric");
+
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
+
+      cy.log("Should now have 3 metric pills");
+      H.MetricsViewer.searchBarPills().should("have.length", 3);
+
+      cy.log(
+        "First pill should still have breakout — multiple color indicators preserved",
+      );
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      cy.log("Breakout legend should still be visible");
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: "User → Source" }).should(
+          "be.visible",
+        );
+      });
+
+      cy.log("Newly added third pill should have single color (no breakout)");
+      H.MetricsViewer.searchBarPills()
+        .eq(2)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Second pill (standalone Count of orders) should still be single");
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Remove second pill (standalone Count of orders)");
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .findByLabelText("Remove Count of orders")
+        .click();
+
+      cy.log(
+        "First pill should still have breakout — multiple color indicators preserved",
+      );
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+    });
   });
 
   // ============================================================================

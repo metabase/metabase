@@ -782,3 +782,41 @@ export function filterSearchResults<T extends SearchResultLike>(
         result.model !== excludeMetric.sourceType),
   );
 }
+
+/**
+ * Preserves per-instance breakout definitions from old formula entities
+ * onto newly parsed entities. Matches by sourceId and occurrence order:
+ * the Nth occurrence of a given sourceId in the new array is matched to
+ * the Nth occurrence in the old array.
+ */
+export function reconcileBreakoutState(
+  newEntities: MetricsViewerFormulaEntity[],
+  oldEntities: MetricsViewerFormulaEntity[],
+): MetricsViewerFormulaEntity[] {
+  const oldBySourceId = new Map<MetricSourceId, MetricDefinitionEntry[]>();
+  for (const e of oldEntities) {
+    if (isMetricEntry(e)) {
+      const queue = oldBySourceId.get(e.id) ?? [];
+      queue.push(e);
+      oldBySourceId.set(e.id, queue);
+    }
+  }
+
+  const consumed = new Map<MetricSourceId, number>();
+  return newEntities.map((entry) => {
+    if (!isMetricEntry(entry)) {
+      return entry;
+    }
+    const queue = oldBySourceId.get(entry.id);
+    if (!queue) {
+      return entry;
+    }
+    const idx = consumed.get(entry.id) ?? 0;
+    consumed.set(entry.id, idx + 1);
+    const oldEntry = queue[idx];
+    if (oldEntry?.definition) {
+      return { ...entry, definition: oldEntry.definition };
+    }
+    return entry;
+  });
+}
