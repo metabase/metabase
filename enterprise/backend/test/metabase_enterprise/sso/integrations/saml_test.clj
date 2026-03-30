@@ -43,7 +43,7 @@
 
 ;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each disable-api-url-prefix mt/test-helpers-set-global-values!)
+(use-fixtures :each disable-api-url-prefix (fn [thunk] (mt/test-helpers-set-global-values! (thunk))))
 
 (defn- do-with-other-sso-types-disabled! [thunk]
   (let [current-features (token-check/*token-features*)]

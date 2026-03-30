@@ -9,7 +9,7 @@
 
 ;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each mt/test-helpers-set-global-values!)
+(use-fixtures :each (fn [thunk] (mt/test-helpers-set-global-values! (thunk))))
 
 (deftest show-static-embed-terms-test
   (mt/with-test-user :crowberto

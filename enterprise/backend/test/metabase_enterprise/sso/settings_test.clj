@@ -11,7 +11,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 ;; This :each fixture uses thread-unsafe forms — tests in this namespace must not be ^:parallel.
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each mt/test-helpers-set-global-values!)
+(use-fixtures :each (fn [thunk] (mt/test-helpers-set-global-values! (thunk))))
 
 (def ^:private default-idp-uri "http://test.idp.metabase.com")
 (def ^:private default-idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))
