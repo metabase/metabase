@@ -5,6 +5,7 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_SECURITY_CENTER,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 
@@ -92,6 +93,12 @@ export const getSettingsRoutes = () => (
       component={() => <AppearanceSettingsPage tab="conceal-metabase" />}
     />
     <Route path="cloud" component={CloudSettingsPage} />
+    {PLUGIN_SECURITY_CENTER.isEnabled && (
+      <Route
+        path="security-center"
+        component={PLUGIN_SECURITY_CENTER.SecurityCenterPage}
+      />
+    )}
     <Route path="*" component={NotFound} />
   </Route>
 );

@@ -10,7 +10,7 @@ import {
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex } from "metabase/ui";
 
@@ -115,6 +115,16 @@ export function SettingsNav() {
         }
         icon="cloud"
       />
+      {PLUGIN_SECURITY_CENTER.isEnabled && (
+        <>
+          <NavDivider />
+          <SettingsNavItem
+            path="security-center"
+            label={t`Security Center`}
+            icon="shield_outline"
+          />
+        </>
+      )}
     </AdminNavWrapper>
   );
 }
