@@ -18,6 +18,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.order-by-test :as qp-test.order-by-test]
@@ -721,10 +722,16 @@
            ;; With ARGENTINA (Monday=1), TO_CHAR returns 2 for Tuesday, but the driver assumes
            ;; Sunday=1 (AMERICA convention), so it incorrectly reports Tuesday as day 2 instead of 3.
            (mt/with-temporary-setting-values [start-of-week :sunday]
-             (let [query (mt/mbql-query dates_with_time
-                           {:breakout    [[:field %date_with_time {:temporal-unit :day-of-week}]]
-                            :aggregation [[:count]]
-                            :filter      [:= [:field %date_with_time {:temporal-unit :day}] "2024-11-05"]})]
+             (let [mp    (mt/metadata-provider)
+                   base  (lib/query mp (lib.metadata/table mp (mt/id :dates_with_time)))
+                   date  (lib.tu.notebook/find-col-with-spec base (lib/filterable-columns base)
+                                                             {:is-main-group true} "Date With Time")
+                   query (-> base
+                             (lib/aggregate (lib/count))
+                             (lib.tu.notebook/add-breakout
+                              {:is-main-group true} "Date With Time"
+                              {:col-fn #(lib/with-temporal-bucket % :day-of-week)})
+                             (lib/filter (lib/= (lib/with-temporal-bucket date :day) "2024-11-05")))]
                (mt/with-native-query-testing-context query
                  (is (= [[3 1]]
                         (mt/formatted-rows [int int] (qp/process-query query)))))))))))))
