@@ -66,6 +66,7 @@ export function McpUiAppRoute() {
 
   // The OSS no-op initAuth never loads user or settings. Do it ourselves so
   // selectors like getTokenFeature has populated settings.
+  // We also no-op the EE auth flow (auth.ts) when in MCP Apps route.
   useEffect(() => {
     Promise.all([
       store.dispatch(refreshCurrentUser()),
