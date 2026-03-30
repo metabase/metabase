@@ -313,6 +313,21 @@
                (get headers "Access-Control-Allow-Origin"))
             "CORS should be disabled when both embedding options are disabled")))))
 
+(deftest test-cors-enabled-when-origins-configured-without-embedding-features
+  (testing "CORS headers should be sent when origins are configured even if embedding features are disabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk    false
+                                       enable-embedding-simple false
+                                       embedding-app-origins-sdk "https://example.com"]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            response        (wrapped-handler {:headers {"origin" "https://example.com"}
+                                              :uri     "/api/dashboard/1"}
+                                             identity identity)]
+        (is (= "https://example.com"
+               (get-in response [:headers "Access-Control-Allow-Origin"]))
+            "CORS should be enabled when origins are configured, even without embedding features")))))
+
 (deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."
     (let [default-hosts @#'server.settings/default-allowed-iframe-hosts]
@@ -394,46 +409,35 @@
 
 (deftest add-security-headers-mw-test
   (doseq [[idx [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri access-control-allow-origin-header-value]]
-          [[1 [true "" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+          [;; SDK enabled + no CORS origins = CORS enabled via SDK flag
+           [1 [true "" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
            [2 [true "" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
            [3 [true "" "http://my-site.com" "http://public.metabase.com" nil]]
            [4 [true "" "http://my-site.com" "http://www.a-site.com" nil]]
-           [5 [true "localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [6 [true "localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [7 [true "localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]]
-           [8 [true "localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]]
-           [9 [true "http://my-site.com" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [10 [true "http://my-site.com" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [11 [true "http://my-site.com" "http://my-site.com" "http://public.metabase.com" nil]]
-           [12 [true "http://my-site.com" "http://my-site.com" "http://www.a-site.com" nil]]
-           [13 [true "http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [14 [true "http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [15 [true "http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]]
-           [16 [true "http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]]
-           [17 [true "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [18 [true "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [19 [true "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]]
-           [20 [true "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]
-           [21 [false "" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [22 [false "" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [23 [false "" "http://my-site.com" "http://public.metabase.com" nil]]
-           [24 [false "" "http://my-site.com" "http://www.a-site.com" nil]]
-           [25 [false "localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [26 [false "localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [27 [false "localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]]
-           [28 [false "localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]]
-           [29 [false "http://my-site.com" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [30 [false "http://my-site.com" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [31 [false "http://my-site.com" "http://my-site.com" "http://public.metabase.com" nil]]
-           [32 [false "http://my-site.com" "http://my-site.com" "http://www.a-site.com" nil]]
-           [33 [false "http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [34 [false "http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [35 [false "http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]]
-           [36 [false "http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]]
-           [37 [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [38 [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [39 [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]]
-           [40 [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]]]
+
+           ;; SDK disabled + no CORS origins = CORS fully disabled (only localhost passthrough)
+           [5 [false "" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [6 [false "" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [7 [false "" "http://my-site.com" "http://public.metabase.com" nil]]
+           [8 [false "" "http://my-site.com" "http://www.a-site.com" nil]]
+
+           ;; SDK disabled + CORS origins configured = CORS enabled via origins (needed for OSS)
+           [9  [false "localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [10 [false "localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [11 [false "localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]]
+           [12 [false "localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]]
+           [13 [false "http://my-site.com" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [14 [false "http://my-site.com" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [15 [false "http://my-site.com" "http://my-site.com" "http://public.metabase.com" "http://my-site.com"]]
+           [16 [false "http://my-site.com" "http://my-site.com" "http://www.a-site.com" "http://my-site.com"]]
+           [17 [false "http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [18 [false "http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [19 [false "http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]]
+           [20 [false "http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]]
+           [21 [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [22 [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [23 [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]]
+           [24 [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]]]
     (testing (str "add security headers mw test, index: " idx)
       (run-add-security-headers-mw-test!
        enable-embedding-sdk
