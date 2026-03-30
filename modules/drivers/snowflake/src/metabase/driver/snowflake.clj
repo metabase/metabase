@@ -604,7 +604,7 @@
 ;;; in [[h2x/with-database-type-info]] thus nothing will ever be an identifier.
 (defmethod sql.qp/->honeysql [:snowflake :field]
   [driver [_ _ opts :as field-clause]]
-  (let [source-table (get opts driver-api/qp.add.source-table)
+  (let [source-table  (get opts driver-api/qp.add.source-table)
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         qualify?      (and
                        ;; `query-db-name` is not currently set, e.g. because we're generating DDL statements for tests
@@ -612,8 +612,22 @@
                        ;; Only Qualify Field identifiers that are qualified by a Table. (e.g. don't qualify stuff
                        ;; inside `CREATE TABLE` DDL statements)
                        (integer? source-table))
-        identifier (parent-method driver field-clause)]
+        ;; When the field is referenced by name (e.g. from a source query), the parent method can't resolve
+        ;; field-metadata so database-type info is lost. If we know the effective/base type is :type/Time,
+        ;; strip :temporal-unit so the parent doesn't apply bucketing to an untyped expr (which would incorrectly
+        ;; cast to timestampntz), then apply it ourselves after tagging the identifier. (#68065)
+        time-field?   (and (not (integer? (second field-clause)))
+                           (isa? (or (:effective-type opts) (:base-type opts)) :type/Time))
+        field-clause  (cond-> field-clause
+                        time-field? (update 2 dissoc :temporal-unit))
+        identifier    (parent-method driver field-clause)]
     (cond-> identifier
+      (and time-field? (not (h2x/database-type identifier)))
+      (h2x/with-database-type-info "time")
+
+      (and time-field? (:temporal-unit opts))
+      (->> (sql.qp/apply-temporal-bucketing driver opts))
+
       (and qualify? (h2x/identifier? identifier))
       qualify-identifier)))
 
