@@ -11,6 +11,8 @@
   (:require
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.settings :as analytics.settings]
+   [metabase.request.current :as request.current]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -45,15 +47,6 @@
 
 (defn get-auth-method "Returns [[*auth-method*]]." [] *auth-method*)
 
-(mu/defn include-sdk-info :- :map
-  "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
-   into the `view_log` or `query_execution` table. Falls back to the original value."
-  [m :- :map]
-  (-> m
-      (update :embedding_client (fn [client] (or *client* client)))
-      (update :embedding_version (fn [version] (or *version* version)))
-      (update :auth_method (fn [method] (or *auth-method* method)))))
-
 (defn extract-hostname
   "Extracts the hostname from a URL string. Returns nil if the URL is nil or unparseable."
   [url]
@@ -85,6 +78,27 @@
    :embedding_path       (extract-path referer)
    :sanitized_user_agent (some-> user-agent (subs 0 (min (count user-agent) 512)))
    :ip_address           ip-address})
+
+(defn- pii-fields
+  "Returns PII fields from the current request when the `analytics-pii-retension-enabled` setting is true."
+  []
+  (when (analytics.settings/analytics-pii-retension-enabled)
+    (when-let [request (request.current/current-request)]
+      (pii-request-info
+       {:origin     (get-in request [:headers "origin"])
+        :referer    (get-in request [:headers "referer"])
+        :user-agent (get-in request [:headers "user-agent"])
+        :ip-address (request.current/ip-address request)}))))
+
+(mu/defn include-sdk-info :- :map
+  "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
+   into the `view_log` or `query_execution` table. Falls back to the original value."
+  [m :- :map]
+  (-> m
+      (update :embedding_client (fn [client] (or *client* client)))
+      (update :embedding_version (fn [version] (or *version* version)))
+      (update :auth_method (fn [method] (or *auth-method* method)))
+      (merge (pii-fields))))
 
 (def ^:private embedding-sdk-client "embedding-sdk-react")
 (def ^:private embedding-iframe-client "embedding-iframe")

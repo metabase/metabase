@@ -9,6 +9,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing-rest.api-test :as public-test]
+   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -323,6 +324,78 @@
                          {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}})
           (is (= "public"
                  (:embedding_client (latest-view nil (:id card))))))))))
+
+(defn- latest-qe
+  "Returns the most recent QueryExecution for a given card ID."
+  [card-id]
+  (t2/select-one :model/QueryExecution
+                 :card_id card-id
+                 {:order-by [[:id :desc]]}))
+
+(deftest public-card-pii-fields-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (binding [qp.util/*execute-async?* false]
+        (testing "PII fields populated when setting enabled"
+          (mt/with-temporary-setting-values [analytics-pii-retension-enabled true]
+            (public-test/with-temp-public-card [card]
+              (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
+                             {:request-options {:headers {"origin"     "https://app.example.com"
+                                                          "referer"    "https://app.example.com/dashboard/1"
+                                                          "user-agent" "TestAgent/1.0"}}})
+              (testing "in view_log"
+                (let [view (latest-view nil (:id card))]
+                  (is (= "app.example.com" (:embedding_hostname view)))
+                  (is (= "/dashboard/1"    (:embedding_path view)))
+                  (is (= "TestAgent/1.0"   (:sanitized_user_agent view)))))
+              (testing "in query_execution"
+                (let [qe (latest-qe (:id card))]
+                  (is (= "public"          (:embedding_client qe)))
+                  (is (= "app.example.com" (:embedding_hostname qe)))
+                  (is (= "/dashboard/1"    (:embedding_path qe)))
+                  (is (= "TestAgent/1.0"   (:sanitized_user_agent qe))))))))
+        (testing "PII fields nil when setting disabled"
+          (mt/with-temporary-setting-values [analytics-pii-retension-enabled false]
+            (public-test/with-temp-public-card [card]
+              (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
+                             {:request-options {:headers {"origin"     "https://app.example.com"
+                                                          "referer"    "https://app.example.com/dashboard/1"
+                                                          "user-agent" "TestAgent/1.0"}}})
+              (testing "in view_log"
+                (let [view (latest-view nil (:id card))]
+                  (is (nil? (:embedding_hostname view)))
+                  (is (nil? (:embedding_path view)))
+                  (is (nil? (:sanitized_user_agent view)))
+                  (is (nil? (:ip_address view)))))
+              (testing "in query_execution"
+                (let [qe (latest-qe (:id card))]
+                  (is (nil? (:embedding_hostname qe)))
+                  (is (nil? (:embedding_path qe)))
+                  (is (nil? (:sanitized_user_agent qe)))
+                  (is (nil? (:ip_address qe))))))))))))
+
+(deftest public-dashboard-card-pii-fields-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (binding [qp.util/*execute-async?* false]
+        (testing "PII fields populated via dashboard card query when setting enabled"
+          (mt/with-temporary-setting-values [analytics-pii-retension-enabled true]
+            (public-test/with-temp-public-dashboard-and-card [dash card dashcard]
+              (client/client :get 202 (public-test/dashcard-url dash card dashcard)
+                             {:request-options {:headers {"origin"     "https://dash.example.com"
+                                                          "referer"    "https://dash.example.com/analytics"
+                                                          "user-agent" "DashAgent/2.0"}}})
+              (testing "in view_log"
+                (let [view (latest-view nil (:id card))]
+                  (is (= "dash.example.com" (:embedding_hostname view)))
+                  (is (= "/analytics"       (:embedding_path view)))
+                  (is (= "DashAgent/2.0"    (:sanitized_user_agent view)))))
+              (testing "in query_execution"
+                (let [qe (latest-qe (:id card))]
+                  (is (= "public"           (:embedding_client qe)))
+                  (is (= "dash.example.com" (:embedding_hostname qe)))
+                  (is (= "/analytics"       (:embedding_path qe)))
+                  (is (= "DashAgent/2.0"    (:sanitized_user_agent qe))))))))))))
 
 (deftest route-client-mapping-test
   (testing "combinations of routes and header values"

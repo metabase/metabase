@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.sdk :as sdk]
+   [metabase.request.current :as request.current]
    [metabase.test :as mt]
    [metabase.util :as u]
    [ring.mock.request :as ring.mock]))
@@ -214,3 +215,33 @@
                   :embedding_version "1.33.7"
                   :auth_method       nil}
                  (analytics/include-sdk-info @m))))))))
+
+(deftest include-sdk-info-pii-fields-test
+  (let [request (-> (ring.mock/request :get "/api/public/card/1")
+                    (ring.mock/header "origin" "https://app.example.com")
+                    (ring.mock/header "referer" "https://app.example.com/dashboard/1?x=y")
+                    (ring.mock/header "user-agent" "Mozilla/5.0")
+                    (assoc :remote-addr "10.0.0.1"))]
+    (testing "PII fields populated when setting enabled and request bound"
+      (mt/with-temporary-setting-values [analytics-pii-retension-enabled true]
+        (request.current/with-current-request request
+          (let [result (sdk/include-sdk-info {})]
+            (is (= "app.example.com"  (:embedding_hostname result)))
+            (is (= "/dashboard/1"     (:embedding_path result)))
+            (is (= "Mozilla/5.0"      (:sanitized_user_agent result)))
+            (is (= "10.0.0.1"         (:ip_address result)))))))
+    (testing "PII fields nil when setting disabled"
+      (mt/with-temporary-setting-values [analytics-pii-retension-enabled false]
+        (request.current/with-current-request request
+          (let [result (sdk/include-sdk-info {})]
+            (is (nil? (:embedding_hostname result)))
+            (is (nil? (:embedding_path result)))
+            (is (nil? (:sanitized_user_agent result)))
+            (is (nil? (:ip_address result)))))))
+    (testing "PII fields nil when no request bound"
+      (mt/with-temporary-setting-values [analytics-pii-retension-enabled true]
+        (let [result (sdk/include-sdk-info {})]
+          (is (nil? (:embedding_hostname result)))
+          (is (nil? (:embedding_path result)))
+          (is (nil? (:sanitized_user_agent result)))
+          (is (nil? (:ip_address result))))))))
