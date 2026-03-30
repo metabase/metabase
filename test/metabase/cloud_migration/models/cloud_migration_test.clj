@@ -41,7 +41,7 @@
   (is (= 75 (cloud-migration/abs-progress 50 51 99)))
   (is (= 99 (cloud-migration/abs-progress 100 51 99))))
 
-(deftest migrate!-test
+(deftest ^:synchronized migrate!-test
   (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))
         progress-calls    (atom {:setup  []
                                  :dump   []
@@ -66,7 +66,7 @@
                  (dissoc @progress-calls :upload))
               "one progress call during other stages"))))))
 
-(deftest migrate!-test-managed-scheduler
+(deftest ^:synchronized migrate!-test-managed-scheduler
   (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
     (with-redefs [cloud-migration/cluster?     (constantly false)]
       (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)

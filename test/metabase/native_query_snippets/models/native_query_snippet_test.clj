@@ -99,7 +99,7 @@
                 :snippet-id inner-id}}
               (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
 
-(deftest ^:parallel not-parse-recursive-snippets-test
+(deftest ^:synchronized not-parse-recursive-snippets-test
   (testing "Does not find params in child snippets"
     (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner" :content "{{id}}"}
                    :model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{snippet: inner}}"}]

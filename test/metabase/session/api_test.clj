@@ -45,7 +45,7 @@
 
 (def ^:private session-cookie request/metabase-session-cookie)
 
-(deftest ^:parallel login-basic-test
+(deftest ^:synchronized login-basic-test
   (testing "POST /api/session - basic login works"
     (is (malli= SessionResponse
                 (mt/client :post 200 "session" (mt/user->credentials :rasta))))))

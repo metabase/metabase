@@ -311,7 +311,7 @@
       (is (= (default-search-results)
              (search-request-data :crowberto :q "test"))))))
 
-(deftest ^:parallel basic-test-2
+(deftest ^:synchronized basic-test-2
   (testing "Basic search should only return substring matches"
     (with-search-items-in-root-collection "test"
       (with-search-items-in-root-collection "something different"
@@ -453,7 +453,7 @@
           (make-card 3)
           (make-card 0)])))
 
-(deftest ^:parallel dashboard-count-test
+(deftest ^:synchronized dashboard-count-test
   (testing "It sorts by dashboard count"
     (mt/with-temp [:model/Card          {card-id-3 :id} {:name "dashboard-count 3"}
                    :model/Card          {card-id-5 :id} {:name "dashboard-count 5"}
@@ -665,7 +665,7 @@
                         set)
                    "db-1")))))))
 
-(deftest ^:parallel bookmarks-test
+(deftest ^:synchronized bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
       (mt/with-temp [:model/CardBookmark      _ {:card_id (u/the-id card)
@@ -1668,7 +1668,7 @@
                   :data
                   (map #(get-in % [:collection :effective_ancestors]))))))))
 
-(deftest ^:parallel collection-type-is-returned
+(deftest ^:synchronized collection-type-is-returned
   (testing "Users without perms for a collection can't see search results that were trashed from that collection"
     (let [search-name (random-uuid)
           named       #(str search-name "-" %)]
