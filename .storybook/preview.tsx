@@ -85,15 +85,31 @@ const globalStyles = css`
   ${baseStyle}
 `;
 
+const getResolvedColorScheme = (
+  displayTheme: string | undefined,
+): "light" | "dark" => {
+  switch (displayTheme) {
+    case "night":
+    case "dark":
+      return "dark";
+    default:
+      return "light";
+  }
+};
+
 const decorators = [
   (Story, { args = {}, globals }) => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }
 
+    const resolvedColorScheme = getResolvedColorScheme(
+      args.theme ?? globals.theme,
+    );
+
     return (
       <EmotionCacheProvider>
-        <ThemeProvider displayTheme={args.theme ?? globals.theme}>
+        <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
           <Global styles={globalStyles} />
           <CssVariables />
           <Story />
