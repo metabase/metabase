@@ -14,9 +14,21 @@
       body {
         margin: 0;
         height: 500px;
+      }
+
+      body {
         background: var(--color-background-primary);
         color: var(--color-text-primary);
         font-family: var(--font-sans);
+      }
+
+      /* Allow Cursor and VS Code to have proper colors & fonts */
+      body.vscode-light,
+      body.vscode-dark,
+      body.vscode-high-contrast {
+        color: var(--vscode-foreground);
+        background: var(--vscode-editor-background);
+        font-family: var(--vscode-font-family);
       }
 
       .mcp-loading {
