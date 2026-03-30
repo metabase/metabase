@@ -7,6 +7,7 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
+import { reload } from "metabase/lib/dom";
 import { formatNumber } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
@@ -38,7 +39,7 @@ export function TransformsUpsellPage() {
       await purchaseCloudAddOn({
         product_type: "transforms-basic-metered",
       }).unwrap();
-      window.location.reload();
+      reload();
     } catch {
       settingUpModalHandlers.close();
       sendErrorToast(
@@ -149,7 +150,7 @@ export function TransformsUpsellPage() {
         opened={settingUpModalOpened}
         onClose={() => {
           settingUpModalHandlers.close();
-          window.location.reload();
+          reload();
         }}
       />
     </DottedBackground>

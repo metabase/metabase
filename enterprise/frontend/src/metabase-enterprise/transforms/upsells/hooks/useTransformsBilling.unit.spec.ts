@@ -7,6 +7,7 @@ import { renderHookWithProviders, waitFor } from "__support__/ui";
 import {
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -51,6 +52,7 @@ function setup({
         "transforms-python": hasPythonTransforms,
       }),
     }),
+    currentUser: createMockUser({ is_superuser: true }),
   });
 
   setupPropertiesEndpoints(settings);

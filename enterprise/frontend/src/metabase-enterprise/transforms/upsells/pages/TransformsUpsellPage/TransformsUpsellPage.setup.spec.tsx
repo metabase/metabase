@@ -2,6 +2,7 @@ import { Route } from "react-router";
 
 import {
   setupBillingEndpoints,
+  setupDatabaseListEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -19,6 +20,7 @@ import { TransformsUpsellPage } from "./TransformsUpsellPage";
 
 type SetupOpts = {
   hasBasicTransforms?: boolean;
+  hadTransforms?: boolean;
   isHosted: boolean;
   isStoreUser: boolean;
   isOnTrial?: boolean;
@@ -32,6 +34,7 @@ export const setup = ({
   isHosted,
   isStoreUser,
   hasBasicTransforms,
+  hadTransforms = false,
   isOnTrial = false,
   trialDays,
 }: SetupOpts) => {
@@ -56,8 +59,12 @@ export const setup = ({
     transformsAdvancedPrice,
     transformsBasicPrice,
     trialDays,
+    previousAddOns: hadTransforms
+      ? [{ product_type: "transforms-basic", self_service: true }]
+      : [],
   });
   setupPropertiesEndpoints(settings);
+  setupDatabaseListEndpoint([]);
 
   renderWithProviders(
     <Route
@@ -70,32 +77,6 @@ export const setup = ({
       initialRoute: "/data-studio/transforms",
     },
   );
-};
-
-export const assertLeftColumnContent = () => {
-  expect(
-    screen.getByRole("heading", {
-      name: /Start transforming your data in Metabase/,
-    }),
-  );
-  expect(
-    screen.getByText(/Schedule and run transforms as groups with jobs/),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByText(
-      /Fast runs with incremental transforms that respond to data changes/,
-    ),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByText(
-      /Predictable costs - 72,000 successful transform runs included every month/,
-    ),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByText(
-      /If you go over your cap, transforms bill at 0.01 per transform run/,
-    ),
-  ).toBeInTheDocument();
 };
 
 export const waitForLoadingToFinish = async () => {

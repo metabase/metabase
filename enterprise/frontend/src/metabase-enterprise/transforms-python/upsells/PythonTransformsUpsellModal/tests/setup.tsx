@@ -33,7 +33,7 @@ export const setup = ({
 
   const storeUserEmail = "store-user@example.com";
   const currentUser = createMockUser(
-    isStoreUser ? { email: storeUserEmail } : undefined,
+    isStoreUser ? { email: storeUserEmail, is_superuser: true } : undefined,
   );
 
   const settings = {
