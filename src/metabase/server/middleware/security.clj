@@ -260,12 +260,16 @@
 
 ;; TODO(Poom, 2026-03-27, EMB-1489): remove this temporary allowlist and add CORS for OSS
 (defn- mcp-sandbox-origin?
-  "Returns true if the origin is a Claude MCP sandbox (*.claudemcpcontent.com).
-   Hardcoded allowlist for MCP app CORS. To be replaced with a proper solution before merge."
+  "Returns true if the origin is a Claude MCP sandbox (*.claudemcpcontent.com) or a VS Code webview."
   [raw-origin]
   (when raw-origin
-    (let [{:keys [domain]} (parse-url raw-origin)]
-      (and domain (str/ends-with? domain ".claudemcpcontent.com")))))
+    (or
+     (let [{:keys [domain]} (parse-url raw-origin)]
+       (and domain (or (str/ends-with? domain ".claudemcpcontent.com")
+                       (str/ends-with? domain ".web-sandbox.oaiusercontent.com"))))
+     ;; VS Code webview sandbox — vscode-webview:// is VS Code-internal, not browser-reachable
+     ;; Cursor also uses this too
+     (str/starts-with? raw-origin "vscode-webview://"))))
 
 (defn access-control-headers
   "Returns headers for CORS requests"
