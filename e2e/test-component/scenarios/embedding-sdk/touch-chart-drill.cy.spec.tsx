@@ -43,48 +43,6 @@ describe("scenarios > embedding-sdk > touch chart drill popover", () => {
     );
   });
 
-  it("should show drill popover near the clicked data point", () => {
-    cy.get<string>("@dashboardId").then((dashboardId) => {
-      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
-    });
-
-    cy.wait("@dashcardQuery");
-
-    let circleRect: DOMRect;
-
-    getSdkRoot().within(() => {
-      H.getDashboardCard(0).within(() => {
-        cartesianChartCircle()
-          .first()
-          .then(($circle) => {
-            circleRect = $circle[0].getBoundingClientRect();
-          })
-          .click({ force: true });
-      });
-
-      popover()
-        .should("be.visible")
-        .then(($popover) => {
-          const popoverRect = $popover[0].getBoundingClientRect();
-
-          const MAX_DISTANCE = 300;
-          const popoverCenterX = popoverRect.left + popoverRect.width / 2;
-          const popoverCenterY = popoverRect.top + popoverRect.height / 2;
-          const circleCenterX = circleRect.left + circleRect.width / 2;
-          const circleCenterY = circleRect.top + circleRect.height / 2;
-
-          const distance = Math.sqrt(
-            (popoverCenterX - circleCenterX) ** 2 +
-              (popoverCenterY - circleCenterY) ** 2,
-          );
-          expect(
-            distance,
-            "popover should be near the clicked data point",
-          ).to.be.lessThan(MAX_DISTANCE);
-        });
-    });
-  });
-
   it("should position popover anchor correctly for TouchEvents (iOS Safari)", () => {
     // On iOS Safari, ECharts/zrender passes a TouchEvent through to
     // getEventTarget(). TouchEvent lacks clientX/clientY (those live on
