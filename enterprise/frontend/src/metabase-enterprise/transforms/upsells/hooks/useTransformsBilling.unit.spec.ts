@@ -155,7 +155,7 @@ describe("useTransformsBilling", () => {
     it("should return hadTransforms=true when previous add-ons include a self-service transforms product", async () => {
       const { result } = setup({
         previousAddOns: [
-          { product_type: "transforms-basic", self_service: true },
+          { product_type: "transforms-basic-metered", self_service: true },
         ],
       });
 

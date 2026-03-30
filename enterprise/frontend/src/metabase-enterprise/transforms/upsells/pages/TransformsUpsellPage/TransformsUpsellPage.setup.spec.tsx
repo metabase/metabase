@@ -60,7 +60,7 @@ export const setup = ({
     transformsBasicPrice,
     trialDays,
     previousAddOns: hadTransforms
-      ? [{ product_type: "transforms-basic", self_service: true }]
+      ? [{ product_type: "transforms-basic-metered", self_service: true }]
       : [],
   });
   setupPropertiesEndpoints(settings);

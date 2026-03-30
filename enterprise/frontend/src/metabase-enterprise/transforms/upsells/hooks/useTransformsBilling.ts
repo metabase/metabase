@@ -7,8 +7,6 @@ import {
   useListAddOnsQuery,
 } from "metabase-enterprise/api";
 
-const TRANSFORMS_PRODUCT_TYPES = ["transforms-basic"] as const;
-
 // TODO: Check for unused props in useTransformsBilling once basic and advanced transforms pricing has been updated
 export function useTransformsBilling() {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -37,9 +35,7 @@ export function useTransformsBilling() {
   const hadTransforms =
     billingInfo?.data?.previous_add_ons?.some(
       ({ product_type, self_service }) =>
-        TRANSFORMS_PRODUCT_TYPES.includes(
-          product_type as (typeof TRANSFORMS_PRODUCT_TYPES)[number],
-        ) && self_service,
+        product_type === "transforms-basic-metered" && self_service,
     ) ?? false;
 
   const basicTransformsAddOn = addOns?.find(
