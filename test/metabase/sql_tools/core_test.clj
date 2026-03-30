@@ -184,7 +184,7 @@
                     (lib/filter (lib/= product-category "Widget")))
           native-query (:query (qp.compile/compile-with-inline-parameters query))]
       (testing "A single SELECT statement returns true and the reconstructed SQL"
-        (are [sql] (=? {:is_single_select? true, :sql string?}
+        (are [sql] (=? {:is-single-select? true, :sql string?}
                        (sql-tools/is-single-select-stmt? driver/*driver* sql))
           native-query
           "SELECT 1"
@@ -192,7 +192,7 @@
           "WITH x AS (SELECT * FROM foo) SELECT * from x"
           "WITH x AS (SELECT a FROM foo), y AS (SELECT b FROM bar), z AS (SELECT c FROM baz) SELECT x.a, y.b, z.c FROM x, y, z")))
     (testing "All other queries are rejected"
-      (are [sql] (=? {:is_single_select? false}
+      (are [sql] (=? {:is-single-select? false}
                      (sql-tools/is-single-select-stmt? driver/*driver* sql))
         "SELECT ("
         "SELECT 1; SELECT 2"

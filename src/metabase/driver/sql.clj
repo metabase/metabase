@@ -248,11 +248,11 @@
           (fn [stages]
             (mapv (fn [stage]
                     (if (lib.util/native-stage? stage)
-                      (let [{:keys [is_single_select? sql error]}
+                      (let [{:keys [is-single-select? sql error]}
                             (sql-tools/is-single-select-stmt? driver (:native stage))]
                         (when error
                           (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage)))
-                        (if is_single_select?
+                        (if is-single-select?
                           (assoc stage :native sql)
                           (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
                                           {:sql (:native stage)}))))

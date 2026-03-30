@@ -399,7 +399,8 @@
           (-> ^Value (common/eval-python ctx "sql_tools.is_single_select_stmt")
               (.execute ^Value (object-array [sql dialect]))
               .asString)))
-      json/decode+kw))
+      json/decode+kw
+      (perf/update-keys (comp keyword u/->kebab-case-en))))
 
 (comment
   (referenced-tables "postgres" "select * from transactions")
