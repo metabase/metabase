@@ -1598,6 +1598,89 @@ describe("scenarios - embedding hub", () => {
         )
         .should("be.visible");
     });
+
+    it("reopens the create tenants step after changing the segregation strategy", () => {
+      H.addPostgresDatabase("QA Postgres12");
+
+      cy.log("pre-complete RLS and create a tenant");
+      cy.sandboxTable({
+        table_id: STATIC_ORDERS_ID,
+        group_id: ALL_EXTERNAL_USERS_GROUP_ID,
+      });
+      cy.request("POST", "/api/ee/tenant", {
+        name: "Legacy Tenant",
+        slug: "legacy-tenant",
+        attributes: {
+          organization_id: "legacy-org",
+        },
+      });
+
+      cy.intercept("PUT", "/api/permissions/graph").as(
+        "updatePermissionsGraph",
+      );
+      cy.intercept("GET", "/api/ee/embedding-hub/checklist").as("getChecklist");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("reopen the strategy step and switch to connection impersonation");
+      H.main()
+        .findByRole("listitem", {
+          name: "Which data segregation strategy does your database use?",
+        })
+        .click();
+
+      H.main()
+        .findByRole("radio", { name: /Connection impersonation/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use connection impersonation" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("complete the new select-data step");
+      H.main().findByPlaceholderText("Pick a database").click();
+      H.popover().findByText("QA Postgres12").click();
+      H.main().findByRole("button", { name: "Next" }).click();
+
+      cy.wait("@updatePermissionsGraph");
+
+      cy.log("create tenants should reopen instead of skipping to summary");
+      H.main()
+        .findByRole("listitem", {
+          name: "Create tenants",
+          timeout: 10_000,
+        })
+        .should("have.attr", "aria-current", "step");
+
+      H.main()
+        .findByRole("listitem", { name: "Summary" })
+        .should("not.have.attr", "aria-current", "step");
+
+      cy.log("creating a new tenant should go to summary");
+      H.main().within(() => {
+        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+        cy.findByPlaceholderText("tenant_role").type("acme_role");
+        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+      });
+
+      H.main().findByRole("button", { name: "Create tenants" }).click();
+
+      H.undoToast()
+        .findByText("Tenants created successfully")
+        .should("be.visible");
+
+      H.main()
+        .findByRole("listitem", { name: "Summary", timeout: 10_000 })
+        .should("have.attr", "aria-current", "step");
+
+      H.main()
+        .contains(
+          "All users in Acme Corp will connect using the acme_role database role.",
+        )
+        .should("be.visible");
+    });
   });
 
   describe("database routing create tenants step", () => {
@@ -1723,7 +1806,18 @@ describe("scenarios - embedding hub", () => {
         .findByRole("listitem", { name: "Set up JWT authentication" })
         .should("have.attr", "data-completed", "true");
 
-      H.main().findByRole("button", { name: "Next" }).click();
+      cy.log("valid signing key should be shown");
+      H.main().within(() => {
+        cy.findByText(
+          /This example code for Node.js sets up an endpoint using Express/,
+        ).should("be.visible");
+
+        cy.log("express.js code snippet should be shown inline");
+        cy.contains("METABASE_JWT_SHARED_SECRET").should("exist");
+        cy.contains("METABASE_INSTANCE_URL").should("exist");
+
+        cy.findByRole("button", { name: "Next" }).scrollIntoView().click();
+      });
 
       cy.log("step 2 should be complete");
       H.main()

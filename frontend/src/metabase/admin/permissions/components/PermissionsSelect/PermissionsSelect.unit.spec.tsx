@@ -2,39 +2,64 @@ import userEvent from "@testing-library/user-event";
 
 import { getIcon, render, screen } from "__support__/ui";
 
-import { DataPermissionValue } from "../../types";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+  type PermissionOption,
+} from "../../types";
 
 import { PermissionsSelect } from "./PermissionsSelect";
 
-const options = [
+const options: PermissionOption[] = [
   {
     label: "Allowed",
-    value: "all",
+    value: DataPermissionValue.ALL,
     icon: "check",
-    iconColor: "green",
+    iconColor: "success",
   },
   {
     label: "Limited",
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
-    iconColor: "blue",
+    iconColor: "brand",
   },
   {
     label: "No access",
-    value: "none",
+    value: DataPermissionValue.NONE,
     icon: "close",
-    iconColor: "yellow",
+    iconColor: "warning",
   },
 ];
 
 describe("PermissionSelect", () => {
   it("shows selected option", () => {
-    render(<PermissionsSelect options={options} value="all" />);
+    render(
+      <PermissionsSelect
+        options={options}
+        value={DataPermissionValue.ALL}
+        onChange={jest.fn()}
+        isDisabled={false}
+        disabledTooltip={"disabled"}
+        permission={DataPermission.VIEW_DATA}
+        type={DataPermissionType.ACCESS}
+      />,
+    );
     expect(screen.getByText("Allowed")).toBeInTheDocument();
   });
 
   it("when clicked shows options except selected", async () => {
-    render(<PermissionsSelect options={options} value="all" />);
+    render(
+      <PermissionsSelect
+        options={options}
+        value={DataPermissionValue.ALL}
+        onChange={jest.fn()}
+        isDisabled={false}
+        disabledTooltip={"disabled"}
+        permission={DataPermission.VIEW_DATA}
+        type={DataPermissionType.ACCESS}
+      />,
+    );
 
     await userEvent.click(screen.getByText("Allowed"));
 
@@ -53,8 +78,12 @@ describe("PermissionSelect", () => {
     render(
       <PermissionsSelect
         options={options}
-        value="all"
+        value={DataPermissionValue.ALL}
         onChange={onChangeMock}
+        isDisabled={false}
+        disabledTooltip={"disabled"}
+        permission={DataPermission.VIEW_DATA}
+        type={DataPermissionType.ACCESS}
       />,
     );
 
@@ -74,7 +103,15 @@ describe("PermissionSelect", () => {
 
   it("does not show options after click when disabled", async () => {
     render(
-      <PermissionsSelect options={options} value="all" isDisabled={true} />,
+      <PermissionsSelect
+        options={options}
+        value={DataPermissionValue.ALL}
+        isDisabled={true}
+        onChange={jest.fn()}
+        disabledTooltip={"disabled"}
+        permission={DataPermission.VIEW_DATA}
+        type={DataPermissionType.ACCESS}
+      />,
     );
 
     await userEvent.click(screen.getByText("Allowed"));
@@ -86,7 +123,16 @@ describe("PermissionSelect", () => {
   it("shows warning", async () => {
     const WARNING = "warning test";
     render(
-      <PermissionsSelect options={options} value="all" warning={WARNING} />,
+      <PermissionsSelect
+        options={options}
+        value={DataPermissionValue.ALL}
+        warning={WARNING}
+        onChange={jest.fn()}
+        isDisabled={false}
+        disabledTooltip={"disabled"}
+        permission={DataPermission.VIEW_DATA}
+        type={DataPermissionType.ACCESS}
+      />,
     );
 
     await userEvent.hover(getIcon("warning"));
