@@ -36,13 +36,23 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
+(def ^:dynamic *auth-method* "Used to track the authentication method for the current request (e.g. \"password\", \"jwt\", \"api-key\")." nil)
+
+(defmacro with-auth-method! "Binds [[*auth-method*]] for the duration of `body`."
+  [[value] & body]
+  `(binding [*auth-method* ~value]
+     ~@body))
+
+(defn get-auth-method "Returns [[*auth-method*]]." [] *auth-method*)
+
 (mu/defn include-sdk-info :- :map
   "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
    into the `view_log` or `query_execution` table. Falls back to the original value."
   [m :- :map]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
-      (update :embedding_version (fn [version] (or *version* version)))))
+      (update :embedding_version (fn [version] (or *version* version)))
+      (update :auth_method (fn [method] (or *auth-method* method)))))
 
 (defn extract-hostname
   "Extracts the hostname from a URL string. Returns nil if the URL is nil or unparseable."
@@ -96,7 +106,8 @@
 (def ^:private route-client-mapping
   [["/api/public/" "public"]
    ["/api/embed/" "guest-embed"]
-   ; TODO Is this the client value that we want?
+   ;; preview-embed is guest-embed; the "-preview" suffix is appended separately
+   ;; when X-Metabase-Embedded-Preview: true (see embedding-mw below).
    ["/api/preview-embed/" "guest-embed"]
    ["/api/metabot/" "metabot"]
    ["/api/agent/" "agent-api"]])
@@ -117,7 +128,9 @@
           version (get-in request [:headers "x-metabase-client-version"])
           preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
           sdk-client (derived-client {:uri (:uri request) :metabase-client-header metabase-client-header})]
-      ; TODO Is it correct to add "-preview" to the route-client-mapping values we're getting from the route URIs?
+      ;; Keep "-preview" suffix so preview requests are distinguishable for auditing
+      ;; (admins can query sensitive data via the embed preview wizard). Usage analytics
+      ;; views (EMB-1503) will de-emphasize preview but still surface it.
       (binding [*client* (if preview? (str sdk-client "-preview") sdk-client)
                 *version* version]
         (handler request

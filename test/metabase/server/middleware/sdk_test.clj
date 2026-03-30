@@ -149,20 +149,68 @@
     (is (= {:embedding_hostname nil, :embedding_path nil, :sanitized_user_agent nil, :ip_address nil}
            (sdk/pii-request-info {})))))
 
+(defn- client-from-mw
+  "Runs a request through embedding-mw and returns the *client* value bound inside the handler."
+  [request]
+  (let [handler (analytics/embedding-mw
+                 (fn [_ respond _] (respond {:status 200 :body (sdk/get-client)})))]
+    (:body (handler request identity identity))))
+
+(deftest route-based-client-derivation-test
+  (testing "route prefix determines client value, ignoring any header"
+    (are [uri expected]
+         (= expected (client-from-mw (assoc (ring.mock/request :get uri)
+                                            :uri uri)))
+      "/api/public/card/1"         "public"
+      "/api/embed/dashboard/42"    "guest-embed"
+      "/api/preview-embed/card/1"  "guest-embed"
+      "/api/metabot/query"         "metabot"
+      "/api/agent/chat"            "agent-api"))
+  (testing "route wins over X-Metabase-Client header"
+    (let [request (-> (ring.mock/request :get "/api/public/card/1")
+                      (assoc :uri "/api/public/card/1")
+                      (ring.mock/header "x-metabase-client" "embedding-sdk-react"))]
+      (is (= "public" (client-from-mw request)))))
+  (testing "falls back to header when no route matches"
+    (let [request (-> (ring.mock/request :get "/api/card/1")
+                      (ring.mock/header "x-metabase-client" "embedding-sdk-react"))]
+      (is (= "embedding-sdk-react" (client-from-mw request)))))
+  (testing "nil when no route match and no header"
+    (is (nil? (client-from-mw (ring.mock/request :get "/api/card/1"))))))
+
+(deftest preview-suffix-test
+  (testing "preview header appends -preview to route-derived client"
+    (let [request (-> (ring.mock/request :get "/api/embed/dashboard/42")
+                      (assoc :uri "/api/embed/dashboard/42")
+                      (ring.mock/header "x-metabase-embedded-preview" "true"))]
+      (is (= "guest-embed-preview" (client-from-mw request)))))
+  (testing "preview header appends -preview to header-derived client"
+    (let [request (-> (ring.mock/request :get "/api/card/1")
+                      (ring.mock/header "x-metabase-client" "embedding-sdk-react")
+                      (ring.mock/header "x-metabase-embedded-preview" "true"))]
+      (is (= "embedding-sdk-react-preview" (client-from-mw request)))))
+  (testing "no -preview without the header"
+    (let [request (-> (ring.mock/request :get "/api/embed/dashboard/42")
+                      (assoc :uri "/api/embed/dashboard/42"))]
+      (is (= "guest-embed" (client-from-mw request))))))
+
 (deftest include-analytics-is-idempotent
   (let [m (atom {})]
     (analytics/with-client! ["client-C"]
       (analytics/with-version! ["1.33.7"]
         (is (= {:embedding_client "client-C"
-                :embedding_version "1.33.7"}
+                :embedding_version "1.33.7"
+                :auth_method       nil}
                (analytics/include-sdk-info @m)))
         (swap! m analytics/include-sdk-info)))
     ;; unset the vars:
     (analytics/with-client! [nil]
       (analytics/with-version! [nil]
         (is (= {:embedding_client "client-C"
-                :embedding_version "1.33.7"} @m))
+                :embedding_version "1.33.7"
+                :auth_method       nil} @m))
         (testing "the values in m are used when the vars are not set"
           (is (= {:embedding_client "client-C"
-                  :embedding_version "1.33.7"}
+                  :embedding_version "1.33.7"
+                  :auth_method       nil}
                  (analytics/include-sdk-info @m))))))))
