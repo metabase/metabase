@@ -158,9 +158,9 @@
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
-  (if source
-    (assoc transform :source_type (transforms-base.u/transform-source-type source))
-    transform))
+  (cond-> (dissoc transform :target_table_id)
+    source
+    (assoc :source_type (transforms-base.u/transform-source-type source))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
