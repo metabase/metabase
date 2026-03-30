@@ -36,8 +36,8 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/McpSession
-    :model/PythonLibrary
     :model/PremiumFeaturesCache
+    :model/PythonLibrary
     :model/Query
     :model/QueryCache
     :model/QueryExecution
