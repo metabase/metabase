@@ -1,6 +1,6 @@
 import { resolve } from "path";
 import { createServer } from "http";
-import { watch, cpSync } from "fs";
+import { watch, cpSync, existsSync } from "fs";
 import { defineConfig } from "vite";
 
 /**
@@ -138,16 +138,18 @@ function metabaseDevServer() {
 
       // Watch public/assets/ for changes — copy to dist/assets/ and notify
       const assetsDir = resolve(__dirname, "public/assets");
-      watch(assetsDir, { recursive: true }, (_event, filename) => {
-        if (!filename) {
-          return;
-        }
-        cpSync(resolve(assetsDir, filename), resolve(__dirname, "dist/assets", filename));
-        for (const client of clients) {
-          client.write("data: reload\n\n");
-        }
-        console.log(`[custom-viz] Asset changed: ${filename}, notified ${clients.size} client(s)`);
-      });
+      if (existsSync(assetsDir)) {
+        watch(assetsDir, { recursive: true }, (_event, filename) => {
+          if (!filename) {
+            return;
+          }
+          cpSync(resolve(assetsDir, filename), resolve(__dirname, "dist/assets", filename));
+          for (const client of clients) {
+            client.write("data: reload\n\n");
+          }
+          console.log(`[custom-viz] Asset changed: ${filename}, notified ${clients.size} client(s)`);
+        });
+      }
     },
 
     closeBundle() {
