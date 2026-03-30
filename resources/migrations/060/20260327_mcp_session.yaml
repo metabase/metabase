@@ -28,7 +28,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: embedding_session_key
-                  type: text
+                  type: ${text.type}
                   remarks: >-
                     The embedding SDK session key, encrypted at the application level using
                     MB_ENCRYPTION_SECRET_KEY (AES-256-CBC with HMAC-SHA512). Stored as text
