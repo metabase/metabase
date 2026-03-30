@@ -365,6 +365,7 @@ export const tokenFeatures = [
   "tenants",
   "workspaces",
   "writable_connection",
+  "security_advisories",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];

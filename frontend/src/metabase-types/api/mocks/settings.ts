@@ -147,6 +147,7 @@ export const createMockTokenFeatures = (
   tenants: false,
   workspaces: false,
   writable_connection: false,
+  security_advisories: false,
   ...opts,
 });
 
