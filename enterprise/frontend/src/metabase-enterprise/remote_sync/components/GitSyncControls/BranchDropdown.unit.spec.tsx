@@ -79,13 +79,11 @@ describe("BranchDropdown", () => {
         <WrapperComponent value="main" onChange={onChange} />,
       );
 
-      await waitFor(() => {
-        expect(
-          screen.getByText(
-            "Failed to load branches — check your authentication token",
-          ),
-        ).toBeInTheDocument();
-      });
+      expect(
+        await screen.findByText(
+          "Failed to load branches — check your authentication token",
+        ),
+      ).toBeInTheDocument();
     });
   });
 

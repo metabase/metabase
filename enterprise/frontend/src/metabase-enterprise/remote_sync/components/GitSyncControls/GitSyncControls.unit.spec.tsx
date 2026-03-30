@@ -1,13 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import {
-  setupRemoteSyncBranchesEndpoint,
-  setupRemoteSyncDirtyEndpoint,
-  setupRemoteSyncEndpoints,
-  setupRemoteSyncImportEndpoint,
-  setupRemoteSyncSettingsEndpoint,
-} from "__support__/server-mocks";
+import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 
 import { GitSyncControls } from "./GitSyncControls";
@@ -23,6 +17,7 @@ const setup = ({
   remoteSyncEnabled = true,
   hasRemoteChanges = true,
   hasRemoteChangesDelay = 0,
+  hasRemoteChangesError = false,
   currentBranch = "main",
   syncType = "read-write",
   dirty = [],
@@ -32,6 +27,7 @@ const setup = ({
   remoteSyncEnabled?: boolean;
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
+  hasRemoteChangesError?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
@@ -42,6 +38,7 @@ const setup = ({
     dirty,
     hasRemoteChanges,
     hasRemoteChangesDelay,
+    hasRemoteChangesError,
   });
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
@@ -254,49 +251,16 @@ describe("GitSyncControls", () => {
   });
 
   describe("pull error handling", () => {
-    it("is disabled and shows error tooltip when remote changes check fails", async () => {
-      // Set up all endpoints except has-remote-changes manually
-      setupRemoteSyncBranchesEndpoint(["main", "develop"]);
-      setupRemoteSyncDirtyEndpoint({ dirty: [] });
-      setupRemoteSyncImportEndpoint();
-      setupRemoteSyncSettingsEndpoint();
-      fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
-      fetchMock.get("path:/api/ee/remote-sync/current-task", {
-        status: "idle",
-      });
+    it("shows error message when remote changes check fails", async () => {
+      setup({ hasRemoteChangesError: true });
 
-      // Set up has-remote-changes to return a 401 auth error
-      fetchMock.get("path:/api/ee/remote-sync/has-remote-changes", 401);
+      await userEvent.click(await screen.findByTestId("git-sync-controls"));
 
-      setupCollectionEndpoints();
-      setupSessionEndpoints({
-        remoteSyncEnabled: true,
-        currentBranch: "main",
-        syncType: "read-write",
-      });
-
-      renderWithProviders(<GitSyncControls />, {
-        storeInitialState: createRemoteSyncStoreState({
-          isAdmin: true,
-          remoteSyncEnabled: true,
-          currentBranch: "main",
-          syncType: "read-write",
-        }),
-      });
-
-      await waitFor(() => {
-        expect(getBranchButton(/main/)).toBeInTheDocument();
-      });
-
-      await userEvent.click(getBranchButton(/main/));
-
-      await waitFor(() => {
-        expect(
-          screen.getByText(
-            "Failed to check for changes — check your authentication token",
-          ),
-        ).toBeInTheDocument();
-      });
+      expect(
+        await screen.findByText(
+          "Failed to check for changes — check your authentication token",
+        ),
+      ).toBeInTheDocument();
     });
   });
 
