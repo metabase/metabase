@@ -4,7 +4,7 @@ import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { SecurityCenterPage } from "./components/SecurityCenterPage/SecurityCenterPage";
 
 export function initializePlugin() {
-  // if (hasPremiumFeature("security_advisories")) {
+  // if (hasPremiumFeature("admin_security_center")) {
   PLUGIN_SECURITY_CENTER.isEnabled = true;
   PLUGIN_SECURITY_CENTER.SecurityCenterPage = SecurityCenterPage;
   // }

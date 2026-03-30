@@ -13,11 +13,11 @@
 }
 
 .severityMedium {
-  background-color: var(--mb-color-bronze);
-  color: var(--mb-color-white);
+  background-color: var(--mb-color-gold);
+  color: var(--mb-color-text-primary);
 }
 
 .severityLow {
-  background-color: var(--mb-color-text-tertiary);
+  background-color: var(--mb-color-success);
   color: var(--mb-color-white);
 }

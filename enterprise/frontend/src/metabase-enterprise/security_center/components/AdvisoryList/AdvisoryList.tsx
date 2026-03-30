@@ -18,7 +18,7 @@ export function AdvisoryList({ advisories, onAcknowledge }: AdvisoryListProps) {
   if (sorted.length === 0) {
     return (
       <EmptyState
-        icon="shield"
+        icon="shield_outline"
         message={t`Your instance is up to date — no known security issues affect your configuration.`}
       />
     );
