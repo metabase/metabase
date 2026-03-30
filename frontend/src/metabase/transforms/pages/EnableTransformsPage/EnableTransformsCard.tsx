@@ -1,6 +1,7 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api/database";
+import { Link } from "metabase/common/components/Link";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
   Alert,
@@ -60,9 +61,16 @@ export function EnableTransformsCard({
                       color="warning"
                       variant="light"
                       icon={<Icon name="warning" size={16} />}
-                      py="md"
+                      title={t`No writable database connection`}
                     >
-                      {t`None of your connected databases have a writeable connection`}
+                      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Only admins can see this */}
+                      {jt`Transforms create tables in your database, so Metabase needs write access. ${(
+                        <Link
+                          key="link"
+                          to="/admin/databases"
+                          style={{ textDecoration: "underline" }}
+                        >{t`Reconnect or add a connection`}</Link>
+                      )} with a user that has the right privileges.`}
                     </Alert>
                   )}
                 </Stack>
