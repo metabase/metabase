@@ -13,8 +13,8 @@ on:
 
 jobs:
   sync-master:
-    # ONLY run on a fork — NEVER on the main Metabase repo
-    if: github.repository != 'metabase/metabase'
+    # ONLY run on internal metabase org forks — NEVER on the public repo or external forks
+    if: github.repository_owner == 'metabase' && github.repository != 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout
@@ -41,8 +41,8 @@ jobs:
           fi
 
   sync-release-branches:
-    # ONLY run on a fork — NEVER on the main Metabase repo
-    if: github.repository != 'metabase/metabase'
+    # ONLY run on internal metabase org forks — NEVER on the public repo or external forks
+    if: github.repository_owner == 'metabase' && github.repository != 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout
