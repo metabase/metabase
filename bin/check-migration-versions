@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#
+# Check that new migration changeset IDs target the correct version.
+#
+# Usage:
+#   bin/check-migration-versions [BASE_REF]
+#
+# In CI, BASE_REF is set by the workflow. Locally it can be passed as an
+# argument (defaults to master). The base ref is fetched if not already
+# available.
+#
+# The "current version" is detected empirically from the highest
+# release-x.N.x branch on the remote. PRs targeting master should use
+# current+1; PRs targeting a release branch should match that branch's version.
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Resolve base ref
+# ---------------------------------------------------------------------------
+
+BASE_REF="${1:-${BASE_REF:-master}}"
+
+# ---------------------------------------------------------------------------
+# Detect current released version from remote release branches
+# ---------------------------------------------------------------------------
+
+detect_current_version() {
+  git ls-remote --heads origin 'refs/heads/release-x.*.x' \
+    | sed -n 's|.*refs/heads/release-x\.\([0-9][0-9]*\)\.x$|\1|p' \
+    | sort -n \
+    | tail -1
+}
+
+current_version=$(detect_current_version)
+
+if [[ -z "$current_version" ]]; then
+  echo "ERROR: Could not detect current version from release branches." >&2
+  exit 1
+fi
+
+echo "Detected current version from release branches: ${current_version}"
+
+# ---------------------------------------------------------------------------
+# Determine the expected migration version for this target branch
+# ---------------------------------------------------------------------------
+
+if [[ "$BASE_REF" == "master" ]]; then
+  expected_version=$(( current_version + 1 ))
+elif [[ "$BASE_REF" =~ ^release-x\.([0-9]+)\.x$ ]]; then
+  expected_version="${BASH_REMATCH[1]}"
+else
+  echo "Target branch '${BASE_REF}' is not master or a release branch — skipping check."
+  exit 0
+fi
+
+echo "Target branch: ${BASE_REF}"
+echo "Expected migration version: v${expected_version}"
+echo ""
+
+# ---------------------------------------------------------------------------
+# Make sure we have the base ref available for diffing
+# ---------------------------------------------------------------------------
+
+if ! git rev-parse "origin/${BASE_REF}" &>/dev/null; then
+  git fetch origin "${BASE_REF}" --depth=1
+fi
+
+# ---------------------------------------------------------------------------
+# Parse the diff for added changeset IDs
+# ---------------------------------------------------------------------------
+
+errors=0
+found_any=false
+current_file=""
+
+while IFS= read -r line; do
+  # Track current file from diff headers
+  if [[ "$line" =~ ^\+\+\+\ b/(.*) ]]; then
+    current_file="${BASH_REMATCH[1]}"
+    continue
+  fi
+
+  # Match added lines containing a changeset id (with or without indentation)
+  if [[ "$line" =~ ^\+.*id:\ *v([0-9]+)\. ]]; then
+    found_any=true
+    actual_version="${BASH_REMATCH[1]}"
+
+    if [[ "$actual_version" != "$expected_version" ]]; then
+      echo "ERROR: ${current_file}: found migration version v${actual_version} but expected v${expected_version}" >&2
+      errors=$((errors + 1))
+    fi
+  fi
+done < <(git diff --no-color "origin/${BASE_REF}...HEAD" -- 'resources/migrations/*.yaml' 'resources/migrations/**/*.yaml')
+
+if [[ "$found_any" == "false" ]]; then
+  echo "No new changeset IDs in diff."
+  exit 0
+fi
+
+if [[ "$errors" -gt 0 ]]; then
+  echo "" >&2
+  echo "${errors} changeset(s) have the wrong version." >&2
+  echo "" >&2
+  if [[ "$BASE_REF" == "master" ]]; then
+    echo "PRs targeting master should use version v$(( current_version + 1 ))." >&2
+    echo "(Current version detected from release branches: ${current_version})" >&2
+  else
+    echo "PRs targeting ${BASE_REF} should use version v${expected_version}." >&2
+  fi
+  exit 1
+fi
+
+echo "All migration versions are correct (v${expected_version})."

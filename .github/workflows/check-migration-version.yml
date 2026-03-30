@@ -1,0 +1,25 @@
+name: Check Migration Versions
+
+on:
+  pull_request:
+    paths:
+      - 'resources/migrations/**'
+
+concurrency:
+  group: check-migration-version-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check-migration-version:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          fetch-depth: 1
+
+      - name: Check migration versions
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: bin/check-migration-versions
