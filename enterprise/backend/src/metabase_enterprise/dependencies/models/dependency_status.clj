@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase.app-db.query :as app-db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,48 +14,31 @@
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})
 
-(def ^:private mark-stale-batch-size
-  "Maximum number of entity IDs to process in a single query to avoid parameter limits."
-  1000)
-
 (defn mark-stale!
   "Mark entities of `entity-type` with ids in `entity-ids` as stale for dependency recalculation.
-  Creates entries if they don't exist, or sets stale=true if they do."
+  Creates entries if they don't exist, or sets stale=true if they do.
+  Uses [[app-db/update-or-insert!]] for cross-database atomicity."
   [entity-type entity-ids]
-  (doseq [batch (partition-all mark-stale-batch-size entity-ids)]
-    (let [existing-ids (or (t2/select-fn-set :entity_id :model/DependencyStatus
-                                             :entity_type entity-type
-                                             :entity_id [:in batch])
-                           #{})]
-      (when (seq existing-ids)
-        (t2/update! :model/DependencyStatus
-                    :entity_type entity-type
-                    :entity_id [:in existing-ids]
-                    {:stale true}))
-      (let [new-ids (remove existing-ids batch)]
-        (when (seq new-ids)
-          (t2/insert! :model/DependencyStatus
-                      (mapv (fn [id]
-                              {:entity_type entity-type
-                               :entity_id id
-                               :dependency_analysis_version 0
-                               :stale true})
-                            new-ids)))))))
+  (doseq [id entity-ids]
+    (app-db/update-or-insert!
+     :model/DependencyStatus
+     {:entity_type entity-type :entity_id id}
+     (fn [existing]
+       (if existing
+         {:stale true}
+         {:stale true
+          :dependency_analysis_version 0})))))
 
 (defn upsert-status!
-  "Upsert a dependency_status entry, setting stale=false and version to current."
+  "Upsert a dependency_status entry, setting stale=false and version to current.
+  Uses [[app-db/update-or-insert!]] for cross-database atomicity."
   [entity-type entity-id]
-  (let [update {:dependency_analysis_version models.dependency/current-dependency-analysis-version
-                :stale false}
-        existing-id (t2/select-one-fn :id [:model/DependencyStatus :id]
-                                      :entity_type entity-type
-                                      :entity_id entity-id)]
-    (if existing-id
-      (t2/update! :model/DependencyStatus existing-id update)
-      (t2/insert! :model/DependencyStatus
-                  (assoc update
-                         :entity_type entity-type
-                         :entity_id entity-id)))))
+  (app-db/update-or-insert!
+   :model/DependencyStatus
+   {:entity_type entity-type :entity_id entity-id}
+   (fn [_existing]
+     {:dependency_analysis_version models.dependency/current-dependency-analysis-version
+      :stale false})))
 
 (defn instances-for-dependency-calculation
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` that need
