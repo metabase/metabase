@@ -568,6 +568,7 @@
     :etl-connections
     :etl-connections-pg
     :query-reference-validation
+    :metabase-ai-provider
     :cloud-custom-smtp
     :session-timeout-config
     :sso-oidc})

@@ -66,6 +66,7 @@
    :tenants                    (deferred-tru "Tenants")
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
+   :metabot-v3                (deferred-tru "Metabot")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
    :support-users              (deferred-tru "Support Users")
    :transforms-python          (deferred-tru "Transforms Python")
@@ -115,6 +116,7 @@
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
+   "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)

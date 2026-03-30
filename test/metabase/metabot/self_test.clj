@@ -59,7 +59,8 @@
         (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
                                            llm-openrouter-api-key "sk-or-v1-test-key"
                                            llm-openai-api-key     "sk-test-key"]
-          (doseq [[model expected] [["anthropic/test-model"  {:type "any"}]
+          (doseq [[model expected] [["anthropic/test-model"   {:type "any"}]
+                                    ["metabase/anthropic/claude-sonnet-4-6" {:type "any"}]
                                     ["openrouter/test-model" "required"]
                                     ["openai/test-model"     "required"]]]
             (try

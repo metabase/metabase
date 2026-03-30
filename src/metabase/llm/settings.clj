@@ -131,6 +131,15 @@
   :export?          false
   :doc              false)
 
+(defsetting llm-proxy-configured?
+  (deferred-tru "Base URL for the LLM proxy. When set, all LLM requests are routed through this proxy and authenticated with the instance token instead of provider API keys.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :export?          false
+  :setter           :none
+  :getter           #(boolean (some? (llm-proxy-base-url)))
+  :doc              false)
+
 ;;; -------------------------------------------------- General --------------------------------------------------
 
 (defsetting llm-max-tokens
