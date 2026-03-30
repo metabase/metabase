@@ -33,7 +33,7 @@
      :client-store                   (store/create-client-store)
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
-     :scopes-supported               (all-agent-scopes)
+     :scopes-supported               (vec (all-agent-scopes))
      :rotate-refresh-tokens          true}))
 
 (defn- create-provider
