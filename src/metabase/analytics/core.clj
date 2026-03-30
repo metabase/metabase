@@ -56,6 +56,7 @@
   extract-path
   include-sdk-info
   pii-request-info
+  with-auth-method! get-auth-method
   with-client! get-client
   with-version! get-version]
 

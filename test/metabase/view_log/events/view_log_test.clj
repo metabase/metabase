@@ -397,6 +397,26 @@
                   (is (= "/analytics"       (:embedding_path qe)))
                   (is (= "DashAgent/2.0"    (:sanitized_user_agent qe))))))))))))
 
+(deftest auth-method-test
+  (mt/with-premium-features #{:audit-app}
+    (binding [qp.util/*execute-async?* false]
+      (testing "session-authenticated request records auth_method 'session'"
+        (mt/with-temp [:model/Card card {:name "Auth Test Card" :type :question
+                                         :dataset_query (mt/mbql-query venues {:limit 1})}]
+          (mt/user-http-request :crowberto :post 202 (format "card/%s/query" (u/id card)))
+          (let [view (latest-view (mt/user->id :crowberto) (u/id card))
+                qe   (latest-qe (:id card))]
+            (is (= "session" (:auth_method view)))
+            (is (= "session" (:auth_method qe))))))
+      (testing "unauthenticated public request has nil auth_method"
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (public-test/with-temp-public-card [card]
+            (client/client :get 202 (str "public/card/" (:public_uuid card) "/query"))
+            (let [view (latest-view nil (:id card))
+                  qe   (latest-qe (:id card))]
+              (is (nil? (:auth_method view)))
+              (is (nil? (:auth_method qe))))))))))
+
 (deftest route-client-mapping-test
   (testing "combinations of routes and header values"
     (testing "Some routes override the header value"

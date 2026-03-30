@@ -19,6 +19,7 @@
    [java-time.api :as t]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.analytics.sdk :as sdk]
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
@@ -234,13 +235,17 @@
 
 (defn- merge-current-user-info
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
-  (merge
-   request
-   (or (current-user-info-for-session metabase-session-key anti-csrf-token)
-       (current-user-info-for-api-key x-api-key))
-   (when x-metabase-locale
-     (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
-     {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
+  (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
+        api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
+        auth-method  (cond session-info "session"
+                           api-key-info "api-key")]
+    (merge
+     request
+     (or session-info api-key-info)
+     (when auth-method {:auth-method auth-method})
+     (when x-metabase-locale
+       (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
+       {:user-locale (i18n/normalized-locale-string x-metabase-locale)}))))
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
@@ -273,8 +278,9 @@
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
-    (with-current-user-for-request request
-      (handler request respond raise))))
+    (sdk/with-auth-method! [(:auth-method request)]
+      (with-current-user-for-request request
+        (handler request respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              reset-cookie-timeout                                             |
