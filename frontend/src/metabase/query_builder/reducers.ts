@@ -8,32 +8,10 @@ import {
   updateCardEmbeddingParams,
   updateCardEnableEmbedding,
 } from "metabase/api";
-import {
-  EDIT_QUESTION,
-  NAVIGATE_TO_NEW_CARD,
-} from "metabase/redux/dashboard";
 import { TimelineEvents } from "metabase/entities/timeline-events";
 import type { Deferred } from "metabase/lib/promise";
 import { copy } from "metabase/lib/utils";
-import type {
-  Card,
-  CollectionItemModel,
-  Dataset,
-  Field,
-  NativeQuerySnippet,
-  ParameterValuesMap,
-  TimelineEvent,
-} from "metabase-types/api";
-import type {
-  ForeignKeyReference,
-  InitialChartSettingState,
-  QueryBuilderLoadingControls,
-  QueryBuilderParentEntityState,
-  QueryBuilderQueryStatus,
-  QueryBuilderUIControls,
-  Range,
-} from "metabase-types/store";
-
+import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
   API_UPDATE_QUESTION,
   CANCEL_QUERY,
@@ -72,6 +50,24 @@ import {
   SOFT_RELOAD_CARD,
   ZOOM_IN_ROW,
 } from "metabase/redux/query-builder";
+import type {
+  Card,
+  CollectionItemModel,
+  Dataset,
+  Field,
+  NativeQuerySnippet,
+  ParameterValuesMap,
+  TimelineEvent,
+} from "metabase-types/api";
+import type {
+  ForeignKeyReference,
+  InitialChartSettingState,
+  QueryBuilderLoadingControls,
+  QueryBuilderParentEntityState,
+  QueryBuilderQueryStatus,
+  QueryBuilderUIControls,
+  Range,
+} from "metabase-types/store";
 
 import {
   API_CREATE_QUESTION,
