@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
-import { jt, t } from "ttag";
+import { c, jt, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
@@ -82,7 +82,7 @@ export function TransformsUpsellPage() {
   const freeUnits = 1000; // TODO: Get from api
   const freeUnitsStr = freeUnits.toLocaleString();
   const batchPrice = 10; // TODO: Get from api
-  const batchSize = 1000; // TODO: Get from api
+  const batchSize: number = 1000; // TODO: Get from api
 
   return (
     <DottedBackground
@@ -116,8 +116,8 @@ export function TransformsUpsellPage() {
                   >{t`${freeUnitsStr} free transform runs`}</Title>
                   <Text c="text-secondary" fz="1rem" lh={1.4}>
                     {jt`Your Cloud plan comes with ${freeUnitsStr} transform runs ${(
-                      <strong key="bold">{t`completely free`}</strong>
-                    )}. After that, you'll be charged ${formatNumber(
+                      <strong key="bold">{t`completely free.`}</strong>
+                    )} After that, you'll be charged ${formatNumber(
                       batchPrice,
                       {
                         number_style: "currency",
@@ -125,7 +125,11 @@ export function TransformsUpsellPage() {
                         currency_style: "symbol",
                         minimumFractionDigits: 0,
                       },
-                    )} per ${batchSize.toLocaleString()} runs. You only pay for what you use.`}
+                    )} for each additional ${
+                      batchSize === 1
+                        ? c("transforms").t`run`
+                        : `${batchSize.toLocaleString()} ${c("transforms").t`runs`}`
+                    }. You only pay for what you use.`}
                   </Text>
                   <Text
                     c="text-secondary"
