@@ -69,10 +69,10 @@ export function MetabotStore() {
     }
   }, []);
 
-  // const today = new Date().toISOString().slice(0, 10);
-  // if (today !== "2024-04-01") {
-  //   return null;
-  // }
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== "2026-04-01") {
+    return null;
+  }
 
   return (
     <>
