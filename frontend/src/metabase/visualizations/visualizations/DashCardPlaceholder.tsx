@@ -57,26 +57,33 @@ function DashCardPlaceholderInner({
             <Button
               onClick={() => setQuestionPickerOpen(true)}
               onMouseDown={preventDragging}
+              onPointerDown={preventDragging}
               style={{ pointerEvents }}
             >{t`Select question`}</Button>
           </Flex>
         )}
       </Flex>
       {isQuestionPickerOpen && (
-        <QuestionPickerModal
-          title={t`Pick what you want to replace this with`}
-          value={
-            dashboard.collection_id
-              ? {
-                  id: dashboard.collection_id,
-                  model: "collection",
-                }
-              : undefined
-          }
-          models={["card", "dataset", "metric"]}
-          onChange={handleSelectQuestion}
-          onClose={() => setQuestionPickerOpen(false)}
-        />
+        <div
+          style={{ display: "contents" }}
+          onMouseDown={preventDragging}
+          onPointerDown={preventDragging}
+        >
+          <QuestionPickerModal
+            title={t`Pick what you want to replace this with`}
+            value={
+              dashboard.collection_id
+                ? {
+                    id: dashboard.collection_id,
+                    model: "collection",
+                  }
+                : undefined
+            }
+            models={["card", "dataset", "metric"]}
+            onChange={handleSelectQuestion}
+            onClose={() => setQuestionPickerOpen(false)}
+          />
+        </div>
       )}
     </>
   );
@@ -84,7 +91,17 @@ function DashCardPlaceholderInner({
 
 DashCardPlaceholderInner.displayName = "DashCardPlaceholder";
 
-function preventDragging(e: React.MouseEvent<HTMLButtonElement>) {
+/**
+ * Prevents React portal event bubbling from triggering grid item drags.
+ *
+ * React portals (used by modals) bubble synthetic events through the React
+ * component tree, not the DOM tree. This means clicks inside a modal rendered
+ * by this component would bubble up to DraggableCore on the grid item and
+ * initiate a drag. We stop both mousedown and pointerdown because Cypress
+ * (and browsers) dispatch both events, and React processes them as separate
+ * synthetic event dispatches — stopPropagation on one doesn't affect the other.
+ */
+function preventDragging(e: React.SyntheticEvent) {
   e.stopPropagation();
 }
 
