@@ -1519,4 +1519,4 @@
         (.close iam-client)))))
 
 (defmethod driver/llm-sql-dialect-resource :bigquery-cloud-sdk [_]
-  "llm/prompts/dialects/bigquery.md")
+  "metabot/prompts/dialects/bigquery.md")

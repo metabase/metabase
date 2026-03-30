@@ -53,7 +53,7 @@
          (when-let [resource (io/resource resource-path)]
            (slurp resource)))))))
 
-(def ^:private sql-generation-prompt-template "llm/prompts/sql-generation-system.mustache")
+(def ^:private sql-generation-prompt-template "metabot/prompts/system/one-shot-sql-generation.mustache")
 
 (def ^:private datetime-formatter
   (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss"))

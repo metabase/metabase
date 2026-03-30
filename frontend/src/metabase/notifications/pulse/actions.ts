@@ -15,6 +15,7 @@ import { PulseApi } from "metabase/services";
 import type {
   ChannelApiResponse,
   ChannelSpec,
+  ChannelSpecs,
   DashboardSubscription,
   RegularCollectionId,
 } from "metabase-types/api";
@@ -50,13 +51,21 @@ export const setEditingPulse = createThunkAction(
           dispatch(setErrorPage(e));
         }
       } else {
-        // HACK: need a way to wait for form_input to finish loading
-        const channels =
-          getPulseFormInput(getState())?.channels ||
-          (await PulseApi.form_input()).channels;
-        const defaultChannelSpec = getDefaultChannel(channels) as
-          | ChannelSpec
-          | undefined;
+        let channels = getPulseFormInput(getState())?.channels;
+        if (!channels) {
+          try {
+            // HACK: need a way to wait for form_input to finish loading
+            channels = (await PulseApi.form_input()).channels;
+          } catch {
+            // form_input can fail when the user lacks subscription
+            // permissions — this is non-critical (EMB-967).
+          }
+        }
+        const defaultChannelSpec = channels
+          ? (getDefaultChannel(channels as ChannelSpecs) as
+              | ChannelSpec
+              | undefined)
+          : undefined;
         return {
           ...NEW_PULSE_TEMPLATE,
           channels: defaultChannelSpec
@@ -121,8 +130,15 @@ export const testPulse = createThunkAction(
 export const fetchPulseFormInput = createThunkAction(
   FETCH_PULSE_FORM_INPUT,
   function () {
-    return async function (): Promise<ChannelApiResponse> {
-      return await PulseApi.form_input();
+    return async function (): Promise<ChannelApiResponse | undefined> {
+      try {
+        return await PulseApi.form_input();
+      } catch {
+        // This request is expected to fail when the user lacks
+        // "Subscriptions and Alerts" permissions. Swallow the error
+        // so it doesn't surface as an unhandled rejection (EMB-967).
+        return undefined;
+      }
     };
   },
 );
