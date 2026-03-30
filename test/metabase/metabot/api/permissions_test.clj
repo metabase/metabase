@@ -1,6 +1,6 @@
 (ns metabase.metabot.api.permissions-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest is testing]]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

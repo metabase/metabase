@@ -38,7 +38,7 @@
    :permission/metabot-other-tools    :no
    :permission/metabot-model          :small})
 
-(deftest prompt-includes-sql-sections-when-permitted-test
+(deftest ^:parallel prompt-includes-sql-sections-when-permitted-test
   (let [rendered (render-internal-template all-yes-perms)]
     (testing "SQL construction section is included"
       (is (re-find #"sql_construction" rendered)))
@@ -51,7 +51,7 @@
     (testing "SQL anti-pattern example is included"
       (is (re-find #"Not checking field formats before SQL" rendered)))))
 
-(deftest prompt-excludes-sql-sections-when-not-permitted-test
+(deftest ^:parallel prompt-excludes-sql-sections-when-not-permitted-test
   (let [rendered (render-internal-template no-sql-perms)]
     (testing "SQL construction section is excluded"
       (is (not (re-find #"sql_construction" rendered))))
@@ -68,7 +68,7 @@
     (testing "denial suggests NLQ as alternative"
       (is (re-find #"natural language query builder" rendered)))))
 
-(deftest prompt-gates-nql-section-test
+(deftest ^:parallel prompt-gates-nql-section-test
   (let [with-nql    (render-internal-template all-yes-perms)
         without-nql (render-internal-template no-nql-perms)]
     (testing "NLQ guidance included when permitted"
@@ -84,7 +84,7 @@
     (testing "denial suggests SQL as alternative"
       (is (re-find #"offer to write SQL" without-nql)))))
 
-(deftest prompt-gates-other-tools-section-test
+(deftest ^:parallel prompt-gates-other-tools-section-test
   (let [with-other    (render-internal-template all-yes-perms)
         without-other (render-internal-template
                        {:permission/metabot-sql-generation :yes
@@ -98,7 +98,7 @@
     (testing "explicit denial for other tools is included when not permitted"
       (is (re-find #"You cannot create dashboards or documents" without-other)))))
 
-(deftest prompt-gates-query-tools-sections-test
+(deftest ^:parallel prompt-gates-query-tools-sections-test
   (let [with-queries    (render-internal-template all-yes-perms)
         without-queries (render-internal-template
                          {:permission/metabot-sql-generation :no
@@ -128,7 +128,7 @@
       (is (not (re-find #"You cannot write SQL" without-queries)))
       (is (not (re-find #"You cannot use natural language querying" without-queries))))))
 
-(deftest prompt-all-no-permissions-test
+(deftest ^:parallel prompt-all-no-permissions-test
   (let [rendered (render-internal-template all-no-perms)]
     (testing "core prompt structure still renders"
       (is (re-find #"data analysis assistant" rendered))
@@ -143,7 +143,7 @@
       (is (re-find #"You cannot build queries or create charts" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
-(deftest defaults-to-no-permissions-when-unbound-test
+(deftest ^:parallel defaults-to-no-permissions-when-unbound-test
   (testing "when *current-user-metabot-permissions* is nil, defaults exclude everything"
     (let [rendered (render-internal-template nil)]
       (is (not (re-find #"sql_construction" rendered)))
@@ -153,7 +153,7 @@
       (is (re-find #"You cannot build queries or create charts" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
-(deftest prompt-no-denials-when-all-enabled-test
+(deftest ^:parallel prompt-no-denials-when-all-enabled-test
   (let [rendered (render-internal-template all-yes-perms)]
     (testing "no denial messages when all permissions are enabled"
       (is (not (re-find #"You cannot" rendered))))))
@@ -171,7 +171,7 @@
      {:current_time "2026-03-25T12:00:00Z"}
      {})))
 
-(deftest slackbot-nlq-sections-gated-test
+(deftest ^:parallel slackbot-nlq-sections-gated-test
   (let [with-nlq    (render-slackbot-template all-yes-perms)
         without-nlq (render-slackbot-template {:permission/metabot-sql-generation :yes
                                                :permission/metabot-nql            :no
@@ -190,7 +190,7 @@
     (testing "NLQ denial message present when not permitted"
       (is (re-find #"You cannot build custom queries" without-nlq)))))
 
-(deftest slackbot-other-tools-sections-gated-test
+(deftest ^:parallel slackbot-other-tools-sections-gated-test
   (let [with-other    (render-slackbot-template all-yes-perms)
         without-other (render-slackbot-template {:permission/metabot-sql-generation :yes
                                                  :permission/metabot-nql            :yes
@@ -207,7 +207,7 @@
     (testing "other-tools denial message present when not permitted"
       (is (re-find #"You cannot create inline visualizations" without-other)))))
 
-(deftest slackbot-all-no-permissions-test
+(deftest ^:parallel slackbot-all-no-permissions-test
   (let [rendered (render-slackbot-template all-no-perms)]
     (testing "core structure still renders"
       (is (re-find #"expert data analyst" rendered))
@@ -219,7 +219,7 @@
       (is (re-find #"You cannot build custom queries" rendered))
       (is (re-find #"You cannot create inline visualizations" rendered)))))
 
-(deftest slackbot-no-denials-when-all-enabled-test
+(deftest ^:parallel slackbot-no-denials-when-all-enabled-test
   (let [rendered (render-slackbot-template all-yes-perms)]
     (testing "no denial messages when all permissions are enabled"
       (is (not (re-find #"You cannot build custom queries" rendered)))

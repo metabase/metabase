@@ -5,7 +5,7 @@
    [metabase.metabot.agent.profiles]
    [metabase.metabot.scope :as scope]))
 
-(deftest scope-matches?-test
+(deftest ^:parallel scope-matches?-test
   (testing "exact match"
     (is (scope/scope-matches? #{"agent:sql:create"} "agent:sql:create"))
     (is (not (scope/scope-matches? #{"agent:sql:edit"} "agent:sql:create"))))
@@ -38,7 +38,7 @@
     (is (not (scope/scope-matches? #{":"} "agent:sql:create")))
     (is (not (scope/scope-matches? #{"agent:sql:create"} "")))))
 
-(deftest current-user-scope-default-test
+(deftest ^:parallel current-user-scope-default-test
   (testing "*current-user-scope* defaults to empty set (no permissions)"
     (is (= #{} scope/*current-user-scope*))))
 
@@ -84,13 +84,13 @@
 ;;; Scope registry
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest defscope-vars-test
+(deftest ^:parallel defscope-vars-test
   (testing "defscope vars are bound to their scope strings"
     (is (= "agent:sql:create" scope/agent-sql-create))
     (is (= "agent:viz:read" scope/agent-viz-read))
     (is (= "agent:search" scope/agent-search))))
 
-(deftest registered-scope?-test
+(deftest ^:parallel registered-scope?-test
   (testing "registered scopes return true"
     (is (scope/registered-scope? "agent:sql:create"))
     (is (scope/registered-scope? "agent:search"))
@@ -100,7 +100,7 @@
     (is (not (scope/registered-scope? "agent:sql:*")))
     (is (not (scope/registered-scope? "")))))
 
-(deftest all-scopes-test
+(deftest ^:parallel all-scopes-test
   (testing "all-scopes returns a non-empty collection of maps"
     (let [scopes (scope/all-scopes)]
       (is (pos? (count scopes)))
@@ -113,7 +113,7 @@
       (is (contains? scope-strings "agent:search"))
       (is (contains? scope-strings "agent:viz:read")))))
 
-(deftest scope-description-test
+(deftest ^:parallel scope-description-test
   (testing "returns description for registered scope"
     (is (some? (scope/scope-description "agent:sql:create"))))
   (testing "returns nil for unregistered scope"

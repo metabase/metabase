@@ -29,15 +29,19 @@
                                  (permissions-for-group id (get by-group id [])))
                                groups))}))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/"
+(def ^:private permissions-response-schema
+  [:map [:permissions [:sequential [:map
+                                    [:group_id  pos-int?]
+                                    [:perm_type :keyword]
+                                    [:perm_value :keyword]]]]])
+
+(api.macros/defendpoint :get "/" :- permissions-response-schema
   "List all metabot permissions for all groups, filling in defaults for missing entries."
   []
   (api/check-superuser)
   (all-permissions))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :put "/"
+(api.macros/defendpoint :put "/" :- permissions-response-schema
   "Update metabot permissions for all groups. Upserts each permission entry and returns the full
    permissions list with defaults filled in."
   [_route-params
@@ -60,7 +64,6 @@
                                             :perm_value perm-value-kw})))))
   (all-permissions))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (defn- simplify-permissions
   "Convert a keyword-keyed permissions map to simple string keys and values for JSON.
   e.g. {:permission/metabot :yes} → {\"metabot\" \"yes\"}"

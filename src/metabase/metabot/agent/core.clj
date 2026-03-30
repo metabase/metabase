@@ -586,8 +586,8 @@
                              (scope/resolve-user-permissions api/*current-user-id*))
         scopes             (if api/*is-superuser?*
                              scope/unrestricted
-                             (scope/user-metabot-perms->scopes perms))
-        _                  (check-metabot-access! profile-id perms)]
+                             (scope/user-metabot-perms->scopes perms))]
+    (check-metabot-access! profile-id perms)
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot.agent/run-agent-loop
@@ -610,7 +610,7 @@
                                                   (drop-while #(= :continue (:status %)))
                                                   first)]
                   (prometheus/observe! :metabase-metabot/agent-iterations labels iteration)
-                    ;; Emit debug log as a data part if debug mode was active
+                  ;; Emit debug log as a data part if debug mode was active
                   (if (and debug? (seq @*debug-log*))
                     (rf result (debug-log-part @*debug-log*))
                     result))

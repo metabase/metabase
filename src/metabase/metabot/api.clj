@@ -432,9 +432,9 @@
   (handlers/routes
    (handlers/route-map-handler
     {"/metabot"      metabase.metabot.api.metabot/routes
-     "/usage"       metabase.metabot.api.usage/routes
-     "/permissions" metabase.metabot.api.permissions/routes
-     "/document"    metabase.metabot.api.document/routes
+     "/usage"        metabase.metabot.api.usage/routes
+     "/permissions"  metabase.metabot.api.permissions/routes
+     "/document"     metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
      "/slack"    metabase.slackbot.api/routes})
    (api.macros/ns-handler 'metabase.metabot.api.describe +auth)

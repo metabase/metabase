@@ -5,24 +5,12 @@
    [metabase.metabot.tools :as tools]))
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; Helpers
-;;; ──────────────────────────────────────────────────────────────────
-
-
-;;; ──────────────────────────────────────────────────────────────────
 ;;; Tool list filtering by scope (via profiles/filter-by-scope)
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest filter-by-scope-test
-  (let [;; We test the filtering behavior through wrap-tools-with-state
-        ;; since filter-by-scope is private. Instead, we test the scope
-        ;; matching behavior that filter-by-scope relies on.
-        _sql-tool    (with-meta (fn [_] {:output "sql"})
-                                {:tool-name "create_sql" :schema [:=> [:cat :map] :map] :scope "agent:sql:create"})
-        _search-tool (with-meta (fn [_] {:output "search"})
-                                {:tool-name "search" :schema [:=> [:cat :map] :map] :scope "agent:search"})
-        no-scope     (with-meta (fn [_] {:output "legacy"})
-                                {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
+(deftest ^:parallel filter-by-scope-test
+  (let [no-scope (with-meta (fn [_] {:output "legacy"})
+                            {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
 
     (testing "with unrestricted scope, all tools pass"
       (binding [scope/*current-user-scope* scope/unrestricted]
@@ -47,7 +35,7 @@
 ;;; Tool invocation scope check (via wrap-tools-with-state)
 ;;; ──────────────────────────────────────────────────────────────────
 
-(deftest wrapped-tool-scope-enforcement-test
+(deftest ^:parallel wrapped-tool-scope-enforcement-test
   (let [tool-var    (with-meta (fn [_args] {:output "success"})
                                {:tool-name "test_tool"
                                 :schema    [:=> [:cat :map] :map]
@@ -82,7 +70,7 @@
         (let [result (wrapped-fn {})]
           (is (re-find #"do not have permission" (:output result))))))))
 
-(deftest wrapped-tool-no-scope-test
+(deftest ^:parallel wrapped-tool-no-scope-test
   (let [tool-var    (with-meta (fn [_args] {:output "no-scope-tool"})
                                {:tool-name "legacy_tool"
                                 :schema    [:=> [:cat :map] :map]})
@@ -97,7 +85,7 @@
       (binding [scope/*current-user-scope* scope/unrestricted]
         (is (= {:output "no-scope-tool"} (wrapped-fn {})))))))
 
-(deftest default-scope-is-empty-test
+(deftest ^:parallel default-scope-is-empty-test
   (testing "*current-user-scope* defaults to empty set — denies all scoped tools"
     (is (= #{} scope/*current-user-scope*))
     (is (not (scope/scope-matches? scope/*current-user-scope* "agent:sql:create")))))
