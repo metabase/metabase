@@ -1153,8 +1153,7 @@
            system
            task
            util}
-   :model-imports #{:model/Session}
-   :model-exports #{:model/McpSession}}
+   :model-imports #{:model/Session}}
 
   measures
   {:team "Graphy"
