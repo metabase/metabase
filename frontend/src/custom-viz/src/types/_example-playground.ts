@@ -12,10 +12,6 @@ type MyVizSettings = {
   threshold?: number;
 };
 
-type CustomWidgetProps = {
-  options: boolean[];
-};
-
 export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
   getAssetUrl: _getAssetUrl,
 }) => {
@@ -72,6 +68,10 @@ const MyStaticVizComponent = (
   _props: CustomStaticVisualizationProps<MyVizSettings>,
 ) => {
   return null;
+};
+
+type CustomWidgetProps = {
+  options: boolean[];
 };
 
 const CustomWidget = (_props: CustomWidgetProps) => {
