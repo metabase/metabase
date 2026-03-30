@@ -4,7 +4,8 @@ databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
 
   - changeSet:
-      id: v60.mcp-session-table
+      # TODO: change back to v60.mcp-session-table after rebasing on master
+      id: v60.2026-03-27T00:00:00
       author: christruter
       comment: Create mcp_session table for durable MCP session tracking
       changes:
@@ -62,7 +63,8 @@ databaseChangeLog:
             tableName: mcp_session
 
   - changeSet:
-      id: v60.mcp-session-user-fk
+      # TODO: change back to v60.mcp-session-user-fk after rebasing on master
+      id: v60.2026-03-27T00:00:01
       author: christruter
       comment: Add foreign key from mcp_session.user_id to core_user.id
       changes:
@@ -79,7 +81,8 @@ databaseChangeLog:
             constraintName: fk_mcp_session_user_id
 
   - changeSet:
-      id: v60.mcp-session-created-at-idx
+      # TODO: change back to v60.mcp-session-created-at-idx after rebasing on master
+      id: v60.2026-03-27T00:00:02
       author: christruter
       comment: Add index on mcp_session.created_at for TTL sweep queries
       changes:
@@ -95,7 +98,25 @@ databaseChangeLog:
             indexName: idx_mcp_session_created_at
 
   - changeSet:
-      id: v60.mcp-session-embedding-session-fk
+      # TODO: change back to v60.mcp-session-embedding-session-id-idx after rebasing on master
+      id: v60.2026-03-27T00:00:03
+      author: christruter
+      comment: Add index on mcp_session.embedding_session_id for join-based cleanup deletes
+      changes:
+        - createIndex:
+            tableName: mcp_session
+            indexName: idx_mcp_session_embedding_session_id
+            columns:
+              - column:
+                  name: embedding_session_id
+      rollback:
+        - dropIndex:
+            tableName: mcp_session
+            indexName: idx_mcp_session_embedding_session_id
+
+  - changeSet:
+      # TODO: change back to v60.mcp-session-embedding-session-fk after rebasing on master
+      id: v60.2026-03-27T00:00:04
       author: christruter
       comment: Add foreign key from mcp_session.embedding_session_id to core_session.id
       changes:
@@ -110,19 +131,3 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: mcp_session
             constraintName: fk_mcp_session_embedding_session_id
-
-  - changeSet:
-      id: v60.mcp-session-embedding-session-id-idx
-      author: christruter
-      comment: Add index on mcp_session.embedding_session_id for join-based cleanup deletes
-      changes:
-        - createIndex:
-            tableName: mcp_session
-            indexName: idx_mcp_session_embedding_session_id
-            columns:
-              - column:
-                  name: embedding_session_id
-      rollback:
-        - dropIndex:
-            tableName: mcp_session
-            indexName: idx_mcp_session_embedding_session_id
