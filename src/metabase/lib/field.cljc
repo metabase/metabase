@@ -439,7 +439,8 @@
      :inherited-temporal-unit
      :lib/original-binning
      ::original-effective-type
-     ::original-temporal-unit])
+     ::original-temporal-unit
+     :qp/native-sandbox-column.force-coercion-strategy])
    {:metabase.lib.field/binning       :binning
     :metabase.lib.field/temporal-unit :temporal-unit
     :lib/ref-name                     :name
