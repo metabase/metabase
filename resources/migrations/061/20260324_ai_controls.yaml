@@ -25,10 +25,6 @@ databaseChangeLog:
                   remarks: The ID of the associated permissions group
                   constraints:
                     nullable: false
-                    referencedTableName: permissions_group
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metabot_permissions_ref_permissions_group
-                    deleteCascade: true
               - column:
                   name: perm_type
                   type: varchar(254)
@@ -53,6 +49,19 @@ databaseChangeLog:
             columns:
               - column:
                   name: group_id
+
+  - changeSet:
+      id: v61.gasgewas-fk
+      author: nvoxland
+      comment: Add foreign key on metabot_permissions.group_id referencing permissions_group
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_permissions
+            baseColumnNames: group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_metabot_permissions_ref_permissions_group
+            onDelete: CASCADE
 
   - changeSet:
       id: v61.g24da211
@@ -86,15 +95,33 @@ databaseChangeLog:
                   remarks: The tenant ID, or null for instance-wide limit
                   constraints:
                     nullable: true
-                    unique: true
-                    referencedTableName: tenant
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metabot_instance_limit_ref_tenant
-                    deleteCascade: true
               - column:
                   name: max_usage
                   type: int
                   remarks: The maximum usage value, interpreted according to the metabot-limit-type setting. Null is unlimited
+
+  - changeSet:
+      id: v61.t42424d-unique
+      author: nvoxland
+      comment: Add unique constraint on metabot_instance_limit.tenant_id
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_instance_limit
+            columnNames: tenant_id
+            constraintName: unique_metabot_instance_limit_tenant_id
+
+  - changeSet:
+      id: v61.t42424d-fk
+      author: nvoxland
+      comment: Add foreign key on metabot_instance_limit.tenant_id referencing tenant
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_instance_limit
+            baseColumnNames: tenant_id
+            referencedTableName: tenant
+            referencedColumnNames: id
+            constraintName: fk_metabot_instance_limit_ref_tenant
+            onDelete: CASCADE
 
   - changeSet:
       id: v61.gr34fp
@@ -118,17 +145,35 @@ databaseChangeLog:
                   remarks: The ID of the associated permissions group
                   constraints:
                     nullable: false
-                    unique: true
-                    referencedTableName: permissions_group
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metabot_group_limit_ref_permissions_group
-                    deleteCascade: true
               - column:
                   name: max_usage
                   type: int
                   remarks: The maximum usage value, interpreted according to the metabot-limit-type setting
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v61.gr34fp-unique
+      author: nvoxland
+      comment: Add unique constraint on metabot_group_limit.group_id
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_group_limit
+            columnNames: group_id
+            constraintName: unique_metabot_group_limit_group_id
+
+  - changeSet:
+      id: v61.gr34fp-fk
+      author: nvoxland
+      comment: Add foreign key on metabot_group_limit.group_id referencing permissions_group
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_group_limit
+            baseColumnNames: group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_metabot_group_limit_ref_permissions_group
+            onDelete: CASCADE
 
   - changeSet:
       id: v61.2026-03-30T00:00:00
