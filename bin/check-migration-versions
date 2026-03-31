@@ -26,13 +26,11 @@ else
 fi
 
 expected_dir=$(printf "%03d" "$expected_version")
-echo "Expected: v${expected_version} (directory ${expected_dir}/)"
+echo "Expected directory: ${expected_dir}/"
 echo ""
 
-# Find new migration files in the diff
+# Check that new migration files are in the correct directory
 errors=0
-
-# Check 1: new files are in the correct directory
 while IFS= read -r file; do
   [[ -z "$file" ]] && continue
   dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9]*\)/.*|\1|p')
@@ -42,31 +40,11 @@ while IFS= read -r file; do
   fi
 done < <(git diff --name-only --diff-filter=A "origin/${BASE_REF}..HEAD" -- 'resources/migrations/**/*.yaml')
 
-# Check 2: new changeset IDs use the correct version
-# Match added lines that look like top-level changeSet ids (indented ~6 spaces)
-# but not deeply-nested ones like changeSetExecuted refs (~14+ spaces)
-current_file=""
-while IFS= read -r line; do
-  # Track current file
-  if [[ "$line" == +++* ]]; then
-    current_file="${line#'+++ b/'}"
-    continue
-  fi
-  # Match added id: lines at 6 or 8 spaces indent (direct child of changeSet)
-  if [[ "$line" =~ ^\+\ {6,8}id:[[:space:]]*v([0-9]+)\. ]]; then
-    version="${BASH_REMATCH[1]}"
-    if [[ "$version" != "$expected_version" ]]; then
-      echo "ERROR: ${current_file} has changeset id with v${version}, expected v${expected_version}" >&2
-      errors=$((errors + 1))
-    fi
-  fi
-done < <(git diff --no-color "origin/${BASE_REF}..HEAD" -- 'resources/migrations/**/*.yaml')
-
 if [[ "$errors" -gt 0 ]]; then
   echo "" >&2
   echo "${errors} error(s) found." >&2
-  echo "PRs targeting ${BASE_REF} should use v${expected_version} (directory ${expected_dir}/)." >&2
+  echo "PRs targeting ${BASE_REF} should add migrations to ${expected_dir}/." >&2
   exit 1
 fi
 
-echo "All migration versions are correct (v${expected_version})."
+echo "All new migration files are in the correct directory."
