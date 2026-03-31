@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
+import { isNotNull } from "metabase/lib/types";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -45,7 +46,8 @@ import {
   createSourceId,
 } from "../utils/source-ids";
 import {
-  createTabFromDimension,
+  type TabInfo,
+  createTabFromTabInfo,
   getDimensionsByType,
   resolveCommonTabLabel,
 } from "../utils/tabs";
@@ -78,7 +80,7 @@ export interface UseMetricsViewerResult {
   swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   removeMetric: (id: number, sourceType: "metric" | "measure") => void;
   changeTab: (tabId: string) => void;
-  addAndSelectTab: (dimensionId: string) => void;
+  addAndSelectTab: (tabInfo: TabInfo) => void;
   removeTab: (tabId: string) => void;
   updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
@@ -296,8 +298,13 @@ export function useMetricsViewer({
     return result;
   }, [definitionValues]);
 
-  const existingTabIds = useMemo(
-    () => new Set(state.tabs.map((tab) => tab.id)),
+  const existingTabDimensionIds = useMemo(
+    () =>
+      new Set(
+        state.tabs
+          .flatMap((tab) => Object.values(tab.dimensionMapping))
+          .filter(isNotNull),
+      ),
     [state.tabs],
   );
 
@@ -335,9 +342,9 @@ export function useMetricsViewer({
       getAvailableDimensionsForPicker(
         definitionsBySourceId,
         sourceOrder,
-        existingTabIds,
+        existingTabDimensionIds,
       ),
-    [definitionsBySourceId, sourceOrder, existingTabIds],
+    [definitionsBySourceId, sourceOrder, existingTabDimensionIds],
   );
 
   const addMetric = useCallback(
@@ -378,12 +385,8 @@ export function useMetricsViewer({
   );
 
   const addAndSelectTab = useCallback(
-    (dimensionId: string) => {
-      const newTab = createTabFromDimension(
-        dimensionId,
-        definitionsBySourceId,
-        sourceOrder,
-      );
+    (tabInfo: TabInfo) => {
+      const newTab = createTabFromTabInfo(tabInfo);
       if (!newTab) {
         return;
       }
@@ -391,7 +394,7 @@ export function useMetricsViewer({
       addTab(newTab);
       changeTab(newTab.id);
     },
-    [definitionsBySourceId, sourceOrder, addTab, changeTab],
+    [addTab, changeTab],
   );
 
   const updateActiveTab = useCallback(

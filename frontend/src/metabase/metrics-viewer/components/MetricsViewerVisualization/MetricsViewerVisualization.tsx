@@ -103,6 +103,7 @@ export function MetricsViewerVisualization({
                   mode={clickActionsMode}
                   onChangeCardAndRun={noop}
                   autoAdjustSettings
+                  isMetricsViewer
                 />
               </DebouncedFrame>
             </Stack>

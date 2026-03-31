@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
 import { Icon, Skeleton, Tabs } from "metabase/ui";
 
 import type {
@@ -23,7 +24,7 @@ type MetricsViewerTabsProps = {
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   onTabChange: (tabId: string) => void;
-  onAddTab: (dimensionId: string) => void;
+  onAddTab: (tabInfo: TabInfo) => void;
   onRemoveTab: (tabId: string) => void;
 };
 

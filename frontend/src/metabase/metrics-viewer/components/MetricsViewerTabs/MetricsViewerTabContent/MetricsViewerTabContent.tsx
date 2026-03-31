@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
@@ -158,7 +159,7 @@ export function MetricsViewerTabContent({
     for (const series of rawSeries) {
       const cols = series.data.cols;
       if (!cols.some((col) => isMetric(col))) {
-        return "Non-numeric metrics are not supported";
+        return t`Non-numeric metrics are not supported`;
       }
     }
     for (const id of metricSourceIds) {

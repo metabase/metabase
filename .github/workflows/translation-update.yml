@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   synchronize-translations:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: Synchronize Translations
     env:
       BRANCH_NAME: update-translations-${{ github.run_id }}

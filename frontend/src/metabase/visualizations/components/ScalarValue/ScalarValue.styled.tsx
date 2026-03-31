@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-const TITLE_LINE_HEIGHT_REM = 1.4;
-
 export const ScalarRoot = styled.div`
   position: relative;
   display: flex;
@@ -32,18 +30,4 @@ export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
     color: ${({ disableHover }) =>
       disableHover ? undefined : "var(--mb-color-brand)"};
   }
-`;
-
-interface ScalarTitleContainerProps {
-  lines: number;
-}
-
-export const ScalarTitleContainer = styled.div<ScalarTitleContainerProps>`
-  line-height: ${TITLE_LINE_HEIGHT_REM}rem;
-  max-height: ${(props) => props.lines * TITLE_LINE_HEIGHT_REM}rem;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 0 var(--mantine-spacing-sm);
-  width: 100%;
 `;

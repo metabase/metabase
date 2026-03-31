@@ -22,8 +22,6 @@ import {
   getTabConfig,
 } from "./tab-config";
 
-export const SCALAR_TAB_DIMENSION_ID = "\0_scalar";
-
 // ── Dimension classification ──
 
 export function getDimensionIcon(dimension: DimensionMetadata): IconName {
@@ -473,52 +471,35 @@ export function computeDefaultTabs(
 
 // ── Manual tab creation ──
 
-export function createTabFromDimension(
-  dimensionId: string,
-  definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  sourceOrder: MetricSourceId[],
+export interface TabInfo {
+  type: MetricsViewerTabType;
+  label: string;
+  dimensionMapping: Record<MetricSourceId, string>;
+}
+
+export function createTabFromTabInfo(
+  tabInfo: TabInfo,
 ): MetricsViewerTabState | null {
-  if (dimensionId === SCALAR_TAB_DIMENSION_ID) {
+  const { type, label, dimensionMapping } = tabInfo;
+  if (type === "scalar") {
     return createScalarTab();
   }
-
-  const mapping: Record<MetricSourceId, string> = {};
-  let tabType: MetricsViewerTabType = "category";
-  let displayName: string | null = null;
-
-  for (const sourceId of sourceOrder) {
-    const def = definitionsBySourceId[sourceId];
-    if (!def) {
-      continue;
-    }
-
-    const dimensionInfo = getDimensionsByType(def).get(dimensionId);
-    if (!dimensionInfo) {
-      continue;
-    }
-
-    mapping[sourceId] = dimensionId;
-    tabType = dimensionInfo.dimensionType;
-    displayName ??= dimensionInfo.displayName;
-  }
-
-  if (Object.keys(mapping).length === 0) {
+  const id = Object.values(dimensionMapping)[0];
+  if (id == null) {
     return null;
   }
-
-  const display = getTabConfig(tabType).defaultDisplayType;
-
+  const display = getTabConfig(type).defaultDisplayType;
   return {
-    id: dimensionId,
-    type: tabType,
-    label: displayName ?? dimensionId,
+    id,
+    type,
+    label,
     display,
-    dimensionMapping: mapping,
+    dimensionMapping,
     projectionConfig: {},
   };
 }
 
-export function createScalarTab(): MetricsViewerTabState | null {
+function createScalarTab(): MetricsViewerTabState | null {
   const config = getTabConfig("scalar");
   if (config.matchMode !== "aggregate") {
     return null;
