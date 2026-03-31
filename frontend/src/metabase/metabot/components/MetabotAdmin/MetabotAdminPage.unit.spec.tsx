@@ -153,6 +153,15 @@ const getLastSettingUpdateCall = (settingKey: string) =>
     `path:/api/setting/${encodeURIComponent(settingKey)}`,
   );
 
+const setupEmbeddingPlugin = () => {
+  mockSettings({
+    "token-features": createMockTokenFeatures({
+      embedding_sdk: true,
+    }),
+  });
+  setupEnterprisePlugins();
+};
+
 const setupContentVerificationPlugin = () => {
   mockSettings({
     "token-features": createMockTokenFeatures({
@@ -216,7 +225,14 @@ describe("MetabotAdminPage", () => {
     expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
   });
 
-  it("should render the metabots list", async () => {
+  it("should not show Embedded Metabot nav item without embedding features", async () => {
+    await setup();
+    expect(await screen.findByText("Metabot")).toBeInTheDocument();
+    expect(screen.queryByText("Embedded Metabot")).not.toBeInTheDocument();
+  });
+
+  it("should show Embedded Metabot nav item with embedding features", async () => {
+    setupEmbeddingPlugin();
     await setup();
     expect(await screen.findByText("Metabot")).toBeInTheDocument();
     expect(screen.getByText("Embedded Metabot")).toBeInTheDocument();
@@ -230,12 +246,31 @@ describe("MetabotAdminPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("should redirect from embedded metabot page to default without embedding features", async () => {
+    const { history } = await setup(
+      FIXED_METABOT_IDS.EMBEDDED,
+      defaultMetabots,
+      defaultSeedCollections,
+      false,
+      createMockSettings({ "llm-metabot-configured?": true }),
+      false,
+    );
+
+    await waitFor(() => {
+      expect(history?.getCurrentLocation()?.pathname).toBe(
+        `/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`,
+      );
+    });
+  });
+
   it("should render a selected collection for embedded metabot", async () => {
+    setupEmbeddingPlugin();
     await setup(FIXED_METABOT_IDS.EMBEDDED);
     expect(await screen.findByText("Collection Two")).toBeInTheDocument();
   });
 
   it("should render a root collection if collection_id is null for metabot", async () => {
+    setupEmbeddingPlugin();
     await setup(FIXED_METABOT_IDS.EMBEDDED, [
       createMockMetabotInfo({
         id: FIXED_METABOT_IDS.EMBEDDED,
@@ -248,6 +283,7 @@ describe("MetabotAdminPage", () => {
   });
 
   it("should be able to switch between metabots", async () => {
+    setupEmbeddingPlugin();
     await setup(FIXED_METABOT_IDS.DEFAULT);
     expect(await screen.findByText("Configure Metabot")).toBeInTheDocument();
 
@@ -257,6 +293,7 @@ describe("MetabotAdminPage", () => {
   });
 
   it("should change selected collection for embedded metabot", async () => {
+    setupEmbeddingPlugin();
     await setup(FIXED_METABOT_IDS.EMBEDDED);
 
     expect(
@@ -293,6 +330,7 @@ describe("MetabotAdminPage", () => {
   });
 
   it("should show special copy for embedded metabot", async () => {
+    setupEmbeddingPlugin();
     await setup(FIXED_METABOT_IDS.EMBEDDED);
 
     expect(
@@ -301,6 +339,7 @@ describe("MetabotAdminPage", () => {
   });
 
   it("should toggle embedded metabot enabled state", async () => {
+    setupEmbeddingPlugin();
     await setup(FIXED_METABOT_IDS.EMBEDDED);
 
     // Shows title but NOT description for embedded
