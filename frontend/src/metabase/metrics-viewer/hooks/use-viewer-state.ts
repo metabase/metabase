@@ -15,6 +15,7 @@ import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
@@ -24,6 +25,7 @@ import type {
 } from "../types/viewer-state";
 import { getInitialMetricsViewerPageState } from "../types/viewer-state";
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
+import { getEffectiveDefinitionEntry } from "../utils/definition-entries";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -157,7 +159,7 @@ export interface UseViewerStateResult {
     definitionId: MetricSourceId,
   ) => void;
   setBreakoutDimension: (
-    id: MetricSourceId,
+    entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
 
@@ -297,10 +299,21 @@ export function useViewerState(): UseViewerStateResult {
           return prev;
         }
 
-        const { [oldId]: _, ...rest } = prev.definitions;
-        const newDefinitions = { ...rest, [newEntry.id]: newEntry };
+        // Check if any expression token still references the old sourceId.
+        // If so, keep the old definition so the expression remains valid.
+        const expressionStillReferencesOld = prev.formulaEntities.some(
+          (fe) =>
+            fe.type === "expression" &&
+            fe.tokens.some((t) => t.type === "metric" && t.sourceId === oldId),
+        );
 
-        // Update formulaEntities: replace the old metric ref with the new one
+        const { [oldId]: _oldDef, ...rest } = prev.definitions;
+        const newDefinitions = expressionStillReferencesOld
+          ? { ...prev.definitions, [newEntry.id]: newEntry }
+          : { ...rest, [newEntry.id]: newEntry };
+
+        // Update formulaEntities: replace standalone metric refs with the new one
+        // (expression tokens keep referencing the old sourceId)
         const newFormulaEntities = prev.formulaEntities.map((fe) => {
           if (fe.type === "metric" && fe.id === oldId) {
             return { ...newEntry, type: "metric" as const };
@@ -447,32 +460,38 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const setBreakoutDimension = useCallback(
-    (id: MetricSourceId, dimension: ProjectionClause | undefined) =>
+    (entity: MetricDefinitionEntry, dimension: ProjectionClause | undefined) =>
       setState((prev) => {
-        const entry = prev.definitions[id];
-        if (!entry || !entry.definition) {
+        const defEntry = getEffectiveDefinitionEntry(entity, prev.definitions);
+        if (!defEntry?.definition) {
           return prev;
         }
 
-        let newDefinition = entry.definition;
-        const existingProjections = LibMetric.projections(newDefinition);
-        for (const proj of existingProjections) {
-          newDefinition = LibMetric.removeClause(newDefinition, proj);
+        const entityIndex = prev.formulaEntities.indexOf(entity);
+        if (entityIndex === -1) {
+          return prev;
         }
 
+        let newDefinition: MetricDefinition | null = null;
+
         if (dimension) {
-          newDefinition = buildBinnedBreakoutDefinition(
-            newDefinition,
-            dimension,
-          );
+          let baseDef = defEntry.definition;
+          const existingProjections = LibMetric.projections(baseDef);
+          for (const proj of existingProjections) {
+            baseDef = LibMetric.removeClause(baseDef, proj);
+          }
+          newDefinition = buildBinnedBreakoutDefinition(baseDef, dimension);
         }
+
+        const newEntities = [...prev.formulaEntities];
+        newEntities[entityIndex] = {
+          ...entity,
+          definition: newDefinition,
+        };
 
         return {
           ...prev,
-          definitions: {
-            ...prev.definitions,
-            [id]: { ...entry, definition: newDefinition },
-          },
+          formulaEntities: newEntities,
         };
       }),
     [],

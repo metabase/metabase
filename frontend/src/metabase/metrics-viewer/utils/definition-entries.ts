@@ -1,6 +1,10 @@
 import * as LibMetric from "metabase-lib/metric";
 
-import type { MetricsViewerDefinitionEntry } from "../types/viewer-state";
+import type {
+  MetricDefinitionEntry,
+  MetricSourceId,
+  MetricsViewerDefinitionEntry,
+} from "../types/viewer-state";
 
 export function getEntryBreakout(
   entry: MetricsViewerDefinitionEntry,
@@ -14,6 +18,21 @@ export function getEntryBreakout(
 
 export function entryHasBreakout(entry: MetricsViewerDefinitionEntry): boolean {
   return getEntryBreakout(entry) !== undefined;
+}
+
+/**
+ * Returns a definition entry with the "effective" definition for a formula entity.
+ * If the entity has a per-instance definition (e.g. with breakout applied), uses that.
+ * Otherwise falls back to the pristine definition from the shared definitions map.
+ */
+export function getEffectiveDefinitionEntry(
+  entity: MetricDefinitionEntry,
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+): MetricDefinitionEntry {
+  return {
+    ...entity,
+    definition: entity.definition ?? definitions[entity.id]?.definition ?? null,
+  };
 }
 
 /**

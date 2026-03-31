@@ -21,17 +21,22 @@ export type MetricsViewerPageProps = {
 };
 
 export function MetricsViewerPage(props: MetricsViewerPageProps) {
+  const useMetricsViewerResult = useMetricsViewer(props);
+
+  // eslint-disable-next-line no-console
+  console.log("useMetricsViewer", useMetricsViewerResult);
+
   const {
     definitions,
     formulaEntities,
     tabs,
     activeTab,
     activeTabId,
-    resultsByDefinitionId,
+    resultsByEntityIndex,
     errorsByDefinitionId,
-    modifiedDefinitions,
+    modifiedDefinitionsByIndex,
     sourceColors,
-    breakoutValuesBySourceId,
+    breakoutValuesByEntityIndex,
     selectedMetrics,
     sourceOrder,
     sourceDataById,
@@ -50,7 +55,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     updateDefinition,
     setBreakoutDimension,
     setFormulaEntities,
-  } = useMetricsViewer(props);
+  } = useMetricsViewerResult;
 
   const hasDefinitions = Object.keys(definitions).length > 0;
   const hasLoadedDefinitions = Object.values(definitions).some(
@@ -107,9 +112,9 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   definitions={definitions}
                   formulaEntities={formulaEntities}
                   tab={activeTab}
-                  resultsByDefinitionId={resultsByDefinitionId}
+                  resultsByEntityIndex={resultsByEntityIndex}
                   errorsByDefinitionId={errorsByDefinitionId}
-                  modifiedDefinitions={modifiedDefinitions}
+                  modifiedDefinitionsByIndex={modifiedDefinitionsByIndex}
                   sourceColors={sourceColors}
                   isExecuting={isExecuting}
                   expressionItems={expressionItems}
@@ -126,8 +131,9 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
               ) : null}
             </Flex>
             <BreakoutLegend
+              formulaEntities={formulaEntities}
               definitions={definitions}
-              breakoutValuesBySourceId={breakoutValuesBySourceId}
+              breakoutValuesByEntityIndex={breakoutValuesByEntityIndex}
               sourceColors={sourceColors}
             />
           </Flex>

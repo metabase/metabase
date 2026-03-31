@@ -1,17 +1,26 @@
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
+import { buildExpressionText } from "metabase/metrics-viewer/components/MetricSearch/utils";
 import * as LibMetric from "metabase-lib/metric";
 import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  SourceColorMap,
+import {
+  type MetricDefinitionEntry,
+  type MetricSourceId,
+  type MetricsViewerDefinitionEntry,
+  type MetricsViewerFormulaEntity,
+  type SourceColorMap,
+  isExpressionEntry,
 } from "../types/viewer-state";
+import { isMetricEntry } from "../types/viewer-state";
 
 import { getDefinitionName } from "./definition-builder";
-import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
+import {
+  entryHasBreakout,
+  getEffectiveDefinitionEntry,
+  getEntryBreakout,
+} from "./definition-entries";
 
 export interface LegendItem {
   label: string;
@@ -19,49 +28,76 @@ export interface LegendItem {
 }
 
 export interface LegendGroup {
+  key: number;
   header: string;
   subtitle?: string;
   items: LegendItem[];
 }
 
 export function buildLegendGroups(
+  formulaEntities: MetricsViewerFormulaEntity[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>,
+  breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>,
   sourceColors: SourceColorMap,
 ): LegendGroup[] {
-  const entries = Object.values(definitions);
-  const hasAnyBreakout = entries.some((entry) => entryHasBreakout(entry));
+  const hasAnyBreakout = formulaEntities.some((entity) => {
+    if (!isMetricEntry(entity)) {
+      return false;
+    }
+    return entryHasBreakout(getEffectiveDefinitionEntry(entity, definitions));
+  });
+
   if (!hasAnyBreakout) {
     return [];
   }
 
+  const metricEntries = Object.values(definitions).map(
+    (e): MetricDefinitionEntry => ({ ...e, type: "metric" as const }),
+  );
+
   const groups: LegendGroup[] = [];
 
-  for (const entry of entries) {
-    if (!entry.definition) {
-      continue;
-    }
-
-    const colors = sourceColors[entry.id];
+  formulaEntities.forEach((entity, entityIndex) => {
+    const colors = sourceColors[entityIndex];
     if (!colors || colors.length === 0) {
-      continue;
+      return;
     }
 
-    const definitionName = getDefinitionName(entry.definition);
-    const breakoutProjection = getEntryBreakout(entry);
+    if (isExpressionEntry(entity)) {
+      const definitionName = buildExpressionText(entity.tokens, metricEntries);
+
+      groups.push({
+        key: entityIndex,
+        header: definitionName,
+        items: [{ label: definitionName, color: colors[0] }],
+      });
+
+      return;
+    }
+
+    const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
+    if (!effectiveEntry.definition) {
+      return;
+    }
+
+    const pristineDef = definitions[entity.id];
+    const definitionName = getDefinitionName(
+      pristineDef?.definition ?? effectiveEntry.definition,
+    );
+    const breakoutProjection = getEntryBreakout(effectiveEntry);
 
     if (breakoutProjection) {
-      const response = breakoutValuesBySourceId.get(entry.id);
+      const response = breakoutValuesByEntityIndex.get(entityIndex);
       if (!response || response.values.length === 0) {
-        continue;
+        return;
       }
 
       const rawDimension = LibMetric.projectionDimension(
-        entry.definition,
+        effectiveEntry.definition,
         breakoutProjection,
       );
       const dimensionInfo = rawDimension
-        ? LibMetric.displayInfo(entry.definition, rawDimension)
+        ? LibMetric.displayInfo(effectiveEntry.definition, rawDimension)
         : null;
 
       const items: LegendItem[] = response.values.map((val, index) => ({
@@ -76,24 +112,26 @@ export function buildLegendGroups(
       const header =
         dimensionInfo?.longDisplayName ?? dimensionInfo?.displayName;
       if (!header) {
-        continue;
+        return;
       }
 
       groups.push({
+        key: entityIndex,
         header,
         subtitle: definitionName ?? undefined,
         items,
       });
     } else {
       if (!definitionName) {
-        continue;
+        return;
       }
       groups.push({
+        key: entityIndex,
         header: definitionName,
         items: [{ label: definitionName, color: colors[0] }],
       });
     }
-  }
+  });
 
   return groups;
 }

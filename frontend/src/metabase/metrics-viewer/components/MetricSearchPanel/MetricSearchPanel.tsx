@@ -6,12 +6,15 @@ import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
+  SourceIdColorMap,
 } from "../../types/viewer-state";
+import { isMetricEntry } from "../../types/viewer-state";
 import { FilterPopover } from "../FilterPopover";
 import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
 import { MetricSearch } from "../MetricSearch";
@@ -29,7 +32,7 @@ type MetricSearchPanelProps = {
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
-    id: MetricSourceId,
+    entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
   onUpdateDefinition: (
@@ -52,15 +55,27 @@ export function MetricSearchPanel({
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
-  const readyDefinitions: DefinitionSource[] = useMemo(
-    () =>
-      Object.values(definitions).flatMap((definition) =>
-        definition.definition != null
-          ? [{ id: definition.id, definition: definition.definition }]
-          : [],
-      ),
-    [definitions],
-  );
+  const readyDefinitions: DefinitionSource[] = useMemo(() => {
+    // TODO: replace with formulaEntities
+    return Object.values(definitions).flatMap((definition) =>
+      definition.definition != null
+        ? [{ id: definition.id, definition: definition.definition }]
+        : [],
+    );
+  }, [definitions]);
+
+  const sourceIdColors = useMemo((): SourceIdColorMap => {
+    const map: SourceIdColorMap = {};
+    formulaEntities.forEach((entity, index) => {
+      if (isMetricEntry(entity) && !(entity.id in map)) {
+        const colors = metricColors[index];
+        if (colors) {
+          map[entity.id] = colors;
+        }
+      }
+    });
+    return map;
+  }, [formulaEntities, metricColors]);
 
   const filterCount = useMemo(
     () =>
@@ -83,7 +98,7 @@ export function MetricSearchPanel({
         {hasDefinitions && (
           <FilterPopover
             definitions={readyDefinitions}
-            metricColors={metricColors}
+            metricColors={sourceIdColors}
             onUpdateDefinition={onUpdateDefinition}
           >
             <Button.Group>
@@ -148,7 +163,7 @@ export function MetricSearchPanel({
           >
             <MetricsFilterPills
               definitions={readyDefinitions}
-              sourceColors={metricColors}
+              sourceColors={sourceIdColors}
               onUpdateDefinition={onUpdateDefinition}
             />
           </Box>

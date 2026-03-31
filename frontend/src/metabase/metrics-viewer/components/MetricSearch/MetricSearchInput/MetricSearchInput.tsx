@@ -18,6 +18,7 @@ import type {
   SourceColorMap,
 } from "../../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
+import { getEffectiveDefinitionEntry } from "../../../utils/definition-entries";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -32,6 +33,7 @@ import {
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
+  reconcileBreakoutState,
   removeUnmatchedParens,
   validateExpression,
 } from "../utils";
@@ -54,7 +56,7 @@ type MetricSearchInputProps = {
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
-    id: MetricSourceId,
+    entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
 };
@@ -202,9 +204,15 @@ export function MetricSearchInput({
       metricEntriesRef.current,
     );
 
+    // Preserve per-instance breakout definitions from old formula entities
+    const reconciledEntities = reconcileBreakoutState(
+      parsedEntities,
+      formulaEntitiesRef.current,
+    );
+
     // Find which metric sourceIds are referenced in the parsed entities
     const referencedSourceIds = new Set<MetricSourceId>();
-    for (const entry of parsedEntities) {
+    for (const entry of reconciledEntities) {
       if (isMetricEntry(entry)) {
         referencedSourceIds.add(entry.id);
       } else if (isExpressionEntry(entry)) {
@@ -232,7 +240,7 @@ export function MetricSearchInput({
       }
     }
 
-    onFormulaEntitiesChange(parsedEntities);
+    onFormulaEntitiesChange(reconciledEntities);
     isEditingSessionActiveRef.current = false;
     setIsFocused(false);
     setIsOpen(false);
@@ -610,23 +618,22 @@ export function MetricSearchInput({
                 if (!metric) {
                   return null;
                 }
-                const defEntry = definitions[entry.id];
+                const definition = getEffectiveDefinitionEntry(
+                  entry,
+                  definitions,
+                );
                 return (
                   <span key={`${entry.id}-${entryIndex}`}>
                     <MetricPill
                       metric={metric}
-                      colors={metricColors[entry.id]}
-                      definitionEntry={
-                        defEntry
-                          ? { ...defEntry, type: "metric" as const }
-                          : entry
-                      }
+                      colors={metricColors[entryIndex]}
+                      definitionEntry={definition}
                       onSwap={onSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)
                       }
                       onSetBreakout={(dimension) =>
-                        onSetBreakout(entry.id, dimension)
+                        onSetBreakout(entry, dimension)
                       }
                     />
                   </span>
@@ -634,25 +641,9 @@ export function MetricSearchInput({
               }
 
               if (isExpressionEntry(entry)) {
-                // One primary color per unique metric in the expression
-                const expressionColors = (() => {
-                  const seen = new Set<string>();
-                  const result: string[] = [];
-                  for (const tok of entry.tokens) {
-                    if (tok.type !== "metric") {
-                      continue;
-                    }
-                    const key = String(tok.sourceId);
-                    if (!seen.has(key)) {
-                      seen.add(key);
-                      const color = metricColors[tok.sourceId]?.[0];
-                      if (color !== undefined) {
-                        result.push(color);
-                      }
-                    }
-                  }
-                  return result.length > 0 ? result : undefined;
-                })();
+                const expressionColors = metricColors[entryIndex]
+                  ? [metricColors[entryIndex][0]]
+                  : undefined;
 
                 return (
                   <span key={`${entry.id}-${entryIndex}`}>

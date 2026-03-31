@@ -11,6 +11,7 @@ import {
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
+  reconcileBreakoutState,
 } from "./utils";
 
 jest.mock("../../utils/definition-builder", () => ({
@@ -623,5 +624,115 @@ describe("getWordAtCursor — comma handling with metric entries", () => {
     // cursor after the comma+space (position 9, inside "Total")
     const result = getWordAtCursor(text, 9, [commaMetric]);
     expect(result.word).toBe("Revenue, Total");
+  });
+});
+
+describe("reconcileBreakoutState", () => {
+  const breakoutDef = {
+    "display-name": "MetricA",
+    breakout: true,
+  } as unknown as MetricDefinitionEntry["definition"];
+
+  function metricEntry(
+    sourceId: MetricSourceId,
+    definition: MetricDefinitionEntry["definition"] = null,
+  ): MetricDefinitionEntry {
+    return { id: sourceId, type: "metric", definition };
+  }
+
+  it("preserves breakout definition from old entities onto matching new entities", () => {
+    const oldEntities = [
+      metricEntry("metric:1" as MetricSourceId, breakoutDef),
+    ];
+    const newEntities = [metricEntry("metric:1" as MetricSourceId)];
+
+    const result = reconcileBreakoutState(newEntities, oldEntities);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty("definition", breakoutDef);
+  });
+
+  it("does not add breakout to entities that had no breakout before", () => {
+    const oldEntities = [metricEntry("metric:1" as MetricSourceId, null)];
+    const newEntities = [metricEntry("metric:1" as MetricSourceId)];
+
+    const result = reconcileBreakoutState(newEntities, oldEntities);
+    expect(result[0]).toHaveProperty("definition", null);
+  });
+
+  it("matches by occurrence order for duplicate sourceIds", () => {
+    const oldEntities = [
+      metricEntry("metric:1" as MetricSourceId, breakoutDef),
+      metricEntry("metric:1" as MetricSourceId, null),
+    ];
+    const newEntities = [
+      metricEntry("metric:1" as MetricSourceId),
+      metricEntry("metric:1" as MetricSourceId),
+    ];
+
+    const result = reconcileBreakoutState(newEntities, oldEntities);
+    expect(result[0]).toHaveProperty("definition", breakoutDef);
+    expect(result[1]).toHaveProperty("definition", null);
+  });
+
+  it("leaves extra new entities without breakout when old has fewer instances", () => {
+    const oldEntities = [
+      metricEntry("metric:1" as MetricSourceId, breakoutDef),
+    ];
+    const newEntities = [
+      metricEntry("metric:1" as MetricSourceId),
+      metricEntry("metric:1" as MetricSourceId),
+    ];
+
+    const result = reconcileBreakoutState(newEntities, oldEntities);
+    expect(result[0]).toHaveProperty("definition", breakoutDef);
+    expect(result[1]).toHaveProperty("definition", null);
+  });
+
+  it("ignores removed entities from old when new has fewer instances", () => {
+    const oldEntities = [
+      metricEntry("metric:1" as MetricSourceId, breakoutDef),
+      metricEntry("metric:1" as MetricSourceId, breakoutDef),
+    ];
+    const newEntities = [metricEntry("metric:1" as MetricSourceId)];
+
+    const result = reconcileBreakoutState(newEntities, oldEntities);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty("definition", breakoutDef);
+  });
+
+  it("passes through expression entries unchanged", () => {
+    const exprEntry = {
+      id: "expression:MetricA + 5" as const,
+      type: "expression" as const,
+      name: "MetricA + 5",
+      tokens: [] as ExpressionSubToken[],
+    };
+    const oldEntities = [
+      metricEntry("metric:1" as MetricSourceId, breakoutDef),
+      exprEntry,
+    ];
+    const newEntities = [
+      metricEntry("metric:1" as MetricSourceId),
+      { ...exprEntry },
+    ];
+
+    const result = reconcileBreakoutState(newEntities, oldEntities);
+    expect(result[0]).toHaveProperty("definition", breakoutDef);
+    expect(result[1]).toHaveProperty("type", "expression");
+    expect(result[1]).not.toHaveProperty("definition");
+  });
+
+  it("handles new entities with no matching old entities", () => {
+    const oldEntities = [
+      metricEntry("metric:1" as MetricSourceId, breakoutDef),
+    ];
+    const newEntities = [
+      metricEntry("metric:1" as MetricSourceId),
+      metricEntry("metric:2" as MetricSourceId),
+    ];
+
+    const result = reconcileBreakoutState(newEntities, oldEntities);
+    expect(result[0]).toHaveProperty("definition", breakoutDef);
+    expect(result[1]).toHaveProperty("definition", null);
   });
 });

@@ -28,15 +28,18 @@ import {
   getModifiedDefinition,
   toJsDefinition,
 } from "../utils/definition-cache";
-import { entryHasBreakout } from "../utils/definition-entries";
+import {
+  entryHasBreakout,
+  getEffectiveDefinitionEntry,
+} from "../utils/definition-entries";
 import { parseExpression } from "../utils/parse-expression";
 import { getTabConfig } from "../utils/tab-config";
 
 export interface UseDefinitionQueriesResult {
-  resultsByDefinitionId: Map<MetricSourceId, Dataset>;
+  resultsByEntityIndex: Map<number, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
+  modifiedDefinitionsByIndex: Map<number, MetricDefinition>;
+  breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
   isExecuting: (id: MetricSourceId) => boolean;
   /**
    * Per-expression-item results. Empty when there are no expression items
@@ -47,6 +50,7 @@ export interface UseDefinitionQueriesResult {
 }
 
 type DatasetRequest = {
+  entityIndex: number;
   sourceId: MetricSourceId;
   modifiedDefinition: MetricDefinition;
   request: { definition: JsMetricDefinition };
@@ -119,6 +123,9 @@ function buildArithmeticRequest(
     }
 
     const definition = definitions[token.sourceId];
+    if (!definition) {
+      return null; // definition not yet available (e.g. metric was just swapped)
+    }
     const modifiedDefinition = getModifiedDefinitionForTab(definition, tab);
     if (!modifiedDefinition) {
       if (!definition.definition) {
@@ -193,19 +200,21 @@ function buildQueryItems(
   const expressionItemsConfig: ExpressionItemConfig[] = [];
   const expressionItemsErrors: ExpressionItemError[] = [];
 
-  for (const entity of formulaEntities) {
+  formulaEntities.forEach((entity, index) => {
     if (isMetricEntry(entity)) {
+      const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
       const modifiedDefinition = getModifiedDefinitionForTab(
-        definitions[entity.id],
+        effectiveEntry,
         tab,
       );
 
       if (!modifiedDefinition) {
-        continue;
+        return;
       }
 
       const jsDefinition = toJsDefinition(modifiedDefinition);
       datasetRequests.push({
+        entityIndex: index,
         sourceId: entity.id,
         modifiedDefinition,
         request: { definition: jsDefinition },
@@ -230,7 +239,7 @@ function buildQueryItems(
         });
       }
     }
-  }
+  });
 
   return {
     datasetRequests,
@@ -253,37 +262,33 @@ export function useDefinitionQueries(
     );
 
   const breakoutRequests = useMemo(() => {
-    return Object.values(definitions).flatMap((entry) => {
-      if (!entry.definition || !entryHasBreakout(entry)) {
+    return formulaEntities.flatMap((entity, entityIndex) => {
+      if (!isMetricEntry(entity)) {
+        return [];
+      }
+      const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
+      if (!effectiveEntry.definition || !entryHasBreakout(effectiveEntry)) {
         return [];
       }
 
-      const jsDefinition = toJsDefinition(entry.definition);
+      const jsDefinition = toJsDefinition(effectiveEntry.definition);
 
       return [
         {
-          sourceId: entry.id,
+          entityIndex,
           request: { definition: jsDefinition },
         },
       ];
     });
-  }, [definitions]);
+  }, [formulaEntities, definitions]);
 
-  const modifiedDefinitions = useMemo(() => {
-    const map = new Map<MetricSourceId, MetricDefinition>();
-    for (const { sourceId, modifiedDefinition } of datasetRequests) {
-      map.set(sourceId, modifiedDefinition);
-    }
-
-    for (const expressionItem of expressionItemsConfig) {
-      Object.entries(expressionItem.modifiedDefinitions).forEach(
-        ([sourceId, modifiedDefinition]) => {
-          map.set(sourceId as MetricSourceId, modifiedDefinition);
-        },
-      );
+  const modifiedDefinitionsByIndex = useMemo(() => {
+    const map = new Map<number, MetricDefinition>();
+    for (const { entityIndex, modifiedDefinition } of datasetRequests) {
+      map.set(entityIndex, modifiedDefinition);
     }
     return map;
-  }, [datasetRequests, expressionItemsConfig]);
+  }, [datasetRequests]);
 
   useEffect(() => {
     const requestsToMake = [...datasetRequests, ...expressionItemsConfig];
@@ -319,6 +324,7 @@ export function useDefinitionQueries(
 
   const datasetResults = useSelector((state: State) =>
     datasetRequests.map((query) => ({
+      entityIndex: query.entityIndex,
       sourceId: query.sourceId,
       result: metricApi.endpoints.getMetricDataset.select(query.request)(state),
     })),
@@ -332,24 +338,22 @@ export function useDefinitionQueries(
 
   const breakoutResults = useSelector((state: State) =>
     breakoutRequests.map((query) => ({
-      sourceId: query.sourceId,
+      entityIndex: query.entityIndex,
       result: metricApi.endpoints.getMetricBreakoutValues.select(query.request)(
         state,
       ),
     })),
   );
 
-  const { resultsByDefinitionId, errorsByDefinitionId, isExecuting } =
+  const { resultsByEntityIndex, errorsByDefinitionId, isExecuting } =
     useMemo(() => {
-      const results = new Map<MetricSourceId, Dataset>();
+      const results = new Map<number, Dataset>();
       const errors = new Map<MetricSourceId, string>();
       const executing = new Set<MetricSourceId>();
 
-      // In mixed/expression mode only populate results for standalone sources
-      // so they don't bleed into the expression-series chart path.
-      for (const { sourceId, result } of datasetResults) {
+      for (const { entityIndex, sourceId, result } of datasetResults) {
         if (result.data) {
-          results.set(sourceId, result.data);
+          results.set(entityIndex, result.data);
         }
         if (result.error) {
           errors.set(sourceId, getErrorMessage(result.error));
@@ -360,17 +364,17 @@ export function useDefinitionQueries(
       }
 
       return {
-        resultsByDefinitionId: results,
+        resultsByEntityIndex: results,
         errorsByDefinitionId: errors,
         isExecuting: (id: MetricSourceId) => executing.has(id),
       };
     }, [datasetResults]);
 
-  const breakoutValuesBySourceId = useMemo(() => {
-    const map = new Map<MetricSourceId, MetricBreakoutValuesResponse>();
-    for (const { sourceId, result } of breakoutResults) {
+  const breakoutValuesByEntityIndex = useMemo(() => {
+    const map = new Map<number, MetricBreakoutValuesResponse>();
+    for (const { entityIndex, result } of breakoutResults) {
       if (result.data) {
-        map.set(sourceId, result.data);
+        map.set(entityIndex, result.data);
       }
     }
     return map;
@@ -378,21 +382,25 @@ export function useDefinitionQueries(
 
   const expressionItems: ExpressionItemResult[] = useMemo(
     () => [
-      ...expressionItemsConfig.map(({ entry }, idx) => {
-        const queryResult = expressionItemQueryResults[idx];
-        return {
-          entry,
-          result: queryResult?.data ?? null,
-          isExecuting: queryResult?.isLoading ?? false,
-          requestError: queryResult?.error
-            ? getErrorMessage(queryResult.error)
-            : null,
-          expressionError: null,
-        };
-      }),
+      ...expressionItemsConfig.map(
+        ({ entry, modifiedDefinitions: exprModDefs }, idx) => {
+          const queryResult = expressionItemQueryResults[idx];
+          return {
+            entry,
+            modifiedDefinitions: exprModDefs,
+            result: queryResult?.data ?? null,
+            isExecuting: queryResult?.isLoading ?? false,
+            requestError: queryResult?.error
+              ? getErrorMessage(queryResult.error)
+              : null,
+            expressionError: null,
+          };
+        },
+      ),
       ...expressionItemsErrors.map(({ entry, error }) => {
         return {
           entry,
+          modifiedDefinitions: {},
           result: null,
           isExecuting: false,
           requestError: null,
@@ -404,10 +412,10 @@ export function useDefinitionQueries(
   );
 
   return {
-    resultsByDefinitionId,
+    resultsByEntityIndex,
     errorsByDefinitionId,
-    modifiedDefinitions,
-    breakoutValuesBySourceId,
+    modifiedDefinitionsByIndex,
+    breakoutValuesByEntityIndex,
     isExecuting,
     expressionItems,
   };

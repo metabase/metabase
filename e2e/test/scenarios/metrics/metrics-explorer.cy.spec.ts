@@ -1,4 +1,6 @@
 const { H } = cy;
+import Color from "color";
+
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -6,7 +8,6 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, ACCOUNTS_ID, FEEDBACK_ID } =
   SAMPLE_DATABASE;
 
@@ -182,6 +183,76 @@ describe("scenarios > metrics > explorer", () => {
     H.MetricsViewer.getTab(tabName).click();
   };
 
+  /**
+   * Convert CSS rgb() color string to uppercase hex (#RRGGBB).
+   */
+  const rgbToHex = (rgb: string): string => {
+    return Color(rgb).hex().toUpperCase();
+  };
+
+  /**
+   * Get hex color(s) from a search bar pill's color indicator.
+   * Returns an array of hex color strings.
+   */
+  const getPillColors = (pillIndex: number): Cypress.Chainable<string[]> => {
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    return H.MetricsViewer.searchBarPills()
+      .should("have.length.greaterThan", pillIndex)
+      .eq(pillIndex)
+      .findByTestId("color-indicator-container")
+      .children()
+      .then(($children) => {
+        const colors: string[] = [];
+        $children.each((_i, el) => {
+          const $el = Cypress.$(el);
+          // Multi-dot: backgroundColor is set; single icon: color is set
+          const bg = $el.css("background-color");
+          const fg = $el.css("color");
+          const raw =
+            bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" ? bg : fg;
+          colors.push(rgbToHex(raw));
+        });
+        return colors;
+      });
+  };
+
+  /**
+   * Assert that every color in a pill's indicator appears somewhere on the
+   * chart (as a `fill` or `stroke` attribute on an SVG `path`).
+   */
+  const assertPillColorsInChart = (pillIndex: number) => {
+    getPillColors(pillIndex).then((colors) => {
+      for (const color of colors) {
+        H.echartsContainer()
+          .find(`path[fill="${color}"], path[stroke="${color}"]`)
+          .should("exist");
+      }
+    });
+  };
+
+  /**
+   * Assert that the breakout legend dot colors match the pill colors for the
+   * given pill index.
+   */
+  const assertLegendColorsMatchPill = (pillIndex: number) => {
+    getPillColors(pillIndex).then((pillColors) => {
+      H.MetricsViewer.breakoutLegend()
+        .find("[class*=dot]")
+        .then(($dots) => {
+          const legendColors: string[] = [];
+          $dots.each((_i, el) => {
+            const bg = Cypress.$(el).css("background-color");
+            legendColors.push(rgbToHex(bg));
+          });
+
+          // Every pill color should appear in the legend
+          for (const color of pillColors) {
+            expect(legendColors).to.include(color);
+          }
+        });
+    });
+  };
+
   // ============================================================================
   // Entry Points
   // ============================================================================
@@ -321,8 +392,11 @@ describe("scenarios > metrics > explorer", () => {
   describe("Breakouts", () => {
     beforeEach(() => {
       intercedptDatasetQuery();
+      cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
+      cy.wait("@getMetric");
+      cy.findByTestId("run-expression-button").click();
       cy.wait("@dataset");
     });
 
@@ -396,6 +470,232 @@ describe("scenarios > metrics > explorer", () => {
         .findByTestId("color-indicator-container")
         .children()
         .should("have.length", 6);
+    });
+
+    it("should handle breakout independently for multiple instances of the same metric", () => {
+      cy.log(
+        "Expand formula editor and create expression with second metric instance",
+      );
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput()
+        .clear()
+        .type("Count of orders, Count of orders + Count of products");
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      cy.wait("@getMetric");
+
+      H.MetricsViewer.searchInput().type(", Count of orders");
+      cy.findByTestId("run-expression-button").click();
+
+      cy.wait("@dataset");
+
+      cy.log("Should have 2 metric pills (expression pill is separate)");
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+
+      cy.log(
+        "Two standalone instances of the same metric should have different pill colors",
+      );
+      getPillColors(0).then((pill0Colors) => {
+        getPillColors(1).then((pill1Colors) => {
+          expect(pill0Colors[0]).to.not.equal(pill1Colors[0]);
+        });
+      });
+
+      cy.log(
+        "Each standalone pill color should appear on the chart as fill or stroke",
+      );
+      assertPillColorsInChart(0);
+      assertPillColorsInChart(1);
+
+      cy.log("Apply breakout to first instance of Count of orders");
+      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.popover().findByText("Break out").click();
+      H.popover().findByText("Source").click();
+      cy.wait("@dataset");
+
+      cy.log("Breakout legend should be visible with Source values");
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: "User → Source" }).should(
+          "be.visible",
+        );
+        cy.findByText("Count of orders").should("be.visible");
+        cy.findByText("Twitter").should("be.visible");
+        cy.findByText("Facebook").should("be.visible");
+        cy.findByText("Organic").should("be.visible");
+        cy.findByText("Google").should("be.visible");
+        cy.findByText("Affiliate").should("be.visible");
+      });
+
+      cy.log("First pill should show multiple color indicators (breakout)");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      cy.log("Second pill should have single color (no breakout yet)");
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Breakout pill colors should appear on the chart");
+      assertPillColorsInChart(0);
+
+      cy.log("Non-breakout pill color should appear on the chart");
+      assertPillColorsInChart(1);
+
+      cy.log(
+        "Legend dot colors should match pill colors for breakout instance",
+      );
+      assertLegendColorsMatchPill(0);
+
+      cy.log("Apply breakout to second instance of Count of orders");
+      H.MetricsViewer.searchBarPills().eq(1).rightclick();
+      H.popover().findByText("Break out").click();
+      H.popover().findByText("Source").click();
+      cy.wait("@dataset");
+
+      cy.log("Both pills should now have multiple color indicators");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      cy.log("Both breakout pills' colors should appear on the chart");
+      assertPillColorsInChart(0);
+      assertPillColorsInChart(1);
+
+      cy.log(
+        "The two breakout pills should have different color sets (different entities)",
+      );
+      getPillColors(0).then((pill0Colors) => {
+        getPillColors(1).then((pill1Colors) => {
+          expect(pill0Colors[0]).to.not.equal(pill1Colors[0]);
+        });
+      });
+
+      cy.log("Remove breakout from first instance");
+      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.popover().findByText("Remove breakout").click();
+
+      cy.log(
+        "Legend should still be visible because second instance has breakout",
+      );
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: "User → Source" }).should(
+          "be.visible",
+        );
+      });
+
+      cy.log("First pill should have single color (breakout removed)");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Second pill should still have multiple colors");
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      cy.log("After removing breakout, pill colors should still match chart");
+      assertPillColorsInChart(0);
+      assertPillColorsInChart(1);
+    });
+
+    it("should preserve breakout state when editing formula and re-running", () => {
+      cy.log("Set up: two instances of Count of orders with an expression");
+      cy.findByTestId("metrics-formula-input").click();
+
+      H.MetricsViewer.searchInput().type(", Count of orders");
+      cy.findByTestId("run-expression-button").click();
+
+      H.MetricsViewer.searchBarPills().should("have.length", 2);
+
+      cy.log("Apply breakout to first instance of Count of orders");
+      H.MetricsViewer.searchBarPills().eq(0).rightclick();
+      H.popover().findByText("Break out").click();
+      H.popover().findByText("Source").click();
+      cy.wait("@dataset");
+
+      cy.log("Verify breakout is applied — first pill has multiple colors");
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+
+      cy.log("Enter formula edit mode and append a new metric");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(", Count of products");
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      cy.wait("@getMetric");
+
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
+
+      cy.log("Should now have 3 metric pills");
+      H.MetricsViewer.searchBarPills().should("have.length", 3);
+
+      cy.log(
+        "First pill should still have breakout — multiple color indicators preserved",
+      );
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
+
+      cy.log("Breakout legend should still be visible");
+      H.MetricsViewer.breakoutLegend().should("be.visible");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: "User → Source" }).should(
+          "be.visible",
+        );
+      });
+
+      cy.log("Newly added third pill should have single color (no breakout)");
+      H.MetricsViewer.searchBarPills()
+        .eq(2)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Second pill (standalone Count of orders) should still be single");
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 1);
+
+      cy.log("Remove second pill (standalone Count of orders)");
+      H.MetricsViewer.searchBarPills()
+        .eq(1)
+        .findByLabelText("Remove Count of orders")
+        .click();
+
+      cy.log(
+        "First pill should still have breakout — multiple color indicators preserved",
+      );
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length.greaterThan", 1);
     });
   });
 

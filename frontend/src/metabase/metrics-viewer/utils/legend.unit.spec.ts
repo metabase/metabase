@@ -8,6 +8,7 @@ import {
 } from "metabase-types/api/mocks/metric";
 
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   SourceColorMap,
@@ -89,13 +90,16 @@ describe("buildLegendGroups", () => {
     const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
       "metric:1": { id: "metric:1", definition },
     };
-    const breakoutValues = new Map<
-      MetricSourceId,
-      MetricBreakoutValuesResponse
-    >();
-    const colors: SourceColorMap = { "metric:1": ["#509EE3"] };
+    const breakoutValues = new Map<number, MetricBreakoutValuesResponse>();
+    const colors: SourceColorMap = { 0: ["#509EE3"] };
 
-    expect(buildLegendGroups(definitions, breakoutValues, colors)).toEqual([]);
+    const formulaEntities: MetricDefinitionEntry[] = [
+      { id: "metric:1", type: "metric", definition: null },
+    ];
+
+    expect(
+      buildLegendGroups(formulaEntities, definitions, breakoutValues, colors),
+    ).toEqual([]);
   });
 
   it("builds legend groups for definitions with and without breakouts", () => {
@@ -112,12 +116,18 @@ describe("buildLegendGroups", () => {
       "metric:2": { id: "metric:2", definition: ordersDefinition },
     };
 
-    const breakoutValues = new Map<
-      MetricSourceId,
-      MetricBreakoutValuesResponse
-    >([
+    const formulaEntities: MetricDefinitionEntry[] = [
+      {
+        id: "metric:1",
+        type: "metric",
+        definition: revenueDefinition,
+      },
+      { id: "metric:2", type: "metric", definition: null },
+    ];
+
+    const breakoutValues = new Map<number, MetricBreakoutValuesResponse>([
       [
-        "metric:1",
+        0,
         {
           values: ["Gadgets", "Widgets"],
           col: { name: "CATEGORY" } as any,
@@ -126,12 +136,15 @@ describe("buildLegendGroups", () => {
     ]);
 
     const colors: SourceColorMap = {
-      "metric:1": ["#509EE3", "#88BF4D"],
-      "metric:2": ["#A989C5"],
+      0: ["#509EE3", "#88BF4D"],
+      1: ["#A989C5"],
     };
 
-    expect(buildLegendGroups(definitions, breakoutValues, colors)).toEqual([
+    expect(
+      buildLegendGroups(formulaEntities, definitions, breakoutValues, colors),
+    ).toEqual([
       {
+        key: 0,
         header: "Category",
         subtitle: "Revenue",
         items: [
@@ -140,6 +153,7 @@ describe("buildLegendGroups", () => {
         ],
       },
       {
+        key: 1,
         header: "Orders",
         items: [{ label: "Orders", color: "#A989C5" }],
       },

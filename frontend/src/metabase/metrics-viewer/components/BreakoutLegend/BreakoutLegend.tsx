@@ -6,6 +6,7 @@ import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   SourceColorMap,
 } from "../../types/viewer-state";
 import { buildLegendGroups } from "../../utils/legend";
@@ -13,20 +14,27 @@ import { buildLegendGroups } from "../../utils/legend";
 import S from "./BreakoutLegend.module.css";
 
 type BreakoutLegendProps = {
+  formulaEntities: MetricsViewerFormulaEntity[];
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
+  breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
   sourceColors: SourceColorMap;
 };
 
 export function BreakoutLegend({
+  formulaEntities,
   definitions,
-  breakoutValuesBySourceId,
+  breakoutValuesByEntityIndex,
   sourceColors,
 }: BreakoutLegendProps) {
   const groups = useMemo(
     () =>
-      buildLegendGroups(definitions, breakoutValuesBySourceId, sourceColors),
-    [definitions, breakoutValuesBySourceId, sourceColors],
+      buildLegendGroups(
+        formulaEntities,
+        definitions,
+        breakoutValuesByEntityIndex,
+        sourceColors,
+      ),
+    [formulaEntities, definitions, breakoutValuesByEntityIndex, sourceColors],
   );
 
   if (groups.length === 0) {
@@ -46,7 +54,7 @@ export function BreakoutLegend({
       <Paper withBorder radius="md" p="lg">
         <Stack gap="lg">
           {groups.map((group) => (
-            <Stack key={group.header} gap="sm">
+            <Stack key={group.key} gap="sm">
               <div>
                 <Title fw="bold" size="md" lh={1.3}>
                   {group.header}
