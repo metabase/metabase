@@ -1,0 +1,66 @@
+.frame {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  pointer-events: none;
+}
+
+.bubbleWrapper {
+  max-width: 14rem;
+}
+
+.bubble {
+  border: 1px solid var(--mb-color-border);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  opacity: 1;
+  transform: translateY(0);
+
+  /* tail pointing down-right */
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: -0.45rem;
+    right: 1rem;
+    width: 0;
+    height: 0;
+    border-left: 0.45rem solid transparent;
+    border-right: 0.45rem solid transparent;
+    border-top: 0.45rem solid var(--mb-color-border);
+  }
+
+  &[data-visible="false"] {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.botWrapper {
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.bot {
+  width: 3rem;
+  height: 3rem;
+  display: block;
+  animation: bob 3s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
