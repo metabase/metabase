@@ -90,8 +90,6 @@ export const clickNextStep = async () =>
 export const skipWelcomeScreen = async () =>
   await userEvent.click(screen.getByText("Let's get started"));
 
-export const skipLanguageStep = clickNextStep;
-
 export const submitUserInfoStep = async ({
   firstName = "John",
   lastName = "Smith",

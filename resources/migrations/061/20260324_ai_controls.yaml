@@ -25,10 +25,6 @@ databaseChangeLog:
                   remarks: The ID of the associated permissions group
                   constraints:
                     nullable: false
-                    referencedTableName: permissions_group
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metabot_permissions_ref_permissions_group
-                    deleteCascade: true
               - column:
                   name: perm_type
                   type: varchar(254)
@@ -55,6 +51,19 @@ databaseChangeLog:
                   name: group_id
 
   - changeSet:
+      id: v61.gasgewas-fk
+      author: nvoxland
+      comment: Add foreign key on metabot_permissions.group_id referencing permissions_group
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_permissions
+            baseColumnNames: group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_metabot_permissions_ref_permissions_group
+            onDelete: CASCADE
+
+  - changeSet:
       id: v61.g24da211
       author: nvoxland
       comment: Add unique constraint on metabot_permissions group_id and perm_type
@@ -63,72 +72,6 @@ databaseChangeLog:
             tableName: metabot_permissions
             columnNames: group_id, perm_type
             constraintName: unique_metabot_permissions_group_id_perm_type
-
-  - changeSet:
-      id: v61.t42424d
-      author: nvoxland
-      comment: Create metabot_instance_limit table
-      changes:
-        - createTable:
-            tableName: metabot_instance_limit
-            remarks: Metabot usage limits at the instance or tenant level
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: tenant_id
-                  type: int
-                  remarks: The tenant ID, or null for instance-wide limit
-                  constraints:
-                    nullable: true
-                    unique: true
-                    referencedTableName: tenant
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metabot_instance_limit_ref_tenant
-                    deleteCascade: true
-              - column:
-                  name: max_usage
-                  type: int
-                  remarks: The maximum usage value, interpreted according to the metabot-limit-type setting. Null is unlimited
-
-  - changeSet:
-      id: v61.gr34fp
-      author: nvoxland
-      comment: Create metabot_group_limit table
-      changes:
-        - createTable:
-            tableName: metabot_group_limit
-            remarks: Metabot usage limits per group
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: group_id
-                  type: int
-                  remarks: The ID of the associated permissions group
-                  constraints:
-                    nullable: false
-                    unique: true
-                    referencedTableName: permissions_group
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metabot_group_limit_ref_permissions_group
-                    deleteCascade: true
-              - column:
-                  name: max_usage
-                  type: int
-                  remarks: The maximum usage value, interpreted according to the metabot-limit-type setting
-                  constraints:
-                    nullable: false
 
   - changeSet:
       id: v61.2026-03-30T00:00:00
