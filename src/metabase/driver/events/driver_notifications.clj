@@ -17,9 +17,13 @@
 ;;; ----------------------------------------- Topic subscription -------------------------------------------
 
 (mq/def-listener! :topic/connection-pool-invalidated [{:keys [database-id all-databases]}]
+  (binding [*out* *err*]
+    (println "[TZ-DEBUG] connection-pool-invalidated listener fired, all-databases=" all-databases "database-id=" database-id))
   (if all-databases
     (doseq [{driver :engine, :as database} (t2/select :model/Database)]
       (try
+        (binding [*out* *err*]
+          (println "[TZ-DEBUG]   invalidating pool for db" (:id database) (:engine database)))
         (driver/notify-database-updated driver database)
         (catch Throwable e
           (log/error e "Failed to notify database updated" {:id (:id database)}))))
