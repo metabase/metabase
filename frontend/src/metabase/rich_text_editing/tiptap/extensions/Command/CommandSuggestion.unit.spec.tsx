@@ -21,7 +21,6 @@ import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
-  createMockTokenFeatures,
   createMockUser,
   createMockUserMetabotPermissions,
   createMockUserPermissions,
@@ -467,9 +466,7 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is enabled", () => {
       beforeEach(() => {
-        mockSettings({
-          "token-features": createMockTokenFeatures({ metabot_v3: true }),
-        });
+        mockSettings({});
         setupEnterprisePlugins();
       });
 

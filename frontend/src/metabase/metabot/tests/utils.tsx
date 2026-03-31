@@ -152,9 +152,6 @@ export function setup(
   const settings = mockSettings({
     "llm-metabot-configured?": true,
     "is-hosted?": options?.isHosted ?? false,
-    "token-features": createMockTokenFeatures({
-      metabot_v3: true,
-    }),
   });
 
   setupEnterprisePlugins();

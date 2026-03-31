@@ -239,10 +239,6 @@
   "Is this a development instance that should have watermarks?"
   :development-mode)
 
-(define-premium-feature ^{:added "0.52.0"} enable-metabot-v3?
-  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase.metabot.core]].)"
-  :metabot-v3)
-
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
   "Should we enable modular embedding?"
@@ -334,7 +330,6 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :metabot_v3                     (enable-metabot-v3?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :remote_sync                    (enable-remote-sync?)

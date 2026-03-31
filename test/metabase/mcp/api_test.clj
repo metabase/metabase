@@ -407,18 +407,17 @@
 
 (deftest invalid-bearer-token-returns-401-test
   (testing "POST with invalid bearer token returns 401 with invalid_token error"
-    (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-        (oauth-server/reset-provider!)
-        (try
-          (let [response (mcp-request-with-bearer "totally-bogus-token" 401
-                                                  (jsonrpc-request "initialize")
-                                                  {})]
-            (is (=? {:status  401
-                     :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
-                    response)))
-          (finally
-            (oauth-server/reset-provider!)))))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server/reset-provider!)
+      (try
+        (let [response (mcp-request-with-bearer "totally-bogus-token" 401
+                                                (jsonrpc-request "initialize")
+                                                {})]
+          (is (=? {:status  401
+                   :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
+                  response)))
+        (finally
+          (oauth-server/reset-provider!))))))
 
 ;;; --------------------------------------------- Scope Filtering ---------------------------------------------------
 
@@ -465,18 +464,17 @@
 
 (deftest expired-oauth-bearer-token-returns-401-test
   (testing "POST with expired OAuth bearer token returns 401"
-    (mt/with-premium-features #{:metabot-v3}
-      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-        (t2/with-transaction [_conn nil {:rollback-only true}]
-          (oauth-server/reset-provider!)
-          (let [user-id  (mt/user->id :crowberto)
-                token    (insert-expired-oauth-token! user-id (str (random-uuid)))
-                response (mcp-request-with-bearer token 401
-                                                  (jsonrpc-request "initialize")
-                                                  {})]
-            (is (=? {:status  401
-                     :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
-                    response))))))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (oauth-server/reset-provider!)
+        (let [user-id  (mt/user->id :crowberto)
+              token    (insert-expired-oauth-token! user-id (str (random-uuid)))
+              response (mcp-request-with-bearer token 401
+                                                (jsonrpc-request "initialize")
+                                                {})]
+          (is (=? {:status  401
+                   :headers {"WWW-Authenticate" #(str/includes? % "invalid_token")}}
+                  response)))))))
 
 (deftest tools-call-scope-enforcement-test
   (testing "tool call is rejected when token scopes don't include the required scope"
