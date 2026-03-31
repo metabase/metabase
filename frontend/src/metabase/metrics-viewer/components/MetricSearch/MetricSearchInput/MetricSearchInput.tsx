@@ -27,7 +27,6 @@ import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 import {
-  buildExpressionText,
   buildFullText,
   cleanupParens,
   findInvalidRanges,
@@ -648,10 +647,8 @@ export function MetricSearchInput({
                 return (
                   <span key={`${entry.id}-${entryIndex}`}>
                     <MetricExpressionPill
-                      expressionText={buildExpressionText(
-                        entry.tokens,
-                        metricEntries,
-                      )}
+                      expressionEntry={entry}
+                      metricEntries={metricEntries}
                       colors={expressionColors}
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();

@@ -39,9 +39,9 @@ function stripOptions(expr: ExpressionRef | number | null): any {
 describe("parseExpression", () => {
   it("should parse a simple expression", () => {
     const tokens: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "+" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual(["+", ["metric", 1], ["metric", 2]]);
@@ -49,12 +49,12 @@ describe("parseExpression", () => {
 
   it("should handle parens", () => {
     const tokens: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "-" },
       { type: "open-paren" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
       { type: "operator", op: "+" },
-      { type: "metric", sourceId: "measure:3" },
+      { type: "metric", sourceId: "measure:3", count: 1 },
       { type: "close-paren" },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
@@ -67,7 +67,7 @@ describe("parseExpression", () => {
 
   it("should handle a single metric", () => {
     const tokens: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual(["metric", 1]);
@@ -75,7 +75,7 @@ describe("parseExpression", () => {
 
   it("should return null for invalid input", () => {
     const tokens: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "+" },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
@@ -85,11 +85,11 @@ describe("parseExpression", () => {
   // A + B * C  =>  A + (B * C)
   it("should respect precedence: + before *", () => {
     const tokens: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "+" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
       { type: "operator", op: "*" },
-      { type: "metric", sourceId: "metric:3" },
+      { type: "metric", sourceId: "metric:3", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual([
@@ -102,11 +102,11 @@ describe("parseExpression", () => {
   // A * B + C  =>  (A * B) + C
   it("should respect precedence: * before +", () => {
     const tokens: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "*" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
       { type: "operator", op: "+" },
-      { type: "metric", sourceId: "metric:3" },
+      { type: "metric", sourceId: "metric:3", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual([
@@ -119,11 +119,11 @@ describe("parseExpression", () => {
   // A - B / C  =>  A - (B / C)
   it("should respect precedence: - before /", () => {
     const tokens: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "-" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
       { type: "operator", op: "/" },
-      { type: "metric", sourceId: "metric:3" },
+      { type: "metric", sourceId: "metric:3", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual([
@@ -136,13 +136,13 @@ describe("parseExpression", () => {
   // A * B + C * D  =>  (A * B) + (C * D)
   it("should handle multiple high-precedence groups", () => {
     const tokens: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "*" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
       { type: "operator", op: "+" },
-      { type: "metric", sourceId: "metric:3" },
+      { type: "metric", sourceId: "metric:3", count: 1 },
       { type: "operator", op: "*" },
-      { type: "metric", sourceId: "metric:4" },
+      { type: "metric", sourceId: "metric:4", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual([
@@ -156,12 +156,12 @@ describe("parseExpression", () => {
   it("should allow parens to override precedence", () => {
     const tokens: ExpressionSubToken[] = [
       { type: "open-paren" },
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "+" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
       { type: "close-paren" },
       { type: "operator", op: "*" },
-      { type: "metric", sourceId: "metric:3" },
+      { type: "metric", sourceId: "metric:3", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual([
@@ -174,11 +174,11 @@ describe("parseExpression", () => {
   it("should handle constants in precedence expressions", () => {
     // A + 2 * B  =>  A + (2 * B)
     const tokens: ExpressionSubToken[] = [
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "+" },
       { type: "constant", value: 2 },
       { type: "operator", op: "*" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual([
@@ -193,9 +193,9 @@ describe("parseExpression", () => {
     const tokens: ExpressionSubToken[] = [
       { type: "constant", value: 8 },
       { type: "operator", op: "-" },
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "-" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual([
@@ -210,9 +210,9 @@ describe("parseExpression", () => {
     const tokens: ExpressionSubToken[] = [
       { type: "constant", value: 8 },
       { type: "operator", op: "/" },
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "/" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual([
@@ -227,9 +227,9 @@ describe("parseExpression", () => {
     const tokens: ExpressionSubToken[] = [
       { type: "constant", value: 6 },
       { type: "operator", op: "/" },
-      { type: "metric", sourceId: "metric:1" },
+      { type: "metric", sourceId: "metric:1", count: 1 },
       { type: "operator", op: "*" },
-      { type: "metric", sourceId: "metric:2" },
+      { type: "metric", sourceId: "metric:2", count: 1 },
     ];
     const expr = parseExpression(tokens, createLeafRefs(tokens));
     expect(stripOptions(expr)).toEqual([

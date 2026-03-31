@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -8,6 +9,7 @@ import * as LibMetric from "metabase-lib/metric";
 import type {
   Dataset,
   ExpressionRef,
+  InstanceFilter,
   JsMetricDefinition,
   MetricBreakoutValuesResponse,
   TypedProjection,
@@ -31,6 +33,7 @@ import {
 import {
   entryHasBreakout,
   getEffectiveDefinitionEntry,
+  getEffectiveTokenDefinitionEntry,
 } from "../utils/definition-entries";
 import { parseExpression } from "../utils/parse-expression";
 import { getTabConfig } from "../utils/tab-config";
@@ -112,6 +115,7 @@ function buildArithmeticRequest(
   const leafRefs = new Map<number, ExpressionRef>();
   const projections: TypedProjection[] = [];
   const seenProjections = new Set<string>();
+  const filters: InstanceFilter[] = [];
   const modifiedDefinitions: {
     [sourceId: MetricSourceId]: MetricDefinition;
   } = {};
@@ -122,16 +126,13 @@ function buildArithmeticRequest(
       continue;
     }
 
-    const definition = definitions[token.sourceId];
-    if (!definition) {
-      return null; // definition not yet available (e.g. metric was just swapped)
-    }
+    const definition = getEffectiveTokenDefinitionEntry(token, definitions);
     const modifiedDefinition = getModifiedDefinitionForTab(definition, tab);
     if (!modifiedDefinition) {
       if (!definition.definition) {
         return null; // still loading the metric, not an error
       }
-      return { error: `No compatible dimensions` };
+      return { error: t`No compatible dimensions` };
     }
 
     modifiedDefinitions[token.sourceId] = modifiedDefinition;
@@ -149,6 +150,7 @@ function buildArithmeticRequest(
     }
 
     const jsdef = toJsDefinition(modifiedDefinition);
+
     if (jsdef.projections) {
       for (const proj of jsdef.projections) {
         const key = `${proj.type}:${proj.id}`;
@@ -158,6 +160,13 @@ function buildArithmeticRequest(
         }
       }
     }
+
+    filters.push(
+      ...(jsdef.filters ?? []).map((f) => ({
+        "lib/uuid": uuid,
+        filter: f.filter,
+      })),
+    );
   }
 
   const expr = parseExpression(tokens, leafRefs);
@@ -170,6 +179,7 @@ function buildArithmeticRequest(
     definition: {
       expression: expr,
       projections,
+      filters,
     },
   };
 }

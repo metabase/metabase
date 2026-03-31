@@ -11,39 +11,59 @@ import type {
 } from "../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../types/viewer-state";
 import { getDefinitionName } from "../../utils/definition-builder";
+import { stampMetricCounts } from "../../utils/expression";
 
 /**
- * Builds a human-readable expression string from a single expression's
- * sub-tokens. Spaces are omitted after "(" and before ")".
+ * Returns an array of human-readable expression strings interleaved with numbers
+ * identifying when metrics are used multiple times in the expression.
  */
-export function buildExpressionText(
+export function buildExpressionForPill(
   tokens: ExpressionSubToken[],
-  metricEntries: MetricDefinitionEntry[],
-): string {
-  let result = "";
+  metricEntries: MetricsViewerDefinitionEntry[],
+): (string | number)[] {
+  const result: (string | number)[] = [];
+  let curr = "";
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     const prev = tokens[i - 1];
     if (i > 0 && prev?.type !== "open-paren" && token.type !== "close-paren") {
-      result += " ";
+      curr += " ";
     }
     if (token.type === "open-paren") {
-      result += "(";
+      curr += "(";
     } else if (token.type === "close-paren") {
-      result += ")";
+      curr += ")";
     } else if (token.type === "operator") {
-      result += token.op;
+      curr += token.op;
     } else if (token.type === "metric") {
       const entry = metricEntries.find((e) => e.id === token.sourceId);
       const name = entry?.definition
         ? getDefinitionName(entry.definition)
         : null;
-      result += name ?? "";
+      curr += name ?? "";
+      if (token.count > 1) {
+        result.push(curr);
+        curr = "";
+        result.push(token.count);
+      }
     } else if (token.type === "constant") {
-      result += String(token.value);
+      curr += String(token.value);
     }
   }
+  result.push(curr);
   return result;
+}
+
+/**
+ * Builds a human-readable expression string from a single expression's sub-tokens
+ */
+export function buildExpressionText(
+  tokens: ExpressionSubToken[],
+  metricEntries: MetricsViewerDefinitionEntry[],
+): string {
+  return buildExpressionForPill(tokens, metricEntries)
+    .filter((x) => typeof x === "string")
+    .join("");
 }
 
 /**
@@ -55,16 +75,11 @@ export function buildFullText(
   formulaEntities: MetricsViewerFormulaEntity[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
 ): string {
-  const metricEntries = Object.values(definitions)
-    .filter(
-      (e): e is MetricDefinitionEntry =>
-        "type" in e || e.definition !== undefined,
-    )
-    .map((e) => ({ ...e, type: "metric" as const }));
+  const definitionEntries = Object.values(definitions);
   return formulaEntities
     .map((entity) => {
       if (isExpressionEntry(entity)) {
-        return buildExpressionText(entity.tokens, metricEntries);
+        return buildExpressionText(entity.tokens, definitionEntries);
       }
       if (isMetricEntry(entity)) {
         const def = definitions[entity.id];
@@ -251,7 +266,7 @@ function groupTokensBySegment(
 /** Strip position info from a positioned token, dropping unknown tokens. */
 function stripPositions(token: PositionedToken): ExpressionSubToken | null {
   if (token.type === "metric") {
-    return { type: "metric", sourceId: token.sourceId };
+    return { type: "metric", sourceId: token.sourceId, count: 0 };
   }
   if (token.type === "operator") {
     return { type: "operator", op: token.op };
@@ -293,16 +308,18 @@ export function parseFullText(
       continue;
     }
 
-    const subTokens = segmentTokens
-      .map(stripPositions)
-      .filter((t): t is ExpressionSubToken => t !== null);
+    const subTokens = stampMetricCounts(
+      segmentTokens
+        .map(stripPositions)
+        .filter((t): t is ExpressionSubToken => t !== null),
+    );
 
     // Single metric reference without operators → standalone metric entry
     const firstToken = subTokens[0];
     if (subTokens.length === 1 && firstToken.type === "metric") {
       const existing = metricEntries.find((e) => e.id === firstToken.sourceId);
       if (existing) {
-        result.push(existing);
+        result.push({ ...existing }); // each formulaEntity should be a unique object
         continue;
       }
     }
@@ -588,7 +605,13 @@ export function parseFullTextWithPositions(
           !isWordChar(nextCh) ||
           !isWordChar(name[name.length - 1])
         ) {
-          tokens.push({ type: "metric", sourceId, from: i, to: nextI });
+          tokens.push({
+            type: "metric",
+            sourceId,
+            count: 0,
+            from: i,
+            to: nextI,
+          });
           i = nextI;
           matched = true;
           break;

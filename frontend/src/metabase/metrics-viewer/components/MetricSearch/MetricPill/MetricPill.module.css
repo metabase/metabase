@@ -7,7 +7,7 @@
 }
 
 .metricPill:hover {
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background-secondary);
 }
 
 .menuTarget {

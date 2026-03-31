@@ -37,7 +37,12 @@ export interface StoredMetricsViewerTab {
  * These are the building blocks of an expression definition entry.
  */
 export type ExpressionSubToken =
-  | { type: "metric"; sourceId: MetricSourceId }
+  | {
+      type: "metric";
+      sourceId: MetricSourceId;
+      count: number;
+      definition?: MetricDefinition;
+    }
   | { type: "constant"; value: number }
   | { type: "operator"; op: MathOperator }
   | { type: "open-paren" }
@@ -130,12 +135,6 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
  * metric get independent colour assignments.
  */
 export type SourceColorMap = Record<number, string[]>;
-
-/**
- * A source-ID–keyed color map used by components that work with deduplicated
- * definitions (e.g. filter pills) rather than per-instance formula entities.
- */
-export type SourceIdColorMap = Partial<Record<MetricSourceId, string[]>>;
 
 // ── Shared display types ──
 

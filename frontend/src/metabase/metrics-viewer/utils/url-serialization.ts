@@ -21,6 +21,7 @@ import { defineCompactSchema } from "./compact-schema";
 import { getEntryBreakout } from "./definition-entries";
 import type { DimensionFilterValue } from "./dimension-filters";
 import { extractDefinitionFilters } from "./dimension-filters";
+import { stampMetricCounts } from "./expression";
 
 function reviveFilter(filter: DimensionFilterValue): DimensionFilterValue {
   if (filter.type === "specific-date" || filter.type === "time") {
@@ -120,7 +121,11 @@ function deserializeSubToken(
   token: SerializedExpressionSubToken,
 ): ExpressionSubToken | null {
   if (token.type === "metric" && token.sourceId) {
-    return { type: "metric", sourceId: token.sourceId as MetricSourceId };
+    return {
+      type: "metric",
+      sourceId: token.sourceId as MetricSourceId,
+      count: 0,
+    };
   }
   if (token.type === "constant" && token.value !== undefined) {
     return { type: "constant", value: token.value };
@@ -165,9 +170,11 @@ export function deserializeFormulaEntities(
       id: entry.id as MetricExpressionId,
       type: "expression" as const,
       name: entry.name,
-      tokens: entry.tokens
-        .map(deserializeSubToken)
-        .filter((t): t is ExpressionSubToken => t !== null),
+      tokens: stampMetricCounts(
+        entry.tokens
+          .map(deserializeSubToken)
+          .filter((t): t is ExpressionSubToken => t !== null),
+      ),
       index: entry.index,
     });
   }

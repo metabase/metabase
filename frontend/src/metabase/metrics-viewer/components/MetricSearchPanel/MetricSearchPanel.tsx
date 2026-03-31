@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
@@ -12,11 +12,13 @@ import type {
   MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
-  SourceIdColorMap,
 } from "../../types/viewer-state";
-import { isMetricEntry } from "../../types/viewer-state";
+import type { DefinitionSource } from "../../utils/definition-sources";
+import {
+  applyDefinitionToFormulaEntities,
+  getDefinitionSources,
+} from "../../utils/definition-sources";
 import { FilterPopover } from "../FilterPopover";
-import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
 import { MetricSearchInput as MetricSearch } from "../MetricSearch";
 import { MetricsFilterPills } from "../MetricsFilterPills";
 
@@ -35,10 +37,6 @@ type MetricSearchPanelProps = {
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
-  onUpdateDefinition: (
-    id: MetricSourceId,
-    definition: MetricDefinition,
-  ) => void;
 };
 
 export function MetricSearchPanel({
@@ -51,43 +49,37 @@ export function MetricSearchPanel({
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
-  onUpdateDefinition,
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
-  const readyDefinitions: DefinitionSource[] = useMemo(() => {
-    // TODO: replace with formulaEntities
-    return Object.values(definitions).flatMap((definition) =>
-      definition.definition != null
-        ? [{ id: definition.id, definition: definition.definition }]
-        : [],
-    );
-  }, [definitions]);
-
-  const sourceIdColors = useMemo((): SourceIdColorMap => {
-    const map: SourceIdColorMap = {};
-    formulaEntities.forEach((entity, index) => {
-      if (isMetricEntry(entity) && !(entity.id in map)) {
-        const colors = metricColors[index];
-        if (colors) {
-          map[entity.id] = colors;
-        }
-      }
-    });
-    return map;
-  }, [formulaEntities, metricColors]);
+  const definitionSources = useMemo(
+    () => getDefinitionSources(formulaEntities, definitions),
+    [formulaEntities, definitions],
+  );
 
   const filterCount = useMemo(
     () =>
-      readyDefinitions.reduce(
-        (count, definition) =>
-          count + LibMetric.filters(definition.definition).length,
+      definitionSources.reduce(
+        (count, source) => count + LibMetric.filters(source.definition).length,
         0,
       ),
-    [readyDefinitions],
+    [definitionSources],
   );
 
-  const hasDefinitions = readyDefinitions.length > 0;
+  const handleSourceDefinitionChange = useCallback(
+    (source: DefinitionSource, newDefinition: MetricDefinition) => {
+      onFormulaEntitiesChange(
+        applyDefinitionToFormulaEntities(
+          formulaEntities,
+          source,
+          newDefinition,
+        ),
+      );
+    },
+    [formulaEntities, onFormulaEntitiesChange],
+  );
+
+  const hasDefinitions = definitionSources.length > 0;
   const hasFilters = filterCount > 0;
   const toggleLabel = isFilterPillsExpanded ? t`Hide filters` : t`Show filters`;
 
@@ -97,9 +89,9 @@ export function MetricSearchPanel({
         <Text fw={700} size="lg">{t`Explore`}</Text>
         {hasDefinitions && (
           <FilterPopover
-            definitions={readyDefinitions}
-            metricColors={sourceIdColors}
-            onUpdateDefinition={onUpdateDefinition}
+            definitionSources={definitionSources}
+            metricColors={metricColors}
+            handleSourceDefinitionChange={handleSourceDefinitionChange}
           >
             <Button.Group>
               <Button
@@ -162,9 +154,9 @@ export function MetricSearchPanel({
             bg="background-filter"
           >
             <MetricsFilterPills
-              definitions={readyDefinitions}
-              sourceColors={sourceIdColors}
-              onUpdateDefinition={onUpdateDefinition}
+              definitionSources={definitionSources}
+              sourceColors={metricColors}
+              onSourceDefinitionChange={handleSourceDefinitionChange}
             />
           </Box>
         )}

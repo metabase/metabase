@@ -7,5 +7,9 @@
 }
 
 .metricExpressionPill:hover {
-  background-color: var(--mb-color-background-brand);
+  background-color: var(--mb-color-background-secondary);
+}
+
+.expressionText {
+  white-space: pre-wrap;
 }
