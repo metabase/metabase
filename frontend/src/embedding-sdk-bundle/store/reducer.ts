@@ -15,7 +15,6 @@ import { initGuestEmbed } from "./guest-embed";
 const SET_IS_GUEST_EMBED = "sdk/SET_IS_GUEST_EMBED";
 const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
-const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 const SET_ERROR = "sdk/SET_ERROR";
 const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
@@ -26,9 +25,6 @@ export const setMetabaseInstanceVersion = createAction<string>(
 );
 export const setMetabaseClientUrl = createAction<string>(
   SET_METABASE_CLIENT_URL,
-);
-export const setLoaderComponent = createAction<null | (() => JSX.Element)>(
-  SET_LOADER_COMPONENT,
 );
 export const setErrorComponent = createAction<null | SdkErrorComponent>(
   SET_ERROR_COMPONENT,

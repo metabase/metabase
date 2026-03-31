@@ -2105,7 +2105,10 @@
                                               {:export location-path->parent-id
                                                :import parent-id->location-path}))
                :personal_owner_id (serdes/fk :model/User)
-               :workspace_id      (serdes/fk :model/Workspace)}})
+               :workspace_id      (serdes/fk :model/Workspace)}
+   :defaults {:archived         false
+              :is_sample        false
+              :is_remote_synced false}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
