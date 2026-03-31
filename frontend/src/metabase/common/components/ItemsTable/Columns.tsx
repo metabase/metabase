@@ -186,6 +186,7 @@ export const Columns = {
                   </Markdown>
                 }
                 onClick={(event) => {
+                  // On mobile devices we allow clicking on the icon to show the description
                   if (isTouchDevice()) {
                     event.stopPropagation();
                     event.preventDefault();
