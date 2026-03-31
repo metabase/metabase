@@ -1,8 +1,8 @@
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:refer-clojure :exclude [group-by last #?(:clj for)])
-  (:require
+    (:refer-clojure :exclude [group-by last #?(:clj for)])
+    (:require
    #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
              [me.flowthing.pp :as pp]
