@@ -42,8 +42,6 @@
   button,
   a,
   [role="button"] {
-    -webkit-tap-highlight-color: transparent;
-
     &:focus-visible {
       outline: 2px solid var(--mb-color-focus);
     }
