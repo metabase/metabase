@@ -60,9 +60,9 @@ if (releaseBranchMatch) {
   }
   console.log(`CURRENT_VERSION: ${currentVersionStr}`);
   expectedVersion = Number(currentVersionStr) + 1;
-  if (!Number.isInteger(expectedVersion)) {
+  if (!Number.isInteger(expectedVersion) || expectedVersion <= 0) {
     console.error(
-      `ERROR: CURRENT_VERSION '${currentVersionStr}' is not a valid integer.`,
+      `ERROR: CURRENT_VERSION must be a positive integer, got: '${currentVersionStr}'`,
     );
     process.exit(1);
   }
@@ -128,6 +128,8 @@ function getChangeSetIds(doc: ChangeLog): Set<string> {
 }
 
 function checkVersion(file: string, id: string): boolean {
+  // IDs that don't match the vN. convention are allowed — they're not version-scoped
+  // and don't need a version check (e.g. shared or legacy changesets).
   const m = id.match(/^v(\d+)\./);
   if (m && Number(m[1]) !== expectedVersion) {
     console.error(

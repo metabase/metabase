@@ -19,6 +19,12 @@ jobs:
           filter: blob:none
           fetch-depth: 0
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: yarn install --frozen-lockfile
+
       - name: Check migration versions
         env:
           BASE_REF: ${{ github.base_ref }}
