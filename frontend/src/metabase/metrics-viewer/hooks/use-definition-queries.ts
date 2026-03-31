@@ -8,6 +8,7 @@ import * as LibMetric from "metabase-lib/metric";
 import type {
   Dataset,
   ExpressionRef,
+  InstanceFilter,
   JsMetricDefinition,
   MetricBreakoutValuesResponse,
   TypedProjection,
@@ -112,6 +113,7 @@ function buildArithmeticRequest(
   const leafRefs = new Map<number, ExpressionRef>();
   const projections: TypedProjection[] = [];
   const seenProjections = new Set<string>();
+  const filters: InstanceFilter[] = [];
   const modifiedDefinitions: {
     [sourceId: MetricSourceId]: MetricDefinition;
   } = {};
@@ -122,7 +124,9 @@ function buildArithmeticRequest(
       continue;
     }
 
-    const definition = definitions[token.sourceId];
+    const definition = token.definition
+      ? { id: token.sourceId, definition: token.definition }
+      : definitions[token.sourceId];
     if (!definition) {
       return null; // definition not yet available (e.g. metric was just swapped)
     }
@@ -149,6 +153,7 @@ function buildArithmeticRequest(
     }
 
     const jsdef = toJsDefinition(modifiedDefinition);
+
     if (jsdef.projections) {
       for (const proj of jsdef.projections) {
         const key = `${proj.type}:${proj.id}`;
@@ -158,6 +163,13 @@ function buildArithmeticRequest(
         }
       }
     }
+
+    filters.push(
+      ...(jsdef.filters ?? []).map((f) => ({
+        "lib/uuid": uuid,
+        filter: f.filter,
+      })),
+    );
   }
 
   const expr = parseExpression(tokens, leafRefs);
@@ -170,6 +182,7 @@ function buildArithmeticRequest(
     definition: {
       expression: expr,
       projections,
+      filters,
     },
   };
 }

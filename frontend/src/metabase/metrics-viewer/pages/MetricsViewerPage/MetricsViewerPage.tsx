@@ -52,7 +52,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     updateActiveTab,
     changeTabDimension,
     removeTabDimension,
-    updateDefinition,
     setBreakoutDimension,
     setFormulaEntities,
   } = useMetricsViewerResult;
@@ -75,7 +74,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
           onRemoveMetric={removeMetric}
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
-          onUpdateDefinition={updateDefinition}
         />
       </Box>
       <Flex flex="1 1 auto" mih={0}>

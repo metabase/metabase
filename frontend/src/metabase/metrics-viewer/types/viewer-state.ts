@@ -37,7 +37,12 @@ export interface StoredMetricsViewerTab {
  * These are the building blocks of an expression definition entry.
  */
 export type ExpressionSubToken =
-  | { type: "metric"; sourceId: MetricSourceId }
+  | {
+      type: "metric";
+      sourceId: MetricSourceId;
+      count: number;
+      definition?: MetricDefinition;
+    }
   | { type: "constant"; value: number }
   | { type: "operator"; op: MathOperator }
   | { type: "open-paren" }

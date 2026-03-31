@@ -90,7 +90,6 @@ export interface UseMetricsViewerResult {
     dimension: DimensionMetadata,
   ) => void;
   removeTabDimension: (tabId: string, definitionId: MetricSourceId) => void;
-  updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
@@ -165,7 +164,6 @@ export function useMetricsViewer({
     state,
     loadingIds,
     removeDefinition,
-    updateDefinition,
     setFormulaEntities,
     selectTab: changeTab,
     addTab,
@@ -439,7 +437,6 @@ export function useMetricsViewer({
     updateActiveTab,
     changeTabDimension,
     removeTabDimension,
-    updateDefinition,
     setBreakoutDimension,
     setFormulaEntities,
   };

@@ -5,7 +5,7 @@ import S from "./SourceColorIndicator.module.css";
 
 type SourceColorIndicatorProps = {
   colors?: string[];
-  fallbackIcon: IconName;
+  fallbackIcon?: IconName;
   size?: number;
   limit?: number;
 };
@@ -34,10 +34,21 @@ export function SourceColorIndicator({
       </Flex>
     );
   }
-
+  if (fallbackIcon) {
+    return (
+      <Flex align="center" data-testid="color-indicator-container">
+        <Icon name={fallbackIcon} size={size} style={{ color: colors?.[0] }} />
+      </Flex>
+    );
+  }
   return (
-    <Flex align="center" data-testid="color-indicator-container">
-      <Icon name={fallbackIcon} size={size} style={{ color: colors?.[0] }} />
-    </Flex>
+    <Box
+      className={S.colorDot}
+      w={size}
+      h={size}
+      style={{
+        backgroundColor: colors?.[0] ?? "var(--mb-color-text-primary)",
+      }}
+    />
   );
 }

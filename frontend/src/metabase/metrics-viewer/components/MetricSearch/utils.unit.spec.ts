@@ -108,6 +108,7 @@ describe("cleanupParens", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
+    count: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -220,6 +221,7 @@ describe("buildExpressionText", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
+    count: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -273,6 +275,7 @@ describe("parseFullText — numeric literal parsing", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
+    count: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -408,6 +411,7 @@ describe("parseFullText — metric names with commas", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
+    count: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",

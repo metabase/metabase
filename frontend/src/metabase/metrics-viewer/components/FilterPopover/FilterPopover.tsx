@@ -1,54 +1,39 @@
 import { useCallback, useState } from "react";
 
 import { Box, Popover } from "metabase/ui";
-import type { FilterClause, MetricDefinition } from "metabase-lib/metric";
-import * as LibMetric from "metabase-lib/metric";
+import type { MetricDefinition } from "metabase-lib/metric";
 
-import type {
-  MetricSourceId,
-  SourceIdColorMap,
-} from "../../types/viewer-state";
+import type { SourceIdColorMap } from "../../types/viewer-state";
+import type { DefinitionSource } from "../../utils/definition-sources";
 
 import S from "./FilterPopover.module.css";
-import type { DefinitionSource } from "./FilterPopoverContent";
 import { FilterPopoverContent } from "./FilterPopoverContent";
 
 const POPOVER_MAX_HEIGHT = "37.5rem";
 
 interface FilterPopoverProps {
-  definitions: DefinitionSource[];
+  definitionSources: DefinitionSource[];
   metricColors: SourceIdColorMap;
-  onUpdateDefinition: (
-    id: MetricSourceId,
-    definition: MetricDefinition,
+  handleSourceDefinitionChange: (
+    source: DefinitionSource,
+    newDefinition: MetricDefinition,
   ) => void;
   children: React.ReactNode;
 }
 
 export function FilterPopover({
-  definitions,
+  definitionSources,
   metricColors,
-  onUpdateDefinition,
+  handleSourceDefinitionChange,
   children,
 }: FilterPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [contentKey, setContentKey] = useState(0);
 
-  const handleFilterApplied = useCallback(
-    (sourceId: MetricSourceId, filter: FilterClause) => {
-      const source = definitions.find(
-        (definition) => definition.id === sourceId,
-      );
-      if (!source) {
-        return;
-      }
-      const newDefinition = LibMetric.filter(source.definition, filter);
-      onUpdateDefinition(sourceId, newDefinition);
-      setIsOpen(false);
-      setContentKey((key) => key + 1);
-    },
-    [definitions, onUpdateDefinition],
-  );
+  const handleFilterApplied = useCallback(() => {
+    setIsOpen(false);
+    setContentKey((key) => key + 1);
+  }, []);
 
   const handleToggle = useCallback(() => {
     setIsOpen((prev) => !prev);
@@ -62,11 +47,12 @@ export function FilterPopover({
         </Box>
       </Popover.Target>
       <Popover.Dropdown p={0} mah={POPOVER_MAX_HEIGHT} className={S.dropdown}>
-        {definitions.length > 0 && (
+        {definitionSources.length > 0 && (
           <FilterPopoverContent
             key={contentKey}
-            definitions={definitions}
+            definitionSources={definitionSources}
             metricColors={metricColors}
+            handleSourceDefinitionChange={handleSourceDefinitionChange}
             onFilterApplied={handleFilterApplied}
           />
         )}
