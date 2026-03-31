@@ -105,10 +105,12 @@
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
+                            [:user.locale :user-locale]
+                            [:ai.provider :auth-provider]]
                 :from      [[:core_session :session]]
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]
-                            [:tenant] [:= :tenant.id :user.tenant_id]]
+                            [:tenant] [:= :tenant.id :user.tenant_id]
+                            [:auth_identity :ai] [:= :ai.id :session.auth_identity_id]]
                 :where     [:and
                             (if enable-tenants?
                               [:or [:= :tenant.id nil] :tenant.is_active]
@@ -237,11 +239,11 @@
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
         api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
-        auth-method  (cond session-info "session"
+        auth-method  (cond session-info (or (:auth-provider session-info) "session")
                            api-key-info "api-key")]
     (merge
      request
-     (or session-info api-key-info)
+     (some-> (or session-info api-key-info) (dissoc :auth-provider))
      (when auth-method {:auth-method auth-method})
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))

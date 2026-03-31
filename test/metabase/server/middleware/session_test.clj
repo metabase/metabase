@@ -120,7 +120,8 @@
             (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
                                :is-superuser?     false
                                :is-data-analyst?  false
-                               :user-locale       nil})
+                               :user-locale       nil
+                               :auth-method       "api-key"})
                    (#'mw.session/merge-current-user-info req)))))
         (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
           (when config/ee-available?
@@ -129,7 +130,8 @@
                                  :is-superuser?     false
                                  :is-data-analyst?  false
                                  :is-group-manager? false
-                                 :user-locale       nil})
+                                 :user-locale       nil
+                                 :auth-method       "api-key"})
                      (#'mw.session/merge-current-user-info req))))))))))
 
 (deftest ^:parallel current-user-info-for-api-key-test-1b
@@ -238,7 +240,8 @@
               :is-superuser? false,
               :is-group-manager? false,
               :user-locale nil
-              :is-data-analyst? false}
+              :is-data-analyst? false
+              :auth-provider nil}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
@@ -253,7 +256,8 @@
               :is-superuser? true,
               :is-group-manager? false,
               :user-locale nil
-              :is-data-analyst? false}
+              :is-data-analyst? false
+              :auth-provider nil}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
@@ -305,7 +309,8 @@
                 :is-superuser? false,
                 :is-group-manager? false,
                 :user-locale nil
-                :is-data-analyst? false}
+                :is-data-analyst? false
+                :auth-provider nil}
                (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
         (finally
           (t2/delete! :model/Session :id test-session-id)))

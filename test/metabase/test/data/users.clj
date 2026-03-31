@@ -154,8 +154,13 @@
 (mu/defn ^:private authenticate! :- ms/UUIDString
   "Create a new `:model/Session` for one of the test users."
   [username :- TestUserName]
-  (let [session-key (session/generate-session-key)]
-    (t2/insert! :model/Session {:id (session/generate-session-id) :key_hashed (session/hash-session-key session-key), :user_id (user->id username)})
+  (let [session-key  (session/generate-session-key)
+        user-id      (user->id username)
+        auth-id      (t2/select-one-pk :model/AuthIdentity :user_id user-id)]
+    (t2/insert! :model/Session (cond-> {:id (session/generate-session-id)
+                                        :key_hashed (session/hash-session-key session-key)
+                                        :user_id user-id}
+                                 auth-id (assoc :auth_identity_id auth-id)))
     session-key))
 
 (mu/defn username->token :- ms/UUIDString

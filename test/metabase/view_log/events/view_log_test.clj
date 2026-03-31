@@ -465,14 +465,14 @@
 (deftest auth-method-test
   (mt/with-premium-features #{:audit-app}
     (binding [qp.util/*execute-async?* false]
-      (testing "session-authenticated request records auth_method 'session'"
+      (testing "session-authenticated request records auth_method from auth_identity provider"
         (mt/with-temp [:model/Card card {:name "Auth Test Card" :type :question
                                          :dataset_query (mt/mbql-query venues {:limit 1})}]
           (mt/user-http-request :crowberto :post 202 (format "card/%s/query" (u/id card)))
           (let [view (latest-view (mt/user->id :crowberto) (u/id card))
                 qe   (latest-qe (:id card))]
-            (is (= "session" (:auth_method view)))
-            (is (= "session" (:auth_method qe))))))
+            (is (= "password" (:auth_method view)))
+            (is (= "password" (:auth_method qe))))))
       (testing "unauthenticated public request has nil auth_method"
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (public-test/with-temp-public-card [card]
