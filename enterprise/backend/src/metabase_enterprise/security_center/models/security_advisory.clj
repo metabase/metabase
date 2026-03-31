@@ -14,7 +14,7 @@
   {:severity          mi/transform-keyword
    :match_status      mi/transform-keyword
    :affected_versions mi/transform-json
-   :matching_query    mi/transform-json})
+   :matching_query    mi/transform-edn})
 
 (methodical/defmethod t2/batched-hydrate [:model/SecurityAdvisory :acknowledged_by]
   "Hydrate `acknowledged_by` from an int FK to a User map with `:id`, `:common_name`, and `:email`."

@@ -3103,6 +3103,8 @@
    :api  #{metabase-enterprise.security-center.api
            metabase-enterprise.security-center.models.security-advisory}
    :uses #{api
+           app-db
+           config
            events
            models
            premium-features

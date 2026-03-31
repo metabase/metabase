@@ -22,11 +22,11 @@
                         {"min" "1.55.0" "fixed" "1.55.22"}
                         {"min" "1.58.0" "fixed" "1.58.10"}
                         {"min" "1.59.0" "fixed" "1.59.4"}]
-    :matching_query    {"default" {"select" [1]
-                                   "from"   ["setting"]
-                                   "where"  ["and" ["=" "key" "serialization-enabled"]
-                                             ["=" "value" "true"]]
-                                   "limit"  1}}
+    :matching_query    {:default {:select [1]
+                                  :from   [:setting]
+                                  :where  [:and [:= :key "serialization-enabled"]
+                                           [:= :value "true"]]
+                                  :limit  1}}
     :match_status      :active
     :published_at      #t "2026-03-24T23:20:00Z"}
    {:advisory_id       "SC-2026-002"
@@ -36,10 +36,10 @@
     :advisory_url      "https://github.com/metabase/metabase/security/advisories/GHSA-example"
     :remediation       "Upgrade to the patched version."
     :affected_versions [{"min" "1.54.0" "fixed" "1.58.8"}]
-    :matching_query    {"default" {"select" [1]
-                                   "from"   ["metabase_database"]
-                                   "where"  ["in" "engine" ["redshift" "postgres"]]
-                                   "limit"  1}}
+    :matching_query    {:default {:select [1]
+                                  :from   [:metabase_database]
+                                  :where  [:in :engine ["redshift" "postgres"]]
+                                  :limit  1}}
     :match_status      :resolved
     :published_at      #t "2026-03-20T00:00:00Z"}
    {:advisory_id       "SC-2026-003"
