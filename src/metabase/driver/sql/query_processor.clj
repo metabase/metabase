@@ -924,7 +924,9 @@
           database-type        (or (h2x/database-type casted-field)
                                    (:database-type field-metadata))
           effective-type       (when-not database-type
-                                 (or (:effective-type options) (:base-type options)))
+                                 (let [et (or (:effective-type options) (:base-type options))]
+                                   (when (isa? et :type/Temporal)
+                                     et)))
           maybe-add-type-info  (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
