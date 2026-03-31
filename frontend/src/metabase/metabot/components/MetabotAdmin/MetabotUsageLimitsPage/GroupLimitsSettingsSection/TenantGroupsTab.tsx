@@ -1,43 +1,63 @@
-import { useState } from "react";
-import { t } from "ttag";
+import { useEffect, useMemo, useState } from "react";
+import { c, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Stack, Text, TextInput } from "metabase/ui";
-import type { GroupInfo } from "metabase-types/api";
+import { Box, Stack, Text, TextInput } from "metabase/ui";
+import type {
+  GroupInfo,
+  MetabotGroupLimit,
+  MetabotLimitPeriod,
+} from "metabase-types/api";
 
 import S from "./GroupLimitsSettingsSection.module.css";
-
-type TenantGroupLimits = {
-  maxTokensPerTenant: string;
-  maxTokensPerUser: string;
-};
 
 type TenantGroupsTabProps = {
   tenantGroups: GroupInfo[] | undefined;
   isLoading: boolean;
   error: unknown;
+  limitPeriod: MetabotLimitPeriod;
+  groupLimits: MetabotGroupLimit[];
+  instanceLimit: number | null;
+  onGroupLimitChange: (groupId: number, maxUsage: number | null) => void;
 };
 
 export function TenantGroupsTab({
   tenantGroups,
   isLoading,
   error,
+  limitPeriod,
+  groupLimits,
+  instanceLimit,
+  onGroupLimitChange,
 }: TenantGroupsTabProps) {
-  const [limits, setLimits] = useState<Record<number, TenantGroupLimits>>({});
+  const [localLimits, setLocalLimits] = useState<Record<number, string>>({});
 
-  const handleLimitChange = (
-    groupId: number,
-    field: keyof TenantGroupLimits,
-    value: string,
-  ) => {
-    setLimits((prev) => ({
-      ...prev,
-      [groupId]: {
-        maxTokensPerTenant: prev[groupId]?.maxTokensPerTenant ?? "",
-        maxTokensPerUser: prev[groupId]?.maxTokensPerUser ?? "",
-        [field]: value,
-      },
-    }));
+  const groupLimitsMap = useMemo(() => {
+    const map: Record<number, number> = {};
+    for (const gl of groupLimits) {
+      map[gl.group_id] = gl.max_usage;
+    }
+    return map;
+  }, [groupLimits]);
+
+  // Sync local state from API data
+  useEffect(() => {
+    const newLimits: Record<number, string> = {};
+    for (const gl of groupLimits) {
+      newLimits[gl.group_id] = String(gl.max_usage);
+    }
+    setLocalLimits(newLimits);
+  }, [groupLimits]);
+
+  const periodLabel = getPeriodLabel(limitPeriod);
+
+  const placeholder =
+    instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
+
+  const handleChange = (groupId: number, value: string) => {
+    setLocalLimits((prev) => ({ ...prev, [groupId]: value }));
+    const maxUsage = value ? Number(value) : null;
+    onGroupLimitChange(groupId, maxUsage);
   };
 
   return (
@@ -50,16 +70,15 @@ export function TenantGroupsTab({
         error={error ? t`Error loading tenant groups` : null}
       >
         {tenantGroups && (
-          <div className={S.TableContainer}>
+          <Box className={S.TableContainer}>
             <table className={S.Table}>
               <thead>
                 <tr>
                   <th className={S.HeaderCell}>{t`Tenant group`}</th>
                   <th className={S.HeaderCell}>
-                    {t`Max tokens per tenant per month`}
-                  </th>
-                  <th className={S.HeaderCell}>
-                    {t`Max tokens per user per month`}
+                    {c(
+                      "{0} indicates the limit reset period, e.g., daily, weekly, monthly",
+                    ).t`Max tokens per user each ${periodLabel}`}
                   </th>
                 </tr>
               </thead>
@@ -68,35 +87,15 @@ export function TenantGroupsTab({
                   <tr key={group.id} className={S.BodyRow}>
                     <td className={S.BodyCell}>{group.name}</td>
                     <td className={S.BodyCell}>
-                      {/* TODO: placeholder should match the Per-user {period} token limit set in GeneralLimitsSettingsSection */}
                       <TextInput
-                        placeholder={t`Unlimited`}
-                        value={limits[group.id]?.maxTokensPerTenant ?? ""}
-                        onChange={(e) =>
-                          handleLimitChange(
-                            group.id,
-                            "maxTokensPerTenant",
-                            e.target.value,
-                          )
+                        placeholder={placeholder}
+                        value={
+                          localLimits[group.id] ??
+                          (groupLimitsMap[group.id] != null
+                            ? String(groupLimitsMap[group.id])
+                            : "")
                         }
-                        classNames={{ input: S.LimitInput }}
-                        type="number"
-                        min={1}
-                        aria-label={t`Max tokens per tenant for ${group.name}`}
-                      />
-                    </td>
-                    <td className={S.BodyCell}>
-                      {/* TODO: placeholder should match the Per-user {period} token limit set in GeneralLimitsSettingsSection */}
-                      <TextInput
-                        placeholder={t`Unlimited`}
-                        value={limits[group.id]?.maxTokensPerUser ?? ""}
-                        onChange={(e) =>
-                          handleLimitChange(
-                            group.id,
-                            "maxTokensPerUser",
-                            e.target.value,
-                          )
-                        }
+                        onChange={(e) => handleChange(group.id, e.target.value)}
                         classNames={{ input: S.LimitInput }}
                         type="number"
                         min={1}
@@ -107,9 +106,21 @@ export function TenantGroupsTab({
                 ))}
               </tbody>
             </table>
-          </div>
+          </Box>
         )}
       </LoadingAndErrorWrapper>
     </Stack>
   );
+}
+
+function getPeriodLabel(limitPeriod: MetabotLimitPeriod): string {
+  switch (limitPeriod) {
+    case "daily":
+      return t`day`;
+    case "weekly":
+      return t`week`;
+    case "monthly":
+    default:
+      return t`month`;
+  }
 }

@@ -1,8 +1,16 @@
+import { useDebouncedCallback } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useListPermissionsGroupsQuery } from "metabase/api";
+import {
+  useGetMetabotGroupLimitsQuery,
+  useGetMetabotInstanceLimitQuery,
+  useGetMetabotTenantLimitsQuery,
+  useListPermissionsGroupsQuery,
+  useUpdateMetabotGroupLimitMutation,
+  useUpdateMetabotTenantLimitMutation,
+} from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Tabs } from "metabase/ui";
@@ -14,14 +22,15 @@ import { UserGroupsTab } from "./UserGroupsTab";
 
 type GroupLimitsTab = "user-groups" | "tenant-groups" | "specific-tenants";
 
-// TODO: This should come from the GeneralLimitsSettingsSection state once
-// that state is lifted to the page level. For now we default to "monthly".
-const DEFAULT_LIMIT_PERIOD: MetabotLimitPeriod = "monthly";
+const SAVE_DEBOUNCE_MS = 500;
 
 export function GroupLimitsSettingsSection() {
   const isUsingTenants = useSetting("use-tenants");
+  const limitPeriod =
+    (useSetting("metabot-limit-reset-rate") as MetabotLimitPeriod) ?? "monthly";
   const [activeTab, setActiveTab] = useState<GroupLimitsTab>("user-groups");
 
+  // Groups data
   const {
     data: userGroups,
     isLoading: isLoadingUserGroups,
@@ -45,6 +54,33 @@ export function GroupLimitsSettingsSection() {
     error: tenantsError,
   } = PLUGIN_TENANTS.useListActiveTenants();
 
+  // Usage limits data
+  const { data: groupLimits } = useGetMetabotGroupLimitsQuery();
+  const { data: instanceLimitData } = useGetMetabotInstanceLimitQuery();
+  const { data: tenantLimits } = useGetMetabotTenantLimitsQuery(undefined, {
+    skip: !isUsingTenants,
+  });
+
+  const instanceLimit = instanceLimitData?.max_usage ?? null;
+
+  // Mutations
+  const [updateGroupLimit] = useUpdateMetabotGroupLimitMutation();
+  const [updateTenantLimit] = useUpdateMetabotTenantLimitMutation();
+
+  const debouncedSaveGroupLimit = useDebouncedCallback(
+    async (groupId: number, maxUsage: number | null) => {
+      await updateGroupLimit({ groupId, max_usage: maxUsage });
+    },
+    SAVE_DEBOUNCE_MS,
+  );
+
+  const debouncedSaveTenantLimit = useDebouncedCallback(
+    async (tenantId: number, maxUsage: number | null) => {
+      await updateTenantLimit({ tenantId, max_usage: maxUsage });
+    },
+    SAVE_DEBOUNCE_MS,
+  );
+
   const sectionTitle = isUsingTenants
     ? t`Group and tenant limits`
     : t`Group limits`;
@@ -56,7 +92,10 @@ export function GroupLimitsSettingsSection() {
           groups={userGroups}
           isLoading={isLoadingUserGroups}
           error={userGroupsError}
-          limitPeriod={DEFAULT_LIMIT_PERIOD}
+          limitPeriod={limitPeriod}
+          groupLimits={groupLimits ?? []}
+          instanceLimit={instanceLimit}
+          onGroupLimitChange={debouncedSaveGroupLimit}
         />
       </SettingsSection>
     );
@@ -79,7 +118,10 @@ export function GroupLimitsSettingsSection() {
             groups={userGroups}
             isLoading={isLoadingUserGroups}
             error={userGroupsError}
-            limitPeriod={DEFAULT_LIMIT_PERIOD}
+            limitPeriod={limitPeriod}
+            groupLimits={groupLimits ?? []}
+            instanceLimit={instanceLimit}
+            onGroupLimitChange={debouncedSaveGroupLimit}
           />
         </Tabs.Panel>
 
@@ -88,6 +130,10 @@ export function GroupLimitsSettingsSection() {
             tenantGroups={tenantGroups}
             isLoading={isLoadingTenantGroups}
             error={tenantGroupsError}
+            limitPeriod={limitPeriod}
+            groupLimits={groupLimits ?? []}
+            instanceLimit={instanceLimit}
+            onGroupLimitChange={debouncedSaveGroupLimit}
           />
         </Tabs.Panel>
 
@@ -96,6 +142,8 @@ export function GroupLimitsSettingsSection() {
             tenants={tenants}
             isLoading={isLoadingTenants}
             error={tenantsError}
+            tenantLimits={tenantLimits ?? []}
+            onTenantLimitChange={debouncedSaveTenantLimit}
           />
         </Tabs.Panel>
       </Tabs>

@@ -67,6 +67,9 @@ export const TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "metabot-permissions",
+  "metabot-usage-instance-limit",
+  "metabot-usage-group-limits",
+  "metabot-usage-tenant-limits",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

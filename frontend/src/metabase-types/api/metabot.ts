@@ -359,4 +359,13 @@ export type UserMetabotPermissionsResponse = {
 };
 
 export type MetabotLimitPeriod = "daily" | "weekly" | "monthly";
-export type MetabotLimitType = "token" | "conversation" | "dollar";
+export type MetabotLimitType = "tokens" | "conversation";
+
+/* Metabot v3 - Usage Limits */
+
+export type MetabotInstanceLimit = { max_usage: number | null };
+export type MetabotGroupLimit = { group_id: number; max_usage: number };
+export type MetabotTenantLimit = {
+  tenant_id: number;
+  max_usage: number | null;
+};

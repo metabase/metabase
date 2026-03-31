@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Stack, Text, TextInput } from "metabase/ui";
-import type { GroupInfo, MetabotLimitPeriod } from "metabase-types/api";
+import type {
+  GroupInfo,
+  MetabotGroupLimit,
+  MetabotLimitPeriod,
+} from "metabase-types/api";
 
 import S from "./GroupLimitsSettingsSection.module.css";
 
@@ -12,6 +16,9 @@ type UserGroupsTabProps = {
   isLoading: boolean;
   error: unknown;
   limitPeriod: MetabotLimitPeriod;
+  groupLimits: MetabotGroupLimit[];
+  instanceLimit: number | null;
+  onGroupLimitChange: (groupId: number, maxUsage: number | null) => void;
 };
 
 export function UserGroupsTab({
@@ -19,10 +26,39 @@ export function UserGroupsTab({
   isLoading,
   error,
   limitPeriod,
+  groupLimits,
+  instanceLimit,
+  onGroupLimitChange,
 }: UserGroupsTabProps) {
-  const [limits, setLimits] = useState<Record<number, string>>({});
+  const [localLimits, setLocalLimits] = useState<Record<number, string>>({});
+
+  const groupLimitsMap = useMemo(() => {
+    const map: Record<number, number> = {};
+    for (const gl of groupLimits) {
+      map[gl.group_id] = gl.max_usage;
+    }
+    return map;
+  }, [groupLimits]);
+
+  // Sync local state from API data
+  useEffect(() => {
+    const newLimits: Record<number, string> = {};
+    for (const gl of groupLimits) {
+      newLimits[gl.group_id] = String(gl.max_usage);
+    }
+    setLocalLimits(newLimits);
+  }, [groupLimits]);
 
   const periodLabel = getPeriodLabel(limitPeriod);
+
+  const placeholder =
+    instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
+
+  const handleChange = (groupId: number, value: string) => {
+    setLocalLimits((prev) => ({ ...prev, [groupId]: value }));
+    const maxUsage = value ? Number(value) : null;
+    onGroupLimitChange(groupId, maxUsage);
+  };
 
   return (
     <Stack gap="xl">
@@ -52,14 +88,14 @@ export function UserGroupsTab({
                     <td className={S.BodyCell}>{group.name}</td>
                     <td className={S.BodyCell}>
                       <TextInput
-                        placeholder={t`Unlimited`}
-                        value={limits[group.id] ?? ""}
-                        onChange={(e) =>
-                          setLimits((prev) => ({
-                            ...prev,
-                            [group.id]: e.target.value,
-                          }))
+                        placeholder={placeholder}
+                        value={
+                          localLimits[group.id] ??
+                          (groupLimitsMap[group.id] != null
+                            ? String(groupLimitsMap[group.id])
+                            : "")
                         }
+                        onChange={(e) => handleChange(group.id, e.target.value)}
                         classNames={{ input: S.LimitInput }}
                         type="number"
                         min={1}

@@ -1,7 +1,13 @@
-import { useMemo, useState } from "react";
+import { useDebouncedCallback } from "@mantine/hooks";
+import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import {
+  useGetMetabotInstanceLimitQuery,
+  useUpdateMetabotInstanceLimitMutation,
+} from "metabase/api";
+import { useAdminSetting } from "metabase/api/utils";
 import {
   SegmentedControl,
   type SegmentedControlItem,
@@ -16,17 +22,82 @@ import S from "./GeneralLimitsSettingsSection.module.css";
 type LimitTypeOption = SegmentedControlItem<MetabotLimitType>;
 type PeriodOption = SegmentedControlItem<MetabotLimitPeriod>;
 
+const SAVE_DEBOUNCE_MS = 500;
+
 export function GeneralLimitsSettingsSection() {
-  const [limitType, setLimitType] = useState<MetabotLimitType>("token");
-  const [limitPeriod, setLimitPeriod] = useState<MetabotLimitPeriod>("monthly");
+  // Settings
+  const { value: savedLimitType, updateSetting: updateLimitTypeSetting } =
+    useAdminSetting("metabot-limit-type");
+  const { value: savedLimitPeriod, updateSetting: updateLimitPeriodSetting } =
+    useAdminSetting("metabot-limit-reset-rate");
+  const { value: savedQuotaMessage, updateSetting: updateQuotaMessageSetting } =
+    useAdminSetting("metabot-quota-reached-message");
+
+  // Instance limit
+  const { data: instanceLimitData } = useGetMetabotInstanceLimitQuery();
+  const [updateInstanceLimit] = useUpdateMetabotInstanceLimitMutation();
+
+  // Local state
+  const [limitType, setLimitType] = useState<MetabotLimitType>(
+    savedLimitType ?? "tokens",
+  );
+  const [limitPeriod, setLimitPeriod] = useState<MetabotLimitPeriod>(
+    savedLimitPeriod ?? "monthly",
+  );
+  const [instanceLimitInput, setInstanceLimitInput] = useState("");
+  const [quotaMessage, setQuotaMessage] = useState(savedQuotaMessage ?? "");
+
+  // Sync from backend when settings load
+  useEffect(() => {
+    if (savedLimitType) {
+      setLimitType(savedLimitType);
+    }
+  }, [savedLimitType]);
+
+  useEffect(() => {
+    if (savedLimitPeriod) {
+      setLimitPeriod(savedLimitPeriod);
+    }
+  }, [savedLimitPeriod]);
+
+  useEffect(() => {
+    setQuotaMessage(savedQuotaMessage ?? "");
+  }, [savedQuotaMessage]);
+
+  useEffect(() => {
+    if (instanceLimitData) {
+      setInstanceLimitInput(
+        instanceLimitData.max_usage != null
+          ? String(instanceLimitData.max_usage)
+          : "",
+      );
+    }
+  }, [instanceLimitData]);
+
+  // Debounced save functions
+  const debouncedSaveInstanceLimit = useDebouncedCallback(
+    async (value: string) => {
+      const maxUsage = value ? Number(value) : null;
+      await updateInstanceLimit({ max_usage: maxUsage });
+    },
+    SAVE_DEBOUNCE_MS,
+  );
+
+  const debouncedSaveQuotaMessage = useDebouncedCallback((value: string) => {
+    updateQuotaMessageSetting({
+      key: "metabot-quota-reached-message",
+      value: value || null,
+      toast: false,
+    });
+  }, SAVE_DEBOUNCE_MS);
 
   const limitTypeOptions: LimitTypeOption[] = useMemo(() => {
     return [
-      { value: "token", label: t`By token usage` },
+      { value: "tokens", label: t`By token usage` },
       { value: "conversation", label: t`By conversation count` },
-      { value: "dollar", label: t`By dollar amount` },
     ];
   }, []);
+
   const resetPeriodOptions: PeriodOption[] = useMemo(() => {
     return [
       { value: "daily", label: t`Daily` },
@@ -34,12 +105,45 @@ export function GeneralLimitsSettingsSection() {
       { value: "monthly", label: t`Monthly` },
     ];
   }, []);
+
   const limitLabel: string = useMemo(() => {
     const selectedOption = resetPeriodOptions.find(
       (option) => option.value === limitPeriod,
     );
     return String(selectedOption?.label || t`Monthly`);
   }, [limitPeriod, resetPeriodOptions]);
+
+  const handleLimitTypeChange = (value: MetabotLimitType) => {
+    setLimitType(value);
+    updateLimitTypeSetting({
+      key: "metabot-limit-type",
+      value,
+      toast: false,
+    });
+  };
+
+  const handleLimitPeriodChange = (value: MetabotLimitPeriod) => {
+    setLimitPeriod(value);
+    updateLimitPeriodSetting({
+      key: "metabot-limit-reset-rate",
+      value,
+      toast: false,
+    });
+  };
+
+  const handleInstanceLimitChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const value = e.target.value;
+    setInstanceLimitInput(value);
+    debouncedSaveInstanceLimit(value);
+  };
+
+  const handleQuotaMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuotaMessage(value);
+    debouncedSaveQuotaMessage(value);
+  };
 
   return (
     <SettingsSection title={t`Settings and general limits`}>
@@ -53,7 +157,7 @@ export function GeneralLimitsSettingsSection() {
               label: S.Label,
             }}
             value={limitType}
-            onChange={setLimitType}
+            onChange={handleLimitTypeChange}
           />
         </Stack>
         <Stack gap="sm">
@@ -65,7 +169,7 @@ export function GeneralLimitsSettingsSection() {
               label: S.Label,
             }}
             value={limitPeriod}
-            onChange={setLimitPeriod}
+            onChange={handleLimitPeriodChange}
           />
         </Stack>
         <TextInput
@@ -80,15 +184,22 @@ export function GeneralLimitsSettingsSection() {
           }}
           type="number"
           min={1}
+          value={instanceLimitInput}
+          onChange={handleInstanceLimitChange}
         />
         <TextInput
           label={t`Quota-reached message`}
-          description={t`The message shown to users when if they reach their monthly quota.`}
-          placeholder={t`You’ve reached your limit for the month.`}
+          description={c(
+            "{0} indicates the limit reset period, e.g., daily, weekly, monthly",
+          )
+            .t`The message shown to users when they reach their ${limitLabel.toLowerCase()} quota.`}
+          placeholder={t`You've reached your limit for the month.`}
           classNames={{
             input: S.QuotaMessageInput,
             description: S.InputDescription,
           }}
+          value={quotaMessage}
+          onChange={handleQuotaMessageChange}
         />
       </Stack>
     </SettingsSection>

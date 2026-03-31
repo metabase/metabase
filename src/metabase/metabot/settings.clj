@@ -66,6 +66,15 @@
   :export?    true
   :doc        false)
 
+(defsetting metabot-quota-reached-message
+  (deferred-tru "The message shown to users when they reach their usage quota.")
+  :type       :string
+  :default    nil
+  :visibility :settings-manager
+  :encryption :no
+  :export?    true
+  :doc        false)
+
 (defsetting metabot-chat-system-prompt
   (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
   :type       :string

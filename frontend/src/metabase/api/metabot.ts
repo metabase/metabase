@@ -3,12 +3,15 @@ import type {
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
+  MetabotGroupLimit,
   MetabotId,
   MetabotInfo,
+  MetabotInstanceLimit,
   MetabotPermissionsResponse,
   MetabotProvider,
   MetabotSettingsResponse,
   MetabotSlackSettings,
+  MetabotTenantLimit,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotPermissionsRequest,
@@ -164,6 +167,65 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: [listTag("metabot-permissions")],
     }),
+
+    // Usage limits endpoints
+    getMetabotInstanceLimit: builder.query<MetabotInstanceLimit, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/metabot/usage/instance",
+      }),
+      providesTags: () => [listTag("metabot-usage-instance-limit")],
+    }),
+    updateMetabotInstanceLimit: builder.mutation<
+      MetabotInstanceLimit,
+      MetabotInstanceLimit
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/metabot/usage/instance",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("metabot-usage-instance-limit")]),
+    }),
+    getMetabotGroupLimits: builder.query<MetabotGroupLimit[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/metabot/usage/group",
+      }),
+      providesTags: () => [listTag("metabot-usage-group-limits")],
+    }),
+    updateMetabotGroupLimit: builder.mutation<
+      MetabotGroupLimit,
+      { groupId: number; max_usage: number | null }
+    >({
+      query: ({ groupId, max_usage }) => ({
+        method: "PUT",
+        url: `/api/metabot/usage/group/${groupId}`,
+        body: { max_usage },
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("metabot-usage-group-limits")]),
+    }),
+    getMetabotTenantLimits: builder.query<MetabotTenantLimit[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/metabot/usage/tenant",
+      }),
+      providesTags: () => [listTag("metabot-usage-tenant-limits")],
+    }),
+    updateMetabotTenantLimit: builder.mutation<
+      MetabotTenantLimit,
+      { tenantId: number; max_usage: number | null }
+    >({
+      query: ({ tenantId, max_usage }) => ({
+        method: "PUT",
+        url: `/api/metabot/usage/tenant/${tenantId}`,
+        body: { max_usage },
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("metabot-usage-tenant-limits")]),
+    }),
   }),
 });
 
@@ -181,4 +243,10 @@ export const {
   useGetMetabotPermissionsQuery,
   useGetUserMetabotPermissionsQuery,
   useUpdateMetabotPermissionsMutation,
+  useGetMetabotInstanceLimitQuery,
+  useUpdateMetabotInstanceLimitMutation,
+  useGetMetabotGroupLimitsQuery,
+  useUpdateMetabotGroupLimitMutation,
+  useGetMetabotTenantLimitsQuery,
+  useUpdateMetabotTenantLimitMutation,
 } = metabotApi;
