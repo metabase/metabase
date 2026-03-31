@@ -158,9 +158,9 @@
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
-  (cond-> (dissoc transform :target_table_id)
-    source
-    (assoc :source_type (transforms-base.u/transform-source-type source))))
+  (if source
+    (assoc transform :source_type (transforms-base.u/transform-source-type source))
+    transform))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
@@ -360,7 +360,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:dependency_analysis_version :source_type :target_db_id :target_table_id :last_checkpoint_value]
+   :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
