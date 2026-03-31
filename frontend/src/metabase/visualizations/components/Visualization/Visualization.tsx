@@ -1,5 +1,6 @@
 /* eslint-disable complexity */
 import cx from "classnames";
+import type { LocationDescriptorObject } from "history";
 import React, {
   type CSSProperties,
   type ComponentType,
@@ -184,6 +185,7 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
   /** When true, internal click behaviors (dashboard/question links) are preserved */
   enableEntityNavigation?: boolean;
 } & VisualizationPassThroughProps;
@@ -581,6 +583,7 @@ class Visualization extends PureComponent<
       {
         dispatch: this.props.dispatch,
         onChangeCardAndRun: this.handleOnChangeCardAndRun,
+        onSameOriginNavigation: this.props.onSameOriginNavigation,
       },
     );
 
@@ -1007,6 +1010,7 @@ class Visualization extends PureComponent<
               clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
               onUpdateQuestion={this.props.onUpdateQuestion}
+              onSameOriginNavigation={this.props.onSameOriginNavigation}
               onClose={this.hideActions}
               series={series}
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}

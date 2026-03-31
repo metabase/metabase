@@ -6,15 +6,13 @@ import { useWindowSize } from "react-use";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import {
-  setNotebookNativePreviewSidebarWidth,
-  setUIControls,
-} from "metabase/query_builder/actions";
+import { setNotebookNativePreviewSidebarWidth } from "metabase/query_builder/actions";
 import { getUiControls } from "metabase/query_builder/selectors";
 import {
   Notebook,
   type NotebookProps,
 } from "metabase/querying/notebook/components/Notebook";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Box, Flex, rem } from "metabase/ui";
 
 import { canShowNativePreview } from "../../ViewHeader/utils";

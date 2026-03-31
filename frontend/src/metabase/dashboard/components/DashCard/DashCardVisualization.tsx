@@ -1,11 +1,14 @@
 import cx from "classnames";
+import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
+import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
@@ -18,7 +21,7 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { isVirtualDashCard } from "metabase/lib/dashboard";
 import { duration } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -258,6 +261,16 @@ export function DashCardVisualization({
     onChangeLocation,
     enableEntityNavigation,
   } = useDashboardContext();
+
+  const dispatch = useDispatch();
+
+  const onSameOriginNavigation = useCallback(
+    (location: LocationDescriptorObject) => {
+      dispatch(push(location));
+      dispatch(setParameterValuesFromQueryParams(location.query));
+    },
+    [dispatch],
+  );
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
@@ -643,6 +656,7 @@ export function DashCardVisualization({
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
           enableEntityNavigation={enableEntityNavigation}
+          onSameOriginNavigation={onSameOriginNavigation}
           autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>
