@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 
+import * as notificationHook from "../../hooks/use-notification-config";
 import * as advisoriesHook from "../../hooks/use-security-advisories";
 import type { Advisory } from "../../types";
 
@@ -33,6 +34,20 @@ function setup(advisories: Advisory[] = []) {
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  jest.spyOn(notificationHook, "useNotificationConfig").mockReturnValue({
+    config: {
+      email: { sendToAllAdmins: true, recipients: [] },
+      slack: { enabled: false, channel: "" },
+    },
+    users: [],
+    slackChannelOptions: [],
+    updateEmailRecipients: jest.fn(),
+    toggleSendToAllAdmins: jest.fn(),
+    updateSlackChannel: jest.fn(),
+    toggleSlack: jest.fn(),
+    sendTestEmail: jest.fn(),
+    sendTestSlack: jest.fn(),
+  });
 
   renderWithProviders(<SecurityCenterPage />);
 }

@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Stack, Text, Title } from "metabase/ui";
+import { Box, Divider, Stack, Text, Title } from "metabase/ui";
 
+import { useNotificationConfig } from "../../hooks/use-notification-config";
 import { useSecurityAdvisories } from "../../hooks/use-security-advisories";
 import type { AdvisoryFilter } from "../../types";
 import { filterAdvisories } from "../../utils";
 import { AdvisoryFilterBar } from "../AdvisoryFilterBar/AdvisoryFilterBar";
 import { AdvisoryList } from "../AdvisoryList/AdvisoryList";
+import { NotificationChannelConfig } from "../NotificationChannelConfig/NotificationChannelConfig";
 
 import S from "./SecurityCenterPage.module.css";
 
@@ -23,6 +25,7 @@ const DEFAULT_FILTER: AdvisoryFilter = {
 export function SecurityCenterPage() {
   const { data: advisories, acknowledgeAdvisory } = useSecurityAdvisories();
   const [filter, setFilter] = useState<AdvisoryFilter>(DEFAULT_FILTER);
+  const notificationConfig = useNotificationConfig();
 
   const filtered = filterAdvisories(advisories, filter);
 
@@ -33,9 +36,18 @@ export function SecurityCenterPage() {
         <Text c="text-secondary" data-testid="current-version">
           {t`Current version`}: {CURRENT_VERSION}
         </Text>
-        <AdvisoryFilterBar filter={filter} onChange={setFilter} />
       </Stack>
-      <AdvisoryList advisories={filtered} onAcknowledge={acknowledgeAdvisory} />
+      <Stack gap="xl">
+        <NotificationChannelConfig {...notificationConfig} />
+        <Divider />
+        <Box>
+          <AdvisoryFilterBar filter={filter} onChange={setFilter} />
+        </Box>
+        <AdvisoryList
+          advisories={filtered}
+          onAcknowledge={acknowledgeAdvisory}
+        />
+      </Stack>
     </Box>
   );
 }
