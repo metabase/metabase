@@ -1,26 +1,13 @@
 name: Shared Dashboard
-description: null
 entity_id: Q_jD-f-9clKLFZ2TfUG2h
 created_at: '2024-08-28T09:46:24.726993Z'
 creator_id: rasta@metabase.com
-archived: false
 collection_id: M-Q4pcV0qkiyJ0kiSWECl
-auto_apply_filters: true
-collection_position: null
-position: null
-enable_embedding: false
-embedding_params: null
-made_public_by_id: null
-public_uuid: null
-show_in_getting_started: false
-caveats: null
-points_of_interest: null
 parameters: []
 serdes/meta:
 - id: Q_jD-f-9clKLFZ2TfUG2h
   label: shared_dashboard
   model: Dashboard
-archived_directly: false
 dashcards:
 - entity_id: UkpFcfUZMZt9ehChwnrAO
   card_id: f1C68pznmrpN1F5xFDj6d
@@ -29,8 +16,6 @@ dashcards:
   col: 0
   size_x: 4
   size_y: 4
-  action_id: null
-  dashboard_tab_id: null
   inline_parameters: []
   parameter_mappings: []
   series:
@@ -52,8 +37,6 @@ dashcards:
   col: 0
   size_x: 4
   size_y: 4
-  action_id: null
-  dashboard_tab_id: null
   inline_parameters: []
   parameter_mappings: []
   series: []
@@ -64,7 +47,5 @@ dashcards:
     model: Dashboard
   - id: AlYMOYAhCXhr1VIiH5umt
     model: DashboardCard
-embedding_type: null
-initially_published_at: null
 tabs: []
 width: fixed

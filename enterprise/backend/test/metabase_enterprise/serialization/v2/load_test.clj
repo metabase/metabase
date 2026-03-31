@@ -852,29 +852,27 @@
                   timeline2 (first (filter #(= (:entity_id %) (:entity_id @timeline2s)) timelines))]
               (testing "with inline :events"
                 (is (malli= [:map
-                             [:serdes/meta                 [:= [{:model "Timeline"
-                                                                 :id    (:entity_id timeline1)
-                                                                 :label "some_events"}]]]
-                             [:archived                    [:= false]]
-                             [:collection_id               [:= (:entity_id @coll1s)]]
-                             [:name                        [:= "Some events"]]
-                             [:creator_id                  [:= "tom@bost.on"]]
-                             [:created_at                  :string]
-                             [:entity_id                   [:= (:entity_id timeline1)]]
-                             [:description                 [:maybe :string]]
-                             [:events                      [:sequential
-                                                            [:map
-                                                             [:timezone                    :string]
-                                                             [:time_matters                :boolean]
-                                                             [:name                        :string]
-                                                             [:archived                    :boolean]
-                                                             [:description                 [:maybe :string]]
-                                                             [:creator_id                  :string]
-                                                             [:created_at                  :string]
-                                                             [:timestamp                   :string]
-                                                             [:icon {:optional true}       [:maybe :string]]]]]
-                             [:icon {:optional true}       [:maybe :string]]
-                             [:default {:optional true}    :boolean]]
+                             [:serdes/meta                  [:= [{:model "Timeline"
+                                                                  :id    (:entity_id timeline1)
+                                                                  :label "some_events"}]]]
+                             [:collection_id                [:= (:entity_id @coll1s)]]
+                             [:name                         [:= "Some events"]]
+                             [:creator_id                   [:= "tom@bost.on"]]
+                             [:created_at                   :string]
+                             [:entity_id                    [:= (:entity_id timeline1)]]
+                             [:description {:optional true} [:maybe :string]]
+                             [:events                       [:sequential
+                                                             [:map
+                                                              [:timezone                     :string]
+                                                              [:time_matters                 :boolean]
+                                                              [:name                         :string]
+                                                              [:archived {:optional true}    :boolean]
+                                                              [:description {:optional true} [:maybe :string]]
+                                                              [:creator_id                   :string]
+                                                              [:created_at                   :string]
+                                                              [:timestamp                    :string]
+                                                              [:icon {:optional true}        [:maybe :string]]]]]
+                             [:icon {:optional true}          [:maybe :string]]]
                             timeline1))
                 (is (= 2 (-> timeline1 :events count)))
                 (is (= 1 (-> timeline2 :events count)))))))

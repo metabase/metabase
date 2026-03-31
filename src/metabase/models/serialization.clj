@@ -433,14 +433,17 @@
   - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
     on `extract-one` and `xform-one`. There are a number of transformers, see this field for `fk` and similar.
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
+  - `:defaults`: a map like `{:field-name value}`; fields whose exported values match their defaults are omitted
+    from the output. All fields are assumed to default to `nil`; only specify non-nil defaults here.
 
   Example (search codebase for more examples):
 
   (defmethod serdes/make-spec \"ModelName\" [_model-name _opts]
-    {:copy [:name :description]
+    {:copy [:name :description :archived]
      :skip [;; please leave a comment why a field is skipped
             :internal_data]
-     :transform {:card_id (serdes/fk :model/Card)}})"
+     :transform {:card_id (serdes/fk :model/Card)}
+     :defaults {:archived false}})"
   {:arglists '([model-name opts])}
   (fn [model-name _opts] model-name))
 
@@ -493,7 +496,9 @@
   (try
     (let [spec (make-spec model-name opts)]
       (assert spec (str "No serialization spec defined for model " model-name))
-      (-> (select-keys instance (:copy spec))
+      (-> (into {}
+                (remove (fn [[k v]] (= v (get-in spec [:defaults k]))))
+                (select-keys instance (:copy spec)))
           ;; won't assoc if `generate-path` returned `nil`
           (m/assoc-some :serdes/meta (generate-path model-name instance))
           (into (for [[k transform] (:transform spec)
@@ -503,7 +508,8 @@
                             f         (:export transform)
                             f-context (:export-with-context transform)
                             res       (if f (f input) (f-context instance k input))]
-                      :when (not= res ::skip)]
+                      :when (and (not= res ::skip)
+                                 (not= res (get-in spec [:defaults export-k])))]
                   (do
                     (when-not (contains? instance k)
                       (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
