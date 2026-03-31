@@ -19,8 +19,9 @@ const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 function waitForChart() {
   getSdkRoot().within(() => {
     echartsContainer().should("be.visible");
+    // Wait for ECharts to finish rendering data points.
+    echartsContainer().find("path").should("have.length.greaterThan", 0);
   });
-  cy.wait(200);
 }
 
 describe("scenarios > embedding-sdk > touch-brush", () => {
@@ -60,6 +61,7 @@ describe("scenarios > embedding-sdk > touch-brush", () => {
       longPressAndDrag("chart-container", 100, 150, 250);
 
       getSdkRoot().within(() => {
+        // We check a title of a new question that appears after a range selection
         cy.findByText("Count by Product ID").should("be.visible");
       });
     });

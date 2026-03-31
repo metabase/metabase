@@ -76,7 +76,6 @@ const simulateTouch = () => {
 };
 
 const simulateDesktop = () => {
-  delete (window as any).ontouchstart;
   Object.defineProperty(navigator, "maxTouchPoints", {
     value: 0,
     configurable: true,
@@ -172,7 +171,6 @@ describe("use-brush", () => {
     const originalMatchMedia = window.matchMedia;
 
     afterEach(() => {
-      delete (window as any).ontouchstart;
       window.matchMedia = originalMatchMedia;
     });
 
@@ -212,7 +210,6 @@ describe("use-brush", () => {
     });
 
     it("returns true when maxTouchPoints > 0", () => {
-      delete (window as any).ontouchstart;
       Object.defineProperty(navigator, "maxTouchPoints", {
         value: 1,
         configurable: true,
@@ -228,7 +225,6 @@ describe("use-brush", () => {
 
     afterEach(() => {
       jest.useRealTimers();
-      delete (window as any).ontouchstart;
     });
 
     describe("desktop (non-touch)", () => {

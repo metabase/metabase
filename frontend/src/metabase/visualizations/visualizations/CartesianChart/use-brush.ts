@@ -265,7 +265,11 @@ function useTouchBrush({
       if (activeRef.current) {
         activeRef.current = false;
 
-        // Defer so pointerup → brushEnd chain completes first.
+        // ECharts processes pointerup synchronously through its DOM handler
+        // chain (zrender pointerup → mouseup → brush end). All of this runs
+        // in the current microtask before any setTimeout(0) callback fires,
+        // so deferring by one macrotask is enough to guarantee brushEnd has
+        // already completed.
         setTimeout(disableBrush, 0);
       }
     };
