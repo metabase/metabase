@@ -259,3 +259,69 @@ databaseChangeLog:
             columns:
               - column:
                   name: tenant_id
+
+  # ============================================================
+  # Analytics view updates - add embedding_client, surface, is_preview
+  # ============================================================
+
+  - changeSet:
+      id: v60.2026-03-26T00:00:17
+      author: bcm
+      comment: Updated view v_view_log v4 - add embedding_client, surface, is_preview (EMB-1535)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/view_log/v4/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/view_log/v4/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/view_log/v4/h2-view_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/view_log/v2/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/view_log/v3/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/view_log/v2/h2-view_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v60.2026-03-26T00:00:18
+      author: bcm
+      comment: Updated view v_query_log v5 - add embedding_client, surface, is_preview (EMB-1535)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v5/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v5/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v5/h2-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v4/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v4/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v4/h2-query_log.sql
+            relativeToChangelogFile: true

@@ -140,7 +140,11 @@
                    "is_native" "query_source" "error" "user_id" "card_id"
                    "card_qualified_id" "dashboard_id" "dashboard_qualified_id"
                    "pulse_id" "database_id" "database_qualified_id" "cache_hit"
-                   "action_id" "action_qualified_id" "query"}
+                   "action_id" "action_qualified_id"
+                   "transform_id" "transform_qualified_id"
+                   "lens_id" "lens_params"
+                   "query"
+                   "embedding_client" "surface" "is_preview"}
 
    "v_subscriptions" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
                        "creator_id" "archived" "dashboard_qualified_id" "schedule_type"
@@ -164,7 +168,8 @@
                "is_admin" "is_active" "sso_source" "locale"}
 
    "v_view_log" #{"id" "timestamp" "user_id" "entity_type" "entity_id"
-                  "entity_qualified_id"}})
+                  "entity_qualified_id"
+                  "embedding_client" "surface" "is_preview"}})
 
 (defn- get-synced-field-names
   "Get the set of field names that Metabase has synced for a given table."
