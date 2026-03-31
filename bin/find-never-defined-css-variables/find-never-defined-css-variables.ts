@@ -37,10 +37,6 @@ const knownIssues = [
   "--select-item-font-size",
   "--select-item-line-height",
   "--button-bg", // Mantine var defined for buttons and used in Button.module.css
-
-  // Used for MCP host theming tests - not affected by our codebase
-  "--unknown-variable",
-  "--vscode-editor-background",
 ];
 
 interface UsageMap {
@@ -49,9 +45,9 @@ interface UsageMap {
 }
 
 const findFiles = (): string[] => {
-  return glob.sync(
-    "{frontend,enterprise/frontend}/**/*.{css,module.css,js,jsx,ts,tsx}",
-  );
+  return glob
+    .sync("{frontend,enterprise/frontend}/**/*.{css,module.css,js,jsx,ts,tsx}")
+    .filter(f => !/\.(unit\.spec|spec|test)\.(js|jsx|ts|tsx)$/.test(f));
 };
 
 const extractVariableDefinitions = (filePath: string): Set<string> => {

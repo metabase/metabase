@@ -4,7 +4,7 @@ import type { ResolvedColorScheme } from "metabase/lib/color-scheme";
  * Resolve a CSS value that may contain var() or light-dark() into a concrete color.
  *
  * MCP hosts like Visual Studio Code send CSS variable references
- * e.g. `var(--vscode-editor-background)` or `light-dark(white, black)` as theming values.
+ * e.g. `light-dark(white, black)` as theming values.
  *
  * The SDK requires concrete color values, so we resolve them via the browser's
  * computed style cascade. Setting `color-scheme` on the container ensures
