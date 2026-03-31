@@ -24,9 +24,7 @@ describe("scenarios > dashboard > filters > ID", () => {
      * If we set it before the visitDashboard, we'd have to wait for it after the visit,
      * otherwise we'd always be one wait behind in tests.
      */
-    cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashboardData",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashboardData" });
   });
 
   describe("should work for the primary key", () => {

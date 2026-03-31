@@ -1487,9 +1487,7 @@ describe("issue 40396", { tags: "@external " }, () => {
     H.resetTestTable({ type: "postgres", table: tableName });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
   });
 
   it("should be possible to use dashboard filters with native enum fields (metabase#40396)", () => {
@@ -1687,7 +1685,7 @@ describe("issue 17061", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
+    cy.intercept("GET", "/api/public/dashboard/*/card-query-batch*").as(
       "publicDashcardData",
     );
   });

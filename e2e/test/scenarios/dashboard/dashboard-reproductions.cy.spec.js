@@ -51,7 +51,7 @@ describe("issue 12578", () => {
     H.popover().findByText("1 minute").click();
 
     // Mock slow card request
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+    cy.intercept("POST", "/api/dashboard/*/card-query-batch", (req) => {
       req.on("response", (res) => {
         res.setDelay(99999);
       });
@@ -166,7 +166,7 @@ describe("issue 12926", () => {
   };
 
   function slowDownDashcardQuery() {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+    cy.intercept("POST", "/api/dashboard/*/card-query-batch", (req) => {
       req.on("response", (res) => {
         res.setDelay(5000);
       });
@@ -174,7 +174,7 @@ describe("issue 12926", () => {
   }
 
   function restoreDashcardQuery() {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+    cy.intercept("POST", "/api/dashboard/*/card-query-batch", (req) => {
       // calling req.continue() will make cypress skip all previously added intercepts
       req.continue();
     }).as("dashcardQueryRestored");
@@ -313,14 +313,41 @@ describe("issue 13736", () => {
 
       cy.intercept(
         "POST",
-        `/api/dashboard/*/dashcard/*/card/${failingQuestionId}/query`,
-        {
-          statusCode: 500,
-          body: {
-            cause: "some error",
-            data: {},
-            message: "some error",
-          },
+        `/api/dashboard/${dashboardId}/card-query-batch`,
+        (req) => {
+          req.continue((res) => {
+            // Modify the response to inject an error for the failing card
+            const body = res.body
+              .split("\n")
+              .map((line) => {
+                if (!line) {
+                  return line;
+                }
+                try {
+                  const event = JSON.parse(line.replace(/^data: /, ""));
+                  if (
+                    event.type === "card-result" &&
+                    event.card_id === failingQuestionId
+                  ) {
+                    return `data: ${JSON.stringify({
+                      type: "card-error",
+                      dashcard_id: event.dashcard_id,
+                      card_id: failingQuestionId,
+                      error: {
+                        cause: "some error",
+                        data: {},
+                        message: "some error",
+                      },
+                    })}`;
+                  }
+                  return line;
+                } catch {
+                  return line;
+                }
+              })
+              .join("\n");
+            res.send(body);
+          });
         },
       );
 
@@ -561,9 +588,7 @@ describe("issue 17879", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
@@ -713,7 +738,7 @@ describe("issue 29076", () => {
   beforeEach(() => {
     H.restore();
 
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
+    H.interceptDashboardCardRequests({ alias: "cardQuery" });
 
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
@@ -1033,9 +1058,7 @@ describe("issue 34382", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should preserve filter value when navigating between the dashboard and the query builder with auto-apply disabled (metabase#34382)", () => {
@@ -1332,9 +1355,7 @@ describe("issue 39863", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should not rerun queries when switching tabs and there are no parameter changes", () => {
@@ -1518,9 +1539,7 @@ describe("issue 42165", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
 
     H.createDashboardWithQuestions({
       dashboardDetails: {
@@ -2053,9 +2072,7 @@ describe("issue 62170", () => {
       cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
         "dashboardLoad",
       );
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "cardDataRefresh",
-      );
+      H.interceptDashboardCardRequests({ alias: "cardDataRefresh" });
     });
 
     // Wait for initial dashboard load

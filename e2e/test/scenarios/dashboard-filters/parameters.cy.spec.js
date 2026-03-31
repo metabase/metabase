@@ -393,11 +393,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     const dashboardDetails = { parameters };
 
-    cy.intercept(
-      "POST",
-      "/api/dashboard/*/dashcard/*/card/*/query",
-      cy.spy().as("cardQueryRequest"),
-    ).as("cardQuery");
+    H.interceptDashboardCardRequests({ alias: "cardQuery" });
 
     cy.intercept(
       "GET",
@@ -622,11 +618,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       const { interceptor } = H.spyRequestFinished("dashcardRequestSpy");
 
-      cy.intercept(
-        "POST",
-        "/api/dashboard/*/dashcard/*/card/*/query",
-        interceptor,
-      );
+      cy.intercept("POST", "/api/dashboard/*/card-query-batch", interceptor);
     });
 
     it("should not fetch dashcard data when filter is disconnected", () => {
