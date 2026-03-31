@@ -1,4 +1,4 @@
-(ns metabase.custom-viz-plugin.manifest
+(ns metabase-enterprise.custom-viz-plugin.manifest
   "Parsing and validation for custom visualization plugin manifest files (metabase-plugin.json)."
   (:require
    [cheshire.core :as json]

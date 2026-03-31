@@ -1,4 +1,4 @@
-(ns metabase.custom-viz-plugin.git
+(ns metabase-enterprise.custom-viz-plugin.git
   "Read-only JGit wrapper for fetching files from custom visualization plugin repositories.
    Clones bare repos, fetches updates, and reads files at specific commits."
   (:require

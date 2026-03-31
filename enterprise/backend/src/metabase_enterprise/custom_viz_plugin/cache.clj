@@ -1,4 +1,4 @@
-(ns metabase.custom-viz-plugin.cache
+(ns metabase-enterprise.custom-viz-plugin.cache
   "Cache layer for custom visualization plugin bundles and static assets.
    Fetches files from git repos, caches in memory and on disk."
   (:require
@@ -7,8 +7,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.config.core :as config]
-   [metabase.custom-viz-plugin.git :as git]
-   [metabase.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.git :as git]
+   [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [toucan2.core :as t2])
   (:import
    (java.io File)))

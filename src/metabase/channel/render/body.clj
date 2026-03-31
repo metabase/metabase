@@ -12,8 +12,7 @@
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
-   [metabase.custom-viz-plugin.cache]
-   [metabase.custom-viz-plugin.manifest]
+   [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -409,13 +408,13 @@
       (let [identifier (subs display-type (count "custom:"))
             plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
         (when-let [content (some-> plugin
-                                   metabase.custom-viz-plugin.cache/resolve-bundle
+                                   custom-viz-plugin/resolve-bundle
                                    :content)]
-          (let [manifest   (some-> plugin :manifest metabase.custom-viz-plugin.manifest/parse-manifest)
-                asset-names (metabase.custom-viz-plugin.manifest/asset-paths manifest)
+          (let [manifest   (some-> plugin :manifest custom-viz-plugin/parse-manifest)
+                asset-names (custom-viz-plugin/asset-paths manifest)
                 assets     (into {}
                                  (keep (fn [asset-name]
-                                         (when-let [bytes (metabase.custom-viz-plugin.cache/get-asset (:id plugin) asset-name)]
+                                         (when-let [bytes (custom-viz-plugin/get-asset (:id plugin) asset-name)]
                                            [asset-name (asset->data-uri asset-name bytes)])))
                                  asset-names)]
             [{:identifier identifier :source content :assets assets}]))))))
