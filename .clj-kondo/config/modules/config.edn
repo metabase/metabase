@@ -216,8 +216,7 @@
 
   analyze
   {:team "Graphy"
-   :api  #{metabase.analyze.core
-           metabase.analyze.query-results}
+   :api  #{metabase.analyze.core}
    :uses #{config
            driver
            lib
@@ -1176,7 +1175,6 @@
               slackbot}
    :uses    #{activity-feed
               analytics
-              analyze
               api
               app-db
               audit-app
