@@ -20,7 +20,7 @@
   "Sets up JWT authentication and premium features for Agent API tests."
   [& body]
   `(sso.test-setup/with-jwt-default-setup!
-     (mt/with-additional-premium-features #{:agent-api :metabot-v3}
+     (mt/with-additional-premium-features #{:agent-api}
        ~@body)))
 
 (defn- current-epoch-seconds []
