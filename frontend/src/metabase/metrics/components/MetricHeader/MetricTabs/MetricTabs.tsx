@@ -6,6 +6,7 @@ import {
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { useSelector } from "metabase/lib/redux";
+import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
@@ -45,10 +46,12 @@ function getTabs(
   const queryInfo = Lib.queryDisplayInfo(query);
 
   if (queryInfo.isEditable) {
-    tabs.push({
-      label: t`Overview`,
-      to: urls.overview(card.id),
-    });
+    if (isNumericMetric(card)) {
+      tabs.push({
+        label: t`Overview`,
+        to: urls.overview(card.id),
+      });
+    }
     tabs.push({
       label: t`Definition`,
       to: urls.query(card.id),

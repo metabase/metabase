@@ -411,6 +411,7 @@ class ChoroplethMapInner extends Component {
         onHoverChange={onHoverChange}
         isDashboard={this.props.isDashboard}
         isDocument={this.props.isDocument}
+        isMetricsViewer={this.props.isMetricsViewer}
       >
         {projection ? (
           <LegacyChoropleth
