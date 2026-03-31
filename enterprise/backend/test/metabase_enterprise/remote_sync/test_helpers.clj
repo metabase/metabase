@@ -185,6 +185,17 @@ width: fixed
       ;; Default success case - return file content from atom
       (get-in @files-atom [branch path] "")))
 
+  (read-file-bytes [_this path]
+    (case fail-mode
+      :read-file-error (throw (Exception. "Failed to read file"))
+      :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
+      :auth-error (throw (Exception. "Authentication failed"))
+      :repo-not-found (throw (Exception. "Repository not found"))
+      :branch-error (throw (Exception. "Invalid branch specified"))
+      ;; Default success case - return file content as bytes
+      (when-let [content (get-in @files-atom [branch path])]
+        (.getBytes ^String content "UTF-8"))))
+
   (write-files! [_this _message files]
     (case fail-mode
       :write-files-error (throw (Exception. "Failed to write files"))
