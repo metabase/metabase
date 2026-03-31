@@ -1522,16 +1522,17 @@
       (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
         (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
                       analyze/analyze-db!             (constantly nil)]
-          ;; Block the quick-task executor's single thread with a long-running task.
-          ;; This simulates a stuck sync (e.g., hanging JDBC connection).
-          (quick-task/submit-task! (fn [] (.await blocker-latch)))
+          ;; Submit a blocking task with a short timeout so it gets cancelled quickly.
+          ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
+          ;; the quick-task timeout and gets evicted.
+          (binding [quick-task/*task-timeout-ms* 1000]
+            (quick-task/submit-task! (fn [] (.await blocker-latch))))
           (try
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
-            ;; The sync task is now queued behind the blocker. It should still execute
-            ;; within a reasonable time. Currently it won't because the executor has only
-            ;; one thread, so this test will fail with :sync-never-called.
-            (testing "sync should still execute within reasonable time"
-              (is (true? (deref sync-called? 5000 :sync-never-called))))
+            ;; The sync task is queued behind the blocker. After the blocker times out
+            ;; and is cancelled, the sync task should execute.
+            (testing "sync executes after stuck task is evicted"
+              (is (true? (deref sync-called? 10000 :sync-never-called))))
             (finally
               (.countDown blocker-latch))))))))
 
