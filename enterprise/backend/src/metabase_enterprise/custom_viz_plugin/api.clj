@@ -116,7 +116,7 @@
                                                           :pinned_version  pinned_version))]
     ;; fetch bundle synchronously — validates the repo is accessible
     ;; and updates display_name/icon from manifest
-    (cache/fetch-and-cache! plugin)
+    (cache/fetch-and-update! plugin)
     ;; re-read to get updated status
     (plugin->response (t2/select-one :model/CustomVizPlugin :id (:id plugin)))))
 
@@ -145,7 +145,6 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-  (cache/evict! id)
   (t2/delete! :model/CustomVizPlugin :id id)
   nil)
 
@@ -165,8 +164,7 @@
     (when (and (contains? updates :pinned_version)
                (not= (:pinned_version updates) (:pinned_version existing)))
       (let [updated-plugin (t2/select-one :model/CustomVizPlugin :id id)]
-        (cache/evict! id)
-        (cache/fetch-and-cache! updated-plugin {:force? true}))))
+        (cache/fetch-and-update! updated-plugin {:force? true}))))
   (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
@@ -270,8 +268,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
-    (cache/evict! id)
-    (cache/fetch-and-cache! plugin {:force? true})
+    (cache/fetch-and-update! plugin {:force? true})
     (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))
 
 (def routes

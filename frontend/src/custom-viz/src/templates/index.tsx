@@ -73,11 +73,15 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
 };
 
 const makeVisualizationComponent =
-  (getAssetUrl: (path: string) => string) =>
+  (_getAssetUrl: (path: string) => string) =>
   (props: CustomVisualizationProps<Settings>) => {
     const { height, series, settings, width } = props;
     const { threshold } = settings;
     const value = series[0].data.rows[0][0];
+
+    if (!height || !width) {
+      return null;
+    }
 
     if (typeof value !== "number" || typeof threshold !== "number") {
       throw new Error("Value and threshold need to be numbers");
