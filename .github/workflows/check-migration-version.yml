@@ -19,11 +19,17 @@ jobs:
           filter: blob:none
           fetch-depth: 0
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Get changed migration files
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files \
+          gh api "repos/${GH_REPO}/pulls/${PR_NUMBER}/files" \
             --paginate -q '.[] | select(.filename | startswith("resources/migrations/")) | select(.filename | endswith(".yaml")) | "\(.status)\t\(.filename)"' \
             > /tmp/changed-migrations.tsv
 
@@ -32,4 +38,4 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
           CHANGED_FILES: /tmp/changed-migrations.tsv
-        run: npx --package=tsx --package=js-yaml tsx bin/check-migration-versions.ts
+        run: npx --package=tsx@4.21.0 --package=js-yaml@4.1.1 tsx bin/check-migration-versions.ts
