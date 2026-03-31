@@ -81,6 +81,10 @@ export function useNotificationConfig() {
   }, []);
 
   // TODO: replace with actual API calls
+  const save = useCallback(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }, []);
+
   const sendTestEmail = useCallback(async () => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }, []);
@@ -97,6 +101,7 @@ export function useNotificationConfig() {
     toggleSendToAllAdmins,
     updateSlackChannel,
     toggleSlack,
+    save,
     sendTestEmail,
     sendTestSlack,
   };

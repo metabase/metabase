@@ -10,14 +10,20 @@ import { AdvisoryCard } from "../AdvisoryCard/AdvisoryCard";
 interface AdvisoryListProps {
   advisories: Advisory[];
   onAcknowledge?: (advisoryId: string) => void;
+  className?: string;
 }
 
-export function AdvisoryList({ advisories, onAcknowledge }: AdvisoryListProps) {
+export function AdvisoryList({
+  advisories,
+  onAcknowledge,
+  className,
+}: AdvisoryListProps) {
   const sorted = sortAdvisories(advisories);
 
   if (sorted.length === 0) {
     return (
       <EmptyState
+        className={className}
         icon="shield_outline"
         message={t`Your instance is up to date — no known security issues affect your configuration.`}
       />
@@ -25,7 +31,7 @@ export function AdvisoryList({ advisories, onAcknowledge }: AdvisoryListProps) {
   }
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" className={className}>
       {sorted.map((advisory) => (
         <AdvisoryCard
           key={advisory.id}

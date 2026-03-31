@@ -1,7 +1,26 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 65px - 4rem);
+  min-height: 0;
+}
+
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex-shrink: 0;
   padding-bottom: var(--mantine-spacing-lg);
-  background-color: var(--mb-color-background-secondary);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+
+  .filter-bar {
+    flex: 0;
+  }
+
+  .list {
+    flex: 1;
+    overflow: auto;
+  }
 }

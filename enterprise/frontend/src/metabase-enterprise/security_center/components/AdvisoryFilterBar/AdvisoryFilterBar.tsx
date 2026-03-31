@@ -7,6 +7,7 @@ import type { AdvisoryFilter, AdvisorySeverity } from "../../types";
 interface AdvisoryFilterBarProps {
   filter: AdvisoryFilter;
   onChange: (filter: AdvisoryFilter) => void;
+  className?: string;
 }
 
 type SelectOption<T extends string> = { value: T; label: string };
@@ -14,6 +15,7 @@ type SelectOption<T extends string> = { value: T; label: string };
 export function AdvisoryFilterBar({
   filter,
   onChange,
+  className,
 }: AdvisoryFilterBarProps) {
   const severityOptions: SelectOption<AdvisorySeverity | "all">[] = [
     { value: "all", label: t`All severities` },
@@ -30,7 +32,7 @@ export function AdvisoryFilterBar({
   ];
 
   return (
-    <Group gap="md" data-testid="advisory-filter-bar">
+    <Group gap="md" data-testid="advisory-filter-bar" className={className}>
       <Select
         data={severityOptions}
         value={filter.severity}

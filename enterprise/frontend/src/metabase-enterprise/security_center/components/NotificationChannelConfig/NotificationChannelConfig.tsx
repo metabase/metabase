@@ -1,17 +1,19 @@
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { ActionButton } from "metabase/common/components/ActionButton";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import {
   Anchor,
   Autocomplete,
   Box,
+  Button,
   Card,
   Flex,
   Group,
   Icon,
+  Modal,
   Stack,
   Switch,
   Text,
@@ -20,14 +22,22 @@ import {
 
 import type { useNotificationConfig } from "../../hooks/use-notification-config";
 
-type NotificationChannelConfigProps = ReturnType<typeof useNotificationConfig>;
+type NotificationChannelConfigProps = ReturnType<
+  typeof useNotificationConfig
+> & {
+  opened: boolean;
+  onClose: () => void;
+};
 
-export function NotificationChannelConfig({
+export function NotificationChannelConfigModal({
+  opened,
+  onClose,
   config,
   updateEmailRecipients,
   toggleSendToAllAdmins,
   updateSlackChannel,
   toggleSlack,
+  save,
   sendTestEmail,
   sendTestSlack,
   users,
@@ -35,13 +45,41 @@ export function NotificationChannelConfig({
 }: NotificationChannelConfigProps) {
   const isEmailConfigured = useSetting("email-configured?");
   const isSlackConfigured = useSetting("slack-token-valid?");
+  const [sendToast] = useToast();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      await save();
+      sendToast({
+        message: t`Notification settings saved`,
+        toastColor: "success",
+      });
+      onClose();
+    } catch {
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: t`Failed to save notification settings`,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [save, sendToast, onClose]);
+
+  const emailHasRecipients =
+    config.email.sendToAllAdmins || config.email.recipients.length > 0;
+  const canSave = emailHasRecipients || !isEmailConfigured;
 
   return (
-    <SettingsSection
-      title={t`Notification channels`}
-      description={t`Configure where security notifications are delivered.`}
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={t`Notification settings`}
+      size="lg"
     >
-      <Stack gap="md">
+      <Stack gap="md" mt="md">
         <EmailChannelCard
           config={config}
           isConfigured={isEmailConfigured}
@@ -58,8 +96,21 @@ export function NotificationChannelConfig({
           toggleSlack={toggleSlack}
           sendTestSlack={sendTestSlack}
         />
+        <Flex justify="flex-end" gap="md" mt="md">
+          <Button variant="subtle" onClick={onClose}>
+            {t`Cancel`}
+          </Button>
+          <Button
+            variant="filled"
+            onClick={handleSave}
+            loading={isSaving}
+            disabled={!canSave}
+          >
+            {t`Save`}
+          </Button>
+        </Flex>
       </Stack>
-    </SettingsSection>
+    </Modal>
   );
 }
 

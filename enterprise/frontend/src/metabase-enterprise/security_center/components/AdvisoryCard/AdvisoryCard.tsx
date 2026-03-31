@@ -35,6 +35,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
       withBorder
       className={advisory.affected ? S.affectedCard : undefined}
       data-testid="advisory-card"
+      mih={184}
     >
       <Stack gap="sm">
         <Flex justify="space-between" align="center" wrap="wrap" gap="sm">

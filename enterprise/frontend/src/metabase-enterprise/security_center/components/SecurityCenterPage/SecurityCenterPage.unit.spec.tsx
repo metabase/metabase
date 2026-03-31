@@ -45,6 +45,7 @@ function setup(advisories: Advisory[] = []) {
     toggleSendToAllAdmins: jest.fn(),
     updateSlackChannel: jest.fn(),
     toggleSlack: jest.fn(),
+    save: jest.fn(),
     sendTestEmail: jest.fn(),
     sendTestSlack: jest.fn(),
   });
