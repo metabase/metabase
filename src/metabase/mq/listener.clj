@@ -25,11 +25,19 @@
 (defn get-listener
   "Returns the listener config map for `channel`, or nil if not registered."
   [channel]
-  (get @*listeners* channel))
+  (let [result (get @*listeners* channel)]
+    (when (and (nil? result) (= channel :topic/connection-pool-invalidated))
+      (binding [*out* *err*]
+        (println "[TZ-DEBUG] get-listener: NOT FOUND" channel
+                 "listeners-atom-id=" (System/identityHashCode *listeners*)
+                 "keys=" (keys @*listeners*))))
+    result))
 
 (defn register-listener!
   "Atomically registers a listener for the given channel, throwing if one already exists."
   [channel listener-map]
+  (binding [*out* *err*]
+    (println "[TZ-DEBUG] register-listener!" channel "listeners-atom-id=" (System/identityHashCode *listeners*)))
   (let [already-registered? (atom false)]
     (swap! *listeners*
            (fn [m]
