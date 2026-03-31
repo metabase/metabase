@@ -144,7 +144,10 @@
                    "transform_id" "transform_qualified_id"
                    "lens_id" "lens_params"
                    "query"
-                   "embedding_client" "surface" "is_preview"}
+                   "embedding_client" "embedding_version" "surface" "is_preview"
+                   "auth_method" "is_sandboxed" "is_impersonated" "is_db_routed"
+                   "parameters" "tenant_id"
+                   "embedding_hostname" "embedding_path" "sanitized_user_agent" "ip_address"}
 
    "v_subscriptions" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
                        "creator_id" "archived" "dashboard_qualified_id" "schedule_type"
@@ -163,13 +166,21 @@
                    "started_at" "ended_at" "duration_seconds" "status"
                    "process_uuid" "updated_at"}
 
+   "v_tenants" #{"tenant_id" "entity_qualified_id" "name" "slug" "is_active"
+                 "attributes" "created_at" "updated_at"
+                 "tenant_collection_id" "tenant_collection_qualified_id"}
+
    "v_users" #{"user_id" "entity_qualified_id" "type" "email" "first_name"
                "last_name" "full_name" "date_joined" "last_login" "updated_at"
-               "is_admin" "is_active" "sso_source" "locale"}
+               "is_admin" "is_active" "sso_source" "locale"
+               "tenant_id" "tenant_qualified_id"}
 
    "v_view_log" #{"id" "timestamp" "user_id" "entity_type" "entity_id"
                   "entity_qualified_id"
-                  "embedding_client" "surface" "is_preview"}})
+                  "has_access" "context"
+                  "embedding_client" "embedding_version" "surface" "is_preview"
+                  "auth_method" "tenant_id"
+                  "embedding_hostname" "embedding_path" "sanitized_user_agent" "ip_address"}})
 
 (defn- get-synced-field-names
   "Get the set of field names that Metabase has synced for a given table."

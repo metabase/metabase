@@ -23,5 +23,14 @@ VIEW v_view_log AS
                            WHEN embedding_client IS NULL OR embedding_client = '' THEN 'internal'
                            ELSE embedding_client
                          END AS surface,
-                         CASE WHEN embedding_client LIKE '%-preview' THEN 1 ELSE 0 END AS is_preview
+                         CASE WHEN embedding_client LIKE '%-preview' THEN 1 ELSE 0 END AS is_preview,
+                         has_access,
+                         context,
+                         embedding_version,
+                         auth_method,
+                         tenant_id,
+                         embedding_hostname,
+                         embedding_path,
+                         sanitized_user_agent,
+                         ip_address
    FROM view_log)

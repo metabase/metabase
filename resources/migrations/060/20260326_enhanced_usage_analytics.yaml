@@ -325,3 +325,55 @@ databaseChangeLog:
             dbms: h2
             path: ../instance_analytics_views/query_log/v4/h2-query_log.sql
             relativeToChangelogFile: true
+
+  - changeSet:
+      id: v60.2026-03-26T00:00:19
+      author: bcm
+      comment: Updated view v_users v5 - add tenant_id (EMB-1506)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/users/v5/postgres-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/users/v5/mysql-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/users/v5/h2-users.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/users/v3/postgres-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/users/v4/mysql-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/users/v3/h2-users.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v60.2026-03-26T00:00:20
+      author: bcm
+      comment: New view v_tenants v1 - expose tenant data (EMB-1506)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/tenants/v1/postgres-tenants.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/tenants/v1/mysql-tenants.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/tenants/v1/h2-tenants.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW IF EXISTS v_tenants;

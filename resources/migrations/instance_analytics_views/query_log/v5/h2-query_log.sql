@@ -40,6 +40,17 @@ SELECT id AS entity_id,
          WHEN embedding_client IS NULL OR embedding_client = '' THEN 'internal'
          ELSE embedding_client
        END AS surface,
-       CASE WHEN embedding_client LIKE '%-preview' THEN TRUE ELSE FALSE END AS is_preview
+       CASE WHEN embedding_client LIKE '%-preview' THEN TRUE ELSE FALSE END AS is_preview,
+       embedding_version,
+       auth_method,
+       is_sandboxed,
+       is_impersonated,
+       is_db_routed,
+       parameters,
+       tenant_id,
+       embedding_hostname,
+       embedding_path,
+       sanitized_user_agent,
+       ip_address
 FROM query_execution
     LEFT JOIN query ON query_execution.hash = query.query_hash;
