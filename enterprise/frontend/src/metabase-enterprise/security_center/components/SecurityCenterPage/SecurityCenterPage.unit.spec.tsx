@@ -38,18 +38,22 @@ function setup(advisories: Advisory[] = []) {
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   jest.spyOn(notificationHook, "useNotificationConfig").mockReturnValue({
     config: {
-      email: { sendToAllAdmins: true, recipients: [] },
-      slack: { enabled: false, channel: "" },
+      email: {
+        sendToAllAdmins: true,
+        handler: { channel_type: "channel/email", recipients: [] },
+      },
+      slack: {
+        enabled: false,
+        handler: { channel_type: "channel/slack", recipients: [] },
+      },
     },
     users: [],
-    slackChannelOptions: [],
-    updateEmailRecipients: jest.fn(),
+    channels: undefined,
+    updateEmailHandler: jest.fn(),
     toggleSendToAllAdmins: jest.fn(),
-    updateSlackChannel: jest.fn(),
+    updateSlackHandler: jest.fn(),
     toggleSlack: jest.fn(),
     save: jest.fn(),
-    sendTestEmail: jest.fn(),
-    sendTestSlack: jest.fn(),
   });
 
   renderWithProviders(<SecurityCenterPage />);

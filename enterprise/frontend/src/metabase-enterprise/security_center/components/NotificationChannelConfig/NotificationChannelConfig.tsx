@@ -1,12 +1,11 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { ActionButton } from "metabase/common/components/ActionButton";
 import { useSetting, useToast } from "metabase/common/hooks";
-import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
+import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
+import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChannelFieldNew";
 import {
   Anchor,
-  Autocomplete,
   Box,
   Button,
   Card,
@@ -33,15 +32,13 @@ export function NotificationChannelConfigModal({
   opened,
   onClose,
   config,
-  updateEmailRecipients,
+  updateEmailHandler,
   toggleSendToAllAdmins,
-  updateSlackChannel,
+  updateSlackHandler,
   toggleSlack,
   save,
-  sendTestEmail,
-  sendTestSlack,
   users,
-  slackChannelOptions,
+  channels,
 }: NotificationChannelConfigProps) {
   const isEmailConfigured = useSetting("email-configured?");
   const isSlackConfigured = useSetting("slack-token-valid?");
@@ -69,7 +66,7 @@ export function NotificationChannelConfigModal({
   }, [save, sendToast, onClose]);
 
   const emailHasRecipients =
-    config.email.sendToAllAdmins || config.email.recipients.length > 0;
+    config.email.sendToAllAdmins || config.email.handler.recipients.length > 0;
   const canSave = emailHasRecipients || !isEmailConfigured;
 
   return (
@@ -84,17 +81,15 @@ export function NotificationChannelConfigModal({
           config={config}
           isConfigured={isEmailConfigured}
           users={users}
-          updateEmailRecipients={updateEmailRecipients}
+          updateEmailHandler={updateEmailHandler}
           toggleSendToAllAdmins={toggleSendToAllAdmins}
-          sendTestEmail={sendTestEmail}
         />
         <SlackChannelCard
           config={config}
           isConfigured={isSlackConfigured}
-          channelOptions={slackChannelOptions}
-          updateSlackChannel={updateSlackChannel}
+          channels={channels}
+          updateSlackHandler={updateSlackHandler}
           toggleSlack={toggleSlack}
-          sendTestSlack={sendTestSlack}
         />
         <Flex justify="flex-end" gap="md" mt="md">
           <Button variant="subtle" onClick={onClose}>
@@ -118,20 +113,15 @@ function EmailChannelCard({
   config,
   isConfigured,
   users,
-  updateEmailRecipients,
+  updateEmailHandler,
   toggleSendToAllAdmins,
-  sendTestEmail,
 }: {
   config: NotificationChannelConfigProps["config"];
   isConfigured: boolean;
   users: NotificationChannelConfigProps["users"];
-  updateEmailRecipients: NotificationChannelConfigProps["updateEmailRecipients"];
+  updateEmailHandler: NotificationChannelConfigProps["updateEmailHandler"];
   toggleSendToAllAdmins: NotificationChannelConfigProps["toggleSendToAllAdmins"];
-  sendTestEmail: NotificationChannelConfigProps["sendTestEmail"];
 }) {
-  const hasRecipients =
-    config.email.sendToAllAdmins || config.email.recipients.length > 0;
-
   if (!isConfigured) {
     return (
       <Card withBorder p="lg">
@@ -165,33 +155,21 @@ function EmailChannelCard({
             <Text size="sm" fw={500} mb="xs">
               {t`Recipients`}
             </Text>
-            <RecipientPicker
-              recipients={config.email.recipients}
+            <EmailChannelEdit
+              channel={config.email.handler}
               users={users}
-              onRecipientsChange={updateEmailRecipients}
-              autoFocus={false}
               invalidRecipientText={(domains) =>
                 t`Only addresses ending in ${domains} are allowed.`
               }
+              onChange={updateEmailHandler}
             />
-            {config.email.recipients.length === 0 && (
+            {config.email.handler.recipients.length === 0 && (
               <Text size="sm" c="error" mt="xs">
                 {t`At least one recipient is required.`}
               </Text>
             )}
           </Box>
         )}
-        <Box>
-          <ActionButton
-            actionFn={sendTestEmail}
-            normalText={t`Send test email`}
-            activeText={t`Sending...`}
-            successText={t`Email sent`}
-            failedText={t`Failed to send`}
-            disabled={!hasRecipients}
-            data-testid="send-test-email"
-          />
-        </Box>
       </Stack>
     </Card>
   );
@@ -200,17 +178,15 @@ function EmailChannelCard({
 function SlackChannelCard({
   config,
   isConfigured,
-  channelOptions,
-  updateSlackChannel,
+  channels,
+  updateSlackHandler,
   toggleSlack,
-  sendTestSlack,
 }: {
   config: NotificationChannelConfigProps["config"];
   isConfigured: boolean;
-  channelOptions: string[];
-  updateSlackChannel: NotificationChannelConfigProps["updateSlackChannel"];
+  channels: NotificationChannelConfigProps["channels"];
+  updateSlackHandler: NotificationChannelConfigProps["updateSlackHandler"];
   toggleSlack: NotificationChannelConfigProps["toggleSlack"];
-  sendTestSlack: NotificationChannelConfigProps["sendTestSlack"];
 }) {
   if (!isConfigured) {
     return (
@@ -240,33 +216,17 @@ function SlackChannelCard({
           data-testid="slack-toggle"
         />
       </Flex>
-      {config.slack.enabled && (
-        <Stack gap="md">
-          <Box>
-            <Text size="sm" fw={500} mb="xs">
-              {t`Channel`}
-            </Text>
-            <Autocomplete
-              data={channelOptions}
-              value={config.slack.channel}
-              onChange={updateSlackChannel}
-              placeholder={t`Pick a channel...`}
-              limit={300}
-              data-testid="slack-channel-input"
-            />
-          </Box>
-          <Box>
-            <ActionButton
-              actionFn={sendTestSlack}
-              normalText={t`Send test message`}
-              activeText={t`Sending...`}
-              successText={t`Message sent`}
-              failedText={t`Failed to send`}
-              disabled={!config.slack.channel}
-              data-testid="send-test-slack"
-            />
-          </Box>
-        </Stack>
+      {config.slack.enabled && channels?.slack && (
+        <Box>
+          <Text size="sm" fw={500} mb="xs">
+            {t`Channel`}
+          </Text>
+          <SlackChannelFieldNew
+            channel={config.slack.handler}
+            channelSpec={channels.slack}
+            onChange={updateSlackHandler}
+          />
+        </Box>
       )}
     </Card>
   );

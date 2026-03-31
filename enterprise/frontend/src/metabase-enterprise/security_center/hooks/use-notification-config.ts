@@ -1,62 +1,67 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   useGetChannelInfoQuery,
   useListUserRecipientsQuery,
 } from "metabase/api";
-import { useSendTestEmailMutation } from "metabase/api/email";
-import type { RecipientPickerValue } from "metabase/lib/pulse";
-import type { User } from "metabase-types/api";
+import type {
+  ChannelApiResponse,
+  NotificationHandlerEmail,
+  NotificationHandlerSlack,
+  User,
+} from "metabase-types/api";
 
 export interface NotificationConfig {
   email: {
     sendToAllAdmins: boolean;
-    recipients: RecipientPickerValue[];
+    handler: NotificationHandlerEmail;
   };
   slack: {
     enabled: boolean;
-    channel: string;
+    handler: NotificationHandlerSlack;
   };
 }
+
+const DEFAULT_EMAIL_HANDLER: NotificationHandlerEmail = {
+  channel_type: "channel/email",
+  recipients: [],
+};
+
+const DEFAULT_SLACK_HANDLER: NotificationHandlerSlack = {
+  channel_type: "channel/slack",
+  recipients: [],
+};
 
 const DEFAULT_CONFIG: NotificationConfig = {
   email: {
     sendToAllAdmins: true,
-    recipients: [],
+    handler: DEFAULT_EMAIL_HANDLER,
   },
   slack: {
     enabled: false,
-    channel: "",
+    handler: DEFAULT_SLACK_HANDLER,
   },
 };
 
 /**
  * Hook for notification channel configuration.
  * TODO: replace save with RTK Query endpoint (e.g. PUT /api/ee/security-center/notification-config)
- * TODO: replace sendTestSlack with a dedicated endpoint once available
  */
 export function useNotificationConfig() {
   const [config, setConfig] = useState<NotificationConfig>(DEFAULT_CONFIG);
 
   const { data: userRecipients } = useListUserRecipientsQuery();
   const { data: channelInfo } = useGetChannelInfoQuery();
-  const [sendTestEmailApi] = useSendTestEmailMutation();
 
   const users: User[] = userRecipients?.data ?? [];
+  const channels: ChannelApiResponse["channels"] | undefined =
+    channelInfo?.channels;
 
-  const slackChannelOptions: string[] = useMemo(() => {
-    const slackSpec = channelInfo?.channels?.slack;
-    const channelField = slackSpec?.fields?.find(
-      (field) => field.name === "channel",
-    );
-    return channelField?.options ?? [];
-  }, [channelInfo]);
-
-  const updateEmailRecipients = useCallback(
-    (recipients: RecipientPickerValue[]) => {
+  const updateEmailHandler = useCallback(
+    (handler: NotificationHandlerEmail) => {
       setConfig((prev) => ({
         ...prev,
-        email: { ...prev.email, recipients },
+        email: { ...prev.email, handler },
       }));
     },
     [],
@@ -69,12 +74,15 @@ export function useNotificationConfig() {
     }));
   }, []);
 
-  const updateSlackChannel = useCallback((channel: string) => {
-    setConfig((prev) => ({
-      ...prev,
-      slack: { ...prev.slack, channel },
-    }));
-  }, []);
+  const updateSlackHandler = useCallback(
+    (handler: NotificationHandlerSlack) => {
+      setConfig((prev) => ({
+        ...prev,
+        slack: { ...prev.slack, handler },
+      }));
+    },
+    [],
+  );
 
   const toggleSlack = useCallback((enabled: boolean) => {
     setConfig((prev) => ({
@@ -88,25 +96,14 @@ export function useNotificationConfig() {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }, []);
 
-  const sendTestEmail = useCallback(async () => {
-    await sendTestEmailApi().unwrap();
-  }, [sendTestEmailApi]);
-
-  // TODO: backend needs a `can-connect?` impl for :channel/slack before this can use testSlackChannelApi
-  const sendTestSlack = useCallback(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }, []);
-
   return {
     config,
     users,
-    slackChannelOptions,
-    updateEmailRecipients,
+    channels,
+    updateEmailHandler,
     toggleSendToAllAdmins,
-    updateSlackChannel,
+    updateSlackHandler,
     toggleSlack,
     save,
-    sendTestEmail,
-    sendTestSlack,
   };
 }
