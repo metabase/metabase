@@ -86,19 +86,22 @@
       (is (not (str/includes? xml "### Dimensions"))))))
 
 (deftest measure->xml-test
-  (testing "formats measure with all attributes matching Python"
+  (testing "formats measure with all attributes"
     (let [measure {:id 1
                    :name "total_revenue"
                    :display-name "Total Revenue"
                    :description "Sum of all revenue"
-                   :definition {:aggregation [:sum [:field 5 nil]]}}
+                   :definition {:database 1 :type :query :query {:source-table 5 :aggregation [[:sum [:field 10 nil]]]}}
+                   :definition-description "Sum of Price"}
           xml (llm-rep/measure->xml measure)]
       (is (str/starts-with? xml "<measure"))
       (is (str/includes? xml "measure_id=\"1\""))
       (is (str/includes? xml "name=\"total_revenue\""))
       (is (str/includes? xml "display_name=\"Total Revenue\""))
       (is (str/includes? xml "Sum of all revenue"))
+      (is (str/includes? xml "Definition: Sum of Price"))
       (is (str/includes? xml "<definition>"))
+      (is (str/includes? xml ":source-table 5"))
       (is (str/ends-with? (str/trim xml) "</measure>"))))
 
   (testing "handles measure without description or definition"
@@ -108,6 +111,7 @@
       (is (str/includes? xml "name=\"count_orders\""))
       (is (str/includes? xml "display_name=\"count_orders\""))
       (is (not (str/includes? xml "<definition>")))
+      (is (not (str/includes? xml "Definition:")))
       (is (str/ends-with? (str/trim xml) "</measure>"))))
 
   (testing "uses name as display_name fallback"
@@ -116,27 +120,31 @@
       (is (str/includes? xml "display_name=\"avg_price\"")))))
 
 (deftest segment->xml-test
-  (testing "formats segment with all attributes matching Python"
+  (testing "formats segment with all attributes"
     (let [segment {:id 1
                    :name "active_customers"
                    :display-name "Active Customers"
                    :description "Customers who made a purchase in the last 30 days"
-                   :definition {:filter [:> [:field 10 nil] 0]}}
+                   :definition {:database 1 :type :query :query {:source-table 5 :filter [:> [:field 10 nil] 0]}}
+                   :definition-description "Price is greater than 0"}
           xml (llm-rep/segment->xml segment)]
       (is (str/starts-with? xml "<segment"))
-      (is (str/includes? xml "id=\"1\""))
+      (is (str/includes? xml "segment_id=\"1\""))
       (is (str/includes? xml "name=\"active_customers\""))
       (is (str/includes? xml "display_name=\"Active Customers\""))
       (is (str/includes? xml "Customers who made a purchase in the last 30 days"))
+      (is (str/includes? xml "Definition: Price is greater than 0"))
       (is (str/includes? xml "<definition>"))
+      (is (str/includes? xml ":source-table 5"))
       (is (str/ends-with? (str/trim xml) "</segment>"))))
 
-  (testing "handles segment without description or definition"
+  (testing "handles segment without description or definition-description"
     (let [segment {:id 2 :name "new_users"}
           xml (llm-rep/segment->xml segment)]
-      (is (str/includes? xml "id=\"2\""))
+      (is (str/includes? xml "segment_id=\"2\""))
       (is (str/includes? xml "name=\"new_users\""))
       (is (not (str/includes? xml "<definition>")))
+      (is (not (str/includes? xml "Definition:")))
       (is (str/ends-with? (str/trim xml) "</segment>"))))
 
   (testing "uses name as display_name fallback"
@@ -189,7 +197,7 @@
       (is (str/includes? xml "<measure measure_id=\"1\""))
       (is (str/includes? xml "Average Order Value"))
       (is (str/includes? xml "### Segments (Pre-defined Filter Conditions)"))
-      (is (str/includes? xml "<segment id=\"2\""))
+      (is (str/includes? xml "<segment segment_id=\"2\""))
       (is (str/includes? xml "Q4 Orders"))))
 
   (testing "omits measures and segments sections when empty"
@@ -239,7 +247,7 @@
       (is (str/includes? xml "<measure measure_id=\"1\""))
       (is (str/includes? xml "Total Net Revenue"))
       (is (str/includes? xml "### Segments (Pre-defined Filter Conditions)"))
-      (is (str/includes? xml "<segment id=\"1\""))
+      (is (str/includes? xml "<segment segment_id=\"1\""))
       (is (str/includes? xml "New Customers"))))
 
   (testing "omits measures and segments sections when empty"

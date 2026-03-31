@@ -1,12 +1,14 @@
 {% if is_measure %}
 <measure measure_id="{{measure_id}}" name="{{measure_name}}" display_name="{{measure_display_name}}">{% if measure_description %}
-{{measure_description}}{% endif %}{% if measure_definition %}
+{{measure_description}}{% endif %}{% if measure_definition_description %}
+Definition: {{measure_definition_description}}{% endif %}{% if measure_definition %}
 <definition>{{measure_definition}}</definition>{% endif %}
 </measure>
 {% endif %}
 {% if is_segment %}
-<segment id="{{segment_id}}" name="{{segment_name}}" display_name="{{segment_display_name}}">{% if segment_description %}
-{{segment_description}}{% endif %}{% if segment_definition %}
+<segment segment_id="{{segment_id}}" name="{{segment_name}}" display_name="{{segment_display_name}}">{% if segment_description %}
+{{segment_description}}{% endif %}{% if segment_definition_description %}
+Definition: {{segment_definition_description}}{% endif %}{% if segment_definition %}
 <definition>{{segment_definition}}</definition>{% endif %}
 </segment>
 {% endif %}

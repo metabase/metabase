@@ -123,28 +123,28 @@
     :collection_authority_level authority_level}))
 
 (defn measure->xml
-  "Format a measure for LLM consumption.
-   Matches Python Measure.llm_representation exactly."
-  [{:keys [id name display-name description definition]}]
+  "Format a measure for LLM consumption."
+  [{:keys [id name display-name description definition definition-description]}]
   (render-llm-template
    :measure
    {:measure_id           (str id)
     :measure_name         (or name "")
     :measure_display_name (or display-name name "")
     :measure_description  description
-    :measure_definition   (when definition (pr-str definition))}))
+    :measure_definition   (when definition (pr-str definition))
+    :measure_definition_description definition-description}))
 
 (defn segment->xml
-  "Format a segment for LLM consumption.
-   Matches Python Segment.llm_representation exactly."
-  [{:keys [id name display-name description definition]}]
+  "Format a segment for LLM consumption."
+  [{:keys [id name display-name description definition definition-description]}]
   (render-llm-template
    :segment
    {:segment_id           (str id)
     :segment_name         (or name "")
     :segment_display_name (or display-name name "")
     :segment_description  description
-    :segment_definition   (when definition (pr-str definition))}))
+    :segment_definition   (when definition (pr-str definition))
+    :segment_definition_description definition-description}))
 
 (defn- related-table->xml
   "Format a related table for LLM consumption."
