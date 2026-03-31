@@ -36,10 +36,10 @@ export function useMcpApp(): McpAppState {
     appInfo: { name: "metabase-visualize-query", version: "1.0.0" },
     capabilities: {},
     onAppCreated: (app) => {
-      app.onhostcontextchanged = (ctx) => {
-        if (ctx) {
-          applyHostContext(ctx);
-          setHostContext((prev) => ({ ...prev, ...ctx }));
+      app.onhostcontextchanged = (context) => {
+        if (context) {
+          applyHostContext(context);
+          setHostContext((prev) => ({ ...prev, ...context }));
         }
       };
 
@@ -66,11 +66,11 @@ export function useMcpApp(): McpAppState {
   // Read host context once connected and apply styles immediately
   useEffect(() => {
     if (app) {
-      const hostContext = app.getHostContext();
+      const context = app.getHostContext();
 
-      if (hostContext) {
-        applyHostContext(hostContext);
-        setHostContext(hostContext);
+      if (context) {
+        applyHostContext(context);
+        setHostContext(context);
       }
     }
   }, [app]);
