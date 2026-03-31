@@ -22,12 +22,16 @@
   }
 }
 
-@media (hover: hover) {
-  .StepRoot .StepHeader {
-    visibility: hidden;
-  }
+.StepRoot .StepHeader {
+  visibility: hidden;
+}
 
-  .StepRoot:hover .StepHeader {
+.StepRoot:hover .StepHeader {
+  visibility: visible;
+}
+
+@media (hover: none) {
+  .StepRoot .StepHeader {
     visibility: visible;
   }
 }
