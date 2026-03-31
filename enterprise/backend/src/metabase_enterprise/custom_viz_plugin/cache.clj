@@ -6,8 +6,8 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.custom-viz-plugin.git :as git]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.remote-sync.source.git :as rs.git]
    [metabase.config.core :as config]
    [toucan2.core :as t2])
   (:import
@@ -108,9 +108,9 @@
 
 (defn- repo-asset-paths
   "List all file paths under `dist/assets/` in the repo, returned relative to that prefix."
-  [conn commit-sha]
+  [snapshot]
   (let [prefix "dist/assets/"]
-    (->> (git/list-files conn commit-sha)
+    (->> (rs.git/list-files snapshot)
          (filter #(str/starts-with? % prefix))
          (map #(subs % (count prefix))))))
 
@@ -118,13 +118,13 @@
   "Fetch and cache static assets from the plugin repo based on the manifest whitelist.
    Asset names from the manifest (e.g. `icon.svg`) map to `dist/assets/<name>` in the repo.
    Supports glob patterns (e.g. `locales/*`) which are expanded against available files."
-  [conn commit-sha plugin-id parsed-manifest]
+  [snapshot plugin-id parsed-manifest]
   (when parsed-manifest
     (let [declared     (manifest/asset-paths parsed-manifest)
-          available    (repo-asset-paths conn commit-sha)
+          available    (repo-asset-paths snapshot)
           asset-names  (manifest/expand-globs declared available)]
       (doseq [asset-name asset-names]
-        (when-let [bytes (git/read-file-bytes conn commit-sha (str "dist/assets/" asset-name))]
+        (when-let [bytes (rs.git/read-file-bytes snapshot (str "dist/assets/" asset-name))]
           (swap! asset-cache assoc-in [plugin-id asset-name] bytes)
           (write-asset-to-disk! plugin-id asset-name bytes))))))
 
@@ -138,17 +138,15 @@
    (if (and (not force?) (in-failure-cooldown? id))
      nil
      (try
-       (let [conn          (git/create-repo-connection repo_url access_token)
-             _             (git/fetch! conn)
+       (let [source        (rs.git/git-source repo_url nil access_token)
              ref-to-use    (or pinned_version "HEAD")
-             commit-sha    (git/resolve-ref conn ref-to-use)
-             _             (when-not commit-sha
-                             (throw (ex-info (str "Cannot resolve ref: " ref-to-use) {:ref ref-to-use})))
-             content       (git/read-file conn commit-sha "dist/index.js")
+             snapshot      (rs.git/snapshot-at-ref source ref-to-use)
+             commit-sha    (rs.git/commit-sha source ref-to-use)
+             content       (rs.git/read-file snapshot "dist/index.js")
              _             (when-not content
                              (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
              ;; read manifest (optional)
-             manifest-str  (git/read-file conn commit-sha (manifest/manifest-path))
+             manifest-str  (rs.git/read-file snapshot (manifest/manifest-path))
              parsed        (when manifest-str (manifest/parse-manifest manifest-str))
              version-str   (get-in parsed [:metabase :version])
              ;; check version compatibility
@@ -166,7 +164,7 @@
          (swap! last-fetch-failure-ns dissoc id)
          (write-to-disk! id content)
          ;; cache static assets
-         (fetch-and-cache-assets! conn commit-sha id parsed)
+         (fetch-and-cache-assets! snapshot id parsed)
          ;; update DB — display_name and icon always come from manifest
          (t2/update! :model/CustomVizPlugin id
                      {:status            :active

@@ -195,6 +195,19 @@
               (recur (conj files (.getPathString tree-walk)))
               files)))))
 
+(defn read-file-bytes
+  "Reads the contents of a specific file from the git snapshot as a byte array.
+
+  Takes a GitSnapshot containing a :git Git instance and :version specifying which commit to read from, and a path
+  string indicating the relative path to the file from the repository root.
+
+  Returns the file contents as a byte array, or nil if the file does not exist at the specified path."
+  ^bytes [{:keys [^Git git ^String version]} ^String path]
+  (let [repo (.getRepository git)]
+    (when-let [object-id (.resolve repo (str version ":" path))]
+      (let [loader (.open repo object-id)]
+        (.getBytes loader)))))
+
 (defn read-file
   "Reads the contents of a specific file from the git snapshot.
 
@@ -202,11 +215,9 @@
   string indicating the relative path to the file from the repository root.
 
   Returns the file contents as a UTF-8 string, or nil if the file does not exist at the specified path."
-  [{:keys [^Git git ^String version]} ^String path]
-  (let [repo (.getRepository git)]
-    (when-let [object-id (.resolve repo (str version ":" path))]
-      (let [loader (.open repo object-id)]
-        (String. (.getBytes loader) "UTF-8")))))
+  [snapshot ^String path]
+  (when-let [bytes (read-file-bytes snapshot path)]
+    (String. ^bytes bytes "UTF-8")))
 
 (defn push-branch!
   "Pushes a local branch to the remote repository.
@@ -434,6 +445,9 @@
   (read-file [this path]
     (read-file this path))
 
+  (read-file-bytes [this path]
+    (read-file-bytes this path))
+
   (write-files! [this message files]
     (write-files! this message files))
 
@@ -511,3 +525,15 @@
   [url branch token]
   (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
                url branch token))
+
+(defn snapshot-at-ref
+  "Creates a snapshot at a specific ref (branch, tag, commit SHA, or \"HEAD\").
+
+  Fetches latest refs from remote, then resolves the given ref-str to a commit SHA
+  and returns a GitSnapshot. Throws if the ref cannot be resolved."
+  [source ^String ref-str]
+  (fetch! source)
+  (let [version (commit-sha source ref-str)]
+    (when-not version
+      (throw (ex-info (str "Cannot resolve ref: " ref-str) {:ref ref-str})))
+    (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source))))

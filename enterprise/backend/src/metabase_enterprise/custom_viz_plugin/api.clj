@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
-   [metabase-enterprise.custom-viz-plugin.git :as git]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
    [metabase.api.common :as api]
@@ -48,6 +47,16 @@
    [:manifest        {:optional true} [:maybe :any]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
+
+(defn- parse-repo-name
+  "Extract the repository name from a git URL.
+   E.g., 'https://github.com/user/custom-heatmap' -> 'custom-heatmap'
+         'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'"
+  [^String url]
+  (-> url
+      (str/replace #"\.git$" "")
+      (str/split #"/")
+      last))
 
 ;; TODO: this should be guarded automatically through a custom mi/to-json defmethod
 (defn- strip-token
@@ -97,7 +106,7 @@
                                                       [:access_token   {:optional true} [:maybe :string]]
                                                       [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (let [identifier (git/parse-repo-name repo_url)
+  (let [identifier (parse-repo-name repo_url)
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                           :repo_url        repo_url
                                                           :access_token    access_token
