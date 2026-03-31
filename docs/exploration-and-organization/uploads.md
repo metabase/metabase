@@ -7,12 +7,12 @@ description: Upload CSV files to Metabase to create models. Requires uploads ena
 
 You can upload CSV files to Metabase to query, visualize, and share.
 
-## Requirements
+## Upload requirements
 
 To upload CSV data, you'll need:
 
 - Uploads [enabled](../databases/uploads.md) by an admin.
-- [Data permissions](../permissions/data.md): your group needs **Can view** data access and **Create queries** access (query builder or higher) for the upload schema.
+- [Data permissions](../permissions/data.md): your group needs **Can view** data access and **Create queries** access (query builder or higher) for the upload schema. (Unless you're an admin, you can't see what groups you're in, just noting this here so you know groups are a thing. Ask your admin to put you in a group with these privileges).
 - [Curate access](../permissions/collections.md#curate-access) to the collection you want to upload to.
 
 The upload icon only appears in collections where you have Curate access. Everyone has Curate access to their [personal collection](../permissions/collections.md#personal-collections), so you can always upload there.
