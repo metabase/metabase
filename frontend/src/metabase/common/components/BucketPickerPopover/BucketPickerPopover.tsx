@@ -1,5 +1,12 @@
 import cx from "classnames";
-import { useCallback, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent,
+  type TouchEvent,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { SelectList } from "metabase/common/components/SelectList";
@@ -51,7 +58,7 @@ export function BucketPickerPopover({
 
   const [isExpanded, setIsExpanded] = useState(shouldBeExpanded);
 
-  const handleExpand = useCallback((event: React.MouseEvent) => {
+  const handleExpand = useCallback((event: MouseEvent) => {
     event.stopPropagation();
     setIsExpanded(true);
   }, []);
@@ -111,8 +118,8 @@ export function BucketPickerPopover({
       <Popover.Dropdown
         // Prevent touch events from bubbling to the parent dropdown,
         // which causes it to scroll/select items on mobile (metabase#EMB-1471)
-        onTouchStart={(e: React.TouchEvent) => e.stopPropagation()}
-        onTouchMove={(e: React.TouchEvent) => e.stopPropagation()}
+        onTouchStart={(e: TouchEvent) => e.stopPropagation()}
+        onTouchMove={(e: TouchEvent) => e.stopPropagation()}
       >
         <SelectList
           p="sm"
@@ -121,7 +128,7 @@ export function BucketPickerPopover({
             {
               "--bucket-picker-active-color": activeColor,
               overscrollBehavior: "contain",
-            } as React.CSSProperties
+            } as CSSProperties
           }
         >
           {visibleItems.map((item) => (
