@@ -213,13 +213,19 @@
 
 ;; These test names were named by staring at them for a while, so they may be misleading
 
-(deftest ^:parallel automagic-analysis-test
-  (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-rollback-only-transaction
-      (doseq [[table cardinality] (map vector
-                                       (t2/select :model/Table :db_id (mt/id) :active true {:order-by [[:name :asc]]})
-                                       [2 8 11 11 15 17 5 7])]
-        (test-automagic-analysis table cardinality)))))
+(defmacro ^:private def-automagic-analysis-tests
+  "Generate one `^:parallel deftest` per sample-dataset table so eftest can run them concurrently."
+  []
+  `(do
+     ~@(for [[table-kw cardinality] [[:categories 2] [:checkins 8] [:orders 11] [:people 11]
+                                     [:products 15] [:reviews 17] [:users 5] [:venues 7]]]
+         (let [test-name (symbol (str "automagic-analysis-" (name table-kw) "-test"))]
+           `(deftest ~(with-meta test-name {:parallel true})
+              (mt/with-test-user :rasta
+                (automagic-dashboards.test/with-rollback-only-transaction
+                  (test-automagic-analysis (t2/select-one :model/Table :id (mt/id ~table-kw)) ~cardinality))))))))
+
+(def-automagic-analysis-tests)
 
 (deftest ^:parallel automagic-analysis-test-2
   (mt/with-test-user :rasta
@@ -239,14 +245,23 @@
 
 ;; Cardinality of cards genned from fields is much more labile than anything else
 ;; Not just with respect to drivers, but all sorts of other stuff that makes it chaotic
-(deftest ^:parallel mass-field-test
-  (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-rollback-only-transaction
-      (doseq [field (t2/select :model/Field
-                               :table_id [:in (t2/select-fn-set :id :model/Table :db_id (mt/id))]
-                               :visibility_type "normal"
-                               {:order-by [[:id :asc]]})]
-        (is (pos? (count (:dashcards (magic/automagic-analysis field {})))))))))
+(defmacro ^:private def-mass-field-tests
+  "Generate one `^:parallel deftest` per sample-dataset table so eftest can run them concurrently."
+  []
+  `(do
+     ~@(for [table-kw [:categories :checkins :orders :people
+                       :products :reviews :users :venues]]
+         (let [test-name (symbol (str "mass-field-" (name table-kw) "-test"))]
+           `(deftest ~(with-meta test-name {:parallel true})
+              (mt/with-test-user :rasta
+                (automagic-dashboards.test/with-rollback-only-transaction
+                  (doseq [field# (t2/select :model/Field
+                                            :table_id (mt/id ~table-kw)
+                                            :visibility_type "normal"
+                                            {:order-by [[:id :asc]]})]
+                    (is (pos? (count (:dashcards (magic/automagic-analysis field# {})))))))))))))
+
+(def-mass-field-tests)
 
 (deftest ^:parallel parameter-mapping-test
   (mt/dataset test-data
