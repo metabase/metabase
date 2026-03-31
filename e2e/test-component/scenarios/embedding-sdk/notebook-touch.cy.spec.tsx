@@ -82,7 +82,12 @@ describe("scenarios > embedding-sdk > notebook touch support", () => {
 
       getSdkRoot().within(() => {
         cy.findByTestId("notebook-button").click();
+      });
 
+      // Move cursor away from the step so :hover doesn't apply
+      cy.get("body").trigger("mousemove", { clientX: 0, clientY: 0 });
+
+      getSdkRoot().within(() => {
         // On desktop, the remove button should be hidden (visibility: hidden)
         cy.findByLabelText("Remove step").should(
           "have.css",
