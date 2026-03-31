@@ -28,10 +28,22 @@
 (defn- asset-cache-file ^File [plugin-id ^String commit ^String asset-path]
   (io/file (cache-dir) (str plugin-id) commit asset-path))
 
-(defn- write-disk-cache-bytes! [^File f ^bytes content]
+(defn- evict-stale-commit-dirs!
+  "Remove cached commit directories for a plugin that don't match the current commit.
+   Called after populating a new commit's cache so old orphans don't accumulate."
+  [plugin-id ^String current-commit]
+  (let [plugin-dir (io/file (cache-dir) (str plugin-id))]
+    (when (.exists plugin-dir)
+      (doseq [^File child (.listFiles plugin-dir)
+              :when (and (.isDirectory child)
+                         (not= (.getName child) current-commit))]
+        (org.apache.commons.io.FileUtils/deleteDirectory child)))))
+
+(defn- write-disk-cache-bytes! [^File f ^String commit plugin-id ^bytes content]
   (io/make-parents f)
   (with-open [out (io/output-stream f)]
-    (.write out content)))
+    (.write out content))
+  (evict-stale-commit-dirs! plugin-id commit))
 
 (defn invalidate-disk-cache!
   "Remove all cached files for a plugin."
@@ -180,7 +192,7 @@
                      (t2/select-one [:model/CustomVizPluginAsset :content]
                                     :plugin_id plugin-id
                                     :path      asset-path)]
-            (write-disk-cache-bytes! f content)
+            (write-disk-cache-bytes! f resolved_commit plugin-id content)
             content))))))
 
 (defn get-bundle
