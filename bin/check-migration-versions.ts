@@ -96,7 +96,7 @@ function changedFiles(filter: string): string[] {
     "diff",
     "--name-only",
     `--diff-filter=${filter}`,
-    `origin/${baseRef}...HEAD`,
+    `origin/${baseRef}..HEAD`,
     "--",
     "resources/migrations/**/*.yaml",
   ).split("\n").filter(Boolean);
