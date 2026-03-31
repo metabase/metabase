@@ -19,6 +19,7 @@ import {
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -40,7 +41,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import { MetabotAdminPage } from "./MetabotAdminPage";
+import { MetabotConfig } from "./MetabotConfig";
 import * as hooks from "./utils";
 
 const mockPathParam = (id: MetabotId) => {
@@ -129,7 +130,7 @@ const setup = async (
   );
 
   const view = renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotAdminPage} />,
+    <Route path="/admin/metabot*" component={MetabotConfig} />,
     {
       withRouter: true,
       initialRoute: `/admin/metabot/${initialPathParam}`,
@@ -171,7 +172,7 @@ const setupContentVerificationPlugin = () => {
   setupEnterprisePlugins();
 };
 
-describe("MetabotAdminPage", () => {
+describe("MetabotConfig", () => {
   afterEach(() => {
     reinitialize();
   });
@@ -225,19 +226,6 @@ describe("MetabotAdminPage", () => {
     expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
   });
 
-  it("should not show Embedded Metabot nav item without embedding features", async () => {
-    await setup();
-    expect(await screen.findByText("Metabot")).toBeInTheDocument();
-    expect(screen.queryByText("Embedded Metabot")).not.toBeInTheDocument();
-  });
-
-  it("should show Embedded Metabot nav item with embedding features", async () => {
-    setupEmbeddingPlugin();
-    await setup();
-    expect(await screen.findByText("Metabot")).toBeInTheDocument();
-    expect(screen.getByText("Embedded Metabot")).toBeInTheDocument();
-  });
-
   it("should show collection picker for default metabot with NLQ title", async () => {
     await setup();
     expect(await screen.findByText("Configure Metabot")).toBeInTheDocument();
@@ -284,11 +272,13 @@ describe("MetabotAdminPage", () => {
 
   it("should be able to switch between metabots", async () => {
     setupEmbeddingPlugin();
-    await setup(FIXED_METABOT_IDS.DEFAULT);
+    const { history } = await setup(FIXED_METABOT_IDS.DEFAULT);
     expect(await screen.findByText("Configure Metabot")).toBeInTheDocument();
 
     mockPathParam(FIXED_METABOT_IDS.EMBEDDED);
-    await userEvent.click(await screen.findByText("Embedded Metabot"));
+    act(() => {
+      history?.push(`/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`);
+    });
     expect(await screen.findByText("Collection Two")).toBeInTheDocument();
   });
 
