@@ -10,7 +10,6 @@ import { getIsHosted } from "metabase/setup/selectors";
 import {
   Button,
   Center,
-  Divider,
   Flex,
   Icon,
   Modal,
@@ -32,7 +31,7 @@ export function PythonTransformsUpsellModal({
 }: PythonTransformsUpsellModalProps) {
   const bulletPoints = [
     t`Use Python to handle complex logic that's awkward or brittle in SQL`,
-    t`Reuse shared Python logic instead of copying SQL patterns`,
+    t`Use the transform inspector to inspect the output of transforms to verify your logic`,
     t`Unblock advanced use cases without pushing work into another tool`,
     t`Put pandas to work for data analysis and manipulation`,
   ];
@@ -54,26 +53,62 @@ export function PythonTransformsUpsellModal({
 
   const canUserPurchase =
     isStoreUser && (!!advancedTransformsAddOn || !isHosted);
-  const shouldShowRightColumn = canUserPurchase && isHosted;
+  const shouldShowLeftColumn = canUserPurchase && isHosted;
 
   return (
     <Modal.Root
       onClose={onClose}
       opened
-      size={shouldShowRightColumn ? "xl" : "md"}
+      size={shouldShowLeftColumn ? "xl" : "md"}
     >
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Body p={0}>
           <Flex>
-            {/* Left Column - Info */}
+            {shouldShowLeftColumn && (
+              <Stack bg="background-secondary" flex={1} gap="lg" p="xl">
+                <Title order={3}>
+                  {t`Go beyond SQL with advanced transforms`}
+                </Title>
+                <Text c="text-secondary" lh="lg">
+                  {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}{" "}
+                  {t`Use the transform inspector to verify output output to verify it.`}
+                </Text>
+                {error || isLoading ? (
+                  <Center py="xl">
+                    <LoadingAndErrorWrapper
+                      loading={isLoading}
+                      error={
+                        error
+                          ? t`Error fetching information about available add-ons.`
+                          : undefined
+                      }
+                    />
+                  </Center>
+                ) : (
+                  <CloudPurchaseContent
+                    billingPeriod={
+                      billingPeriodMonths === 1 ? "monthly" : "yearly"
+                    }
+                    handleModalClose={onClose}
+                    isTrialFlow={isOnTrial}
+                    pythonPrice={advancedTransformsAddOn?.default_base_fee ?? 0}
+                  />
+                )}
+              </Stack>
+            )}
+            {/* Right Column - Info */}
             <Stack p="3rem" flex={1} gap="md">
-              <Title order={3}>
-                {t`Go beyond SQL with advanced transforms`}
-              </Title>
-              <Text c="text-secondary" lh="lg">
-                {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
-              </Text>
+              {!shouldShowLeftColumn && (
+                <>
+                  <Title order={3}>
+                    {t`Go beyond SQL with advanced transforms`}
+                  </Title>
+                  <Text c="text-secondary" lh="lg">
+                    {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}
+                  </Text>
+                </>
+              )}
               <Stack gap="md" pb="md" pt="sm">
                 {bulletPoints.map((point) => (
                   <Flex direction="row" gap="sm" key={point}>
@@ -97,54 +132,11 @@ export function PythonTransformsUpsellModal({
               )}
               {canUserPurchase && !isHosted && <SelfHostedStorePurchaseLink />}
             </Stack>
-            {shouldShowRightColumn && (
-              <>
-                <Divider orientation="vertical" />
-                <Stack bg="background-secondary" flex={1} gap="lg" p="xl">
-                  <Title order={3}>
-                    {getRightColumnTitle(
-                      isHosted && advancedTransformsAddOn?.trial_days
-                        ? advancedTransformsAddOn?.trial_days
-                        : 0,
-                    )}
-                  </Title>
-                  {error || isLoading ? (
-                    <Center py="xl">
-                      <LoadingAndErrorWrapper
-                        loading={isLoading}
-                        error={
-                          error
-                            ? t`Error fetching information about available add-ons.`
-                            : undefined
-                        }
-                      />
-                    </Center>
-                  ) : (
-                    <CloudPurchaseContent
-                      billingPeriod={
-                        billingPeriodMonths === 1 ? "monthly" : "yearly"
-                      }
-                      handleModalClose={onClose}
-                      isTrialFlow={isOnTrial}
-                      pythonPrice={
-                        advancedTransformsAddOn?.default_base_fee ?? 0
-                      }
-                    />
-                  )}
-                </Stack>
-              </>
-            )}
           </Flex>
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>
   );
-}
-
-function getRightColumnTitle(availableTrialDays: number) {
-  return availableTrialDays > 0
-    ? t`Start a free ${availableTrialDays}-day trial of Python transforms`
-    : t`Add advanced transforms to your plan`;
 }
 
 function SelfHostedStorePurchaseLink() {
