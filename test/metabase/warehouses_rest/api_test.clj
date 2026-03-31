@@ -47,6 +47,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
+   (java.util.concurrent CountDownLatch)
    (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -1513,6 +1514,26 @@
                 (is (=?
                      {"event" "database_manual_sync", "target_id" db-id}
                      (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
+
+(deftest sync-schema-executes-when-executor-busy-test
+  (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
+    (let [sync-called?  (promise)
+          blocker-latch (CountDownLatch. 1)]
+      (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
+        (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
+                      analyze/analyze-db!             (constantly nil)]
+          ;; Block the quick-task executor's single thread with a long-running task.
+          ;; This simulates a stuck sync (e.g., hanging JDBC connection).
+          (quick-task/submit-task! (fn [] (.await blocker-latch)))
+          (try
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
+            ;; The sync task is now queued behind the blocker. It should still execute
+            ;; within a reasonable time. Currently it won't because the executor has only
+            ;; one thread, so this test will fail with :sync-never-called.
+            (testing "sync should still execute within reasonable time"
+              (is (true? (deref sync-called? 5000 :sync-never-called))))
+            (finally
+              (.countDown blocker-latch))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
