@@ -4,9 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embedding.settings :as embed.settings]
-   [metabase.premium-features.token-check]
    [metabase.test :as mt]
-   [metabase.test.util.thread-local]
    [toucan2.core :as t2]))
 
 (deftest show-static-embed-terms-test
@@ -245,31 +243,19 @@
           (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")
           (is (= "https://example.com" (embed.settings/embedding-app-origins-sdk))))))))
 
-(deftest ^:synchronized toggle-full-app-embedding-test
+(deftest toggle-full-app-embedding-test
   (mt/discard-setting-changes [embedding-app-origins-interactive]
     (testing "can't change embedding-app-origins-interactive if :embedding feature is not available"
       (mt/with-premium-features #{}
-        ;; Debug: check features right before AND inside the setter call
-        (let [has-embed-before? (metabase.premium-features.token-check/has-feature? :embedding)]
-          (println "\nDEBUG before setter: has-feature? :embedding:" has-embed-before?)
-          (try
-            (embed.settings/embedding-app-origins-interactive! "https://metabase.com")
-            (let [has-embed-after? (metabase.premium-features.token-check/has-feature? :embedding)]
-              (println "DEBUG setter did NOT throw! has-feature? :embedding after:" has-embed-after?
-                       "\n  *thread-local*:" metabase.test.util.thread-local/*thread-local*
-                       "\n  var root:" ((.getRawRoot #'metabase.premium-features.token-check/*token-features*))
-                       "\n  var bound:" (metabase.premium-features.token-check/*token-features*)))
-            (catch Exception e
-              (println "DEBUG setter threw:" (.getMessage e))))
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Setting embedding-app-origins-interactive is not enabled because feature :embedding is not available"
-               (embed.settings/embedding-app-origins-interactive! "https://metabase.com"))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting embedding-app-origins-interactive is not enabled because feature :embedding is not available"
+             (embed.settings/embedding-app-origins-interactive! "https://metabase.com")))
         (testing "even if env is set, return the default value"
           (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "https://metabase.com"]
             (is (nil? (embed.settings/embedding-app-origins-interactive)))))))))
 
-(deftest ^:synchronized toggle-full-app-embedding-test-2
+(deftest toggle-full-app-embedding-test-2
   (mt/discard-setting-changes [embedding-app-origins-interactive]
     (testing "can change embedding-app-origins-interactive if :embedding is enabled"
       (mt/with-premium-features #{:embedding}

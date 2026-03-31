@@ -1009,6 +1009,13 @@
   ([setting-definition-or-name bypass-read-only?]
    (let [{:keys [setter enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
          s-name (setting-name setting)]
+     ;; TEMPORARY DEBUG — remove after investigating toggle-full-app-embedding-test
+     (when (= s-name "embedding-app-origins-interactive")
+       (println "DEBUG validate-settable!:"
+                "\n  setting-name:" s-name
+                "\n  feature:" (pr-str feature)
+                "\n  has-feature?:" (when feature (has-feature? feature))
+                "\n  (and feature (not (has-feature? feature))):" (and feature (not (has-feature? feature)))))
      (when (and feature (not (has-feature? feature)))
        (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature) setting)))
      (when (and enabled? (not (enabled?)))
