@@ -30,14 +30,18 @@
   [channel messages]
   (if (zero? *publish-buffer-ms*)
     (transport/publish! channel messages)
-    (swap! *publish-buffer*
-           (fn [buf]
-             (let [now (System/currentTimeMillis)]
-               (update buf channel
-                       (fn [entry]
-                         (-> (or entry {:messages [] :deadline-ms 0 :created-ms now})
-                             (update :messages into messages)
-                             (assoc :deadline-ms (+ now *publish-buffer-ms*))))))))))
+    (do
+      (binding [*out* *err*]
+        (println "[TZ-DEBUG] WARNING: buffered-publish! buffering" (count messages) "msg(s) for" channel
+                 "*publish-buffer-ms*=" *publish-buffer-ms*))
+      (swap! *publish-buffer*
+             (fn [buf]
+               (let [now (System/currentTimeMillis)]
+                 (update buf channel
+                         (fn [entry]
+                           (-> (or entry {:messages [] :deadline-ms 0 :created-ms now})
+                               (update :messages into messages)
+                               (assoc :deadline-ms (+ now *publish-buffer-ms*)))))))))))
 
 (defn flush-publish-buffer!
   "Drains publish buffer entries past their deadline."

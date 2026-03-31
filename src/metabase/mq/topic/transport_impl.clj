@@ -12,6 +12,8 @@
   {})
 
 (defmethod transport/publish! :topic [channel messages]
+  (binding [*out* *err*]
+    (println "[TZ-DEBUG] transport/publish! :topic backend=" topic.backend/*backend* "channel=" channel (count messages) "msgs"))
   (topic.backend/publish! topic.backend/*backend* channel messages))
 
 (defmethod transport/wrap-listener :topic [channel listener]
