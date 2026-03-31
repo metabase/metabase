@@ -12,6 +12,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
@@ -351,7 +352,7 @@
                     {:aggregation  [[:count]]
                      :breakout     [[:field "source" {:base-type :type/Text}]]
                      :source-query {:native "select 1 as \"val\", '2' as \"source\""}})
-            compiled (-> (qp/compile query)
+            compiled (-> (qp.compile/compile query)
                          (update :query #(str/split-lines (driver/prettify-native-form :athena %))))]
         ;; The generated SQL must NOT contain `"source"."source"` — this is ambiguous and fails on Athena.
         ;; The column reference should be unambiguous, e.g. by qualifying with a different subquery alias
