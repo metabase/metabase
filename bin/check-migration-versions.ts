@@ -93,6 +93,21 @@ console.log(
 let newFiles: string[] = [];
 let modifiedFiles: string[] = [];
 
+// -- Ensure base ref is available (needed for git diff and git show) ----------
+
+function ensureBaseRef(): void {
+  try {
+    git("rev-parse", `origin/${baseRef}`);
+  } catch {
+    try {
+      git("fetch", "origin", baseRef, "--depth=1");
+    } catch {
+      console.error(`ERROR: Could not fetch origin/${baseRef}`);
+      process.exit(1);
+    }
+  }
+}
+
 const changedFilesPath = process.env.CHANGED_FILES;
 if (changedFilesPath && existsSync(changedFilesPath)) {
   // CI path: read pre-computed file list from GitHub API
@@ -111,17 +126,7 @@ if (changedFilesPath && existsSync(changedFilesPath)) {
 } else {
   // Local path: use git diff
   console.log("Using git diff to find changed files");
-
-  try {
-    git("rev-parse", `origin/${baseRef}`);
-  } catch {
-    try {
-      git("fetch", "origin", baseRef, "--depth=1");
-    } catch {
-      console.error(`ERROR: Could not fetch origin/${baseRef}`);
-      process.exit(1);
-    }
-  }
+  ensureBaseRef();
 
   function changedFiles(filter: string): string[] {
     return git(
@@ -138,6 +143,11 @@ if (changedFilesPath && existsSync(changedFilesPath)) {
 
   newFiles = changedFiles("A");
   modifiedFiles = changedFiles("M");
+}
+
+// In CI, we still need the base ref to git show old file contents
+if (modifiedFiles.length > 0) {
+  ensureBaseRef();
 }
 
 if (newFiles.length === 0 && modifiedFiles.length === 0) {
