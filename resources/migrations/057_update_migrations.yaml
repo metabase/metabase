@@ -2753,6 +2753,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: affected_versions
+                  type: ${text.type}
+                  remarks: "JSON array of {min, fixed} version ranges"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: matching_query
+                  type: ${text.type}
+                  remarks: JSON HoneySQL query keyed by dialect (null = affects all instances)
+                  constraints:
+                    nullable: true
+              - column:
                   name: published_at
                   type: ${timestamp_type}
                   remarks: When the advisory was published

@@ -3100,8 +3100,11 @@
 
   enterprise/security-center
   {:team "Gadget"
-   :api  #{metabase-enterprise.security-center.models.security-advisory}
-   :uses #{models
+   :api  #{metabase-enterprise.security-center.api
+           metabase-enterprise.security-center.models.security-advisory}
+   :uses #{api
+           events
+           models
            premium-features
            util}
    :model-exports #{:model/SecurityAdvisory}}
