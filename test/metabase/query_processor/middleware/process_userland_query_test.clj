@@ -94,8 +94,11 @@
                :pulse_id     nil
                :card_id      nil
                :action_id    nil
-               :is_sandboxed false
-               :context      nil
+               :is_sandboxed    false
+               :is_impersonated false
+               :is_db_routed    false
+               :parameters      nil
+               :context         nil
                :running_time true
                :cache_hit    false
                :cache_hash   nil ;; this is filled only for eligible queries

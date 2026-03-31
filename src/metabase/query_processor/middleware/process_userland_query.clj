@@ -17,6 +17,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [every? empty? get-in]]
@@ -70,12 +71,13 @@
           (catch Throwable e
             (log/error e "Error saving query execution info")))))))
 
-(defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
+(defn- save-successful-execution-metadata! [cache-details is-sandboxed? is-impersonated? query-execution result-rows]
   (let [qe-map (assoc query-execution
-                      :cache_hit    (boolean (:cached cache-details))
-                      :cache_hash   (:hash cache-details)
-                      :result_rows  result-rows
-                      :is_sandboxed (boolean is-sandboxed?))]
+                      :cache_hit        (boolean (:cached cache-details))
+                      :cache_hash       (:hash cache-details)
+                      :result_rows      result-rows
+                      :is_sandboxed     (boolean is-sandboxed?)
+                      :is_impersonated  (boolean is-impersonated?))]
     (save-execution-metadata! qe-map)))
 
 (defn- save-failed-query-execution! [query-execution message]
@@ -92,8 +94,8 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :transform_id :lens_id :lens_params :pulse_id :result_rows :native
-               :parameterized))
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :is_impersonated :is_db_routed :card_id :dashboard_id :transform_id :lens_id :lens_params :pulse_id :result_rows :native
+               :parameterized :parameters))
    (dissoc result :cache/details)
    {:cached                 (when (:cached cache) (:updated_at cache))
     :status                 :completed
@@ -114,7 +116,7 @@
          (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
                                                    :card-id (:card_id execution-info)
                                                    :context (:context execution-info)}))
-       (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
+       (save-successful-execution-metadata! (:cache/details acc) (get-in acc [:data :is_sandboxed]) (get-in acc [:data :is_impersonated]) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))
@@ -156,6 +158,8 @@
      :native            (= (keyword query-type) :native)
      :json_query        json-query
      :tenant_id         (:tenant_id @api/*current-user*)
+     :is_db_routed      (boolean destination-database-id)
+     :parameters        (when (seq parameters) (json/encode parameters))
      :started_at        (t/zoned-date-time)
      :running_time      0
      :result_rows       0
