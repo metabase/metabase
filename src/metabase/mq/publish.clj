@@ -24,6 +24,8 @@
   "Publishes messages to a channel. Applies dedup-fn if registered, buffers,
    publishes to the appropriate backend, and records analytics."
   [channel messages]
+  (binding [*out* *err*]
+    (println "[TZ-DEBUG] publish!:" (count messages) "msg(s) for" channel))
   (let [{:keys [dedup-fn]} (listener/get-listener channel)
         before-count (count messages)
         messages     (if dedup-fn (dedup-fn messages) messages)]
@@ -78,6 +80,10 @@
       (let [result (body-fn msg-buffer)
             msgs   @buffer]
         (when (seq msgs)
+          (binding [*out* *err*]
+            (println "[TZ-DEBUG] run-with-buffer:" (count msgs) "msg(s) for" channel
+                     "tx-state=" (some? (mdb/transaction-state))
+                     "*defer*=" *defer-in-transaction?*))
           (if (mdb/transaction-state)
             (defer-in-transaction! channel msgs)
             (publish! channel msgs)))

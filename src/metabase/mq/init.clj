@@ -24,6 +24,8 @@
     (do
       (alter-var-root #'q.backend/*backend* (constantly :queue.backend/sync))
       (alter-var-root #'topic.backend/*backend* (constantly :topic.backend/sync))
+      ;; Disable publish buffering so messages are delivered immediately (no background flush thread in tests)
+      (alter-var-root #'publish-buffer/*publish-buffer-ms* (constantly 0))
       (listener/register-listeners!))
     ;; In production, use configured backends with background polling.
     (let [queue-be (keyword "queue.backend" (mq.settings/queue-backend))
