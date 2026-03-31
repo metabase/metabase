@@ -837,7 +837,7 @@
                                                             :query
                                                             (lib/native-query mp)
                                                             (qp/process-query)
-                                                            (mt/rows)))]
+                                                            (mt/formatted-rows [int])))]
                       (is (= [[100]] (run-native-query :venues)))
                       (is (thrown? java.lang.Exception (run-native-query :checkins)))))
                   (testing "All other queries are rejected"
