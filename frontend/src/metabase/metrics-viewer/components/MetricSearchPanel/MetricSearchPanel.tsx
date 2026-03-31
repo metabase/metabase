@@ -17,7 +17,7 @@ import type {
 import { isMetricEntry } from "../../types/viewer-state";
 import { FilterPopover } from "../FilterPopover";
 import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
-import { MetricSearch } from "../MetricSearch";
+import { MetricSearchInput as MetricSearch } from "../MetricSearch";
 import { MetricsFilterPills } from "../MetricsFilterPills";
 
 import S from "./MetricSearchPanel.module.css";
