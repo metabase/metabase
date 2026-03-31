@@ -48,10 +48,10 @@
 
 (defn- remote-sync-path
   [opts entity]
-  (let [base-path (serdes/storage-path entity opts)
-        dirnames (drop-last base-path)
-        basename (str (last base-path) ".yaml")]
-    (str/join File/separator (map serialization/escape-segment (concat dirnames [basename])))))
+  (let [resolved (serialization/resolve-storage-path opts entity)
+        dirnames (drop-last resolved)
+        basename (str (last resolved) ".yaml")]
+    (str/join File/separator (concat dirnames [basename]))))
 
 (defn- ->file-spec
   "Converts entity from serdes stream into file spec for source write-files! "
