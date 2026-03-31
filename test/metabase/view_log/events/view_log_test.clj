@@ -9,6 +9,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing-rest.api-test :as public-test]
+   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -344,6 +345,27 @@
   (t2/select-one :model/QueryExecution
                  :card_id card-id
                  {:order-by [[:id :desc]]}))
+
+(deftest query-execution-tenant-id-test
+  (testing "tenant_id on query_execution comes from *current-user*"
+    (mt/with-temp [:model/Tenant tenant {:name "QE Tenant" :slug "qe-tenant"}
+                   :model/User   user   {:tenant_id (:id tenant)}]
+      (mt/with-current-user (u/id user)
+        (let [query (assoc (mt/mbql-query venues {:limit 1})
+                           :info {:executed-by (u/id user)
+                                  :query-hash  (qp.util/query-hash (mt/mbql-query venues {:limit 1}))
+                                  :context     :question})
+              ei    (#'process-userland-query/query-execution-info query)]
+          (is (= (:id tenant) (:tenant_id ei)))))))
+  (testing "tenant_id nil when user has no tenant"
+    (mt/with-temp [:model/User user {}]
+      (mt/with-current-user (u/id user)
+        (let [query (assoc (mt/mbql-query venues {:limit 1})
+                           :info {:executed-by (u/id user)
+                                  :query-hash  (qp.util/query-hash (mt/mbql-query venues {:limit 1}))
+                                  :context     :question})
+              ei    (#'process-userland-query/query-execution-info query)]
+          (is (nil? (:tenant_id ei))))))))
 
 (deftest public-card-pii-fields-test
   (mt/with-premium-features #{:audit-app}

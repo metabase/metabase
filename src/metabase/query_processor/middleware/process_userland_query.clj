@@ -9,6 +9,7 @@
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
@@ -154,6 +155,7 @@
                              (every? #(some? (:value %)) parameters))
      :native            (= (keyword query-type) :native)
      :json_query        json-query
+     :tenant_id         (:tenant_id @api/*current-user*)
      :started_at        (t/zoned-date-time)
      :running_time      0
      :result_rows       0
