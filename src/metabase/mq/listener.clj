@@ -119,13 +119,18 @@
         [bindings & body] args
         batch?          (and config (:max-batch-messages config))]
     (if batch?
-      `(defmethod def-listener* ~channel [~'_]
-         (batch-listen!
-          ~channel
-          (fn [~@bindings] ~@body)
-          ~(select-keys config [:max-batch-messages :exclusive :dedup-fn])))
-      `(defmethod def-listener* ~channel [~'_]
-         (listen! ~channel ~(or config {}) (fn [~@bindings] ~@body))))))
+      `(do (defmethod def-listener* ~channel [~'_]
+             (batch-listen!
+              ~channel
+              (fn [~@bindings] ~@body)
+              ~(select-keys config [:max-batch-messages :exclusive :dedup-fn])))
+           ;; Eagerly register so listeners work without requiring a startup/init step.
+           ;; register-listener! is idempotent — safe to call again from register-listeners!.
+           ((methods def-listener*) ~channel))
+      `(do (defmethod def-listener* ~channel [~'_]
+             (listen! ~channel ~(or config {}) (fn [~@bindings] ~@body)))
+           ;; Eagerly register so listeners work without requiring a startup/init step.
+           ((methods def-listener*) ~channel)))))
 
 (defn register-listeners!
   "Call all [[def-listener!]] implementations to register their listeners.

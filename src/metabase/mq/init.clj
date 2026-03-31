@@ -18,17 +18,11 @@
   #{:topic.backend/appdb :topic.backend/memory})
 
 (defmethod startup/def-startup-logic! ::MqInit [_]
-  (binding [*out* *err*]
-    (println "[TZ-DEBUG] MqInit running, is-test?=" config/is-test? "run-mode=" config/run-mode))
   (if config/is-test?
-    ;; In tests, use the sync backend (inline processing, no background threads).
-    ;; Tests that need MQ use `with-sync-mq`. Appdb-specific tests call backend methods directly.
-    (do
-      (alter-var-root #'q.backend/*backend* (constantly :queue.backend/sync))
-      (alter-var-root #'topic.backend/*backend* (constantly :topic.backend/sync))
-      ;; Disable publish buffering so messages are delivered immediately (no background flush thread in tests)
-      (alter-var-root #'publish-buffer/*publish-buffer-ms* (constantly 0))
-      (listener/register-listeners!))
+    ;; In tests, backends and buffer defaults are set at var definition time (see backend.clj
+    ;; and publish_buffer.clj). Listeners are eagerly registered by def-listener! at namespace
+    ;; load time. Nothing else to do here.
+    nil
     ;; In production, use configured backends with background polling.
     (let [queue-be (keyword "queue.backend" (mq.settings/queue-backend))
           topic-be (keyword "topic.backend" (mq.settings/topic-backend))]
