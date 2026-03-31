@@ -1,6 +1,6 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [some mapv])
   (:require
    [clojure.set :as set]
    ;; TODO (Cam 10/1/25) -- Isn't having drivers use Macaw directly against the spirt of all the work we did to make a
@@ -16,10 +16,19 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.references :as sql.references]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.util :as lib.util]
    [metabase.util.humanization :as u.humanization]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]
-   [potemkin :as p]))
+   [metabase.util.performance :refer [some mapv]]
+   [potemkin :as p])
+  (:import
+   [net.sf.jsqlparser.parser CCJSqlParserUtil]
+   [net.sf.jsqlparser.statement.select PlainSelect Select]))
+
+(set! *warn-on-reflection* true)
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -324,3 +333,35 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p/import-vars [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution])
+
+(defn- is-single-select-stmt?
+  "Parses a query and checks that it is a single SELECT statement.
+   Also returns the query reconstructed from the parsed AST.
+
+   We're using JSqlParser because macaw doesn't handle SQL strings containing multiple statements
+   such as `SELECT 1; SELECT 2`. This should be updated to use SQLGlot in a version that has it."
+  [sql]
+  (try
+    (let [stmts (CCJSqlParserUtil/parseStatements sql)]
+      (cond-> {:is-single-select? false}
+        (and (= 1 (count stmts)) (some #(instance? % (first stmts)) [PlainSelect Select]))
+        (assoc :is-single-select? true :sql (str (first stmts)))))
+    (catch Exception e
+      {:is-single-select? false :error (.getMessage e)})))
+
+(defn validate-impersonated-query*
+  "Validates a native query by parsing it and ensuring that it is a single select statement."
+  [_driver query]
+  (update query :stages
+          (fn [stages]
+            (mapv (fn [stage]
+                    (if (lib.util/native-stage? stage)
+                      (let [{:keys [is-single-select? sql error]} (is-single-select-stmt? (:native stage))]
+                        (when error
+                          (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage)))
+                        (if is-single-select?
+                          (assoc stage :native sql)
+                          (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
+                                          {:sql (:native stage)}))))
+                      stage))
+                  stages))))

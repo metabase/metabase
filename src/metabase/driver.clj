@@ -1680,3 +1680,11 @@
       (if (table-known-to-not-exist? driver e)
         false
         (throw e)))))
+
+(defmulti validate-impersonated-query
+  "Validates a query for impersonation. Returns the query if it is valid and throws otherwise."
+  {:added "0.60.0" :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod validate-impersonated-query :default [_driver query] query)

@@ -1062,3 +1062,7 @@
   [_driver]
   ;; https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/ms191240(v=sql.105)#sysname
   128)
+
+(defmethod driver/validate-impersonated-query :sqlserver
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))

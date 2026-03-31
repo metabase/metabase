@@ -659,3 +659,7 @@
   ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
   ;; 42P01: undefined_table, 3F000: invalid_schema_name
   (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))
+
+(defmethod driver/validate-impersonated-query :redshift
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
