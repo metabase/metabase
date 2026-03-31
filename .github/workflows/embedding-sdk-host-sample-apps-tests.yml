@@ -115,6 +115,8 @@ jobs:
       SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
@@ -245,6 +247,8 @@ jobs:
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
