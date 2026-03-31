@@ -352,7 +352,6 @@ export async function loadCustomVizPlugin(
         VisualizationProps & { width: number | null; height: number | null }
       >,
     ) as Visualization;
-
     Object.assign(Component, {
       identifier,
       getUiName: () => plugin.display_name,

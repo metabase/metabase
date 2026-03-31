@@ -1,11 +1,8 @@
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import visualizations, {
-  registerVisualization,
-} from "metabase/visualizations";
+import visualizations, { registerVisualization } from "metabase/visualizations";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { VisualizationDisplay } from "metabase-types/api";
 
-import { CustomVizChartTypeSection } from "./components/CustomVizChartTypeSection";
 import {
   CustomVizDevelopmentPage,
   CustomVizFormPage,
@@ -58,7 +55,6 @@ export function initializePlugin() {
       ManageCustomVisualizationsPage,
       CustomVizFormPage,
       CustomVizDevelopmentPage,
-      CustomVizChartTypeSection,
       useAutoLoadCustomVizPlugin,
       useCustomVizPlugins,
       loadCustomVizPlugin,
