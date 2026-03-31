@@ -45,9 +45,10 @@
 (deftest call-llm-tool-choice-test
   (testing "passes required tool choice to LLM providers"
     (let [captured (atom nil)]
-      (mt/with-dynamic-fn-redefs [http/post (fn [_url opts]
-                                              (reset! captured (json/decode+kw (:body opts)))
-                                              (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
+      (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                 (when (:body opts)
+                                                   (reset! captured (json/decode+kw (:body opts))))
+                                                 (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
         (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
                                            llm-openrouter-api-key "sk-or-v1-test-key"
                                            llm-openai-api-key     "sk-test-key"]

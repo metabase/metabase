@@ -120,6 +120,16 @@
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
 
+;;; --------------------------------------------------- Proxy ---------------------------------------------------
+
+(defsetting llm-proxy-base-url
+  (deferred-tru "Base URL for the LLM proxy. When set, all LLM requests are routed through this proxy and authenticated with the instance token instead of provider API keys.")
+  :encryption       :no
+  :visibility       :internal
+  :default          nil
+  :export?          false
+  :doc              false)
+
 ;;; -------------------------------------------------- General --------------------------------------------------
 
 (defsetting llm-max-tokens
