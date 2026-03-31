@@ -82,14 +82,15 @@
 (def ^:private list-models*
   "Memoized implementation of list-models with 5-minute TTL."
   (memoize/ttl
-   (fn [{:keys [api-key api-url api-version]}]
+   (fn [{:keys [api-key api-url api-version proxy?]}]
      (try
-       (let [url (str api-url "/v1/models")
-             response (http/get url
-                                {:headers {"x-api-key"         api-key
-                                           "anthropic-version" api-version}})
-             body (json/decode+kw (:body response))
-             models (reverse (sort-by :created_at (:data body)))]
+       (let [url      (str api-url "/v1/models")
+             auth     (if proxy?
+                        {"x-metabase-instance-token" api-key}
+                        {"x-api-key" api-key})
+             response (http/get url {:headers (assoc auth "anthropic-version" api-version)})
+             body     (json/decode+kw (:body response))
+             models   (reverse (sort-by :created_at (:data body)))]
          {:models (map #(select-keys % [:id :display_name]) models)})
        (catch Exception e
          (handle-api-error e))))
@@ -100,7 +101,7 @@
    Returns a map with :models. Results are cached for 5 minutes."
   ([]
    (list-models {:api-key (get-api-key-or-throw)}))
-  ([{:keys [api-key api-url api-version]
+  ([{:keys [api-key api-url api-version proxy?]
      :or   {api-url     (llm.settings/llm-anthropic-api-base-url)
             api-version (llm.settings/llm-anthropic-api-version)}}]
    (when (str/blank? api-key)
@@ -108,7 +109,8 @@
                      {:type :llm-not-configured})))
    (list-models* {:api-key     api-key
                   :api-url     api-url
-                  :api-version api-version})))
+                  :api-version api-version
+                  :proxy?      proxy?})))
 
 (defn chat-completion
   "Send a chat completion request to Anthropic.

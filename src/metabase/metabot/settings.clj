@@ -102,10 +102,11 @@
           first))
 
 (defn- llm-provider-configured? [provider-and-model]
-  (boolean (some-> provider-and-model
-                   provider-prefix
-                   configured-provider-api-key
-                   token-configured?)))
+  (boolean (or (some? (llm.settings/llm-proxy-base-url))
+               (some-> provider-and-model
+                       provider-prefix
+                       configured-provider-api-key
+                       token-configured?))))
 
 (defsetting llm-metabot-internal-tasks-enabled?
   (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")
