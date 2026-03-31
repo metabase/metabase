@@ -18,6 +18,8 @@
   #{:topic.backend/appdb :topic.backend/memory})
 
 (defmethod startup/def-startup-logic! ::MqInit [_]
+  (binding [*out* *err*]
+    (println "[TZ-DEBUG] MqInit running, is-test?=" config/is-test? "run-mode=" config/run-mode))
   (if config/is-test?
     ;; In tests, use the sync backend (inline processing, no background threads).
     ;; Tests that need MQ use `with-sync-mq`. Appdb-specific tests call backend methods directly.
