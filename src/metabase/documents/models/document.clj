@@ -198,7 +198,9 @@
                :document {:export-with-context export-document-content
                           :import-with-context import-document-content}
                :collection_id (serdes/fk :model/Collection)
-               :creator_id (serdes/fk :model/User)}})
+               :creator_id (serdes/fk :model/User)}
+   :defaults {:archived          false
+              :archived_directly false}})
 
 (defn- document-deps
   [{:keys [content_type] :as document}]

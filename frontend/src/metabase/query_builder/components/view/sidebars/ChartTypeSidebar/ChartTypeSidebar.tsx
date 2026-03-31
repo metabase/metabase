@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
@@ -7,12 +7,7 @@ import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
-import {
-  onCloseChartType,
-  onOpenChartSettings,
-  setUIControls,
-  updateQuestion,
-} from "metabase/query_builder/actions";
+import { updateQuestion } from "metabase/query_builder/actions";
 import {
   ChartTypeSettings,
   type GetSensibleVisualizationsProps,
@@ -20,6 +15,11 @@ import {
   getSensibleVisualizations,
   useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
+import {
+  onCloseChartType,
+  onOpenChartSettings,
+  setUIControls,
+} from "metabase/redux/query-builder";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
@@ -79,8 +79,10 @@ export const ChartTypeSidebar = ({
     }
   };
 
+  // Pinned to mount so chart type grouping stays stable while browsing (metabase#70013)
+  const initialResultRef = useRef(result);
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
-    () => getSensibleVisualizations({ result }),
+    () => getSensibleVisualizations({ result: initialResultRef.current }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute after plugins are loaded
     [result, pluginsLoaded],
   );

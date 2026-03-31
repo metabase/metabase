@@ -15,6 +15,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
+   [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
@@ -886,11 +887,11 @@
       (let [;; Transform entity fields to serdes format (e.g., table_id -> [db schema table])
             transformed-entity (transform-entity-for-serdes entity)
             entity-with-meta (assoc transformed-entity :serdes/meta serdes-meta)
-            storage-path (serdes/storage-path entity-with-meta ctx)]
+            resolved (serialization/resolve-storage-path ctx entity-with-meta)]
         ;; For Collections, drop the last segment (filename) to get directory path
         (if (= model-type "Collection")
-          (str/join "/" (butlast storage-path))
-          (str/join "/" storage-path))))
+          (str/join "/" (butlast resolved))
+          (str/join "/" resolved))))
     (catch Exception e
       (log/warnf "Failed to build storage path for %s %s: %s"
                  model-type (:id entity) (ex-message e))

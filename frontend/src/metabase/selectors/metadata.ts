@@ -99,8 +99,6 @@ export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
-export const getShallowMeasures = getNormalizedMeasures;
-export const getShallowMetrics = getNormalizedMetrics;
 
 export const getMetadata: (
   state: State,
