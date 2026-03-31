@@ -434,7 +434,7 @@
                                                                                   (custom-viz-bundles card))]
     ;; If the custom viz plugin didn't define a StaticVisualizationComponent,
     ;; RenderChart returns an empty string. Fall back to table rendering.
-    (if (and (str/starts-with? (name (get-in card [:display])) "custom:")
+    (if (and (str/starts-with? (name (get card :display)) "custom:")
              (str/blank? content))
       (render :table render-type _timezone-id card dashcard data)
       (case rendered-type

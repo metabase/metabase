@@ -1,9 +1,10 @@
 (ns metabase-enterprise.custom-viz-plugin.manifest
   "Parsing and validation for custom visualization plugin manifest files (metabase-plugin.json)."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [metabase.config.core :as config]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.nio.file FileSystems)
@@ -22,7 +23,7 @@
   "Parse a manifest JSON string. Returns the parsed map or nil if parsing fails."
   [^String json-str]
   (try
-    (json/parse-string json-str true)
+    (json/decode+kw json-str)
     (catch Exception e
       (log/warnf "Failed to parse %s: %s" manifest-filename (ex-message e))
       nil)))
@@ -55,7 +56,7 @@
 (defn- image-file?
   "Returns true if the file path has a recognized image extension."
   [^String path]
-  (let [lower (str/lower-case path)]
+  (let [lower (u/lower-case-en path)]
     (some #(str/ends-with? lower %) image-extensions)))
 
 (def ^:private allowed-asset-extensions
@@ -65,7 +66,7 @@
 (defn- allowed-asset-file?
   "Returns true if the file path has a recognized allowed extension."
   [^String path]
-  (let [lower (str/lower-case path)]
+  (let [lower (u/lower-case-en path)]
     (some #(str/ends-with? lower %) allowed-asset-extensions)))
 
 (defn- glob?

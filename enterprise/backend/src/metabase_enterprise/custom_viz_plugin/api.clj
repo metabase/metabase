@@ -1,7 +1,6 @@
 (ns metabase-enterprise.custom-viz-plugin.api
   "/api/ee/custom-viz-plugin endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.git :as git]
@@ -9,6 +8,7 @@
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -62,7 +62,7 @@
   [manifest-str]
   (when manifest-str
     (try
-      (json/parse-string manifest-str true)
+      (json/decode+kw manifest-str)
       (catch Exception _ nil))))
 
 (defn- plugin->response
@@ -130,10 +130,10 @@
                            :enabled true
                            {:order-by [[:display_name :asc]]})]
     (->> plugins
-         (filter #(manifest/compatible? %))
+         (filter manifest/compatible?)
          (map plugin->runtime-response))))
 
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its cached bundle."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
@@ -163,7 +163,7 @@
         (cache/fetch-and-cache! updated-plugin {:force? true}))))
   (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
 
-(api.macros/defendpoint :get "/:id/bundle"
+(api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the cached JS bundle for a plugin.
    Returns application/javascript with ETag and Cache-Control headers.
    In dev mode, proxies from dev_bundle_url if set."
@@ -215,7 +215,7 @@
       (throw (ex-info "Invalid asset path" {:status-code 400 :path raw-path})))
     normalized))
 
-(api.macros/defendpoint :get "/:id/asset"
+(api.macros/defendpoint :get "/:id/asset" :- :any
   "Serve a static image asset from the plugin's cached assets.
    The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)
    and must match an entry in the manifest's `assets` whitelist.
@@ -247,7 +247,7 @@
     (catch Throwable e
       (raise e))))
 
-(api.macros/defendpoint :put "/:id/dev-url"
+(api.macros/defendpoint :put "/:id/dev-url" :- [:map [:dev_bundle_url [:maybe :string]]]
   "Set or clear the in-memory dev base URL for a plugin (e.g. `http://localhost:5174`).
    The bundle is fetched from `{base}/index.js` and assets from `{base}/assets/{name}`.
    This is transient — cleared on server restart."

@@ -6,9 +6,9 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.config.core :as config]
    [metabase-enterprise.custom-viz-plugin.git :as git]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase.config.core :as config]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -26,7 +26,7 @@
 
 ;; dev_bundle_url is transient (only useful while a dev server is running),
 ;; so we store it in memory rather than the database. Cleared on restart.
-(defonce dev-bundle-urls
+(defonce ^:private dev-bundle-urls
   (atom {})) ;; {plugin-id -> url-string}
 
 (def ^:private ^:const fetch-failure-cooldown-ms (* 5 60 1000))

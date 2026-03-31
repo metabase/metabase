@@ -2778,6 +2778,7 @@
            metabase-enterprise.custom-viz-plugin.init}
    :uses #{api
            config
+           models
            premium-features
            util
            enterprise/api}
