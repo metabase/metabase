@@ -1083,3 +1083,7 @@
             (if schema
               (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
               (quote-identifier (name table-name))))))
+
+(defmethod driver/validate-impersonated-query :sqlserver
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
