@@ -4,10 +4,8 @@ import type { IconName } from "metabase/ui";
 import { Flex } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
-import type { MetricSourceId } from "../../types/viewer-state";
-
 export interface DimensionItem {
-  id: MetricSourceId;
+  id: number;
   label?: string;
   icon?: IconName;
   colors?: string[];
@@ -17,10 +15,10 @@ export interface DimensionItem {
 export interface DimensionPillBarProps {
   items: DimensionItem[];
   onDimensionChange: (
-    itemId: MetricSourceId,
+    entityIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  onDimensionRemove?: (itemId: MetricSourceId) => void;
+  onDimensionRemove?: (entityIndex: number) => void;
   disabled?: boolean;
 }
 

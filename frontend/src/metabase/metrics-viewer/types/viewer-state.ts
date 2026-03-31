@@ -27,7 +27,7 @@ export interface StoredMetricsViewerTab {
   id: string;
   type: MetricsViewerTabType;
   label: string;
-  dimensionsBySource: Record<MetricSourceId, DimensionId>;
+  dimensionsBySource: Record<number, DimensionId>;
 }
 
 // ── Expression sub-tokens ──
@@ -105,7 +105,7 @@ export interface MetricsViewerTabState {
   type: MetricsViewerTabType;
   label: string | null;
   display: MetricsViewerDisplayType;
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>;
+  dimensionMapping: Record<number, DimensionId | null>;
   projectionConfig: MetricsViewerTabProjectionConfig;
 }
 

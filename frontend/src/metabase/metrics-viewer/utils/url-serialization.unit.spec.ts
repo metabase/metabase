@@ -28,9 +28,7 @@ describe("url-serialization", () => {
             type: "time",
             label: "By Month",
             display: "bar",
-            definitions: [
-              { definitionId: "metric:1", dimensionId: "created_at" },
-            ],
+            definitions: [{ entityIndex: 0, dimensionId: "created_at" }],
             projectionConfig: {
               temporalUnit: "month",
             },

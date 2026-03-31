@@ -46,20 +46,24 @@ jest.mock("../MetricPill", () => ({
 
 jest.mock("../MetricExpressionPill", () => ({
   MetricExpressionPill: ({
-    expressionText,
+    expressionEntry,
+    metricEntries,
     onRemove,
   }: {
-    expressionText: string;
+    expressionEntry: any;
+    metricEntries: any[];
     onRemove: () => void;
-  }) => (
-    <div
-      data-testid="metric-expression-pill"
-      data-expression-text={expressionText}
-    >
-      <span>{expressionText}</span>
-      <button onClick={onRemove}>remove</button>
-    </div>
-  ),
+  }) => {
+    const { buildExpressionForPill } = require("../utils"); // eslint-disable-line @typescript-eslint/no-require-imports
+    const parts = buildExpressionForPill(expressionEntry.tokens, metricEntries);
+    const text = parts.join("");
+    return (
+      <div data-testid="metric-expression-pill" data-expression-text={text}>
+        <span>{text}</span>
+        <button onClick={onRemove}>remove</button>
+      </div>
+    );
+  },
 }));
 
 jest.mock("../MetricSearchDropdown", () => ({

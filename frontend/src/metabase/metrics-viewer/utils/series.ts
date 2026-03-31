@@ -47,12 +47,13 @@ import { getDimensionIcon } from "./tabs";
 
 export function buildArithmeticSeriesFromResult(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  dimensionMapping: Record<number, DimensionId | null>,
   display: MetricsViewerDisplayType,
   arithmeticResult: Dataset,
   modifiedDefinitions: Record<MetricSourceId, MetricDefinition>,
   expressionName: string,
   sourceColors: string[] | undefined,
+  formulaEntities: MetricsViewerFormulaEntity[],
 ): SingleSeries[] {
   if (!arithmeticResult.data?.cols?.length) {
     return [];
@@ -68,6 +69,7 @@ export function buildArithmeticSeriesFromResult(
     definitions,
     modDefMap,
     dimensionMapping,
+    formulaEntities,
   );
   if (!vizSettings) {
     return [];
@@ -109,9 +111,18 @@ function getVizSettingsBySourceId(
   entries: MetricsViewerDefinitionEntry[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  dimensionMapping: Record<number, DimensionId | null>,
+  formulaEntities: MetricsViewerFormulaEntity[],
 ): VisualizationSettings | null {
   const displayConfig = DISPLAY_TYPE_REGISTRY[display];
+
+  // Build a sourceId → first entity index lookup for dimension mapping
+  const sourceIdToEntityIndex = new Map<MetricSourceId, number>();
+  formulaEntities.forEach((entity, index) => {
+    if (isMetricEntry(entity) && !sourceIdToEntityIndex.has(entity.id)) {
+      sourceIdToEntityIndex.set(entity.id, index);
+    }
+  });
 
   return entries.reduce<VisualizationSettings | null>((found, entry) => {
     if (found) {
@@ -123,7 +134,9 @@ function getVizSettingsBySourceId(
       return null;
     }
 
-    const dimensionId = dimensionMapping[entry.id];
+    const entityIndex = sourceIdToEntityIndex.get(entry.id);
+    const dimensionId =
+      entityIndex != null ? dimensionMapping[entityIndex] : undefined;
 
     if (displayConfig.dimensionRequired) {
       if (!dimensionId) {
@@ -152,7 +165,7 @@ function getVizSettingsByEntityIndex(
   }[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   modifiedDefinitions: Map<number, MetricDefinition>,
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  dimensionMapping: Record<number, DimensionId | null>,
 ): VisualizationSettings | null {
   const displayConfig = DISPLAY_TYPE_REGISTRY[display];
 
@@ -167,7 +180,7 @@ function getVizSettingsByEntityIndex(
         return null;
       }
 
-      const dimensionId = dimensionMapping[entry.id];
+      const dimensionId = dimensionMapping[entityIndex];
 
       if (displayConfig.dimensionRequired) {
         if (!dimensionId) {
@@ -413,7 +426,7 @@ function createSeriesCard(
 
 export function buildRawSeriesFromDefinitions(
   indexedMetrics: { entry: MetricDefinitionEntry; entityIndex: number }[],
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  dimensionMapping: Record<number, DimensionId | null>,
   display: MetricsViewerDisplayType,
   resultsByEntityIndex: Map<number, Dataset>,
   modifiedDefinitions: Map<number, MetricDefinition>,
@@ -423,7 +436,7 @@ export function buildRawSeriesFromDefinitions(
   totalEntityCount: number,
 ): {
   series: SingleSeries[];
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToDimensionId: Record<CardId, number>;
 } {
   const vizSettings = getVizSettingsByEntityIndex(
     display,
@@ -437,7 +450,7 @@ export function buildRawSeriesFromDefinitions(
     return { series: [], cardIdToDimensionId: {} };
   }
 
-  const cardIdToDimensionId: Record<CardId, MetricSourceId> = {};
+  const cardIdToDimensionId: Record<CardId, number> = {};
 
   const series = indexedMetrics.flatMap(({ entry, entityIndex }) => {
     const definition = definitions[entry.id]?.definition;
@@ -498,7 +511,7 @@ export function buildRawSeriesFromDefinitions(
     }
 
     for (const s of entrySeries) {
-      cardIdToDimensionId[s.card.id] = entry.id;
+      cardIdToDimensionId[s.card.id] = entityIndex;
     }
 
     return entrySeries;
@@ -582,39 +595,25 @@ function computeAvailableOptions(
 
 export function buildDimensionItemsFromDefinitions(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  dimensionMapping: Record<number, DimensionId | null>,
   modifiedDefinitions: Map<number, MetricDefinition>,
   sourceColors: SourceColorMap,
   formulaEntities: MetricsViewerFormulaEntity[],
   dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
 ): DimensionItem[] {
-  // Build quick lookups: sourceId → first entity-index colour set & modified def.
-  // Dimension items are per-source, so we just need a representative.
-  const colorsBySourceId: Partial<Record<MetricSourceId, string[]>> = {};
-  const modDefBySourceId = new Map<MetricSourceId, MetricDefinition>();
-
-  formulaEntities.forEach((entity, index) => {
-    if (isMetricEntry(entity)) {
-      if (!(entity.id in colorsBySourceId) && sourceColors[index]) {
-        colorsBySourceId[entity.id] = sourceColors[index];
-      }
-      if (!modDefBySourceId.has(entity.id)) {
-        const md = modifiedDefinitions.get(index);
-        if (md) {
-          modDefBySourceId.set(entity.id, md);
-        }
-      }
-    }
-  });
-
-  return Object.values(definitions).flatMap((entry): DimensionItem[] => {
-    if (!entry.definition) {
+  return formulaEntities.flatMap((entity, entityIndex): DimensionItem[] => {
+    if (!isMetricEntry(entity)) {
       return [];
     }
 
-    const dimensionId = dimensionMapping[entry.id];
-    const entryColors = colorsBySourceId[entry.id];
-    const modifiedDefinition = modDefBySourceId.get(entry.id);
+    const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
+    if (!effectiveEntry?.definition) {
+      return [];
+    }
+
+    const dimensionId = dimensionMapping[entityIndex];
+    const entryColors = sourceColors[entityIndex];
+    const modifiedDefinition = modifiedDefinitions.get(entityIndex);
 
     if (dimensionId != null && modifiedDefinition) {
       const projections = LibMetric.projections(modifiedDefinition);
@@ -637,12 +636,12 @@ export function buildDimensionItemsFromDefinitions(
 
       return [
         {
-          id: entry.id,
+          id: entityIndex,
           label: dimensionInfo.longDisplayName,
           icon: getDimensionIcon(projectionDimension),
           colors: entryColors,
           availableOptions: computeAvailableOptions(
-            entry,
+            effectiveEntry,
             modifiedDefinition,
             dimensionFilter,
           ),
@@ -651,14 +650,14 @@ export function buildDimensionItemsFromDefinitions(
     }
 
     const availableOptions = computeAvailableOptions(
-      entry,
+      effectiveEntry,
       undefined,
       dimensionFilter,
     );
 
     return [
       {
-        id: entry.id,
+        id: entityIndex,
         label: undefined,
         icon: undefined,
         colors: entryColors,

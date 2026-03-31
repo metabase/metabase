@@ -18,6 +18,7 @@ import type { CardId, SingleSeries } from "metabase-types/api";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabState,
 } from "../../types/viewer-state";
 
@@ -26,17 +27,18 @@ import S from "./MetricsViewerVisualization.module.css";
 type MetricsViewerVisualizationProps = {
   rawSeries: SingleSeries[];
   dimensionItems: DimensionItem[];
-  onDimensionChange?: (
-    definitionId: MetricSourceId,
+  onDimensionChange: (
+    entityIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  onDimensionRemove?: (definitionId: MetricSourceId) => void;
+  onDimensionRemove?: (entityIndex: number) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToDimensionId: Record<CardId, number>;
   interactive?: boolean;
 };
 
@@ -48,6 +50,7 @@ export function MetricsViewerVisualization({
   onBrush,
   className,
   definitions,
+  formulaEntities,
   tab,
   onTabUpdate,
   cardIdToDimensionId,
@@ -61,12 +64,20 @@ export function MetricsViewerVisualization({
       interactive
         ? new MetricsViewerClickActionsMode({
             definitions,
+            formulaEntities,
             tab,
             onTabUpdate,
             cardIdToDimensionId,
           })
         : undefined,
-    [cardIdToDimensionId, definitions, interactive, onTabUpdate, tab],
+    [
+      cardIdToDimensionId,
+      definitions,
+      formulaEntities,
+      interactive,
+      onTabUpdate,
+      tab,
+    ],
   );
 
   const tabConfig = getTabConfig(tab.type);
@@ -123,7 +134,7 @@ export function MetricsViewerVisualization({
         </DebouncedFrame>
       )}
 
-      {!hideDimensionPill && dimensionItems.length > 0 && onDimensionChange && (
+      {!hideDimensionPill && (
         <DimensionPillBar
           items={dimensionItems}
           onDimensionChange={onDimensionChange}

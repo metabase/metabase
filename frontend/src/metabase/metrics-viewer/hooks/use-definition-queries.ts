@@ -74,13 +74,14 @@ type ExpressionItemError = {
 
 function getModifiedDefinitionForTab(
   definition: MetricsViewerDefinitionEntry,
+  entityIndex: number,
   tab: MetricsViewerTabState,
 ): MetricDefinition | null {
   if (!definition.definition) {
     return null;
   }
   const tabConfig = getTabConfig(tab.type);
-  const dimensionId = tab.dimensionMapping[definition.id];
+  const dimensionId = tab.dimensionMapping[entityIndex];
   if (!dimensionId) {
     if (tabConfig.minDimensions > 0) {
       return null;
@@ -96,6 +97,7 @@ function getModifiedDefinitionForTab(
 
 function buildArithmeticRequest(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  formulaEntities: MetricsViewerFormulaEntity[],
   tab: MetricsViewerTabState,
   entity: ExpressionDefinitionEntry,
 ):
@@ -127,7 +129,15 @@ function buildArithmeticRequest(
     }
 
     const definition = getEffectiveTokenDefinitionEntry(token, definitions);
-    const modifiedDefinition = getModifiedDefinitionForTab(definition, tab);
+    // Find entity index for this token's sourceId
+    const tokenEntityIndex = formulaEntities.findIndex(
+      (e) => e.type === "metric" && e.id === token.sourceId,
+    );
+    const modifiedDefinition = getModifiedDefinitionForTab(
+      definition,
+      tokenEntityIndex,
+      tab,
+    );
     if (!modifiedDefinition) {
       if (!definition.definition) {
         return null; // still loading the metric, not an error
@@ -215,6 +225,7 @@ function buildQueryItems(
       const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
       const modifiedDefinition = getModifiedDefinitionForTab(
         effectiveEntry,
+        index,
         tab,
       );
 
@@ -232,7 +243,12 @@ function buildQueryItems(
     }
 
     if (isExpressionEntry(entity)) {
-      const requestData = buildArithmeticRequest(definitions, tab, entity);
+      const requestData = buildArithmeticRequest(
+        definitions,
+        formulaEntities,
+        tab,
+        entity,
+      );
 
       if (requestData && "error" in requestData) {
         expressionItemsErrors.push({

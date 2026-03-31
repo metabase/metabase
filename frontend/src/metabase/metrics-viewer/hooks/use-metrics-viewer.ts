@@ -86,10 +86,10 @@ export interface UseMetricsViewerResult {
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
   changeTabDimension: (
     tabId: string,
-    definitionId: MetricSourceId,
+    entityIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  removeTabDimension: (tabId: string, definitionId: MetricSourceId) => void;
+  removeTabDimension: (tabId: string, entityIndex: number) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
@@ -225,6 +225,7 @@ export function useMetricsViewer({
     expressionItems,
   } = useDefinitionQueries(state.definitions, state.formulaEntities, activeTab);
 
+  // TODO: most likely we should refactor this to be based on "formulaEntities"
   const definitionValues = useMemo(
     () => Object.values(state.definitions),
     [state.definitions],
@@ -273,6 +274,19 @@ export function useMetricsViewer({
     return out;
   }, [state.formulaEntities]);
 
+  const entityIndicesWithSourceId = useMemo(
+    () =>
+      state.formulaEntities
+        .map((e, i) =>
+          isMetricEntry(e) ? { entityIndex: i, sourceId: e.id } : null,
+        )
+        .filter(
+          (x): x is { entityIndex: number; sourceId: MetricSourceId } =>
+            x != null,
+        ),
+    [state.formulaEntities],
+  );
+
   const sourceDataById = useMemo((): Record<
     MetricSourceId,
     SourceDisplayInfo
@@ -307,25 +321,31 @@ export function useMetricsViewer({
   );
 
   const effectiveTabs = useMemo(() => {
-    const dimsBySource = new Map(
-      definitionValues
-        .filter((entry) => entry.definition != null)
-        .map(
-          (entry) =>
-            [entry.id, getDimensionsByType(entry.definition!)] as const,
-        ),
-    );
+    // Build entity-index-keyed dimension lookup from formulaEntities
+    const dimsByEntityIndex = new Map<
+      number,
+      Map<string, { displayName: string }>
+    >();
+    state.formulaEntities.forEach((entity, index) => {
+      if (entity.type !== "metric") {
+        return;
+      }
+      const entry = state.definitions[entity.id];
+      if (!entry?.definition) {
+        return;
+      }
+      dimsByEntityIndex.set(index, getDimensionsByType(entry.definition));
+    });
 
     return state.tabs.map((tab) => {
       const names: string[] = [];
-      for (const [sourceId, dimensionId] of getObjectEntries(
-        tab.dimensionMapping,
-      )) {
+      for (const [key, dimensionId] of getObjectEntries(tab.dimensionMapping)) {
         if (dimensionId == null) {
           continue;
         }
-        const sourceDimensions = dimsBySource.get(sourceId);
-        const dimensionInfo = sourceDimensions?.get(dimensionId);
+        const entityIndex = Number(key);
+        const entityDimensions = dimsByEntityIndex.get(entityIndex);
+        const dimensionInfo = entityDimensions?.get(dimensionId);
         if (dimensionInfo) {
           names.push(dimensionInfo.displayName);
         }
@@ -333,16 +353,16 @@ export function useMetricsViewer({
       const label = resolveCommonTabLabel(names);
       return label != null && label !== tab.label ? { ...tab, label } : tab;
     });
-  }, [state.tabs, definitionValues]);
+  }, [state.tabs, state.formulaEntities, state.definitions]);
 
   const availableDimensions = useMemo(
     () =>
       getAvailableDimensionsForPicker(
         definitionsBySourceId,
-        sourceOrder,
+        entityIndicesWithSourceId,
         existingTabDimensionIds,
       ),
-    [definitionsBySourceId, sourceOrder, existingTabDimensionIds],
+    [definitionsBySourceId, entityIndicesWithSourceId, existingTabDimensionIds],
   );
 
   const addMetric = useCallback(

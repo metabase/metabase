@@ -26,6 +26,7 @@ import type {
 import { getInitialMetricsViewerPageState } from "../types/viewer-state";
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
 import { getEffectiveDefinitionEntry } from "../utils/definition-entries";
+import { reconcileDimensionMappings } from "../utils/reconcile-dimension-mappings";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -83,6 +84,7 @@ function getValidSelectedTabId(
 function addDefinitionToTabs(
   tabs: MetricsViewerTabState[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  formulaEntities: MetricsViewerFormulaEntity[],
   newDefId: MetricSourceId,
   newDef: MetricDefinition,
 ): MetricsViewerTabState[] {
@@ -92,16 +94,26 @@ function addDefinitionToTabs(
       .map((entry) => [entry.id, entry.definition] as const),
   );
 
+  // Find all entity indices for this definition
+  const entityIndices = formulaEntities
+    .map((e, i) => (e.type === "metric" && e.id === newDefId ? i : -1))
+    .filter((i) => i !== -1);
+
   return tabs.map((tab) => {
-    if (newDefId in tab.dimensionMapping || tab.label == null) {
+    // Check if any entity index for this def is already in dimensionMapping
+    if (
+      entityIndices.some((idx) => idx in tab.dimensionMapping) ||
+      tab.label == null
+    ) {
       return tab;
     }
 
-    const activeMappings = objectFromEntries(
-      getObjectEntries(tab.dimensionMapping).filter(
-        (entry): entry is [MetricSourceId, string] => entry[1] != null,
-      ),
-    );
+    const activeMappings: Record<number, string> = {};
+    for (const [key, value] of getObjectEntries(tab.dimensionMapping)) {
+      if (value != null) {
+        activeMappings[Number(key)] = value;
+      }
+    }
     const storedTab: StoredMetricsViewerTab = {
       id: tab.id,
       type: tab.type,
@@ -109,18 +121,31 @@ function addDefinitionToTabs(
       dimensionsBySource: activeMappings,
     };
 
+    // Build entity index → sourceId lookup for tab matching
+    const entityIndexToSourceId = new Map<number, MetricSourceId>();
+    formulaEntities.forEach((e, i) => {
+      if (e.type === "metric") {
+        entityIndexToSourceId.set(i, e.id);
+      }
+    });
+
     const matchingDimension = findMatchingDimensionForTab(
       newDef,
       storedTab,
       existingDefinitions,
+      entityIndexToSourceId,
     );
 
     if (matchingDimension) {
+      const newMappings: Record<number, string> = {};
+      for (const idx of entityIndices) {
+        newMappings[idx] = matchingDimension;
+      }
       return {
         ...tab,
         dimensionMapping: {
           ...tab.dimensionMapping,
-          [newDefId]: matchingDimension,
+          ...newMappings,
         },
       };
     }
@@ -151,13 +176,10 @@ export interface UseViewerStateResult {
   updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
   setDefinitionDimension: (
     tabId: string,
-    definitionId: MetricSourceId,
+    entityIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  removeDefinitionDimension: (
-    tabId: string,
-    definitionId: MetricSourceId,
-  ) => void;
+  removeDefinitionDimension: (tabId: string, entityIndex: number) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
@@ -222,6 +244,7 @@ export function useViewerState(): UseViewerStateResult {
           tabs: addDefinitionToTabs(
             prev.tabs,
             newDefinitions,
+            prev.formulaEntities,
             entry.id,
             entry.definition,
           ),
@@ -234,6 +257,14 @@ export function useViewerState(): UseViewerStateResult {
     (id: MetricSourceId) =>
       setState((prev) => {
         const { [id]: _, ...newDefinitions } = prev.definitions;
+
+        // Find entity indices being removed
+        const removedIndices = new Set(
+          prev.formulaEntities
+            .map((e, i) => (e.type === "metric" && e.id === id ? i : -1))
+            .filter((i) => i !== -1),
+        );
+
         const newTabs =
           // scalar tab is always valid, but we want to remove it if there are no definitions
           // so that adding a new definition triggers computeDefaultTabs
@@ -241,8 +272,25 @@ export function useViewerState(): UseViewerStateResult {
             ? []
             : prev.tabs
                 .map((tab) => {
-                  const { [id]: __, ...rest } = tab.dimensionMapping;
-                  return { ...tab, dimensionMapping: rest };
+                  // Remove entries for removed indices and shift remaining indices
+                  const newMapping: Record<number, string | null> = {};
+                  for (const [key, value] of getObjectEntries(
+                    tab.dimensionMapping,
+                  )) {
+                    const idx = Number(key);
+                    if (removedIndices.has(idx)) {
+                      continue;
+                    }
+                    // Count how many removed indices are below this one
+                    let shift = 0;
+                    for (const removed of removedIndices) {
+                      if (removed < idx) {
+                        shift++;
+                      }
+                    }
+                    newMapping[idx - shift] = value;
+                  }
+                  return { ...tab, dimensionMapping: newMapping };
                 })
                 .filter((tab) => areTabDimensionsValid(tab));
 
@@ -276,6 +324,7 @@ export function useViewerState(): UseViewerStateResult {
         const updatedTabs = addDefinitionToTabs(
           prev.tabs,
           newDefinitions,
+          prev.formulaEntities,
           id,
           definition,
         );
@@ -321,12 +370,20 @@ export function useViewerState(): UseViewerStateResult {
           return fe;
         });
 
+        // Find entity indices that were replaced
+        const replacedIndices = new Set(
+          prev.formulaEntities
+            .map((e, i) => (e.type === "metric" && e.id === oldId ? i : -1))
+            .filter((i) => i !== -1),
+        );
+
+        // Remove dimension mappings for replaced indices (new metric has different dimensions)
         const newTabs = prev.tabs.map((tab) => {
-          if (!(oldId in tab.dimensionMapping)) {
-            return tab;
+          const newMapping = { ...tab.dimensionMapping };
+          for (const idx of replacedIndices) {
+            delete newMapping[idx];
           }
-          const { [oldId]: __, ...tabRest } = tab.dimensionMapping;
-          return { ...tab, dimensionMapping: tabRest };
+          return { ...tab, dimensionMapping: newMapping };
         });
 
         return {
@@ -389,13 +446,13 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const setDefinitionDimension = useCallback(
-    (
-      tabId: string,
-      definitionId: MetricSourceId,
-      dimension: DimensionMetadata,
-    ) =>
+    (tabId: string, entityIndex: number, dimension: DimensionMetadata) =>
       setState((prev) => {
-        const entry = prev.definitions[definitionId];
+        const entity = prev.formulaEntities[entityIndex];
+        if (!entity || entity.type !== "metric") {
+          return prev;
+        }
+        const entry = prev.definitions[entity.id];
         const def = entry?.definition;
         const dimId = def
           ? LibMetric.dimensionValuesInfo(def, dimension).id
@@ -411,13 +468,13 @@ export function useViewerState(): UseViewerStateResult {
             if (tab.id !== tabId) {
               return tab;
             }
-            const previousDimId = tab.dimensionMapping[definitionId];
+            const previousDimId = tab.dimensionMapping[entityIndex];
             const dimensionChanged = previousDimId !== dimId;
             return {
               ...tab,
               dimensionMapping: {
                 ...tab.dimensionMapping,
-                [definitionId]: dimId,
+                [entityIndex]: dimId,
               },
               projectionConfig: dimensionChanged
                 ? {
@@ -433,7 +490,7 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const removeDefinitionDimension = useCallback(
-    (tabId: string, definitionId: MetricSourceId) =>
+    (tabId: string, entityIndex: number) =>
       setState((prev) => ({
         ...prev,
         tabs: prev.tabs.map((tab) => {
@@ -442,7 +499,7 @@ export function useViewerState(): UseViewerStateResult {
           }
           return {
             ...tab,
-            dimensionMapping: { ...tab.dimensionMapping, [definitionId]: null },
+            dimensionMapping: { ...tab.dimensionMapping, [entityIndex]: null },
             projectionConfig: {
               ...tab.projectionConfig,
               dimensionFilter: undefined,
@@ -455,7 +512,15 @@ export function useViewerState(): UseViewerStateResult {
 
   const setFormulaEntities = useCallback(
     (formulaEntities: MetricsViewerFormulaEntity[]) =>
-      setState((prev) => ({ ...prev, formulaEntities })),
+      setState((prev) => ({
+        ...prev,
+        formulaEntities,
+        tabs: reconcileDimensionMappings(
+          prev.tabs,
+          prev.formulaEntities,
+          formulaEntities,
+        ),
+      })),
     [],
   );
 
@@ -537,7 +602,21 @@ export function useViewerState(): UseViewerStateResult {
               {
                 [id]: definition,
               };
-            const tabs = computeDefaultTabs(definitions, [id]);
+            // Find entity indices for this sourceId
+            const entityIndicesWithSourceId = stateRef.current.formulaEntities
+              .map((e, i) =>
+                e.type === "metric" && e.id === id
+                  ? { entityIndex: i, sourceId: id }
+                  : null,
+              )
+              .filter(
+                (x): x is { entityIndex: number; sourceId: MetricSourceId } =>
+                  x != null,
+              );
+            const tabs = computeDefaultTabs(
+              definitions,
+              entityIndicesWithSourceId,
+            );
             for (const tab of tabs) {
               addTab(tab);
             }

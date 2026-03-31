@@ -11,6 +11,7 @@ import type { CardId, DatetimeUnit, TemporalUnit } from "metabase-types/api";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabState,
 } from "../types/viewer-state";
 
@@ -19,23 +20,27 @@ import { findDimensionById } from "./dimension-lookup";
 
 type MetricsViewerClickActionParams = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToDimensionId: Record<CardId, number>;
 };
 
 export class MetricsViewerClickActionsMode implements ClickActionsMode {
   private definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  private formulaEntities: MetricsViewerFormulaEntity[];
   private tab: MetricsViewerTabState;
   private onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  private cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  private cardIdToDimensionId: Record<CardId, number>;
   constructor({
     definitions,
+    formulaEntities,
     tab,
     onTabUpdate,
     cardIdToDimensionId,
   }: MetricsViewerClickActionParams) {
     this.definitions = definitions;
+    this.formulaEntities = formulaEntities;
     this.tab = tab;
     this.onTabUpdate = onTabUpdate;
     this.cardIdToDimensionId = cardIdToDimensionId;
@@ -45,10 +50,14 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
     if (cardId == null) {
       return [];
     }
-    const sourceId = this.cardIdToDimensionId[cardId];
-    const definition = sourceId ? this.definitions[sourceId] : undefined;
+    const entityIndex = this.cardIdToDimensionId[cardId];
+    const entity =
+      entityIndex != null ? this.formulaEntities[entityIndex] : undefined;
+    const definition =
+      entity?.type === "metric" ? this.definitions[entity.id] : undefined;
     const params = {
       definition,
+      entityIndex,
       tab: this.tab,
       onTabUpdate: this.onTabUpdate,
       clickObject,
@@ -61,6 +70,7 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
 
 type GetActionParams = {
   definition: MetricsViewerDefinitionEntry | undefined; //definition that was clicked on
+  entityIndex: number | undefined;
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   clickObject: ClickObject;
@@ -68,11 +78,12 @@ type GetActionParams = {
 
 function getZoomInTimeSeriesAction({
   definition,
+  entityIndex,
   tab,
   onTabUpdate,
   clickObject,
 }: GetActionParams): ClickAction | undefined {
-  if (!definition || !definition.definition) {
+  if (!definition || !definition.definition || entityIndex == null) {
     return;
   }
   const dimension = clickObject.dimensions?.[0];
@@ -85,6 +96,7 @@ function getZoomInTimeSeriesAction({
   }
   const nextTemporalUnit = getNextTemporalUnit(
     definition,
+    entityIndex,
     tab,
     currentTemporalUnit,
   );
@@ -161,11 +173,12 @@ const nextTemporalUnitMap: Partial<Record<TemporalUnit, TemporalUnit>> = {
 
 function getNextTemporalUnit(
   entry: MetricsViewerDefinitionEntry,
+  entityIndex: number,
   tab: MetricsViewerTabState,
   currentUnit: TemporalUnit,
 ): TemporalUnit | undefined {
   const definition = entry.definition;
-  const dimensionId = tab.dimensionMapping[entry.id];
+  const dimensionId = tab.dimensionMapping[entityIndex];
   if (!definition || !dimensionId) {
     return undefined;
   }

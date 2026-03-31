@@ -36,16 +36,20 @@ interface DimensionEntry {
   tabType: MetricsViewerTabType;
   group?: DimensionGroup;
   sourceId: MetricSourceId;
+  entityIndex: number;
 }
 
 function collectAllDimensionEntries(
-  sourceOrder: MetricSourceId[],
+  entityIndicesWithSourceId: {
+    entityIndex: number;
+    sourceId: MetricSourceId;
+  }[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   existingTabDimensionIds: Set<string>,
 ): DimensionEntry[] {
   const entries: DimensionEntry[] = [];
 
-  for (const sourceId of sourceOrder) {
+  for (const { entityIndex, sourceId } of entityIndicesWithSourceId) {
     const def = definitionsBySourceId[sourceId];
     if (!def) {
       continue;
@@ -64,6 +68,7 @@ function collectAllDimensionEntries(
         tabType: info.dimensionType,
         group: info.group,
         sourceId,
+        entityIndex,
       });
     }
   }
@@ -92,17 +97,20 @@ function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
 
 export function getAvailableDimensionsForPicker(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  sourceOrder: MetricSourceId[],
+  entityIndicesWithSourceId: {
+    entityIndex: number;
+    sourceId: MetricSourceId;
+  }[],
   existingTabDimensionIds: Set<string>,
 ): AvailableDimensionsResult {
   const result: AvailableDimensionsResult = { shared: [], bySource: {} };
 
-  if (sourceOrder.length === 0) {
+  if (entityIndicesWithSourceId.length === 0) {
     return result;
   }
 
   const entries = collectAllDimensionEntries(
-    sourceOrder,
+    entityIndicesWithSourceId,
     definitionsBySourceId,
     existingTabDimensionIds,
   );
@@ -123,7 +131,7 @@ export function getAvailableDimensionsForPicker(
           type: first.tabType,
           label: first.label,
           dimensionMapping: Object.fromEntries(
-            group.map((entry) => [entry.sourceId, entry.id]),
+            group.map((entry) => [entry.entityIndex, entry.id]),
           ),
         },
       });
@@ -136,7 +144,7 @@ export function getAvailableDimensionsForPicker(
           tabInfo: {
             type: entry.tabType,
             label: entry.label,
-            dimensionMapping: { [entry.sourceId]: entry.id },
+            dimensionMapping: { [entry.entityIndex]: entry.id },
           },
         });
       }
@@ -146,7 +154,7 @@ export function getAvailableDimensionsForPicker(
   result.shared.sort((first, second) =>
     first.tabInfo.label.localeCompare(second.tabInfo.label),
   );
-  for (const sourceId of sourceOrder) {
+  for (const { sourceId } of entityIndicesWithSourceId) {
     result.bySource[sourceId]?.sort((first, second) =>
       first.tabInfo.label.localeCompare(second.tabInfo.label),
     );

@@ -112,16 +112,19 @@ export function resolveCommonTabLabel(names: string[]): string | null {
 
 // ── Default tab computation ──
 
-function getDimensionDescriptorsBySource(
+function getDimensionDescriptorsByEntityIndex(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  sourceOrder: MetricSourceId[],
-): Map<MetricSourceId, Map<string, DimensionDescriptor>> {
-  const result = new Map<MetricSourceId, Map<string, DimensionDescriptor>>();
+  entityIndicesWithSourceId: {
+    entityIndex: number;
+    sourceId: MetricSourceId;
+  }[],
+): Map<number, Map<string, DimensionDescriptor>> {
+  const result = new Map<number, Map<string, DimensionDescriptor>>();
 
-  for (const sourceId of sourceOrder) {
+  for (const { entityIndex, sourceId } of entityIndicesWithSourceId) {
     const def = definitionsBySourceId[sourceId];
     if (def) {
-      result.set(sourceId, getDimensionDescriptors(def));
+      result.set(entityIndex, getDimensionDescriptors(def));
     }
   }
 
@@ -129,13 +132,16 @@ function getDimensionDescriptorsBySource(
 }
 
 function resolveTabDimensionNames(
-  dimensionMapping: Record<MetricSourceId, string>,
-  dimensionsBySource: Map<MetricSourceId, Map<string, DimensionDescriptor>>,
+  dimensionMapping: Record<number, string>,
+  dimensionsByEntityIndex: Map<number, Map<string, DimensionDescriptor>>,
 ): string[] {
   const names: string[] = [];
 
-  for (const [sourceId, dimensionId] of getObjectEntries(dimensionMapping)) {
-    const dimensionInfo = dimensionsBySource.get(sourceId)?.get(dimensionId);
+  for (const [key, dimensionId] of getObjectEntries(dimensionMapping)) {
+    const entityIndex = Number(key);
+    const dimensionInfo = dimensionsByEntityIndex
+      .get(entityIndex)
+      ?.get(dimensionId);
     if (dimensionInfo) {
       names.push(dimensionInfo.displayName);
     }
@@ -184,13 +190,13 @@ function pickBestGeoSubtype(found: Set<string>): string | null {
 }
 
 function computeBestSubtypeAcrossSources(
-  dimensionsBySource: Map<MetricSourceId, Map<string, DimensionDescriptor>>,
+  dimensionsByEntityIndex: Map<number, Map<string, DimensionDescriptor>>,
   type: MetricsViewerTabType,
   getSubtype: (dimension: DimensionMetadata) => string | null,
 ): string | null {
   const found = new Set<string>();
 
-  for (const [, dimensions] of dimensionsBySource) {
+  for (const [, dimensions] of dimensionsByEntityIndex) {
     for (const [, info] of dimensions) {
       if (info.dimensionType === type) {
         const subtype = getSubtype(info.dimensionMetadata);
@@ -205,18 +211,18 @@ function computeBestSubtypeAcrossSources(
 }
 
 function findReferenceAcrossSources(
-  dimensionsBySource: Map<MetricSourceId, Map<string, DimensionDescriptor>>,
-  sourceOrder: MetricSourceId[],
+  dimensionsByEntityIndex: Map<number, Map<string, DimensionDescriptor>>,
+  entityOrder: number[],
   type: MetricsViewerTabType,
-): { sourceId: MetricSourceId; dimension: DimensionDescriptor } | null {
-  for (const sourceId of sourceOrder) {
-    const dimensions = dimensionsBySource.get(sourceId);
+): { entityIndex: number; dimension: DimensionDescriptor } | null {
+  for (const entityIndex of entityOrder) {
+    const dimensions = dimensionsByEntityIndex.get(entityIndex);
     if (!dimensions) {
       continue;
     }
     const defaultDimension = findDimensionOfType(dimensions, type, true);
     if (defaultDimension) {
-      return { sourceId, dimension: defaultDimension };
+      return { entityIndex, dimension: defaultDimension };
     }
   }
   return null;
@@ -261,15 +267,15 @@ function findSourceMatch(
 }
 
 function resolveAggregateDimensionMapping(
-  dimensionsBySource: Map<MetricSourceId, Map<string, DimensionDescriptor>>,
-  sourceOrder: MetricSourceId[],
+  dimensionsByEntityIndex: Map<number, Map<string, DimensionDescriptor>>,
+  entityOrder: number[],
   config: TabTypeDefinition,
-): Record<MetricSourceId, string> {
-  const mapping: Record<MetricSourceId, string> = {};
+): Record<number, string> {
+  const mapping: Record<number, string> = {};
 
   if (config.dimensionSubtype) {
     const targetSubtype = computeBestSubtypeAcrossSources(
-      dimensionsBySource,
+      dimensionsByEntityIndex,
       config.type,
       config.dimensionSubtype,
     );
@@ -277,8 +283,8 @@ function resolveAggregateDimensionMapping(
       return mapping;
     }
 
-    for (const sourceId of sourceOrder) {
-      const dimensions = dimensionsBySource.get(sourceId);
+    for (const entityIndex of entityOrder) {
+      const dimensions = dimensionsByEntityIndex.get(entityIndex);
       if (!dimensions) {
         continue;
       }
@@ -289,7 +295,7 @@ function resolveAggregateDimensionMapping(
         targetSubtype,
       );
       if (match) {
-        mapping[sourceId] = match.id;
+        mapping[entityIndex] = match.id;
       }
     }
 
@@ -297,21 +303,21 @@ function resolveAggregateDimensionMapping(
   }
 
   const reference = findReferenceAcrossSources(
-    dimensionsBySource,
-    sourceOrder,
+    dimensionsByEntityIndex,
+    entityOrder,
     config.type,
   );
 
   if (reference) {
-    mapping[reference.sourceId] = reference.dimension.id;
+    mapping[reference.entityIndex] = reference.dimension.id;
   }
 
-  for (const sourceId of sourceOrder) {
-    if (mapping[sourceId]) {
+  for (const entityIndex of entityOrder) {
+    if (mapping[entityIndex]) {
       continue;
     }
 
-    const dimensions = dimensionsBySource.get(sourceId);
+    const dimensions = dimensionsByEntityIndex.get(entityIndex);
     if (!dimensions) {
       continue;
     }
@@ -324,7 +330,7 @@ function resolveAggregateDimensionMapping(
       findDimensionOfType(dimensions, config.type);
 
     if (match) {
-      mapping[sourceId] = match.id;
+      mapping[entityIndex] = match.id;
     }
   }
 
@@ -332,24 +338,24 @@ function resolveAggregateDimensionMapping(
 }
 
 function collectUniqueExactDimensions(
-  dimensionsBySource: Map<MetricSourceId, Map<string, DimensionDescriptor>>,
-  sourceOrder: MetricSourceId[],
+  dimensionsByEntityIndex: Map<number, Map<string, DimensionDescriptor>>,
+  entityOrder: number[],
   type: MetricsViewerTabType,
 ): Map<
   string,
-  { displayName: string; sourceIds: MetricSourceId[]; canListValues: boolean }
+  { displayName: string; entityIndices: number[]; canListValues: boolean }
 > {
   const unique = new Map<
     string,
     {
       displayName: string;
-      sourceIds: MetricSourceId[];
+      entityIndices: number[];
       canListValues: boolean;
     }
   >();
 
-  for (const sourceId of sourceOrder) {
-    const dimensions = dimensionsBySource.get(sourceId);
+  for (const entityIndex of entityOrder) {
+    const dimensions = dimensionsByEntityIndex.get(entityIndex);
     if (!dimensions) {
       continue;
     }
@@ -361,14 +367,14 @@ function collectUniqueExactDimensions(
 
       const existing = unique.get(info.id);
       if (existing) {
-        existing.sourceIds.push(sourceId);
+        existing.entityIndices.push(entityIndex);
         if (info.canListValues) {
           existing.canListValues = true;
         }
       } else {
         unique.set(info.id, {
           displayName: info.displayName,
-          sourceIds: [sourceId],
+          entityIndices: [entityIndex],
           canListValues: info.canListValues ?? false,
         });
       }
@@ -380,17 +386,22 @@ function collectUniqueExactDimensions(
 
 export function computeDefaultTabs(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  sourceOrder: MetricSourceId[],
+  entityIndicesWithSourceId: {
+    entityIndex: number;
+    sourceId: MetricSourceId;
+  }[],
 ): MetricsViewerTabState[] {
-  if (sourceOrder.length === 0) {
+  if (entityIndicesWithSourceId.length === 0) {
     return [];
   }
 
-  const dimensionsBySource = getDimensionDescriptorsBySource(
+  const entityOrder = entityIndicesWithSourceId.map((e) => e.entityIndex);
+
+  const dimensionsByEntityIndex = getDimensionDescriptorsByEntityIndex(
     definitionsBySourceId,
-    sourceOrder,
+    entityIndicesWithSourceId,
   );
-  if (dimensionsBySource.size === 0) {
+  if (dimensionsByEntityIndex.size === 0) {
     return [];
   }
 
@@ -403,15 +414,15 @@ export function computeDefaultTabs(
 
     if (config.matchMode === "aggregate") {
       const mapping = resolveAggregateDimensionMapping(
-        dimensionsBySource,
-        sourceOrder,
+        dimensionsByEntityIndex,
+        entityOrder,
         config,
       );
       if (Object.keys(mapping).length < config.minDimensions) {
         continue;
       }
 
-      const names = resolveTabDimensionNames(mapping, dimensionsBySource);
+      const names = resolveTabDimensionNames(mapping, dimensionsByEntityIndex);
       tabs.push({
         id: config.fixedId,
         type: config.type,
@@ -428,8 +439,8 @@ export function computeDefaultTabs(
     }
 
     const uniqueDimensions = collectUniqueExactDimensions(
-      dimensionsBySource,
-      sourceOrder,
+      dimensionsByEntityIndex,
+      entityOrder,
       config.type,
     );
 
@@ -442,14 +453,17 @@ export function computeDefaultTabs(
       },
     );
 
-    for (const [dimensionId, { displayName, sourceIds }] of sortedDimensions) {
+    for (const [
+      dimensionId,
+      { displayName, entityIndices },
+    ] of sortedDimensions) {
       if (tabs.length >= MAX_AUTO_TABS) {
         break;
       }
 
-      const mapping: Record<MetricSourceId, string> = {};
-      for (const sourceId of sourceIds) {
-        mapping[sourceId] = dimensionId;
+      const mapping: Record<number, string> = {};
+      for (const entityIndex of entityIndices) {
+        mapping[entityIndex] = dimensionId;
       }
 
       tabs.push({
@@ -474,7 +488,7 @@ export function computeDefaultTabs(
 export interface TabInfo {
   type: MetricsViewerTabType;
   label: string;
-  dimensionMapping: Record<MetricSourceId, string>;
+  dimensionMapping: Record<number, string>;
 }
 
 export function createTabFromTabInfo(
@@ -524,14 +538,18 @@ function findSubtypeFromExistingTab(
   tab: StoredMetricsViewerTab,
   getSubtype: (dimension: DimensionMetadata) => string | null,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  entityIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
-  if (!baseDefinitions) {
+  if (!baseDefinitions || !entityIndexToSourceId) {
     return null;
   }
 
-  for (const [sourceId, dimensionName] of getObjectEntries(
-    tab.dimensionsBySource,
-  )) {
+  for (const [key, dimensionName] of getObjectEntries(tab.dimensionsBySource)) {
+    const entityIndex = Number(key);
+    const sourceId = entityIndexToSourceId.get(entityIndex);
+    if (!sourceId) {
+      continue;
+    }
     const def = baseDefinitions[sourceId];
     if (!def) {
       continue;
@@ -568,14 +586,18 @@ function findReferenceFromTab(
   tab: StoredMetricsViewerTab,
   type: MetricsViewerTabType,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  entityIndexToSourceId?: Map<number, MetricSourceId>,
 ): DimensionDescriptor | null {
-  if (!baseDefinitions) {
+  if (!baseDefinitions || !entityIndexToSourceId) {
     return null;
   }
 
-  for (const [sourceId, dimensionName] of getObjectEntries(
-    tab.dimensionsBySource,
-  )) {
+  for (const [key, dimensionName] of getObjectEntries(tab.dimensionsBySource)) {
+    const entityIndex = Number(key);
+    const sourceId = entityIndexToSourceId.get(entityIndex);
+    if (!sourceId) {
+      continue;
+    }
     const def = baseDefinitions[sourceId];
     if (!def) {
       continue;
@@ -647,10 +669,15 @@ function resolveSubtypeFallback(
   getSubtype: (dimension: DimensionMetadata) => string | null,
   tab: StoredMetricsViewerTab,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  entityIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
   const targetSubtype =
-    findSubtypeFromExistingTab(tab, getSubtype, baseDefinitions) ??
-    findBestSubtypeInDimensions(dimensionsByType, tabType, getSubtype);
+    findSubtypeFromExistingTab(
+      tab,
+      getSubtype,
+      baseDefinitions,
+      entityIndexToSourceId,
+    ) ?? findBestSubtypeInDimensions(dimensionsByType, tabType, getSubtype);
 
   if (!targetSubtype) {
     return null;
@@ -666,13 +693,19 @@ function findExactColumnMatch(
   dimensions: Map<string, DimensionDescriptor>,
   tab: StoredMetricsViewerTab,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  entityIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
   const exactMatch = dimensions.get(tab.id);
   if (exactMatch?.dimensionType === tab.type) {
     return exactMatch.id;
   }
 
-  const reference = findReferenceFromTab(tab, tab.type, baseDefinitions);
+  const reference = findReferenceFromTab(
+    tab,
+    tab.type,
+    baseDefinitions,
+    entityIndexToSourceId,
+  );
   if (reference) {
     return findDimensionBySourceMatch(dimensions, reference);
   }
@@ -685,8 +718,14 @@ function findAggregateMatch(
   tab: StoredMetricsViewerTab,
   config: TabTypeDefinition,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  entityIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
-  const reference = findReferenceFromTab(tab, config.type, baseDefinitions);
+  const reference = findReferenceFromTab(
+    tab,
+    config.type,
+    baseDefinitions,
+    entityIndexToSourceId,
+  );
 
   const defaultMatch = findDimensionOfType(dimensions, config.type, true);
   if (defaultMatch) {
@@ -711,6 +750,7 @@ function findAggregateMatch(
       config.dimensionSubtype,
       tab,
       baseDefinitions,
+      entityIndexToSourceId,
     );
     if (subtypeMatch) {
       return subtypeMatch;
@@ -724,13 +764,25 @@ export function findMatchingDimensionForTab(
   def: MetricDefinition,
   tab: StoredMetricsViewerTab,
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
+  entityIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
   const dimensions = getDimensionsByType(def);
   const config = TAB_TYPE_REGISTRY.find((config) => config.type === tab.type);
 
   if (config?.matchMode !== "aggregate") {
-    return findExactColumnMatch(dimensions, tab, baseDefinitions);
+    return findExactColumnMatch(
+      dimensions,
+      tab,
+      baseDefinitions,
+      entityIndexToSourceId,
+    );
   }
 
-  return findAggregateMatch(dimensions, tab, config, baseDefinitions);
+  return findAggregateMatch(
+    dimensions,
+    tab,
+    config,
+    baseDefinitions,
+    entityIndexToSourceId,
+  );
 }

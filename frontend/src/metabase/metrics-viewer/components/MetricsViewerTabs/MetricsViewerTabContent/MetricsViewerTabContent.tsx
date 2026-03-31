@@ -55,10 +55,10 @@ type MetricsViewerTabContentProps = {
   standaloneSourceIds?: Set<MetricSourceId> | null;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (
-    definitionId: MetricSourceId,
+    entityIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  onDimensionRemove: (definitionId: MetricSourceId) => void;
+  onDimensionRemove: (entityIndex: number) => void;
 };
 
 export function MetricsViewerTabContent({
@@ -106,6 +106,7 @@ export function MetricsViewerTabContent({
         item.modifiedDefinitions,
         item.entry.name,
         sourceColors[itemIndex],
+        formulaEntities,
       );
     });
 
@@ -210,23 +211,9 @@ export function MetricsViewerTabContent({
     ],
   );
 
-  // Build sourceId → first entityIndex lookup for dimension-mapping-based lookups.
-  const sourceIdToEntityIndex = useMemo(() => {
-    const map = new Map<MetricSourceId, number>();
-    formulaEntities.forEach((entry, index) => {
-      if (isMetricEntry(entry) && !map.has(entry.id)) {
-        map.set(entry.id, index);
-      }
-    });
-    return map;
-  }, [formulaEntities]);
-
   const definitionForControls = useMemo((): MetricDefinition | null => {
-    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const entityIndex = sourceIdToEntityIndex.get(sourceId);
-      if (entityIndex == null) {
-        continue;
-      }
+    for (const key of getObjectKeys(tab.dimensionMapping)) {
+      const entityIndex = Number(key);
       const modDef = modifiedDefinitionsByIndex.get(entityIndex);
       if (!modDef) {
         continue;
@@ -238,15 +225,12 @@ export function MetricsViewerTabContent({
       }
     }
     return null;
-  }, [tab.dimensionMapping, modifiedDefinitionsByIndex, sourceIdToEntityIndex]);
+  }, [tab.dimensionMapping, modifiedDefinitionsByIndex]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
-    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const entityIndex = sourceIdToEntityIndex.get(sourceId);
-      if (entityIndex == null) {
-        continue;
-      }
+    for (const key of getObjectKeys(tab.dimensionMapping)) {
+      const entityIndex = Number(key);
       const modDef = modifiedDefinitionsByIndex.get(entityIndex);
       if (!modDef) {
         continue;
@@ -257,7 +241,7 @@ export function MetricsViewerTabContent({
       }
     }
     return filterDimensions;
-  }, [tab.dimensionMapping, modifiedDefinitionsByIndex, sourceIdToEntityIndex]);
+  }, [tab.dimensionMapping, modifiedDefinitionsByIndex]);
 
   const updateProjectionConfig = useCallback(
     (updates: Partial<MetricsViewerTabProjectionConfig>) => {
@@ -338,6 +322,7 @@ export function MetricsViewerTabContent({
         onDimensionRemove={dimensionRemoveHandler}
         onBrush={isTimeTab ? handleBrush : undefined}
         definitions={definitions}
+        formulaEntities={formulaEntities}
         tab={tab}
         onTabUpdate={onTabUpdate}
         cardIdToDimensionId={cardIdToDimensionId}
