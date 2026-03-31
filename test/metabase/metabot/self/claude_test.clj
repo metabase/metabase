@@ -128,3 +128,23 @@
                          :content #"Error:.*failed"}]}]
             (claude/parts->claude-messages
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+
+(deftest ^:parallel parts->claude-messages-blank-content-test
+  (testing "blank string content is filtered out during merge"
+    ;; When Claude streams tokens, whitespace-only chunks can arrive separately.
+    ;; These must not become bare strings in the content array (which would cause
+    ;; API errors), so they are dropped during merge-consecutive.
+    (is (=? [{:role    "assistant"
+              :content [{:type "text" :text "Hello"}
+                        {:type "text" :text "world"}]}]
+            (claude/parts->claude-messages
+             [{:type :text :text "Hello"}
+              {:type :text :text " "}
+              {:type :text :text "world"}]))))
+  (testing "empty string content is also filtered out"
+    (is (=? [{:role    "assistant"
+              :content [{:type "text" :text "Hello"}]}]
+            (claude/parts->claude-messages
+             [{:type :text :text ""}
+              {:type :text :text "Hello"}
+              {:type :text :text ""}])))))
