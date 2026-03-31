@@ -1094,6 +1094,115 @@
   join-fields-to-add-to-parent-stage ;; TODO: Unexport this; it's only used from tests and QP.
   raw-join-strategy])                ;; TODO: Unexport this; it's only used from tests.
 
+;;; # Details of columns and metadata
+;;; A key part of working with queries is knowing what columns are available to use in clauses at any point in the
+;;; query. Functions like [[experssionable-columns]] and [[filterable-columns]] are the main entry points for that.
+;;;
+;;; This section has some further functions for dealing with query, column, table, and other metadata.
+;;;
+;;; ## "Visible" and "Returned" columns
+;;; MBQL inherits from SQL a distinction between the columns which are *visible* at various points in a query, and
+;;; the columns which are *returned* from the query. You can for example write
+;;; `SELECT id FROM Orders WHERE subtotal > 100`, which filters on a column that isn't returned. MBQL works the same
+;;; way.
+;;;
+;;; [[filterable-columns]], [[expressionable-columns]], etc. all operate on *visible* columns based on the stage where
+;;; we're considering adding a filter/expression/etc.
+
+(mu/defn returned-columns :- [:maybe ::lib.metadata.calculation/returned-columns]
+  "Returns a sequence with column metadata for all those columns which are expected to be **returned** from `x`.
+
+  `x` can be anything for which a list of columns makes sense: a table, a card, a stage of a query, an entire query.
+  The default for the 1-arity is the last stage of `a-query`. Note that `x` need not be part of `a-query` - when `x`
+  is explicitly provided then `a-query` is only used to get a [[MetadataProvider]].
+
+  **NOTE:** The columns returned by this function are relative to how they appear in the source `x`, not in any
+  consumer! So the [[returned-columns]] for stage N give the columns as they appear in stage N, not in stage N+1.
+  If you want to manipulate stage N+1, call [[filterable-columns]] and friends on stage N+1.
+
+  The gory details of what's different about the columns between all these contexts is out of scope for a lib user.
+  Indeed, *hiding* these details is a prime reason that lib exists at all. There are many subtleties that are best
+  encapsulated and carefully tested.
+
+  The `options` map controls two settings, which both default to `false`. These are only set to true in specific
+  circumstances; generally you won't need to provide either option.
+
+  - `:include-remaps?` to include the target columns for any *remapped* columns. See that section for details.
+  - `:include-sensitive-fields?` returns fields the user has marked as *sensitive* in the Admin / Table Metadata screen.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (lib.metadata.calculation/returned-columns a-query))
+  ([a-query x] (lib.metadata.calculation/returned-columns a-query x))
+  ([a-query stage-number x] (lib.metadata.calculation/returned-columns a-query stage-number x))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    x
+    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   (lib.metadata.calculation/returned-columns a-query stage-number x options)))
+
+(mu/defn visible-columns :- ::lib.metadata.calculation/visible-columns
+  "DEPRECATED. Return a sequence of columns that should be visible within a given stage of a query.
+
+  This includes not just the columns which would be *returned* by the target stage (see [[returned-columns]]) but also
+  includes those which can be implicitly joined via FKs visible on this stage.
+
+  The `options` map allows controlling whether several kinds of columns are included: explicitly joined, expressions,
+  implicitly joinable, remaps, sensitive fields. See the implementation function for details.
+
+  **Code Health:** Deprecated. Should be unexported, and maybe removed outright. All callers should be calling
+  [[filterable-columns]], [[breakoutable-columns]], etc. instead of this. If we really want to keep it, then its options
+  should be removed and it should be renamed to better reflect what it returns; perhaps `pre-aggregation-columns`."
+  ([a-query] (lib.metadata.calculation/visible-columns a-query))
+  ([a-query stage-number] (lib.metadata.calculation/visible-columns a-query stage-number))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    options      :- ::lib.metadata.calculation/visible-columns.options]
+   (lib.metadata.calculation/visible-columns a-query stage-number options)))
+
+(mu/defn display-name :- :string
+  "Calculate a human-friendly display name for `x`, which can be almost any lib entity.
+
+  `style` can be either `:default` or `:long`. Note that the default is *not* `:default` - it's bound to a `^:dynamic`
+  var so the default changes in some different contexts. An explicit `style` passed to `display-name` takes precedence
+  over that dynamic var.
+
+  If you pass only `a-query`, the query is also used as `x`.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (display-name a-query a-query))
+  ([a-query x] (display-name a-query -1 x))
+  ([a-query stage-number x]
+   (lib.metadata.calculation/display-name a-query stage-number x))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    x
+    style        :- ::lib.metadata.calculation/display-name-style]
+   (lib.metadata.calculation/display-name a-query stage-number x style)))
+
+;;; **Code Health:** Leak. These functions are only used in tests and modules closely coupled to lib. Don't add new
+;;; calls to them.
+(shared.ns/import-fns
+ [lib.metadata.calculation
+  column-name ; Friends and tests only.
+  describe-query ; Tests only
+  describe-top-level-key ; Used only by the Toucan models for segments and measures.
+  display-info ; Tests and FE only, plus one use in lib-metric that could be replaced?
+  metadata ; Opened a thread about this one!
+  suggested-name ; Single use in a metrics v1 upgrade thing, and some tests.
+  type-of ; Unexport: Friends and tests only
+  ])
+
+;;; ## Column Remapping
+;;; Metabase supports two kinds of "remapping" for displaying more human-readable column values in the UI. From the
+;;; lib's point of view these are **mostly invisible**! Logic in the QP adds extra columns with the remapped values,
+;;; and the FE prefers using those to render the query. However, these extra columns are "ghosts" that don't appear in
+;;; the metadata from e.g. [[returned-columns]] by default.
+;;;
+;;; - "Internal" remaps are for things like enums. The user writes human labels for each raw value in the admin UI,
+;;;   and QP post-processing adds a new column derived from the raw value column.
+;;; - "External" remaps are used to show some human-friendly foreign column in place of a number or UUID for an FK.
+;;;   For example, rendering `Orders.PRODUCT_ID` as the name of the product, rather than `7`.
+
 ;;; # Working with Expressions as an AST
 ;;; Several parts of the FE want to work with clauses in a "white box" way, so it can render the details of the
 ;;; expression in a structured way, or convert the AST of the expression parser into an expression, aggregation or
@@ -1247,17 +1356,6 @@
  [metabase.lib.metadata
   ->metadata-provider
   general-cached-value]
- [lib.metadata.calculation
-  column-name
-  describe-query
-  describe-top-level-key
-  display-name
-  display-info
-  metadata
-  returned-columns
-  suggested-name
-  type-of
-  visible-columns]
  [metabase.lib.metadata.column
   column-unique-key
   column-with-unique-key]

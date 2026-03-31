@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import ActionViz from "metabase/actions/components/ActionViz";
-import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
+import { ActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { FormField } from "metabase/common/components/FormField/FormField";
@@ -124,7 +124,7 @@ export function ActionSidebar() {
         >
           <Modal.Overlay />
           <Modal.Content>
-            <ConnectedActionDashcardSettings
+            <ActionDashcardSettings
               dashboard={dashboard}
               dashcard={dashcard as ActionDashboardCard}
               onClose={closeActionModal}

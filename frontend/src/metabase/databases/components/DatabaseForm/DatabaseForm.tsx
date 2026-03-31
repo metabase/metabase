@@ -111,6 +111,11 @@ export const DatabaseForm = ({
       <Form
         data-testid="database-form"
         pt={location === "full-page" ? undefined : "md"}
+        mih={0}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
         <FormDirtyStateProvider onDirtyStateChange={onDirtyStateChange}>
           <DatabaseFormBody

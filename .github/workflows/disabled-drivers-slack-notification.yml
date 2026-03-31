@@ -7,6 +7,7 @@ on:
 
 jobs:
   notify-disabled-drivers:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
