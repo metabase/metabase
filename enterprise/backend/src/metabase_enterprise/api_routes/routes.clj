@@ -29,6 +29,7 @@
    [metabase-enterprise.replacement.api]
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
+   [metabase-enterprise.security-center.api]
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
@@ -60,6 +61,7 @@
    :metabot-v3                 (deferred-tru "MetaBot")
    :scim                       (deferred-tru "SCIM configuration")
    :semantic-search            (deferred-tru "Semantic Search")
+   :security-advisories        (deferred-tru "Security Advisories")
    :serialization              (deferred-tru "Serialization")
    :table-data-editing         (deferred-tru "Table Data Editing")
    :tenants                    (deferred-tru "Tenants")
@@ -119,6 +121,7 @@
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
+   "/security-advisories"          (premium-handler metabase-enterprise.security-center.api/routes :security-advisories)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)
    "/stale"                        (premium-handler metabase-enterprise.stale.api/routes :collection-cleanup)
    "/support-access-grant" (premium-handler metabase-enterprise.support-access-grants.api/routes :support-users)
