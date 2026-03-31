@@ -145,6 +145,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+  (cache/invalidate-disk-cache! id)
   (t2/delete! :model/CustomVizPlugin :id id)
   nil)
 
