@@ -1,5 +1,5 @@
 (ns metabase-enterprise.security-center.seed
-  ;; TODO (qnkhuat 2026-03-31) -- DELETE THIS NAMESPACE before shipping to production.
+  ;; TODO (Ngoc 2026-03-31) -- DELETE THIS NAMESPACE before shipping to production.
   ;; This is dev-only mock data for the Security Center feature.
   "Seed mock security advisories for local dev testing.
    Runs automatically on startup when in dev mode via [[def-startup-logic!]]."

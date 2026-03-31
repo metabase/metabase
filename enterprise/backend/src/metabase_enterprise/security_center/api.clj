@@ -17,7 +17,7 @@
                          :published_at :match_status :last_evaluated_at
                          :acknowledged_by :acknowledged_at :affected_versions]))
 
-;; TODO (qnkhuat 2026-03-31) -- tighten `:any` types below once we finalize timestamp and user schemas
+;; TODO (Ngoc 2026-03-31) -- tighten `:any` types below once we finalize timestamp and user schemas
 (def ^:private AdvisoryResponse
   "Schema for a single advisory in the API response."
   [:map
