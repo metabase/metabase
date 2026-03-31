@@ -634,7 +634,7 @@
                                      {:name     "Average order total"
                                       :fieldRef [:field "Average order total" {:base-type :type/Float}]
                                       :enabled  true}]
-                  mapping-id        (format "[\"dimension\",[\"fk->\",[\"field\",%d,null],[\"field\",%d,null]]]" (:id @field1s) (:id @field2s))
+                  mapping-id        (json/encode [:dimension [:field (:id @field2s) {:source-field (:id @field1s)}]])
                   mapping-dimension [:dimension [:field (:id @field2s) {:source-field (:id @field1s)}]]]
               (reset! card1s   (ts/create! :model/Card :name "The Card" :database_id (:id @db1s) :table_id (:id @table1s)
                                            :collection_id (:id @coll1s) :creator_id (:id @user1s)
@@ -642,8 +642,7 @@
                                            {:table.pivot_column "SOURCE"
                                             :table.cell_column  "sum"
                                             :table.columns      columns
-                                            :column_settings
-                                            {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}}}
+                                            :column_settings {(json/encode [:ref [:field (:id @field2s) nil]]) {:column_title "Locus"}}}
                                            :parameter_mappings [{:parameter_id "12345678"
                                                                  :target       [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
               (reset! dashcard1s (ts/create! :model/DashboardCard :dashboard_id (:id @dash1s) :card_id (:id @card1s)
@@ -716,9 +715,7 @@
                                     :column_settings
                                     {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}
                       dimension    [:dimension [:field ["my-db" nil "orders" "invoice"] {:source-field ["my-db" nil "orders" "subtotal"]}]]
-                      dimension-id (json/encode [:dimension [:fk->
-                                                             [:field [:my-db nil :orders :subtotal] nil]
-                                                             [:field [:my-db nil :orders :invoice] nil]]])
+                      dimension-id (json/encode [:dimension [:field [:my-db nil :orders :invoice] {:source-field [:my-db nil :orders :subtotal]}]])
                       exp-dashcard (-> exp-card
                                        (assoc :click_behavior {:type     "link"
                                                                :linkType "question"

@@ -1139,8 +1139,8 @@
   "Is given form an MBQL entity reference?"
   [form]
   (when (and (vector? form)
-             (#{:field :dimension :metric :segment :measure} (first form)))
-    (first form)))
+             (#{:field :dimension :metric :segment :measure} (keyword (first form))))
+    (keyword (first form))))
 
 (defn- normalize [mbql]
   (let [tag    (mbql-clause-tag mbql)
