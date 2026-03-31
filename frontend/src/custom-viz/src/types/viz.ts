@@ -124,9 +124,9 @@ export type VisualizationGridSize = {
 };
 
 export type CustomVisualizationProps<CustomVisualizationSettings> = {
-  width: number;
+  width: number | null;
 
-  height: number;
+  height: number | null;
 
   series: Series;
 

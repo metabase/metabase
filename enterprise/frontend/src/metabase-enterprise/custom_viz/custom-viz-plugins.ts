@@ -1,8 +1,10 @@
+import type { ComponentType } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -13,7 +15,10 @@ import {
   measureTextWidth,
 } from "metabase/lib/measure-text";
 import visualizations, { registerVisualization } from "metabase/visualizations";
-import type { Visualization } from "metabase/visualizations/types/visualization";
+import type {
+  Visualization,
+  VisualizationProps,
+} from "metabase/visualizations/types/visualization";
 import * as isa from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomVizPluginRuntime,
@@ -342,7 +347,12 @@ export async function loadCustomVizPlugin(
     const identifier = `custom:${plugin.identifier}` as VisualizationDisplay;
 
     // Attach the required static properties onto the component function
-    const Component = vizDef.VisualizationComponent as Visualization;
+    const Component = ExplicitSize<VisualizationProps>()(
+      vizDef.VisualizationComponent as ComponentType<
+        VisualizationProps & { width: number | null; height: number | null }
+      >,
+    ) as Visualization;
+
     Object.assign(Component, {
       identifier,
       getUiName: () => plugin.display_name,
