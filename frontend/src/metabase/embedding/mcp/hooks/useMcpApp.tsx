@@ -1,8 +1,9 @@
 import {
   type McpUiHostContext,
+  applyDocumentTheme,
+  applyHostFonts,
+  applyHostStyleVariables,
   useApp,
-  useHostFonts,
-  useHostStyleVariables,
 } from "@modelcontextprotocol/ext-apps/react";
 import { useEffect, useState } from "react";
 
@@ -12,6 +13,20 @@ interface McpAppState {
 }
 
 type ToolArgument = { query?: string } | undefined;
+
+function applyHostContext(ctx: McpUiHostContext) {
+  if (ctx.theme) {
+    applyDocumentTheme(ctx.theme);
+  }
+
+  if (ctx.styles?.variables) {
+    applyHostStyleVariables(ctx.styles.variables);
+  }
+
+  if (ctx.styles?.css?.fonts) {
+    applyHostFonts(ctx.styles.css.fonts);
+  }
+}
 
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
@@ -23,6 +38,7 @@ export function useMcpApp(): McpAppState {
     onAppCreated: (app) => {
       app.onhostcontextchanged = (ctx) => {
         if (ctx) {
+          applyHostContext(ctx);
           setHostContext((prev) => ({ ...prev, ...ctx }));
         }
       };
@@ -47,20 +63,17 @@ export function useMcpApp(): McpAppState {
     },
   });
 
-  // Read host context once connected
+  // Read host context once connected and apply styles immediately
   useEffect(() => {
     if (app) {
       const hostContext = app.getHostContext();
 
       if (hostContext) {
+        applyHostContext(hostContext);
         setHostContext(hostContext);
       }
     }
   }, [app]);
-
-  // Apply host CSS variables, theme and fonts to the document
-  useHostStyleVariables(app, app?.getHostContext());
-  useHostFonts(app, app?.getHostContext());
 
   return { query, hostContext };
 }
