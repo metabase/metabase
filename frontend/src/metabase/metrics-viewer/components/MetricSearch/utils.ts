@@ -509,6 +509,29 @@ export type PositionedToken = (
   | { type: "unknown"; text: string }
 ) & { from: number; to: number };
 
+function consumeNumber(text: string, startIndex: number): number | null {
+  let index = startIndex;
+  if (index >= text.length || text[index] < "0" || text[index] > "9") {
+    return null;
+  }
+  while (index < text.length && text[index] >= "0" && text[index] <= "9") {
+    index++;
+  }
+  if (
+    index < text.length &&
+    text[index] === "." &&
+    index + 1 < text.length &&
+    text[index + 1] >= "0" &&
+    text[index + 1] <= "9"
+  ) {
+    index++;
+    while (index < text.length && text[index] >= "0" && text[index] <= "9") {
+      index++;
+    }
+  }
+  return index;
+}
+
 /** Same as the main parser but records character positions for each token. */
 export function parseFullTextWithPositions(
   text: string,
@@ -556,6 +579,26 @@ export function parseFullTextWithPositions(
     }
 
     if (ch === "+" || ch === "-" || ch === "*" || ch === "/") {
+      const lastToken = tokens.length > 0 ? tokens[tokens.length - 1] : null;
+      const isUnaryContext =
+        lastToken === null ||
+        lastToken.type === "operator" ||
+        lastToken.type === "open-paren";
+
+      if (ch === "-" && isUnaryContext) {
+        const endIndex = consumeNumber(text, i + 1);
+        if (endIndex !== null) {
+          tokens.push({
+            type: "constant",
+            value: parseFloat(text.slice(i, endIndex)),
+            from: i,
+            to: endIndex,
+          });
+          i = endIndex;
+          continue;
+        }
+      }
+
       tokens.push({
         type: "operator",
         op: ch as MathOperator,
@@ -567,29 +610,14 @@ export function parseFullTextWithPositions(
     }
 
     if (ch >= "0" && ch <= "9") {
-      const start = i;
-      let numStr = "";
-      while (i < text.length && text[i] >= "0" && text[i] <= "9") {
-        numStr += text[i++];
-      }
-      if (
-        i < text.length &&
-        text[i] === "." &&
-        i + 1 < text.length &&
-        text[i + 1] >= "0" &&
-        text[i + 1] <= "9"
-      ) {
-        numStr += text[i++];
-        while (i < text.length && text[i] >= "0" && text[i] <= "9") {
-          numStr += text[i++];
-        }
-      }
+      const endIndex = consumeNumber(text, i)!;
       tokens.push({
         type: "constant",
-        value: parseFloat(numStr),
-        from: start,
-        to: i,
+        value: parseFloat(text.slice(i, endIndex)),
+        from: i,
+        to: endIndex,
       });
+      i = endIndex;
       continue;
     }
 

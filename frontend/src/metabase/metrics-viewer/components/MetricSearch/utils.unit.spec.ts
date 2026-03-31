@@ -399,6 +399,151 @@ describe("parseFullText — numeric literal parsing", () => {
 });
 
 // ---------------------------------------------------------------------------
+// parseFullText — negative numbers
+// ---------------------------------------------------------------------------
+
+describe("parseFullText — negative numbers", () => {
+  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
+  const costsEntry = makeMetricEntry("metric:2", "Costs");
+  const metricEntries = [revenueEntry, costsEntry];
+
+  const metric = (sourceId: MetricSourceId): ExpressionSubToken => ({
+    type: "metric",
+    sourceId,
+    count: 1,
+  });
+  const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
+    type: "operator",
+    op: o,
+  });
+  const constant = (v: number): ExpressionSubToken => ({
+    type: "constant",
+    value: v,
+  });
+  const open: ExpressionSubToken = { type: "open-paren" };
+  const close: ExpressionSubToken = { type: "close-paren" };
+
+  it("parses a standalone negative integer", () => {
+    const result = parseFullText("-50", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:-50",
+        type: "expression",
+        name: "-50",
+        tokens: [constant(-50)],
+      },
+    ]);
+  });
+
+  it("parses metric plus negative constant", () => {
+    const result = parseFullText("Revenue + -50", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:Revenue + -50",
+        type: "expression",
+        name: "Revenue + -50",
+        tokens: [metric("metric:1"), op("+"), constant(-50)],
+      },
+    ]);
+  });
+
+  it("parses metric multiplied by negative decimal", () => {
+    const result = parseFullText("Revenue * -0.85", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:Revenue * -0.85",
+        type: "expression",
+        name: "Revenue * -0.85",
+        tokens: [metric("metric:1"), op("*"), constant(-0.85)],
+      },
+    ]);
+  });
+
+  it("parses negative constant at the start of expression", () => {
+    const result = parseFullText("-50 * Revenue", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:-50 * Revenue",
+        type: "expression",
+        name: "-50 * Revenue",
+        tokens: [constant(-50), op("*"), metric("metric:1")],
+      },
+    ]);
+  });
+
+  it("parses negative constant after open-paren", () => {
+    const result = parseFullText("(-50 + Revenue)", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:(-50 + Revenue)",
+        type: "expression",
+        name: "(-50 + Revenue)",
+        tokens: [open, constant(-50), op("+"), metric("metric:1"), close],
+      },
+    ]);
+  });
+
+  it("parses subtraction of a negative constant", () => {
+    const result = parseFullText("Revenue - -50", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:Revenue - -50",
+        type: "expression",
+        name: "Revenue - -50",
+        tokens: [metric("metric:1"), op("-"), constant(-50)],
+      },
+    ]);
+  });
+
+  it("round-trips negative constants through buildExpressionText", () => {
+    const text = "Revenue + -50";
+    const result = parseFullText(text, metricEntries);
+    expect(result).toHaveLength(1);
+    const entry = result[0];
+    if (entry.type === "expression") {
+      // eslint-disable-next-line jest/no-conditional-expect
+      expect(buildExpressionText(entry.tokens, metricEntries)).toBe(text);
+    } else {
+      throw new Error("Expected expression entry");
+    }
+  });
+
+  it.each([
+    "-50 * Revenue",
+    "Revenue + -50",
+    "Revenue - -50",
+    "(-50 + Revenue)",
+    "Revenue * -0.85",
+  ])("does not report validation errors for: %s", (text) => {
+    expect(findInvalidRanges(text, metricEntries)).toEqual([]);
+  });
+
+  it("still treats minus as binary operator after a metric", () => {
+    const result = parseFullText("Revenue - 50", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:Revenue - 50",
+        type: "expression",
+        name: "Revenue - 50",
+        tokens: [metric("metric:1"), op("-"), constant(50)],
+      },
+    ]);
+  });
+
+  it("still treats minus as binary operator after a constant", () => {
+    const result = parseFullText("100 - Revenue", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:100 - Revenue",
+        type: "expression",
+        name: "100 - Revenue",
+        tokens: [constant(100), op("-"), metric("metric:1")],
+      },
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // parseFullText — metric names containing commas
 // ---------------------------------------------------------------------------
 
