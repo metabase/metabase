@@ -3,12 +3,12 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [metabase.api.common :as api]
-   [metabase.api.macros :as api.macros]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.git :as git]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
+   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
