@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="robots" content="noindex" />
+
     <title>Metabase</title>
 
     <style>
@@ -68,11 +69,12 @@
         animation: mcp-spinner-animation 1.2s linear infinite;
       }
     </style>
-
-    <link
-      rel="stylesheet"
-      href="{{{instanceUrlRaw}}}/app/dist/app-embed-mcp.css?v={{{cacheBuster}}}"
-    />
+    <script>
+      window.Metabase = window.Metabase || {};
+      window.Metabase.AssetErrorLoad = function (tag) {
+        console.error("Could not download asset " + tag.src);
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>
@@ -86,7 +88,5 @@
         sessionToken: {{{sessionToken}}}
       };
     </script>
-
-    <script src="{{{instanceUrlRaw}}}/app/dist/app-embed-mcp.js?v={{{cacheBuster}}}"></script>
   </body>
 </html>
