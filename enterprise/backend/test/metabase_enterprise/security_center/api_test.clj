@@ -47,7 +47,7 @@
         (mt/assert-has-premium-feature-error
          "Security Center"
          (mt/user-http-request :crowberto :get 402 "ee/security-center"))))
-    (mt/with-premium-features #{:security-center}
+    (mt/with-premium-features #{:admin-security-center}
       (with-test-advisories!
         (testing "superuser can list advisories"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/security-center")]
@@ -59,7 +59,7 @@
 
 (deftest acknowledge-advisory-test
   (testing "POST /api/ee/security-center/:id/acknowledge"
-    (mt/with-premium-features #{:security-center :audit-app}
+    (mt/with-premium-features #{:admin-security-center :audit-app}
       (with-test-advisories!
         (testing "superuser can acknowledge"
           (is (=? {:advisory_id     "SC-TEST-001"
