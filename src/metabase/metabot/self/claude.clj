@@ -118,9 +118,10 @@
 (defn- ->content-blocks
   "Coerce content into a sequence of Claude content blocks."
   [content]
-  (if (and (string? content) (not (str/blank? content)))
-    [{:type "text" :text content}]
-    content))
+  (cond
+    (and (string? content) (str/blank? content)) []
+    (string? content) [{:type "text" :text content}]
+    :else content))
 
 (defn- merge-consecutive
   "Merge consecutive assistant messages into a single message with combined content.
