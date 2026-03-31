@@ -344,6 +344,18 @@
   [_transform]
   [:name :created_at])
 
+(defn- import-maybe-int-database-fk
+  "Import a database reference back to an ID. Tolerates raw numeric IDs from older exports
+  where source-tables database_id values were serialized without conversion."
+  [v]
+  (if (pos-int? v) v (serdes/*import-database-fk* v)))
+
+(defn- import-maybe-int-table-fk
+  "Import a table reference back to an ID. Tolerates raw numeric IDs from older exports
+  where source-tables table_id values were serialized without conversion."
+  [v]
+  (if (pos-int? v) v (serdes/*import-table-fk* v)))
+
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
@@ -356,25 +368,25 @@
                :source             {:export (fn [source]
                                               (-> source
                                                   (m/update-existing :query serdes/export-mbql)
-                                                  (m/update-existing :source-database #(serdes/*export-fk-keyed* % :model/Database :name))
+                                                  (m/update-existing :source-database serdes/*export-database-fk*)
                                                   (m/update-existing :source-tables
                                                                      (fn [entries]
                                                                        (->> (transforms-base.u/normalize-source-tables entries)
                                                                             (mapv (fn [entry]
                                                                                     (-> entry
                                                                                         (m/update-existing :table_id serdes/*export-table-fk*)
-                                                                                        (m/update-existing :database_id #(serdes/*export-fk-keyed* % :model/Database :name))))))))))
+                                                                                        (m/update-existing :database_id serdes/*export-database-fk*)))))))))
                                     :import (fn [source]
                                               (-> source
                                                   (m/update-existing :query serdes/import-mbql)
-                                                  (m/update-existing :source-database #(serdes/*import-fk-keyed* % :model/Database :name))
+                                                  (m/update-existing :source-database import-maybe-int-database-fk)
                                                   (m/update-existing :source-tables
                                                                      (fn [entries]
                                                                        (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
                                                                             (mapv (fn [entry]
                                                                                     (-> entry
-                                                                                        (m/update-existing :table_id serdes/*import-table-fk*)
-                                                                                        (m/update-existing :database_id #(serdes/*import-fk-keyed* % :model/Database :name))))))))))}
+                                                                                        (m/update-existing :table_id import-maybe-int-table-fk)
+                                                                                        (m/update-existing :database_id import-maybe-int-database-fk)))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
