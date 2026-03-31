@@ -13,6 +13,7 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -231,6 +232,11 @@
                 ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
                 :source              "oss_metabot"
                 :tag                 "oss-sqlgen"})
+              (metabot/log-ai-usage!
+               {:source            "oss-sql-gen"
+                :model             (:model usage)
+                :prompt-tokens     (:prompt usage)
+                :completion-tokens (:completion usage)})
               (track-sqlgen-event!
                {:duration-ms (u/since-ms start-timer)
                 :result "success"

@@ -57,6 +57,7 @@
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
+    :model/AiUsageLog                        metabase.metabot.models.ai-usage-log
     :model/MetabotGroupLimit                 metabase.metabot.models.metabot-group-limit
     :model/MetabotInstanceLimit              metabase.metabot.models.metabot-instance-limit
     :model/MetabotPermissions                metabase.metabot.models.metabot-permissions

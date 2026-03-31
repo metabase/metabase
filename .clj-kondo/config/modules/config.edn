@@ -1111,6 +1111,7 @@
            driver
            lib
            lib-be
+           metabot
            models
            request
            settings
@@ -1177,6 +1178,7 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
+              metabase.metabot.core
               metabase.metabot.init}
    :friends #{agent-api
               enterprise/metabot
