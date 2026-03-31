@@ -271,7 +271,7 @@
 (methodical/defmethod events/publish-event! ::check-transform-dependents
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (when (deps.findings/mark-dependents-stale! :transform (:transform-id object))
+    (when (deps.findings/mark-immediate-dependents-stale! :transform (:transform-id object))
       (task.entity-check/trigger-entity-check-job!))))
 
 (defn- synced-db->direct-dependents-of-changed-tables
@@ -317,7 +317,7 @@
   (when (premium-features/has-feature? :dependencies)
     (let [changes (synced-db->direct-dependents-of-changed-tables db-id)]
       (when (and (seq changes)
-                 (deps.findings/mark-all-dependents-stale! {:table changes}))
+                 (deps.findings/mark-all-immediate-dependents-stale! {:table changes}))
         (task.entity-check/trigger-entity-check-job!)))))
 
 ;; ### Admin UI Table/Field Metadata Updates
@@ -328,7 +328,8 @@
 (methodical/defmethod events/publish-event! ::check-table-metadata-update
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (deps.findings/mark-dependents-stale! :table (:id object))))
+    (when (deps.findings/mark-immediate-dependents-stale! :table (:id object))
+      (task.entity-check/trigger-entity-check-job!))))
 
 (derive ::check-field-metadata-update :metabase/event)
 (derive :event/field-update ::check-field-metadata-update)
@@ -336,4 +337,5 @@
 (methodical/defmethod events/publish-event! ::check-field-metadata-update
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (deps.findings/mark-dependents-stale! :table (:table_id object))))
+    (when (deps.findings/mark-immediate-dependents-stale! :table (:table_id object))
+      (task.entity-check/trigger-entity-check-job!))))

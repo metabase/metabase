@@ -100,13 +100,18 @@
   (let [dependents (models.dependency/transitive-dependents {entity-type [{:id entity-id}]})]
     (mark-supported-dependents-stale! dependents)))
 
-(defn mark-all-dependents-stale!
-  "Mark all transitive dependents of multiple entities as stale.
+(defn mark-all-immediate-dependents-stale!
+  "Mark the immediate dependents of multiple entities as stale.
   Takes a map of {entity-type entity-ids} where entity-ids is a set of IDs.
+  Does NOT traverse transitively — the entity-check job loop propagates in waves.
   Returns true if any supported dependents were found."
   [type->entity-ids]
-  (let [type->objects (update-vals type->entity-ids #(map (fn [id] {:id id}) %))
-        dependents (models.dependency/transitive-dependents type->objects)]
+  (let [key-seq (for [[entity-type ids] type->entity-ids
+                      id ids]
+                  [entity-type id])
+        deps-map (models.dependency/direct-dependents key-seq)
+        dependents (models.dependency/group-nodes
+                    (into #{} cat (vals deps-map)))]
     (mark-supported-dependents-stale! dependents)))
 
 (mu/defn mark-entity-stale!
