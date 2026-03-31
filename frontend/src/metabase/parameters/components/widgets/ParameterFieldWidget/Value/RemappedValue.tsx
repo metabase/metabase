@@ -91,6 +91,3 @@ const RemappedValue = ({ autoLoad = true, ...props }: RemappedValueProps) =>
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RemappedValue;
-
-// test version doesn't use metabase/hoc/Remapped which requires a redux store
-export const TestRemappedValue = RemappedValueContent;
