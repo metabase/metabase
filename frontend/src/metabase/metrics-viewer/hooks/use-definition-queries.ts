@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -32,6 +33,7 @@ import {
 import {
   entryHasBreakout,
   getEffectiveDefinitionEntry,
+  getEffectiveTokenDefinitionEntry,
 } from "../utils/definition-entries";
 import { parseExpression } from "../utils/parse-expression";
 import { getTabConfig } from "../utils/tab-config";
@@ -124,18 +126,13 @@ function buildArithmeticRequest(
       continue;
     }
 
-    const definition = token.definition
-      ? { id: token.sourceId, definition: token.definition }
-      : definitions[token.sourceId];
-    if (!definition) {
-      return null; // definition not yet available (e.g. metric was just swapped)
-    }
+    const definition = getEffectiveTokenDefinitionEntry(token, definitions);
     const modifiedDefinition = getModifiedDefinitionForTab(definition, tab);
     if (!modifiedDefinition) {
       if (!definition.definition) {
         return null; // still loading the metric, not an error
       }
-      return { error: `No compatible dimensions` };
+      return { error: t`No compatible dimensions` };
     }
 
     modifiedDefinitions[token.sourceId] = modifiedDefinition;

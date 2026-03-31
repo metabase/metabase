@@ -136,12 +136,6 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
  */
 export type SourceColorMap = Record<number, string[]>;
 
-/**
- * A source-ID–keyed color map used by components that work with deduplicated
- * definitions (e.g. filter pills) rather than per-instance formula entities.
- */
-export type SourceIdColorMap = Partial<Record<MetricSourceId, string[]>>;
-
 // ── Shared display types ──
 
 export type SelectedMetric = {

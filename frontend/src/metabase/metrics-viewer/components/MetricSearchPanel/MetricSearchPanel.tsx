@@ -12,9 +12,7 @@ import type {
   MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
-  SourceIdColorMap,
 } from "../../types/viewer-state";
-import { isMetricEntry } from "../../types/viewer-state";
 import type { DefinitionSource } from "../../utils/definition-sources";
 import {
   applyDefinitionToFormulaEntities,
@@ -58,19 +56,6 @@ export function MetricSearchPanel({
     () => getDefinitionSources(formulaEntities, definitions),
     [formulaEntities, definitions],
   );
-
-  const sourceIdColors = useMemo((): SourceIdColorMap => {
-    const map: SourceIdColorMap = {};
-    formulaEntities.forEach((entity, index) => {
-      if (isMetricEntry(entity) && !(entity.id in map)) {
-        const colors = metricColors[index];
-        if (colors) {
-          map[entity.id] = colors;
-        }
-      }
-    });
-    return map;
-  }, [formulaEntities, metricColors]);
 
   const filterCount = useMemo(
     () =>
@@ -154,7 +139,7 @@ export function MetricSearchPanel({
             formulaEntities={formulaEntities}
             onFormulaEntitiesChange={onFormulaEntitiesChange}
             selectedMetrics={selectedMetrics}
-            metricColors={sourceIdColors}
+            metricColors={metricColors}
             onAddMetric={onAddMetric}
             onRemoveMetric={onRemoveMetric}
             onSwapMetric={onSwapMetric}
@@ -170,7 +155,7 @@ export function MetricSearchPanel({
           >
             <MetricsFilterPills
               definitionSources={definitionSources}
-              sourceColors={sourceIdColors}
+              sourceColors={metricColors}
               onSourceDefinitionChange={handleSourceDefinitionChange}
             />
           </Box>

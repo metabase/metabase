@@ -11,11 +11,17 @@ import type {
 } from "../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
 
+import {
+  getEffectiveDefinitionEntry,
+  getEffectiveTokenDefinitionEntry,
+} from "./definition-entries";
+
 export type DefinitionSource = {
   index: number;
   id: MetricSourceId;
   definition: MetricDefinition;
   entity: MetricsViewerFormulaEntity;
+  entityIndex: number;
   token?: Extract<ExpressionSubToken, { type: "metric" }>;
 };
 
@@ -30,26 +36,34 @@ export function getDefinitionSources(
     definition: DefinitionSource["definition"] | null;
   };
   const maybeDefinitionSources = formulaEntities.flatMap<MaybeDefinitionSource>(
-    (entity) => {
+    (entity, index) => {
       if (isMetricEntry(entity)) {
+        const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
         return [
           {
             id: entity.id,
-            definition: entity.definition ?? definitions[entity.id]?.definition,
+            definition: effectiveEntry.definition,
             entity,
+            entityIndex: index,
           },
         ];
       }
       if (isExpressionEntry(entity)) {
         return entity.tokens
           .filter((token) => token.type === "metric")
-          .map((token) => ({
-            id: token.sourceId,
-            definition:
-              token.definition ?? definitions[token.sourceId]?.definition,
-            entity,
-            token,
-          }));
+          .map((token) => {
+            const effectiveEntry = getEffectiveTokenDefinitionEntry(
+              token,
+              definitions,
+            );
+            return {
+              id: token.sourceId,
+              definition: effectiveEntry.definition,
+              entity,
+              entityIndex: index,
+              token,
+            };
+          });
       }
       return [];
     },
@@ -64,15 +78,14 @@ export function getDefinitionSources(
 /**
  * Produces an updated formulaEntities array with a new definition applied
  * to the entity/token identified by the given DefinitionSource.
- * Uses identity comparison to find the correct entity and token.
  */
 export function applyDefinitionToFormulaEntities(
   formulaEntities: MetricsViewerFormulaEntity[],
   source: DefinitionSource,
   newDefinition: MetricDefinition,
 ): MetricsViewerFormulaEntity[] {
-  return formulaEntities.map((entity) => {
-    if (entity !== source.entity) {
+  return formulaEntities.map((entity, index) => {
+    if (index !== source.entityIndex) {
       return entity;
     }
     if (isMetricEntry(entity)) {

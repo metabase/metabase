@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { Box, Popover } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 
-import type { SourceIdColorMap } from "../../types/viewer-state";
+import type { SourceColorMap } from "../../types/viewer-state";
 import type { DefinitionSource } from "../../utils/definition-sources";
 
 import S from "./FilterPopover.module.css";
@@ -13,7 +13,7 @@ const POPOVER_MAX_HEIGHT = "37.5rem";
 
 interface FilterPopoverProps {
   definitionSources: DefinitionSource[];
-  metricColors: SourceIdColorMap;
+  metricColors: SourceColorMap;
   handleSourceDefinitionChange: (
     source: DefinitionSource,
     newDefinition: MetricDefinition,

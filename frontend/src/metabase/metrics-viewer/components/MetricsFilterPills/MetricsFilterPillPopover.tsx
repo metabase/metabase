@@ -60,7 +60,7 @@ export function MetricsFilterPillPopover({
           onClick={() => setIsOpened((prev) => !prev)}
           onRemoveClick={handleRemove}
         >
-          <Flex align="center" gap="0.2em">
+          <Flex align="center" gap="xs">
             {metricName && (
               <Text component="span" fw={700} c="inherit" fz="inherit">
                 {metricName}

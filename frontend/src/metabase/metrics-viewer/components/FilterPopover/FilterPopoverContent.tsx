@@ -28,7 +28,7 @@ import type {
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type { SourceIdColorMap } from "../../types/viewer-state";
+import type { SourceColorMap } from "../../types/viewer-state";
 import type { DefinitionSource } from "../../utils/definition-sources";
 
 import S from "./FilterPopover.module.css";
@@ -52,7 +52,7 @@ type DisplayMetricGroup = {
 
 interface FilterPopoverContentProps {
   definitionSources: DefinitionSource[];
-  metricColors: SourceIdColorMap;
+  metricColors: SourceColorMap;
   handleSourceDefinitionChange: (
     source: DefinitionSource,
     newDefinition: MetricDefinition,
@@ -79,7 +79,7 @@ export function FilterPopoverContent({
         metricName: group.metricName,
         metricCount: definitionSource.token?.count,
         icon: group.icon,
-        colors: metricColors[definitionSource.id],
+        colors: metricColors[definitionSource.entityIndex],
         sections: group.sections,
       };
     });
