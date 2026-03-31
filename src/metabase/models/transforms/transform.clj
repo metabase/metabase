@@ -353,15 +353,28 @@
                :owner_user_id      (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)
                :source_database_id (serdes/fk :model/Database :name)
-               :source             {:export #(update % :query serdes/export-mbql)
+               :source             {:export (fn [source]
+                                              (-> source
+                                                  (m/update-existing :query serdes/export-mbql)
+                                                  (m/update-existing :source-database #(serdes/*export-fk-keyed* % :model/Database :name))
+                                                  (m/update-existing :source-tables
+                                                                     (fn [entries]
+                                                                       (->> (transforms-base.u/normalize-source-tables entries)
+                                                                            (mapv (fn [entry]
+                                                                                    (-> entry
+                                                                                        (m/update-existing :table_id serdes/*export-table-fk*)
+                                                                                        (m/update-existing :database_id #(serdes/*export-fk-keyed* % :model/Database :name))))))))))
                                     :import (fn [source]
                                               (-> source
+                                                  (m/update-existing :query serdes/import-mbql)
+                                                  (m/update-existing :source-database #(serdes/*import-fk-keyed* % :model/Database :name))
                                                   (m/update-existing :source-tables
-                                                                     (fn [st]
-                                                                       (if (map? st)
-                                                                         (transforms-base.u/source-tables-map->vec st)
-                                                                         st)))
-                                                  (m/update-existing :query serdes/import-mbql)))}
+                                                                     (fn [entries]
+                                                                       (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
+                                                                            (mapv (fn [entry]
+                                                                                    (-> entry
+                                                                                        (m/update-existing :table_id serdes/*import-table-fk*)
+                                                                                        (m/update-existing :database_id #(serdes/*import-fk-keyed* % :model/Database :name))))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
@@ -376,7 +389,10 @@
       [[{:model "Database" :id source_database_id}]])
     (for [{tag-id :tag_id} tags]
       [{:model "TransformTag" :id tag-id}])
-    (serdes/mbql-deps source))))
+    (serdes/mbql-deps source)
+    (for [{:keys [table_id]} (:source-tables source)
+          :when (vector? table_id)]
+      (serdes/table->path table_id)))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
   (serdes/storage-default-collection-path transform ctx "transforms"))
