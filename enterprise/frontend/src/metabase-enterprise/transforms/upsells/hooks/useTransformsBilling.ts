@@ -43,7 +43,7 @@ export function useTransformsBilling() {
       active &&
       self_service &&
       billing_period_months === billingPeriodMonths &&
-      product_type === "transforms-basic",
+      product_type === "transforms-basic-metered",
   );
 
   const advancedTransformsAddOn = addOns?.find(

@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
-import { c, jt, t } from "ttag";
+import { jt, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
@@ -26,7 +26,8 @@ const NOTIFICATION_THRESHOLD = 0.8;
  * do not need to pay extra for basic transforms.
  */
 export function TransformsUpsellPage() {
-  const { error, hadTransforms, isLoading } = useTransformsBilling();
+  const { error, hadTransforms, isLoading, basicTransformsAddOn } =
+    useTransformsBilling();
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
@@ -81,8 +82,13 @@ export function TransformsUpsellPage() {
 
   const freeUnits = 1000; // TODO: Get from api
   const freeUnitsStr = freeUnits.toLocaleString();
-  const batchPrice = 10; // TODO: Get from api
-  const batchSize: number = 1000; // TODO: Get from api
+  const perRunStr =
+    basicTransformsAddOn?.default_price_per_unit != null &&
+    formatNumber(basicTransformsAddOn.default_price_per_unit, {
+      number_style: "currency",
+      currency: "USD",
+      currency_style: "symbol",
+    });
 
   return (
     <DottedBackground
@@ -111,39 +117,34 @@ export function TransformsUpsellPage() {
             leftContent={
               !shouldShowAgreement ? undefined : (
                 <>
-                  <Title
-                    order={2}
-                  >{t`${freeUnitsStr} free transform runs`}</Title>
-                  <Text c="text-secondary" fz="1rem" lh={1.4}>
-                    {jt`Your Cloud plan comes with ${freeUnitsStr} transform runs ${(
-                      <strong key="bold">{t`completely free.`}</strong>
-                    )} After that, you'll be charged ${formatNumber(
-                      batchPrice,
-                      {
-                        number_style: "currency",
-                        currency: "USD",
-                        currency_style: "symbol",
-                        minimumFractionDigits: 0,
-                      },
-                    )} for each additional ${
-                      batchSize === 1
-                        ? c("transforms").t`run`
-                        : `${batchSize.toLocaleString()} ${c("transforms").t`runs`}`
-                    }. You only pay for what you use.`}
-                  </Text>
-                  <Text
-                    c="text-secondary"
-                    fz="1rem"
-                    lh={1.4}
-                  >{t`We'll notify you when you've hit ${NOTIFICATION_THRESHOLD * 100}% of your allotment.`}</Text>
-                  <Button
-                    loading={isPurchasing}
-                    variant="primary"
-                    onClick={handlePurchase}
-                  >{t`Agree and continue`}</Button>
-                  <Text c="text-secondary" lh={1.4}>
-                    {t`By clicking agree and continue, you agree to be charged in accordance with our terms of service. Your free transforms never expire, so they'll be waiting here for you when you're ready.`}
-                  </Text>
+                  {perRunStr && freeUnitsStr ? (
+                    <>
+                      <Title
+                        order={2}
+                      >{t`${freeUnitsStr} free transform runs`}</Title>
+                      <Text c="text-secondary" fz="1rem" lh={1.4}>
+                        {jt`Your Cloud plan comes with ${freeUnitsStr} transform runs ${(
+                          <strong key="bold">{t`completely free`}.</strong>
+                        )}`}{" "}
+                        {t`After you use your ${freeUnitsStr} runs, you'll be charged ${perRunStr} per run. You only pay for what you use.`}
+                      </Text>
+                      <Text
+                        c="text-secondary"
+                        fz="1rem"
+                        lh={1.4}
+                      >{t`We'll notify you when you've hit ${NOTIFICATION_THRESHOLD * 100}% of your allotment.`}</Text>
+                      <Button
+                        loading={isPurchasing}
+                        variant="primary"
+                        onClick={handlePurchase}
+                      >{t`Agree and continue`}</Button>
+                      <Text c="text-secondary" lh={1.4}>
+                        {t`By clicking agree and continue, you agree to be charged in accordance with our terms of service. Your free transforms never expire, so they'll be waiting here for you when you're ready.`}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text>{t`Error fetching information about available add-ons.`}</Text>
+                  )}
                 </>
               )
             }

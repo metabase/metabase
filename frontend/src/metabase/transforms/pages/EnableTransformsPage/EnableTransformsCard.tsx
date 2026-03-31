@@ -34,7 +34,7 @@ export function EnableTransformsCard({
   return (
     <Card withBorder maw="60rem" p={0} w="100%" style={{ overflow: "auto" }}>
       <Flex w="100%" p={{ xs: "2.5rem", xl: "3rem" }}>
-        <Stack gap="lg" align="start" pt="xl" pl="lg">
+        <Stack gap="lg" align="start" pt="xl" pl="lg" flex="1 1 auto">
           {leftContent ?? (
             <>
               <Title order={2}>{t`Customize and clean up your data`}</Title>

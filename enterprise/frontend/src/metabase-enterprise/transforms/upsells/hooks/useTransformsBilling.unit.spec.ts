@@ -80,7 +80,7 @@ describe("useTransformsBilling", () => {
 
       expect(result.current.basicTransformsAddOn).toBeDefined();
       expect(result.current.basicTransformsAddOn?.product_type).toBe(
-        "transforms-basic",
+        "transforms-basic-metered",
       );
       expect(result.current.advancedTransformsAddOn).toBeDefined();
       expect(result.current.advancedTransformsAddOn?.product_type).toBe(
