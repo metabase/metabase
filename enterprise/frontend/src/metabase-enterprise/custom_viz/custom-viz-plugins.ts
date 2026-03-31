@@ -91,7 +91,7 @@ export function getPluginAssetUrl(
   if (!assetPath) {
     return undefined;
   }
-  return `/api/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`;
+  return `/api/ee/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`;
 }
 
 // ---------------------------------------------------------------------------

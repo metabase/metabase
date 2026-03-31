@@ -1,24 +1,20 @@
-(ns metabase.custom-viz-plugin.api
-  "/api/custom-viz-plugin endpoints."
+(ns metabase-enterprise.custom-viz-plugin.api
+  "/api/ee/custom-viz-plugin endpoints."
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
+   [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.git :as git]
+   [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.custom-viz-plugin.cache :as cache]
-   [metabase.custom-viz-plugin.git :as git]
-   [metabase.custom-viz-plugin.manifest :as manifest]
-   [metabase.custom-viz-plugin.models.custom-viz-plugin]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ---------------------------------------- In-memory dev bundle URLs -----------------------------------------
-
-(def ^:private dev-bundle-urls cache/dev-bundle-urls)
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
@@ -53,12 +49,6 @@
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
-(defn- check-custom-viz-enabled
-  "Throw a 402 if custom visualizations are not enabled."
-  []
-  (api/check (premium-features/has-feature? :custom-viz)
-             [402 (tru "Custom visualizations require a Pro or Enterprise license.")]))
-
 ;; TODO: this should be guarded automatically through a custom mi/to-json defmethod
 (defn- strip-token
   "Remove access_token from plugin map before returning to client."
@@ -70,7 +60,7 @@
   [manifest-str]
   (when manifest-str
     (try
-      (json/parse-string manifest-str true)
+      (json/decode+kw manifest-str)
       (catch Exception _ nil))))
 
 (defn- plugin->response
@@ -80,17 +70,17 @@
       strip-token
       (update :status name)
       (update :manifest parse-manifest-json)
-      (assoc :dev_bundle_url (get @dev-bundle-urls (:id plugin)))))
+      (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
   [{:keys [id identifier display_name icon resolved_commit manifest]}]
-  (let [dev-url (get @dev-bundle-urls id)]
+  (let [dev-url (cache/resolve-dev-bundle id)]
     (cond-> {:id              id
              :identifier      identifier
              :display_name    display_name
              :icon            icon
-             :bundle_url      (format "/api/custom-viz-plugin/%d/bundle" id)
+             :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
              :resolved_commit resolved_commit
              :manifest        (parse-manifest-json manifest)}
       dev-url (assoc :dev_bundle_url dev-url))))
@@ -106,7 +96,6 @@
                                                       [:repo_url       ms/NonBlankString]
                                                       [:access_token   {:optional true} [:maybe :string]]
                                                       [:pinned_version {:optional true} [:maybe :string]]]]
-  (check-custom-viz-enabled)
   (api/check-superuser)
   (let [identifier (git/parse-repo-name repo_url)
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
@@ -125,7 +114,6 @@
 (api.macros/defendpoint :get "/" :- [:sequential CustomVizPluginResponse]
   "List all registered custom visualization plugins."
   []
-  (check-custom-viz-enabled)
   (api/check-superuser)
   (map plugin->response (t2/select :model/CustomVizPlugin {:order-by [[:display_name :asc]]})))
 
@@ -133,7 +121,6 @@
   "List active and enabled custom visualization plugins. Available to any authenticated user.
    Plugins with incompatible Metabase version requirements are excluded."
   []
-  (check-custom-viz-enabled)
   (let [plugins (t2/select [:model/CustomVizPlugin
                             :id :identifier :display_name :icon :resolved_commit
                             :manifest :metabase_version]
@@ -141,17 +128,15 @@
                            :enabled true
                            {:order-by [[:display_name :asc]]})]
     (->> plugins
-         (filter #(manifest/compatible? %))
+         (filter manifest/compatible?)
          (map plugin->runtime-response))))
 
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- :nil
   "Remove a custom visualization plugin and evict its cached bundle."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (check-custom-viz-enabled)
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
   (cache/evict! id)
-  (swap! dev-bundle-urls dissoc id)
   (t2/delete! :model/CustomVizPlugin :id id)
   nil)
 
@@ -163,7 +148,6 @@
             [:enabled        {:optional true} [:maybe :boolean]]
             [:access_token   {:optional true} [:maybe :string]]
             [:pinned_version {:optional true} [:maybe :string]]]]
-  (check-custom-viz-enabled)
   (api/check-superuser)
   (let [existing    (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
         updates    (select-keys body [:enabled :access_token :pinned_version])]
@@ -176,7 +160,7 @@
         (cache/fetch-and-cache! updated-plugin {:force? true}))))
   (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
 
-(api.macros/defendpoint :get "/:id/bundle"
+(api.macros/defendpoint :get "/:id/bundle" :- :any
   "Serve the cached JS bundle for a plugin.
    Returns application/javascript with ETag and Cache-Control headers.
    In dev mode, proxies from dev_bundle_url if set."
@@ -186,10 +170,9 @@
    _request
    respond
    raise]
-  (check-custom-viz-enabled)
   (try
     (let [plugin  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-          dev-url (get @dev-bundle-urls id)
+          dev-url (cache/resolve-dev-bundle id)
           entry   (cache/resolve-bundle plugin)]
       (if entry
         (respond {:status  200
@@ -229,7 +212,7 @@
       (throw (ex-info "Invalid asset path" {:status-code 400 :path raw-path})))
     normalized))
 
-(api.macros/defendpoint :get "/:id/asset"
+(api.macros/defendpoint :get "/:id/asset" :- :any
   "Serve a static image asset from the plugin's cached assets.
    The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)
    and must match an entry in the manifest's `assets` whitelist.
@@ -241,14 +224,13 @@
    _request
    respond
    raise]
-  (check-custom-viz-enabled)
   (try
     (let [asset-path   (validate-asset-path path)
           content-type (asset-content-type asset-path)]
       (when-not content-type
         (throw (ex-info "Unsupported asset type" {:status-code 404})))
       (let [_plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-            dev?    (contains? @dev-bundle-urls id)
+            dev?    (cache/resolve-dev-bundle id)
             bytes   (cache/resolve-asset id asset-path)]
         (if bytes
           (respond {:status  200
@@ -262,27 +244,27 @@
     (catch Throwable e
       (raise e))))
 
-(api.macros/defendpoint :put "/:id/dev-url"
+(api.macros/defendpoint :put "/:id/dev-url" :- [:map [:dev_bundle_url [:maybe :string]]]
   "Set or clear the in-memory dev base URL for a plugin (e.g. `http://localhost:5174`).
    The bundle is fetched from `{base}/index.js` and assets from `{base}/assets/{name}`.
    This is transient — cleared on server restart."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
-  (check-custom-viz-enabled)
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-  (if (seq dev_bundle_url)
-    (swap! dev-bundle-urls assoc id dev_bundle_url)
-    (swap! dev-bundle-urls dissoc id))
-  {:dev_bundle_url (get @dev-bundle-urls id)})
+  (cache/set-or-clear-dev-bundle! id dev_bundle_url)
+  {:dev_bundle_url (cache/resolve-dev-bundle id)})
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the bundle from the git repository."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (check-custom-viz-enabled)
   (api/check-superuser)
   (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
     (cache/evict! id)
     (cache/fetch-and-cache! plugin {:force? true})
     (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))
+
+(def routes
+  "`/api/ee/custom-viz-plugin` routes."
+  (api.macros/ns-handler *ns*))

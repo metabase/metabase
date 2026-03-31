@@ -1,4 +1,4 @@
-(ns metabase.custom-viz-plugin.models.custom-viz-plugin
+(ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]

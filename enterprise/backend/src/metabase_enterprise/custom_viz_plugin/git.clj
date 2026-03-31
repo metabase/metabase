@@ -1,4 +1,4 @@
-(ns metabase.custom-viz-plugin.git
+(ns metabase-enterprise.custom-viz-plugin.git
   "Read-only JGit wrapper for fetching files from custom visualization plugin repositories.
    Clones bare repos, fetches updates, and reads files at specific commits."
   (:require
@@ -137,7 +137,7 @@
 
 (defn- get-or-create-git!
   "Get or create a Git instance for the given repo config."
-  ^Git [{:keys [remote-url token] :as opts}]
+  ^Git [{:as opts}]
   (let [path (repo-cache-path opts)
         path-key (.getPath path)]
     (or (get @git-instances path-key)
