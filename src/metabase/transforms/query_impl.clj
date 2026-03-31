@@ -64,12 +64,9 @@
                transform-details {:db-id          db
                                   :database       database
                                   :transform-id   id
-                                  :transform-type (keyword (:type target))
                                   :conn-spec      conn-spec
-                                  :query          (transforms.util/compile-source transform)
                                   :output-schema  (:schema target)
                                   :output-table   (transforms.util/qualified-table-name driver target)}
-               opts              (transform-opts transform-details)
                features          (transforms.util/required-database-features transform)
                ;; For manual runs, use the triggering user; for cron, use owner/creator
                run-user-id       (if (and (= run-method :manual) user-id)
@@ -87,9 +84,17 @@
                          " using write connection"))
              (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
                (transforms.util/run-cancelable-transform!
-                run-id driver transform-details
-                (fn [_cancel-chan]
-                  (driver/run-transform! driver transform-details opts))))
+                run-id transform driver transform-details
+                (fn [_cancel-chan source-range-params]
+                  (let [effective-transform-type (if (and (= :table-incremental (keyword (:type target)))
+                                                          (nil? (:last_checkpoint_value transform)))
+                                                   :table
+                                                   (keyword (:type target)))
+                        details (assoc transform-details
+                                       :transform-type effective-transform-type
+                                       :query (transforms.util/compile-source transform source-range-params))
+                        opts    (transform-opts details)]
+                    (driver/run-transform! driver details opts)))))
              (transforms.util/handle-transform-complete!
               :run-id run-id
               :transform transform

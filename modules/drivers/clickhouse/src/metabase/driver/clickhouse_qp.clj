@@ -183,8 +183,8 @@
   (let [report-timezone (get-report-timezone-id-safely)
         inner-expr      (h2x// expr 1000)]
     (if report-timezone
-      [:'toDateTime64 inner-expr 3 report-timezone]
-      [:'toDateTime64 inner-expr 3])))
+      [:'toDateTime64 inner-expr [:inline 3] (h2x/literal report-timezone)]
+      [:'toDateTime64 inner-expr [:inline 3]])))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :microseconds]
   [_ _ expr]

@@ -1,13 +1,9 @@
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
-  CheckQueryComplexityRequest,
   CreateTransformRequest,
-  ExtractColumnsFromQueryRequest,
-  ExtractColumnsFromQueryResponse,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
-  QueryComplexity,
   RunTransformResponse,
   Transform,
   TransformId,
@@ -196,25 +192,13 @@ export const transformApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
-    extractColumnsFromQuery: builder.mutation<
-      ExtractColumnsFromQueryResponse,
-      ExtractColumnsFromQueryRequest
-    >({
-      query: (body) => ({
+    resetCheckpoint: builder.mutation<void, TransformId>({
+      query: (id) => ({
         method: "POST",
-        url: "/api/transform/extract-columns",
-        body,
+        url: `/api/transform/${id}/reset-checkpoint`,
       }),
-    }),
-    checkQueryComplexity: builder.query<
-      QueryComplexity,
-      CheckQueryComplexityRequest
-    >({
-      query: (queryString) => ({
-        method: "POST",
-        url: "/api/transform/is-simple-query",
-        body: { query: queryString },
-      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("transform", id)]),
     }),
   }),
 });
@@ -230,6 +214,5 @@ export const {
   useUpdateTransformMutation,
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
-  useExtractColumnsFromQueryMutation,
-  useLazyCheckQueryComplexityQuery,
+  useResetCheckpointMutation,
 } = transformApi;

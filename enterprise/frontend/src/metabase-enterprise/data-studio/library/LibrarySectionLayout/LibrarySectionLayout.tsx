@@ -22,6 +22,7 @@ import {
 import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
@@ -40,6 +41,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../components/LibraryEmptyState";
@@ -108,6 +110,7 @@ function LibrarySectionContent() {
     useState<CollectionId | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isPublishTableModalOpen, setIsPublishTableModalOpen] = useState(false);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
   const expandedIdsFromUrl = useMemo(() => {
     const rawIds = location.query?.expandedId;
@@ -254,10 +257,12 @@ function LibrarySectionContent() {
                 <Text c="text-tertiary" fz="inherit">
                   {data.description}
                 </Text>
-                <EmptyStateAction
-                  data={data}
-                  onPublishTable={() => setIsPublishTableModalOpen(true)}
-                />
+                {!isRemoteSyncReadOnly && (
+                  <EmptyStateAction
+                    data={data}
+                    onPublishTable={() => setIsPublishTableModalOpen(true)}
+                  />
+                )}
               </Flex>
             );
           }
@@ -321,7 +326,7 @@ function LibrarySectionContent() {
         },
       },
     ],
-    [setIsPublishTableModalOpen],
+    [setIsPublishTableModalOpen, isRemoteSyncReadOnly],
   );
 
   const getRowHref = useCallback(

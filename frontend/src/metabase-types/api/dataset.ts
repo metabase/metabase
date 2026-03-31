@@ -97,6 +97,7 @@ export interface DatasetData {
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
+  pivot_rows_truncated?: number;
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
@@ -246,6 +247,7 @@ export interface TemplateTag {
 
   // Table specific
   "table-id"?: TableId;
+  "emit-alias"?: boolean;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

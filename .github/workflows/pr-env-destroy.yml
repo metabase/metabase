@@ -12,7 +12,7 @@ on:
 
 jobs:
   destroy_pr:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: PR Review ENV Destroy
     permissions:
       id-token: write

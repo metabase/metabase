@@ -957,7 +957,9 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 - Default: `true`
 - [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled`
 
-When a user logs in via JWT, create a Metabase account for them automatically if they don't have one.
+Determines what happens when a user logs in via JWT and doesn't have a Metabase account.
+
+When set to `true`, users who log in via JWT will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via JWT.
 
 ### `MB_LANDING_PAGE`
 
@@ -1140,8 +1142,9 @@ User lookup filter. The placeholder '{login}' will be replaced by the user suppl
 - Default: `true`
 - [Configuration file name](./config-file.md): `ldap-user-provisioning-enabled`
 
-When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
-don't have one.
+Determines what happens when a user logs in via LDAP and doesn't have a Metabase account.
+
+When set to `true`, users who log in via LDAP will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via LDAP.
 
 ### `MB_LICENSE_TOKEN_MISSING_BANNER_DISMISSAL_TIMESTAMP`
 
@@ -1645,8 +1648,9 @@ Is SAML Single Log Out enabled?
 - Default: `true`
 - [Configuration file name](./config-file.md): `saml-user-provisioning-enabled`
 
-When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
-don't have one.
+Determines what happens when a user logs in via SAML and doesn't have a Metabase account.
+
+When set to `true`, users who log in via SAML will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via SAML.
 
 ### `MB_SCIM_ENABLED`
 
@@ -2428,12 +2432,25 @@ Default: `""`
 
 When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
 
-- `"true"` generates a timestamped output file like `metabase-2026_01_15.jfr`
-- Any other non-empty value is used as the output filename (`.jfr` extension is appended if missing)
+- `"true"` generates a timestamped output file like `metabase-20260115_143000.jfr`
+- A value ending in `.jfr` is used as the output filename
+- Any other non-empty value is treated as a directory path. A new timestamped JFR file is written to that directory every 30 minutes (e.g., `metabase-20260115_143000.jfr`). Data is only written at the end of each 30-minute interval.
 - `""` or `"false"` disables monitoring (the default)
 
 The performance recording stores only method signature calls and other code execution metrics.
 It does not store any sensitive information such as environment variables, system properties, or other machine information.
+
+### `MB_MONITOR_PERFORMANCE_SAVE_RATE`
+
+Type: integer<br>
+Default: mode-specific (5 minutes for single-file mode, 30 minutes for rolling mode)
+
+Override the interval (in minutes) at which JFR recording data is saved to disk. Only applies when [MB_MONITOR_PERFORMANCE](#mb_monitor_performance) is enabled.
+
+- In single-file mode, the default is `5` minutes.
+- In rolling directory mode, the default is `30` minutes.
+
+Setting this value overrides the default for whichever mode is active.
 
 ### `MB_NO_SURVEYS`
 

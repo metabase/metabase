@@ -76,6 +76,8 @@ import type {
 } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
+import type { DataReferenceItem } from "../dataref/types";
+
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {
   DatasetEditorSettingsSidebar,
@@ -129,6 +131,10 @@ export type DatasetEditorInnerProps = {
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
   forwardedRef?: React.Ref<HTMLDivElement>;
+
+  dataReferenceStack: DataReferenceItem[];
+  pushDataReferenceStack: (item: DataReferenceItem) => void;
+  popDataReferenceStack: () => void;
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;

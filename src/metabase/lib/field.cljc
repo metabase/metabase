@@ -439,8 +439,7 @@
      :inherited-temporal-unit
      :lib/original-binning
      ::original-effective-type
-     ::original-temporal-unit
-     :qp.pivot/pivot-grouping?])
+     ::original-temporal-unit])
    {:metabase.lib.field/binning       :binning
     :metabase.lib.field/temporal-unit :temporal-unit
     :lib/ref-name                     :name

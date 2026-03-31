@@ -177,6 +177,7 @@
                                                           ([byytes offset length]
                                                            (.write os ^bytes byytes offset length))))))
                                    :async-context (reify AsyncContext
+                                                    (addListener [_ _])
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
         (is (true?

@@ -59,6 +59,7 @@ interface Props {
   canPublish: boolean;
   hasLibrary: boolean;
   onSyncOptionsClick: () => void;
+  onUpdate: () => void;
 }
 
 type TableModalType = "library" | "publish" | "unpublish";
@@ -70,6 +71,7 @@ const TableSectionBase = ({
   canPublish,
   hasLibrary,
   onSyncOptionsClick,
+  onUpdate,
 }: Props) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
@@ -127,6 +129,7 @@ const TableSectionBase = ({
     if (error) {
       sendErrorToast(t`Failed to update table name`);
     } else {
+      onUpdate();
       sendSuccessToast(t`Table name updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
@@ -212,6 +215,11 @@ const TableSectionBase = ({
     setModalType(undefined);
   };
 
+  const handleSuccessCloseModal = () => {
+    onUpdate();
+    handleCloseModal();
+  };
+
   const registerDependencyGraphTrackingEvent = () => {
     if (isConcreteTableId(table.id)) {
       trackDependencyEntitySelected({
@@ -250,13 +258,15 @@ const TableSectionBase = ({
             {table.is_published ? t`Unpublish` : t`Publish`}
           </Button>
         )}
-        <Button
-          flex="1"
-          leftSection={<Icon name="settings" />}
-          onClick={onSyncOptionsClick}
-        >
-          {t`Sync settings`}
-        </Button>
+        {!table.db?.is_attached_dwh && (
+          <Button
+            flex="1"
+            leftSection={<Icon name="settings" />}
+            onClick={onSyncOptionsClick}
+          >
+            {t`Sync settings`}
+          </Button>
+        )}
         {isDependencyGraphEnabled && (
           <Tooltip label={t`Dependency graph`}>
             <Button
@@ -280,7 +290,7 @@ const TableSectionBase = ({
         </Box>
       </Group>
 
-      <TableAttributesEditSingle table={table} />
+      <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
 
       <TableSectionGroup title={t`Metadata`}>
         <TableMetadata table={table} />
@@ -396,13 +406,13 @@ const TableSectionBase = ({
       <PLUGIN_LIBRARY.PublishTablesModal
         isOpened={modalType === "publish"}
         tableIds={[table.id]}
-        onPublish={handleCloseModal}
+        onPublish={handleSuccessCloseModal}
         onClose={handleCloseModal}
       />
       <PLUGIN_LIBRARY.UnpublishTablesModal
         isOpened={modalType === "unpublish"}
         tableIds={[table.id]}
-        onUnpublish={handleCloseModal}
+        onUnpublish={handleSuccessCloseModal}
         onClose={handleCloseModal}
       />
     </Stack>

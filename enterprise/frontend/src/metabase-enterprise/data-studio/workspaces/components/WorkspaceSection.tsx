@@ -114,11 +114,15 @@ export function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
           className={cx(S.tab, { [S.selected]: isWorkspaceListPage })}
           component={ForwardRefLink}
           to={Urls.dataStudioWorkspaceList()}
-          p="0.75rem"
+          p="sm"
           bdrs="md"
         >
-          <Flex align="center" justify="center">
-            <FixedSizeIcon name="git_branch" display="block" />
+          <Flex align="center" justify="center" w="100%">
+            <FixedSizeIcon
+              name="git_branch"
+              display="block"
+              c="text-secondary"
+            />
           </Flex>
         </UnstyledButton>
       </Tooltip>

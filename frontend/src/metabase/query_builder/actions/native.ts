@@ -3,7 +3,6 @@ import { createAction } from "redux-actions";
 import { Questions } from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
-import { getMetadata } from "metabase/selectors/metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
@@ -55,7 +54,7 @@ export const OPEN_DATA_REFERENCE_AT_QUESTION =
   "metabase/qb/OPEN_DATA_REFERENCE_AT_QUESTION";
 export const openDataReferenceAtQuestion = createThunkAction(
   OPEN_DATA_REFERENCE_AT_QUESTION,
-  (id: CardId) => async (dispatch: Dispatch, getState: GetState) => {
+  (id: CardId) => async (dispatch: Dispatch) => {
     const action = await dispatch(
       Questions.actions.fetch(
         { id },
@@ -64,10 +63,9 @@ export const openDataReferenceAtQuestion = createThunkAction(
     );
     const question = Questions.HACK_getObjectFromAction(action);
     if (question) {
-      const database = getMetadata(getState()).database(question.database_id);
       return [
-        { type: "database", item: database },
-        { type: "question", item: question },
+        { type: "database", id: question.database_id },
+        { type: "question", id: question.id },
       ];
     }
   },

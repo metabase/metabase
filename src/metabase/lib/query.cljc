@@ -16,7 +16,6 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -57,7 +56,7 @@
   {:is-native   (native? query)
    :is-editable (lib.metadata/editable? query)})
 
-(mu/defn stage-count :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+(mu/defn stage-count :- nat-int?
   "Returns the count of stages in query"
   [query :- ::lib.schema/query]
   (count (:stages query)))

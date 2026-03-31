@@ -123,14 +123,21 @@
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
-  (cond-> transform
-    source
-    (assoc :source_type (transforms.util/transform-source-type source)
-           :source_database_id (or source_database_id (transforms.i/source-db-id transform)))
+  (let [changes (t2/changes transform)]
+    (cond-> transform
+      source
+      (assoc :source_type (transforms.util/transform-source-type source)
+             :source_database_id (or source_database_id (transforms.i/source-db-id transform)))
 
-    (or (:source (t2/changes transform)) (:target (t2/changes transform)))
-    ;; No database existence check added here, unlike for insert. Just allow updates for an invalid target to fail.
-    (assoc :target_db_id (transforms.i/target-db-id transform))))
+      (or (:source changes) (:target changes))
+      ;; No database existence check added here, unlike for insert. Just allow updates for an invalid target to fail.
+      (assoc :target_db_id (transforms.i/target-db-id transform))
+
+      ;; Reset checkpoint when the incremental filter field changes
+      (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
+            new-field-id (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])]
+        (and old-field-id (not= old-field-id new-field-id)))
+      (assoc :last_checkpoint_value nil))))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
@@ -162,7 +169,17 @@
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
           last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
-      (for [transform transforms] (assoc transform :last_run (get last-runs (:id transform)))))))
+      (for [{transform-id :id :as transform} transforms]
+        (let [{:keys [status checkpoint_hi_value] :as last-run} (get last-runs transform-id)
+              transform (assoc transform :last_run last-run)]
+          (if (and (= status :succeeded) checkpoint_hi_value)
+            ;; ensure consistency of last_checkpoint_value with last_run
+            (if (:last_checkpoint_value transform)
+              (assoc transform :last_checkpoint_value checkpoint_hi_value)
+              ;; latest transform value wins, could be reset
+              (assoc transform :last_checkpoint_value
+                     (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id)))
+            transform))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
   "Add tag_ids to a transform, preserving the order defined by position"
@@ -323,7 +340,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:dependency_analysis_version :source_type :target_db_id]
+   :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

@@ -5,17 +5,12 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.database-routing.core :as database-routing]
-   [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.transforms.transform :as transform.model]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.models.transforms.transform-run-cancelation :as transform-run-cancelation]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.transforms.api.transform-job]
    [metabase.transforms.api.transform-tag]
@@ -28,16 +23,10 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
-   [toucan2.core :as t2])
-  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
-  (:import
-   (java.sql PreparedStatement)
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.statement.select PlainSelect)))
+   [toucan2.core :as t2]))
 
 (comment metabase.transforms.api.transform-job/keep-me
          metabase.transforms.api.transform-tag/keep-me)
@@ -85,7 +74,10 @@
    [:message [:maybe :string]]
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
-   [:transform_entity_id {:optional true} [:maybe :string]]])
+   [:transform_entity_id {:optional true} [:maybe :string]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -111,7 +103,8 @@
    [:table {:optional true} [:maybe :map]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
-   [:owner {:optional true} [:maybe OwnerResponse]]])
+   [:owner {:optional true} [:maybe OwnerResponse]]
+   [:last_checkpoint_value {:optional true} [:maybe :string]]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
@@ -126,6 +119,9 @@
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
    [:transform_entity_id {:optional true} [:maybe :string]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
    [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]
@@ -213,82 +209,21 @@
     [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
   (get-transforms query-params))
 
-(defn- extract-all-columns-from-query
-  "Extracts column metadata (name and type) from a query.
-
-  Returns a sequence of maps with `:name` and `:base_type` keys, or nil if extraction fails.
-
-  The query is first compiled to native SQL, then uses PreparedStatement.getMetaData()
-  to inspect the query structure. This works for most modern JDBC drivers but may not
-  be supported by all drivers or for all query types."
-  [driver database-id query]
-  (try
-    (let [{:keys [query]} (qp.compile/compile query)]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database-id
-       {}
-       (fn [conn]
-         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn query [])]
-           (when-let [rsmeta (.getMetaData stmt)]
-             (seq (sql-jdbc.execute/column-metadata driver rsmeta)))))))
-    (catch Exception e
-      (log/debugf e "Failed to extract columns from query: %s" (ex-message e))
-      nil)))
-
-(defn- extract-incremental-filter-columns-from-query
-  "Extracts column names suitable for incremental transform checkpoint filtering.
-
-  This function is specifically for incremental transform checkpoint column selection.
-  It only returns columns with types supported for checkpoint filtering:
-  - Temporal types (timestamp, timestamp with timezone)
-  - Numeric types (integer, float, decimal)
-
-  Text, boolean, and other types are filtered out as they are not supported for
-  incremental checkpointing.
-
-  Returns a vector of column names (as strings), or nil if extraction fails.
-
-  The query is first compiled to native SQL, then uses PreparedStatement.getMetaData()
-  to inspect the query structure. This works for most modern JDBC drivers but may not
-  be supported by all drivers or for all query types."
-  [driver database-id query]
-  (some->> (extract-all-columns-from-query driver database-id query)
-           (filter (comp transforms.util/supported-incremental-filter-type? :base_type))
-           (mapv :name)))
-
 (defn- validate-incremental-column-type!
   "Validates that the checkpoint column for an incremental transform has a supported type.
 
-  For MBQL/Python transforms, resolves the column from the query using the unique key.
-  For native queries, extracts columns from the query and checks the checkpoint-filter column.
-
+  Looks up the field by checkpoint-filter-field-id and validates its base_type.
   Throws a 400 error if the column type is not supported or cannot be resolved."
   [{:keys [source]}]
-  (when-let [{:keys [checkpoint-filter checkpoint-filter-unique-key] strategy-type :type}
+  (when-let [{:keys [checkpoint-filter-field-id] strategy-type :type}
              (:source-incremental-strategy source)]
-    (when (and (= :query (:type source)) (= "checkpoint" strategy-type))
-      (let [{:keys [query]} source
-            database-id (:database query)
-            database    (api/check-404 (t2/select-one :model/Database :id database-id))
-            driver-name (driver/the-initialized-driver (:engine database))]
-        (cond
-          ;; For MBQL, resolve column from query metadata
-          checkpoint-filter-unique-key
-          (let [column (lib/column-with-unique-key query checkpoint-filter-unique-key)]
-            (api/check-400 column (deferred-tru "Checkpoint column not found in query."))
-            (api/check-400 (transforms.util/supported-incremental-filter-type? (:base-type column))
-                           (deferred-tru "Checkpoint column type {0} is not supported. Only numeric and temporal types are supported for incremental filtering."
-                                         (pr-str (:base-type column)))))
-
-          ;; For native query with checkpoint-filter, validate type if we can extract the column metadata
-          checkpoint-filter
-          (when-some [column-metadata (seq (extract-all-columns-from-query driver-name database-id query))]
-            (when-some [column (first (filter #(= checkpoint-filter (:name %)) column-metadata))]
-              (api/check-400 (transforms.util/supported-incremental-filter-type? (:base_type column))
-                             (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
-                                           checkpoint-filter
-                                           (pr-str (:base_type column)))))))))))
+    (when (= "checkpoint" strategy-type)
+      (when checkpoint-filter-field-id
+        (let [field (api/check-404 (t2/select-one :model/Field :id checkpoint-filter-field-id))]
+          (api/check-400 (transforms.util/supported-incremental-filter-type? (:base_type field))
+                         (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
+                                       (:name field)
+                                       (pr-str (:base_type field)))))))))
 
 (defn create-transform!
   "Create new transform in the appdb.
@@ -553,74 +488,13 @@
                     [:id ms/PositiveInt]]]
   (run-transform! (api/write-check :model/Transform id)))
 
-(defn- simple-native-query?
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion."
-  [sql-string]
-  (try
-    ;; BEWARE: The API endpoint (caller) does not have info on database engine this query should run on. Hence
-    ;;         there's no way of providing appropriate [[metabase.driver.util/macaw-options]]. `nil` is best-effort
-    ;;         adding at least default :non-resserved-words.
-    ;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints to be SQL parser-agnostic
-    (let [^PlainSelect parsed (driver.u/parsed-query sql-string nil)]
-      (cond
-        (not (instance? PlainSelect parsed))
-        {:is_simple false
-         :reason "Not a simple SELECT"}
-
-        (.getLimit parsed)
-        {:is_simple false
-         :reason "Contains a LIMIT"}
-
-        (.getOffset ^PlainSelect parsed)
-        {:is_simple false
-         :reason "Contains an OFFSET"}
-
-        (seq (.getWithItemsList ^PlainSelect parsed))
-        {:is_simple false
-         :reason "Contains a CTE"}
-
-        :else
-        {:is_simple true}))
-    (catch Exception e
-      (log/debugf e "Failed to parse query: %s" (ex-message e))
-      {:is_simple false})))
-
-(api.macros/defendpoint :post "/is-simple-query" :- [:map
-                                                     [:is_simple :boolean]
-                                                     [:reason {:optional true} :string]]
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
-  [_route-params
-   _query-params
-   {:keys [query]} :- [:map [:query string?]]]
-  (api/check-superuser)
-  (simple-native-query? query))
-
-(api.macros/defendpoint :post "/extract-columns"
-  :- [:map [:columns [:maybe [:sequential :string]]]]
-  "Extract column names suitable for incremental transform checkpoint filtering.
-
-  This endpoint is specifically for populating the checkpoint column dropdown in
-  incremental transforms. It only returns columns with types supported for checkpoint
-  filtering: temporal (timestamp/tz) and numeric (int/float) types.
-
-  Text, boolean, and other unsupported column types are filtered out.
-
-  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],
-  which handles parameterized queries with template tags. Then extracts column names
-  and types using PreparedStatement metadata.
-
-  Returns a map with a :columns key containing a vector of column names (strings).
-  If extraction fails, returns nil for :columns."
-  [_route-params
-   _query-params
-   {:keys [query]} :- [:map
-                       [:query ::qp.schema/any-query]]]
-  (api/check-superuser)
-  (let [database-id (:database query)
-        database    (api/check-404 (t2/select-one :model/Database :id database-id))
-        driver-name (driver/the-initialized-driver (:engine database))
-        columns     (extract-incremental-filter-columns-from-query driver-name database-id query)]
-    {:columns columns}))
+(api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
+  "Reset the checkpoint for an incremental transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (api/write-check :model/Transform id)
+  (t2/update! :model/Transform id {:last_checkpoint_value nil})
+  nil)
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."

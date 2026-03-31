@@ -761,7 +761,6 @@
                     :base_type                :type/Float
                     :effective_type           :type/Float}
                    {:lib/desired-column-alias "pivot-grouping"
-                    :field_ref                [:expression "pivot-grouping"]
                     :base_type                :type/Integer
                     :effective_type           :type/Integer}
                    {:lib/desired-column-alias "count"

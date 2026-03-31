@@ -222,16 +222,20 @@
           ;; Every stage from the input `stage-number` down to 0.
           (range stage-index -1 -1))))
 
-(defmethod lib.metadata.calculation/display-name-method :mbql/join
-  [query _stage-number {[{:keys [source-table source-card], :as _first-stage}] :stages, :as _join} _style]
+(defn- stage-source-display-name
+  [query {:keys [source-table source-card], :as _stage}]
   (or
    (when source-table
      ((some-fn :display-name :name) (lib.metadata/table query source-table)))
    (when source-card
      (if-let [card-metadata (lib.metadata/card query source-card)]
        (lib.metadata.calculation/display-name query 0 card-metadata)
-       (lib.card/fallback-display-name source-card)))
-   (i18n/tru "Native Query")))
+       (lib.card/fallback-display-name source-card)))))
+
+(defmethod lib.metadata.calculation/display-name-method :mbql/join
+  [query _stage-number {[first-stage] :stages, :as _join} _style]
+  (or (stage-source-display-name query first-stage)
+      (i18n/tru "Native Query")))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
   [query stage-number join]
@@ -630,9 +634,12 @@
                                        (when (and (lib.util/field-clause? lhs) (lib.util/field-clause? rhs))
                                          [lhs rhs]))))
                            (:conditions a-join))
-         home-col   (select-home-column home-cols cond-fields)]
+         home-col   (select-home-column home-cols cond-fields)
+         source-name (stage-source-display-name query stage)
+         taken-names (cond-> (into [] (keep :alias) (:joins stage))
+                       source-name (conj source-name))]
      (-> (calculate-join-alias query a-join home-col)
-         (generate-unique-name (keep :alias (:joins stage)))))))
+         (generate-unique-name taken-names)))))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a

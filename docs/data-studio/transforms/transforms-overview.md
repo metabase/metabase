@@ -203,7 +203,6 @@ Incremental transforms only append new data since the previous transform run. Fo
 
 - There is a column in your data that Metabase can check for new values to determine which data is new. We'll refer to this as a "Checkpoint" column.
 - The checkpoint column has to have increasing values, like a sequential ID or timestamp column. Metabase will determine what "new" data is by looking for values that are _greater than_ already-written checkpoint values.
-- The checkpoint column should be present in both input and output table.
 - Your schema is stable, meaning that the structure of the tables is not going to change from run to run.
 
 ### Make a transform incremental

@@ -330,9 +330,8 @@
                        :model/TransformRun {run-id :id} {:transform_id transform-id
                                                          :status "running"
                                                          :run_method "manual"}]
-          (with-redefs [transforms.util/sync-target!                       (constantly table)
-                        events/publish-event!                              (constantly nil)
-                        transforms.util/execute-secondary-index-ddl-if-required! (constantly nil)]
+          (with-redefs [transforms.util/sync-target!  (constantly table)
+                        events/publish-event!         (constantly nil)]
             (transforms.util/handle-transform-complete! :run-id run-id :transform transform :db db)
             (is (= transform-id
                    (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))
@@ -366,7 +365,7 @@
       (mt/with-premium-features #{:transforms-basic}
         (let [transform {:source {:type  "query"
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-              {:keys [query]} (transforms.util/compile-source transform)]
+              {:keys [query]} (transforms.util/compile-source transform (transforms.util/get-source-range-params transform))]
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))

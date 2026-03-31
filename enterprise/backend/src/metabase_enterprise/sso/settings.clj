@@ -23,8 +23,7 @@
   (mr/validator GroupMappings))
 
 (defsetting saml-user-provisioning-enabled?
-  (deferred-tru "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
-don''t have one.")
+  (deferred-tru "Determines what happens when a user logs in via SAML and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :feature :sso-saml
@@ -33,21 +32,23 @@ don''t have one.")
                ;; Disable SAML provisioning automatically when SCIM is enabled
                false
                (setting/get-value-of-type :boolean :saml-user-provisioning-enabled?)))
-  :audit   :getter)
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via SAML will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via SAML.")
 
 (defsetting jwt-user-provisioning-enabled?
-  (deferred-tru "When a user logs in via JWT, create a Metabase account for them automatically if they don''t have one.")
+  (deferred-tru "Determines what happens when a user logs in via JWT and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :feature :sso-jwt
-  :audit   :getter)
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via JWT will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via JWT.")
 
 (defsetting ldap-user-provisioning-enabled?
-  (deferred-tru "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
-don''t have one.")
+  (deferred-tru "Determines what happens when a user logs in via LDAP and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
-  :audit   :getter)
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via LDAP will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via LDAP.")
 
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re

@@ -277,19 +277,6 @@ describe("scenarios > question > offset", () => {
       });
     });
 
-    it("does not work without a breakout", () => {
-      const query: StructuredQuery = {
-        "source-table": ORDERS_ID,
-        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
-      };
-
-      H.createQuestion({ query }, { visitQuestion: true });
-
-      verifyQuestionError(
-        "Window function requires either breakouts or order by in the query",
-      );
-    });
-
     it(
       "does not preview sql without a breakout (metabase#47819)",
       { tags: "@skip" },
@@ -1360,14 +1347,6 @@ function verifyTableContent(rows: string[][]) {
 function verifyTableCellContent(index: number, text: string) {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByRole("gridcell").eq(index).should("have.text", text);
-}
-
-function verifyQuestionError(error: string) {
-  cy.findByTestId("query-builder-main").within(() => {
-    cy.findByText("There was a problem with your question").should("exist");
-    cy.findByText("Show error details").click();
-    cy.findByText(error).should("exist");
-  });
 }
 
 function verifyNoQuestionError() {
