@@ -1011,11 +1011,17 @@
          s-name (setting-name setting)]
      ;; TEMPORARY DEBUG — remove after investigating toggle-full-app-embedding-test
      (when (= s-name "embedding-app-origins-interactive")
-       (println "DEBUG validate-settable!:"
-                "\n  setting-name:" s-name
-                "\n  feature:" (pr-str feature)
-                "\n  has-feature?:" (when feature (has-feature? feature))
-                "\n  (and feature (not (has-feature? feature))):" (and feature (not (has-feature? feature)))))
+       (let [the-var  (requiring-resolve 'metabase.premium-features.token-check/*token-features*)
+             bound-val (deref the-var)
+             features  (bound-val)]
+         (println "DEBUG validate-settable!:"
+                  "\n  thread:" (.getName (Thread/currentThread))
+                  "\n  feature:" (pr-str feature)
+                  "\n  *token-features* var:" the-var
+                  "\n  bound fn:" bound-val
+                  "\n  features from bound fn:" (pr-str features)
+                  "\n  contains embedding?:" (contains? features (name feature))
+                  "\n  has-feature? (via settings private):" (has-feature? feature))))
      (when (and feature (not (has-feature? feature)))
        (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" s-name feature) setting)))
      (when (and enabled? (not (enabled?)))
