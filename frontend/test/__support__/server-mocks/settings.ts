@@ -51,3 +51,11 @@ export function setupScimEndpoints(
   fetchMock.get("path:/api/ee/scim/api_key", payload);
   fetchMock.post("path:/api/ee/scim/api_key", payload);
 }
+
+export function setupGenerateRandomTokenEndpoint(token: string) {
+  fetchMock.get(
+    "path:/api/util/random_token",
+    { token },
+    { name: "generate-random-token" },
+  );
+}
