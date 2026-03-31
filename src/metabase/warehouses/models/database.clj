@@ -667,7 +667,14 @@
                                     :import identity}
                :creator_id          (serdes/fk :model/User)
                :router_database_id (serdes/fk :model/Database)
-               :initial_sync_status {:export identity :import (constantly "complete")}}})
+               :initial_sync_status {:export identity :import (constantly "complete")}}
+   :defaults {:auto_run_queries true
+              :is_attached_dwh  false
+              :is_audit         false
+              :is_full_sync     true
+              :is_on_demand     false
+              :is_sample        false
+              :uploads_enabled  false}})
 
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]
