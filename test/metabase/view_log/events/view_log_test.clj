@@ -14,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.view-log.events.view-log :as events.view-log]
    [toucan2.core :as t2]))
 
@@ -366,6 +367,35 @@
                                   :context     :question})
               ei    (#'process-userland-query/query-execution-info query)]
           (is (nil? (:tenant_id ei))))))))
+
+(defn- make-test-query
+  "Builds a minimal query suitable for `query-execution-info`, with optional overrides merged in."
+  [& {:as overrides}]
+  (merge (mt/mbql-query venues {:limit 1})
+         {:info {:executed-by 1
+                 :query-hash  (qp.util/query-hash (mt/mbql-query venues {:limit 1}))
+                 :context     :question}}
+         overrides))
+
+(deftest query-execution-is-db-routed-test
+  (testing "is_db_routed is true when destination-database/id is present"
+    (let [ei (#'process-userland-query/query-execution-info
+              (make-test-query :destination-database/id 42))]
+      (is (true? (:is_db_routed ei)))))
+  (testing "is_db_routed is false when destination-database/id is absent"
+    (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
+      (is (false? (:is_db_routed ei))))))
+
+(deftest query-execution-parameters-test
+  (testing "parameters is JSON-encoded when present"
+    (let [params [{:type "text/single" :value "foo"}]
+          ei     (#'process-userland-query/query-execution-info
+                  (make-test-query :parameters params))]
+      (is (string? (:parameters ei)))
+      (is (= params (json/decode+kw (:parameters ei))))))
+  (testing "parameters is nil when absent"
+    (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
+      (is (nil? (:parameters ei))))))
 
 (deftest public-card-pii-fields-test
   (mt/with-premium-features #{:audit-app}
