@@ -2967,7 +2967,6 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
-
   enterprise/metabot
   {:team    "Metabot"
    :api     #{}
@@ -2984,7 +2983,6 @@
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/Card :model/Transform}}
-
 
   enterprise/permission-debug
   {:team "UX West"
