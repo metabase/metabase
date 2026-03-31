@@ -11,6 +11,8 @@ interface McpAppState {
   hostContext: McpUiHostContext | null;
 }
 
+type ToolArgument = { query?: string } | undefined;
+
 export function useMcpApp(): McpAppState {
   const [query, setQuery] = useState<string | null>(null);
   const [hostContext, setHostContext] = useState<McpUiHostContext | null>(null);
@@ -26,33 +28,33 @@ export function useMcpApp(): McpAppState {
       };
 
       app.ontoolinput = (params) => {
-        const q = (params.arguments as { query?: string } | undefined)?.query;
-        if (q) {
-          setQuery(q);
+        const { query } = (params.arguments as ToolArgument) ?? {};
+
+        if (query) {
+          setQuery(query);
         }
       };
 
       // Fallback: ontoolinput may be missed if the tool returns instantly
       // (notification sent before the app finishes connecting).
       app.ontoolresult = (params) => {
-        const q = (params.structuredContent as { query?: string } | undefined)
-          ?.query;
-        if (q) {
-          setQuery(q);
+        const { query } = (params.structuredContent as ToolArgument) ?? {};
+
+        if (query) {
+          setQuery(query);
         }
       };
     },
   });
 
-  // Read initial host context once connected
+  // Read host context once connected
   useEffect(() => {
-    if (!app) {
-      return;
-    }
+    if (app) {
+      const hostContext = app.getHostContext();
 
-    const ctx = app.getHostContext();
-    if (ctx) {
-      setHostContext(ctx);
+      if (hostContext) {
+        setHostContext(hostContext);
+      }
     }
   }, [app]);
 
