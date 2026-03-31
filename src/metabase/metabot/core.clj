@@ -2,7 +2,7 @@
   "API namespace for the `metabase.metabot` module."
   (:require
    [metabase.metabot.api]
-   [metabase.metabot.usage-log]
+   [metabase.metabot.limits]
    [potemkin :as p]))
 
 (p/import-vars
@@ -10,7 +10,8 @@
   routes])
 
 (p/import-vars
- [metabase.metabot.usage-log
+ [metabase.metabot.limits
+  check-usage-limits!
   log-ai-usage!])
 
 ;; TODO: Port analyze-chart to use the native LLM infrastructure
