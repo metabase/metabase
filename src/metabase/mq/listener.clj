@@ -134,11 +134,11 @@
               ~(select-keys config [:max-batch-messages :exclusive :dedup-fn])))
            ;; Eagerly register so listeners work without requiring a startup/init step.
            ;; register-listener! is idempotent — safe to call again from register-listeners!.
-           ((methods def-listener*) ~channel))
+           (def-listener* ~channel))
       `(do (defmethod def-listener* ~channel [~'_]
              (listen! ~channel ~(or config {}) (fn [~@bindings] ~@body)))
            ;; Eagerly register so listeners work without requiring a startup/init step.
-           ((methods def-listener*) ~channel)))))
+           (def-listener* ~channel)))))
 
 (defn register-listeners!
   "Call all [[def-listener!]] implementations to register their listeners.
