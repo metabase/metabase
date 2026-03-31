@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { version } from "../package.json";
 
 import gitignoreTemplate from "./templates/.gitignore?raw";
 import iconSvgTemplate from "./templates/icon.svg?raw";
 import indexTsxTemplate from "./templates/index.tsx?raw";
 import manifestTemplate from "./templates/metabase-plugin.json?raw";
+import packageLockJsonTemplate from "./templates/package-lock.json?raw";
 import packageJsonTemplate from "./templates/package.json?raw";
 import tsconfigTemplate from "./templates/tsconfig.json?raw";
 import viteConfigTemplate from "./templates/vite.config.ts?raw";
@@ -20,6 +22,12 @@ function replaceName(template: string, name: string): string {
 
 export function generatePackageJson(name: string): string {
   return replaceName(packageJsonTemplate, name)
+    .split(VERSION_PLACEHOLDER)
+    .join(version);
+}
+
+export function generatePackageLockJson(name: string): string {
+  return replaceName(packageLockJsonTemplate, name)
     .split(VERSION_PLACEHOLDER)
     .join(version);
 }

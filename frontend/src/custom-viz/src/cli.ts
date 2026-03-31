@@ -17,9 +17,10 @@ import {
   generateIndexTsx,
   generateManifest,
   generatePackageJson,
+  generatePackageLockJson,
   generateTsConfig,
-  generateViteConfig,
   generateUpgradePackageJson,
+  generateViteConfig,
   readBinaryTemplate,
 } from "./templates";
 
@@ -58,18 +59,26 @@ program
 
     await Promise.all([
       writeFile(join(name, "package.json"), generatePackageJson(name)),
+      writeFile(join(name, "package-lock.json"), generatePackageLockJson(name)),
       writeFile(join(name, "vite.config.ts"), generateViteConfig()),
       writeFile(join(name, "tsconfig.json"), generateTsConfig()),
       writeFile(join(name, "src", "index.tsx"), generateIndexTsx(name)),
       writeFile(join(name, "metabase-plugin.json"), generateManifest(name)),
       writeFile(join(name, "public", "assets", "icon.svg"), generateIconSvg()),
-      writeFile(join(name, "public", "assets", "thumbs-up.png"), readBinaryTemplate("thumbs-up.png")),
-      writeFile(join(name, "public", "assets", "thumbs-down.png"), readBinaryTemplate("thumbs-down.png")),
+      writeFile(
+        join(name, "public", "assets", "thumbs-up.png"),
+        readBinaryTemplate("thumbs-up.png"),
+      ),
+      writeFile(
+        join(name, "public", "assets", "thumbs-down.png"),
+        readBinaryTemplate("thumbs-down.png"),
+      ),
       writeFile(join(name, ".gitignore"), generateGitignore()),
     ]);
 
     console.log("Created files:");
     console.log(`  ${name}/package.json`);
+    console.log(`  ${name}/package-lock.json`);
     console.log(`  ${name}/vite.config.ts`);
     console.log(`  ${name}/tsconfig.json`);
     console.log(`  ${name}/src/index.tsx`);
@@ -122,9 +131,7 @@ program
     }
 
     if (currentVersion === version) {
-      console.log(
-        `Already up to date (v${version}). No changes needed.`,
-      );
+      console.log(`Already up to date (v${version}). No changes needed.`);
       return;
     }
 
@@ -139,9 +146,7 @@ program
     console.log(
       "  tsconfig.json    — Replace with the latest TypeScript configuration",
     );
-    console.log(
-      "  .gitignore       — Replace with the latest gitignore rules",
-    );
+    console.log("  .gitignore       — Replace with the latest gitignore rules");
     console.log(
       "  package.json     — Update devDependencies and scripts to latest versions",
     );
@@ -187,8 +192,8 @@ program
 
 function confirm(question: string): Promise<boolean> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise(resolve => {
-    rl.question(`${question} (y/N) `, answer => {
+  return new Promise((resolve) => {
+    rl.question(`${question} (y/N) `, (answer) => {
       rl.close();
       resolve(answer.trim().toLowerCase() === "y");
     });
