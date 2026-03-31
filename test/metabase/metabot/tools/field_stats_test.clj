@@ -60,11 +60,15 @@
                                      :value_metadata value-metadata}}
                 (metabot.tools.field-stats/field-values
                  {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
-          people-id   birth-date-id {:statistics
-                                     {:distinct-count 2308
-                                      :percent-null   0.0
-                                      :earliest       "1958-04-26"
-                                      :latest         "2000-04-03"}}
+          people-id   birth-date-id {:statistics   {:distinct-count 2308
+                                                    :percent-null   0.0
+                                                    :earliest       "1958-04-26"
+                                                    :latest         "2000-04-03"}
+                                     :field_values ["1958-04-26T00:00:00Z"
+                                                    "1958-04-28T00:00:00Z"
+                                                    "1958-05-04T00:00:00Z"
+                                                    "1958-05-11T00:00:00Z"
+                                                    "1958-05-16T00:00:00Z"]}
           people-id   state-id      {:statistics   {:distinct-count 49
                                                     :percent-null   0.0
                                                     :percent-json   0.0
