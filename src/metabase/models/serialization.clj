@@ -1163,6 +1163,10 @@
     [:field (id :guard pos-int?) (opts :guard (some-fn map? nil?))]
     [:field (*export-field-fk* id) (mbql-id->fully-qualified-name opts)]
 
+    ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
+    [(tag :guard #{:field :field-id}) (id :guard pos-int?)]
+    [tag (*export-field-fk* id)]
+
     {:source-table (id :guard pos-int?)}
     (assoc &match :source-table (*export-table-fk* id))
 
@@ -1230,6 +1234,10 @@
     ;; legacy field refs, still used in parameters and result metadata `field_ref`
     [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (some-fn map? nil))]
     [:field (*import-field-fk* fully-qualified-name) (some-> opts mbql-fully-qualified-names->ids*)]
+
+    ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
+    [(tag :guard #{:field :field-id "field" "field-id"}) (id :guard vector?)]
+    [:field (*import-field-fk* id) nil]
 
     ;; source-field is also used within parameter mapping dimensions
     ;; example relevant clause - [:field 2 {:source-field 1}]
