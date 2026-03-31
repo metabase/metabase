@@ -406,15 +406,14 @@ is_sample: false
                                                           :model_collection_id coll-id
                                                           :status "delete"
                                                           :status_changed_at (t/offset-date-time)}]
-              (let [removal-paths (spec/build-all-removal-paths)
-                    snippet-removal-path (first (filter #(str/includes? % snippet-eid) removal-paths))
-                    _ (is (some? snippet-removal-path) "Should have a removal path for the archived snippet")
-                    initial-files {"main" {(str snippet-removal-path ".yaml")
+              (let [snippet-file-path (str "snippets/" snippet-eid "_archived_snippet.yaml")
+                    initial-files {"main" {snippet-file-path
                                            (test-helpers/generate-snippet-yaml snippet-eid "Archived Snippet" "SELECT 1" :collection-id coll-eid)}}
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)
                     result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
                 (is (= :success (:status result))
                     (str "Export should succeed. Result: " result))
+                ;; Archived snippet is not in the export stream, so its file gets cleaned from snippets/ (a managed dir)
                 (let [files-after-export (get @(:files-atom mock-source) "main")]
                   (is (not (some #(str/includes? % snippet-eid) (keys files-after-export)))
                       "Archived snippet file should be deleted after export")))

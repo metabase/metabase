@@ -281,6 +281,30 @@
                   (is (not (some #(str/includes? % "transforms/") (keys files-after-export)))
                       "Export should NOT include transform files when setting is disabled"))))))))))
 
+(deftest export-removes-existing-transform-files-when-setting-disabled-test
+  (testing "Export removes pre-existing transform files from remote when setting is disabled"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                         remote-sync-transforms false
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+            (mt/with-temp [:model/Collection {rs-coll-id :id} {:name "Remote Synced" :is_remote_synced true :entity_id "remote-synced-xxxxxxx" :location "/"}
+                           :model/RemoteSyncObject _rso {:model_type "Collection" :model_id rs-coll-id :model_name "Remote Synced" :status "create" :status_changed_at (t/offset-date-time)}]
+              ;; Start with transform files already on the remote (from a previous export when setting was enabled)
+              (let [initial-files {"main" {"transforms/my_transform/my_transform.yaml" "old transform content"
+                                           "transforms/my_transform/steps/step1.yaml" "old step content"
+                                           "python-libraries/custom_lib.yaml" "old library content"}}
+                    mock-source (test-helpers/create-mock-source :initial-files initial-files)
+                    result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
+                (is (= :success (:status result))
+                    (str "Export should succeed. Result: " result))
+                (let [files-after-export (get @(:files-atom mock-source) "main")]
+                  (is (not (some #(str/starts-with? % "transforms/") (keys files-after-export)))
+                      "Transform files should be removed from remote when setting is disabled")
+                  (is (not (some #(str/starts-with? % "python-libraries/") (keys files-after-export)))
+                      "Python library files should be removed from remote when setting is disabled"))))))))))
+
 (defn- generate-transforms-namespace-collection-yaml
   "Generates YAML content for a transforms-namespace collection."
   [entity-id name]
@@ -815,67 +839,6 @@ serdes/meta:
                 (is (not (t2/exists? :model/Transform :id local-transform-id))
                     "Local transform should be removed because it's not on the remote")))))))))
 
-;;; ------------------------------------------- build-all-removal-paths Tests -------------------------------------------
-
-(deftest build-all-removal-paths-includes-all-transforms-on-setting-disable-test
-  (testing "build-all-removal-paths returns paths for all transforms content when sentinel RSO has 'delete' status"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
-        (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
-                                                        :namespace collection/transforms-ns
-                                                        :location "/"}
-                       :model/Transform {transform-id :id transform-eid :entity_id} {:name "Test Transform"
-                                                                                     :collection_id coll-id}
-                       :model/TransformTag {tag-id :id tag-eid :entity_id} {:name "Test Tag"
-                                                                            :built_in_type nil}]
-          (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})
-                lib-eid (:entity_id library)]
-            (is (t2/exists? :model/Transform :id transform-id))
-            (is (t2/exists? :model/TransformTag :id tag-id))
-            (is (t2/exists? :model/PythonLibrary :id (:id library)))
-            (let [paths-before (spec/build-all-removal-paths)]
-              (is (not (some #(str/includes? % transform-eid) paths-before))
-                  "Transform should not be in removal paths before setting is disabled"))
-            (settings/sync-transform-tracking! true)
-            (settings/sync-transform-tracking! false)
-            (is (t2/exists? :model/RemoteSyncObject
-                            :model_type "Collection"
-                            :model_id settings/transforms-root-id
-                            :status "delete")
-                "Sentinel RSO should exist with 'delete' status")
-            (let [paths-after (spec/build-all-removal-paths)]
-              (is (some #(str/includes? % transform-eid) paths-after)
-                  "Transform should be in removal paths after setting is disabled")
-              (is (some #(str/includes? % tag-eid) paths-after)
-                  "TransformTag should be in removal paths after setting is disabled")
-              (is (some #(str/includes? % lib-eid) paths-after)
-                  "PythonLibrary should be in removal paths after setting is disabled"))))))))
-
-(deftest build-all-removal-paths-excludes-builtin-transform-tags-test
-  (testing "build-all-removal-paths respects :conditions and excludes built-in tags"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
-        (mt/with-temp [:model/TransformTag {custom-tag-id :id custom-tag-eid :entity_id} {:name "Custom Tag"
-                                                                                          :built_in_type nil}
-                       :model/TransformTag {builtin-tag-id :id builtin-tag-eid :entity_id} {:name "Built-in Tag"
-                                                                                            :built_in_type "target"}]
-          (is (t2/exists? :model/TransformTag :id custom-tag-id))
-          (is (t2/exists? :model/TransformTag :id builtin-tag-id))
-          (settings/sync-transform-tracking! true)
-          (settings/sync-transform-tracking! false)
-          (is (t2/exists? :model/RemoteSyncObject
-                          :model_type "Collection"
-                          :model_id settings/transforms-root-id
-                          :status "delete")
-              "Sentinel RSO should exist with 'delete' status")
-          (let [paths (spec/build-all-removal-paths)]
-            (is (some #(str/includes? % custom-tag-eid) paths)
-                "Custom tag (built_in_type nil) should be in removal paths")
-            (is (not (some #(str/includes? % builtin-tag-eid) paths))
-                "Built-in tag should NOT be in removal paths")))))))
-
 (deftest export-excludes-builtin-transform-tags-test
   (testing "Export excludes built-in transform tags based on :conditions"
     (mt/with-premium-features #{:transforms-basic}
@@ -912,21 +875,3 @@ serdes/meta:
                 "Built-in PythonLibrary should be in export roots")
             (is (contains? exported-ids (:id custom-lib))
                 "Custom PythonLibrary should be in export roots")))))))
-
-(deftest build-all-removal-paths-excludes-builtin-python-library-test
-  (testing "build-all-removal-paths excludes built-in PythonLibrary via :removal-conditions"
-    (mt/with-premium-features #{:transforms}
-      (mt/with-temporary-setting-values [remote-sync-transforms true
-                                         remote-sync-enabled true]
-        (mt/with-temp [:model/PythonLibrary _ {:path "common.py"
-                                               :source "# builtin"
-                                               :entity_id transforms-python/builtin-entity-id}
-                       :model/PythonLibrary custom-lib {:path "custom.py"
-                                                        :source "# custom"}]
-          (settings/sync-transform-tracking! true)
-          (settings/sync-transform-tracking! false)
-          (let [paths (spec/build-all-removal-paths)]
-            (is (some #(str/includes? % (:entity_id custom-lib)) paths)
-                "Custom PythonLibrary should be in removal paths")
-            (is (not (some #(str/includes? % transforms-python/builtin-entity-id) paths))
-                "Built-in PythonLibrary should NOT be in removal paths")))))))
