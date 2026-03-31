@@ -175,8 +175,7 @@
    "permission:write_transforms"  :permission-write-transforms
    "feature:transforms"           :feature-transforms
    "feature:transforms-python"    :feature-transforms-python
-   "feature:snippets"             :feature-snippets
-   "automagic-dashboards"         :automagic-dashboards})
+   "feature:snippets"             :feature-snippets})
 
 (defn- capability->keyword
   "Normalize a capability value to a keyword. Strings are looked up in the

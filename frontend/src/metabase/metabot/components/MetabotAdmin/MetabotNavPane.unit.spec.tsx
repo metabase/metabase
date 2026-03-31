@@ -1,6 +1,10 @@
 import { Route } from "react-router";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotNavPane } from "./MetabotNavPane";
@@ -23,7 +27,20 @@ const setup = ({
     },
   );
 
+const setupEmbeddingPlugin = () => {
+  mockSettings({
+    "token-features": createMockTokenFeatures({
+      embedding_sdk: true,
+    }),
+  });
+  setupEnterprisePlugins();
+};
+
 describe("MetabotNavPane", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("should not show metabots if it isn't configured", async () => {
     setup({ isConfigured: false });
 
@@ -32,6 +49,27 @@ describe("MetabotNavPane", () => {
   });
 
   it("should show metabots if it is configured", async () => {
+    setup({ isConfigured: true });
+
+    expect(await screen.findByText("Metabot")).toBeInTheDocument();
+    expect(screen.queryByText("Embedded Metabot")).not.toBeInTheDocument();
+  });
+
+  it("should show Embedded Metabot with embedding_sdk feature", async () => {
+    setupEmbeddingPlugin();
+    setup({ isConfigured: true });
+
+    expect(await screen.findByText("Metabot")).toBeInTheDocument();
+    expect(await screen.findByText("Embedded Metabot")).toBeInTheDocument();
+  });
+
+  it("should show Embedded Metabot with embedding_simple feature", async () => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({
+        embedding_simple: true,
+      }),
+    });
+    setupEnterprisePlugins();
     setup({ isConfigured: true });
 
     expect(await screen.findByText("Metabot")).toBeInTheDocument();

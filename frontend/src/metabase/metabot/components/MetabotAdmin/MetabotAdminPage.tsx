@@ -27,7 +27,11 @@ import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
 } from "metabase/metabot/constants";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import {
+  PLUGIN_EMBEDDING_IFRAME_SDK,
+  PLUGIN_EMBEDDING_SDK,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
 import {
   Box,
   Button,
@@ -106,6 +110,9 @@ export function MetabotAdminPage() {
 
   const dispatch = useDispatch();
 
+  const hasEmbedding =
+    PLUGIN_EMBEDDING_SDK.isEnabled() || PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled();
+
   const metabots = useMemo(() => _.sortBy(data?.items ?? [], "id"), [data]);
 
   useEffect(() => {
@@ -113,6 +120,12 @@ export function MetabotAdminPage() {
       dispatch(push("/admin/metabot/setup"));
     }
   }, [isConfigured, dispatch]);
+
+  useEffect(() => {
+    if (metabotId === FIXED_METABOT_IDS.EMBEDDED && !hasEmbedding) {
+      dispatch(push(`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`));
+    }
+  }, [metabotId, hasEmbedding, dispatch]);
 
   useEffect(() => {
     if (!metabot && metabots.length) {
