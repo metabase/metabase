@@ -8,7 +8,6 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
 import { reload } from "metabase/lib/dom";
-import { formatNumber } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { getStoreUsers } from "metabase/selectors/store-users";
@@ -83,11 +82,7 @@ export function TransformsUpsellPage() {
   const freeUnitsStr = basicTransformsAddOn?.free_units?.toLocaleString();
   const perRunStr =
     basicTransformsAddOn?.default_price_per_unit != null &&
-    formatNumber(basicTransformsAddOn.default_price_per_unit, {
-      number_style: "currency",
-      currency: "USD",
-      currency_style: "symbol",
-    });
+    `${basicTransformsAddOn.default_price_per_unit * 100}¢`;
 
   return (
     <DottedBackground
