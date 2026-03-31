@@ -26,7 +26,7 @@
 (def ^:private entity-types
   "The list of entity types to backfill.
 
-  This is not the same as deps.dependency-types/models, because tables shouldn't be backfilled.  Instead, links
+  This is not the same as deps.dependency-types/dependency-types, because tables shouldn't be backfilled.  Instead, links
   involving tables are found via analysis of the other side of the relation."
   [:card :transform :snippet :dashboard :document :sandbox :segment :measure])
 
