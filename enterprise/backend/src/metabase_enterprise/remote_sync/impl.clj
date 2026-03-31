@@ -242,9 +242,7 @@
         (let [snapshot-version (source.p/version snapshot)
               last-imported-version (remote-sync.task/last-version)
               first-import? (nil? last-imported-version)
-              path-filters [#"collections/.*" #"databases/.*" #"actions/.*"
-                            ;; python-libraries is the old name for python_libraries, support both for backwards compatibility
-                            #"transforms/.*" #"python[_-]libraries/.*" #"snippets/.*"]
+              path-filters (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
               base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
               has-transforms? (snapshot-has-transforms? base-ingestable)
               {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)
@@ -315,8 +313,7 @@
           (if-let [models (spec/extract-entities-for-export)]
             (do
               (remote-sync.task/update-progress! task-id 0.3)
-              (let [all-delete-prefixes (spec/build-all-removal-paths)
-                    written-version (source/store! models all-delete-prefixes snapshot task-id message)]
+              (let [written-version (source/store! models snapshot task-id message)]
                 (remote-sync.task/set-version! task-id written-version))
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
               {:status :success
