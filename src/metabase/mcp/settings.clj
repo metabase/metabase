@@ -1,0 +1,51 @@
+(ns metabase.mcp.settings
+  "Settings for MCP Apps CORS origins."
+  (:require
+   [clojure.string :as str]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util.i18n :refer [deferred-tru]]))
+
+;;; ------------------------------------------------ Client → Domain Mapping --------------------------------
+
+(def ^:private mcp-client-apps-sandbox-domains
+  "Maps MCP client keys to MCP Apps sandbox domains.
+   vscode-webview:// origins need special handling (prefix match, not wildcard domain)."
+  {"claude"  ["https://*.claudemcpcontent.com"]
+   "chatgpt" ["https://*.web-sandbox.oaiusercontent.com"]
+
+    ;; vscode-webview:// handled by mcp-sandbox-origin? in security middleware
+   "vscode"  []})
+
+;;; ------------------------------------------------ Settings ------------------------------------------------
+
+(defsetting common-mcp-apps-cors-origins
+  (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")
+  :type       :csv
+  :default    []
+  :visibility :admin
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(defsetting custom-mcp-apps-cors-origins
+  (deferred-tru "Custom CORS origins for self-hosted MCP clients, space-separated.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+;;; ------------------------------------------------ Helpers ------------------------------------------------
+
+(defn mcp-apps-cors-origins
+  "Returns space-separated CORS origins from both common and custom MCP client settings."
+  []
+  (let [common-domains (mapcat #(get mcp-client-apps-sandbox-domains % []) (common-mcp-apps-cors-origins))
+        custom-domains (custom-mcp-apps-cors-origins)]
+    (str/trim (str/join " " (concat common-domains (when (seq custom-domains) [custom-domains]))))))
+
+(defn mcp-apps-vscode-webview-enabled?
+  "Returns true if vscode/cursor is enabled in common MCP apps."
+  []
+  (some #{"vscode"} (common-mcp-apps-cors-origins)))

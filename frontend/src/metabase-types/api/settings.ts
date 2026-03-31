@@ -536,10 +536,12 @@ interface PublicSettings {
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
+  "common-mcp-apps-cors-origins": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-geojson": CustomGeoJSONSetting;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
+  "custom-mcp-apps-cors-origins": string | null;
   "development-mode?": boolean;
   "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;

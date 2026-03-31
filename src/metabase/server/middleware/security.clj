@@ -8,6 +8,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
+   [metabase.mcp.settings :as mcp.settings]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
 
@@ -251,20 +252,32 @@
     (when (and (seq raw-origin) (seq approved-origins-raw))
       (let [approved-list (parse-approved-origins approved-origins-raw)
             origin        (parse-url raw-origin)]
-        (some (fn [approved-origin]
-                (and
-                 (approved-domain? (:domain origin) (:domain approved-origin))
-                 (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                 (approved-port? (:port origin) (:port approved-origin))))
-              approved-list))))))
+        (when origin
+          (some (fn [approved-origin]
+                  (and
+                   (approved-domain? (:domain origin) (:domain approved-origin))
+                   (approved-protocol? (:protocol origin) (:protocol approved-origin))
+                   (approved-port? (:port origin) (:port approved-origin))))
+                approved-list)))))))
+
+(defn- mcp-sandbox-origin?
+  "Returns true if the origin matches an enabled MCP client's non-standard sandbox pattern.
+   Currently handles vscode-webview:// origins used by VS Code and Cursor."
+  [raw-origin]
+  (and raw-origin
+       (mcp.settings/mcp-apps-vscode-webview-enabled?)
+       (str/starts-with? raw-origin "vscode-webview://")))
 
 (defn access-control-headers
-  "Returns headers for CORS requests"
+  "Returns headers for CORS requests. Merges embedding SDK origins and MCP app origins."
   [origin approved-origins]
-  (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))]
-    (when (or (seq approved-origins) localhost-allowed?)
+  (let [mcp-origins       (mcp.settings/mcp-apps-cors-origins)
+        all-origins       (str/trim (str approved-origins " " mcp-origins))
+        localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
+        mcp-sandbox?       (mcp-sandbox-origin? origin)]
+    (when (or (seq all-origins) localhost-allowed? mcp-sandbox?)
       (merge
-       (when (approved-origin? origin approved-origins)
+       (when (or (approved-origin? origin all-origins) mcp-sandbox?)
          {"Access-Control-Allow-Origin" origin
           "Vary"                        "Origin"})
        {"Access-Control-Allow-Headers"  "*"

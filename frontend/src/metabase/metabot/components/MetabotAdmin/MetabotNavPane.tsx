@@ -41,6 +41,11 @@ export function MetabotNavPane() {
             )}
           </>
         )}
+        <AdminNavItem
+          icon="bolt"
+          label={t`MCP Apps`}
+          path="/admin/metabot/mcp"
+        />
       </AdminNavWrapper>
     </Flex>
   );
