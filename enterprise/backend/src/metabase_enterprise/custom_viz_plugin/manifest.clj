@@ -42,7 +42,7 @@
       true
       (try
         (let [current (Semver/coerce (str major "." (or minor 0) ".0"))]
-          (.satisfies current metabase_version))
+          (.satisfies current ^String metabase_version))
         (catch SemverException e
           (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
           false)))))
