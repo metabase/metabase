@@ -65,12 +65,22 @@
   (all-permissions))
 
 (defn- simplify-permissions
-  "Convert a keyword-keyed permissions map to simple string keys and values for JSON.
-  e.g. {:permission/metabot :yes} → {\"metabot\" \"yes\"}"
+  "Strip the namespace from permission keywords for a flatter JSON response.
+  e.g. {:permission/metabot :yes} → {:metabot :yes}"
   [perms]
-  (into {} (map (fn [[k v]] [(name k) (name v)])) perms))
+  (into {} (map (fn [[k v]] [(keyword (name k)) v])) perms))
 
-(api.macros/defendpoint :get "/user-permissions" :- [:map [:permissions [:map-of :string :string]]]
+(def ^:private user-permissions-response-schema
+  [:map
+   [:permissions
+    [:map
+     [:metabot [:enum :yes :no]]
+     [:metabot-model [:enum :large :medium :small]]
+     [:metabot-sql-generation [:enum :yes :no]]
+     [:metabot-nql [:enum :yes :no]]
+     [:metabot-other-tools [:enum :yes :no]]]]])
+
+(api.macros/defendpoint :get "/user-permissions" :- user-permissions-response-schema
   "Return the current user's resolved metabot permissions, taking the most
   permissive value across all their groups."
   []
