@@ -2,6 +2,7 @@
   "Publish buffering: batches rapid-fire publishes into time-windowed groups
    and flushes them on a background scheduled thread."
   (:require
+   [metabase.config.core :as config]
    [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log])
@@ -12,8 +13,9 @@
 
 (def ^:dynamic *publish-buffer-ms*
   "Time window in ms to buffer rapid-fire publishes. 0 = immediate publish.
-   Resets on every new message (sliding window)."
-  100)
+   Resets on every new message (sliding window).
+   Defaults to 0 in test mode (no background flush thread) and 100 in production."
+  (if config/is-test? 0 100))
 
 (def ^:dynamic *publish-buffer-max-ms*
   "Maximum time in ms since the first message before a flush is forced. 0 = no max."
