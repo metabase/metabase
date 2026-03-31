@@ -3,11 +3,10 @@
   (:require
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.schema :as security-center.schema]
+   [metabase-enterprise.security-center.seed]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -47,8 +46,6 @@
                                      [:advisories [:sequential AdvisoryResponse]]]
   "List all security advisories with match status."
   []
-  (api/check-superuser)
-  (premium-features/assert-has-feature :security-advisories (tru "Security Advisories"))
   (let [advisories (t2/hydrate (t2/select :model/SecurityAdvisory {:order-by [[:published_at :desc]]})
                                :acknowledged_by)]
     {:last_checked_at (some :last_evaluated_at advisories)
@@ -62,12 +59,10 @@
 (api.macros/defendpoint :post "/:advisory-id/acknowledge" :- AcknowledgeResponse
   "Acknowledge a security advisory. Stops repeat notifications."
   [{:keys [advisory-id]} :- [:map [:advisory-id ms/NonBlankString]]]
-  (api/check-superuser)
-  (premium-features/assert-has-feature :security-advisories (tru "Security Advisories"))
   (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/security-advisories` routes."
-  (api.macros/ns-handler *ns* +auth))
+  "`/api/ee/security-center` routes."
+  (api.macros/ns-handler *ns* api/+check-superuser +auth))

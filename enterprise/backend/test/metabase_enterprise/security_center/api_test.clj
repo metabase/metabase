@@ -41,41 +41,44 @@
        ~@body)))
 
 (deftest list-advisories-test
-  (testing "GET /api/ee/security-advisories"
+  (testing "GET /api/ee/security-center"
     (testing "requires premium feature"
       (mt/with-premium-features #{}
         (mt/assert-has-premium-feature-error
-         "Security Advisories"
-         (mt/user-http-request :crowberto :get 402 "ee/security-advisories"))))
-    (mt/with-premium-features #{:security-advisories}
+         "Security Center"
+         (mt/user-http-request :crowberto :get 402 "ee/security-center"))))
+    (mt/with-premium-features #{:security-center}
       (with-test-advisories!
         (testing "superuser can list advisories"
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/security-advisories")]
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/security-center")]
             (is (contains? response :last_checked_at))
             (is (= 3 (count (:advisories response))))
             (is (= "SC-TEST-001" (-> response :advisories first :advisory_id)))))
         (testing "non-superuser gets 403"
-          (mt/user-http-request :rasta :get 403 "ee/security-advisories"))))))
+          (mt/user-http-request :rasta :get 403 "ee/security-center"))))))
 
 (deftest acknowledge-advisory-test
-  (testing "POST /api/ee/security-advisories/:id/acknowledge"
-    (mt/with-premium-features #{:security-advisories :audit-app}
+  (testing "POST /api/ee/security-center/:id/acknowledge"
+    (mt/with-premium-features #{:security-center :audit-app}
       (with-test-advisories!
         (testing "superuser can acknowledge"
           (is (=? {:advisory_id     "SC-TEST-001"
                    :acknowledged_at some?
                    :acknowledged_by some?}
                   (mt/user-http-request :crowberto :post 200
-                                        "ee/security-advisories/SC-TEST-001/acknowledge")))
+                                        "ee/security-center/SC-TEST-001/acknowledge")))
           (testing "creates an audit log entry"
             (is (=? {:topic   :security-advisory-acknowledge
                      :user_id (mt/user->id :crowberto)}
                     (t2/select-one [:model/AuditLog :topic :user_id]
                                    :topic :security-advisory-acknowledge
                                    {:order-by [[:id :desc]]})))))
+        (testing "cannot acknowledge twice"
+          (mt/user-http-request :crowberto :post 409
+                                "ee/security-center/SC-TEST-001/acknowledge"))
         (testing "404 for unknown advisory"
           (mt/user-http-request :crowberto :post 404
-                                "ee/security-advisories/SC-FAKE/acknowledge"))
+                                "ee/security-center/SC-FAKE/acknowledge"))
         (testing "non-superuser gets 403"
           (mt/user-http-request :rasta :post 403
-                                "ee/security-advisories/SC-TEST-001/acknowledge"))))))
+                                "ee/security-center/SC-TEST-001/acknowledge"))))))

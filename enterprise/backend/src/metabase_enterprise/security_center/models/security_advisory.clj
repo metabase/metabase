@@ -17,15 +17,13 @@
    :matching_query    mi/transform-json})
 
 (methodical/defmethod t2/batched-hydrate [:model/SecurityAdvisory :acknowledged_by]
-  "Hydrate `acknowledged_by` from an int FK to a `{:user_id, :name}` map."
+  "Hydrate `acknowledged_by` from an int FK to a User map with `:id`, `:common_name`, and `:email`."
   [_model k advisories]
   (let [user-ids (keep :acknowledged_by advisories)
         id->user (when (seq user-ids)
                    (into {}
-                         (map (juxt :id (fn [{:keys [id first_name last_name]}]
-                                          {:user_id id
-                                           :name    (str first_name " " last_name)})))
-                         (t2/select [:model/User :id :first_name :last_name]
+                         (map (juxt :id #(select-keys % [:id :common_name :email])))
+                         (t2/select [:model/User :id :first_name :last_name :email]
                                     :id [:in (set user-ids)])))]
     (mi/instances-with-hydrated-data
      advisories k
@@ -34,8 +32,11 @@
 
 (defn acknowledge!
   "Acknowledge a security advisory. Sets `acknowledged_by` and `acknowledged_at`,
-   and publishes an audit event. Returns the updated advisory with `:acknowledged_by` hydrated."
+   and publishes an audit event. Returns the updated advisory with `:acknowledged_by` hydrated.
+   Throws if already acknowledged."
   [advisory user-id]
+  (when (:acknowledged_at advisory)
+    (throw (ex-info "Advisory already acknowledged" {:status-code 409})))
   (let [now (mi/now)]
     (t2/update! :model/SecurityAdvisory (:id advisory)
                 {:acknowledged_by user-id

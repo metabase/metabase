@@ -1,9 +1,13 @@
-(ns dev.security-advisory-seed
-  "Dev-only: seed mock security advisories for local testing.
-   Run from REPL: (dev.security-advisory-seed/seed-mock-advisories!)"
+(ns metabase-enterprise.security-center.seed
+  ;; TODO (qnkhuat 2026-03-31) -- DELETE THIS NAMESPACE before shipping to production.
+  ;; This is dev-only mock data for the Security Center feature.
+  "Seed mock security advisories for local dev testing.
+   Runs automatically on startup when in dev mode via [[def-startup-logic!]]."
   (:require
    [metabase-enterprise.security-center.models.security-advisory]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
+   [metabase.startup.core :as startup]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -62,3 +66,7 @@
                     (dissoc row :advisory_id :fetched_at))
         (t2/insert! :model/SecurityAdvisory row))))
   (log/infof "Seeded %d mock advisories." (count mock-advisories)))
+
+(when config/is-dev?
+  (defmethod startup/def-startup-logic! ::seed-security-advisories [_]
+    (seed-mock-advisories!)))
