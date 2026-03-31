@@ -135,9 +135,7 @@
     :model/MetabotMessage
     :model/MetabotPrompt
     ;; 61+
-    :model/MetabotPermissions
-    :model/MetabotGroupLimit
-    :model/MetabotInstanceLimit]
+    :model/MetabotPermissions]
    (when config/ee-available?
      [:model/Sandbox
       :model/Tenant

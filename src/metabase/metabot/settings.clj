@@ -48,23 +48,6 @@
   :export?    true
   :doc        false)
 
-(defsetting metabot-limit-type
-  (deferred-tru "The unit used for metabot usage limits.")
-  :type       :keyword
-  :default    :tokens
-  :visibility :settings-manager
-  :encryption :no
-  :export?    true
-  :doc        false)
-
-(defsetting metabot-limit-reset-rate
-  (deferred-tru "How often metabot usage limits reset.")
-  :type       :keyword
-  :default    :monthly
-  :visibility :settings-manager
-  :encryption :no
-  :export?    true
-  :doc        false)
 
 (defsetting metabot-chat-system-prompt
   (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
