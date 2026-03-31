@@ -79,14 +79,12 @@ export const useChartSettingsState = ({
 
 export function useSettingsWidgets({
   series,
-  widgets: propWidgets,
   transformedSeries,
   handleChangeSettings,
   isDashboard = false,
   extra,
 }: {
   series: Series;
-  widgets?: Widget[];
   transformedSeries?: RawSeries | TransformedSeries;
   handleChangeSettings: (settings: VisualizationSettings) => void;
   isDashboard?: boolean;
@@ -100,8 +98,7 @@ export function useSettingsWidgets({
     () =>
       customVizLoading
         ? []
-        : propWidgets ||
-          getSettingsWidgetsForSeries(
+        : getSettingsWidgetsForSeries(
             transformedSeries,
             handleChangeSettings,
             isDashboard,
@@ -109,7 +106,6 @@ export function useSettingsWidgets({
           ),
     [
       customVizLoading,
-      propWidgets,
       transformedSeries,
       handleChangeSettings,
       isDashboard,

@@ -21,7 +21,6 @@ export const DashboardChartSettings = ({
   onChange,
   series,
   onClose,
-  widgets: propWidgets,
   settings,
 }: DashboardChartSettingsProps) => {
   const { dashboard } = useDashboardContext();
@@ -75,7 +74,6 @@ export const DashboardChartSettings = ({
 
   const widgets = useSettingsWidgets({
     series,
-    widgets: propWidgets,
     transformedSeries,
     handleChangeSettings,
     isDashboard: true,

@@ -5,7 +5,6 @@ import type { QuestionChartSettingsProps } from "./types";
 
 export const QuestionChartSettings = ({
   question,
-  widgets: propWidgets,
   series,
   onChange,
   computedSettings,
@@ -17,7 +16,6 @@ export const QuestionChartSettings = ({
 
   const widgets = useSettingsWidgets({
     series,
-    widgets: propWidgets,
     transformedSeries,
     handleChangeSettings,
   });
