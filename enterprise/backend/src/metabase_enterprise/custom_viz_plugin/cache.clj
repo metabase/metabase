@@ -22,12 +22,12 @@
 ;; plugin-id -> monotonic nano-time timestamp of last failed fetch
 (defonce ^:private last-fetch-failure-ns (atom {}))
 
-;;; ---------------------------------------- In-memory dev bundle URLs -----------------------------------------
+;;; ---------------------------------------- Dev bundle URLs -----------------------------------------
 
-;; dev_bundle_url is transient (only useful while a dev server is running),
-;; so we store it in memory rather than the database. Cleared on restart.
+;; In-memory cache for dev_bundle_url values persisted in the database.
+;; Acts as a read-through cache: populated lazily from the DB on first access.
 (defonce ^:private dev-bundle-urls
-  (atom {})) ;; {plugin-id -> url-string}
+  (atom {})) ;; {plugin-id -> url-string | ::none}
 
 (def ^:private ^:const fetch-failure-cooldown-ms (* 5 60 1000))
 
@@ -236,16 +236,26 @@
                         {:status-code 502}))))))
 
 (defn set-or-clear-dev-bundle!
-  "Set or clear the in-memory dev base URL for a plugin"
+  "Set or clear the dev base URL for a plugin. Persists to the database and updates the in-memory cache."
   [id dev-bundle-url]
-  (if (seq dev-bundle-url)
-    (swap! dev-bundle-urls assoc id dev-bundle-url)
-    (swap! dev-bundle-urls dissoc id)))
+  (let [url (when (seq dev-bundle-url) dev-bundle-url)]
+    (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})
+    (if url
+      (swap! dev-bundle-urls assoc id url)
+      (swap! dev-bundle-urls assoc id ::none))))
 
 (defn resolve-dev-bundle
-  "Resolve the dev bundle plugin"
+  "Resolve the dev bundle URL for a plugin. Checks in-memory cache first, falls back to DB."
   [id]
-  (get @dev-bundle-urls id))
+  (let [cached (get @dev-bundle-urls id)]
+    (if (some? cached)
+      (when-not (= cached ::none) cached)
+      (let [url (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id)]
+        (if (seq url)
+          (do (swap! dev-bundle-urls assoc id url)
+              url)
+          (do (swap! dev-bundle-urls assoc id ::none)
+              nil))))))
 
 (defn resolve-bundle
   "Resolve the JS bundle for a plugin, respecting dev bundle URL if set.

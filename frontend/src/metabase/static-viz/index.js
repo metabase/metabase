@@ -6,25 +6,9 @@ import React from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import ReactDOMServer from "react-dom/server";
 
-// eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
 import "metabase/lib/dayjs";
-
 import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
-import * as isa from "metabase-lib/v1/types/utils/isa";
-
-// Expose React, jsxRuntime, and utils for custom viz bundles that reference
-// window.__METABASE_VIZ_API__ via the metabaseVizExternals Vite plugin.
-window.__METABASE_VIZ_API__ = {
-  React,
-  jsxRuntime,
-  columnTypes: isa,
-  formatValue: (value, options) => {
-    const result = internalFormatValue(value, { ...options, jsx: false });
-    return String(result ?? "");
-  },
-};
-
 import { updateStartOfWeek } from "metabase/lib/i18n";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
@@ -40,8 +24,21 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
+import * as isa from "metabase-lib/v1/types/utils/isa";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
+
+// Expose React, jsxRuntime, and utils for custom viz bundles that reference
+// window.__METABASE_VIZ_API__ via the metabaseVizExternals Vite plugin.
+window.__METABASE_VIZ_API__ = {
+  React,
+  jsxRuntime,
+  columnTypes: isa,
+  formatValue: (value, options) => {
+    const result = internalFormatValue(value, { ...options, jsx: false });
+    return String(result ?? "");
+  },
+};
 
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,
@@ -114,15 +111,21 @@ export function registerCustomVizPlugin(factory, identifier, assets) {
   PLUGIN_CUSTOM_VIZ.registerCustomVizPlugin(factory, identifier, assets);
 }
 
-export function RenderChart(rawSeries, dashcardSettings, options) {
+/**
+ * Initialize the static viz context: set settings and apply enterprise overrides.
+ * Must be called before registerCustomVizPlugin so that the EE registry is active.
+ */
+export function initializeContext(options) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
   MetabaseSettings.set("application-colors", options.applicationColors);
-
+  MetabaseSettings.set("custom-formatting", options.customFormatting);
   if (typeof enterpriseOverrides === "function") {
     enterpriseOverrides();
   }
+}
 
-  MetabaseSettings.set("custom-formatting", options.customFormatting);
+export function RenderChart(rawSeries, dashcardSettings, options) {
+  initializeContext(options);
 
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,

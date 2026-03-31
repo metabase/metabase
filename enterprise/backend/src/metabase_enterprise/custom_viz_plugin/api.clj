@@ -254,9 +254,9 @@
       (raise e))))
 
 (api.macros/defendpoint :put "/:id/dev-url" :- [:map [:dev_bundle_url [:maybe :string]]]
-  "Set or clear the in-memory dev base URL for a plugin (e.g. `http://localhost:5174`).
+  "Set or clear the dev base URL for a plugin (e.g. `http://localhost:5174`).
    The bundle is fetched from `{base}/index.js` and assets from `{base}/assets/{name}`.
-   This is transient — cleared on server restart."
+   Persisted to the database so it survives server restarts."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
