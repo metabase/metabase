@@ -3,6 +3,7 @@
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
@@ -13,8 +14,9 @@
   ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured impersonation.)
   :feature :none
   [query]
-  (if-let [role (impersonation.driver/connection-impersonation-role
-                 (lib.metadata/database (qp.store/metadata-provider)))]
+  (if-let [role (when-not qp.i/*skip-middleware-because-app-db-access*
+                  (impersonation.driver/connection-impersonation-role
+                   (lib.metadata/database (qp.store/metadata-provider))))]
     (do
       (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
       (assoc query :impersonation/role role))
