@@ -4,6 +4,11 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.60.0
+
+- Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.
+  It should return the query if it is valid and throw otherwise.
+
 ## Metabase 0.58.0
 
 - Added a `:collate` feature for drivers that support collation settings on text fields
