@@ -2,6 +2,7 @@
   "Backend abstraction layer for the message queue system.
   Defines multimethods that different queue implementations must provide."
   (:require
+   [metabase.config.core :as config]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -11,8 +12,9 @@
 
 (def ^:dynamic *backend*
   "Dynamic var specifying which queue backend to use.
-  Default is `:queue.backend/appdb` for production database-backed queues."
-  :queue.backend/appdb)
+  Default is `:queue.backend/sync` in test mode (inline processing, no background threads)
+  and `:queue.backend/appdb` in production for database-backed queues."
+  (if config/is-test? :queue.backend/sync :queue.backend/appdb))
 
 (defmulti publish!
   "Publishes messages to the given queue. `messages` is always a vector of messages."

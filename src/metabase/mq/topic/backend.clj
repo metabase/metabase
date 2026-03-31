@@ -6,6 +6,7 @@
   the error is logged and the batch is skipped. This matches the semantics of
   the postgres LISTEN/NOTIFY backend where re-delivery is not possible."
   (:require
+   [metabase.config.core :as config]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -15,9 +16,9 @@
 
 (def ^:dynamic *backend*
   "Dynamic var specifying which pub/sub backend to use.
-  Default is `:topic.backend/appdb` for production database-backed pub/sub.
-  Can be bound to `:topic.backend/memory` for testing."
-  :topic.backend/appdb)
+  Default is `:topic.backend/sync` in test mode (inline processing, no background threads)
+  and `:topic.backend/appdb` in production for database-backed pub/sub."
+  (if config/is-test? :topic.backend/sync :topic.backend/appdb))
 
 (defmulti publish!
   "Publishes messages to the given topic. `messages` is a vector of values that will be JSON-encoded
