@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: v59.2026-03-31T00:00:00
+      author: test
+      comment: Wrong version migration to test CI check — will be removed
+      changes:
+        - sql:
+            sql: SELECT 1
