@@ -2781,7 +2781,8 @@
            models
            premium-features
            util
-           enterprise/api}
+           enterprise/api
+           enterprise/remote-sync}
    :model-exports #{:model/CustomVizPlugin}
    :model-imports #{:model/CustomVizPlugin}}
 
@@ -3006,7 +3007,8 @@
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
-           metabase-enterprise.remote-sync.init}
+           metabase-enterprise.remote-sync.init
+           metabase-enterprise.remote-sync.source.git}
    :uses #{analytics
            api
            app-db
