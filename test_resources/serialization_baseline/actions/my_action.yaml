@@ -1,7 +1,5 @@
-archived: false
 created_at: '2024-08-28T14:29:47.386823Z'
 creator_id: ann@heart.band
-description: null
 entity_id: hYWoE-l1BpOqmvYedqP2g
 http: []
 implicit:
@@ -14,7 +12,6 @@ parameters: []
 public_uuid: 107f3af5-e51d-49aa-b332-97b1d61e52ad
 query: []
 type: implicit
-visualization_settings: null
 serdes/meta:
 - id: hYWoE-l1BpOqmvYedqP2g
   label: my_action
