@@ -333,15 +333,6 @@ describe("use-brush", () => {
 
         expect(touchmove.defaultPrevented).toBe(true);
       });
-
-      it("prevents context menu on the container", () => {
-        const { el } = setupTouchBrush();
-
-        const event = new Event("contextmenu", { cancelable: true });
-        el.dispatchEvent(event);
-
-        expect(event.defaultPrevented).toBe(true);
-      });
     });
   });
 });

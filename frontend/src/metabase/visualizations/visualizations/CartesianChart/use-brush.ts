@@ -171,34 +171,8 @@ function useTouchBrush({
     // Save originals to restore on cleanup.
     const svg = containerEl.querySelector("svg");
 
-    const savedContainerStyles = {
-      webkitUserSelect: containerEl.style.getPropertyValue(
-        "-webkit-user-select",
-      ),
-      webkitTouchCallout: containerEl.style.getPropertyValue(
-        "-webkit-touch-callout",
-      ),
-      webkitTapHighlightColor: containerEl.style.getPropertyValue(
-        "-webkit-tap-highlight-color",
-      ),
-    };
-    const savedSvgStyles = svg
-      ? {
-          webkitUserSelect: svg.style.getPropertyValue("-webkit-user-select"),
-          webkitTouchCallout: svg.style.getPropertyValue(
-            "-webkit-touch-callout",
-          ),
-        }
-      : null;
-
-    containerEl.style.setProperty("-webkit-user-select", "none");
-    containerEl.style.setProperty("-webkit-touch-callout", "none");
-    containerEl.style.setProperty("-webkit-tap-highlight-color", "transparent");
-
-    if (svg) {
-      svg.style.setProperty("-webkit-user-select", "none");
-      svg.style.setProperty("-webkit-touch-callout", "none");
-    }
+    svg?.style.setProperty("-webkit-user-select", "none");
+    svg?.style.setProperty("-webkit-touch-callout", "none");
 
     const cancel = () => {
       clearTimeout(timerRef.current);
@@ -280,30 +254,9 @@ function useTouchBrush({
     return () => {
       cancel();
       removeListeners();
-      containerEl.removeEventListener("touchmove", onTouchMove);
-      containerEl.style.setProperty(
-        "-webkit-user-select",
-        savedContainerStyles.webkitUserSelect,
-      );
-      containerEl.style.setProperty(
-        "-webkit-touch-callout",
-        savedContainerStyles.webkitTouchCallout,
-      );
-      containerEl.style.setProperty(
-        "-webkit-tap-highlight-color",
-        savedContainerStyles.webkitTapHighlightColor,
-      );
 
-      if (svg && savedSvgStyles) {
-        svg.style.setProperty(
-          "-webkit-user-select",
-          savedSvgStyles.webkitUserSelect,
-        );
-        svg.style.setProperty(
-          "-webkit-touch-callout",
-          savedSvgStyles.webkitTouchCallout,
-        );
-      }
+      svg?.style.setProperty("-webkit-user-select", "none");
+      svg?.style.setProperty("-webkit-touch-callout", "none");
     };
   }, [
     containerEl,
