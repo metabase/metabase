@@ -144,6 +144,7 @@ describe("buildLegendGroups", () => {
       buildLegendGroups(formulaEntities, definitions, breakoutValues, colors),
     ).toEqual([
       {
+        key: 0,
         header: "Category",
         subtitle: "Revenue",
         items: [
@@ -152,6 +153,7 @@ describe("buildLegendGroups", () => {
         ],
       },
       {
+        key: 1,
         header: "Orders",
         items: [{ label: "Orders", color: "#A989C5" }],
       },

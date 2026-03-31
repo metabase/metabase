@@ -25,6 +25,7 @@ import type {
 } from "../types/viewer-state";
 import { getInitialMetricsViewerPageState } from "../types/viewer-state";
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
+import { getEffectiveDefinitionEntry } from "../utils/definition-entries";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -461,8 +462,8 @@ export function useViewerState(): UseViewerStateResult {
   const setBreakoutDimension = useCallback(
     (entity: MetricDefinitionEntry, dimension: ProjectionClause | undefined) =>
       setState((prev) => {
-        const pristineEntry = prev.definitions[entity.id];
-        if (!pristineEntry?.definition) {
+        const defEntry = getEffectiveDefinitionEntry(entity, prev.definitions);
+        if (!defEntry?.definition) {
           return prev;
         }
 
@@ -474,7 +475,7 @@ export function useViewerState(): UseViewerStateResult {
         let newDefinition: MetricDefinition | null = null;
 
         if (dimension) {
-          let baseDef = pristineEntry.definition;
+          let baseDef = defEntry.definition;
           const existingProjections = LibMetric.projections(baseDef);
           for (const proj of existingProjections) {
             baseDef = LibMetric.removeClause(baseDef, proj);

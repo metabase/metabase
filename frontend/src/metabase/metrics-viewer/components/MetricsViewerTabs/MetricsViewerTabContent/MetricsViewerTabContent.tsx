@@ -212,9 +212,9 @@ export function MetricsViewerTabContent({
   // Build sourceId → first entityIndex lookup for dimension-mapping-based lookups.
   const sourceIdToEntityIndex = useMemo(() => {
     const map = new Map<MetricSourceId, number>();
-    formulaEntities.forEach((e, i) => {
-      if (isMetricEntry(e) && !map.has(e.id)) {
-        map.set(e.id, i);
+    formulaEntities.forEach((entry, index) => {
+      if (isMetricEntry(entry) && !map.has(entry.id)) {
+        map.set(entry.id, index);
       }
     });
     return map;

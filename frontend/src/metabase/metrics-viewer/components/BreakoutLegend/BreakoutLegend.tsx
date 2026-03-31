@@ -54,7 +54,7 @@ export function BreakoutLegend({
       <Paper withBorder radius="md" p="lg">
         <Stack gap="lg">
           {groups.map((group) => (
-            <Stack key={group.header} gap="sm">
+            <Stack key={group.key} gap="sm">
               <div>
                 <Title fw="bold" size="md" lh={1.3}>
                   {group.header}

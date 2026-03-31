@@ -1,14 +1,17 @@
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
+import { buildExpressionText } from "metabase/metrics-viewer/components/MetricSearch/utils";
 import * as LibMetric from "metabase-lib/metric";
 import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerFormulaEntity,
-  SourceColorMap,
+import {
+  type MetricDefinitionEntry,
+  type MetricSourceId,
+  type MetricsViewerDefinitionEntry,
+  type MetricsViewerFormulaEntity,
+  type SourceColorMap,
+  isExpressionEntry,
 } from "../types/viewer-state";
 import { isMetricEntry } from "../types/viewer-state";
 
@@ -25,6 +28,7 @@ export interface LegendItem {
 }
 
 export interface LegendGroup {
+  key: number;
   header: string;
   subtitle?: string;
   items: LegendItem[];
@@ -42,40 +46,38 @@ export function buildLegendGroups(
     }
     return entryHasBreakout(getEffectiveDefinitionEntry(entity, definitions));
   });
+
   if (!hasAnyBreakout) {
     return [];
   }
 
-  const sourceIdsWithBreakout = new Set<MetricSourceId>();
-  for (const entity of formulaEntities) {
-    if (
-      isMetricEntry(entity) &&
-      entryHasBreakout(getEffectiveDefinitionEntry(entity, definitions))
-    ) {
-      sourceIdsWithBreakout.add(entity.id);
-    }
-  }
+  const metricEntries = Object.values(definitions).map(
+    (e): MetricDefinitionEntry => ({ ...e, type: "metric" as const }),
+  );
 
   const groups: LegendGroup[] = [];
 
-  for (
-    let entityIndex = 0;
-    entityIndex < formulaEntities.length;
-    entityIndex++
-  ) {
-    const entity = formulaEntities[entityIndex];
-    if (!isMetricEntry(entity)) {
-      continue;
+  formulaEntities.forEach((entity, entityIndex) => {
+    const colors = sourceColors[entityIndex];
+    if (!colors || colors.length === 0) {
+      return;
+    }
+
+    if (isExpressionEntry(entity)) {
+      const definitionName = buildExpressionText(entity.tokens, metricEntries);
+
+      groups.push({
+        key: entityIndex,
+        header: definitionName,
+        items: [{ label: definitionName, color: colors[0] }],
+      });
+
+      return;
     }
 
     const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
     if (!effectiveEntry.definition) {
-      continue;
-    }
-
-    const colors = sourceColors[entityIndex];
-    if (!colors || colors.length === 0) {
-      continue;
+      return;
     }
 
     const pristineDef = definitions[entity.id];
@@ -87,7 +89,7 @@ export function buildLegendGroups(
     if (breakoutProjection) {
       const response = breakoutValuesByEntityIndex.get(entityIndex);
       if (!response || response.values.length === 0) {
-        continue;
+        return;
       }
 
       const rawDimension = LibMetric.projectionDimension(
@@ -110,24 +112,26 @@ export function buildLegendGroups(
       const header =
         dimensionInfo?.longDisplayName ?? dimensionInfo?.displayName;
       if (!header) {
-        continue;
+        return;
       }
 
       groups.push({
+        key: entityIndex,
         header,
         subtitle: definitionName ?? undefined,
         items,
       });
     } else {
-      if (!definitionName || sourceIdsWithBreakout.has(entity.id)) {
-        continue;
+      if (!definitionName) {
+        return;
       }
       groups.push({
+        key: entityIndex,
         header: definitionName,
         items: [{ label: definitionName, color: colors[0] }],
       });
     }
-  }
+  });
 
   return groups;
 }
