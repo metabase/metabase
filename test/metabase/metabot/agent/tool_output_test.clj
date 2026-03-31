@@ -12,7 +12,6 @@
    [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.metabot.tools.resources :as resource-tools]
    [metabase.metabot.tools.search :as search-tools]
-   [metabase.parameters.field :as params.field]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -311,14 +310,13 @@
 
 (deftest search-field-values-structured-output-test
   (testing "search_field_values formats correctly"
-    (with-redefs [field-stats-tools/resolve-field (fn [_] {:id 42})
-                  params.field/search-values-from-field-id (fn [_ query]
-                                                             (case query
-                                                               "mar" {:values [[14 "Marilyne Mohr"]
-                                                                               [36 "Margot Farrell"]]
-                                                                      :has_more_values true}
-                                                               "road" {:values [["Road"]]
-                                                                       :has_more_values false}))]
+    (with-redefs [field-stats-tools/search-field-values
+                  (fn [{:keys [query]}]
+                    (case query
+                      "mar"  {:values          [[14 "Marilyne Mohr"] [36 "Margot Farrell"]]
+                              :has_more_values true}
+                      "road" {:values          [["Road"]]
+                              :has_more_values false}))]
       (let [result (metadata-tools/search-field-values-tool
                     {:data_source "table"
                      :source_id   1

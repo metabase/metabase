@@ -70,8 +70,9 @@
    (field-values/hash-input-for-linked-filters field constraints)
    (field-values/hash-input-for-database-routing field)))
 
-(defn- requires-advanced-field-value?
-  "Given a field, returns falsey if this field should use the normal batched implementation to get field values."
+(defn advanced-field-values?
+  "Returns true if this field requires advanced field values handling (e.g., sandboxing, impersonation).
+   When true, callers should use cached field values rather than querying the database directly."
   [field]
   (not= (hash-input-for-field-values field)
         {:field-id (u/the-id field)}))
@@ -84,7 +85,7 @@
   (let [fields                 (when (seq field-ids)
                                  (t2/hydrate (t2/select :model/Field :id [:in (set field-ids)]) :table))
         {normal-fields   false
-         advanced-fields true} (group-by requires-advanced-field-value? fields)]
+         advanced-fields true} (group-by advanced-field-values? fields)]
     (merge
      ;; use the normal OSS batched implementation for any Fields that aren't subject to sandboxing.
      (when (seq normal-fields)

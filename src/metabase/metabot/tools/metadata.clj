@@ -9,7 +9,6 @@
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.parameters.field :as params.field]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -206,26 +205,20 @@
   [{:keys [data_source source_id field_id queries limit]} :- search-field-values-schema]
   (add-output
    (try
-     (let [field-id      (:id (field-stats-tools/resolve-field {:entity-type data_source
-                                                                :entity-id   source_id
-                                                                :field-id    field_id}))
-           _             (when-not field-id
-                           (throw (ex-info "This field cannot be searched because it does not map to a concrete field."
-                                           {:agent-error? true :status-code 400})))
-           per-query-max (or limit 10)
+     (let [per-query-max (or limit 10)
            searches      (mapv (fn [query]
                                  (let [{:keys [values has_more_values]}
-                                       (params.field/search-values-from-field-id field-id query)]
+                                       (field-stats-tools/search-field-values {:entity-type data_source
+                                                                               :entity-id   source_id
+                                                                               :field-id    field_id
+                                                                               :query       query
+                                                                               :limit       per-query-max})]
                                    {:query    query
-                                    :matches  (->> values
-                                                   (map search-result->map)
-                                                   (take per-query-max)
-                                                   vec)
+                                    :matches  (mapv search-result->map values)
                                     :has_more has_more_values}))
                                queries)]
        {:structured-output {:result-type :field-search-results
                             :field_id    field_id
-                            :resolved_field_id field-id
                             :searches    searches}})
      (catch Exception ex
        (if (:agent-error? (ex-data ex))

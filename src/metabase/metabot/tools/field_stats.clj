@@ -21,7 +21,8 @@
       (or display raw))
     value))
 
-(defn- fetch-sample-values-from-db
+(defn- fetch-sample-values
+  "Fetch sample values for a field, falling back to a direct DB search if needed."
   [field-id limit]
   (let [{:keys [values]} (params.field/search-values-from-field-id field-id nil)]
     (->> values
@@ -48,11 +49,11 @@
   [{:keys [id fingerprint]} limit]
   (if id
     (let [field (t2/select-one :model/Field :id id)
-          fvs (params.field-values/get-or-create-field-values! field)
-          fp (or fingerprint (get-or-create-fingerprint! field))
-          fvs (if (seq (:values fvs))
-                fvs
-                {:values (fetch-sample-values-from-db id (or limit default-sample-limit))})]
+          fvs   (params.field-values/get-or-create-field-values! field)
+          fp    (or fingerprint (get-or-create-fingerprint! field))
+          fvs   (if (seq (:values fvs))
+                  fvs
+                  {:values (fetch-sample-values id (or limit default-sample-limit))})]
       (build-field-statistics fvs fp limit))
     (build-field-statistics nil fingerprint limit)))
 
@@ -113,3 +114,37 @@
                            :value_metadata (field-statistics col limit)}})
     (catch Exception ex
       (metabot.tools.u/handle-agent-error ex))))
+
+(defn- value-matches-query?
+  "Check if a field value matches a search query (case-insensitive substring match)."
+  [query value]
+  (let [query (str/lower-case query)]
+    (if (sequential? value)
+      (let [[raw display] value]
+        (or (and raw (str/includes? (str/lower-case (str raw)) query))
+            (and display (str/includes? (str/lower-case (str display)) query))))
+      (and value (str/includes? (str/lower-case (str value)) query)))))
+
+(defn search-field-values
+  "Search field values. For sandboxed/impersonated users, searches cached field values.
+   For normal users, searches the database directly."
+  [{:keys [entity-type entity-id field-id query limit]}]
+  (let [resolved-field-id (:id (resolve-field {:entity-type entity-type
+                                               :entity-id   entity-id
+                                               :field-id    field-id}))]
+    (when-not resolved-field-id
+      (throw (ex-info "This field cannot be searched because it does not map to a concrete field."
+                      {:agent-error? true :status-code 400})))
+    (let [field                    (t2/select-one :model/Field :id resolved-field-id)
+          use-cached?              (params.field-values/advanced-field-values? field)
+          {:keys [values has_more_values]}
+          (if use-cached?
+            (params.field-values/get-or-create-field-values-for-current-user! field)
+            (params.field/search-values-from-field-id resolved-field-id query))
+          matches                  (cond->> values
+                                     (and use-cached? (seq query)) (filter #(value-matches-query? query %))
+                                     limit                         (take limit)
+                                     true                          vec)]
+      {:values          matches
+       :has_more_values (or has_more_values
+                            (and limit (= (count matches) limit)))})))

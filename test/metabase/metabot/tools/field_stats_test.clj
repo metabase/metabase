@@ -182,3 +182,38 @@
                                :percent-null   0.0}
                 :field_values ["Alpha" "Beta"]}
                (#'metabot.tools.field-stats/field-statistics field 2)))))))
+
+(deftest search-field-values-uses-direct-search-for-normal-users-test
+  (testing "normal users get direct DB search"
+    (with-redefs [metabot.tools.field-stats/resolve-field (fn [_] {:id 42})
+                  params.field-values/advanced-field-values? (fn [_] false)
+                  params.field/search-values-from-field-id (fn [id query]
+                                                             (is (= 42 id))
+                                                             (is (= "a" query))
+                                                             {:values [["AK"] ["AL"] ["CA"]]
+                                                              :has_more_values false})]
+      (is (= {:values          [["AK"] ["AL"]]
+              :has_more_values true}
+             (metabot.tools.field-stats/search-field-values {:entity-type "table"
+                                                             :entity-id   1
+                                                             :field-id    "t1-1"
+                                                             :query       "a"
+                                                             :limit       2}))))))
+
+(deftest search-field-values-uses-cached-values-for-sandboxed-users-test
+  (testing "sandboxed users get cached field values with client-side filtering"
+    (with-redefs [metabot.tools.field-stats/resolve-field (fn [_] {:id 42})
+                  params.field-values/advanced-field-values? (fn [_] true)
+                  params.field-values/get-or-create-field-values-for-current-user! (fn [field]
+                                                                                     (is (= 42 (:id field)))
+                                                                                     {:values [["AK"] ["AL"] ["CA"] ["NY"]]
+                                                                                      :has_more_values false})
+                  params.field/search-values-from-field-id (fn [& _]
+                                                             (throw (ex-info "should not use direct search for sandboxed users" {})))]
+      (is (= {:values          [["AK"] ["AL"]]
+              :has_more_values true}
+             (metabot.tools.field-stats/search-field-values {:entity-type "table"
+                                                             :entity-id   1
+                                                             :field-id    "t1-1"
+                                                             :query       "a"
+                                                             :limit       2}))))))
