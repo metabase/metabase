@@ -171,6 +171,11 @@ function useTouchBrush({
     // Save originals to restore on cleanup.
     const svg = containerEl.querySelector("svg");
 
+    // Removes highlight on tap on android
+    containerEl.style.setProperty("-webkit-tap-highlight-color", "transparent");
+
+    // Removes text selection on long tap
+    svg?.style.setProperty("user-select", "none");
     svg?.style.setProperty("-webkit-user-select", "none");
     svg?.style.setProperty("-webkit-touch-callout", "none");
 
@@ -255,6 +260,8 @@ function useTouchBrush({
       cancel();
       removeListeners();
 
+      containerEl.style.setProperty("-webkit-tap-highlight-color", "none");
+      svg?.style.setProperty("user-select", "none");
       svg?.style.setProperty("-webkit-user-select", "none");
       svg?.style.setProperty("-webkit-touch-callout", "none");
     };
