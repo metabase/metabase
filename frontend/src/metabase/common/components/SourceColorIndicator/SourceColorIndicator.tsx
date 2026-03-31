@@ -34,10 +34,11 @@ export function SourceColorIndicator({
       </Flex>
     );
   }
+  const color = colors?.[0] ?? "var(--mb-color-text-primary)";
   if (fallbackIcon) {
     return (
       <Flex align="center" data-testid="color-indicator-container">
-        <Icon name={fallbackIcon} size={size} style={{ color: colors?.[0] }} />
+        <Icon name={fallbackIcon} size={size} style={{ color }} />
       </Flex>
     );
   }
@@ -47,7 +48,7 @@ export function SourceColorIndicator({
       w={size}
       h={size}
       style={{
-        backgroundColor: colors?.[0] ?? "var(--mb-color-text-primary)",
+        backgroundColor: color,
       }}
     />
   );
