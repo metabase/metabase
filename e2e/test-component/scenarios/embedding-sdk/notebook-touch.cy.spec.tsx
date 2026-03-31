@@ -5,6 +5,7 @@ import { createQuestion } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   disableTouchEmulation,
+  emulateHoverMedia,
   enableTouchEmulation,
 } from "e2e/support/helpers/e2e-mobile-device-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
@@ -75,6 +76,14 @@ describe("scenarios > embedding-sdk > notebook touch support", () => {
   });
 
   describe("desktop (non-touch)", () => {
+    beforeEach(() => {
+      emulateHoverMedia("hover");
+    });
+
+    afterEach(() => {
+      emulateHoverMedia("");
+    });
+
     it("remove step button should be hidden until hover", () => {
       cy.get<number>("@questionId").then((questionId) => {
         mountSdkContent(<InteractiveQuestion questionId={questionId} />);
@@ -82,12 +91,7 @@ describe("scenarios > embedding-sdk > notebook touch support", () => {
 
       getSdkRoot().within(() => {
         cy.findByTestId("notebook-button").click();
-      });
 
-      // Move cursor away from the step so :hover doesn't apply
-      cy.get("body").trigger("mousemove", { clientX: 0, clientY: 0 });
-
-      getSdkRoot().within(() => {
         // On desktop, the remove button should be hidden (visibility: hidden)
         cy.findByLabelText("Remove step").should(
           "have.css",

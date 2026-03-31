@@ -17,3 +17,12 @@ export function disableTouchEmulation() {
     }),
   );
 }
+
+export function emulateHoverMedia(value: "hover" | "none" | "") {
+  cy.then(() =>
+    Cypress.automation("remote:debugger:protocol", {
+      command: "Emulation.setEmulatedMedia",
+      params: { features: [{ name: "hover", value }] },
+    }),
+  );
+}
