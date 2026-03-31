@@ -337,9 +337,11 @@
                    :table_id      ["My Database" nil "Schemaless Table"]
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
-                   :dataset_query {:query    {:source-table ["My Database" nil "Schemaless Table"]
-                                              :filter       [:>= [:field ["My Database" nil "Schemaless Table" "Some Field"] {}] 18]
-                                              :aggregation  [[:count]]}
+                   :dataset_query {:stages   [{:source-table ["My Database" nil "Schemaless Table"]
+                                               :filters      [[:>= {}
+                                                               [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]
+                                                               18]]
+                                               :aggregation  [[:count {}]]}]
                                    :database "My Database"}
                    :created_at    string?}
                   ser))
@@ -437,8 +439,8 @@
                    :table_id      ["My Database" nil "Schemaless Table"]
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
-                   :dataset_query {:query    {:source-table c4-eid
-                                              :aggregation  [[:count]]}
+                   :dataset_query {:stages   [{:source-card c4-eid
+                                               :aggregation [[:count {}]]}]
                                    :database "My Database"}
                    :created_at    string?}
                   ser))
@@ -900,9 +902,11 @@
                    :table_id    ["My Database" nil "Schemaless Table"]
                    :creator_id  "ann@heart.band"
                    :definition  {:database "My Database",
-                                 :type     :query,
-                                 :query    {:source-table ["My Database" nil "Schemaless Table"],
-                                            :filter       [:< [:field ["My Database" nil "Schemaless Table" "Some Field"] nil] 18]}}
+                                 :lib/type :mbql/query
+                                 :stages   [{:source-table ["My Database" nil "Schemaless Table"],
+                                             :filters      [[:< {}
+                                                             [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]
+                                                             18]]}]}
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
@@ -947,9 +951,9 @@
                        :table_id    ["My Database" nil "Schemaless Table"]
                        :creator_id  "ann@heart.band"
                        :definition  {:database "My Database"
-                                     :type     :query
-                                     :query    {:source-table ["My Database" nil "Schemaless Table"]
-                                                :aggregation  [[:sum [:field ["My Database" nil "Schemaless Table" "Some Field"] map?]]]}}
+                                     :lib/type :mbql/query
+                                     :stages [{:source-table ["My Database" nil "Schemaless Table"]
+                                               :aggregation  [[:sum {} [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]]]}]}
                        :created_at  string?}
                       ser))
               (is (not (contains? ser :id)))
@@ -997,9 +1001,9 @@
                            :table_id    ["My Database" nil "My Table"]
                            :creator_id  "ann@heart.band"
                            :definition  {:database "My Database"
-                                         :type     :query
-                                         :query    {:source-table ["My Database" nil "My Table"]
-                                                    :aggregation  [[:* [:measure m1-eid] 2]]}}}
+                                         :lib/type :mbql/query
+                                         :stages   [{:source-table ["My Database" nil "My Table"]
+                                                     :aggregation  [[:* {} [:measure {} m1-eid] 2]]}]}}
                           ser))
                   (testing "depends on the referenced Measure"
                     (is (contains? (set (serdes/dependencies ser))
@@ -1040,9 +1044,9 @@
                        :table_id    ["My Database" nil "My Table"]
                        :creator_id  "ann@heart.band"
                        :definition  {:database "My Database"
-                                     :type     :query
-                                     :query    {:source-table ["My Database" nil "My Table"]
-                                                :aggregation  [[:count-where [:segment seg-eid]]]}}}
+                                     :lib/type :mbql/query
+                                     :stages   [{:source-table ["My Database" nil "My Table"]
+                                                 :aggregation  [[:count-where {} [:segment {} seg-eid]]]}]}}
                       ser))
               (testing "depends on the referenced Segment"
                 (is (contains? (set (serdes/dependencies ser))
@@ -1157,8 +1161,9 @@
                          :creator_id  "ann@heart.band"
                          :created_at  string?
                          :query       [{:dataset_query {:database "My Database"
-                                                        :type     :native
-                                                        :native   {:query "select 1"}}}]
+                                                        :lib/type :mbql/query
+                                                        :stages   [{:lib/type :mbql.stage/native
+                                                                    :native   "select 1"}]}}]
                          :model_id    card-eid-1}
                         ser))
                 (is (not (contains? ser :id)))
@@ -2322,7 +2327,9 @@
               (is (not (contains? ser :id))))
 
             (testing "source and target MBQL export"
-              (is (=? {:source {:query {:database "My Database" :type :query :query {:source-table ["My Database" nil "Schemaless Table"]}}}
+              (is (=? {:source {:query {:database "My Database"
+                                        :lib/type :mbql/query
+                                        :stages [{:source-table ["My Database" nil "Schemaless Table"]}]}}
                        :target {:database "My Database" :type "table" :schema "public" :name "target_table"}}
                       (select-keys ser [:source :target]))))
 
