@@ -10,7 +10,7 @@ import { refreshCurrentUser } from "metabase/redux/user";
 import type { Card } from "metabase-types/api";
 
 import { useMcpApp } from "./hooks/useMcpApp";
-import { buildMcpAppsTheme } from "./hooks/useMcpTheme";
+import { buildMcpAppsTheme } from "./utils/buildMcpAppsTheme";
 
 const store = getSdkStore();
 
