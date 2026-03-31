@@ -69,6 +69,8 @@
 (defn run-with-buffer
   "Runs `body-fn` with a MessageBuffer. On success, publishes collected messages —
    deferred if inside a transaction, immediate via publish! otherwise.
+   Channels with `:sync-local-delivery true` in their listener config always publish
+   immediately, even inside a transaction.
    On exception, discards buffered messages and rethrows."
   [channel error-label body-fn]
   (let [buffer     (atom [])
@@ -78,7 +80,8 @@
       (let [result (body-fn msg-buffer)
             msgs   @buffer]
         (when (seq msgs)
-          (if (mdb/transaction-state)
+          (if (and (mdb/transaction-state)
+                   (not (:sync-local-delivery (listener/get-listener channel))))
             (defer-in-transaction! channel msgs)
             (publish! channel msgs)))
         result)

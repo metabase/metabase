@@ -97,11 +97,8 @@
 ;; Must happen before :db so that listeners (e.g. connection-pool-invalidated) are available
 ;; when database initialization triggers events.
 (define-initialization :mq
-  ;; Load driver.init so that namespaces containing def-listener! calls are loaded
-  ;; before register-listeners! iterates them. In production, core/init.clj loads these.
-  (classloader/require 'metabase.driver.init)
-  (classloader/require 'metabase.mq.init)
-  ((resolve 'metabase.mq.init/init-for-tests!)))
+  (classloader/require 'metabase.test.initialize.mq)
+  ((resolve 'metabase.test.initialize.mq/init!)))
 
 ;; initializing the DB also does setup needed so the scheduler will work correctly. (Remember that the scheduler uses
 ;; a JDBC backend!)

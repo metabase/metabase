@@ -16,7 +16,9 @@
 
 ;;; ----------------------------------------- Topic subscription -------------------------------------------
 
-(mq/def-listener! :topic/connection-pool-invalidated [{:keys [database-id all-databases]}]
+(mq/def-listener! :topic/connection-pool-invalidated
+  {:sync-local-delivery true}
+  [{:keys [database-id all-databases]}]
   (if all-databases
     (doseq [{driver :engine, :as database} (t2/select :model/Database)]
       (try
