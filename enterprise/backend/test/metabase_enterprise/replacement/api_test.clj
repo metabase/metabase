@@ -376,6 +376,7 @@
                 ;; Populate dependencies via events
                 (doseq [card [model-card question-card]]
                   (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
+                (deps.test/synchronously-run-backfill!)
 
                 (let [response (mt/user-http-request :crowberto :post 202
                                                      "ee/replacement/replace-model-with-transform"
