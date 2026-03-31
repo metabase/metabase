@@ -2,7 +2,6 @@ import cx from "classnames";
 import Color from "color";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import {
   formatChangeWithSign,
@@ -11,6 +10,7 @@ import {
 } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
 import { isNotNull } from "metabase/lib/types";
+import { Ellipsified } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import {
   FunnelNormalRoot,

@@ -9,7 +9,6 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/lib/redux";
-import { runQuestionQuery } from "metabase/query_builder/actions";
 import { MetabaseApi } from "metabase/services";
 import type { CardId, CollectionId, TableId } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
@@ -50,7 +49,7 @@ export interface UploadFileProps {
   tableId?: TableId;
   modelId?: CardId;
   uploadMode: UploadMode;
-  reloadQuestionData?: boolean;
+  onUploadComplete?: () => void;
 }
 
 export const uploadFile = createThunkAction(
@@ -61,7 +60,7 @@ export const uploadFile = createThunkAction(
     tableId,
     modelId,
     uploadMode,
-    reloadQuestionData,
+    onUploadComplete,
   }: UploadFileProps) =>
     async (dispatch: Dispatch) => {
       const id = Date.now();
@@ -120,8 +119,8 @@ export const uploadFile = createThunkAction(
           }),
         );
 
-        if (tableId && reloadQuestionData) {
-          dispatch(runQuestionQuery());
+        if (tableId && onUploadComplete) {
+          onUploadComplete();
         } else if (collectionId) {
           dispatch(Collections.actions.invalidateLists());
         }

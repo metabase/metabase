@@ -452,43 +452,27 @@ export function computeDefaultTabs(
 
 // ── Manual tab creation ──
 
-export function createTabFromDimension(
-  dimensionId: string,
-  definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  sourceOrder: MetricSourceId[],
+export interface TabInfo {
+  type: MetricsViewerTabType;
+  label: string;
+  dimensionMapping: Record<MetricSourceId, string>;
+}
+
+export function createTabFromTabInfo(
+  tabInfo: TabInfo,
 ): MetricsViewerTabState | null {
-  const mapping: Record<MetricSourceId, string> = {};
-  let tabType: MetricsViewerTabType = "category";
-  let displayName: string | null = null;
-
-  for (const sourceId of sourceOrder) {
-    const def = definitionsBySourceId[sourceId];
-    if (!def) {
-      continue;
-    }
-
-    const dimensionInfo = getDimensionsByType(def).get(dimensionId);
-    if (!dimensionInfo) {
-      continue;
-    }
-
-    mapping[sourceId] = dimensionId;
-    tabType = dimensionInfo.dimensionType;
-    displayName ??= dimensionInfo.displayName;
-  }
-
-  if (Object.keys(mapping).length === 0) {
+  const { type, label, dimensionMapping } = tabInfo;
+  const id = Object.values(dimensionMapping)[0];
+  if (id == null) {
     return null;
   }
-
-  const display = getTabConfig(tabType).defaultDisplayType;
-
+  const display = getTabConfig(type).defaultDisplayType;
   return {
-    id: dimensionId,
-    type: tabType,
-    label: displayName ?? dimensionId,
+    id,
+    type,
+    label,
     display,
-    dimensionMapping: mapping,
+    dimensionMapping,
     projectionConfig: {},
   };
 }

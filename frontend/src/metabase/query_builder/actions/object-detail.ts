@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { createThunkAction } from "metabase/lib/redux";
+import { RESET_ROW_ZOOM } from "metabase/redux/query-builder";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -25,7 +26,6 @@ import { setCardAndRun } from "./core/core";
 import { updateUrl } from "./url";
 import { zoomInRow } from "./zoom";
 
-export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
 export const resetRowZoom = () => (dispatch: Dispatch) => {
   dispatch({ type: RESET_ROW_ZOOM });
 

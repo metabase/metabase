@@ -6,8 +6,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { displayNameForColumn } from "metabase/lib/formatting";
+import { Ellipsified } from "metabase/ui";
 import {
   ActionIcon,
   Flex,

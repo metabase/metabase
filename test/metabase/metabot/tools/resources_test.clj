@@ -135,7 +135,7 @@
                 (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
 
 (deftest read-transform-resource-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:transforms}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id transform-name :name}
                      {:name   "Gadget Products"
