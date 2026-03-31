@@ -1,12 +1,14 @@
 (ns metabase-enterprise.custom-viz-plugin.cache
-  "Cache layer for custom visualization plugin bundles and static assets.
-   Fetches files from git repos, caches in memory and on disk."
+  "Fetches custom visualization plugin bundles and assets from git repos and stores
+   them in PostgreSQL. Serves via a local disk cache to avoid repeated DB reads.
+   Git is only accessed on register/refresh."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin-asset]
    [metabase-enterprise.remote-sync.source.git :as rs.git]
    [metabase.config.core :as config]
    [toucan2.core :as t2])
@@ -15,12 +17,28 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------ In-Memory Cache ------------------------------------------------
+;;; ---------------------------------------- Disk Cache -----------------------------------------
 
-;; plugin-id -> {:content str, :hash str, :commit str}
-(defonce ^:private bundle-cache (atom {}))
-;; plugin-id -> monotonic nano-time timestamp of last failed fetch
-(defonce ^:private last-fetch-failure-ns (atom {}))
+;; Read-through disk cache backed by the database. Each pod lazily populates its
+;; local disk from the DB on first access. Invalidated on fetch-and-update!.
+
+(defn- cache-dir ^File []
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-custom-viz-plugins"))
+
+(defn- asset-cache-file ^File [plugin-id ^String commit ^String asset-path]
+  (io/file (cache-dir) (str plugin-id) commit asset-path))
+
+(defn- write-disk-cache-bytes! [^File f ^bytes content]
+  (io/make-parents f)
+  (with-open [out (io/output-stream f)]
+    (.write out content)))
+
+(defn invalidate-disk-cache!
+  "Remove all cached files for a plugin."
+  [plugin-id]
+  (let [plugin-dir (io/file (cache-dir) (str plugin-id))]
+    (when (.exists plugin-dir)
+      (org.apache.commons.io.FileUtils/deleteDirectory plugin-dir))))
 
 ;;; ---------------------------------------- Dev bundle URLs -----------------------------------------
 
@@ -29,82 +47,20 @@
 (defonce ^:private dev-bundle-urls
   (atom {})) ;; {plugin-id -> url-string | ::none}
 
-(def ^:private ^:const fetch-failure-cooldown-ms (* 5 60 1000))
-
-;;; ------------------------------------------------ Disk Cache ------------------------------------------------
-
-(defn- disk-cache-dir ^File []
-  (io/file (System/getProperty "java.io.tmpdir") "metabase-custom-viz-plugins" "bundles"))
-
-(defn- disk-cache-file ^File [plugin-id]
-  (io/file (disk-cache-dir) (str plugin-id ".js")))
-
-(defn- asset-cache-dir ^File [plugin-id]
-  (io/file (System/getProperty "java.io.tmpdir") "metabase-custom-viz-plugins" "assets" (str plugin-id)))
-
-(defn- asset-cache-file ^File [plugin-id ^String asset-path]
-  (io/file (asset-cache-dir plugin-id) asset-path))
-
-(defn- write-to-disk! [plugin-id ^String content]
-  (let [f (disk-cache-file plugin-id)]
-    (io/make-parents f)
-    (spit f content)))
-
-(defn- read-from-disk [plugin-id]
-  (let [f (disk-cache-file plugin-id)]
-    (when (.exists f)
-      {:content (slurp f)})))
-
-(defn- delete-from-disk! [plugin-id]
-  (let [f (disk-cache-file plugin-id)]
-    (when (.exists f)
-      (.delete f))))
-
-(defn- write-asset-to-disk! [plugin-id ^String asset-path ^bytes content]
-  (let [f (asset-cache-file plugin-id asset-path)]
-    (io/make-parents f)
-    (with-open [out (io/output-stream f)]
-      (.write out content))))
-
-(defn- read-asset-from-disk ^bytes [plugin-id ^String asset-path]
-  (let [f (asset-cache-file plugin-id asset-path)]
-    (when (.exists f)
-      (let [ba (byte-array (.length f))]
-        (with-open [in (io/input-stream f)]
-          (.read in ba))
-        ba))))
-
-(defn- delete-assets-from-disk! [plugin-id]
-  (let [d (asset-cache-dir plugin-id)]
-    (when (.exists d)
-      (org.apache.commons.io.FileUtils/deleteDirectory d))))
-
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
 (defn- content-hash [^String content]
   (-> content .getBytes buddy-hash/sha256 codecs/bytes->hex))
 
-;;; ------------------------------------------------ Asset Cache ------------------------------------------------
+;;; ------------------------------------------------ Fetch & Store ------------------------------------------------
 
-;; plugin-id -> {asset-path -> byte-array}
-(defonce ^:private asset-cache (atom {}))
+(def ^:private ^:const max-single-asset-bytes
+  "Maximum size for a single asset file (2 MB)."
+  (* 2 1024 1024))
 
-(defn get-asset
-  "Get a cached static asset for a plugin. Checks in-memory first, then disk.
-   Returns a byte array or nil."
-  ^bytes [plugin-id ^String asset-path]
-  (or (get-in @asset-cache [plugin-id asset-path])
-      (when-let [bytes (read-asset-from-disk plugin-id asset-path)]
-        (swap! asset-cache assoc-in [plugin-id asset-path] bytes)
-        bytes)))
-
-;;; ------------------------------------------------ Fetch & Cache ------------------------------------------------
-
-(defn- in-failure-cooldown?
-  [plugin-id]
-  (when-let [last-failure-ns (get @last-fetch-failure-ns plugin-id)]
-    (< (/ (- (System/nanoTime) last-failure-ns) 1e6)
-       fetch-failure-cooldown-ms)))
+(def ^:private ^:const max-total-plugin-bytes
+  "Maximum total size of all assets for a single plugin (20 MB)."
+  (* 20 1024 1024))
 
 (defn- repo-asset-paths
   "List all file paths under `dist/assets/` in the repo, returned relative to that prefix."
@@ -114,58 +70,79 @@
          (filter #(str/starts-with? % prefix))
          (map #(subs % (count prefix))))))
 
-(defn- fetch-and-cache-assets!
-  "Fetch and cache static assets from the plugin repo based on the manifest whitelist.
-   Asset names from the manifest (e.g. `icon.svg`) map to `dist/assets/<name>` in the repo.
-   Supports glob patterns (e.g. `locales/*`) which are expanded against available files."
-  [snapshot plugin-id parsed-manifest]
-  (when parsed-manifest
-    (let [declared     (manifest/asset-paths parsed-manifest)
-          available    (repo-asset-paths snapshot)
-          asset-names  (manifest/expand-globs declared available)]
-      (doseq [asset-name asset-names]
-        (when-let [bytes (rs.git/read-file-bytes snapshot (str "dist/assets/" asset-name))]
-          (swap! asset-cache assoc-in [plugin-id asset-name] bytes)
-          (write-asset-to-disk! plugin-id asset-name bytes))))))
+(def ^:private ^:const bundle-asset-path
+  "Well-known asset path used to store the JS bundle."
+  "__bundle__/index.js")
 
-(defn fetch-and-cache!
-  "Fetch index.js and manifest from the plugin's git repo, update both caches and DB record.
-   Returns the cached entry or nil on failure."
+(defn- store-asset!
+  "Store a single asset, enforcing per-file and running total size limits.
+   Returns the new running total, or throws if a limit is exceeded."
+  [plugin-id ^String path ^bytes bytes total-bytes]
+  (let [size      (alength bytes)
+        new-total (+ total-bytes size)]
+    (when (> size max-single-asset-bytes)
+      (throw (ex-info (format "Asset %s exceeds maximum size of %d bytes (%d bytes)"
+                              path max-single-asset-bytes size)
+                      {:path path :size size})))
+    (when (> new-total max-total-plugin-bytes)
+      (throw (ex-info (format "Plugin exceeds maximum total asset size of %d bytes"
+                              max-total-plugin-bytes)
+                      {:total new-total})))
+    (t2/insert! :model/CustomVizPluginAsset
+                {:plugin_id plugin-id
+                 :path      path
+                 :content   bytes})
+    new-total))
+
+(defn- store-assets!
+  "Fetch the bundle and whitelisted assets from the git snapshot and store them
+   in the database. Replaces all existing assets for the plugin.
+   Enforces per-file (2 MB) and per-plugin (20 MB) size limits."
+  [snapshot plugin-id parsed-manifest]
+  (t2/delete! :model/CustomVizPluginAsset :plugin_id plugin-id)
+  (let [total (long 0)
+        ;; store the JS bundle
+        total (if-let [bytes (rs.git/read-file-bytes snapshot "dist/index.js")]
+                (store-asset! plugin-id bundle-asset-path bytes total)
+                total)]
+    ;; store manifest-whitelisted assets
+    (when parsed-manifest
+      (let [declared    (manifest/asset-paths parsed-manifest)
+            available   (repo-asset-paths snapshot)
+            asset-names (manifest/expand-globs declared available)]
+        (reduce (fn [total asset-name]
+                  (if-let [bytes (rs.git/read-file-bytes snapshot (str "dist/assets/" asset-name))]
+                    (store-asset! plugin-id asset-name bytes total)
+                    total))
+                total
+                asset-names)))))
+
+(defn fetch-and-update!
+  "Fetch index.js, manifest, and assets from the plugin's git repo, store everything
+   in the database. Returns the commit SHA or nil on failure."
   ([plugin]
-   (fetch-and-cache! plugin nil))
-  ([{:keys [id repo_url access_token pinned_version identifier]}
-    {:keys [force?] :or {force? false}}]
-   (if (and (not force?) (in-failure-cooldown? id))
-     nil
-     (try
-       (let [source        (rs.git/git-source repo_url nil access_token)
-             ref-to-use    (or pinned_version "HEAD")
-             snapshot      (rs.git/snapshot-at-ref source ref-to-use)
-             commit-sha    (rs.git/commit-sha source ref-to-use)
-             content       (rs.git/read-file snapshot "dist/index.js")
-             _             (when-not content
-                             (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
-             ;; read manifest (optional)
-             manifest-str  (rs.git/read-file snapshot (manifest/manifest-path))
-             parsed        (when manifest-str (manifest/parse-manifest manifest-str))
-             version-str   (get-in parsed [:metabase :version])
-             ;; check version compatibility
-             _             (when (and version-str
-                                      (not (manifest/compatible? {:metabase_version version-str})))
-                             (throw (ex-info
-                                     (format "Plugin requires Metabase version %s but current version is %s"
-                                             version-str
-                                             (str "v" (config/current-major-version)))
-                                     {:metabase_version version-str})))
-             hash          (content-hash content)
-             cache-entry   {:content content :hash hash :commit commit-sha}]
-         ;; update caches
-         (swap! bundle-cache assoc id cache-entry)
-         (swap! last-fetch-failure-ns dissoc id)
-         (write-to-disk! id content)
-         ;; cache static assets
-         (fetch-and-cache-assets! snapshot id parsed)
-         ;; update DB — display_name and icon always come from manifest
+   (fetch-and-update! plugin nil))
+  ([{:keys [id repo_url access_token pinned_version identifier]} _opts]
+   (try
+     (let [source        (rs.git/git-source repo_url nil access_token)
+           ref-to-use    (or pinned_version "HEAD")
+           snapshot      (rs.git/snapshot-at-ref source ref-to-use)
+           commit-sha    (rs.git/commit-sha source ref-to-use)
+           _             (when-not (rs.git/read-file snapshot "dist/index.js")
+                           (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
+           manifest-str  (rs.git/read-file snapshot (manifest/manifest-path))
+           parsed        (when manifest-str (manifest/parse-manifest manifest-str))
+           version-str   (get-in parsed [:metabase :version])
+           _             (when (and version-str
+                                    (not (manifest/compatible? {:metabase_version version-str})))
+                           (throw (ex-info
+                                   (format "Plugin requires Metabase version %s but current version is %s"
+                                           version-str
+                                           (str "v" (config/current-major-version)))
+                                   {:metabase_version version-str})))]
+       ;; store assets + metadata atomically
+       (t2/with-transaction [_conn]
+         (store-assets! snapshot id parsed)
          (t2/update! :model/CustomVizPlugin id
                      {:status            :active
                       :error_message     nil
@@ -173,35 +150,45 @@
                       :manifest          manifest-str
                       :display_name      (or (:name parsed) identifier)
                       :icon              (:icon parsed)
-                      :metabase_version  version-str})
-         cache-entry)
-       (catch Exception e
-         (swap! last-fetch-failure-ns assoc id (System/nanoTime))
-         (t2/update! :model/CustomVizPlugin id
-                     {:status        :error
-                      :error_message (ex-message e)})
-         nil)))))
+                      :metabase_version  version-str}))
+       ;; invalidate local disk cache so next read picks up new content
+       (invalidate-disk-cache! id)
+       commit-sha)
+     (catch Exception e
+       (t2/update! :model/CustomVizPlugin id
+                   {:status        :error
+                    :error_message (ex-message e)})
+       nil))))
 
-;;; ------------------------------------------------ Get / Evict ------------------------------------------------
+;;; ------------------------------------------------ Get ------------------------------------------------
+
+(defn get-asset
+  "Get a whitelisted static asset for a plugin. Checks disk cache first, falls back to DB.
+   Returns a byte array or nil."
+  ^bytes [plugin-id ^String asset-path]
+  (when-let [{:keys [resolved_commit]}
+             (t2/select-one [:model/CustomVizPlugin :resolved_commit]
+                            :id plugin-id)]
+    (when resolved_commit
+      (let [f (asset-cache-file plugin-id resolved_commit asset-path)]
+        (if (.exists f)
+          (let [ba (byte-array (.length f))]
+            (with-open [in (io/input-stream f)]
+              (.read in ba))
+            ba)
+          (when-let [{:keys [content]}
+                     (t2/select-one [:model/CustomVizPluginAsset :content]
+                                    :plugin_id plugin-id
+                                    :path      asset-path)]
+            (write-disk-cache-bytes! f content)
+            content))))))
 
 (defn get-bundle
-  "Get the JS bundle for a plugin. Checks in-memory first, then disk."
+  "Get the JS bundle for a plugin. Checks disk cache first, falls back to DB."
   [plugin-id]
-  (or (get @bundle-cache plugin-id)
-      (when-let [{:keys [content]} (read-from-disk plugin-id)]
-        (let [entry {:content content :hash (content-hash content)}]
-          (swap! bundle-cache assoc plugin-id entry)
-          entry))))
-
-(defn evict!
-  "Remove a plugin from both caches (bundle and assets)."
-  [plugin-id]
-  (swap! bundle-cache dissoc plugin-id)
-  (swap! asset-cache dissoc plugin-id)
-  (swap! last-fetch-failure-ns dissoc plugin-id)
-  (swap! dev-bundle-urls dissoc plugin-id)
-  (delete-from-disk! plugin-id)
-  (delete-assets-from-disk! plugin-id))
+  (when-let [bytes (get-asset plugin-id bundle-asset-path)]
+    (let [content (String. ^bytes bytes "UTF-8")]
+      {:content content :hash (content-hash content)})))
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
@@ -257,6 +244,8 @@
           (do (swap! dev-bundle-urls assoc id ::none)
               nil))))))
 
+;;; ------------------------------------------------ Resolve ------------------------------------------------
+
 (defn resolve-bundle
   "Resolve the JS bundle for a plugin, respecting dev bundle URL if set.
    Returns {:content str :hash str} or nil."
@@ -266,7 +255,9 @@
     (if dev-url
       (fetch-dev-bundle dev-url)
       (or (get-bundle id)
-          (fetch-and-cache! plugin)))))
+          ;; no bundle yet — fetch from remote and try again
+          (do (fetch-and-update! plugin)
+              (get-bundle id))))))
 
 (defn resolve-asset
   "Resolve a static asset for a plugin, respecting dev base URL if set.

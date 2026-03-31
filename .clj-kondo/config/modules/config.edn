@@ -2783,8 +2783,8 @@
            util
            enterprise/api
            enterprise/remote-sync}
-   :model-exports #{:model/CustomVizPlugin}
-   :model-imports #{:model/CustomVizPlugin}}
+   :model-exports #{:model/CustomVizPlugin :model/CustomVizPluginAsset}
+   :model-imports #{:model/CustomVizPlugin :model/CustomVizPluginAsset}}
 
   enterprise/core
   {:team "DevEx"
