@@ -1,32 +1,3 @@
-import { scaleLinear, scaleQuantile } from "d3-scale";
-
-import type { Extent } from "metabase/visualizations/types";
-
-export const getColorScale = (
-  extent: Extent,
-  colors: string[],
-  isQuantile: boolean = false,
-) => {
-  return isQuantile
-    ? getQuantileColorScale(extent, colors)
-    : getLinearColorScale(extent, colors);
-};
-
-export const getQuantileColorScale = (extent: Extent, colors: string[]) => {
-  return scaleQuantile<string>(extent, colors);
-};
-
-export const getLinearColorScale = (extent: Extent, colors: string[]) => {
-  const [start, end] = extent;
-
-  const domain =
-    colors.length === 3
-      ? [start, start + (end - start) / 2, end]
-      : [start, end];
-
-  return scaleLinear<string>(domain, colors);
-};
-
 // Matches RGBA color strings with integers, decimals, and scientific notation
 // Handles: rgba(136, 191, 77, 0.75), rgba(136.7, 191.3, 77.2, 0.75), rgba(136, 191, 77, 7.5e-7)
 const NUMBER_PATTERN = String.raw`-?\d+(?:\.\d+)?(?:e[+-]?\d+)?`;
