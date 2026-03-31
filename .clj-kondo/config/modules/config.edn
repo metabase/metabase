@@ -3144,6 +3144,7 @@
            collections
            config
            events
+           lib
            logger
            models
            plugins
