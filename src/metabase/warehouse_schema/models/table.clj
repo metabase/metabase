@@ -709,8 +709,8 @@
               :show_in_getting_started false}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
-  (concat (serdes/storage-path-prefixes (serdes/path table))
-          [(:name table)]))
+  (conj (serdes/storage-path-prefixes (serdes/path table))
+        {:label (:name table) :key (:name table)}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

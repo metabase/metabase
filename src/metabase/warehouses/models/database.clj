@@ -696,8 +696,8 @@
   (t2/select-one :model/Database :name id))
 
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
-  ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
-  ["databases" name name])
+  ;; directory for the database with same-named file inside.
+  [{:label "databases"} {:label name :key name} {:label name :key name}])
 
 (defn assert-not-h2!
   "Validate db is not h2 for serialization import"

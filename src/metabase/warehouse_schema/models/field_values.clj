@@ -620,4 +620,5 @@
   ;; don't have their own directories.
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
-    (update field-path (dec (count field-path)) str field-values-slug)))
+    (update field-path (dec (count field-path))
+            (fn [segment] (update segment :label str field-values-slug)))))

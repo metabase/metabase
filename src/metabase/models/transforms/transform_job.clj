@@ -198,5 +198,4 @@
      [{:model "TransformTag" :id tag-id}])))
 
 (defmethod serdes/storage-path "TransformJob" [job _ctx]
-  (let [{:keys [id label]} (-> job serdes/path last)]
-    ["transforms" "transform_jobs" (serdes/storage-leaf-file-name id label)]))
+  [{:label "transforms"} {:label "transform_jobs"} {:label (:name job) :key (:entity_id job)}])

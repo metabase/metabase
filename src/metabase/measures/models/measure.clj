@@ -195,12 +195,8 @@
     table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]
-  (let [{:keys [id label]} (-> measure serdes/path last)]
-    (-> measure
-        :table_id
-        serdes/table->path
-        serdes/storage-path-prefixes
-        (concat ["measures" (serdes/storage-leaf-file-name id label)]))))
+  (into (-> measure :table_id serdes/table->path serdes/storage-path-prefixes)
+        [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}]))
 
 (defn- import-measure-definition
   "Import a measure definition from serialization format.

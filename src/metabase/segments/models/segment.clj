@@ -222,12 +222,8 @@
     table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
-  (let [{:keys [id label]} (-> segment serdes/path last)]
-    (-> segment
-        :table_id
-        serdes/table->path
-        serdes/storage-path-prefixes
-        (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
+  (into (-> segment :table_id serdes/table->path serdes/storage-path-prefixes)
+        [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}]))
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
