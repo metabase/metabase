@@ -3679,6 +3679,25 @@ databaseChangeLog:
                   type: varchar(254)
                   remarks: Metabase version range requirement from manifest (e.g. ">=59 <62")
 
+  - changeSet:
+      id: v59.2026-03-31T10:00:00
+      author: uladzimir
+      comment: Add dev_bundle_url column to custom_viz_plugin table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: custom_viz_plugin
+                columnName: dev_bundle_url
+      changes:
+        - addColumn:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: dev_bundle_url
+                  type: varchar(1024)
+                  remarks: Dev server URL for hot-reload development (e.g. http://localhost:5174)
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
