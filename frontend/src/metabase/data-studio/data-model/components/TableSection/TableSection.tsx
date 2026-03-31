@@ -235,7 +235,7 @@ const TableSectionBase = ({
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List mb="md">
+          <Tabs.List mb="md" grow>
             <Tabs.Tab
               value="details"
               leftSection={<Icon name="info" />}

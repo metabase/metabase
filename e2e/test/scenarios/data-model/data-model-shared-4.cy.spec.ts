@@ -87,6 +87,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
       cy.log("table section");
 
+      if (area === "data studio") {
+        TableSection.clickDetailsTab();
+      }
       cy.log("name");
       TableSection.getNameInput().type("a").blur();
       verifyAndCloseToast("Failed to update table name");
@@ -95,6 +98,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       TableSection.getDescriptionInput().type("a").blur();
       verifyAndCloseToast("Failed to update table description");
 
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       cy.log("predefined field order");
       TableSection.getSortButton().click();
       TableSection.getSortOrderInput()
@@ -110,6 +116,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       verifyAndCloseToast("Failed to update field order");
       TableSection.get().button("Done").click();
 
+      if (area === "data studio") {
+        TableSection.clickDetailsTab();
+      }
       cy.log("sync");
       TableSection.getSyncOptionsButton().click();
       H.modal().button("Sync table schema").click();
@@ -124,6 +133,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       verifyAndCloseToast("Failed to discard values");
       cy.realPress("Escape");
 
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       cy.log("field name");
       TableSection.getFieldNameInput("Quantity").type("a").blur();
       verifyAndCloseToast("Failed to update name of Quantity");
@@ -175,6 +187,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       // components, so new undos will appear - this makes this test flaky, so we navigate with page reload instead
       visit({ databaseId: WRITABLE_DB_ID });
       TablePicker.getTable("Many Data Types").click();
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("Json");
       FieldSection.getUnfoldJsonInput().click();
       H.popover().findByText("No").click();
@@ -183,6 +198,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       cy.log("formatting");
       TablePicker.getDatabase("Sample Database").click();
       TablePicker.getTable("Orders").click();
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("Quantity");
       FieldSection.getPrefixInput().type("5").blur();
       verifyAndCloseToast("Failed to update formatting of Quantity");
@@ -225,6 +243,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
       cy.log("table section");
 
+      if (area === "data studio") {
+        TableSection.clickDetailsTab();
+      }
       cy.log("name");
       TableSection.getNameInput().type("a").blur();
       verifyToastAndUndo("Table name updated");
@@ -238,6 +259,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         "Confirmed Sample Company orders for a product, from a user.",
       );
 
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       cy.log("predefined field order");
       TableSection.getSortButton().click();
       TableSection.getSortOrderInput()
@@ -363,6 +387,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       cy.log("JSON unfolding");
       TablePicker.getDatabase("Writable Postgres12").click();
       TablePicker.getTable("Many Data Types").click();
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("Json");
       FieldSection.getUnfoldJsonInput().click();
       H.popover().findByText("No").click();
@@ -371,6 +398,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
       cy.log("formatting");
       TablePicker.getTable("Orders").click();
+      if (area === "data studio") {
+        TableSection.clickFieldsTab();
+      }
       TableSection.clickField("Quantity");
 
       cy.log("prefix (ChartSettingInput)");
