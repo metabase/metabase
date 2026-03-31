@@ -46,7 +46,11 @@ function register_custom_viz_plugin(identifier, assetsJson) {
     // Capture the factory now (before __customVizPlugin__ is overwritten by the next bundle load),
     // but defer the actual registration until javascript_visualization runs initializeContext,
     // which applies enterprise overrides and activates the real EE registerCustomVizPlugin.
-    __pendingCustomVizRegistrations__.push({ factory: __customVizPlugin__, identifier: identifier, assets: assets });
+    __pendingCustomVizRegistrations__.push({
+      factory: __customVizPlugin__,
+      identifier,
+      assets,
+    });
   }
 }
 
@@ -68,5 +72,5 @@ function javascript_visualization(rawSeries, dashcardSettings, options) {
   var content = StaticViz.RenderChart(parsedSeries, JSON.parse(dashcardSettings), parsedOptions);
   var type = content.startsWith("<svg") ? "svg" : "html";
 
-  return JSON.stringify({ type: type, content: content });
+  return JSON.stringify({ type, content });
 }
