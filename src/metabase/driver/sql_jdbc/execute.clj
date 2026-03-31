@@ -379,9 +379,6 @@
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
-    (when session-timezone
-      (binding [*out* *err*]
-        (println "[TZ-DEBUG] set-time-zone-if-supported! driver=" driver "timezone=" session-timezone "thread=" (.getName (Thread/currentThread)))))
     (set-time-zone-if-supported! driver conn session-timezone)
     (let [read-only? (not (or write?
                               ;; we need to set autoCommit to false which causes postgresql
@@ -785,9 +782,6 @@
                      sql)
           max-rows (driver-api/determine-query-max-rows outer-query)]
       (let [session-tz (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))]
-        (when session-tz
-          (binding [*out* *err*]
-            (println "[TZ-DEBUG] execute-reducible-query session-tz=" session-tz "thread=" (.getName (Thread/currentThread)))))
         (do-with-connection-with-options
          driver
          (driver-api/database (driver-api/metadata-provider))

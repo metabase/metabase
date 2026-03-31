@@ -9,8 +9,6 @@
 
 (defmethod topic.backend/publish! :topic.backend/sync
   [_ topic-name messages]
-  (binding [*out* *err*]
-    (println "[TZ-DEBUG] sync-backend/publish! topic=" topic-name (count messages) "msgs"))
   (mq.impl/handle! topic-name {} messages)
   nil)
 

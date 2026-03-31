@@ -25,19 +25,11 @@
 (defn get-listener
   "Returns the listener config map for `channel`, or nil if not registered."
   [channel]
-  (let [result (get @*listeners* channel)]
-    (when (and (nil? result) (= channel :topic/connection-pool-invalidated))
-      (binding [*out* *err*]
-        (println "[TZ-DEBUG] get-listener: NOT FOUND" channel
-                 "listeners-atom-id=" (System/identityHashCode *listeners*)
-                 "keys=" (keys @*listeners*))))
-    result))
+  (get @*listeners* channel))
 
 (defn register-listener!
   "Atomically registers a listener for the given channel, throwing if one already exists."
   [channel listener-map]
-  (binding [*out* *err*]
-    (println "[TZ-DEBUG] register-listener!" channel "listeners-atom-id=" (System/identityHashCode *listeners*)))
   (let [already-registered? (atom false)]
     (swap! *listeners*
            (fn [m]
@@ -127,18 +119,13 @@
         [bindings & body] args
         batch?          (and config (:max-batch-messages config))]
     (if batch?
-      `(do (defmethod def-listener* ~channel [~'_]
-             (batch-listen!
-              ~channel
-              (fn [~@bindings] ~@body)
-              ~(select-keys config [:max-batch-messages :exclusive :dedup-fn])))
-           ;; Eagerly register so listeners work without requiring a startup/init step.
-           ;; register-listener! is idempotent — safe to call again from register-listeners!.
-           (def-listener* ~channel))
-      `(do (defmethod def-listener* ~channel [~'_]
-             (listen! ~channel ~(or config {}) (fn [~@bindings] ~@body)))
-           ;; Eagerly register so listeners work without requiring a startup/init step.
-           (def-listener* ~channel)))))
+      `(defmethod def-listener* ~channel [~'_]
+         (batch-listen!
+          ~channel
+          (fn [~@bindings] ~@body)
+          ~(select-keys config [:max-batch-messages :exclusive :dedup-fn])))
+      `(defmethod def-listener* ~channel [~'_]
+         (listen! ~channel ~(or config {}) (fn [~@bindings] ~@body))))))
 
 (defn register-listeners!
   "Call all [[def-listener!]] implementations to register their listeners.

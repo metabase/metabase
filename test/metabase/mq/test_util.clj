@@ -19,12 +19,13 @@
                              body
                              (cons {} body))]
     `(binding [q.backend/*backend*              :queue.backend/sync
+               listener/*listeners*              (atom {})
                publish-buffer/*publish-buffer*    (atom {})
                publish-buffer/*publish-buffer-ms* 0
                topic.backend/*backend*            :topic.backend/sync]
-       ;; Merge any explicitly-provided listeners on top of the already-registered listeners.
-       ;; Don't rebind *listeners* to a fresh atom — listeners are eagerly registered at
-       ;; def-listener! time into the root atom and must remain visible to all threads.
+       ;; Register all listen!/batch-listen! implementations into the fresh test atoms
+       (listener/register-listeners!)
+       ;; Merge any explicitly-provided listeners on top
        (let [listeners# ~listeners]
          (when (seq listeners#)
            (swap! listener/*listeners*

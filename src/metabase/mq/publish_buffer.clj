@@ -2,7 +2,6 @@
   "Publish buffering: batches rapid-fire publishes into time-windowed groups
    and flushes them on a background scheduled thread."
   (:require
-   [metabase.config.core :as config]
    [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log])
@@ -13,9 +12,8 @@
 
 (def ^:dynamic *publish-buffer-ms*
   "Time window in ms to buffer rapid-fire publishes. 0 = immediate publish.
-   Resets on every new message (sliding window).
-   Defaults to 0 in test mode (no background flush thread) and 100 in production."
-  (if config/is-test? 0 100))
+   Resets on every new message (sliding window)."
+  100)
 
 (def ^:dynamic *publish-buffer-max-ms*
   "Maximum time in ms since the first message before a flush is forced. 0 = no max."
@@ -32,18 +30,14 @@
   [channel messages]
   (if (zero? *publish-buffer-ms*)
     (transport/publish! channel messages)
-    (do
-      (binding [*out* *err*]
-        (println "[TZ-DEBUG] WARNING: buffered-publish! buffering" (count messages) "msg(s) for" channel
-                 "*publish-buffer-ms*=" *publish-buffer-ms*))
-      (swap! *publish-buffer*
-             (fn [buf]
-               (let [now (System/currentTimeMillis)]
-                 (update buf channel
-                         (fn [entry]
-                           (-> (or entry {:messages [] :deadline-ms 0 :created-ms now})
-                               (update :messages into messages)
-                               (assoc :deadline-ms (+ now *publish-buffer-ms*)))))))))))
+    (swap! *publish-buffer*
+           (fn [buf]
+             (let [now (System/currentTimeMillis)]
+               (update buf channel
+                       (fn [entry]
+                         (-> (or entry {:messages [] :deadline-ms 0 :created-ms now})
+                             (update :messages into messages)
+                             (assoc :deadline-ms (+ now *publish-buffer-ms*))))))))))
 
 (defn flush-publish-buffer!
   "Drains publish buffer entries past their deadline."

@@ -93,18 +93,22 @@
   ((resolve 'metabase.test.initialize.plugins/init-test-drivers!)
    [:driver-deprecation-test-legacy :driver-deprecation-test-new :secret-test-driver]))
 
+;; Initialize the MQ subsystem: sync backends, no buffering, register listeners.
+;; Must happen before :db so that listeners (e.g. connection-pool-invalidated) are available
+;; when database initialization triggers events.
+(define-initialization :mq
+  ;; Load driver.init so that namespaces containing def-listener! calls are loaded
+  ;; before register-listeners! iterates them. In production, core/init.clj loads these.
+  (classloader/require 'metabase.driver.init)
+  (classloader/require 'metabase.mq.init)
+  ((resolve 'metabase.mq.init/init-for-tests!)))
+
 ;; initializing the DB also does setup needed so the scheduler will work correctly. (Remember that the scheduler uses
 ;; a JDBC backend!)
 (define-initialization :db
+  (initialize-if-needed! :mq)
   (classloader/require 'metabase.test.initialize.db)
-  ((resolve 'metabase.test.initialize.db/init!))
-  ;; Load driver init namespace so MQ listeners (e.g. connection-pool-invalidated) are registered.
-  ;; In production this happens via core/init.clj -> driver/init.clj, but tests don't load core/init.clj.
-  (binding [*out* *err*]
-    (println "[TZ-DEBUG] :db init: loading metabase.driver.init"))
-  (classloader/require 'metabase.driver.init)
-  (binding [*out* *err*]
-    (println "[TZ-DEBUG] :db init: driver.init loaded, listeners=" (keys @(deref (resolve 'metabase.mq.listener/*listeners*))))))
+  ((resolve 'metabase.test.initialize.db/init!)))
 
 (define-initialization :web-server
   (initialize-if-needed! :db)

@@ -17,12 +17,18 @@
 (def ^:private valid-topic-backends
   #{:topic.backend/appdb :topic.backend/memory})
 
+(defn init-for-tests!
+  "Initialize the MQ subsystem for test mode: sync backends, no buffering, register listeners.
+  Called from the test initialization system (see `metabase.test.initialize`)."
+  []
+  (alter-var-root #'q.backend/*backend* (constantly :queue.backend/sync))
+  (alter-var-root #'topic.backend/*backend* (constantly :topic.backend/sync))
+  (alter-var-root #'publish-buffer/*publish-buffer-ms* (constantly 0))
+  (listener/register-listeners!))
+
 (defmethod startup/def-startup-logic! ::MqInit [_]
   (if config/is-test?
-    ;; In tests, backends and buffer defaults are set at var definition time (see backend.clj
-    ;; and publish_buffer.clj). Listeners are eagerly registered by def-listener! at namespace
-    ;; load time. Nothing else to do here.
-    nil
+    (init-for-tests!)
     ;; In production, use configured backends with background polling.
     (let [queue-be (keyword "queue.backend" (mq.settings/queue-backend))
           topic-be (keyword "topic.backend" (mq.settings/topic-backend))]

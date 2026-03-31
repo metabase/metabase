@@ -58,13 +58,8 @@
         start       (System/nanoTime)]
     (try
       (if-not listener
+        (log/debugf "No listener registered for %s %s, skipping message" transport (name channel))
         (do
-          (log/debugf "No listener registered for %s %s, skipping message" transport (name channel))
-          (binding [*out* *err*]
-            (println "[TZ-DEBUG] invoke-listener!: NO listener for" channel)))
-        (do
-          (binding [*out* *err*]
-            (println "[TZ-DEBUG] invoke-listener!: calling listener for" channel))
           (invoke-fn listener)
           (when on-success (on-success))
           (mq.analytics/inc! :metabase-mq/batches-handled (assoc labels :status "success"))))

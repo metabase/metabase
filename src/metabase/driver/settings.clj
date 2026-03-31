@@ -19,8 +19,6 @@
 
 (defn- -report-timezone-on-change [old-value new-value]
   (when-not (= old-value new-value)
-    (binding [*out* *err*]
-      (println "[TZ-DEBUG] report-timezone changing:" (pr-str old-value) "->" (pr-str new-value) "thread=" (.getName (Thread/currentThread))))
     (events/publish-event! :event/report-timezone-updated {:old-timezone old-value, :new-timezone new-value})))
 
 (defsetting report-timezone
