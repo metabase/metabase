@@ -601,7 +601,8 @@
                               :export     (constantly ::serdes/skip)
                               :import-with-context (fn [current _ _]
                                                      (let [field-ref (field-path->field-ref (serdes/path current))]
-                                                       (serdes/*import-field-fk* field-ref)))}}})
+                                                       (serdes/*import-field-fk* field-ref)))}}
+   :defaults {:has_more_values false}})
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
@@ -619,4 +620,5 @@
   ;; don't have their own directories.
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
-    (update field-path (dec (count field-path)) str field-values-slug)))
+    (update field-path (dec (count field-path))
+            (fn [segment] (update segment :label str field-values-slug)))))

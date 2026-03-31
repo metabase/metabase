@@ -379,12 +379,7 @@
     (serdes/mbql-deps source))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
-  ;; Path: ["collections" "<nested ... collections>" "transforms" "<entity_id_name>"]
-  ;; Use default collection path, then restructure similar to NativeQuerySnippet
-  (let [basis (serdes/storage-default-collection-path transform ctx)
-        file  (last basis)
-        colls (->> basis rest (drop-last 2))] ; Drop "collections" at start, and last two elements
-    (concat ["collections"] colls ["transforms" file])))
+  (serdes/storage-default-collection-path transform ctx "transforms"))
 
 (defmethod serdes/required "Transform"
   [_model id]

@@ -30,10 +30,6 @@ export const getDefaultLocale = (
   );
 };
 
-export const getUserToken = (hash = window.location.hash): string => {
-  return hash.replace(/^#/, "");
-};
-
 export const validatePassword = async (password: string) => {
   const error = MetabaseSettings.passwordComplexityDescription(password);
   if (error) {
