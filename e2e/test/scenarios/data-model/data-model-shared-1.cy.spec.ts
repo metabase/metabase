@@ -9,35 +9,41 @@ const { H } = cy;
 const { TablePicker, TableSection, FieldSection, PreviewSection, Shared } =
   cy.H.DataModel;
 
-const {
-  visitArea,
-  getBasePathForArea,
-  getCheckLocation,
-  verifyAndCloseToast,
-  verifyObjectDetailPreview,
-  getInterceptsForArea,
-} = Shared;
+const { verifyAndCloseToast, verifyObjectDetailPreview } = Shared;
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 
-const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
-type Area = (typeof areas)[number];
+const BASE_PATH = "/data-studio/data";
+const visit = H.DataModel.visitDataStudio;
 
-describe.each<Area>(areas)("data model > %s", (area: Area) => {
-  const getBasePath = getBasePathForArea(area);
-  const visit = visitArea(area);
-  const checkLocation = getCheckLocation(area);
+function checkLocation(path: string) {
+  cy.location("pathname").should("eq", `${BASE_PATH}${path}`);
+}
 
+describe("data model", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
 
-    getInterceptsForArea(area);
+    cy.intercept("GET", "/api/database").as("databases");
+    cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
+    cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+    cy.intercept("GET", "/api/database/*/schema/*").as("schema");
+    cy.intercept("POST", "/api/dataset*").as("dataset");
+    cy.intercept("GET", "/api/field/*/values").as("fieldValues");
+    cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
+      "updateField",
+    );
+    cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
+    cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
+    cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
+    cy.intercept("PUT", "/api/table").as("updateTables");
+    cy.intercept("PUT", "/api/table/*").as("updateTable");
   });
 
   describe("Data loading", () => {
@@ -68,9 +74,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       checkLocation(
         `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/12345`,
       );
-      if (area === "admin") {
-        verifyAdminTableSectionEmptyState();
-      }
     });
 
     it(
@@ -85,12 +88,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           fieldId: 12345, // we're force navigating to a fake field id
           skipWaiting: true,
         });
-        if (area === "admin") {
-          cy.wait("@databases");
-          cy.wait(100); // wait with assertions for React effects to kick in
-        } else {
-          cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
-        }
+        cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
 
         TablePicker.getDatabases().should("have.length", 1);
         TablePicker.getTables().should("have.length", 8);
@@ -98,12 +96,10 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
         );
 
-        if (area === "data studio") {
-          H.DataModel.get().within(() => {
-            cy.findByText("Field details").should("be.visible");
-            cy.findByText("Not found.").should("be.visible");
-          });
-        }
+        H.DataModel.get().within(() => {
+          cy.findByText("Field details").should("be.visible");
+          cy.findByText("Not found.").should("be.visible");
+        });
       },
     );
 
@@ -179,7 +175,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
         cy.location("pathname").should(
           "eq",
-          `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+          `${BASE_PATH}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
         );
 
         TablePicker.getTable("Products").click();
@@ -187,7 +183,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
         cy.location("pathname").should((pathname) => {
           return pathname.startsWith(
-            `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
+            `${BASE_PATH}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
           );
         });
       });
@@ -204,12 +200,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
         TablePicker.getTables().eq(0).click();
         TableSection.getNameInput().should("have.value", "Reviews");
-        if (area === "admin") {
-          verifyFieldSectionEmptyState();
-        }
         cy.location("pathname").should((pathname) => {
           return pathname.startsWith(
-            `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
+            `${BASE_PATH}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}/table/`,
           );
         });
       });
@@ -226,13 +219,13 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         TablePicker.getDatabase("QA MySQL8").click();
         cy.location("pathname").should(
           "eq",
-          `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+          `${BASE_PATH}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
         );
 
         TablePicker.getDatabase("QA MySQL8").click();
         cy.location("pathname").should(
           "eq",
-          `${getBasePath()}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
+          `${BASE_PATH}/database/${MYSQL_DB_ID}/schema/${MYSQL_DB_SCHEMA_ID}`,
         );
 
         cy.log("ensure navigation to another db works");
@@ -261,9 +254,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           `/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
         );
         TableSection.get().should("be.visible");
-        if (area === "admin") {
-          verifyFieldSectionEmptyState();
-        }
 
         TablePicker.getTable("Products").should("be.visible").click();
         checkLocation(
@@ -271,9 +261,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         );
 
         TableSection.get().should("be.visible");
-        if (area === "admin") {
-          verifyFieldSectionEmptyState();
-        }
       });
     });
 
@@ -291,11 +278,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
         it("should allow to navigate databases, schemas, and tables", () => {
           visit();
-          if (area === "admin") {
-            checkLocation("/database");
-          } else {
-            checkLocation("");
-          }
+          checkLocation("");
 
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 0);
@@ -327,7 +310,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           TablePicker.getTable("Animals").click();
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `${getBasePath()}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `${BASE_PATH}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
           TableSection.getNameInput().should("have.value", "Animals");
@@ -339,7 +322,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           );
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `${getBasePath()}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `${BASE_PATH}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
 
@@ -352,20 +335,15 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           TablePicker.getTable("Birds").click();
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `${getBasePath()}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `${BASE_PATH}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
           TableSection.getNameInput().should("have.value", "Birds");
 
           cy.log("close schema");
-          if (area === "admin") {
-            TablePicker.getSchema("Wild").click();
-          }
-          if (area === "data studio") {
-            TablePicker.getSchema("Wild").within(() => {
-              cy.findByRole("button", { name: "Collapse" }).click();
-            });
-          }
+          TablePicker.getSchema("Wild").within(() => {
+            cy.findByRole("button", { name: "Collapse" }).click();
+          });
 
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 2);
@@ -373,14 +351,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           TablePicker.getTable("Birds").should("not.exist");
 
           cy.log("close database");
-          if (area === "admin") {
-            TablePicker.getDatabase("Writable Postgres12").click();
-          }
-          if (area === "data studio") {
-            TablePicker.getDatabase("Writable Postgres12").within(() => {
-              cy.findByRole("button", { name: "Collapse" }).click();
-            });
-          }
+          TablePicker.getDatabase("Writable Postgres12").within(() => {
+            cy.findByRole("button", { name: "Collapse" }).click();
+          });
           TablePicker.getDatabases().should("have.length", 2);
           TablePicker.getSchemas().should("have.length", 0);
           TablePicker.getTables().should("have.length", 0);
@@ -388,7 +361,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           cy.log("we still have a table opened");
           cy.location("pathname").should((pathname) => {
             return pathname.startsWith(
-              `${getBasePath()}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
+              `${BASE_PATH}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
 
@@ -436,10 +409,8 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       }
       TableSection.clickField("ID");
 
-      if (area === "data studio") {
-        // Sometimes in CI this doesn't happen
-        FieldSection.get().scrollIntoView();
-      }
+      // Sometimes in CI this doesn't happen
+      FieldSection.get().scrollIntoView();
 
       FieldSection.getDataType()
         .should("be.visible")
@@ -494,18 +465,10 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
     it("should be able to see details of a table", () => {
       visit({ databaseId: SAMPLE_DB_ID });
 
-      if (area === "admin") {
-        verifyAdminTableSectionEmptyState();
-      } else {
-        verifyDataStudioTableSectionEmptyState();
-      }
+      H.DataModel.TableSection.get().should("not.exist");
 
       TablePicker.getTable("Orders").click();
-      if (area === "admin") {
-        verifyFieldSectionEmptyState();
-      } else {
-        verifyDataStudioFieldSectionEmptyState();
-      }
+      H.DataModel.FieldSection.get().should("not.exist");
       TableSection.getNameInput().should("have.value", "Orders");
       TableSection.getDescriptionInput().should(
         "have.value",
@@ -739,34 +702,6 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
     });
   });
 });
-
-function verifyAdminTableSectionEmptyState() {
-  H.DataModel.get()
-    .findByText("Start by selecting data to model")
-    .should("be.visible");
-  H.DataModel.get()
-    .findByText("Browse your databases to find the table you’d like to edit.")
-    .should("be.visible");
-}
-
-function verifyDataStudioTableSectionEmptyState() {
-  H.DataModel.TableSection.get().should("not.exist");
-}
-
-function verifyFieldSectionEmptyState() {
-  H.DataModel.get()
-    .findByText("Edit the table and fields")
-    .should("be.visible");
-  H.DataModel.get()
-    .findByText(
-      "Select a field to edit its name, description, formatting, and more.",
-    )
-    .should("be.visible");
-}
-
-function verifyDataStudioFieldSectionEmptyState() {
-  H.DataModel.FieldSection.get().should("not.exist");
-}
 
 function verifyTablePreview({
   column,

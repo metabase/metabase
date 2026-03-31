@@ -1158,7 +1158,7 @@ describe("issue 21528", () => {
     cy.findByRole("main")
       .findByText("Start by selecting data to model")
       .should("be.visible");
-    cy.location("pathname").should("contain", "/data-studio/data");
+    cy.location("pathname").should("eq", "/data-studio/data");
     H.goToMainApp();
 
     H.openNavigationSidebar();

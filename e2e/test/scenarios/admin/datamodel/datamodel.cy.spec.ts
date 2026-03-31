@@ -15,11 +15,14 @@ describe("scenarios > admin > datamodel redirects", () => {
     cy.location("pathname").should("eq", "/data-studio/data");
   });
 
-  it("should redirect /admin/datamodel/database/... to /data-studio/data", () => {
+  it("should redirect /admin/datamodel/database/... to /data-studio/data preserving entity IDs", () => {
     cy.visit(
       `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
     );
-    cy.location("pathname").should("eq", "/data-studio/data");
+    cy.location("pathname").should(
+      "eq",
+      `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+    );
   });
 
   it("should redirect /admin/datamodel/segments to /data-studio/data", () => {

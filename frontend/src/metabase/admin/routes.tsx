@@ -97,6 +97,22 @@ export const getRoutes = (
           </Route>
         </Route>
         <Redirect from="datamodel" to="/data-studio/data" />
+        <Redirect
+          from="datamodel/database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+          to="/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+        />
+        <Redirect
+          from="datamodel/database/:databaseId/schema/:schemaId/table/:tableId"
+          to="/data-studio/data/database/:databaseId/schema/:schemaId/table/:tableId"
+        />
+        <Redirect
+          from="datamodel/database/:databaseId/schema/:schemaId"
+          to="/data-studio/data/database/:databaseId/schema/:schemaId"
+        />
+        <Redirect
+          from="datamodel/database/:databaseId"
+          to="/data-studio/data/database/:databaseId"
+        />
         <Redirect from="datamodel/*" to="/data-studio/data" />
         {/* PEOPLE */}
         <Route path="people" component={createAdminRouteGuard("people")}>

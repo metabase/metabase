@@ -19,14 +19,9 @@ export const DataModel = {
   visitDataStudioMeasures,
   get: getDataModel,
   Shared: {
-    visitArea,
-    getBasePathForArea,
-    getCheckLocation,
-    getTriggeredFromArea,
     verifyAndCloseToast,
     verifyTablePreview,
     verifyObjectDetailPreview,
-    getInterceptsForArea,
   },
   TablePicker: {
     get: getTablePicker,
@@ -725,40 +720,6 @@ export function getSchemaCheckbox(schemaName: string) {
   return getTablePickerSchema(schemaName).find('input[type="checkbox"]');
 }
 
-export const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
-export type Area = (typeof areas)[number];
-
-export function getBasePathForArea(_area: Area) {
-  return () => "/data-studio/data";
-}
-
-export function getCheckLocation(area: Area) {
-  return (path: string) => {
-    const basePath = getBasePathForArea(area)();
-    cy.location("pathname").should("eq", `${basePath}${path}`);
-  };
-}
-
-export function getTriggeredFromArea(area: Area) {
-  return () => (area === "admin" ? "admin" : "data_studio");
-}
-
-export function visitArea(area: Area) {
-  return (
-    ...args:
-      | Parameters<typeof H.DataModel.visit>
-      | Parameters<typeof H.DataModel.visitDataStudio>
-  ) => {
-    if (area === "admin") {
-      cy.log("visit admin");
-      visit(...args);
-    } else {
-      cy.log("visit datastudio");
-      visitDataStudio(...args);
-    }
-  };
-}
-
 function verifyAndCloseToast(message: string) {
   undoToast().should("contain.text", message);
   undoToast().icon("close").click({ force: true });
@@ -816,30 +777,4 @@ function verifyObjectDetailPreview({
       .eq(foundRowIndex)
       .should("contain", value);
   });
-}
-
-function getInterceptsForArea(area: Area) {
-  cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
-  cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
-  cy.intercept("GET", "/api/database/*/schema/*").as("schema");
-  cy.intercept("POST", "/api/dataset*").as("dataset");
-  cy.intercept("GET", "/api/field/*/values").as("fieldValues");
-  cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
-    "updateField",
-  );
-  cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
-  cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
-  cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
-  cy.intercept("PUT", "/api/table").as("updateTables");
-  cy.intercept("PUT", "/api/table/*").as("updateTable");
-
-  if (area === "admin") {
-    cy.intercept("GET", "/api/database?*").as("databases");
-    cy.intercept("GET", "/api/field/*/values").as("fieldValues");
-    cy.intercept("PUT", "/api/table/*").as("updateTable");
-  }
-
-  if (area === "data studio") {
-    cy.intercept("GET", "/api/database").as("databases");
-  }
 }

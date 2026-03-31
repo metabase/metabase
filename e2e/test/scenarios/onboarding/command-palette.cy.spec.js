@@ -294,6 +294,11 @@ describe("command palette", () => {
 
         H.commandPaletteInput().type("data");
         H.commandPaletteAction("Databases").should("not.exist");
+        H.commandPaletteInput().clear();
+
+        // Permissions
+        H.commandPaletteInput().type("perm");
+        H.commandPaletteAction("Permissions").should("not.exist");
       });
     });
 
@@ -351,6 +356,11 @@ describe("command palette", () => {
 
           H.commandPaletteInput().type("data");
           H.commandPaletteAction("Databases").should("exist");
+          H.commandPaletteInput().clear();
+
+          // Permissions
+          H.commandPaletteInput().type("perm");
+          H.commandPaletteAction("Permissions").should("not.exist");
           H.commandPaletteInput().clear();
 
           cy.log("should not see other admin links");
