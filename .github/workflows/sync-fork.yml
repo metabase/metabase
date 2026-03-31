@@ -2,7 +2,7 @@ name: Sync Fork with Upstream
 
 on:
   schedule:
-    - cron: "0 */6 * * *" # Every 6 hours
+    - cron: "0 2 * * *" # Every day at 2 AM UTC
   workflow_dispatch:
     inputs:
       release_branch_count:
