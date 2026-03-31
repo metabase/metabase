@@ -97,7 +97,10 @@
 ;; a JDBC backend!)
 (define-initialization :db
   (classloader/require 'metabase.test.initialize.db)
-  ((resolve 'metabase.test.initialize.db/init!)))
+  ((resolve 'metabase.test.initialize.db/init!))
+  ;; Load driver init namespace so MQ listeners (e.g. connection-pool-invalidated) are registered.
+  ;; In production this happens via core/init.clj -> driver/init.clj, but tests don't load core/init.clj.
+  (classloader/require 'metabase.driver.init))
 
 (define-initialization :web-server
   (initialize-if-needed! :db)
