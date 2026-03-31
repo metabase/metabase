@@ -31,15 +31,17 @@
          {:stale true :dependency_analysis_version 0})))))
 
 (defn upsert-status!
-  "Upsert a dependency_status entry, setting stale=false and version to current.
-  Uses [[app-db/update-or-insert!]] for cross-database atomicity."
+  "Upsert a dependency_status entry, setting stale=false, version to current,
+  and clearing any failure state. Uses [[app-db/update-or-insert!]] for cross-database atomicity."
   [entity-type entity-id]
   (app-db/update-or-insert!
    :model/DependencyStatus
    {:entity_type entity-type :entity_id entity-id}
    (fn [_existing]
      {:dependency_analysis_version models.dependency/current-dependency-analysis-version
-      :stale false})))
+      :stale false
+      :fail_count 0
+      :next_retry_at nil})))
 
 (defmulti hydrate-for-deps
   "Hydrate a batch of instances with data needed for dependency calculation.
@@ -112,10 +114,3 @@
                        :next_retry_at (when (pos? retry-minutes)
                                         (t/plus (t/offset-date-time) (t/minutes retry-minutes)))}))))))
 
-(defn clear-failure!
-  "Clear failure state after a successful dependency calculation."
-  [entity-type entity-id]
-  (t2/update! :model/DependencyStatus
-              :entity_type entity-type
-              :entity_id entity-id
-              {:fail_count 0 :next_retry_at nil}))

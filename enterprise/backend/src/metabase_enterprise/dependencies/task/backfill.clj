@@ -95,7 +95,6 @@
               (+ total
                  (try
                    (compute-deps-for-entity! entity-type entity)
-                   (deps.dependency-status/clear-failure! entity-type (:id entity))
                    1
                    (catch Exception e
                      (let [id (:id entity)]

@@ -43,7 +43,8 @@
 (methodical/defmethod events/publish-event! ::card-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :card :from_entity_id (:id object))))
+    (t2/delete! :model/Dependency :from_entity_type :card :from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus :entity_type :card :entity_id (:id object))))
 
 ;; ### Snippets
 (derive ::snippet-deps :metabase/event)
@@ -61,7 +62,8 @@
 (methodical/defmethod events/publish-event! ::snippet-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))))
+    (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus :entity_type :snippet :entity_id (:id object))))
 
 ;; ### Transforms
 (derive ::transform-deps :metabase/event)
@@ -80,7 +82,8 @@
   [_ {:keys [id]}]
   ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)))
+    (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)
+    (t2/delete! :model/DependencyStatus :entity_type :transform :entity_id id)))
 
 ;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
 ;; (And if the target has changed, the old table's dep on the transform is dropped.)
@@ -115,7 +118,8 @@
 (methodical/defmethod events/publish-event! ::dashboard-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :dashboard :from_entity_id (:id object))))
+    (t2/delete! :model/Dependency :from_entity_type :dashboard :from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus :entity_type :dashboard :entity_id (:id object))))
 
 ;; ### Documents
 (derive ::document-deps :metabase/event)
@@ -133,7 +137,8 @@
 (methodical/defmethod events/publish-event! ::document-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))))
+    (t2/delete! :model/Dependency :from_entity_type :document :from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus :entity_type :document :entity_id (:id object))))
 
 ;; ### Sandboxes
 (derive ::sandbox-deps :metabase/event)
@@ -151,7 +156,8 @@
 (methodical/defmethod events/publish-event! ::sandbox-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :sandbox :from_entity_id (:id object))))
+    (t2/delete! :model/Dependency :from_entity_type :sandbox :from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus :entity_type :sandbox :entity_id (:id object))))
 
 ;; ### Segments
 (derive ::segment-deps :metabase/event)
@@ -169,7 +175,8 @@
 (methodical/defmethod events/publish-event! ::segment-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))))
+    (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus :entity_type :segment :entity_id (:id object))))
 
 ;; ### Measures
 (derive ::measure-deps :metabase/event)
@@ -187,7 +194,8 @@
 (methodical/defmethod events/publish-event! ::measure-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))))
+    (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))
+    (t2/delete! :model/DependencyStatus :entity_type :measure :entity_id (:id object))))
 
 ;; ## Checking dependents for breakage (analysis_finding staleness)
 ;;
