@@ -114,7 +114,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
           <TargetItemLink
             label={database.name}
             icon="database"
-            to={Urls.dataModel({ databaseId: database.id })}
+            to={Urls.dataStudioData({ databaseId: database.id })}
             data-testid="database-link"
           />
           <TargetItemDivider />
@@ -127,7 +127,7 @@ function TargetInfo({ transform }: TargetInfoProps) {
             icon="folder"
             to={
               table || targetSchemaExists
-                ? Urls.dataModel({
+                ? Urls.dataStudioData({
                     databaseId: database.id,
                     schemaName: target.schema,
                   })

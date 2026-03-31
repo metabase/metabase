@@ -1,5 +1,10 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { mainAppLinkText } from "e2e/support/helpers";
 
 describe("issue 26470", { tags: "@external" }, () => {
@@ -179,17 +184,18 @@ describe("(metabase#45042)", () => {
 });
 
 describe("(metabase#46714)", () => {
+  const { ORDERS_ID } = SAMPLE_DATABASE;
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.visit("/admin/datamodel/segment/create");
+    cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+    cy.visit(
+      `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments/new`,
+    );
+    cy.wait("@metadata");
 
-    cy.findByTestId("segment-editor").findByText("Select a table").click();
-
-    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
-
-    cy.findByTestId("entity-picker-modal").should("not.exist");
     cy.findByTestId("segment-editor").findByText("Orders").should("be.visible");
 
     cy.findByTestId("segment-editor")

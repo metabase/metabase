@@ -30,11 +30,6 @@ export const getAdminPaths: () => AdminPath[] = () => {
       key: "metabot",
     },
     {
-      name: t`Table Metadata`,
-      path: "/admin/datamodel",
-      key: "data-model",
-    },
-    {
       name: t`People`,
       path: "/admin/people",
       key: "people",

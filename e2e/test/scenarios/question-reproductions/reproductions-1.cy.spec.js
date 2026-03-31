@@ -1019,10 +1019,8 @@ describe("issue 19742", () => {
     });
 
     H.openNavigationSidebar();
-    H.goToAdmin();
+    H.DataModel.visitDataStudio();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Table Metadata").click();
     H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
 
     H.goToMainApp();

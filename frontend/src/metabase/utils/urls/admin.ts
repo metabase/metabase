@@ -1,8 +1,6 @@
 import type {
   BaseUser,
   DatabaseId,
-  FieldId,
-  SchemaName,
   SegmentId,
   TableId,
 } from "metabase-types/api";
@@ -66,41 +64,6 @@ export function editDatabase(databaseId: DatabaseId) {
 
 export function editDatabaseWritableConnection(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/write-data`;
-}
-
-type DataModelParams = {
-  databaseId?: DatabaseId;
-  schemaName?: SchemaName | null;
-  tableId?: TableId;
-  fieldId?: FieldId;
-};
-
-export function dataModel({
-  databaseId,
-  schemaName,
-  tableId,
-  fieldId,
-}: DataModelParams = {}) {
-  const parts = ["/admin/datamodel"];
-
-  if (databaseId != null) {
-    parts.push("database", String(databaseId));
-
-    if (schemaName != null) {
-      const schemaId = `${databaseId}:${encodeURIComponent(schemaName)}`;
-      parts.push("schema", schemaId);
-
-      if (tableId != null) {
-        parts.push("table", String(tableId));
-
-        if (fieldId != null) {
-          parts.push("field", String(fieldId));
-        }
-      }
-    }
-  }
-
-  return parts.join("/");
 }
 
 export type DataModelSegmentsParams = {

@@ -36,12 +36,10 @@ describe("scenarios > admin > permissions", () => {
     cy.signInAsNormalUser();
     cy.visit("/");
 
-    // Go to the admin settings
-    H.goToAdmin();
+    // Go to the Data Studio data model page
+    H.DataModel.visitDataStudio();
 
     // Assert the Data Model page state
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Table Metadata");
     H.DataModel.TablePicker.getTable("Orders").click();
     cy.wait("@tableMetadataFetch");
 
@@ -83,12 +81,10 @@ describe("scenarios > admin > permissions", () => {
     cy.signInAsNormalUser();
     cy.visit("/");
 
-    // Go to the admin settings
-    H.goToAdmin();
+    // Go to the Data Studio data model page
+    H.DataModel.visitDataStudio();
 
     // Assert the Data Model page state
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Table Metadata");
     H.DataModel.TablePicker.getTables().should("have.length", 8);
     H.DataModel.TablePicker.getTable("Accounts").should("be.visible");
     H.DataModel.TablePicker.getTable("Analytic Events").should("be.visible");

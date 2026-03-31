@@ -60,7 +60,7 @@ describe("issue 18384", () => {
   });
 
   it("should be able to open field properties even when one of the tables is hidden (metabase#18384)", () => {
-    H.DataModel.visit({
+    H.DataModel.visitDataStudio({
       databaseId: SAMPLE_DB_ID,
       schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: PEOPLE_ID,
@@ -70,7 +70,7 @@ describe("issue 18384", () => {
 
     cy.location("pathname").should(
       "eq",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}`,
+      `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}`,
     );
 
     H.DataModel.FieldSection.getNameInput()
@@ -86,7 +86,7 @@ describe("issue 21984", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    H.DataModel.visit({
+    H.DataModel.visitDataStudio({
       databaseId: SAMPLE_DB_ID,
       schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: REVIEWS_ID,
@@ -133,9 +133,8 @@ describe("issue 15542", () => {
 
   function openOrdersProductIdSettings() {
     // Navigate without reloading the page
-    H.goToAdmin();
-
-    H.appBar().findByText("Table Metadata").click();
+    H.navigationSidebar().findByText("Data Studio").click();
+    cy.findByText("Data").click();
     H.DataModel.TablePicker.getTable("Orders").click();
     H.DataModel.TableSection.clickField("Product ID");
   }
@@ -144,7 +143,7 @@ describe("issue 15542", () => {
     // This test does manual naviation instead of using openOrdersTable and similar
     // helpers because they use cy.visit under the hood and that reloads the page,
     // clearing the in-browser cache, which is what we are testing here.
-    H.DataModel.visit({
+    H.DataModel.visitDataStudio({
       databaseId: SAMPLE_DB_ID,
       schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
@@ -197,17 +196,9 @@ describe("issue 52411", { tags: "@external" }, () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
   });
 
-  it("should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)", () => {
+  it("should redirect /admin/datamodel/segments to /data-studio/data (metabase#52411)", () => {
     cy.visit("/admin/datamodel/segments");
-    cy.findByTestId("segment-list-table").findByText("Filter by table").click();
-    H.popover().within(() => {
-      cy.findByText("Writable Postgres12").click();
-      cy.findByText("Wild").click();
-      cy.findByText("Birds").click();
-    });
-    cy.findByTestId("segment-list-table")
-      .findByText("Birds")
-      .should("be.visible");
+    cy.location("pathname").should("eq", "/data-studio/data");
   });
 });
 
@@ -219,7 +210,7 @@ describe("issue 53595", () => {
   });
 
   it("all options are visibile while filtering the list of entity types (metabase#53595)", () => {
-    H.DataModel.visit({
+    H.DataModel.visitDataStudio({
       databaseId: SAMPLE_DB_ID,
       schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: PEOPLE_ID,

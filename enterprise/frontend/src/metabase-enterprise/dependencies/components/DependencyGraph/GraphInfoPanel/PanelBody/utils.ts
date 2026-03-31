@@ -26,7 +26,7 @@ export function getNodeTableInfo(
     },
     metadata: {
       label: t`View metadata`,
-      url: Urls.dataModel({
+      url: Urls.dataStudioData({
         databaseId: table.db_id,
         schemaName: table.schema,
         tableId: table.id,
@@ -36,11 +36,11 @@ export function getNodeTableInfo(
       ? [
           {
             label: table.db.name,
-            url: Urls.dataModel({ databaseId: table.db.id }),
+            url: Urls.dataStudioData({ databaseId: table.db.id }),
           },
           {
             label: table.schema,
-            url: Urls.dataModel({
+            url: Urls.dataStudioData({
               databaseId: table.db.id,
               schemaName: table.schema,
             }),

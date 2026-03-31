@@ -2,7 +2,6 @@ const { H } = cy;
 
 import dayjs from "dayjs";
 
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -1154,16 +1153,12 @@ describe("issue 21528", () => {
     H.popover().contains("Aerodynamic Bronze Hat - 144").should("be.visible");
 
     cy.log("The following scenario breaks on 46");
-    // Navigating to another page via JavaScript is faster than using `cy.visit("/admin/datamodel")` to load the whole page again.
-    H.goToAdmin();
-    H.appBar().findByText("Table Metadata").click();
+    // Navigating to another page via JavaScript is faster than using `cy.visit(...)` to load the whole page again.
+    cy.visit("/data-studio/data");
     cy.findByRole("main")
       .findByText("Start by selecting data to model")
       .should("be.visible");
-    cy.location("pathname").should(
-      "eq",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}`,
-    );
+    cy.location("pathname").should("contain", "/data-studio/data");
     H.goToMainApp();
 
     H.openNavigationSidebar();

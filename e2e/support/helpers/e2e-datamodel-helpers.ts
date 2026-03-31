@@ -146,7 +146,7 @@ export const DataModel = {
   },
 };
 
-const DEFAULT_BASE_PATH = "/admin/datamodel";
+const DEFAULT_BASE_PATH = "/data-studio/data";
 
 function visit({
   databaseId,
@@ -728,8 +728,8 @@ export function getSchemaCheckbox(schemaName: string) {
 export const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
 export type Area = (typeof areas)[number];
 
-export function getBasePathForArea(area: Area) {
-  return () => (area === "admin" ? "/admin/datamodel" : "/data-studio/data");
+export function getBasePathForArea(_area: Area) {
+  return () => "/data-studio/data";
 }
 
 export function getCheckLocation(area: Area) {

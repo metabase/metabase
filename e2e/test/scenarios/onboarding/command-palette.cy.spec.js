@@ -290,12 +290,10 @@ describe("command palette", () => {
         H.commandPaletteAction("Tools").should("not.exist");
         H.commandPaletteInput().clear();
 
-        //Database and table metadata
+        //Database
 
         H.commandPaletteInput().type("data");
         H.commandPaletteAction("Databases").should("not.exist");
-        H.commandPaletteInput().clear().type("tabl");
-        H.commandPaletteAction("Table Metadata").should("not.exist");
       });
     });
 
@@ -349,12 +347,10 @@ describe("command palette", () => {
           H.commandPaletteAction("Tools").should("exist");
           H.commandPaletteInput().clear();
 
-          //Database and table metadata
+          //Database
 
           H.commandPaletteInput().type("data");
           H.commandPaletteAction("Databases").should("exist");
-          H.commandPaletteInput().clear().type("tabl");
-          H.commandPaletteAction("Table Metadata").should("exist");
           H.commandPaletteInput().clear();
 
           cy.log("should not see other admin links");
@@ -623,8 +619,8 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
     cy.realPress("5");
-    cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("9");
+    cy.location("pathname").should("contain", "/admin/people");
+    cy.realPress("8");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 
