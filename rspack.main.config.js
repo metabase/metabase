@@ -106,16 +106,7 @@ const config = {
     "app-public": "./app-public.ts",
     "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
-
-    // Stable filename (no hash) + runtime: false = self-contained bundle.
-    // embed-mcp.html is a Mustache template served by the backend; cache-busting
-    // is handled via ?v=<mb-version-hash> rather than HtmlWebpackPlugin injection.
-    "app-embed-mcp": {
-      import: "./app-embed-mcp.tsx",
-      filename: "app-embed-mcp.js",
-      runtime: false,
-    },
-
+    "app-embed-mcp": "./app-embed-mcp.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
@@ -237,24 +228,25 @@ const config = {
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas|html2canvas-pro)[\\/])/,
+          chunks: "all",
           name: "vendor",
         },
         sqlFormatter: {
           test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
+          chunks: "all",
           name: "sql-formatter",
         },
         jspdf: {
           test: /[\\/]node_modules[\\/]jspdf[\\/]/,
+          chunks: "all",
           name: "jspdf",
         },
         html2canvas: {
           test: /[\\/]node_modules[\\/](html2canvas|html2canvas-pro)[\\/]/,
+          chunks: "all",
           name: "html2canvas",
         },
       },
-
-      // MCP Apps are served from a Mustache template without HtmlWebpackPlugin.
-      chunks: (chunk) => chunk.name !== "app-embed-mcp",
     },
     minimizer: [new rspack.SwcJsMinimizerRspackPlugin()],
   },
@@ -262,13 +254,7 @@ const config = {
   plugins: [
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
-      // The MCP is served from a Mustache template so it can't reference content hash.
-      // It uses ?v=<mb-version-hash> for cache busting.
-      filename: (path) =>
-        isDevMode || path.chunk?.name === "app-embed-mcp"
-          ? "[name].css"
-          : "[name].[contenthash].css",
-
+      filename: isDevMode ? "[name].css" : "[name].[contenthash].css",
       chunkFilename: isDevMode ? "[id].css" : "[id].[contenthash].css",
 
       // We use CSS modules to scope styles, so this is safe to ignore according to the docs:
@@ -300,6 +286,18 @@ const config = {
       chunksSortMode: "manual",
       chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    new HtmlWebpackPlugin({
+      filename: "../../embed-mcp.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "vendor-styles", "styles", "app-embed-mcp"],
+      template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
+
+      // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),
+      // so asset URLs must point to the Metabase instance. We embed a Mustache
+      // variable in publicPath — HtmlWebpackPlugin emits it literally, then
+      // Stencil substitutes it at runtime with the real instance URL.
+      publicPath: "{{{instanceUrlRaw}}}/app/dist/",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     // https://github.com/orgs/remarkjs/discussions/903
@@ -366,10 +364,9 @@ if (shouldEnableHotRefresh) {
     new ReactRefreshPlugin({
       overlay: false,
 
-      // app-embed-mcp runs in an isolated iframe with no HMR websocket.
-      // Excluding it removes the React Refresh runtime (which uses eval)
-      // and avoids CSP violations in the MCP app sandbox.
-      exclude: [SDK_DOCS_SNIPPETS_PATH, /node_modules/, /app-embed-mcp/],
+      // app-embed-mcp runs in an isolated iframe with CSP restrictions.
+      // Excluding it avoids injecting the React Refresh runtime which uses eval.
+      exclude: [SDK_DOCS_SNIPPETS_PATH, /app-embed-mcp/],
     }),
   );
 }
