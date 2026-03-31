@@ -5,9 +5,7 @@ export const EChartsRendererRoot = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  /* zrender adds user-select: none to the root svg element which prevents
-     users from selecting text on charts. Only restore on desktop — on touch
-     devices it causes unwanted text selection during gestures. */
+  /* HACK: zrender adds user-select: none to the root svg element which prevents users from selecting text on charts */
   @media (hover: hover) {
     & svg {
       user-select: auto !important;

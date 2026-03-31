@@ -77,21 +77,6 @@ describe("scenarios > embedding-sdk > touch-brush", () => {
         cy.findByText("Count by Product ID").should("not.exist");
       });
     });
-
-    it("should suppress context menu on the chart", () => {
-      mountInteractiveQuestion();
-      waitForChart();
-
-      cy.findByTestId("chart-container").then(($el) => {
-        const event = new Event("contextmenu", {
-          bubbles: true,
-          cancelable: true,
-        });
-        const prevented = !$el[0].dispatchEvent(event);
-
-        expect(prevented).to.be.true;
-      });
-    });
   });
 
   describe("desktop (non-touch)", () => {

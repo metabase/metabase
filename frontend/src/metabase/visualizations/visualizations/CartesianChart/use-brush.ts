@@ -260,10 +260,6 @@ function useTouchBrush({
       }
     };
 
-    // Prevent native long-press context menu on touch devices.
-    const onContextMenu = (e: Event) => e.preventDefault();
-    containerEl.addEventListener("contextmenu", onContextMenu);
-
     // Prevent browser scroll ONLY when brush is active (after long-press).
     // Must be non-passive to allow preventDefault(). Before the long-press
     // fires, touchmove is not prevented and the browser scrolls normally.
@@ -284,7 +280,6 @@ function useTouchBrush({
     return () => {
       cancel();
       removeListeners();
-      containerEl.removeEventListener("contextmenu", onContextMenu);
       containerEl.removeEventListener("touchmove", onTouchMove);
       containerEl.style.setProperty(
         "-webkit-user-select",
