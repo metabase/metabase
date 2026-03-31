@@ -48,7 +48,7 @@ export function useTransformsBilling() {
       active &&
       self_service &&
       billing_period_months === billingPeriodMonths &&
-      product_type === "transforms-advanced",
+      product_type === "transforms-advanced-metered",
   );
 
   const isOnTrial = tokenStatus?.trial ?? false;

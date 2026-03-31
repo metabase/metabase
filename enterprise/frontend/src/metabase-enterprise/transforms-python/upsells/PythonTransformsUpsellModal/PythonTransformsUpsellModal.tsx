@@ -39,13 +39,7 @@ export function PythonTransformsUpsellModal({
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
-  const {
-    isLoading,
-    error,
-    billingPeriodMonths,
-    advancedTransformsAddOn,
-    isOnTrial,
-  } = useTransformsBilling();
+  const { isLoading, error, advancedTransformsAddOn } = useTransformsBilling();
 
   useEffect(() => {
     trackUpsellViewed({ location: LOCATION, campaign: CAMPAIGN });
@@ -74,7 +68,7 @@ export function PythonTransformsUpsellModal({
                   {t`Run Python-based transforms alongside SQL to handle more complex logic and data workflows.`}{" "}
                   {t`Use the transform inspector to verify output output to verify it.`}
                 </Text>
-                {error || isLoading ? (
+                {error || isLoading || !advancedTransformsAddOn ? (
                   <Center py="xl">
                     <LoadingAndErrorWrapper
                       loading={isLoading}
@@ -87,12 +81,8 @@ export function PythonTransformsUpsellModal({
                   </Center>
                 ) : (
                   <CloudPurchaseContent
-                    billingPeriod={
-                      billingPeriodMonths === 1 ? "monthly" : "yearly"
-                    }
                     handleModalClose={onClose}
-                    isTrialFlow={isOnTrial}
-                    pythonPrice={advancedTransformsAddOn?.default_base_fee ?? 0}
+                    addOn={advancedTransformsAddOn}
                   />
                 )}
               </Stack>
