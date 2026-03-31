@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.util.log :as log]
@@ -78,7 +79,9 @@
   "Search for values of a field given by `field-id` that contain `query`."
   [field-id     :- ::lib.schema.id/field
    query-string :- [:maybe :string]]
-  (let [field        (api/read-check (t2/select-one :model/Field :id field-id))
+  (let [field        (if qp.perms/*param-values-query*
+                       (t2/select-one :model/Field :id field-id)
+                       (api/read-check (t2/select-one :model/Field :id field-id)))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
                                   (t2/select-one :model/Field :id))
                          field)]
