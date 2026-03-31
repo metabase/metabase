@@ -80,8 +80,7 @@ export function TransformsUpsellPage() {
     );
   }
 
-  const freeUnits = 1000; // TODO: Get from api
-  const freeUnitsStr = freeUnits.toLocaleString();
+  const freeUnitsStr = basicTransformsAddOn?.free_units?.toLocaleString();
   const perRunStr =
     basicTransformsAddOn?.default_price_per_unit != null &&
     formatNumber(basicTransformsAddOn.default_price_per_unit, {

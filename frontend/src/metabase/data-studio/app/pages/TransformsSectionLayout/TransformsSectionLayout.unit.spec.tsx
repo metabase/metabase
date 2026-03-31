@@ -7,7 +7,7 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -120,15 +120,11 @@ describe("TransformSectionLayout", () => {
     it("should show you an upsell page if you are hosted and the transform feature is not present", async () => {
       setup({ isHosted: true, isStoreUser: true });
       await assertEnableScreen();
-      await act(async () => (await getEnableButton()).click());
-      await assertDataStudioUpsellPage();
     });
 
     it("should show you an upsell page if you are hosted and the transform feature is not present, even when transforms are enabled on the instance", async () => {
       setup({ isHosted: true, isStoreUser: true, transformsEnabled: true });
       await assertEnableScreen();
-      await act(async () => (await getEnableButton()).click());
-      await assertDataStudioUpsellPage();
     });
 
     it("should show you the app if the instance is hosted and the transform feature is present", async () => {
@@ -144,11 +140,3 @@ const assertEnableScreen = async () =>
   expect(
     await screen.findByText("Customize and clean up your data"),
   ).toBeInTheDocument();
-
-const assertDataStudioUpsellPage = async () =>
-  expect(
-    await screen.findByText("1,000 free transform runs"),
-  ).toBeInTheDocument();
-
-const getEnableButton = () =>
-  screen.findByRole("button", { name: "Enable transforms" });

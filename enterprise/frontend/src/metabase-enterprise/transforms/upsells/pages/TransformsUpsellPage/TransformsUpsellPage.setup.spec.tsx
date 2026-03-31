@@ -2,6 +2,7 @@ import { Route } from "react-router";
 
 import {
   setupBillingEndpoints,
+  setupBugReportingDetailsEndpoint,
   setupDatabaseListEndpoint,
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
@@ -38,13 +39,13 @@ export const setup = ({
   isOnTrial = false,
   trialDays,
 }: SetupOpts) => {
-  const user = createMockUser();
+  const currentUser = createMockUser({ is_superuser: isStoreUser });
   const settings = createMockSettings({
     "is-hosted?": isHosted,
     "token-status": {
       status: "valid",
       valid: true,
-      "store-users": isStoreUser ? [{ email: user.email }] : [],
+      "store-users": isStoreUser ? [{ email: currentUser.email }] : [],
       trial: isOnTrial,
     },
     "token-features": createMockTokenFeatures({
@@ -53,9 +54,10 @@ export const setup = ({
   });
   const state = createMockState({
     settings: createMockSettingsState(settings),
-    currentUser: createMockUser(),
+    currentUser,
   });
   setupBillingEndpoints({
+    hasBasicTransformsAddOn: true,
     transformsAdvancedPrice,
     transformsBasicPrice,
     trialDays,
@@ -65,6 +67,7 @@ export const setup = ({
   });
   setupPropertiesEndpoints(settings);
   setupDatabaseListEndpoint([]);
+  setupBugReportingDetailsEndpoint();
 
   renderWithProviders(
     <Route
