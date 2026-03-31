@@ -1658,7 +1658,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     beforeEach(() => {
       cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/*/card-query-batch*").as(
+        "cardQuery",
+      );
     });
 
     it("does not allow opening custom dashboard destination", () => {

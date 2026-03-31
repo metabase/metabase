@@ -8,9 +8,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("dashboard filters should work on nested question (metabase#12614, metabase#13186, metabase#18113, metabase#32126)", () => {

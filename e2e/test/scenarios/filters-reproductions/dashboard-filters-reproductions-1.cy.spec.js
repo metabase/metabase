@@ -1735,9 +1735,7 @@ describe("issue 25374", () => {
 
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card//*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
 
     H.restore();
     cy.signInAsAdmin();
@@ -2309,7 +2307,7 @@ describe("issues 29347, 29346", () => {
   describe("regular dashboards", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/dashboard/*").as("dashboard");
-      cy.intercept("POST", "/api/dashboard/**/card/*/query").as("cardQuery");
+      H.interceptDashboardCardRequests({ alias: "cardQuery" });
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
@@ -2340,7 +2338,9 @@ describe("issues 29347, 29346", () => {
   describe("embedded dashboards", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/*/card-query-batch*").as(
+        "cardQuery",
+      );
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
@@ -2399,7 +2399,9 @@ describe("issues 29347, 29346", () => {
   describe("public dashboards", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/public/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/public/dashboard/**/card/*").as("cardQuery");
+      cy.intercept("GET", "/api/public/dashboard/*/card-query-batch*").as(
+        "cardQuery",
+      );
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {

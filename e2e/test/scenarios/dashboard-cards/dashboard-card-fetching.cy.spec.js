@@ -25,9 +25,7 @@ describe("dashboard card fetching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
   });
 
   it("should pass same dashboard_load_id to every query to enable metadata cache sharing", () => {

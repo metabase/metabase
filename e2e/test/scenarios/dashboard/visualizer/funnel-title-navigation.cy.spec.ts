@@ -6,9 +6,7 @@ describe("scenarios > dashboard > visualizer > funnel title navigation", () => {
   beforeEach(() => {
     H.restore();
 
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
 
     cy.signInAsNormalUser();
   });

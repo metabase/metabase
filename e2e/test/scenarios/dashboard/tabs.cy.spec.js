@@ -5,7 +5,6 @@ import {
   NORMAL_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -386,24 +385,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     H.saveDashboard();
 
-    cy.wait("@saveDashboardCards").then(({ response }) => {
-      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
-    });
-
-    // it's possible to have two requests firing (but first one is canceled before running second)
-    cy.intercept(
-      "POST",
-      `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}/query`,
-      cy.spy().as("firstTabQuerySpy"),
-    ).as("firstTabQuery");
-
-    cy.get("@secondTabDashcardId").then((secondTabDashcardId) => {
-      cy.intercept(
-        "POST",
-        `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}/query`,
-        cy.spy().as("secondTabQuerySpy"),
-      ).as("secondTabQuery");
-    });
+    cy.wait("@saveDashboardCards");
 
     const firstQuestion = () => {
       return cy.request("GET", `/api/card/${ORDERS_QUESTION_ID}`).its("body");
@@ -424,41 +406,38 @@ describe("scenarios > dashboard > tabs", () => {
     // Visit first tab and confirm only first card was queried
     H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("not.have.been.called");
-    cy.wait("@firstTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (firstQuestion)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(1); // 1 (previously)
-      });
+    firstQuestion().then((r) => {
+      expect(r.view_count).to.equal(2); // 1 (previously) + 1 (first tab query)
+    });
+    secondQuestion().then((r) => {
+      expect(r.view_count).to.equal(1); // not queried (on tab 2)
     });
 
     // Visit second tab and confirm only second card was queried
-    H.goToTab("Tab 2");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(2); // 2 (previously)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(2); // 1(previously) + 1 (secondTabQuery)
-      });
-    });
+    cy.intercept(
+      "POST",
+      `/api/dashboard/${ORDERS_DASHBOARD_ID}/card-query-batch`,
+    ).as("secondTabBatch");
 
-    // Go back to first tab, expect no additional queries
-    H.goToTab("Tab 1");
-    cy.findAllByTestId("dashcard").contains("37.65");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
+    H.goToTab("Tab 2");
+    cy.wait("@secondTabBatch");
 
     firstQuestion().then((r) => {
-      expect(r.view_count).to.equal(2); // 2 (previously)
+      expect(r.view_count).to.equal(2); // unchanged
     });
     secondQuestion().then((r) => {
-      expect(r.view_count).to.equal(2); // 2 (previously)
+      expect(r.view_count).to.equal(2); // 1 (previously) + 1 (second tab query)
+    });
+
+    // Go back to first tab, expect no additional queries (cached)
+    H.goToTab("Tab 1");
+    cy.findAllByTestId("dashcard").contains("37.65");
+
+    firstQuestion().then((r) => {
+      expect(r.view_count).to.equal(2); // unchanged
+    });
+    secondQuestion().then((r) => {
+      expect(r.view_count).to.equal(2); // unchanged
     });
 
     // Go to public dashboard
@@ -467,50 +446,46 @@ describe("scenarios > dashboard > tabs", () => {
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/public_link`,
     ).then(({ body: { uuid } }) => {
-      cy.intercept(
-        "GET",
-        `/api/public/dashboard/${uuid}/dashcard/${ORDERS_DASHBOARD_DASHCARD_ID}/card/${ORDERS_QUESTION_ID}?parameters=%5B%5D`,
-        cy.spy().as("publicFirstTabQuerySpy"),
-      ).as("publicFirstTabQuery");
-      cy.get("@secondTabDashcardId").then((secondTabDashcardId) => {
-        cy.intercept(
-          "GET",
-          `/api/public/dashboard/${uuid}/dashcard/${secondTabDashcardId}/card/${ORDERS_COUNT_QUESTION_ID}?parameters=%5B%5D`,
-          cy.spy().as("publicSecondTabQuerySpy"),
-        ).as("publicSecondTabQuery");
-      });
+      cy.intercept("GET", `/api/public/dashboard/${uuid}/card-query-batch*`).as(
+        "publicFirstTabBatch",
+      );
 
       cy.visit(`public/dashboard/${uuid}`);
     });
 
+    cy.wait("@publicFirstTabBatch");
+
     // Check first tab requests
-    cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@publicSecondTabQuerySpy").should("not.have.been.called");
-    cy.wait("@publicFirstTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 2 (previously) + 1 (publicFirstTabQuery)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(2); // 2 (previously)
-      });
+    firstQuestion().then((r) => {
+      expect(r.view_count).to.equal(3); // 2 (previously) + 1 (public first tab query)
+    });
+    secondQuestion().then((r) => {
+      expect(r.view_count).to.equal(2); // unchanged
     });
 
     // Visit second tab and confirm only second card was queried
+    cy.intercept("GET", "/api/public/dashboard/*/card-query-batch*").as(
+      "publicSecondTabBatch",
+    );
+
     H.goToTab("Tab 2");
-    cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@publicSecondTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 3 (previously)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 2 (previously) + 1 (publicSecondTabQuery)
-      });
+    cy.wait("@publicSecondTabBatch");
+
+    firstQuestion().then((r) => {
+      expect(r.view_count).to.equal(3); // unchanged
+    });
+    secondQuestion().then((r) => {
+      expect(r.view_count).to.equal(3); // 2 (previously) + 1 (public second tab query)
     });
 
     H.goToTab("Tab 1");
-    cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
+    // No new queries - data cached
+    firstQuestion().then((r) => {
+      expect(r.view_count).to.equal(3); // unchanged
+    });
+    secondQuestion().then((r) => {
+      expect(r.view_count).to.equal(3); // unchanged
+    });
   });
 
   it("should only fetch cards on the current tab of an embedded dashboard", () => {
@@ -530,9 +505,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
     cy.wait("@cardQuery");
     H.saveDashboard();
-    cy.wait("@saveDashboardCards").then(({ response }) => {
-      cy.wrap(response.body.dashcards[1].id).as("secondTabDashcardId");
-    });
+    cy.wait("@saveDashboardCards");
 
     const firstQuestion = () => {
       return cy.request("GET", `/api/card/${ORDERS_QUESTION_ID}`).its("body");
@@ -543,16 +516,9 @@ describe("scenarios > dashboard > tabs", () => {
         .its("body");
     };
 
-    cy.intercept(
-      "GET",
-      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}*`,
-      cy.spy().as("firstTabQuerySpy"),
-    ).as("firstTabQuery");
-    cy.intercept(
-      "GET",
-      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_COUNT_QUESTION_ID}*`,
-      cy.spy().as("secondTabQuerySpy"),
-    ).as("secondTabQuery");
+    cy.intercept("GET", "/api/embed/dashboard/*/card-query-batch*").as(
+      "embedFirstTabBatch",
+    );
 
     H.openLegacyStaticEmbeddingModal({
       resource: "dashboard",
@@ -567,33 +533,36 @@ describe("scenarios > dashboard > tabs", () => {
     // wait for results
     cy.findAllByTestId("dashcard").contains("37.65");
     cy.signInAsAdmin();
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("not.have.been.called");
 
-    cy.wait("@firstTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(1); // 1 (previously)
-      });
+    firstQuestion().then((r) => {
+      expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (embed first tab query)
+    });
+    secondQuestion().then((r) => {
+      expect(r.view_count).to.equal(1); // not queried (on tab 2)
     });
 
+    cy.intercept("GET", "/api/embed/dashboard/*/card-query-batch*").as(
+      "embedSecondTabBatch",
+    );
+
     H.goToTab("Tab 2");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@secondTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(3); // 3 (previously)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (second tab query)
-      });
+    cy.wait("@embedSecondTabBatch");
+
+    firstQuestion().then((r) => {
+      expect(r.view_count).to.equal(3); // unchanged
+    });
+    secondQuestion().then((r) => {
+      expect(r.view_count).to.equal(2); // 1 (previously) + 1 (embed second tab query)
     });
 
     H.goToTab("Tab 1");
-    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
-    cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
+    // No new queries - data cached
+    firstQuestion().then((r) => {
+      expect(r.view_count).to.equal(3); // unchanged
+    });
+    secondQuestion().then((r) => {
+      expect(r.view_count).to.equal(2); // unchanged
+    });
   });
 
   it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
@@ -616,9 +585,9 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.intercept(
       "POST",
-      "/api/dashboard/*/dashcard/*/card/*/query",
+      "/api/dashboard/*/card-query-batch",
       delayResponse(500),
-    ).as("saveCard");
+    ).as("batchQuery");
 
     H.filterWidget().click();
     H.popover().findByText("Previous 7 days").click();
@@ -626,7 +595,7 @@ describe("scenarios > dashboard > tabs", () => {
     // Loader in the 2nd tab
     H.getDashboardCard(0).within(() => {
       cy.findByTestId("loading-indicator").should("exist");
-      cy.wait("@saveCard");
+      cy.wait("@batchQuery");
       cy.findAllByRole("row").should("exist");
     });
 

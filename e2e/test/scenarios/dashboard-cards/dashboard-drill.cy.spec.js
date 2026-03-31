@@ -622,10 +622,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
         H.visitDashboard(DASHBOARD_ID);
 
-        cy.intercept(
-          "POST",
-          `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
-        ).as("cardQuery");
+        H.interceptDashboardCardRequests({ alias: "cardQuery" });
 
         H.chartPathWithFillColor("#509EE3")
           .eq(14) // August 2026 (Total of 12 reviews, 9 unique days)
@@ -643,9 +640,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
   it("should keep card's display when doing zoom drill-through from dashboard (metabase#38307)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
 
     const questionDetails = {
       name: "38307",

@@ -32,9 +32,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
     cy.intercept("GET", "/api/setting/version-info", {});
 
     cy.signInAsNormalUser();
