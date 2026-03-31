@@ -8,14 +8,12 @@ import {
   useState,
 } from "react";
 
+import { isTouchDevice } from "metabase/lib/browser";
+
 const LONG_PRESS_DURATION_MS = 500;
 const TOUCH_MOVE_THRESHOLD_PX = 10;
 
 type Point = { x: number; y: number };
-
-export const isTouchDevice = () =>
-  typeof window !== "undefined" &&
-  ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
 export const hasMovedBeyondThreshold = (
   start: Point,
