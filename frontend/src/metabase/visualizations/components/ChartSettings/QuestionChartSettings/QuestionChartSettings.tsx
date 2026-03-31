@@ -1,9 +1,5 @@
-import { useMemo } from "react";
-
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-
 import { BaseChartSettings } from "../BaseChartSettings";
-import { useChartSettingsState } from "../hooks";
+import { useChartSettingsState, useSettingsWidgets } from "../hooks";
 
 import type { QuestionChartSettingsProps } from "./types";
 
@@ -19,16 +15,12 @@ export const QuestionChartSettings = ({
   const { chartSettings, handleChangeSettings, transformedSeries } =
     useChartSettingsState({ series, onChange });
 
-  const widgets = useMemo(
-    () =>
-      propWidgets ||
-      getSettingsWidgetsForSeries(
-        transformedSeries,
-        handleChangeSettings,
-        false,
-      ),
-    [propWidgets, transformedSeries, handleChangeSettings],
-  );
+  const widgets = useSettingsWidgets({
+    series,
+    widgets: propWidgets,
+    transformedSeries,
+    handleChangeSettings,
+  });
 
   return (
     <BaseChartSettings
