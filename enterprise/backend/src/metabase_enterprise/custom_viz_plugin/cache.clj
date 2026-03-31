@@ -201,6 +201,7 @@
   (swap! bundle-cache dissoc plugin-id)
   (swap! asset-cache dissoc plugin-id)
   (swap! last-fetch-failure-ns dissoc plugin-id)
+  (swap! dev-bundle-urls dissoc plugin-id)
   (delete-from-disk! plugin-id)
   (delete-assets-from-disk! plugin-id))
 
@@ -236,12 +237,24 @@
         (throw (ex-info (str "Failed to fetch dev asset from " url ": " (.getMessage e))
                         {:status-code 502}))))))
 
+(defn set-or-clear-dev-bundle!
+  "Set or clear the in-memory dev base URL for a plugin"
+  [id dev-bundle-url]
+  (if (seq dev-bundle-url)
+    (swap! dev-bundle-urls assoc id dev-bundle-url)
+    (swap! dev-bundle-urls dissoc id)))
+
+(defn resolve-dev-bundle
+  "Resolve the dev bundle plugin"
+  [id]
+  (get @dev-bundle-urls id))
+
 (defn resolve-bundle
   "Resolve the JS bundle for a plugin, respecting dev bundle URL if set.
    Returns {:content str :hash str} or nil."
   [plugin]
   (let [id      (:id plugin)
-        dev-url (get @dev-bundle-urls id)]
+        dev-url (resolve-dev-bundle id)]
     (if dev-url
       (fetch-dev-bundle dev-url)
       (or (get-bundle id)
@@ -251,6 +264,6 @@
   "Resolve a static asset for a plugin, respecting dev base URL if set.
    Returns a byte array or nil."
   ^bytes [plugin-id ^String asset-path]
-  (if-let [dev-url (get @dev-bundle-urls plugin-id)]
+  (if-let [dev-url (resolve-dev-bundle plugin-id)]
     (fetch-dev-asset dev-url asset-path)
     (get-asset plugin-id asset-path)))

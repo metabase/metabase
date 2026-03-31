@@ -16,8 +16,6 @@
 
 ;;; ---------------------------------------- In-memory dev bundle URLs -----------------------------------------
 
-(def ^:private dev-bundle-urls cache/dev-bundle-urls)
-
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
 (def ^:private CustomVizPluginResponse
@@ -72,12 +70,12 @@
       strip-token
       (update :status name)
       (update :manifest parse-manifest-json)
-      (assoc :dev_bundle_url (get @dev-bundle-urls (:id plugin)))))
+      (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
   [{:keys [id identifier display_name icon resolved_commit manifest]}]
-  (let [dev-url (get @dev-bundle-urls id)]
+  (let [dev-url (cache/resolve-dev-bundle id)]
     (cond-> {:id              id
              :identifier      identifier
              :display_name    display_name
@@ -139,7 +137,6 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
   (cache/evict! id)
-  (swap! dev-bundle-urls dissoc id)
   (t2/delete! :model/CustomVizPlugin :id id)
   nil)
 
@@ -175,7 +172,7 @@
    raise]
   (try
     (let [plugin  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-          dev-url (get @dev-bundle-urls id)
+          dev-url (cache/resolve-dev-bundle id)
           entry   (cache/resolve-bundle plugin)]
       (if entry
         (respond {:status  200
@@ -233,7 +230,7 @@
       (when-not content-type
         (throw (ex-info "Unsupported asset type" {:status-code 404})))
       (let [_plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-            dev?    (contains? @dev-bundle-urls id)
+            dev?    (cache/resolve-dev-bundle id)
             bytes   (cache/resolve-asset id asset-path)]
         (if bytes
           (respond {:status  200
@@ -256,10 +253,8 @@
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-  (if (seq dev_bundle_url)
-    (swap! dev-bundle-urls assoc id dev_bundle_url)
-    (swap! dev-bundle-urls dissoc id))
-  {:dev_bundle_url (get @dev-bundle-urls id)})
+  (cache/set-or-clear-dev-bundle! id dev_bundle_url)
+  {:dev_bundle_url (cache/resolve-dev-bundle id)})
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the bundle from the git repository."
