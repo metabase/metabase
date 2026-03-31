@@ -8,14 +8,12 @@ import {
   useState,
 } from "react";
 
+import { isTouchDevice } from "metabase/lib/browser";
+
 const LONG_PRESS_DURATION_MS = 500;
 const TOUCH_MOVE_THRESHOLD_PX = 10;
 
 type Point = { x: number; y: number };
-
-export const isTouchDevice = () =>
-  typeof window !== "undefined" &&
-  ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
 export const hasMovedBeyondThreshold = (
   start: Point,
@@ -202,21 +200,35 @@ function useTouchBrush({
       svg.style.setProperty("-webkit-touch-callout", "none");
     }
 
+    let activePointerId: number | null = null;
+
     const cancel = () => {
       clearTimeout(timerRef.current);
 
       timerRef.current = undefined;
       startRef.current = null;
+      activePointerId = null;
     };
 
     const onPointerDown = (event: PointerEvent) => {
+      if (!event.isPrimary || event.pointerType !== "touch") {
+        return;
+      }
+
+      cancel();
+
       if (activeRef.current) {
         return;
       }
 
+      activePointerId = event.pointerId;
       startRef.current = { x: event.clientX, y: event.clientY };
 
+      const pointerId = event.pointerId;
       timerRef.current = setTimeout(() => {
+        if (pointerId !== activePointerId) {
+          return;
+        }
         activeRef.current = true;
         enableBrush();
 

@@ -30,14 +30,25 @@ export function longPressAndDrag(
   cy.findByTestId(selector).trigger("pointerdown", startX, startY, {
     force: true,
     isPrimary: true,
+    pointerType: "touch",
     button: 0,
   });
 
   cy.wait(holdMs);
 
   cy.findByTestId(selector)
-    .trigger("mousemove", endX, startY)
-    .trigger("mouseup", endX, startY);
+    .trigger("pointermove", endX, startY, {
+      force: true,
+      isPrimary: true,
+      pointerType: "touch",
+      button: 0,
+    })
+    .trigger("pointerup", endX, startY, {
+      force: true,
+      isPrimary: true,
+      pointerType: "touch",
+      button: 0,
+    });
 }
 
 export function quickSwipe(
@@ -50,16 +61,19 @@ export function quickSwipe(
     .trigger("pointerdown", startX, startY, {
       force: true,
       isPrimary: true,
+      pointerType: "touch",
       button: 0,
     })
     .trigger("pointermove", endX, startY, {
       force: true,
       isPrimary: true,
+      pointerType: "touch",
       button: 0,
     })
     .trigger("pointerup", endX, startY, {
       force: true,
       isPrimary: true,
+      pointerType: "touch",
       button: 0,
     });
 }
