@@ -4,6 +4,7 @@ import {
   useGetChannelInfoQuery,
   useListUserRecipientsQuery,
 } from "metabase/api";
+import { useSendTestEmailMutation } from "metabase/api/email";
 import type { RecipientPickerValue } from "metabase/lib/pulse";
 import type { User } from "metabase-types/api";
 
@@ -30,14 +31,16 @@ const DEFAULT_CONFIG: NotificationConfig = {
 };
 
 /**
- * Mock hook for notification channel configuration.
- * TODO: replace with RTK Query endpoints (e.g. GET/PUT /api/ee/security-center/notification-config)
+ * Hook for notification channel configuration.
+ * TODO: replace save with RTK Query endpoint (e.g. PUT /api/ee/security-center/notification-config)
+ * TODO: replace sendTestSlack with a dedicated endpoint once available
  */
 export function useNotificationConfig() {
   const [config, setConfig] = useState<NotificationConfig>(DEFAULT_CONFIG);
 
   const { data: userRecipients } = useListUserRecipientsQuery();
   const { data: channelInfo } = useGetChannelInfoQuery();
+  const [sendTestEmailApi] = useSendTestEmailMutation();
 
   const users: User[] = userRecipients?.data ?? [];
 
@@ -80,15 +83,16 @@ export function useNotificationConfig() {
     }));
   }, []);
 
-  // TODO: replace with actual API calls
+  // TODO: replace with PUT /api/ee/security-center/notification-config
   const save = useCallback(async () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }, []);
 
   const sendTestEmail = useCallback(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }, []);
+    await sendTestEmailApi().unwrap();
+  }, [sendTestEmailApi]);
 
+  // TODO: backend needs a `can-connect?` impl for :channel/slack before this can use testSlackChannelApi
   const sendTestSlack = useCallback(async () => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }, []);
