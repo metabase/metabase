@@ -92,7 +92,7 @@
                         :permission/metabot-other-tools    :no
                         :permission/metabot-model          :large})]
     (testing "dashboard routing included when permitted"
-      (is (re-find #"Use dashboard tools" with-other)))
+      (is (re-find #"Use X-ray auto-generated dashboard tool" with-other)))
     (testing "dashboard routing excluded when not permitted"
       (is (not (re-find #"Use dashboard tools" without-other))))
     (testing "explicit denial for other tools is included when not permitted"
@@ -136,7 +136,7 @@
     (testing "all gated sections are excluded"
       (is (not (re-find #"sql_construction" rendered)))
       (is (not (re-find #"Natural Language Querying" rendered)))
-      (is (not (re-find #"Use dashboard tools" rendered)))
+      (is (not (re-find #"Use X-ray auto-generated dashboard tool" rendered)))
       (is (not (re-find #"CRITICAL CONSTRAINTS" rendered)))
       (is (not (re-find #"Verify Data Structure" rendered))))
     (testing "denial messages are present"
@@ -148,7 +148,7 @@
     (let [rendered (render-internal-template nil)]
       (is (not (re-find #"sql_construction" rendered)))
       (is (not (re-find #"Natural Language Querying" rendered)))
-      (is (not (re-find #"Use dashboard tools" rendered)))
+      (is (not (re-find #"Use X-ray auto-generated dashboard tool" rendered)))
       (is (not (re-find #"CRITICAL CONSTRAINTS" rendered)))
       (is (re-find #"You cannot build queries or create charts" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))

@@ -10,13 +10,13 @@
       (is (some? template))
       (is (string? template))
       (is (> (count template) 1000))
-      (is (re-find #"Metabot" template))))
+      (is (re-find #"metabot_name" template))))
 
   (testing "loads embedding-next.selmer template"
     (let [template (prompts/load-system-prompt-template "embedding-next.selmer")]
       (is (some? template))
       (is (string? template))
-      (is (re-find #"Metabot" template))))
+      (is (re-find #"metabot_name" template))))
 
   (testing "returns nil for non-existent template"
     (let [template (prompts/load-system-prompt-template "non-existent.selmer")]

@@ -270,12 +270,6 @@
                     :model/Transform
                     :model/User}}
 
-  api-scope
-  {:team  "Metabot"
-   :api   #{metabase.api-scope.core
-             metabase.api-scope.init}
-   :uses  #{util}}
-
   api-keys
   {:team "UX West"
    :api  #{metabase.api-keys.api
@@ -296,6 +290,11 @@
    :api  #{metabase.api-routes.cmd
            metabase.api-routes.core}
    :uses :any}
+
+  api-scope
+  {:team  "Metabot"
+   :api   #{metabase.api-scope.core
+             metabase.api-scope.init}}
 
   app-db
   {:team "UX West"
@@ -1178,7 +1177,6 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-              metabase.metabot.core
               metabase.metabot.init}
    :friends #{agent-api
               enterprise/metabot
@@ -1230,6 +1228,7 @@
                     :model/Field
                     :model/Glossary
                     :model/ModerationReview
+                    :model/PermissionsGroup
                     :model/QueryTable
                     :model/Table
                     :model/Transform
@@ -3296,7 +3295,6 @@
   enterprise/workspaces
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
-           metabase-enterprise.workspaces.core
            metabase-enterprise.workspaces.init}
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
    :friends #{enterprise/agent-api}
