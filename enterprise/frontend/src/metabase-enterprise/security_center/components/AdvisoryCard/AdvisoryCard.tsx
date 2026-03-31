@@ -13,6 +13,7 @@ import {
 } from "metabase/ui";
 
 import type { Advisory, AdvisorySeverity } from "../../types";
+import { isAcknowledged, isAffected } from "../../utils";
 
 import S from "./AdvisoryCard.module.css";
 
@@ -23,17 +24,26 @@ const SEVERITY_CLASS: Record<AdvisorySeverity, string> = {
   low: S.severityLow,
 };
 
+function formatVersionRange(advisory: Advisory): string {
+  return advisory.affected_versions
+    .map((v) => `${v.min} – ${v.fixed}`)
+    .join(", ");
+}
+
 interface AdvisoryCardProps {
   advisory: Advisory;
   onAcknowledge?: (advisoryId: string) => void;
 }
 
 export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
+  const affected = isAffected(advisory);
+  const acknowledged = isAcknowledged(advisory);
+
   return (
     <Card
       p="lg"
       withBorder
-      className={advisory.affected ? S.affectedCard : undefined}
+      className={affected ? S.affectedCard : undefined}
       data-testid="advisory-card"
       mih={184}
     >
@@ -46,7 +56,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
             <Title order={4}>{advisory.title}</Title>
           </Group>
           <Group gap="sm">
-            {advisory.acknowledged && (
+            {acknowledged && (
               <Badge
                 color="brand"
                 variant="light"
@@ -57,12 +67,10 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
             )}
             <Badge
               variant="outline"
-              className={
-                advisory.affected ? S.statusAffected : S.statusNotAffected
-              }
+              className={affected ? S.statusAffected : S.statusNotAffected}
               data-testid="affected-status"
             >
-              {advisory.affected ? t`Affected` : t`Not affected`}
+              {affected ? t`Affected` : t`Not affected`}
             </Badge>
           </Group>
         </Flex>
@@ -72,36 +80,32 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
         </Text>
 
         <Group gap="lg">
+          {advisory.affected_versions.length > 0 && (
+            <Text size="sm" c="text-secondary">
+              {t`Affected versions`}: {formatVersionRange(advisory)}
+            </Text>
+          )}
           <Text size="sm" c="text-secondary">
-            {t`Affected versions`}: {advisory.affectedVersionRange}
-          </Text>
-          <Text size="sm" c="text-secondary">
-            {t`Fixed in`}: {advisory.fixedVersion}
+            {t`Remediation`}: {advisory.remediation}
           </Text>
         </Group>
 
         <Group gap="md" h={28}>
-          <Anchor
-            href={advisory.advisoryUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            size="sm"
-          >
-            {t`View advisory`}
-          </Anchor>
-          <Anchor
-            href={advisory.upgradeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            size="sm"
-          >
-            {t`Upgrade guide`}
-          </Anchor>
-          {!advisory.acknowledged && onAcknowledge && (
+          {advisory.advisory_url && (
+            <Anchor
+              href={advisory.advisory_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              size="sm"
+            >
+              {t`View advisory`}
+            </Anchor>
+          )}
+          {!acknowledged && onAcknowledge && (
             <Button
               variant="subtle"
               size="compact-sm"
-              onClick={() => onAcknowledge(advisory.id)}
+              onClick={() => onAcknowledge(advisory.advisory_id)}
               data-testid="acknowledge-button"
             >
               {t`Acknowledge`}

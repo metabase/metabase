@@ -1,6 +1,3 @@
-import { t } from "ttag";
-
-import { EmptyState } from "metabase/common/components/EmptyState";
 import { Stack } from "metabase/ui";
 
 import type { Advisory } from "../../types";
@@ -20,21 +17,11 @@ export function AdvisoryList({
 }: AdvisoryListProps) {
   const sorted = sortAdvisories(advisories);
 
-  if (sorted.length === 0) {
-    return (
-      <EmptyState
-        className={className}
-        icon="shield_outline"
-        message={t`Your instance is up to date — no known security issues affect your configuration.`}
-      />
-    );
-  }
-
   return (
     <Stack gap="md" className={className}>
       {sorted.map((advisory) => (
         <AdvisoryCard
-          key={advisory.id}
+          key={advisory.advisory_id}
           advisory={advisory}
           onAcknowledge={onAcknowledge}
         />

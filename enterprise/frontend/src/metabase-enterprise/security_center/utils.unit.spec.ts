@@ -2,17 +2,18 @@ import type { Advisory, AdvisoryFilter } from "./types";
 import { filterAdvisories, sortAdvisories } from "./utils";
 
 const makeAdvisory = (overrides: Partial<Advisory>): Advisory => ({
-  id: "SA-001",
+  advisory_id: "SA-001",
   title: "Test advisory",
   description: "Test description",
   severity: "medium",
-  affectedVersionRange: ">=0.45.0 <0.59.0",
-  fixedVersion: "v0.59.0",
-  publishedAt: "2026-01-01T00:00:00Z",
-  advisoryUrl: "https://example.com/advisory",
-  upgradeUrl: "https://example.com/upgrade",
-  affected: false,
-  acknowledged: false,
+  advisory_url: "https://example.com/advisory",
+  remediation: "Upgrade to latest version",
+  published_at: "2026-01-01T00:00:00Z",
+  match_status: "not_affected",
+  last_evaluated_at: null,
+  acknowledged_by: null,
+  acknowledged_at: null,
+  affected_versions: [{ min: "0.45.0", fixed: "0.59.0" }],
   ...overrides,
 });
 
@@ -25,25 +26,49 @@ const ALL_PASS_FILTER: AdvisoryFilter = {
 describe("sortAdvisories", () => {
   it("should place affected items before non-affected items", () => {
     const advisories = [
-      makeAdvisory({ id: "1", affected: false, severity: "critical" }),
-      makeAdvisory({ id: "2", affected: true, severity: "low" }),
+      makeAdvisory({
+        advisory_id: "1",
+        match_status: "not_affected",
+        severity: "critical",
+      }),
+      makeAdvisory({
+        advisory_id: "2",
+        match_status: "active",
+        severity: "low",
+      }),
     ];
 
     const sorted = sortAdvisories(advisories);
-    expect(sorted[0].id).toBe("2");
-    expect(sorted[1].id).toBe("1");
+    expect(sorted[0].advisory_id).toBe("2");
+    expect(sorted[1].advisory_id).toBe("1");
   });
 
   it("should sort by severity within the same affected status", () => {
     const advisories = [
-      makeAdvisory({ id: "low", severity: "low", affected: true }),
-      makeAdvisory({ id: "critical", severity: "critical", affected: true }),
-      makeAdvisory({ id: "medium", severity: "medium", affected: true }),
-      makeAdvisory({ id: "high", severity: "high", affected: true }),
+      makeAdvisory({
+        advisory_id: "low",
+        severity: "low",
+        match_status: "active",
+      }),
+      makeAdvisory({
+        advisory_id: "critical",
+        severity: "critical",
+        match_status: "active",
+      }),
+      makeAdvisory({
+        advisory_id: "medium",
+        severity: "medium",
+        match_status: "active",
+      }),
+      makeAdvisory({
+        advisory_id: "high",
+        severity: "high",
+        match_status: "active",
+      }),
     ];
 
     const sorted = sortAdvisories(advisories);
-    expect(sorted.map((a) => a.id)).toEqual([
+    expect(sorted.map((a) => a.advisory_id)).toEqual([
       "critical",
       "high",
       "medium",
@@ -51,25 +76,25 @@ describe("sortAdvisories", () => {
     ]);
   });
 
-  it("should sort by publishedAt descending within the same severity", () => {
+  it("should sort by published_at descending within the same severity", () => {
     const advisories = [
       makeAdvisory({
-        id: "older",
+        advisory_id: "older",
         severity: "high",
-        affected: true,
-        publishedAt: "2026-01-01T00:00:00Z",
+        match_status: "active",
+        published_at: "2026-01-01T00:00:00Z",
       }),
       makeAdvisory({
-        id: "newer",
+        advisory_id: "newer",
         severity: "high",
-        affected: true,
-        publishedAt: "2026-03-01T00:00:00Z",
+        match_status: "active",
+        published_at: "2026-03-01T00:00:00Z",
       }),
     ];
 
     const sorted = sortAdvisories(advisories);
-    expect(sorted[0].id).toBe("newer");
-    expect(sorted[1].id).toBe("older");
+    expect(sorted[0].advisory_id).toBe("newer");
+    expect(sorted[1].advisory_id).toBe("older");
   });
 
   it("should return an empty array when given an empty array", () => {
@@ -78,8 +103,8 @@ describe("sortAdvisories", () => {
 
   it("should not mutate the original array", () => {
     const advisories = [
-      makeAdvisory({ id: "2", affected: true }),
-      makeAdvisory({ id: "1", affected: false }),
+      makeAdvisory({ advisory_id: "2", match_status: "active" }),
+      makeAdvisory({ advisory_id: "1", match_status: "not_affected" }),
     ];
     const original = [...advisories];
 
@@ -91,28 +116,28 @@ describe("sortAdvisories", () => {
 describe("filterAdvisories", () => {
   const advisories = [
     makeAdvisory({
-      id: "1",
+      advisory_id: "1",
       severity: "critical",
-      affected: true,
-      acknowledged: false,
+      match_status: "active",
+      acknowledged_at: null,
     }),
     makeAdvisory({
-      id: "2",
+      advisory_id: "2",
       severity: "high",
-      affected: true,
-      acknowledged: true,
+      match_status: "active",
+      acknowledged_at: "2026-03-01T00:00:00Z",
     }),
     makeAdvisory({
-      id: "3",
+      advisory_id: "3",
       severity: "medium",
-      affected: false,
-      acknowledged: false,
+      match_status: "not_affected",
+      acknowledged_at: null,
     }),
     makeAdvisory({
-      id: "4",
+      advisory_id: "4",
       severity: "low",
-      affected: false,
-      acknowledged: true,
+      match_status: "not_affected",
+      acknowledged_at: "2026-02-01T00:00:00Z",
     }),
   ];
 
@@ -127,7 +152,7 @@ describe("filterAdvisories", () => {
       severity: "critical",
     });
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe("1");
+    expect(result[0].advisory_id).toBe("1");
   });
 
   it("should filter by affected status", () => {
@@ -135,7 +160,7 @@ describe("filterAdvisories", () => {
       ...ALL_PASS_FILTER,
       status: "affected",
     });
-    expect(result.every((a) => a.affected)).toBe(true);
+    expect(result.every((a) => a.match_status === "active")).toBe(true);
     expect(result).toHaveLength(2);
   });
 
@@ -144,7 +169,7 @@ describe("filterAdvisories", () => {
       ...ALL_PASS_FILTER,
       status: "not-affected",
     });
-    expect(result.every((a) => !a.affected)).toBe(true);
+    expect(result.every((a) => a.match_status !== "active")).toBe(true);
     expect(result).toHaveLength(2);
   });
 
@@ -153,7 +178,7 @@ describe("filterAdvisories", () => {
       ...ALL_PASS_FILTER,
       showAcknowledged: false,
     });
-    expect(result.every((a) => !a.acknowledged)).toBe(true);
+    expect(result.every((a) => a.acknowledged_at == null)).toBe(true);
     expect(result).toHaveLength(2);
   });
 
@@ -164,6 +189,6 @@ describe("filterAdvisories", () => {
       showAcknowledged: false,
     });
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe("1");
+    expect(result[0].advisory_id).toBe("1");
   });
 });

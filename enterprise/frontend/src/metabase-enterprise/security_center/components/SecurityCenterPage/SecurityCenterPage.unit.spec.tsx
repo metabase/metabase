@@ -10,17 +10,18 @@ import type { Advisory } from "../../types";
 import { SecurityCenterPage } from "./SecurityCenterPage";
 
 const makeAdvisory = (overrides: Partial<Advisory>): Advisory => ({
-  id: "SA-001",
+  advisory_id: "SA-001",
   title: "Test advisory",
   description: "Test description",
   severity: "medium",
-  affectedVersionRange: ">=0.45.0 <0.59.0",
-  fixedVersion: "v0.59.0",
-  publishedAt: "2026-01-01T00:00:00Z",
-  advisoryUrl: "https://example.com/advisory",
-  upgradeUrl: "https://example.com/upgrade",
-  affected: false,
-  acknowledged: false,
+  advisory_url: "https://example.com/advisory",
+  remediation: "Upgrade to latest version",
+  published_at: "2026-01-01T00:00:00Z",
+  match_status: "not_affected",
+  last_evaluated_at: null,
+  acknowledged_by: null,
+  acknowledged_at: null,
+  affected_versions: [{ min: "0.45.0", fixed: "0.59.0" }],
   ...overrides,
 });
 
@@ -29,6 +30,7 @@ const mockAcknowledge = jest.fn();
 function setup(advisories: Advisory[] = []) {
   jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
     data: advisories,
+    lastCheckedAt: null,
     isLoading: false,
     acknowledgeAdvisory: mockAcknowledge,
   });
@@ -75,22 +77,22 @@ describe("SecurityCenterPage", () => {
   it("renders advisory cards in the correct order (affected first, then by severity)", () => {
     const advisories = [
       makeAdvisory({
-        id: "1",
+        advisory_id: "1",
         title: "Low not affected",
         severity: "low",
-        affected: false,
+        match_status: "not_affected",
       }),
       makeAdvisory({
-        id: "2",
+        advisory_id: "2",
         title: "Critical affected",
         severity: "critical",
-        affected: true,
+        match_status: "active",
       }),
       makeAdvisory({
-        id: "3",
+        advisory_id: "3",
         title: "High affected",
         severity: "high",
-        affected: true,
+        match_status: "active",
       }),
     ];
 
@@ -106,8 +108,8 @@ describe("SecurityCenterPage", () => {
 
   it("shows affected status on cards", () => {
     const advisories = [
-      makeAdvisory({ id: "1", affected: true }),
-      makeAdvisory({ id: "2", affected: false }),
+      makeAdvisory({ advisory_id: "1", match_status: "active" }),
+      makeAdvisory({ advisory_id: "2", match_status: "not_affected" }),
     ];
 
     setup(advisories);
@@ -120,9 +122,8 @@ describe("SecurityCenterPage", () => {
   it("renders external links with correct targets", () => {
     const advisories = [
       makeAdvisory({
-        id: "1",
-        advisoryUrl: "https://example.com/advisory/1",
-        upgradeUrl: "https://example.com/upgrade/1",
+        advisory_id: "1",
+        advisory_url: "https://example.com/advisory/1",
       }),
     ];
 
@@ -134,17 +135,12 @@ describe("SecurityCenterPage", () => {
       "https://example.com/advisory/1",
     );
     expect(advisoryLink).toHaveAttribute("target", "_blank");
-
-    const upgradeLink = screen.getByText("Upgrade guide");
-    expect(upgradeLink).toHaveAttribute(
-      "href",
-      "https://example.com/upgrade/1",
-    );
-    expect(upgradeLink).toHaveAttribute("target", "_blank");
   });
 
   it("calls acknowledgeAdvisory when acknowledge button is clicked", async () => {
-    const advisories = [makeAdvisory({ id: "SA-001", acknowledged: false })];
+    const advisories = [
+      makeAdvisory({ advisory_id: "SA-001", acknowledged_at: null }),
+    ];
 
     setup(advisories);
 
@@ -153,7 +149,12 @@ describe("SecurityCenterPage", () => {
   });
 
   it("does not show acknowledge button for already acknowledged advisories", async () => {
-    const advisories = [makeAdvisory({ id: "SA-001", acknowledged: true })];
+    const advisories = [
+      makeAdvisory({
+        advisory_id: "SA-001",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
+    ];
 
     setup(advisories);
 
@@ -168,8 +169,16 @@ describe("SecurityCenterPage", () => {
 
   it("hides acknowledged advisories by default", () => {
     const advisories = [
-      makeAdvisory({ id: "1", title: "Visible", acknowledged: false }),
-      makeAdvisory({ id: "2", title: "Hidden", acknowledged: true }),
+      makeAdvisory({
+        advisory_id: "1",
+        title: "Visible",
+        acknowledged_at: null,
+      }),
+      makeAdvisory({
+        advisory_id: "2",
+        title: "Hidden",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
     ];
 
     setup(advisories);

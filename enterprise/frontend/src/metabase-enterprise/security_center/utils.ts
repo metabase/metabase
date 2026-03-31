@@ -7,6 +7,14 @@ const SEVERITY_ORDER: Record<AdvisorySeverity, number> = {
   low: 3,
 };
 
+export function isAffected(advisory: Advisory): boolean {
+  return advisory.match_status === "active";
+}
+
+export function isAcknowledged(advisory: Advisory): boolean {
+  return advisory.acknowledged_at != null;
+}
+
 export function filterAdvisories(
   advisories: Advisory[],
   filter: AdvisoryFilter,
@@ -15,13 +23,13 @@ export function filterAdvisories(
     if (filter.severity !== "all" && a.severity !== filter.severity) {
       return false;
     }
-    if (filter.status === "affected" && !a.affected) {
+    if (filter.status === "affected" && !isAffected(a)) {
       return false;
     }
-    if (filter.status === "not-affected" && a.affected) {
+    if (filter.status === "not-affected" && isAffected(a)) {
       return false;
     }
-    if (!filter.showAcknowledged && a.acknowledged) {
+    if (!filter.showAcknowledged && isAcknowledged(a)) {
       return false;
     }
     return true;
@@ -30,9 +38,12 @@ export function filterAdvisories(
 
 export function sortAdvisories(advisories: Advisory[]): Advisory[] {
   return [...advisories].sort((a, b) => {
+    const aAffected = isAffected(a);
+    const bAffected = isAffected(b);
+
     // Affected items first
-    if (a.affected !== b.affected) {
-      return a.affected ? -1 : 1;
+    if (aAffected !== bAffected) {
+      return aAffected ? -1 : 1;
     }
 
     // Then by severity (critical → low)
@@ -42,9 +53,9 @@ export function sortAdvisories(advisories: Advisory[]): Advisory[] {
       return severityDiff;
     }
 
-    // Then by publishedAt descending (newest first)
+    // Then by published_at descending (newest first)
     return (
-      new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
     );
   });
 }

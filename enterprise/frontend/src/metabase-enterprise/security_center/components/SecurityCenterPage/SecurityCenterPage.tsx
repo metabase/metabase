@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { EmptyState } from "metabase/common/components/EmptyState";
 import {
   ActionIcon,
   Box,
@@ -65,11 +66,19 @@ export function SecurityCenterPage() {
           filter={filter}
           onChange={setFilter}
         />
-        <AdvisoryList
-          className={S.list}
-          advisories={filtered}
-          onAcknowledge={acknowledgeAdvisory}
-        />
+        {filtered.length === 0 ? (
+          <EmptyState
+            className={S["empty-state"]}
+            icon="shield_outline"
+            message={t`Your instance is up to date — no known security issues affect your configuration.`}
+          />
+        ) : (
+          <AdvisoryList
+            className={S.list}
+            advisories={filtered}
+            onAcknowledge={acknowledgeAdvisory}
+          />
+        )}
       </Stack>
       <NotificationChannelConfigModal
         opened={settingsOpen}
