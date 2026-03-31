@@ -38,7 +38,20 @@
               :model_id (u/id card)
               :has_access true
               :context    :question}
-             (latest-view (u/id user) (u/id card))))))))
+             (latest-view (u/id user) (u/id card))))
+        (testing "tenant_id is nil for user without a tenant"
+          (is (nil? (:tenant_id (latest-view (u/id user) (u/id card))))))))))
+
+(deftest card-read-tenant-id-test
+  (mt/with-premium-features #{:audit-app :tenants}
+    (mt/with-temp [:model/Tenant tenant {:name "Test Tenant" :slug "test-tenant"}
+                   :model/User   user   {:tenant_id (:id tenant)}
+                   :model/Card   card   {:creator_id (u/id user)}]
+      (testing "tenant_id is populated from current user's tenant"
+        (mt/with-current-user (u/id user)
+          (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/id user) :context :question})
+          (is (= (:id tenant)
+                 (:tenant_id (latest-view (u/id user) (u/id card))))))))))
 
 (deftest card-read-oss-no-view-logging-test
   (mt/with-premium-features #{}
