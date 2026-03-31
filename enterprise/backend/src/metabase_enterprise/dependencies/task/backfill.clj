@@ -98,17 +98,23 @@
                    1
                    (catch Exception e
                      (let [id (:id entity)]
-                       (deps.dependency-status/record-failure!
-                        entity-type id max-retries
-                        (deps.settings/dependency-backfill-delay-minutes))
-                       (let [{:keys [fail_count terminal]} (t2/select-one :model/DependencyStatus
-                                                                          :entity_type entity-type
-                                                                          :entity_id id)]
-                         (if terminal
-                           (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
-                                       type-name id fail_count)
-                           (log/warnf e "Entity %s %s failed, failure count: %d."
-                                      type-name id fail_count))))
+                       (try
+                         (deps.dependency-status/record-failure!
+                          entity-type id max-retries
+                          (deps.settings/dependency-backfill-delay-minutes))
+                         (let [{:keys [fail_count terminal]} (t2/select-one :model/DependencyStatus
+                                                                            :entity_type entity-type
+                                                                            :entity_id id)]
+                           (if terminal
+                             (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
+                                         type-name id fail_count)
+                             (log/warnf e "Entity %s %s failed, failure count: %d."
+                                        type-name id fail_count)))
+                         (catch Exception record-ex
+                           (log/errorf e "Entity %s %s failed during dependency calculation."
+                                       type-name id)
+                           (log/errorf record-ex "Additionally, failed to record the failure for %s %s."
+                                       type-name id))))
                      0))))
             0
             instances)))
