@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { measureApi, metricApi } from "metabase/api";
 import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
@@ -23,7 +23,11 @@ import type {
   MetricsViewerTabState,
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
-import { getInitialMetricsViewerPageState } from "../types/viewer-state";
+import {
+  getInitialMetricsViewerPageState,
+  isExpressionEntry,
+  isMetricEntry,
+} from "../types/viewer-state";
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
 import { getEffectiveDefinitionEntry } from "../utils/definition-entries";
 import {
@@ -32,6 +36,7 @@ import {
 } from "../utils/source-ids";
 import { getTabConfig } from "../utils/tab-config";
 import { computeDefaultTabs, findMatchingDimensionForTab } from "../utils/tabs";
+import { applySerializedDefinitionInfo } from "../utils/url-serialization";
 
 async function loadMetricDefinition(
   dispatch: ReturnType<typeof useDispatch>,
@@ -625,6 +630,61 @@ export function useViewerState(): UseViewerStateResult {
       ),
     [loadAndReplace, dispatch, store],
   );
+
+  // as definitions load, apply SerializedDefinitionInfo to formulaEntities
+  useEffect(() => {
+    let changed = false;
+    const updatedEntities = state.formulaEntities.map((entity) => {
+      if (
+        isMetricEntry(entity) &&
+        entity.serializedDefinitionInfo &&
+        !entity.definition
+      ) {
+        const baseDef = state.definitions[entity.id]?.definition;
+        if (baseDef) {
+          changed = true;
+          return {
+            ...entity,
+            definition: applySerializedDefinitionInfo(
+              baseDef,
+              entity.serializedDefinitionInfo,
+            ),
+            serializedDefinitionInfo: undefined,
+          };
+        }
+      }
+      if (isExpressionEntry(entity)) {
+        let tokenChanged = false;
+        const updatedTokens = entity.tokens.map((token) => {
+          if (
+            token.type === "metric" &&
+            token.serializedDefinitionInfo &&
+            !token.definition
+          ) {
+            const baseDef = state.definitions[token.sourceId]?.definition;
+            if (baseDef) {
+              tokenChanged = true;
+              changed = true;
+              return {
+                ...token,
+                definition: applySerializedDefinitionInfo(
+                  baseDef,
+                  token.serializedDefinitionInfo,
+                ),
+                serializedDefinitionInfo: undefined,
+              };
+            }
+          }
+          return token;
+        });
+        return tokenChanged ? { ...entity, tokens: updatedTokens } : entity;
+      }
+      return entity;
+    });
+    if (changed) {
+      setFormulaEntities(updatedEntities);
+    }
+  }, [state.definitions, state.formulaEntities, setFormulaEntities]);
 
   return {
     state,

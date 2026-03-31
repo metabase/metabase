@@ -10,6 +10,7 @@ import type {
 } from "metabase-types/api";
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
+import type { SerializedDefinitionInfo } from "../utils/url-serialization";
 
 // ── Core types ──
 
@@ -42,6 +43,7 @@ export type ExpressionSubToken =
       sourceId: MetricSourceId;
       count: number;
       definition?: MetricDefinition;
+      serializedDefinitionInfo?: SerializedDefinitionInfo;
     }
   | { type: "constant"; value: number }
   | { type: "operator"; op: MathOperator }
@@ -67,6 +69,7 @@ export interface MetricsViewerDefinitionEntry {
 
 export type MetricDefinitionEntry = MetricsViewerDefinitionEntry & {
   type: "metric";
+  serializedDefinitionInfo?: SerializedDefinitionInfo;
 };
 
 export type ExpressionDefinitionEntry = {

@@ -4,18 +4,17 @@ import { push, replace } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { MeasureId, TemporalUnit } from "metabase-types/api";
+import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import {
-  type MetricSourceId,
   type MetricsViewerFormulaEntity,
   type MetricsViewerPageState,
   type MetricsViewerTabState,
   isExpressionEntry,
+  isMetricEntry,
 } from "../types/viewer-state";
-import type { SourceFilter } from "../utils/dimension-filters";
-import { createSourceId, parseSourceId } from "../utils/source-ids";
+import { parseSourceId } from "../utils/source-ids";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
@@ -25,17 +24,9 @@ import {
   stateToSerializedState,
 } from "../utils/url-serialization";
 
-export interface BreakoutInfo {
-  dimensionId: string;
-  temporalUnit?: TemporalUnit;
-  binning?: string;
-}
-
 export interface LoadSourcesRequest {
   metricIds: MetricId[];
   measureIds: MeasureId[];
-  breakoutBySourceId?: Record<MetricSourceId, BreakoutInfo>;
-  filtersBySourceId?: Record<MetricSourceId, SourceFilter[]>;
 }
 
 export function useViewerUrl(
@@ -58,10 +49,9 @@ export function useViewerUrl(
       const metricId = params.get("metricId");
       if (metricId) {
         serializedState = {
-          sources: [{ type: "metric", id: parseInt(metricId, 10), index: 0 }],
+          formulaEntities: [{ type: "metric", id: parseInt(metricId, 10) }],
           tabs: [],
           selectedTabId: null,
-          expressions: [],
         };
         const encodedHash = encodeState(serializedState);
         if (encodedHash === undefined) {
@@ -80,33 +70,6 @@ export function useViewerUrl(
     }
     lastHashRef.current = hash;
 
-    const metricIds: MetricId[] = [];
-    const measureIds: MeasureId[] = [];
-    const breakoutBySourceId: Record<MetricSourceId, BreakoutInfo> = {};
-    const filtersBySourceId: Record<MetricSourceId, SourceFilter[]> = {};
-
-    for (const source of serializedState.sources) {
-      const sourceId = createSourceId(source.id, source.type);
-
-      if (source.type === "metric") {
-        metricIds.push(source.id);
-      } else if (source.type === "measure") {
-        measureIds.push(source.id);
-      }
-
-      if (source.breakout) {
-        breakoutBySourceId[sourceId] = {
-          dimensionId: source.breakout,
-          temporalUnit: source.breakoutTemporalUnit,
-          binning: source.breakoutBinning,
-        };
-      }
-
-      if (source.filters && source.filters.length > 0) {
-        filtersBySourceId[sourceId] = source.filters;
-      }
-    }
-
     if (serializedState.tabs.length > 0) {
       const tabs: MetricsViewerTabState[] =
         serializedState.tabs.map(deserializeTab);
@@ -119,11 +82,20 @@ export function useViewerUrl(
       });
     }
 
-    // Restore formula entities from URL (expressions + standalone metric refs
-    // are reconstructed from the serialized state)
+    const metricIds: MetricId[] = [];
+    const measureIds: MeasureId[] = [];
+
     const restoredFormulaEntities = deserializeFormulaEntities(serializedState);
 
     restoredFormulaEntities.forEach((entity) => {
+      if (isMetricEntry(entity)) {
+        const { type, id } = parseSourceId(entity.id);
+        if (type === "metric") {
+          metricIds.push(id);
+        } else if (type === "measure") {
+          measureIds.push(id);
+        }
+      }
       if (isExpressionEntry(entity)) {
         entity.tokens.forEach((token) => {
           if (token.type === "metric") {
@@ -139,13 +111,9 @@ export function useViewerUrl(
     });
 
     if (metricIds.length > 0 || measureIds.length > 0) {
-      const hasBreakouts = Object.keys(breakoutBySourceId).length > 0;
-      const hasFilters = Object.keys(filtersBySourceId).length > 0;
       onLoadSources({
         metricIds,
         measureIds,
-        breakoutBySourceId: hasBreakouts ? breakoutBySourceId : undefined,
-        filtersBySourceId: hasFilters ? filtersBySourceId : undefined,
       });
     }
 
@@ -159,10 +127,24 @@ export function useViewerUrl(
 
   // sync state to URL
   useEffect(() => {
+    // don't update URL until state is fully resolved
+    // definitions are loaded and there are no outstanding SerializedDefinitionInfos
     const definitionValues = Object.values(state.definitions);
+    const hasPendingSerializedInfo = state.formulaEntities.some((entity) => {
+      if (isMetricEntry(entity) && entity.serializedDefinitionInfo) {
+        return true;
+      }
+      if (isExpressionEntry(entity)) {
+        return entity.tokens.some(
+          (token) => token.type === "metric" && token.serializedDefinitionInfo,
+        );
+      }
+      return false;
+    });
     if (
       definitionValues.length === 0 ||
-      definitionValues.some((entry) => entry.definition === null)
+      definitionValues.some((entry) => entry.definition === null) ||
+      hasPendingSerializedInfo
     ) {
       return;
     }
