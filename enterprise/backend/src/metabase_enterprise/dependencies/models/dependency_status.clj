@@ -88,7 +88,7 @@
                 :limit batch-size})))
 
 (defn has-pending-retries?
-  "Returns true if there are any entities waiting to be retried (not terminal, with a future retry time)."
+  "Returns true if there are any entities waiting to be retried (not terminal, with a set retry time)."
   []
   (t2/exists? :model/DependencyStatus
               :terminal false
