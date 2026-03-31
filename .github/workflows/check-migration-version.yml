@@ -22,4 +22,5 @@ jobs:
       - name: Check migration versions
         env:
           BASE_REF: ${{ github.base_ref }}
-        run: bin/check-migration-versions
+          CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+        run: npx tsx bin/check-migration-versions.ts
