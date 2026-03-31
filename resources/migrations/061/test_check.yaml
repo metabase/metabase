@@ -1,8 +1,0 @@
-databaseChangeLog:
-  - changeSet:
-      id: v61.2026-03-31T00:00:00
-      author: test
-      comment: Dummy migration to test CI check — will be removed
-      changes:
-        - sql:
-            sql: SELECT 1
