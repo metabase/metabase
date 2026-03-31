@@ -29,7 +29,7 @@
   "Sets up JWT auth and premium features needed for agent API + workspaces."
   [& body]
   `(sso.test-setup/with-jwt-default-setup!
-     (mt/with-additional-premium-features #{:agent-api :metabot-v3 :workspaces :transforms}
+     (mt/with-additional-premium-features #{:agent-api :workspaces :transforms}
        ~@body)))
 
 (defn- auth-headers
