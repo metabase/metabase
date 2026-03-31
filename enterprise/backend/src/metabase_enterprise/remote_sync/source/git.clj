@@ -525,3 +525,15 @@
   [url branch token]
   (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
                url branch token))
+
+(defn snapshot-at-ref
+  "Creates a snapshot at a specific ref (branch, tag, commit SHA, or \"HEAD\").
+
+  Fetches latest refs from remote, then resolves the given ref-str to a commit SHA
+  and returns a GitSnapshot. Throws if the ref cannot be resolved."
+  [source ^String ref-str]
+  (fetch! source)
+  (let [version (commit-sha source ref-str)]
+    (when-not version
+      (throw (ex-info (str "Cannot resolve ref: " ref-str) {:ref ref-str})))
+    (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source))))
