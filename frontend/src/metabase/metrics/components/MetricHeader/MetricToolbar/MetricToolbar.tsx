@@ -13,6 +13,7 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import { PLUGIN_AUDIT, PLUGIN_MODERATION } from "metabase/plugins";
 import { AddToDashSelectDashModal } from "metabase/query_builder/components/AddToDashSelectDashModal";
@@ -105,16 +106,18 @@ function MetricToolbarButtons({
 
   return (
     <Group wrap="nowrap" gap="sm">
-      <Button
-        size="sm"
-        component={ForwardRefLink}
-        to={Urls.exploreMetric(card.id)}
-        target="_blank"
-        leftSection={<Icon name="external" />}
-        data-testid="explore-link"
-      >
-        {t`Explore`}
-      </Button>
+      {isNumericMetric(card) && (
+        <Button
+          size="sm"
+          component={ForwardRefLink}
+          to={Urls.exploreMetric(card.id)}
+          target="_blank"
+          leftSection={<Icon name="external" />}
+          data-testid="explore-link"
+        >
+          {t`Explore`}
+        </Button>
+      )}
       <Menu position="bottom-end">
         <Menu.Target>
           <ToolbarButton icon="ellipsis" aria-label={t`More options`} />

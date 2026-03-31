@@ -156,6 +156,7 @@ export interface VisualizationProps {
   // Is this visualization made by the visualizer
   isVisualizerCard: boolean;
   isEditing: boolean;
+  isMetricsViewer: boolean;
   isMobile: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;

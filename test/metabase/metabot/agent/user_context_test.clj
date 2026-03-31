@@ -1,6 +1,9 @@
 (ns metabase.metabot.agent.user-context-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
@@ -41,25 +44,16 @@
       (is (= "postgresql" result))))
 
   (testing "extracts sql_engine from adhoc item with native dataset-query (frontend payload)"
-    (let [context {:user_is_viewing [{:type      "adhoc"
-                                      :query     {:type     "native"
-                                                  :native   {:query "SELECT 1"}
-                                                  :database 1}
+    (let [context {:user_is_viewing [{:type "adhoc"
+                                      :query (lib/native-query (mt/metadata-provider) "select 1")
                                       :sql_engine "PostgreSQL"}]}
           result (user-context/extract-sql-dialect context)]
       (is (= "postgresql" result))))
 
   (testing "returns nil for adhoc notebook (MBQL) query"
     (let [context {:user_is_viewing [{:type  "adhoc"
-                                      :query {:type     "query"
-                                              :query    {:source-table 1}
-                                              :database 1}}]}
-          result (user-context/extract-sql-dialect context)]
-      (is (nil? result))))
-
-  (testing "extracts sql_engine from transform context"
-    (let [context {:user_is_viewing [{:type "transform"
-                                      :sql_engine "MySQL"}]}
+                                      :query (let [mp (mt/metadata-provider)]
+                                               (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]}
           result (user-context/extract-sql-dialect context)]
       (is (nil? result))))
 
@@ -74,109 +68,89 @@
       (is (nil? result)))))
 
 (deftest format-viewing-context-test
-  (testing "formats adhoc notebook (MBQL) query context"
-    (is (=? #"(?s).*notebook editor.*Database ID: 1.*"
-            (user-context/format-viewing-context {:user_is_viewing [{:type  "adhoc"
-                                                                     :query {:type        "query"
-                                                                             :query       {:source-table 1}
-                                                                             :database    1
-                                                                             :data_source "card__123"}}]}))))
+  (let [mp meta/metadata-provider]
+    (testing "formats adhoc notebook (MBQL) query context"
+      (is (=? (re-pattern
+               (format "(?s).*notebook editor.*Database ID: %d.*"
+                       (meta/id)))
+              (user-context/format-viewing-context
+               {:user_is_viewing [{:type  "adhoc"
+                                   :query (lib/query mp (lib.metadata/table mp (meta/id :venues)))}]}))))
 
-  (testing "formats adhoc native SQL query from frontend (type: adhoc, query.type: native)"
-    (let [result (user-context/format-viewing-context
-                  {:user_is_viewing [{:type       "adhoc"
-                                      :query      {:type     "native"
-                                                   :native   {:query "SELECT * FROM orders WHERE total > 100"}
-                                                   :database 1}
-                                      :sql_engine "PostgreSQL"
-                                      :error      nil}]})]
-      (is (re-find #"SQL editor" result))
-      (is (re-find #"SELECT \* FROM orders WHERE total > 100" result))
-      (is (re-find #"PostgreSQL" result))))
+    (testing "formats adhoc native SQL query from frontend (type: adhoc, query.type: native)"
+      (let [result (user-context/format-viewing-context
+                    {:user_is_viewing [{:type       "adhoc"
+                                        :query (lib/native-query mp "SELECT * FROM orders WHERE total > 100")
+                                        :sql_engine "postgres"
+                                        :error      nil}]})]
+        (is (re-find #"SQL editor" result))
+        (is (re-find #"SELECT \* FROM orders WHERE total > 100" result))
+        (is (re-find #"postgres" result))))
 
-  (testing "formats adhoc native SQL query with error"
-    (let [result (user-context/format-viewing-context
-                  {:user_is_viewing [{:type       "adhoc"
-                                      :query      {:type     "native"
-                                                   :native   {:query "SELECT * FROM invalid"}
-                                                   :database 1}
-                                      :sql_engine "PostgreSQL"
-                                      :error      "Table 'invalid' not found"}]})]
-      (is (re-find #"SQL editor" result))
-      (is (re-find #"SELECT \* FROM invalid" result))
-      (is (re-find #"Table 'invalid' not found" result))))
+    (testing "formats adhoc native SQL query with error"
+      (let [result (user-context/format-viewing-context
+                    {:user_is_viewing [{:type       "adhoc"
+                                        :query (lib/native-query mp "SELECT * FROM invalid")
+                                        :sql_engine "postgres"
+                                        :error      "Table 'invalid' not found"}]})]
+        (is (re-find #"SQL editor" result))
+        (is (re-find #"SELECT \* FROM invalid" result))
+        (is (re-find #"Table 'invalid' not found" result))))
 
-  (testing "formats explicit type: native context with SQL string (legacy)"
-    (let [result (user-context/format-viewing-context {:user_is_viewing [{:type "native"
-                                                                          :query "SELECT * FROM users"
-                                                                          :sql_engine "PostgreSQL"}]})]
-      (is (re-find #"SQL editor" result))
-      (is (re-find #"SELECT \* FROM users" result))
-      (is (re-find #"PostgreSQL" result))))
+    (testing "formats transform context"
+      (let [context {:user_is_viewing [{:type "transform"
+                                        :id 123
+                                        :name "Daily Revenue"
+                                        :source_type "sql"}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"Transform" result))
+        (is (re-find #"Daily Revenue" result))
+        (is (re-find #"sql" result))))
 
-  (testing "formats native query with error (legacy)"
-    (let [context {:user_is_viewing [{:type "native"
-                                      :query "SELECT * FROM invalid"
-                                      :error "Table 'invalid' not found"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"error" result))
-      (is (re-find #"Table 'invalid' not found" result))))
+    (testing "formats transform context with error"
+      (let [context {:user_is_viewing [{:type "transform"
+                                        :id 123
+                                        :name "Broken Revenue"
+                                        :source_type "native"
+                                        :error "ERROR: relation \"missing_table\" does not exist"}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"Transform error" result))
+        (is (re-find #"ERROR: relation \"missing_table\" does not exist" result))))
 
-  (testing "formats transform context"
-    (let [context {:user_is_viewing [{:type "transform"
-                                      :id 123
-                                      :name "Daily Revenue"
-                                      :source_type "sql"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"Transform" result))
-      (is (re-find #"Daily Revenue" result))
-      (is (re-find #"sql" result))))
+    (testing "formats code editor context"
+      (let [context {:user_is_viewing [{:type "code_editor"
+                                        :buffers [{:id "buffer1"
+                                                   :source {:language "python"
+                                                            :database_id 42}
+                                                   :cursor {:line 10 :column 5}}]}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"code editor" result))
+        (is (re-find #"python" result))
+        (is (re-find #"Line 10" result))))
 
-  (testing "formats transform context with error"
-    (let [context {:user_is_viewing [{:type "transform"
-                                      :id 123
-                                      :name "Broken Revenue"
-                                      :source_type "native"
-                                      :error "ERROR: relation \"missing_table\" does not exist"}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"Transform error" result))
-      (is (re-find #"ERROR: relation \"missing_table\" does not exist" result))))
+    (testing "formats code editor with selection"
+      (let [context {:user_is_viewing [{:type "code_editor"
+                                        :buffers [{:id "buffer1"
+                                                   :source {:language "sql"
+                                                            :database_id 42}
+                                                   :cursor {:line 5 :column 0}
+                                                   :selection {:start {:line 5 :column 0}
+                                                               :end {:line 10 :column 20}
+                                                               :text "SELECT * FROM foo"}}]}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"Selected lines:" result))
+        (is (re-find #"SELECT \* FROM foo" result))))
 
-  (testing "formats code editor context"
-    (let [context {:user_is_viewing [{:type "code_editor"
-                                      :buffers [{:id "buffer1"
-                                                 :source {:language "python"
-                                                          :database_id 42}
-                                                 :cursor {:line 10 :column 5}}]}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"code editor" result))
-      (is (re-find #"python" result))
-      (is (re-find #"Line 10" result))))
-
-  (testing "formats code editor with selection"
-    (let [context {:user_is_viewing [{:type "code_editor"
-                                      :buffers [{:id "buffer1"
-                                                 :source {:language "sql"
-                                                          :database_id 42}
-                                                 :cursor {:line 5 :column 0}
-                                                 :selection {:start {:line 5 :column 0}
-                                                             :end {:line 10 :column 20}
-                                                             :text "SELECT * FROM foo"}}]}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"Selected lines:" result))
-      (is (re-find #"SELECT \* FROM foo" result))))
-
-  (testing "formats code editor with no buffers"
-    (let [context {:user_is_viewing [{:type "code_editor"
-                                      :buffers []}]}
-          result (user-context/format-viewing-context context)]
-      (is (some? result))
-      (is (re-find #"no active buffers" result)))))
+    (testing "formats code editor with no buffers"
+      (let [context {:user_is_viewing [{:type "code_editor"
+                                        :buffers []}]}
+            result (user-context/format-viewing-context context)]
+        (is (some? result))
+        (is (re-find #"no active buffers" result))))))
 
 (deftest format-viewing-context-test-2
   (testing "formats table entity"
@@ -299,9 +273,9 @@
     (with-redefs [user-context/format-current-user-info (constantly "<user>Jane Doe</user>")]
       (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
                      :first_day_of_week "Monday"
-                     :user_is_viewing [{:type "native"
+                     :user_is_viewing [{:type "adhoc"
                                         :sql_engine "PostgreSQL"
-                                        :query "SELECT * FROM users"}]
+                                        :query (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}]
                      :user_recently_viewed [{:type "table"
                                              :id 123
                                              :name "users"}]}
@@ -324,9 +298,7 @@
                    :first_day_of_week "Monday"
                    :user_is_viewing [{:type       "adhoc"
                                       :sql_engine "PostgreSQL"
-                                      :query      {:type     "native"
-                                                   :native   {:query "SELECT * FROM users"}
-                                                   :database 1}}]
+                                      :query      (lib/native-query (mt/metadata-provider) "SELECT * FROM users")}]
                    :user_recently_viewed [{:type "table"
                                            :id 123
                                            :name "users"}]}
