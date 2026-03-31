@@ -5,12 +5,14 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { MetabotNavPane } from "metabase/metabot/components/MetabotAdmin/MetabotNavPane";
 
 import { GeneralLimitsSettingsSection } from "./GeneralLimitsSettingsSection";
+import { GroupLimitsSettingsSection } from "./GroupLimitsSettingsSection";
 
 export function MetabotUsageLimitsPage() {
   return (
     <AdminSettingsLayout sidebar={<MetabotNavPane />}>
       <SettingsPageWrapper title={t`AI usage limits`} mt="sm">
         <GeneralLimitsSettingsSection />
+        <GroupLimitsSettingsSection />
       </SettingsPageWrapper>
     </AdminSettingsLayout>
   );
