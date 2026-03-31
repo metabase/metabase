@@ -1,0 +1,33 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 65px - 4rem);
+  min-height: 0;
+}
+
+.header {
+  flex-shrink: 0;
+  padding-bottom: var(--mantine-spacing-lg);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+
+  .filter-bar {
+    flex: 0;
+  }
+
+  .list {
+    flex: 1;
+    overflow: auto;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
