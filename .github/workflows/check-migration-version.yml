@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           filter: blob:none
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Check migration versions
         env:

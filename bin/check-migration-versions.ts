@@ -60,6 +60,12 @@ if (releaseBranchMatch) {
   }
   console.log(`CURRENT_VERSION: ${currentVersionStr}`);
   expectedVersion = Number(currentVersionStr) + 1;
+  if (!Number.isInteger(expectedVersion)) {
+    console.error(
+      `ERROR: CURRENT_VERSION '${currentVersionStr}' is not a valid integer.`,
+    );
+    process.exit(1);
+  }
 } else {
   console.log(
     `Target branch '${baseRef}' is not master or a release branch — skipping check.`,
