@@ -50,6 +50,12 @@ let expectedVersion: number;
 const releaseBranchMatch = baseRef.match(/^release-x\.(\d+)\.x$/);
 if (releaseBranchMatch) {
   expectedVersion = Number(releaseBranchMatch[1]);
+  if (!Number.isInteger(expectedVersion) || expectedVersion <= 0) {
+    console.error(
+      `ERROR: Could not derive a valid version from branch name: '${baseRef}'`,
+    );
+    process.exit(1);
+  }
 } else if (baseRef === "master") {
   const currentVersionStr = process.argv[3] ?? process.env.CURRENT_VERSION;
   if (!currentVersionStr) {
