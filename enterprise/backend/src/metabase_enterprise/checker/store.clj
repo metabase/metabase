@@ -11,7 +11,8 @@
    All mutable state lives in the store atom. There are no dynamic vars —
    the store is passed explicitly to every function that needs it."
   (:require
-   [metabase-enterprise.checker.source :as source]))
+   [metabase-enterprise.checker.source :as source]
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 
@@ -72,6 +73,7 @@
     (in-index? store :document entity-id)   :document
     (in-index? store :measure entity-id)    :measure
     (in-index? store :segment entity-id)    :segment
+    (in-index? store :snippet entity-id)    :snippet
     :else nil))
 
 (defn index-file
@@ -185,3 +187,12 @@
       (when-let [data (source/resolve-card (source store) entity-id)]
         (let [id (get-or-assign! store :card entity-id)]
           (cache-entity! store :card entity-id (assoc data :id id))))))
+
+(defn load-snippet!
+  "Load and cache a snippet from the file index, assigning it an integer ID."
+  [store entity-id]
+  (or (cached-entity store :snippet entity-id)
+      (when-let [file (index-file store :snippet entity-id)]
+        (let [data (yaml/parse-string (slurp file))
+              id   (get-or-assign! store :snippet entity-id)]
+          (cache-entity! store :snippet entity-id (assoc data :id id))))))

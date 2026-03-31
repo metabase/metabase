@@ -103,10 +103,12 @@
   [store !failures & {:keys [sentinel?]}]
   (reify resolve/SerdesImportResolver
     (import-fk [_ eid model]
+      #_{:clj-kondo/ignore [:case-symbol-test]}
       (case model
-        Card    (resolve-card-entity-id store !failures eid)
-        Segment (resolve-ref store :segment eid !failures {:type :segment :entity-id eid})
-        Measure (resolve-ref store :measure eid !failures {:type :measure :entity-id eid})
+        Card               (resolve-card-entity-id store !failures eid)
+        Segment            (resolve-ref store :segment eid !failures {:type :segment :entity-id eid})
+        Measure            (resolve-ref store :measure eid !failures {:type :measure :entity-id eid})
+        NativeQuerySnippet (resolve-ref store :snippet eid !failures {:type :snippet :entity-id eid})
         (do (when !failures
               (swap! !failures conj {:type :unknown :model model :entity-id eid}))
             nil)))
@@ -154,7 +156,8 @@
            :name            (:name data)
            :display-name    (:display_name data)
            :base-type       (keyword (:base_type data))
-           :effective-type  (some-> (:effective_type data) keyword)
+           :effective-type  (or (some-> (:effective_type data) keyword)
+                                (keyword (:base_type data)))
            :semantic-type   (some-> (:semantic_type data) keyword)
            :database-type   (:database_type data)
            :active          (if (contains? data :active) (:active data) true)
@@ -313,7 +316,7 @@
       (when-let [data (store/load-database! store db-name)]
         (->database-metadata data))))
 
-  (metadatas [_this {:keys [lib/type id table-id]}]
+  (metadatas [_this {:keys [lib/type id table-id name]}]
     (case type
       :metadata/table
       (vec
@@ -367,6 +370,32 @@
                :let [data (store/load-card! store eid)]
                :when data]
            (->card-metadata store data))))
+
+      :metadata/native-query-snippet
+      (vec
+       (cond
+         id
+         (for [sid id
+               :let [eid (store/id->ref store :snippet sid)]
+               :when eid
+               :let [data (store/load-snippet! store eid)]
+               :when data]
+           {:lib/type :metadata/native-query-snippet
+            :id       (:id data)
+            :name     (:name data)
+            :content  (:content data)})
+
+         name
+         (for [eid (store/all-refs store :snippet)
+               :let [data (store/load-snippet! store eid)]
+               :when data
+               :when (contains? name (:name data))]
+           {:lib/type :metadata/native-query-snippet
+            :id       (:id data)
+            :name     (:name data)
+            :content  (:content data)})
+
+         :else []))
 
       nil))
 
@@ -828,7 +857,7 @@
         src          (source/composite-source db-source export-source)
         db-index     (serdes/source-index db-source)
         export-index (serdes/source-index export-source)
-        index        (merge db-index (select-keys export-index [:card :dashboard :collection :document :measure :segment :duplicates]))]
+        index        (merge db-index (select-keys export-index [:card :dashboard :collection :document :measure :segment :snippet :duplicates]))]
     {:source src :index index :export-source export-source}))
 
 (defn check
@@ -849,8 +878,40 @@
      {:results (check-cards source index entity-ids)
       :source  source})))
 
+(defn setup
+  "Create a store and provider for REPL iteration.
+   Returns {:store store :provider provider :index index}.
+
+   Usage:
+     (def ctx (setup \"/path/to/export\" \"/path/to/schemas\"))
+     (check-one ctx \"entity-id\")
+     (check-one ctx \"entity-id\" :verbose true)"
+  [export-dir schema-dir]
+  (let [{:keys [source index]} (make-source-and-index export-dir schema-dir)
+        store    (binding [mu.fn/*enforce* false]
+                   (store/make-store source index))
+        provider (make-provider store)]
+    {:store store :provider provider :index index}))
+
+(defn check-one
+  "Check a single card by entity-id using a pre-built context from [[setup]].
+   Returns the result map. With :verbose true, also prints formatted output."
+  [{:keys [store provider]} entity-id & {:keys [verbose]}]
+  (binding [mu.fn/*enforce* false]
+    (let [result (check-card store provider entity-id)]
+      (when verbose
+        (println (format-result [entity-id result])))
+      result)))
+
 (comment
+  ;; REPL workflow:
+  (def ctx (setup "/Users/dan/projects/work/representations/examples/v1"
+                  "/Users/dan/Downloads/metadata/.metadata/databases"))
+  (check-one ctx "HiBFSt0BNx5s5MxVDLLKB" :verbose true)  ; snippet card
+  (check-one ctx "2u10n8GV6u0LFYrq8yV5p" :verbose true)  ; variables card
+  (check-one ctx "dShCrdNatveOrders0005" :verbose true)    ; native orders
+
+  ;; Full check:
   (def r (check "/path/to/export" "/path/to/schemas"))
   (summarize-results (:results r))
-
-  (check "/path/to/export" "/path/to/schemas" ["some-entity-id"]))
+  )

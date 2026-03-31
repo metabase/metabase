@@ -18,6 +18,7 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.util.log :as log]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.init]))
 
@@ -43,28 +44,33 @@
 (defn compile-query-to-sql
   "Compile a pMBQL query to SQL.
 
-   For native-only queries: adds dummy parameter values for template tags
-   and then uses compile-with-inline-parameters to produce clean SQL with
-   {{tags}} and [[optionals]] resolved. Falls back to raw SQL extraction
-   if the full compile path isn't available (e.g. test environments without
-   driver implementations).
+   For native queries: uses compile-with-inline-parameters to expand template
+   tags (snippets, card refs, variables, optional blocks) through the QP
+   parameter substitution pipeline with our MetadataProvider.
 
-   For MBQL queries: uses the full QP compile path with the driver to
-   generate SQL from the MBQL structure.
+   For MBQL queries: compiles to SQL using the driver directly.
 
    Returns the compiled SQL string, or nil on failure."
   [driver query]
-  (try
-    (let [with-params (lib/add-parameters-for-template-tags query)
-          compiled    (binding [driver/*driver* driver]
-                        (qp.compile/compile-with-inline-parameters with-params))]
-      (:query compiled))
-    (catch Exception _
-      ;; Fallback for native queries: extract raw SQL from the query stage.
-      ;; This works when the full QP setup isn't available (no driver impls),
-      ;; but won't resolve template tags.
-      (when (lib/native-only-query? query)
-        (:native (lib/query-stage query -1))))))
+  (if (lib/native-only-query? query)
+    ;; Native: use QP compile path to expand template tags
+    (try
+      (driver/the-initialized-driver driver)
+      (let [with-params (lib/add-parameters-for-template-tags query)
+            compiled    (binding [driver/*driver* driver]
+                          (qp.compile/compile-with-inline-parameters with-params))]
+        (:query compiled))
+      (catch Throwable t
+        ;; Fallback: return raw SQL (template tags unresolved)
+        (log/warnf "Native query compilation failed for driver %s: %s" driver (ex-message t))
+        (:native (lib/query-stage query -1))))
+    ;; MBQL: compile to SQL using the driver directly, no QP middleware.
+    (try
+      (binding [driver/*driver* driver]
+        (:query (driver/mbql->native driver query)))
+      (catch Exception e
+        (log/warnf "MBQL query compilation failed for driver %s: %s" driver (ex-message e))
+        nil))))
 
 ;;; ===========================================================================
 ;;; Layer 1: Ref extraction via sql-parsing (raw strings → strings)
@@ -98,10 +104,12 @@
    Resolves each discovered ref against the store so they get IDs assigned
    and (for lenient sources) get tracked in the manifest."
   [store db-name query]
-  (let [engine  (:engine (store/cached-entity store :database db-name))
-        driver  (keyword engine)
+  (let [db-data (or (store/cached-entity store :database db-name)
+                    (store/load-database! store db-name))
+        engine  (:engine db-data)
+        driver  (when engine (keyword engine))
         dialect (get engine->dialect engine)
-        sql     (compile-query-to-sql driver query)]
+        sql     (when driver (compile-query-to-sql driver query))]
     (when sql
       (parse-sql-refs store db-name dialect sql))))
 
@@ -129,8 +137,10 @@
    Returns a set of error maps, or nil if validation passes or isn't applicable."
   [store provider query db-name]
   (when db-name
-    (let [engine (keyword (:engine (store/cached-entity store :database db-name)))
-          sql    (compile-query-to-sql engine query)]
+    (let [db-data (or (store/cached-entity store :database db-name)
+                      (store/load-database! store db-name))
+          engine  (when (:engine db-data) (keyword (:engine db-data)))
+          sql     (when engine (compile-query-to-sql engine query))]
       (when sql
         (try
           (let [native-query (lib/native-query provider sql)

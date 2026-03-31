@@ -180,12 +180,13 @@
 
 (def ^:private model->kind
   "Map serdes model names to index kinds."
-  {"Card"       :card
-   "Dashboard"  :dashboard
-   "Collection" :collection
-   "Document"   :document
-   "Measure"    :measure
-   "Segment"    :segment})
+  {"Card"               :card
+   "Dashboard"          :dashboard
+   "Collection"         :collection
+   "Document"           :document
+   "Measure"            :measure
+   "Segment"            :segment
+   "NativeQuerySnippet" :snippet})
 
 (defn- index-measures-and-segments
   "Walk a databases directory and index measure/segment YAML files by entity_id.
@@ -363,4 +364,3 @@
   "Get all field paths from source."
   [^SerdesSource source]
   (keys (:field (.-index source))))
-
