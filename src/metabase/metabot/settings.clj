@@ -48,7 +48,6 @@
   :export?    true
   :doc        false)
 
-
 (defsetting metabot-chat-system-prompt
   (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
   :type       :string
