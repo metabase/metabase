@@ -102,10 +102,10 @@
           first))
 
 (defn- llm-provider-configured? [provider-and-model]
-  (some-> provider-and-model
-          provider-prefix
-          configured-provider-api-key
-          token-configured?))
+  (boolean (some-> provider-and-model
+                   provider-prefix
+                   configured-provider-api-key
+                   token-configured?)))
 
 (defsetting llm-metabot-internal-tasks-enabled?
   (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")
@@ -115,8 +115,8 @@
   :export?          false
   :deprecated-name  :ee-ai-metabot-internal-tasks-enabled?
   :doc              false
-  :getter           #(boolean (and (setting/get-value-of-type :boolean :llm-metabot-internal-tasks-enabled?)
-                                   (llm-provider-configured? (llm-metabot-provider-lite)))))
+  :getter           #(and (setting/get-value-of-type :boolean :llm-metabot-internal-tasks-enabled?)
+                          (llm-provider-configured? (llm-metabot-provider-lite))))
 
 (defsetting llm-metabot-configured?
   "Whether the API key for the selected Metabot provider is configured."
@@ -124,5 +124,5 @@
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(boolean (llm-provider-configured? (llm-metabot-provider)))
+  :getter     #(llm-provider-configured? (llm-metabot-provider))
   :doc        false)
