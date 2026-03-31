@@ -195,7 +195,7 @@
                           :dataset_query (lib/query mp (lib.metadata/card mp old-id))
                           :type          :question
                           :name          "Child Card"}]
-            (mt/with-model-cleanup [:model/Dependency]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               ;; populate dependencies
               (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :rasta)})
               (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
@@ -254,9 +254,10 @@
                           :dataset_query (lib/query mp (lib.metadata/card mp old-id))
                           :type          :question
                           :name          "Child 2"}]
-            (mt/with-model-cleanup [:model/Dependency]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               (doseq [card [old-card child-1 child-2]]
                 (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
+              (deps.test/synchronously-run-backfill!)
 
               (let [original-swap! replacement.source-swap/swap-source!]
                 (with-redefs [replacement.source-swap/swap-source!
