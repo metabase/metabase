@@ -133,13 +133,10 @@
     :model/Metabot
     :model/MetabotConversation
     :model/MetabotMessage
-    :model/MetabotPrompt
-    ;; 61+
-    :model/MetabotPermissions
-    :model/MetabotGroupLimit
-    :model/MetabotInstanceLimit]
+    :model/MetabotPrompt]
    (when config/ee-available?
-     [:model/Sandbox
+     [:model/MetabotPermissions
+      :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation])))
 

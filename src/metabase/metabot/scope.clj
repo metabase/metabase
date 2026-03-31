@@ -8,10 +8,9 @@
   (:require
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.models.metabot-permissions :as metabot-permissions]
-   [metabase.users.models.user :as user]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [deferred-tru]]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
@@ -153,7 +152,7 @@
 ;;; Permission resolution
 ;;; ──────────────────────────────────────────────────────────────────
 
-(defn- most-permissive-value
+(defn most-permissive-value
   "Given a perm type and a collection of values from different groups,
   return the most permissive value. Values are ordered most→least permissive
   in `metabot-permissions`."
@@ -163,27 +162,14 @@
     ;; Lowest index = most permissive
     (first (sort-by #(get rank % Integer/MAX_VALUE) values))))
 
-(defn resolve-user-permissions
+(defenterprise resolve-user-permissions
   "Resolve the effective metabot permissions for a user by taking the most
   permissive value across all their groups. Returns a map of perm-type → value,
-  with defaults filled in for any unset permission types."
-  [user-id]
-  (if-not user-id
-    metabot-permissions/perm-type-defaults
-    (let [group-ids (user/group-ids user-id)
-          stored    (when (seq group-ids)
-                      (t2/select :model/MetabotPermissions
-                                 :group_id [:in group-ids]))
-          by-type   (group-by :perm_type stored)]
-      (reduce-kv
-       (fn [acc perm-type default-value]
-         (let [values (map :perm_value (get by-type perm-type))]
-           (assoc acc perm-type
-                  (if (seq values)
-                    (most-permissive-value perm-type values)
-                    default-value))))
-       {}
-       metabot-permissions/perm-type-defaults))))
+  with defaults filled in for any unset permission types.
+  OSS implementation returns defaults for all users."
+  metabase-enterprise.metabot.permissions
+  [_user-id]
+  metabot-permissions/perm-type-defaults)
 
 (defn user-metabot-perms->scopes
   "Convert a resolved metabot permissions map into a set of scope strings.
