@@ -142,12 +142,11 @@
                    "pulse_id" "database_id" "database_qualified_id" "cache_hit"
                    "action_id" "action_qualified_id"
                    "transform_id" "transform_qualified_id"
-                   "lens_id" "lens_params"
-                   "query"
+                   "lens_id" "lens_params" "query"
                    "embedding_client" "embedding_version" "surface" "is_preview"
-                   "auth_method" "is_sandboxed" "is_impersonated" "is_db_routed"
-                   "parameters" "tenant_id"
-                   "embedding_hostname" "embedding_path" "sanitized_user_agent" "ip_address"}
+                   "auth_method" "is_sandboxed" "is_impersonated" "is_db_routed" "parameters"
+                   "tenant_id" "embedding_hostname" "embedding_path"
+                   "sanitized_user_agent" "ip_address"}
 
    "v_subscriptions" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
                        "creator_id" "archived" "dashboard_qualified_id" "schedule_type"

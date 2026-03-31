@@ -21,7 +21,7 @@
     query))
 
 (defenterprise apply-impersonation-postprocessing
-  "Post-processing middleware. Binds the dynamic var and marks result metadata with `:is_impersonated`."
+  "Post-processing middleware. Binds the impersonation role dynamic var for driver use."
   ;; run this even when the `:advanced-permissions` feature is not enabled, so that we can assert that it *is* enabled
   ;; if impersonation is configured. (Throwing here is better than silently ignoring the configured impersonation.)
   :feature :none
@@ -30,8 +30,6 @@
     (if-let [role (:impersonation/role query)]
       (do
         (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
-        (let [rff' (fn [metadata]
-                     (rff (assoc metadata :is_impersonated true)))]
-          (binding [impersonation.driver/*impersonation-role* role]
-            (qp query rff'))))
+        (binding [impersonation.driver/*impersonation-role* role]
+          (qp query rff)))
       (qp query rff))))
