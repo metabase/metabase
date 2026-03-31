@@ -173,6 +173,7 @@
      (te/field "Query ID" (:id item)))
    (te/field "Current SQL query"
              (te/code (lib/raw-native-query (:query item)) "sql"))
+   (te/field "Database ID" (get-in item [:query :database]))
    (te/field "Database SQL engine" (:sql_engine item))
    (when-some [error (:error item)]
      (te/field "Query error" (te/code error)))

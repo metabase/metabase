@@ -59,7 +59,7 @@
     "transform"
     "code_editor"})
 
-(def item-type-schema
+(def ^:private item-type-schema
   "Schema for the `:type` key of `:user_is_viewing` item."
   (into [:enum] item-types))
 
