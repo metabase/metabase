@@ -104,10 +104,10 @@
 
 (deftest ^:sequential post-transforms-test
   (doseq [[product-type feature] [["transforms"                  :transforms-basic]
-                                   ["transforms-basic"            :transforms-basic]
-                                   ["transforms-basic-metered"    :transforms-basic]
-                                   ["transforms-advanced"         :transforms-python]
-                                   ["transforms-advanced-metered" :transforms-python]]]
+                                  ["transforms-basic"            :transforms-basic]
+                                  ["transforms-basic-metered"    :transforms-basic]
+                                  ["transforms-advanced"         :transforms-python]
+                                  ["transforms-advanced-metered" :transforms-python]]]
     (testing (str "POST /api/ee/cloud-add-ons/" product-type)
       (testing "requires superuser"
         (mt/with-premium-features #{}
