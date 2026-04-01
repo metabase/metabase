@@ -581,9 +581,10 @@
         labels             {:profile-id (name profile-id)}
         track-user-intent? (and (metabot.settings/llm-metabot-internal-tasks-enabled?)
                                 (some-> opts :tracking-opts :track-user-intent?))
-        perms              (if api/*is-superuser?*
-                             scope/all-yes-permissions
-                             (scope/resolve-user-permissions api/*current-user-id*))
+        perms              (or scope/*current-user-metabot-permissions*
+                               (if api/*is-superuser?*
+                                 scope/all-yes-permissions
+                                 (scope/resolve-user-permissions api/*current-user-id*)))
         scopes             (if api/*is-superuser?*
                              scope/unrestricted
                              (scope/user-metabot-perms->scopes perms))]

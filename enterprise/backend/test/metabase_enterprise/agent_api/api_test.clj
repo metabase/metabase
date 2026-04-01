@@ -220,7 +220,7 @@
       (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
                                                                :scope "agent:query:construct"}))}]
         (is (= {:error   "unsupported_scope"
-                :message "Token does not have required scope: agent:query"}
+                :message "Insufficient scope for this operation."}
                (client/client :post 403 "agent/v1/query"
                               {:request-options {:headers headers}}
                               {:table_id (mt/id :orders) :limit 1})))))))
