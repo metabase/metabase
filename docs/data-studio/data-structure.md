@@ -50,7 +50,6 @@ See [Publishing tables](./library.md#publishing-tables) in the [Library docs](./
 
 ## Sync settings
 
-
 You can trigger manual re-sync of the table schema. Re-syncing can be useful if you have added or removed columns from the table, and you don't see those changes reflected in Metabase.
 
 You can also re-scan field values for the table or discard cached field values, which is useful if you need to retrieve updated values for dropdown filters.
@@ -153,3 +152,7 @@ Deleting a measure will not break questions using it. The questions that use the
 1. Select the table in **Data structure**.
 2. Scroll down and switch to **Measures** and choose your measure.
 3. On the measure's page, click on the **three dots** icon next to the measure's name and select **Remove measure**.
+
+### Explore measure
+
+You can explore measures along dimensions and compare measures and measures in the [Metrics Explorer](../questions/metrics-explorer.md).

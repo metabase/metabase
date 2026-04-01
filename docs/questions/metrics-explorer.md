@@ -28,7 +28,7 @@ To open a **metric** in the Metrics Explorer:
 
 To get back to the metric's page from metrics explorer, right-click the metric card in the search bar and select **Go to metric home page**.
 
-To open a **measure** in the Metrics Explorer, go directly to `[your metabase URL]/explore` and type the measure's name in the search bar. To get back to the measure definition from metrics explorer, right-click the measure card in the search bar and select **Edit in data studio**.
+To open a **measure** in the Metrics Explorer, go directly to `[your metabase URL]/explore` and type the measure's name in the search bar. To get back to the measure definition from metrics explorer, right-click the measure card in the search bar and select **Edit in Data Studio**.
 
 ## Compare metrics and measures
 
