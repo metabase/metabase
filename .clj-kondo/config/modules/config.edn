@@ -3110,6 +3110,7 @@
            models
            premium-features
            settings
+           task
            util}
    :model-exports #{:model/SecurityAdvisory}}
 
