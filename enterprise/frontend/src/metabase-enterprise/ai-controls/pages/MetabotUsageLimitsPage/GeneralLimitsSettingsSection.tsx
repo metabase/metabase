@@ -49,23 +49,6 @@ export function GeneralLimitsSettingsSection() {
   const [quotaMessage, setQuotaMessage] = useState(savedQuotaMessage ?? "");
   const { sendErrorToast } = useMetadataToasts();
 
-  // Sync from backend when settings load
-  useEffect(() => {
-    if (savedLimitType) {
-      setLimitType(savedLimitType);
-    }
-  }, [savedLimitType]);
-
-  useEffect(() => {
-    if (savedLimitPeriod) {
-      setLimitPeriod(savedLimitPeriod);
-    }
-  }, [savedLimitPeriod]);
-
-  useEffect(() => {
-    setQuotaMessage(savedQuotaMessage ?? "");
-  }, [savedQuotaMessage]);
-
   useEffect(() => {
     if (instanceLimitData) {
       setInstanceLimitInput(
