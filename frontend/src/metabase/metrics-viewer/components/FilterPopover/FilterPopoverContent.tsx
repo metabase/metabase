@@ -7,11 +7,11 @@ import { SourceColorIndicator } from "metabase/common/components/SourceColorIndi
 import type {
   DimensionListItem,
   DimensionSection,
+  MetricGroup,
 } from "metabase/metrics/components/FilterPicker/FilterDimensionPicker/types";
 import { getMetricGroups } from "metabase/metrics/components/FilterPicker/FilterDimensionPicker/utils";
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
 import { getDimensionIcon } from "metabase/metrics/utils/dimensions";
-import type { IconName } from "metabase/ui";
 import {
   Badge,
   Box,
@@ -41,15 +41,6 @@ type NavigationState =
   | { view: "list" }
   | { view: "filter"; definitionIndex: number; dimension: DimensionMetadata };
 
-type DisplayMetricGroup = {
-  id: number;
-  metricName: string;
-  metricCount?: number;
-  icon?: IconName;
-  colors: string[] | undefined;
-  sections: DimensionSection[];
-};
-
 interface FilterPopoverContentProps {
   definitionSources: DefinitionSource[];
   metricColors: SourceColorMap;
@@ -70,19 +61,8 @@ export function FilterPopoverContent({
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
   const [searchText, setSearchText] = useState("");
 
-  const displayGroups = useMemo((): DisplayMetricGroup[] => {
-    const rawGroups = getMetricGroups(definitionSources);
-    return rawGroups.map((group, index) => {
-      const definitionSource = definitionSources[index];
-      return {
-        id: definitionSource.index,
-        metricName: group.metricName,
-        metricCount: definitionSource.token?.count,
-        icon: group.icon,
-        colors: metricColors[definitionSource.entityIndex],
-        sections: group.sections,
-      };
-    });
+  const displayGroups = useMemo((): MetricGroup[] => {
+    return getMetricGroups(definitionSources, metricColors);
   }, [definitionSources, metricColors]);
 
   const filteredDisplayGroups = useMemo(
@@ -223,7 +203,7 @@ function MetricGroupList({
   onToggleExpanded,
   onDimensionSelect,
 }: {
-  groups: DisplayMetricGroup[];
+  groups: MetricGroup[];
   expandedItems: number[];
   collapsible: boolean;
   onToggleExpanded: (id: number) => void;

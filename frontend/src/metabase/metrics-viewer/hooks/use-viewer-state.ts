@@ -527,25 +527,30 @@ export function useViewerState(): UseViewerStateResult {
         // but the temporarily incorrect ordering breaks our handling of the browser's forward/back buttons
         // so wrap updateDefinition in a setTimeout to ensure it runs after addDefinition
         setTimeout(() => {
-          const definition = transform
-            ? transform(rawDefinition)
-            : rawDefinition;
-          updateDefinition(id, definition);
+          try {
+            const definition = transform
+              ? transform(rawDefinition)
+              : rawDefinition;
+            updateDefinition(id, definition);
 
-          if (stateRef.current.tabs.length === 0) {
-            const definitions: Record<MetricSourceId, MetricDefinition | null> =
-              {
+            if (stateRef.current.tabs.length === 0) {
+              const definitions: Record<
+                MetricSourceId,
+                MetricDefinition | null
+              > = {
                 [id]: definition,
               };
-            const tabs = computeDefaultTabs(definitions, [id]);
-            for (const tab of tabs) {
-              addTab(tab);
+              const tabs = computeDefaultTabs(definitions, [id]);
+              for (const tab of tabs) {
+                addTab(tab);
+              }
             }
+          } finally {
+            clearLoading(id);
           }
         }, 0);
       } catch {
         removeDefinition(id);
-      } finally {
         clearLoading(id);
       }
     },
@@ -573,11 +578,14 @@ export function useViewerState(): UseViewerStateResult {
         const definition = await loader();
         // see comment above setTimeout in loadDefinition
         setTimeout(() => {
-          updateDefinition(newId, definition);
+          try {
+            updateDefinition(newId, definition);
+          } finally {
+            clearLoading(newId);
+          }
         }, 0);
       } catch {
         removeDefinition(newId);
-      } finally {
         clearLoading(newId);
       }
     },
