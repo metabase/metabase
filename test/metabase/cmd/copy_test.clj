@@ -37,9 +37,10 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
+    :model/MetabotConversation
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
-    :model/MetabotPermissions
+    :model/MetabotMessage
     :model/PythonLibrary
     :model/PremiumFeaturesCache
     :model/Query

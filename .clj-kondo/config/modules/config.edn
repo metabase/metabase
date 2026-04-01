@@ -1224,7 +1224,7 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/MetabotConversation :model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog :model/MetabotConversation :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -2975,7 +2975,8 @@
               task
               util
               enterprise/dependencies
-              enterprise/transforms-python}
+              enterprise/transforms-python
+              task}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/PermissionsGroup
