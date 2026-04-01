@@ -48,8 +48,6 @@ function metabaseVizExternals() {
 
 const DEV_PORT = 5174;
 
-const landingPageHtml = readFileSync(resolve(__dirname, "dev-server-landing.html"), "utf-8");
-
 /**
  * Vite plugin that starts a dev server serving both static files from dist/
  * and an SSE endpoint at /__sse for hot-reload notifications.
@@ -57,6 +55,7 @@ const landingPageHtml = readFileSync(resolve(__dirname, "dev-server-landing.html
  */
 function metabaseDevServer() {
   const clients = new Set<import("http").ServerResponse>();
+  let landingPageHtml: string | undefined;
   let server: ReturnType<typeof createServer> | null = null;
 
   return {
@@ -87,6 +86,12 @@ function metabaseDevServer() {
 
         // Landing page with sync instructions
         if (url === "/") {
+          if (!landingPageHtml) {
+            const landingPath = resolve(__dirname, "dev-server-landing.html");
+            landingPageHtml = existsSync(landingPath)
+              ? readFileSync(landingPath, "utf-8")
+              : "<html><body><p>Custom viz dev server running.</p></body></html>";
+          }
           res.writeHead(200, { "Content-Type": "text/html" });
           res.end(landingPageHtml);
           return;
