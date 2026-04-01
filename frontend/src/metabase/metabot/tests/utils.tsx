@@ -21,7 +21,6 @@ import {
 } from "metabase/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
 import {
-  createMockTokenFeatures,
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";

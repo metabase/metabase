@@ -9,7 +9,6 @@ import type {
   UpdateMetabotSettingsRequest,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
-
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
 
 export function setupMetabotsEndpoints(
