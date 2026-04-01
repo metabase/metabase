@@ -84,8 +84,8 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
   return {
     id: "__CUSTOM_VIZ_NAME__",
     getName: () => "__CUSTOM_VIZ_NAME__",
-    minSize: { width: 4, height: 2 },
-    defaultSize: { width: 4, height: 2 },
+    minSize: { width: 4, height: 4 },
+    defaultSize: { width: 4, height: 4 },
     isSensible({ cols, rows }) {
       return (
         cols.length === 1 && rows.length === 1 && typeof rows[0][0] === "number"
