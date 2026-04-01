@@ -278,6 +278,26 @@
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
 
+(deftest get-database-usage-info-many-tables-test
+  (testing "usage_info should work with more than 65K tables (GHY-2413)"
+    (mt/with-temp
+      [:model/Database {db-id :id} {}]
+      (mt/with-model-cleanup [:model/Table]
+        (t2/query [(str "INSERT INTO metabase_table (db_id, name, active, field_order, created_at, updated_at)"
+                        " WITH RECURSIVE nums(x) AS ("
+                        "   SELECT 1"
+                        "   UNION ALL"
+                        "   SELECT x + 1 FROM nums WHERE x < 66000"
+                        " )"
+                        " SELECT ?, CONCAT('table_', x), TRUE, 'database', NOW(), NOW()"
+                        " FROM nums")
+                   db-id])
+        (is (= {:question 0
+                :dataset  0
+                :metric   0
+                :segment  0}
+               (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id))))))))
+
 (deftest ^:parallel get-database-usage-info-test-2
   (mt/with-temp
     [:model/Database {db-id :id} {}]
