@@ -4,7 +4,9 @@ import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { getIsHosted } from "metabase/setup/selectors";
 import {
   ActionIcon,
   Box,
@@ -43,6 +45,7 @@ export const MetabotChat = ({
 }: {
   config?: MetabotConfig;
 }) => {
+  const isHosted = useSelector(getIsHosted);
   const metabot = useMetabotAgent(config.agentId);
 
   const hasMessages =
@@ -160,7 +163,7 @@ export const MetabotChat = ({
                 config.preventRetryMessage ? undefined : metabot.retryMessage
               }
               isDoingScience={metabot.isDoingScience}
-              showFeedbackButtons
+              showFeedbackButtons={isHosted}
             />
             {/* loading */}
             {metabot.isDoingScience && (
