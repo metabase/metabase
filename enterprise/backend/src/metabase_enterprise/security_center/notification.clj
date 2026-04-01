@@ -29,18 +29,21 @@
 
 (def ^:private email-template
   "Inline template definition for the security advisory email."
-  {:details {:type           "email/handlebars-resource"
-             :subject        "[{{payload.custom.severity_label}}] Security Advisory: {{payload.event_info.object.title}}"
-             :path           "metabase/channel/email/security_advisory.hbs"
-             :recipient-type "cc"}})
+  {:channel_type :channel/email
+   :details      {:type           "email/handlebars-resource"
+                  :subject        "[{{payload.custom.severity_label}}] Security Advisory: {{payload.event_info.object.title}}"
+                  :path           "metabase/channel/email/security_advisory.hbs"
+                  :recipient-type "cc"}})
 
 (defn- email-recipients
   "Resolve email recipients from the `security-center-email-recipients` setting.
    nil → all admins (admin group). Non-nil → the specific email addresses."
   []
-  (or (settings/security-center-email-recipients)
-      [{:type                 :notification-recipient/group
-        :permissions_group_id (:id (perms/admin-group))}]))
+  (t2/hydrate
+   (or (settings/security-center-email-recipients)
+       [{:type                 :notification-recipient/group
+         :permissions_group_id (:id (perms/admin-group))}])
+   :recipients-detail))
 
 (defn- slack-recipients
   "Resolve Slack recipient from the `security-center-slack-channel` setting.
