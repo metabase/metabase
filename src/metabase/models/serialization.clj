@@ -1024,6 +1024,20 @@
         ;; Need to break a circular dependency here.
         (:id ((resolve 'metabase.users.models.user/serdes-synthesize-user!) {:email email :is_active false})))))
 
+;;; ## Databases
+
+(defn ^:dynamic ^::cache *export-database-fk*
+  "Given a numeric database ID, return its name as a portable reference.
+  [[*import-database-fk*]] is the inverse."
+  [id]
+  (*export-fk-keyed* id :model/Database :name))
+
+(defn ^:dynamic ^::cache *import-database-fk*
+  "Given a portable database name, resolve it back to a numeric ID.
+  [[*export-database-fk*]] is the inverse."
+  [db-name]
+  (*import-fk-keyed* db-name :model/Database :name))
+
 ;;; ## Tables
 
 (mu/defn ^:dynamic ^::cache *export-table-fk*
@@ -1453,7 +1467,7 @@
      (merge entity
             {:id (case model
                    "table"    (*export-table-fk* id)
-                   "database" (*export-fk-keyed* id :model/Database :name)
+                   "database" (*export-database-fk* id)
                    (*export-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- json-export-mbql
@@ -1626,7 +1640,7 @@
      (merge entity
             {:id (case model
                    "table"    (*import-table-fk* id)
-                   "database" (*import-fk-keyed* id :model/Database :name)
+                   "database" (*import-database-fk* id)
                    (*import-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- import-visualizations [entity]
@@ -1773,9 +1787,10 @@
 (defn fk "Export Foreign Key" [model & [field-name]]
   (cond
     ;; this `::fk` is used in tests to determine that foreign keys are handled
-    (= model :model/User)  {::fk true :export *export-user* :import *import-user*}
-    (= model :model/Table) {::fk true :export *export-table-fk* :import *import-table-fk*}
-    (= model :model/Field) {::fk true :export *export-field-fk* :import *import-field-fk*}
+    (= model :model/User)     {::fk true :export *export-user* :import *import-user*}
+    (= model :model/Database) {::fk true :export *export-database-fk* :import *import-database-fk*}
+    (= model :model/Table)    {::fk true :export *export-table-fk* :import *import-table-fk*}
+    (= model :model/Field)    {::fk true :export *export-field-fk* :import *import-field-fk*}
     field-name             {::fk    true
                             :export #(*export-fk-keyed* % model field-name)
                             :import #(*import-fk-keyed* % model field-name)}

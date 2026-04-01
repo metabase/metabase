@@ -2297,6 +2297,25 @@
                                      :schema "public"
                                      :name "target_table"}}
 
+                           ;; Python transform with source-tables
+                           :model/Transform
+                           {python-transform-id :id
+                            python-transform-eid :entity_id}
+                           {:name "Python ETL"
+                            :description "A python transform"
+                            :entity_id "pythonEtlPythonEtlxxx"
+                            :collection_id coll-id
+                            :source_database_id db-id
+                            :source {:type "python"
+                                     :source-database db-id
+                                     :source-tables [{:alias "orders"
+                                                      :table_id table-id}]
+                                     :body "df = ctx.source.orders"}
+                            :target {:database db-id
+                                     :type "table"
+                                     :schema "public"
+                                     :name "target_table"}}
+
                            ;; Create tag associations with specific positions
                            :model/TransformTransformTag
                            {}
@@ -2349,8 +2368,20 @@
                 (is (contains? deps [{:model "TransformTag" :id custom-tag-eid}]))
                 (is (contains? deps [{:model "TransformTag" :id daily-tag-eid}])))))
 
-          (testing "transform is extracted"
-            (is (= #{transform-eid}
+          (testing "python transform source-tables export"
+            (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id python-transform-id) :tags))]
+              (is (=? {:source {:type :python
+                                :source-database "My Database"
+                                :source-tables [{:alias       "orders"
+                                                 :table_id    ["My Database" nil "Schemaless Table"]
+                                                 :database_id "My Database"
+                                                 :schema      nil
+                                                 :table       "Schemaless Table"}]
+                                :body "df = ctx.source.orders"}}
+                      ser))))
+
+          (testing "transforms are extracted"
+            (is (= #{transform-eid python-transform-eid}
                    (ids-by-model "Transform" (extract/extract {}))))))))))
 
 (deftest transform-job-extraction-test
