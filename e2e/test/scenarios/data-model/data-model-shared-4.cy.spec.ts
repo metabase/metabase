@@ -100,6 +100,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
       if (area === "data studio") {
         TableSection.clickFieldsTab();
+        // cy.pause();
       }
       cy.log("predefined field order");
       TableSection.getSortButton().click();
@@ -145,7 +146,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       verifyAndCloseToast("Failed to update description of Quantity");
 
       cy.log("field section");
-
+      TableSection.clickField("Quantity");
       cy.log("name");
       FieldSection.getNameInput().type("a").blur();
       verifyAndCloseToast("Failed to update name of Quantity");
@@ -300,6 +301,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       );
 
       cy.log("field section");
+      TableSection.clickField("Quantity");
 
       cy.log("name");
       FieldSection.getNameInput().type("a").blur();

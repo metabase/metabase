@@ -1392,6 +1392,7 @@ LIMIT
       cy.log("verify query metadata");
       cy.go("back");
       cy.go("back");
+      cy.go("back");
       getTableLink().click();
       H.assertTableData({ columns: ["New name", "Score"] });
     });

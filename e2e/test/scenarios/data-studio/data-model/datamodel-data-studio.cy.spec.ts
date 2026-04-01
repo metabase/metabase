@@ -1220,13 +1220,6 @@ describe("scenarios > data studio > datamodel", () => {
         FieldSection.getPreviewButton().click();
         PreviewSection.get().scrollIntoView().should("be.visible");
 
-        TableSection.getSyncOptionsButton().click();
-        H.modal().should("be.visible");
-
-        cy.realPress("Escape");
-        H.modal().should("not.exist");
-        PreviewSection.get().should("be.visible");
-
         FieldSection.getFieldValuesButton().click();
         H.modal().should("be.visible");
 
@@ -1347,13 +1340,15 @@ describe("scenarios > data studio > datamodel", () => {
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
-        fieldId: ORDERS.PRODUCT_ID,
       });
 
       TableSection.clickDetailsTab();
       H.DataModel.TableSection.getVisibilityTypeInput().click();
       H.popover().findByText("Hidden").click();
       cy.wait("@updateTable");
+
+      H.DataModel.TableSection.clickFieldsTab();
+      H.DataModel.TableSection.clickField("Product ID");
 
       FieldSection.getPreviewButton().click();
       PreviewSection.getPreviewTypeInput().findByText("Filtering").click();
