@@ -988,4 +988,80 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
   });
 
   describe("Boolean content", () => {});
+
+  describe("funnel chart with translated dimension values (metabase#71488)", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
+        { locale: "fr", msgid: "Doohickey", msgstr: "Le doohickey" },
+        { locale: "fr", msgid: "Gizmo", msgstr: "Le gizmo" },
+        { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
+      ]);
+
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      cy.signInAsAdmin();
+    });
+
+    it("should render funnel with translated dimension labels in a static embed", () => {
+      H.createQuestion({
+        name: "Products Funnel",
+        display: "funnel",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        visualization_settings: {
+          "funnel.metric": "count",
+          "funnel.dimension": "CATEGORY",
+        },
+      }).then(({ body: card }) => {
+        H.createDashboard({
+          name: "funnel_dashboard",
+        }).then(({ body: { id: dashboardId } }) => {
+          // Add the funnel card to the dashboard
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashboardId,
+            card_id: card.id,
+            card: { size_x: 16, size_y: 8 },
+          });
+          H.visitDashboard(dashboardId);
+          H.openLegacyStaticEmbeddingModal({
+            resource: "dashboard",
+            resourceId: dashboardId,
+          });
+          H.publishChanges("dashboard", () => {});
+          H.visitEmbeddedPage(
+            {
+              resource: { dashboard: dashboardId as number },
+              params: {},
+            },
+            {
+              additionalHashOptions: {
+                locale: "fr",
+              },
+            },
+          );
+          cy.wait("@dashboard");
+          // cy.wait("@cardQuery");
+          // The funnel should render without crashing
+          cy.findByTestId("funnel-chart").should("exist");
+          // Dimension labels should be translated
+          cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
+          cy.findByTestId("funnel-chart").within(() => {
+            cy.findByText("Le gadget").should("exist");
+            cy.findByText("Le doohickey").should("exist");
+            cy.findByText("Le gizmo").should("exist");
+            cy.findByText("Le widget").should("exist");
+          });
+        });
+      });
+    });
+  });
 });

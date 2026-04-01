@@ -31,6 +31,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
+import { getRowsForStableKeys } from "metabase-types/api";
 
 import { computeChange } from "../lib/numeric";
 
@@ -71,12 +72,21 @@ export function FunnelNormal({
     (col) => col.name === settings["funnel.metric"],
   );
 
+  // funnel.rows keys are generated from untranslated rows (via
+  // getRowsForStableKeys in Funnel.tsx) so that they stay stable across
+  // locales. We must match against the same untranslated values here,
+  // otherwise content-translated dimension values won't match their keys
+  // and the funnel renders empty (metabase#71488).
+  const rowsForKeys = getRowsForStableKeys(series.data);
   const sortedRows = settings["funnel.rows"]
     ? settings["funnel.rows"]
         .filter((fr) => fr.enabled)
-        .map((fr) =>
-          rows.find((row) => formatNullable(row[dimensionIndex]) === fr.key),
-        )
+        .map((fr) => {
+          const idx = rowsForKeys.findIndex(
+            (row) => formatNullable(row[dimensionIndex]) === fr.key,
+          );
+          return idx !== -1 ? rows[idx] : undefined;
+        })
         .filter(isNotNull)
     : rows;
 
