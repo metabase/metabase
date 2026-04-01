@@ -55,6 +55,19 @@
       (is (not (t2/exists? :core_session :key_hashed (session/hash-session-key session-id)))
           "Session should be deleted by the owning user"))))
 
+(deftest owned-by-user-test
+  (testing "returns true when no core_session exists yet"
+    (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
+      (is (true? (mcp.session/owned-by-user? session-id (mt/user->id :crowberto))))
+      (is (true? (mcp.session/owned-by-user? session-id (mt/user->id :rasta))))))
+
+  (testing "returns true for the owning user, false for others"
+    (let [user-id    (mt/user->id :crowberto)
+          session-id (mcp.session/create! user-id)
+          _          (mcp.session/get-or-create-session-key! session-id user-id)]
+      (is (true? (mcp.session/owned-by-user? session-id user-id)))
+      (is (false? (mcp.session/owned-by-user? session-id (mt/user->id :rasta)))))))
+
 (deftest delete-noop-without-session-test
   (testing "delete! is a no-op when no core_session was ever created"
     (let [session-id (mcp.session/create! (mt/user->id :crowberto))]

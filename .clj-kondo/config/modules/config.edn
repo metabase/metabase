@@ -1140,8 +1140,7 @@
   mcp
   {:team "Metabot"
    :api  #{metabase.mcp.api
-           metabase.mcp.core
-           metabase.mcp.init}
+           metabase.mcp.core}
    :uses #{agent-api
            api
            config

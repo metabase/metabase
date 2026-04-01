@@ -219,7 +219,7 @@
                                   {"mcp-session-id" session-id})
             result   (get-in response [:body :result])]
         (is (= 200 (:status response)))
-        (is (not (:isError result)))
+        (is (nil? (:isError result)))
         (is (= "text" (:type (first (:content result)))))
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))

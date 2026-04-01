@@ -33,6 +33,7 @@
      :client-store                   (store/create-client-store)
      :code-store                     (store/create-authorization-code-store)
      :token-store                    (store/create-token-store)
+     ;; OIDC provider requires a vector; all-scopes returns a sorted set.
      :scopes-supported               (vec (all-agent-scopes))
      :rotate-refresh-tokens          true}))
 

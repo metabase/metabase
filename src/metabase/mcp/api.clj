@@ -160,21 +160,26 @@
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
 (defn- valid-session-id?
-  "Return true if `session-id` looks like a UUID (the format `create!` produces)."
+  "Return true if `session-id` looks like a UUID (the format `create!` produces).
+   This is a format check only — any well-formed UUID is accepted. Authentication
+   is handled separately by cookie or bearer token, not by the session ID."
   [session-id]
   (and (string? session-id)
        (try (UUID/fromString session-id) true
             (catch IllegalArgumentException _ false))))
 
 (defn- require-valid-session
-  "Validate the Mcp-Session-Id header value. The session is just a UUID correlator —
-   authentication is handled separately by cookie or bearer token."
-  [_user-id session-id]
+  "Validate the Mcp-Session-Id header value. Checks UUID format and, when a
+   `core_session` has been materialized, verifies it belongs to `user-id`."
+  [user-id session-id]
   (cond
     (str/blank? session-id)
     {:error (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))}
 
     (not (valid-session-id? session-id))
+    {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
+
+    (not (mcp.session/owned-by-user? session-id user-id))
     {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
 
     :else
