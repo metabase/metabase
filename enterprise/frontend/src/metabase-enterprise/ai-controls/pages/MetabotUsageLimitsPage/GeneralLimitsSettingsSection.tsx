@@ -3,10 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  useGetMetabotInstanceLimitQuery,
-  useUpdateMetabotInstanceLimitMutation,
-} from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -16,6 +12,10 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import {
+  useGetAIControlsInstanceLimitQuery,
+  useUpdateAIControlsInstanceLimitMutation,
+} from "metabase-enterprise/api";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import S from "./GeneralLimitsSettingsSection.module.css";
@@ -35,8 +35,8 @@ export function GeneralLimitsSettingsSection() {
     useAdminSetting("metabot-quota-reached-message");
 
   // Instance limit
-  const { data: instanceLimitData } = useGetMetabotInstanceLimitQuery();
-  const [updateInstanceLimit] = useUpdateMetabotInstanceLimitMutation();
+  const { data: instanceLimitData } = useGetAIControlsInstanceLimitQuery();
+  const [updateInstanceLimit] = useUpdateAIControlsInstanceLimitMutation();
 
   // Local state
   const [limitType, setLimitType] = useState<MetabotLimitType>(

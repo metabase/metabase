@@ -3,18 +3,18 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  useGetMetabotGroupLimitsQuery,
-  useGetMetabotInstanceLimitQuery,
-  useGetMetabotTenantLimitsQuery,
-  useListPermissionsGroupsQuery,
-  useUpdateMetabotGroupLimitMutation,
-  useUpdateMetabotTenantLimitMutation,
-} from "metabase/api";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Tabs } from "metabase/ui";
+import {
+  useGetAIControlsGroupLimitsQuery,
+  useGetAIControlsInstanceLimitQuery,
+  useGetAIControlsTenantLimitsQuery,
+  useUpdateAIControlsGroupLimitMutation,
+  useUpdateAIControlsTenantLimitMutation,
+} from "metabase-enterprise/api";
 import type { MetabotLimitPeriod } from "metabase-types/api";
 
 import { SpecificTenantsTab } from "./SpecificTenantsTab";
@@ -57,17 +57,17 @@ export function GroupLimitsSettingsSection() {
   } = PLUGIN_TENANTS.useListActiveTenants();
 
   // Usage limits data
-  const { data: groupLimits } = useGetMetabotGroupLimitsQuery();
-  const { data: instanceLimitData } = useGetMetabotInstanceLimitQuery();
-  const { data: tenantLimits } = useGetMetabotTenantLimitsQuery(undefined, {
+  const { data: groupLimits } = useGetAIControlsGroupLimitsQuery();
+  const { data: instanceLimitData } = useGetAIControlsInstanceLimitQuery();
+  const { data: tenantLimits } = useGetAIControlsTenantLimitsQuery(undefined, {
     skip: !isUsingTenants,
   });
 
   const instanceLimit = instanceLimitData?.max_usage ?? null;
 
   // Mutations
-  const [updateGroupLimit] = useUpdateMetabotGroupLimitMutation();
-  const [updateTenantLimit] = useUpdateMetabotTenantLimitMutation();
+  const [updateGroupLimit] = useUpdateAIControlsGroupLimitMutation();
+  const [updateTenantLimit] = useUpdateAIControlsTenantLimitMutation();
 
   const debouncedSaveGroupLimit = useDebouncedCallback(
     async (groupId: number, maxUsage: number | null) => {
