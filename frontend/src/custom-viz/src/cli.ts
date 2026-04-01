@@ -12,6 +12,7 @@ import { Command } from "commander";
 import { version } from "../package.json";
 
 import {
+  generateDevServerLanding,
   generateGitignore,
   generateIconSvg,
   generateIndexTsx,
@@ -74,6 +75,10 @@ program
         readBinaryTemplate("thumbs-down.png"),
       ),
       writeFile(join(name, ".gitignore"), generateGitignore()),
+      writeFile(
+        join(name, "dev-server-landing.html"),
+        generateDevServerLanding(),
+      ),
     ]);
 
     console.log("Created files:");
@@ -87,6 +92,7 @@ program
     console.log(`  ${name}/public/assets/thumbs-up.png`);
     console.log(`  ${name}/public/assets/thumbs-down.png`);
     console.log(`  ${name}/.gitignore`);
+    console.log(`  ${name}/dev-server-landing.html`);
     console.log();
     console.log("Next steps:");
     console.log(`  cd ${name}`);
@@ -185,6 +191,12 @@ program
 
     await writeFile(join(projectDir, ".gitignore"), generateGitignore());
     updated.push(".gitignore");
+
+    await writeFile(
+      join(projectDir, "dev-server-landing.html"),
+      generateDevServerLanding(),
+    );
+    updated.push("dev-server-landing.html");
 
     // Update package.json: merge devDependencies from template, preserve user additions
     const existingPkgJson = readFileSync(pkgPath, "utf-8");

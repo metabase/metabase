@@ -255,6 +255,18 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   }
 
   const needsCustomViz = isCustomVizDisplay(display);
+
+  // Plugin list loaded but no matching plugin found — the custom viz was
+  // removed or is otherwise unavailable.  Stop loading so the visualization
+  // registry falls back to the default (Table).
+  if (
+    needsCustomViz &&
+    plugins &&
+    !plugins.find((p) => `custom:${p.identifier}` === display)
+  ) {
+    return { loading: false };
+  }
+
   const matchedPlugin = needsCustomViz
     ? plugins?.find((p) => `custom:${p.identifier}` === display)
     : undefined;
