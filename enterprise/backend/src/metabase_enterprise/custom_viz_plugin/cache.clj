@@ -40,7 +40,7 @@
   (let [cached (get @local-snapshots id)]
     (if (and cached (= (:version cached) resolved_commit))
       cached
-      (let [source   (rs.git/git-source repo_url nil access_token)
+      (let [source   (rs.git/git-source repo_url nil access_token nil)
             snapshot (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
             snapshot (assoc snapshot :version resolved_commit)]
         (swap! local-snapshots assoc id snapshot)
@@ -88,7 +88,7 @@
    (fetch-and-update! plugin nil))
   ([{:keys [id repo_url access_token pinned_version identifier]} _opts]
    (try
-     (let [source        (rs.git/git-source repo_url nil access_token)
+     (let [source        (rs.git/git-source repo_url nil access_token nil)
            snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
            commit-sha    (:version snapshot)
            content       (rs.git/read-file snapshot "dist/index.js")
