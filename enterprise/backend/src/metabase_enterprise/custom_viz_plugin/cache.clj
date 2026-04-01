@@ -73,7 +73,6 @@
 
 ;;; ------------------------------------------------ Fetch & Update ------------------------------------------------
 
-
 (defn fetch-and-update!
   "Fetch index.js and manifest from the plugin's git repo and update the DB record.
    Returns the commit SHA or nil on failure."
@@ -152,7 +151,7 @@
     (when (and resolved_commit
                (asset-whitelisted? plugin asset-path))
       (let [snapshot (plugin-snapshot plugin)]
-        (read-asset-from-git snapshot resolved_commit asset-path))))))
+        (read-asset-from-git snapshot resolved_commit asset-path)))))
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 

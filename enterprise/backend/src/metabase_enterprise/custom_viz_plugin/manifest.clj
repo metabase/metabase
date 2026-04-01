@@ -68,16 +68,23 @@
   (let [lower (u/lower-case-en path)]
     (some #(str/ends-with? lower %) allowed-asset-extensions)))
 
+(defn- safe-relative-path?
+  "Returns true if path normalizes to a relative path with no directory traversal."
+  [^String path]
+  (let [normalized (.normalize (java.nio.file.Path/of path (into-array String [])))]
+    (and (not (.isAbsolute normalized))
+         (not (.startsWith normalized "..")))))
+
 (defn asset-paths
   "List the static asset paths whitelisted by the manifest.
-   Includes paths from the `assets` array (filtered to allowed extensions)
-   and the `icon` (if it's an image filename).
+   Includes paths from the `assets` array (filtered to allowed extensions and
+   safe relative paths) and the `icon` (if it's an image filename).
    Only explicitly listed paths are supported — no glob patterns."
   [manifest]
-  (let [declared  (filter allowed-asset-file? (get manifest :assets []))
+  (let [declared  (filter (every-pred allowed-asset-file? safe-relative-path?) (get manifest :assets []))
         icon-name (when-let [icon (:icon manifest)]
-                    (when (image-file? icon) icon))
+                    (when (and (image-file? icon) (safe-relative-path? icon)) icon))
         icon-dark-name (when-let [icon (:icon_dark manifest)]
-                         (when (image-file? icon) icon))]
+                         (when (and (image-file? icon) (safe-relative-path? icon)) icon))]
     (distinct (concat declared (when icon-name [icon-name])
                       (when icon-dark-name [icon-dark-name])))))
