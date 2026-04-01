@@ -20,7 +20,7 @@ import type { AdvisoryFilter } from "../../types";
 import { filterAdvisories, getTargetUpgradeVersion } from "../../utils";
 import { AdvisoryFilterBar } from "../AdvisoryFilterBar/AdvisoryFilterBar";
 import { AdvisoryList } from "../AdvisoryList/AdvisoryList";
-import { NotificationChannelConfigModal } from "../NotificationChannelConfig/NotificationChannelConfig";
+import { NotificationChannelConfigModal } from "../NotificationChannelConfigModal/NotificationChannelConfigModal";
 import { UpgradeBanner } from "../UpgradeBanner/UpgradeBanner";
 
 import S from "./SecurityCenterPage.module.css";

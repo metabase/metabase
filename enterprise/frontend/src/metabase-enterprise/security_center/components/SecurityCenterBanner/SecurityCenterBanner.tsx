@@ -57,7 +57,7 @@ export function SecurityCenterBanner() {
       key="link"
       component={Link}
       fw="bold"
-      to="/admin/settings/security-center"
+      to="/admin/security-center"
       c="inherit"
       td="underline"
     >
