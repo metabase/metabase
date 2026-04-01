@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
+import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
