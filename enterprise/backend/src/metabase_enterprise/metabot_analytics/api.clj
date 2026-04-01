@@ -144,19 +144,19 @@
       [:offset :int]]
   "Return paginated list of AI conversations with summary statistics."
   [_route-params
-   {:keys [limit offset user_id sort_by sort_dir]}
+   {:keys [limit offset user-id sort-by sort-dir]}
    :- [:map
        [:limit {:optional true :default 50} ms/PositiveInt]
        [:offset {:optional true :default 0} ms/IntGreaterThanOrEqualToZero]
-       [:user_id {:optional true} [:maybe ms/PositiveInt]]
-       [:sort_by {:optional true :default "created_at"} [:enum "created_at" "message_count" "total_tokens"]]
-       [:sort_dir {:optional true :default "desc"} [:enum "asc" "desc"]]]]
+       [:user-id {:optional true} [:maybe ms/PositiveInt]]
+       [:sort-by {:optional true :default "created_at"} [:enum "created_at" "message_count" "total_tokens"]]
+       [:sort-dir {:optional true :default "desc"} [:enum "asc" "desc"]]]]
   (api/check-superuser)
   (let [limit        (or limit 50)
         offset       (or offset 0)
-        sort-by      (keyword (or sort_by "created_at"))
-        sort-dir     (if (= sort_dir "asc") :asc :desc)
-        where-clause (when user_id [:= :c.user_id user_id])
+        sort-by-kw   (keyword (or sort-by "created_at"))
+        sort-dir-kw  (if (= sort-dir "asc") :asc :desc)
+        where-clause (when user-id [:= :c.user_id user-id])
         ;; Main query with model fetched via correlated subquery
         base-query   {:select    [[:c.id :conversation_id]
                                   [:c.created_at :created_at]
@@ -185,7 +185,7 @@
         total        (or (:count (t2/query-one count-query)) 0)
         ;; Fetch paginated results
         results      (t2/query (-> query
-                                   (assoc :order-by [[sort-by sort-dir]])
+                                   (assoc :order-by [[sort-by-kw sort-dir-kw]])
                                    (assoc :limit limit)
                                    (assoc :offset offset)))]
     {:data   (enrich-conversations-with-users results)
