@@ -536,12 +536,10 @@ interface PublicSettings {
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
-  "mcp-apps-cors-enabled-clients": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-geojson": CustomGeoJSONSetting;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
-  "custom-mcp-apps-cors-origins": string | null;
   "development-mode?": boolean;
   "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;
@@ -775,6 +773,8 @@ export interface EnterpriseSettings extends Settings {
   "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
+  "mcp-apps-cors-enabled-clients": string[] | null;
+  "mcp-apps-cors-custom-origins": string | null;
   /**
    * @deprecated
    */

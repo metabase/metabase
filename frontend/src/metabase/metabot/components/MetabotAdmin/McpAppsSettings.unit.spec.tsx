@@ -22,7 +22,7 @@ const setup = async ({
 } = {}) => {
   const settings = createMockSettings({
     "mcp-apps-cors-enabled-clients": commonOrigins,
-    "custom-mcp-apps-cors-origins": customOrigins,
+    "mcp-apps-cors-custom-origins": customOrigins,
   });
 
   setupPropertiesEndpoints(settings);
@@ -72,7 +72,7 @@ describe("McpAppsSettings", () => {
     expect(puts).toHaveLength(1);
 
     const [{ url, body }] = puts;
-    expect(url).toContain("/setting/custom-mcp-apps-cors-origins");
+    expect(url).toContain("/setting/mcp-apps-cors-custom-origins");
     expect(body).toEqual({ value: "https://my-app.example.com" });
   });
 });

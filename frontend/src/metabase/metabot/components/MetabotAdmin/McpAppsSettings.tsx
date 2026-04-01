@@ -91,7 +91,7 @@ function CommonMcpClientsSection() {
 
 function CustomMcpOriginsSection() {
   const { value: savedValue, updateSetting } = useAdminSetting(
-    "custom-mcp-apps-cors-origins",
+    "mcp-apps-cors-custom-origins",
   );
 
   const [localValue, setLocalValue] = useState(savedValue ?? "");
@@ -103,7 +103,7 @@ function CustomMcpOriginsSection() {
   const handleBlur = useCallback(() => {
     if (localValue !== savedValue) {
       updateSetting({
-        key: "custom-mcp-apps-cors-origins",
+        key: "mcp-apps-cors-custom-origins",
         value: localValue,
       });
     }

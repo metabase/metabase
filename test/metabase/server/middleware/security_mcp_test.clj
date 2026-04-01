@@ -56,12 +56,12 @@
 
 (deftest test-mcp-custom-cors-origins
   (testing "Custom MCP origins should be allowed"
-    (mt/with-temporary-setting-values [custom-mcp-apps-cors-origins "https://my-librechat.example.com"]
+    (mt/with-temporary-setting-values [mcp-apps-cors-custom-origins "https://my-librechat.example.com"]
       (assert-cors-allowed! "https://my-librechat.example.com")))
 
   (testing "Custom MCP origins should work alongside common MCP origins"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients  ["claude"]
-                                       custom-mcp-apps-cors-origins "https://my-librechat.example.com"]
+                                       mcp-apps-cors-custom-origins "https://my-librechat.example.com"]
       (assert-cors-allowed! "https://abc.claudemcpcontent.com")
       (assert-cors-allowed! "https://my-librechat.example.com"))))
 
@@ -81,12 +81,12 @@
 
   (testing "mcp-apps-cors-origins includes custom origins"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients  ["claude"]
-                                       custom-mcp-apps-cors-origins "https://custom.example.com"]
+                                       mcp-apps-cors-custom-origins "https://custom.example.com"]
       (let [origins (mcp.settings/mcp-apps-cors-origins)]
         (is (str/includes? origins "*.claudemcpcontent.com"))
         (is (str/includes? origins "https://custom.example.com")))))
 
   (testing "mcp-apps-cors-origins returns empty string when nothing is configured"
     (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients  []
-                                       custom-mcp-apps-cors-origins ""]
+                                       mcp-apps-cors-custom-origins ""]
       (is (= "" (mcp.settings/mcp-apps-cors-origins))))))

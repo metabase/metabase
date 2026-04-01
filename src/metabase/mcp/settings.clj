@@ -2,7 +2,7 @@
   "Settings for MCP Apps CORS origins."
   (:require
    [clojure.string :as str]
-   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 ;;; ------------------------------------------------ Client → Domain Mapping --------------------------------
@@ -27,7 +27,7 @@
   :encryption :no
   :audit      :getter)
 
-(defsetting custom-mcp-apps-cors-origins
+(defsetting mcp-apps-cors-custom-origins
   (deferred-tru "Custom CORS origins for self-hosted MCP clients, space-separated.")
   :type       :string
   :default    ""
@@ -42,7 +42,7 @@
   "Returns space-separated CORS origins from both common and custom MCP client settings."
   []
   (let [common-domains (mapcat #(get mcp-client-apps-sandbox-domains % []) (mcp-apps-cors-enabled-clients))
-        custom-domains (custom-mcp-apps-cors-origins)]
+        custom-domains (mcp-apps-cors-custom-origins)]
     (str/trim (str/join " " (concat common-domains (when (seq custom-domains) [custom-domains]))))))
 
 (defn mcp-apps-vscode-webview-enabled?
