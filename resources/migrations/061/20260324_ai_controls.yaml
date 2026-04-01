@@ -1,7 +1,6 @@
 ## AI controls
 
 databaseChangeLog:
-  - logicalFilePath: migrations/061_update_migrations.yaml
   - changeSet:
       id: v61.gasgewas
       author: nvoxland
@@ -9,13 +8,12 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: metabot_permissions
-            remarks: A table to store AI/metabot permissions per permissions group
+            remarks: A table to store metabot permissions per permissions group
             columns:
               - column:
                   name: id
                   type: int
                   autoIncrement: true
-                  remarks: The ID of the permission
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -74,7 +72,7 @@ databaseChangeLog:
             constraintName: unique_metabot_permissions_group_id_perm_type
 
   - changeSet:
-      id: v61.2026-03-30T00:00:00
+      id: v61.98kjjhf
       author: edpaget
       comment: Insert default metabot permissions (all yes) for magic user groups
       changes:
