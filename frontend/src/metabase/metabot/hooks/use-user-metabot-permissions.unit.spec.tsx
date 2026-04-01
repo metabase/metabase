@@ -32,10 +32,7 @@ function setup({
       apiResponse ?? createMockUserMetabotPermissions(),
     );
   } else {
-    fetchMock.get(
-      "path:/api/metabot/permissions/user-permissions",
-      apiStatus,
-    );
+    fetchMock.get("path:/api/metabot/permissions/user-permissions", apiStatus);
   }
 
   const settings = mockSettings({
