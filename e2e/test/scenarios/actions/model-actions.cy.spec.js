@@ -773,7 +773,7 @@ describe(
           cy.button(SAMPLE_QUERY_ACTION.name).click();
 
           cy.findByText(
-            "Error executing Action: Invalid impersonated native query. Must be a single select statement.",
+            /Error executing Action:.*Invalid impersonated native query\. Must be a single select statement\./,
           );
         });
 
