@@ -28,7 +28,11 @@
     "v_tables"
     "v_tasks"
     "v_task_runs"
-    "v_view_log"})
+    "v_view_log"
+    ;; AI/Metabot analytics views
+    "v_metabot_conversations"
+    "v_metabot_messages"
+    "v_metabot_usage"})
 
 (defenterprise check-audit-db-permissions
   "Performs a number of permission checks to ensure that a query on the Audit database can be run.
