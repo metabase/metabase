@@ -261,7 +261,7 @@
   (let [session-id-header (get-in request [:headers "mcp-session-id"])
         {:keys [session-id error]} (require-valid-session user-id session-id-header)]
     (or error
-        (do (mcp.session/delete! session-id)
+        (do (mcp.session/delete! session-id user-id)
             {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------

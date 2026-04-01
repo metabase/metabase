@@ -38,14 +38,28 @@
           session-id (mcp.session/create! user-id)
           _          (mcp.session/get-or-create-session-key! session-id user-id)]
       (is (t2/exists? :core_session :key_hashed (session/hash-session-key session-id)))
-      (mcp.session/delete! session-id)
+      (mcp.session/delete! session-id user-id)
       (is (not (t2/exists? :core_session :key_hashed (session/hash-session-key session-id)))))))
+
+(deftest delete-scoped-to-user-test
+  (testing "delete! only removes sessions owned by the given user"
+    (let [user-id    (mt/user->id :crowberto)
+          other-id   (mt/user->id :rasta)
+          session-id (mcp.session/create! user-id)
+          _          (mcp.session/get-or-create-session-key! session-id user-id)]
+      (is (t2/exists? :core_session :key_hashed (session/hash-session-key session-id)))
+      (mcp.session/delete! session-id other-id)
+      (is (t2/exists? :core_session :key_hashed (session/hash-session-key session-id))
+          "Session should still exist — wrong user")
+      (mcp.session/delete! session-id user-id)
+      (is (not (t2/exists? :core_session :key_hashed (session/hash-session-key session-id)))
+          "Session should be deleted by the owning user"))))
 
 (deftest delete-noop-without-session-test
   (testing "delete! is a no-op when no core_session was ever created"
     (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
       ;; Should not throw — just a no-op delete
-      (mcp.session/delete! session-id))))
+      (mcp.session/delete! session-id (mt/user->id :crowberto)))))
 
 (deftest session-does-not-fire-login-event-test
   (testing "Creating a core_session via get-or-create-session-key! does not publish :event/user-login"
