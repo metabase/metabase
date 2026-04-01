@@ -8,6 +8,7 @@ import {
 } from "metabase/admin/components/SettingsSection";
 import {
   useCreateCustomVizPluginMutation,
+  useCreateDevCustomVizPluginMutation,
   useDeleteCustomVizPluginMutation,
   useListAllCustomVizPluginsQuery,
   useRefreshCustomVizPluginMutation,
@@ -122,26 +123,46 @@ function PluginListItem({
         <Stack gap={4}>
           <Text fw={700}>{plugin.display_name}</Text>
           <Group gap="xs">
-            <Text
-              component="a"
-              href={plugin.repo_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="sm"
-              c="text-tertiary"
-              td="underline"
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              {plugin.repo_url}
-            </Text>
-            {plugin.resolved_commit && (
+            {plugin.dev_only ? (
               <>
-                <Text size="sm" c="text-tertiary">
-                  &bull;
+                <Text size="sm" c="brand" fw={600}>
+                  {t`Dev mode`}
                 </Text>
-                <Text size="sm" c="text-tertiary">
-                  {t`Commit`}: {plugin.resolved_commit.slice(0, 8)}
+                {plugin.dev_bundle_url && (
+                  <>
+                    <Text size="sm" c="text-tertiary">
+                      &bull;
+                    </Text>
+                    <Text size="sm" c="text-tertiary">
+                      {plugin.dev_bundle_url}
+                    </Text>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <Text
+                  component="a"
+                  href={plugin.repo_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="sm"
+                  c="text-tertiary"
+                  td="underline"
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                >
+                  {plugin.repo_url}
                 </Text>
+                {plugin.resolved_commit && (
+                  <>
+                    <Text size="sm" c="text-tertiary">
+                      &bull;
+                    </Text>
+                    <Text size="sm" c="text-tertiary">
+                      {t`Commit`}: {plugin.resolved_commit.slice(0, 8)}
+                    </Text>
+                  </>
+                )}
               </>
             )}
           </Group>
@@ -165,12 +186,14 @@ function PluginListItem({
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<Icon name="refresh" />}
-              onClick={handleRefresh}
-            >
-              {t`Re-fetch`}
-            </Menu.Item>
+            {!plugin.dev_only && (
+              <Menu.Item
+                leftSection={<Icon name="refresh" />}
+                onClick={handleRefresh}
+              >
+                {t`Re-fetch`}
+              </Menu.Item>
+            )}
             <Menu.Item
               leftSection={<Icon name={plugin.enabled ? "stop" : "play"} />}
               onClick={handleToggleEnabled}
@@ -397,6 +420,60 @@ function DevUrlItem({
   );
 }
 
+function AddDevPluginForm() {
+  const [createDevPlugin] = useCreateDevCustomVizPluginMutation();
+
+  const handleSubmit = useCallback(
+    async (values: { identifier: string; dev_bundle_url: string }) => {
+      await createDevPlugin({
+        identifier: values.identifier,
+        dev_bundle_url: values.dev_bundle_url,
+      }).unwrap();
+    },
+    [createDevPlugin],
+  );
+
+  return (
+    <SettingsSection>
+      <FormProvider
+        initialValues={{ identifier: "", dev_bundle_url: "" }}
+        onSubmit={handleSubmit}
+      >
+        {({ dirty }) => (
+          <Form>
+            <Stack gap="lg">
+              <Text fw={700} fz="lg">
+                {t`Add a dev visualization`}
+              </Text>
+              <FormTextInput
+                name="identifier"
+                label={t`Identifier`}
+                description={t`Unique identifier for this visualization (e.g. "my-heatmap").`}
+                placeholder="my-custom-viz"
+                autoFocus
+              />
+              <FormTextInput
+                name="dev_bundle_url"
+                label={t`Dev server URL`}
+                description={t`URL of the local dev server serving the visualization bundle.`}
+                placeholder="http://localhost:5174"
+              />
+              <FormErrorMessage />
+              <Group justify="flex-end">
+                <FormSubmitButton
+                  label={t`Add`}
+                  disabled={!dirty}
+                  variant="filled"
+                />
+              </Group>
+            </Stack>
+          </Form>
+        )}
+      </FormProvider>
+    </SettingsSection>
+  );
+}
+
 export function CustomVizDevelopmentPage() {
   const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
   const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
@@ -453,13 +530,14 @@ export function CustomVizDevelopmentPage() {
         </Flex>
       )}
 
-      {plugins && plugins.length === 0 && !isLoading && (
-        <Text c="text-tertiary">{t`Register custom visualizations first to configure dev URLs.`}</Text>
-      )}
+      <AddDevPluginForm />
 
       {plugins && plugins.length > 0 && (
         <SettingsSection>
           <Stack gap="lg">
+            <Text fw={700} fz="lg">
+              {t`Dev bundle URLs`}
+            </Text>
             {plugins.map((plugin) => (
               <DevUrlItem
                 key={plugin.id}

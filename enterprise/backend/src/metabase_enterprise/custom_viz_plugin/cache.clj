@@ -186,6 +186,18 @@
         (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
                         {:status-code 502}))))))
 
+(defn fetch-dev-manifest
+  "Fetch and parse the manifest (metabase-plugin.json) from a dev base URL.
+   Returns the parsed manifest map or nil on failure."
+  [^String base-url]
+  (let [url (str (dev-base-url base-url) (manifest/manifest-path))]
+    (try
+      (let [content (slurp (java.net.URI. url))]
+        (manifest/parse-manifest content))
+      (catch Exception e
+        (log/debugf "No manifest at %s: %s" url (ex-message e))
+        nil))))
+
 (defn fetch-dev-asset
   "Fetch a static asset from a dev base URL (appends /assets/<path>).
    Returns the bytes or nil on failure."

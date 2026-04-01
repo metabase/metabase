@@ -36,6 +36,7 @@
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
+   [:dev_only        :boolean]
    [:manifest        {:optional true} [:maybe :any]]
    [:metabase_version {:optional true} [:maybe :string]]
    [:created_at      :any]
@@ -53,6 +54,11 @@
    [:manifest        {:optional true} [:maybe :any]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
+
+(defn- dev-only-plugin?
+  "Returns true if the plugin was created via the dev-only flow (no git repo)."
+  [plugin]
+  (str/starts-with? (:repo_url plugin) "dev://local/"))
 
 (defn- parse-repo-name
   "Extract the repository name from a git URL.
@@ -85,7 +91,8 @@
       strip-token
       (update :status name)
       (update :manifest parse-manifest-json)
-      (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))))
+      (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))
+      (assoc :dev_only (dev-only-plugin? plugin))))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
@@ -125,6 +132,35 @@
     (cache/fetch-and-update! plugin)
     ;; re-read to get updated status
     (plugin->response (t2/select-one :model/CustomVizPlugin :id (:id plugin)))))
+
+(api.macros/defendpoint :post "/dev" :- CustomVizPluginResponse
+  "Register a dev-only custom visualization plugin from a local dev server.
+   No git repository is required — the bundle is served from the dev server URL."
+  [_route-params
+   _query-params
+   {:keys [identifier dev_bundle_url]} :- [:map
+                                           [:identifier     ms/NonBlankString]
+                                           [:dev_bundle_url ms/NonBlankString]]]
+  (api/check-superuser)
+  (let [sentinel-url (str "dev://local/" identifier)
+        ;; best-effort manifest fetch from dev server
+        manifest     (cache/fetch-dev-manifest dev_bundle_url)
+        manifest-str (when manifest (json/encode manifest))
+        display-name (or (:name manifest) identifier)
+        icon         (:icon manifest)
+        version-str  (get-in manifest [:metabase :version])
+        plugin       (first (t2/insert-returning-instances! :model/CustomVizPlugin
+                                                            :repo_url        sentinel-url
+                                                            :display_name    display-name
+                                                            :identifier      identifier
+                                                            :status          :active
+                                                            :enabled         true
+                                                            :dev_bundle_url  dev_bundle_url
+                                                            :icon            icon
+                                                            :manifest        manifest-str
+                                                            :metabase_version version-str))]
+    (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
+    (plugin->response plugin)))
 
 (api.macros/defendpoint :get "/" :- [:sequential CustomVizPluginResponse]
   "List all registered custom visualization plugins."
@@ -283,7 +319,7 @@
                               :headers      {"Cache-Control"      "no-cache"
                                              "Connection"         "keep-alive"
                                              "X-Accel-Buffering"  "no"}}
-        [^OutputStream os canceled-chan]
+                             [^OutputStream os canceled-chan]
         (let [uri  (URI. sse-url)
               conn ^HttpURLConnection (.openConnection (.toURL uri))]
           (.setRequestMethod conn "GET")
@@ -305,11 +341,23 @@
               (.disconnect conn))))))))
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
-  "Re-fetch the bundle from the git repository."
+  "Re-fetch the bundle from the git repository.
+   For dev-only plugins, re-fetches the manifest from the dev server instead."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
-    (cache/fetch-and-update! plugin {:force? true})
+    (if (dev-only-plugin? plugin)
+      ;; dev-only: re-fetch manifest from dev server
+      (when-let [dev-url (cache/resolve-dev-bundle id)]
+        (when-let [manifest (cache/fetch-dev-manifest dev-url)]
+          (let [manifest-str (json/encode manifest)
+                version-str  (get-in manifest [:metabase :version])]
+            (t2/update! :model/CustomVizPlugin id
+                        {:display_name     (or (:name manifest) (:identifier plugin))
+                         :icon             (:icon manifest)
+                         :manifest         manifest-str
+                         :metabase_version version-str}))))
+      (cache/fetch-and-update! plugin {:force? true}))
     (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))
 
 (def routes
