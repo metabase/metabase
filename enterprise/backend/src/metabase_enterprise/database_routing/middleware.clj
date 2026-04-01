@@ -8,8 +8,10 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
@@ -39,7 +41,8 @@
   :feature :none
   [query]
   (let [database (lib.metadata/database (qp.store/metadata-provider))
-        destination-db-id (router-db-or-id->destination-db-id database)]
+        destination-db-id (when-not qp.i/*skip-middleware-because-app-db-access*
+                            (router-db-or-id->destination-db-id database))]
     (when destination-db-id
       (premium-features/assert-has-feature :database-routing (tru "Database Routing"))
       (when-not (driver.u/supports? (:engine (lib.metadata/database (qp.store/metadata-provider)))
