@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.app-db.checkout-tracking :as checkout-tracking]))
 
+(set! *warn-on-reflection* true)
+
 (deftest with-checkout-reason-test
   (testing "Default reason is :api-request"
     (is (= :api-request checkout-tracking/*checkout-reason*)))
