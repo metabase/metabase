@@ -2836,6 +2836,21 @@ databaseChangeLog:
               - column:
                   name: match_status
 
+  - changeSet:
+      id: v57.2026-04-01T00:00:00
+      author: bronsa
+      comment: Add last_notified_at column to security_advisory for repeat notification cadence
+      changes:
+        - addColumn:
+            tableName: security_advisory
+            columns:
+              - column:
+                  name: last_notified_at
+                  type: ${timestamp_type}
+                  remarks: When the last notification was sent for this advisory
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
