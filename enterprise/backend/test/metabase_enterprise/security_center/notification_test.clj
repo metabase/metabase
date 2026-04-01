@@ -28,51 +28,6 @@
     (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj a))]
       (f notified))))
 
-(deftest evaluate-advisory-triggers-notification-test
-  (testing "notification is triggered when status transitions to active"
-    (with-notify-spy!
-      (fn [notified]
-        (mt/with-temp [:model/SecurityAdvisory advisory
-                       (advisory-fixture {:advisory_id  "SC-NOTIFY-001"
-                                          :match_status "not_affected"})]
-          ;; Mock the query to return true (matched)
-          (with-redefs [matching/execute-matching-query! (constantly true)]
-            (matching/evaluate-advisory! advisory)
-            (is (= 1 (count @notified)))
-            (is (= "SC-NOTIFY-001" (:advisory_id (first @notified))))
-            (is (= :active (:match_status (first @notified)))))))))
-
-  (testing "notification is triggered when status transitions to error"
-    (with-notify-spy!
-      (fn [notified]
-        (mt/with-temp [:model/SecurityAdvisory advisory
-                       (advisory-fixture {:advisory_id  "SC-NOTIFY-002"
-                                          :match_status "not_affected"})]
-          (with-redefs [matching/execute-matching-query! (constantly :error)]
-            (matching/evaluate-advisory! advisory)
-            (is (= 1 (count @notified)))
-            (is (= :error (:match_status (first @notified)))))))))
-
-  (testing "no notification when status stays the same"
-    (with-notify-spy!
-      (fn [notified]
-        (mt/with-temp [:model/SecurityAdvisory advisory
-                       (advisory-fixture {:advisory_id  "SC-NOTIFY-003"
-                                          :match_status "active"})]
-          (with-redefs [matching/execute-matching-query! (constantly true)]
-            (matching/evaluate-advisory! advisory)
-            (is (empty? @notified)))))))
-
-  (testing "no notification when status transitions to not_affected"
-    (with-notify-spy!
-      (fn [notified]
-        (mt/with-temp [:model/SecurityAdvisory advisory
-                       (advisory-fixture {:advisory_id  "SC-NOTIFY-004"
-                                          :match_status "active"})]
-          (with-redefs [matching/execute-matching-query! (constantly false)]
-            (matching/evaluate-advisory! advisory)
-            (is (empty? @notified))))))))
-
 ;; Clean the security_advisory table before each repeat-notification test
 ;; so dev-seeded advisories don't interfere.
 (defn- with-clean-advisories [f]

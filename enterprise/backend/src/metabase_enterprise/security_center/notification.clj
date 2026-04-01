@@ -34,7 +34,7 @@
    :details      {:type           "email/handlebars-resource"
                   :subject        "[{{payload.custom.severity_label}}] Security Advisory: {{payload.event_info.object.title}}"
                   :path           "metabase/channel/email/security_advisory.hbs"
-                  :recipient-type "cc"}})
+                  :recipient-type "bcc"}})
 
 (defn- email-recipients
   "Resolve email recipients from the `security-center-email-recipients` setting.
