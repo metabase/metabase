@@ -1215,7 +1215,6 @@
               task
               transforms
               transforms-base
-              users
               util
               warehouses}
    :model-exports #{:model/MetabotMessage}
@@ -1226,7 +1225,6 @@
                     :model/Field
                     :model/Glossary
                     :model/ModerationReview
-                    :model/PermissionsGroup
                     :model/QueryTable
                     :model/Table
                     :model/Transform
@@ -2955,7 +2953,7 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{}
+   :api     #{metabase-enterprise.metabot.api.routes}
    :friends #{enterprise/agent-api
               slackbot
               mcp
@@ -2968,7 +2966,10 @@
               util
               enterprise/dependencies
               enterprise/transforms-python}
-   :model-imports #{:model/Card :model/Transform}}
+   :model-imports #{:model/Card
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Transform}}
 
 
   enterprise/permission-debug

@@ -4,14 +4,14 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.metabot.models.metabot-permissions :as metabot-permissions]
+   [metabase.metabot.scope :as scope]
    [toucan2.core :as t2]))
 
 (defn- permissions-for-group
   "Returns the full set of permissions for a group, filling in defaults for any missing perm types."
   [group-id stored-perms]
   (let [stored-by-type (into {} (map (juxt :perm_type identity)) stored-perms)]
-    (for [[perm-type default-value] (sort-by key metabot-permissions/perm-type-defaults)]
+    (for [[perm-type default-value] (sort-by key scope/perm-type-defaults)]
       (or (get stored-by-type perm-type)
           {:group_id   group-id
            :perm_type  perm-type
@@ -41,11 +41,11 @@
 
 (def ^:private valid-perm-types
   "Set of valid perm_type strings for the PUT request body."
-  (into #{} (map (comp str symbol)) metabot-permissions/perm-types))
+  (into #{} (map (comp str symbol)) scope/perm-types))
 
 (def ^:private valid-perm-values
   "Set of all valid perm_value strings across all permission types."
-  (into #{} (comp (mapcat (comp :values val)) (map name)) metabot-permissions/metabot-permissions))
+  (into #{} (comp (mapcat (comp :values val)) (map name)) scope/metabot-permissions))
 
 (api.macros/defendpoint :put "/" :- permissions-response-schema
   "Update metabot permissions for all groups. Upserts each permission entry and returns the full

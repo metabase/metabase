@@ -3,7 +3,6 @@
   Resolves per-group permissions from the database, taking the most permissive
   value across all of a user's groups."
   (:require
-   [metabase.metabot.models.metabot-permissions :as metabot-permissions]
    [metabase.metabot.scope :as scope]
    [metabase.premium-features.core :refer [defenterprise]]
    [toucan2.core :as t2]))
@@ -15,7 +14,7 @@
   :feature :ai-controls
   [user-id]
   (if-not user-id
-    metabot-permissions/perm-type-defaults
+    scope/perm-type-defaults
     (let [stored  (t2/select :model/MetabotPermissions
                              {:where [:in :group_id
                                       {:select [:group_id]
@@ -30,4 +29,4 @@
                     (scope/most-permissive-value perm-type values)
                     default-value))))
        {}
-       metabot-permissions/perm-type-defaults))))
+       scope/perm-type-defaults))))

@@ -1,7 +1,6 @@
 (ns metabase.metabot.scope-resolution-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.metabot.models.metabot-permissions :as metabot-permissions]
    [metabase.metabot.scope :as scope]))
 
 (deftest user-metabot-perms->scopes-test
@@ -65,13 +64,13 @@
 (deftest resolve-user-permissions-test
   (testing "nil user-id returns defaults"
     (let [perms (scope/resolve-user-permissions nil)]
-      (is (= (:permission/metabot-sql-generation metabot-permissions/perm-type-defaults)
+      (is (= (:permission/metabot-sql-generation scope/perm-type-defaults)
              (:permission/metabot-sql-generation perms)))
-      (is (= (:permission/metabot-nql metabot-permissions/perm-type-defaults)
+      (is (= (:permission/metabot-nql scope/perm-type-defaults)
              (:permission/metabot-nql perms)))
-      (is (= (:permission/metabot-other-tools metabot-permissions/perm-type-defaults)
+      (is (= (:permission/metabot-other-tools scope/perm-type-defaults)
              (:permission/metabot-other-tools perms)))))
 
   (testing "OSS always returns defaults regardless of user-id"
     (let [perms (scope/resolve-user-permissions 1)]
-      (is (= metabot-permissions/perm-type-defaults perms)))))
+      (is (= scope/perm-type-defaults perms)))))
