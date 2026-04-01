@@ -2,10 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.security-center.matching :as matching]
    [metabase-enterprise.security-center.notification :as notification]
+   [metabase-enterprise.security-center.settings :as settings]
    [metabase-enterprise.security-center.task.notify :as task.notify]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.notification.send :as notification.send]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -22,11 +25,13 @@
           :published_at      #t "2026-03-24T00:00:00Z"}
          overrides))
 
-;; Mock notify-advisory! to just record calls — avoids sending real emails/events
-(defn- with-notify-spy! [f]
-  (let [notified (atom [])]
-    (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj a))]
-      (f notified))))
+(defmacro ^:private with-send-redef
+  "Redef send-notification!, email-configured?, and publish-event! to intercept notification sends."
+  [send-fn & body]
+  `(with-redefs [events/publish-event!               (constantly nil)
+                 channel.settings/email-configured?   (constantly true)
+                 notification.send/send-notification!  ~send-fn]
+     ~@body))
 
 ;; Clean the security_advisory table before each repeat-notification test
 ;; so dev-seeded advisories don't interfere.
@@ -43,6 +48,8 @@
           (t2/update! :model/SecurityAdvisory {:id [:in existing-ids]}
                       {:acknowledged_at nil
                        :acknowledged_by nil}))))))
+
+;;; --------------------------------------------- Repeat notification task --------------------------------------------
 
 (deftest repeat-notification-cadence-test
   (with-clean-advisories
@@ -100,9 +107,42 @@
                                             :last_notified_at nil})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
               (task.notify/send-repeat-notifications!)
-              (is (= ["SC-REPEAT-005"] @notified)))))))))
+              (is (= ["SC-REPEAT-005"] @notified))))))
 
-(deftest acknowledged-advisories-not-notified-test
+      (testing "medium severity: weekly cadence"
+        (let [notified (atom [])]
+          (mt/with-temp [:model/SecurityAdvisory _advisory
+                         (advisory-fixture {:advisory_id      "SC-MED-001"
+                                            :severity         "medium"
+                                            :match_status     "active"
+                                            :last_notified_at (t/minus (t/offset-date-time) (t/days 8))})]
+            (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
+              (task.notify/send-repeat-notifications!)
+              (is (= ["SC-MED-001"] @notified))))))
+
+      (testing "low severity: weekly cadence, too soon"
+        (let [notified (atom [])]
+          (mt/with-temp [:model/SecurityAdvisory _advisory
+                         (advisory-fixture {:advisory_id      "SC-LOW-001"
+                                            :severity         "low"
+                                            :match_status     "active"
+                                            :last_notified_at (t/minus (t/offset-date-time) (t/days 5))})]
+            (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
+              (task.notify/send-repeat-notifications!)
+              (is (empty? @notified))))))
+
+      (testing "error-status advisories are included in repeat notifications"
+        (let [notified (atom [])]
+          (mt/with-temp [:model/SecurityAdvisory _advisory
+                         (advisory-fixture {:advisory_id      "SC-ERR-001"
+                                            :severity         "high"
+                                            :match_status     "error"
+                                            :last_notified_at nil})]
+            (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
+              (task.notify/send-repeat-notifications!)
+              (is (= ["SC-ERR-001"] @notified)))))))))
+
+(deftest repeat-notification-exclusions-test
   (with-clean-advisories
     (fn []
       (testing "acknowledged advisories are excluded from repeat notifications"
@@ -116,4 +156,186 @@
                                             :acknowledged_at  (mi/now)})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
               (task.notify/send-repeat-notifications!)
+              (is (empty? @notified))))))
+
+      (testing "not_affected advisories are excluded from repeat notifications"
+        (let [notified (atom [])]
+          (mt/with-temp [:model/SecurityAdvisory _advisory
+                         (advisory-fixture {:advisory_id      "SC-NA-001"
+                                            :severity         "critical"
+                                            :match_status     "not_affected"
+                                            :last_notified_at nil})]
+            (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
+              (task.notify/send-repeat-notifications!)
+              (is (empty? @notified))))))
+
+      (testing "resolved advisories are excluded from repeat notifications"
+        (let [notified (atom [])]
+          (mt/with-temp [:model/SecurityAdvisory _advisory
+                         (advisory-fixture {:advisory_id      "SC-RES-001"
+                                            :severity         "critical"
+                                            :match_status     "resolved"
+                                            :last_notified_at nil})]
+            (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
+              (task.notify/send-repeat-notifications!)
               (is (empty? @notified)))))))))
+
+(deftest repeat-notification-error-isolation-test
+  (with-clean-advisories
+    (fn []
+      (testing "failure notifying one advisory does not block others"
+        (let [notified (atom [])
+              call-count (atom 0)]
+          (mt/with-temp [:model/SecurityAdvisory _a1
+                         (advisory-fixture {:advisory_id      "SC-ISO-001"
+                                            :severity         "critical"
+                                            :match_status     "active"
+                                            :last_notified_at nil})
+                         :model/SecurityAdvisory _a2
+                         (advisory-fixture {:advisory_id      "SC-ISO-002"
+                                            :severity         "critical"
+                                            :match_status     "active"
+                                            :last_notified_at nil})]
+            (with-redefs [notification/notify-advisory! (fn [a]
+                                                          (swap! call-count inc)
+                                                          (if (= 1 @call-count)
+                                                            (throw (ex-info "transient failure" {}))
+                                                            (swap! notified conj (:advisory_id a))))]
+              (task.notify/send-repeat-notifications!)
+              ;; The second advisory should still be notified despite the first one failing
+              (is (= 1 (count @notified))))))))))
+
+;;; ------------------------------------------------ notify-advisory! ------------------------------------------------
+
+(deftest notify-advisory-publishes-event-test
+  (testing "notify-advisory! publishes :event/security-advisory-match for audit logging"
+    (let [published (atom [])]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-EVENT-001"
+                                        :severity     "high"
+                                        :match_status "active"})]
+        (with-redefs [events/publish-event!               (fn [topic info] (swap! published conj {:topic topic :info info}))
+                      channel.settings/email-configured?   (constantly true)
+                      notification.send/send-notification! (constantly nil)]
+          (notification/notify-advisory! advisory)
+          (is (= 1 (count @published)))
+          (is (= :event/security-advisory-match (:topic (first @published))))
+          (is (= "SC-EVENT-001" (get-in (first @published) [:info :object :advisory_id]))))))))
+
+(deftest notify-advisory-updates-last-notified-at-test
+  (testing "notify-advisory! sets last_notified_at on the advisory"
+    (mt/with-temp [:model/SecurityAdvisory advisory
+                   (advisory-fixture {:advisory_id  "SC-TS-001"
+                                      :severity     "critical"
+                                      :match_status "active"})]
+      (is (nil? (:last_notified_at advisory)))
+      (with-send-redef (constantly nil)
+        (notification/notify-advisory! advisory))
+      (is (some? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+
+(deftest notify-advisory-does-not-update-on-send-failure-test
+  (testing "last_notified_at is NOT set when send-notification! throws"
+    (mt/with-temp [:model/SecurityAdvisory advisory
+                   (advisory-fixture {:advisory_id  "SC-FAIL-001"
+                                      :severity     "critical"
+                                      :match_status "active"})]
+      (with-send-redef (fn [& _] (throw (ex-info "boom" {})))
+        (is (thrown-with-msg? Exception #"boom"
+                              (notification/notify-advisory! advisory))))
+      (is (nil? (:last_notified_at (t2/select-one :model/SecurityAdvisory (:id advisory))))))))
+
+;;; -------------------------------------------- Recipient resolution -------------------------------------------------
+
+(deftest email-recipients-default-to-admins-test
+  (testing "when security-center-email-recipients is nil, email goes to admin group"
+    (let [sent (atom nil)]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-RECIP-001"
+                                        :severity     "critical"
+                                        :match_status "active"})]
+        (mt/with-temporary-setting-values [security-center-email-recipients nil]
+          (with-send-redef (fn [notif & _] (reset! sent notif))
+            (notification/notify-advisory! advisory)
+            (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))]
+              (is (some? email-handler))
+              ;; admin group recipient
+              (is (some #(= :notification-recipient/group (:type %))
+                        (:recipients email-handler))))))))))
+
+(deftest email-recipients-custom-list-test
+  (testing "when security-center-email-recipients is set, those specific recipients are used"
+    (let [sent         (atom nil)
+          custom-recip [{:type :notification-recipient/external-email :details {:email "security@example.com"}}]]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-RECIP-002"
+                                        :severity     "high"
+                                        :match_status "active"})]
+        (with-redefs [settings/security-center-email-recipients (constantly custom-recip)]
+          (with-send-redef (fn [notif & _] (reset! sent notif))
+            (notification/notify-advisory! advisory)
+            (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))]
+              (is (= :notification-recipient/external-email
+                     (:type (first (:recipients email-handler))))))))))))
+
+(deftest slack-handler-included-when-configured-test
+  (testing "Slack handler is added when channel is set and slack token is valid"
+    (let [sent (atom nil)]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-SLACK-001"
+                                        :severity     "critical"
+                                        :match_status "active"})]
+        (mt/with-temporary-setting-values [slack-token-valid? true]
+          (with-redefs [settings/security-center-slack-channel (constantly "#security-alerts")]
+            (with-send-redef (fn [notif & _] (reset! sent notif))
+              (notification/notify-advisory! advisory)
+              (let [slack-handler (first (filter #(= :channel/slack (:channel_type %)) (:handlers @sent)))]
+                (is (some? slack-handler))
+                (is (= "#security-alerts"
+                       (get-in (first (:recipients slack-handler)) [:details :value])))))))))))
+
+(deftest slack-handler-omitted-when-not-configured-test
+  (testing "no Slack handler when security-center-slack-channel is nil"
+    (let [sent (atom nil)]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-SLACK-002"
+                                        :severity     "low"
+                                        :match_status "active"})]
+        (with-redefs [settings/security-center-slack-channel (constantly nil)]
+          (with-send-redef (fn [notif & _] (reset! sent notif))
+            (notification/notify-advisory! advisory)
+            (is (empty? (filter #(= :channel/slack (:channel_type %)) (:handlers @sent))))))))))
+
+(deftest slack-handler-omitted-when-token-invalid-test
+  (testing "no Slack handler when slack token is not valid"
+    (let [sent (atom nil)]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-SLACK-003"
+                                        :severity     "medium"
+                                        :match_status "active"})]
+        (mt/with-temporary-setting-values [slack-token-valid? false]
+          (with-redefs [settings/security-center-slack-channel (constantly "#alerts")]
+            (with-send-redef (fn [notif & _] (reset! sent notif))
+              (notification/notify-advisory! advisory)
+              (is (empty? (filter #(= :channel/slack (:channel_type %)) (:handlers @sent)))))))))))
+
+;;; -------------------------------------------- Notification payload -------------------------------------------------
+
+(deftest notification-payload-structure-test
+  (testing "build-notification produces correct payload structure"
+    (let [sent (atom nil)]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-STRUCT-001"
+                                        :severity     "high"
+                                        :match_status "active"
+                                        :title        "RCE in widget parser"
+                                        :description  "Remote code execution"})]
+        (with-send-redef (fn [notif & _] (reset! sent notif))
+          (notification/notify-advisory! advisory)
+          (is (= :notification/system-event (:payload_type @sent)))
+          (is (= :event/security-advisory-match (get-in @sent [:payload :event_topic])))
+          (let [obj (get-in @sent [:payload :event_info :object])]
+            (is (= "SC-STRUCT-001" (:advisory_id obj)))
+            (is (= :high (:severity obj)))
+            (is (= :active (:match_status obj)))
+            (is (= "RCE in widget parser" (:title obj)))
+            (is (= "Remote code execution" (:description obj)))))))))
