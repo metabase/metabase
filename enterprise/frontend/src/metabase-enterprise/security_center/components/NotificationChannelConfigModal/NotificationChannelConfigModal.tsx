@@ -21,7 +21,7 @@ import {
 
 import type { useNotificationConfig } from "../../hooks/use-notification-config";
 
-type NotificationChannelConfigProps = ReturnType<
+type NotificationChannelConfigModalProps = ReturnType<
   typeof useNotificationConfig
 > & {
   opened: boolean;
@@ -41,7 +41,7 @@ export function NotificationChannelConfigModal({
   resetConfig,
   users,
   channels,
-}: NotificationChannelConfigProps) {
+}: NotificationChannelConfigModalProps) {
   const isEmailConfigured = useSetting("email-configured?");
   const isSlackConfigured = useSetting("slack-token-valid?");
   const [sendToast] = useToast();
@@ -127,11 +127,11 @@ function EmailChannelCard({
   updateEmailHandler,
   toggleSendToAllAdmins,
 }: {
-  config: NotificationChannelConfigProps["config"];
+  config: NotificationChannelConfigModalProps["config"];
   isConfigured: boolean;
-  users: NotificationChannelConfigProps["users"];
-  updateEmailHandler: NotificationChannelConfigProps["updateEmailHandler"];
-  toggleSendToAllAdmins: NotificationChannelConfigProps["toggleSendToAllAdmins"];
+  users: NotificationChannelConfigModalProps["users"];
+  updateEmailHandler: NotificationChannelConfigModalProps["updateEmailHandler"];
+  toggleSendToAllAdmins: NotificationChannelConfigModalProps["toggleSendToAllAdmins"];
 }) {
   if (!isConfigured) {
     return (
@@ -193,11 +193,11 @@ function SlackChannelCard({
   updateSlackHandler,
   toggleSlack,
 }: {
-  config: NotificationChannelConfigProps["config"];
+  config: NotificationChannelConfigModalProps["config"];
   isConfigured: boolean;
-  channels: NotificationChannelConfigProps["channels"];
-  updateSlackHandler: NotificationChannelConfigProps["updateSlackHandler"];
-  toggleSlack: NotificationChannelConfigProps["toggleSlack"];
+  channels: NotificationChannelConfigModalProps["channels"];
+  updateSlackHandler: NotificationChannelConfigModalProps["updateSlackHandler"];
+  toggleSlack: NotificationChannelConfigModalProps["toggleSlack"];
 }) {
   if (!isConfigured) {
     return (

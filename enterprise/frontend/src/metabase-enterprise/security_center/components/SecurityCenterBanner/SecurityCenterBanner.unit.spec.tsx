@@ -162,6 +162,6 @@ describe("SecurityCenterBanner", () => {
     setup();
 
     const link = await screen.findByText("Set up notifications");
-    expect(link).toHaveAttribute("href", "/admin/settings/security-center");
+    expect(link).toHaveAttribute("href", "/admin/security-center");
   });
 });

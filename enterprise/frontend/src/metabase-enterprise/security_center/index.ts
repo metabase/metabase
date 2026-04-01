@@ -2,6 +2,7 @@ import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 // import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { SecurityCenterBanner } from "./components/SecurityCenterBanner/SecurityCenterBanner";
+import { SecurityCenterNavItem } from "./components/SecurityCenterNavItem/SecurityCenterNavItem";
 import { SecurityCenterPage } from "./components/SecurityCenterPage/SecurityCenterPage";
 
 export function initializePlugin() {
@@ -9,5 +10,6 @@ export function initializePlugin() {
   PLUGIN_SECURITY_CENTER.isEnabled = true;
   PLUGIN_SECURITY_CENTER.SecurityCenterPage = SecurityCenterPage;
   PLUGIN_SECURITY_CENTER.SecurityCenterBanner = SecurityCenterBanner;
+  PLUGIN_SECURITY_CENTER.SecurityCenterNavItem = SecurityCenterNavItem;
   // }
 }
