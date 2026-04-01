@@ -255,6 +255,25 @@
             (finally
               (cleanup-test-usage! user-id))))))))
 
+(deftest user-group-null-limit-means-unlimited-test
+  (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
+    (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)
+    (testing "User group limit: if any of the user's groups has no limit configured, user is unlimited"
+      (let [user-id (mt/user->id :rasta)]
+        (mt/with-temp [:model/PermissionsGroup {g1 :id} {:name "Limited group"}
+                       :model/PermissionsGroup {g2 :id} {:name "Unlimited group"}
+                       :model/PermissionsGroupMembership _ {:group_id g1 :user_id user-id}
+                       :model/PermissionsGroupMembership _ {:group_id g2 :user_id user-id}
+                       :model/MetabotGroupLimit _ {:group_id g1 :max_usage 10}]
+          ;; g2 has no limit row — being in any unlimited group makes the user unlimited
+          (insert-usage! user-id 50000000)
+          (try
+            (mt/with-test-user :rasta
+              (is (nil? (usage/check-usage-limits!))))
+            (finally
+              (cleanup-test-usage! user-id))))))))
+
 (deftest user-group-no-limit-configured-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)

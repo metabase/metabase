@@ -22,13 +22,16 @@
 
 (defn limit-for-user
   "Returns the maximum `max_usage` across all group limits for groups the user belongs to.
-   Returns nil if no group limits are configured for any of the user's groups."
+   Returns nil if the user has any groups with a null (unlimited) limit"
   [user-id]
   (:max_usage
-   (t2/query-one {:select [[[:max :gl.max_usage] :max_usage]]
-                  :from   [[:permissions_group_membership :pgm]]
-                  :join   [[:metabot_group_limit :gl] [:= :pgm.group_id :gl.group_id]]
-                  :where  [:= :pgm.user_id user-id]})))
+   (t2/query-one {:select    [[[:case
+                                [:= [[:count :*]] [[:count :gl.max_usage]]]
+                                [[:max :gl.max_usage]]]
+                               :max_usage]]
+                  :from      [[:permissions_group_membership :pgm]]
+                  :left-join [[:metabot_group_limit :gl] [:= :pgm.group_id :gl.group_id]]
+                  :where     [:= :pgm.user_id user-id]})))
 
 (defn set-group-limit!
   "Sets or removes the limit for a specific group. Pass nil to remove (unlimited).
