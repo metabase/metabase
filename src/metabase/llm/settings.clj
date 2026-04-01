@@ -122,6 +122,23 @@
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
+(def ^:private llm-byok-enabled-values
+  #{:byok :metabase :unset})
+
+(defsetting llm-byok-enabled
+  (deferred-tru "Controls whether LLM requests use customer-provided API keys (BYOK) or the Metabase Cloud AI proxy. When ''byok'', only customer API keys are used. When ''metabase'', only the AI proxy is used. When ''unset'' (default), BYOK is preferred but falls back to the AI proxy when no key is configured.")
+  :type       :keyword
+  :visibility :internal
+  :default    :unset
+  :export?    false
+  :doc        false
+  :setter     (fn [new-value]
+                (let [value (or (llm-byok-enabled-values (keyword new-value))
+                                (throw (ex-info "llm-byok-enabled set to an unsupported value"
+                                                {:value   new-value
+                                                 :options (seq llm-byok-enabled-values)})))]
+                  (setting/set-value-of-type! :keyword :llm-byok-enabled value))))
+
 (defsetting llm-proxy-base-url
   (deferred-tru "Base URL for the LLM proxy. When set, all LLM requests are routed through this proxy and authenticated with the instance token instead of provider API keys.")
   :encryption       :no

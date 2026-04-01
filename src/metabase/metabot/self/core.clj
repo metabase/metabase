@@ -514,14 +514,29 @@
 
 (defn request-with-proxy
   "Perform a request directly when provider auth is configured, otherwise via the
-  (Metabase Cloud-only) LLM proxy when configured."
+  (Metabase Cloud-only) LLM proxy when configured.
+
+  Routing is governed by the `llm-byok-enabled` setting:
+    • `:byok`     – only customer API keys; ignores the proxy entirely
+    • `:metabase` – only the AI proxy; ignores BYOK keys
+    • `:unset`    – (default) prefers BYOK when a key is set, falls back to the
+                    proxy, errors if neither is available"
   [llm-type auth req]
-  (let [{:keys [url headers]}
-        (cond
-          auth                     auth
-          (llm/llm-proxy-base-url) {:url     (llm/llm-proxy-base-url)
-                                    :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}}
-          :else                    (throw (missing-api-key-ex llm-type)))]
+  (let [byok-mode  (llm/llm-byok-enabled)
+        proxy-auth (when-let [base (llm/llm-proxy-base-url)]
+                     {:url     base
+                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})
+        {:keys [url headers]}
+        (case byok-mode
+          :byok     (or auth (throw (missing-api-key-ex llm-type)))
+          :metabase (or proxy-auth (throw (ex-info (tru "AI proxy is not configured")
+                                                   {:api-error  true
+                                                    :error-code :proxy-not-configured})))
+          ;; :unset (default): prefer BYOK, fall back to proxy
+          :unset    (cond
+                      auth       auth
+                      proxy-auth proxy-auth
+                      :else      (throw (missing-api-key-ex llm-type))))]
     (http/request (-> req
                       (update :url #(str url %))
                       (update :headers merge headers)))))
