@@ -1,14 +1,22 @@
 import type {
+  BaseWidgetProps,
   CustomVisualizationSettingDefinition,
   Series,
   WidgetName,
   Widgets,
 } from "../types";
 
+type OmitBaseWidgetProps<P> = keyof BaseWidgetProps<
+  unknown,
+  unknown
+> extends keyof P
+  ? Omit<P, keyof BaseWidgetProps<unknown, unknown>>
+  : P;
+
 type PropsFromWidget<W> = W extends WidgetName
   ? Widgets[W]
   : W extends (props: infer P) => any
-    ? P
+    ? OmitBaseWidgetProps<P>
     : never;
 
 export function defineSetting<
