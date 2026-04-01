@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1489-move-cors-settings-to-oss-and-show-cors-in-security-tab",
-    "hash": "3b5a7a7df6d25c261677938f58a1e267ada2f881"
+    "hash": "d8010be8fbf46f7bc3839c3eb89d847ecf0f6f5a"
   },
   "upstream": {
     "branch": "emb-1510-add-aimcp-settings-page-mcp-apps-clients-cors-origins"
