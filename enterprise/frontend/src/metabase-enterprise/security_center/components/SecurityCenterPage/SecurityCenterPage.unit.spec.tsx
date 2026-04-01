@@ -56,6 +56,7 @@ function setup(advisories: Advisory[] = []) {
     updateSlackHandler: jest.fn(),
     toggleSlack: jest.fn(),
     save: jest.fn(),
+    resetConfig: jest.fn(),
   });
 
   renderWithProviders(<SecurityCenterPage />, {

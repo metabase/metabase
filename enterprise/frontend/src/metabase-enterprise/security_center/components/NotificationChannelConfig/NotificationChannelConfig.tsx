@@ -37,6 +37,7 @@ export function NotificationChannelConfigModal({
   updateSlackHandler,
   toggleSlack,
   save,
+  resetConfig,
   users,
   channels,
 }: NotificationChannelConfigProps) {
@@ -72,7 +73,10 @@ export function NotificationChannelConfigModal({
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={() => {
+        resetConfig();
+        onClose();
+      }}
       title={t`Notification settings`}
       size="lg"
     >
@@ -92,7 +96,13 @@ export function NotificationChannelConfigModal({
           toggleSlack={toggleSlack}
         />
         <Flex justify="flex-end" gap="md" mt="md">
-          <Button variant="subtle" onClick={onClose}>
+          <Button
+            variant="subtle"
+            onClick={() => {
+              resetConfig();
+              onClose();
+            }}
+          >
             {t`Cancel`}
           </Button>
           <Button
