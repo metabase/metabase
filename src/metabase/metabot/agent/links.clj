@@ -24,7 +24,7 @@
    "metric"    "/metric"
    "dashboard" "/dashboard"
    "question"  "/question"
-   "transform" "/admin/transforms"})
+   "transform" "/data-studio/transforms"})
 
 ;;; Query/Chart URL Generation
 

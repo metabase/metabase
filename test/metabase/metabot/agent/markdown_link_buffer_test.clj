@@ -151,6 +151,11 @@
   (testing "resolves metabase://dashboard links"
     (let [[output flushed] (process "[Sales Dashboard](metabase://dashboard/789)")]
       (is (= "[Sales Dashboard](/dashboard/789)" output))
+      (is (= "" flushed))))
+
+  (testing "resolves metabase://transform links"
+    (let [[output flushed] (process "[My Transform](metabase://transform/42)")]
+      (is (= "[My Transform](/data-studio/transforms/42)" output))
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-link-split-across-chunks-test

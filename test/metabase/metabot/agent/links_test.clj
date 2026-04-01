@@ -31,7 +31,7 @@
     (is (= "/metric/456" (links/resolve-metabase-uri "metabase://metric/456" {} {})))
     (is (= "/dashboard/789" (links/resolve-metabase-uri "metabase://dashboard/789" {} {})))
     (is (= "/question/101" (links/resolve-metabase-uri "metabase://question/101" {} {})))
-    (is (= "/admin/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
+    (is (= "/data-studio/transforms/202" (links/resolve-metabase-uri "metabase://transform/202" {} {})))))
 
 (deftest ^:parallel resolve-metabase-uri-table-link-test
   (testing "resolves table links to ad-hoc question URLs"
@@ -384,8 +384,8 @@
     (let [registry (atom {})
           text     "[Dash](metabase://dashboard/10) [Tx](metabase://transform/30)"
           _result  (links/resolve-links text {} {} registry)]
-      (is (= {"/dashboard/10"        "metabase://dashboard/10"
-              "/admin/transforms/30" "metabase://transform/30"}
+      (is (= {"/dashboard/10"              "metabase://dashboard/10"
+              "/data-studio/transforms/30" "metabase://transform/30"}
              @registry)))))
 
 (deftest ^:parallel resolve-links-does-not-record-failed-resolutions-test
