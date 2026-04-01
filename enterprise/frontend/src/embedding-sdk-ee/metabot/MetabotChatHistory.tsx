@@ -39,7 +39,6 @@ export function MetabotChatHistory() {
           errorMessages={errorMessages}
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}
-          showFeedbackButtons={false}
           onInternalLinkClick={setNavigateToPath}
         />
       ) : null}

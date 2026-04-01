@@ -46,7 +46,7 @@
    [:model       {:optional true} :string]
    [:system      {:optional true} [:maybe :string]]
    [:input       {:optional true} [:sequential :map]]
-   [:tools       {:optional true} [:sequential ToolEntry]]
+   [:tools       {:optional true} [:maybe [:sequential ToolEntry]]]
    [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature {:optional true} [:maybe number?]]
    [:max-tokens  {:optional true} [:maybe :int]]
@@ -94,6 +94,9 @@
                 (recur acc)
 
                 (str/starts-with? line ":")
+                (recur acc)
+
+                (str/starts-with? line "event:")
                 (recur acc)
 
                 :else

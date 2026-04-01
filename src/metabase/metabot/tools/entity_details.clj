@@ -19,9 +19,21 @@
 (set! *warn-on-reflection* true)
 
 (defn- convert-measure-or-segment
-  "Convert a measure or segment metadata object to the format expected by the API."
-  [metadata]
-  (select-keys metadata [:id :name :display-name :description :definition]))
+  "Convert a measure or segment metadata object to the format expected by the API.
+   `definition-key` is `:aggregation` for measures and `:filters` for segments."
+  [metadata definition-key]
+  (let [definition (:definition metadata)]
+    (-> (select-keys metadata [:id :name :display-name :description])
+        (assoc :definition-description
+               (when definition
+                 (try
+                   (lib/describe-top-level-key definition definition-key)
+                   (catch Exception _ nil))))
+        (assoc :definition
+               (when definition
+                 (try
+                   (lib/prepare-for-serialization definition)
+                   (catch Exception _ nil)))))))
 
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
@@ -149,7 +161,7 @@
 
        with-segments?
        (assoc :segments (if-let [segments (lib/available-segments metric-query)]
-                          (mapv convert-measure-or-segment segments)
+                          (mapv #(convert-measure-or-segment % :filters) segments)
                           []))))))
 
 (defn- convert-metric
@@ -211,10 +223,10 @@
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))
                          :measures (when with-measures?
-                                     (not-empty (mapv convert-measure-or-segment
+                                     (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                                       (lib/available-measures table-query))))
                          :segments (when with-segments?
-                                     (not-empty (mapv convert-measure-or-segment
+                                     (not-empty (mapv #(convert-measure-or-segment % :filters)
                                                       (lib/available-segments table-query))))))))))
 
 (defn related-tables
@@ -305,10 +317,10 @@
                      (not-empty (mapv #(convert-metric % metadata-provider options)
                                       (lib/available-metrics card-query))))
           :measures (when with-measures?
-                      (not-empty (mapv convert-measure-or-segment
+                      (not-empty (mapv #(convert-measure-or-segment % :aggregation)
                                        (lib/available-measures card-query))))
           :segments (when with-segments?
-                      (not-empty (mapv convert-measure-or-segment
+                      (not-empty (mapv #(convert-measure-or-segment % :filters)
                                        (lib/available-segments card-query)))))))))
 
 (defn cards-details
@@ -414,7 +426,8 @@
                         (-> details
                             (select-keys [:id :type :description :name :verified])
                             (assoc :result-columns (:fields details))
-                            (m/assoc-some :average_query_time (:average_query_time card))))
+                            (m/assoc-some :average_query_time (:average_query_time card)
+                                          :display (:display card))))
                       (throw (ex-info "Invalid report_id format"
                                       {:agent-error? true :status-code 400})))]
         {:structured-output (assoc details :result-type :entity)}))

@@ -2,4 +2,8 @@
  ["src" "resources"]
 
  :deps
- {com.databricks/databricks-jdbc-thin {:mvn/version "3.0.7"}}}
+ {at.yawk.lz4/lz4-java                {:mvn/version "1.10.4"} ; pin newer version because version included in JDBC driver has security warnings
+  com.databricks/databricks-jdbc-thin {:mvn/version "3.3.1"
+                                       ;; lang3 is a dep in top-level deps.edn, so not actually used anyway; exclusion
+                                       ;; here fixes security warnings about version used in JDBC driver
+                                       :exclusions  [org.apache.commons/commons-lang3]}}}

@@ -14,7 +14,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -429,19 +428,39 @@
         :data_authority      :computed
         :initial_sync_status "complete"}))))
 
-(defn- remove-referenced-candidates
-  "Short-circuiting reduce: removes matched triples from triple->table."
-  [triple->table target-triples]
-  (reduce (fn [triple->table triple]
-            (if (empty? triple->table)
-              (reduced triple->table)
-              (dissoc triple->table triple)))
-          triple->table
-          target-triples))
+(defn delete-orphaned-provisional-table!
+  "If `table-id` points at an inactive provisional table that is not referenced by any other
+   transform or workspace row (excluding `exclude-transform-id`), delete it."
+  [table-id exclude-transform-id]
+  (when table-id
+    (when-let [table (t2/select-one :model/Table :id table-id
+                                    :active false :transform_target true :deactivated_at nil
+                                    :data_source :metabase-transform)]
+      (let [referenced?
+            (seq
+             (t2/query {:union
+                        (cons
+                         {:select [[[:inline 1] :ref]]
+                          :from   [:transform]
+                          :where  [:and
+                                   [:= :target_table_id (:id table)]
+                                   [:not= :id exclude-transform-id]]}
+                         (for [[table-name column-name]
+                               [["workspace_input" "table_id"]
+                                ["workspace_output" "global_table_id"]
+                                ["workspace_output" "isolated_table_id"]
+                                ["workspace_output_external" "global_table_id"]
+                                ["workspace_output_external" "isolated_table_id"]
+                                ["workspace_input_external" "table_id"]]]
+                           {:select [[[:inline 1] :ref]]
+                            :from   [(keyword table-name)]
+                            :where  [:= (keyword column-name) (:id table)]}))}))]
+        (when-not referenced?
+          (t2/delete! :model/Table :id (:id table)))))))
 
 (defn gc-transform-target-tables!
   "Deletes provisional table rows (created by [[upsert-transform-target-table!]]) that are no longer
-   referenced by any Transform or WorkspaceTransform. Safe because these rows were never active,
+   referenced by any Transform or workspace table. Safe because these rows were never active,
    so they have no child records.
 
    Note: this only handles *inactive* provisional tables. Active tables that were previously
@@ -449,29 +468,31 @@
    A separate process to reset `transform_target` on active, unreferenced tables is not yet
    implemented.
 
-   Future optimizations:
-   - Add target_table_id FKs to avoid scanning transform rows.
-   - Pre-filter via workspace_input/workspace_output table references."
+   Uses FK-based NOT IN queries rather than scanning JSON columns."
   []
-  (let [candidates (t2/select [:model/Table :id :db_id :schema :name]
-                              :active false :transform_target true :deactivated_at nil
-                              :data_source :metabase-transform)]
-    (when (seq candidates)
-      (let [db-ids        (into #{} (map :db_id) candidates)
-            triple->table (into {} (map (juxt (juxt :db_id :schema :name) identity)) candidates)
-            remaining     (remove-referenced-candidates
-                           triple->table
-                           (eduction
-                            (map (fn [{:keys [target target_db_id]}]
-                                   (-> target
-                                       (update :database #(or % target_db_id))
-                                       workspaces/target->triple)))
-                            (t2/reducible-select [:model/Transform :target :target_db_id] :target_db_id [:in db-ids])))
-            remaining     (when (seq remaining)
-                            (remove-referenced-candidates
-                             remaining
-                             (workspaces/reducible-target-triples db-ids)))]
-        (when-let [dead-ids (seq (mapv :id (vals remaining)))]
+  (let [candidate-ids (t2/select-fn-set :id :model/Table
+                                        :active false :transform_target true :deactivated_at nil
+                                        :data_source :metabase-transform)]
+    (when (seq candidate-ids)
+      (let [referenced-ids
+            (into #{}
+                  (map :id)
+                  (t2/query {:union
+                             (for [[table-name column-name]
+                                   [["transform" "target_table_id"]
+                                    ["workspace_input" "table_id"]
+                                    ["workspace_output" "global_table_id"]
+                                    ["workspace_output" "isolated_table_id"]
+                                    ["workspace_output_external" "global_table_id"]
+                                    ["workspace_output_external" "isolated_table_id"]
+                                    ["workspace_input_external" "table_id"]]]
+                               {:select [[(keyword column-name) :id]]
+                                :from   [(keyword table-name)]
+                                :where  [:and
+                                         [:not= (keyword column-name) nil]
+                                         [:in (keyword column-name) candidate-ids]]})}))
+            dead-ids (into [] (remove referenced-ids) candidate-ids)]
+        (when (seq dead-ids)
           (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
           (t2/delete! :model/Table :id [:in dead-ids]))))))
 
@@ -681,11 +702,15 @@
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database :name)
                :collection_id  (serdes/fk :model/Collection)
-               :transform_id   (serdes/fk :model/Transform)}})
+               :transform_id   (serdes/fk :model/Transform)}
+   :defaults {:is_defective_duplicate  false
+              :is_published            false
+              :is_upload               false
+              :show_in_getting_started false}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
-  (concat (serdes/storage-path-prefixes (serdes/path table))
-          [(:name table)]))
+  (conj (serdes/storage-path-prefixes (serdes/path table))
+        {:label (:name table) :key (:name table)}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

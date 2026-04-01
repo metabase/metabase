@@ -49,7 +49,7 @@ interface ViewTitleHeaderRightSideProps {
   }) => void;
   cancelQuery: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
-  onEditSummary: () => void;
+  editSummary: () => void;
   onCloseSummary: () => void;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
@@ -85,7 +85,7 @@ export function ViewTitleHeaderRightSide({
   runQuestionQuery,
   cancelQuery,
   onOpenModal,
-  onEditSummary,
+  editSummary,
   onCloseSummary,
   setQueryBuilderMode,
   areFiltersExpanded,
@@ -182,7 +182,7 @@ export function ViewTitleHeaderRightSide({
       }) && (
         <QuestionSummarizeWidget
           isShowingSummarySidebar={isShowingSummarySidebar}
-          onEditSummary={onEditSummary}
+          editSummary={editSummary}
           onCloseSummary={onCloseSummary}
         />
       )}

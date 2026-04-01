@@ -6,7 +6,6 @@
    [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.sso.settings :as sso-settings]
    [toucan2.core :as t2]))
 
 (defenterprise ee-snowplow-features-data
@@ -20,9 +19,6 @@
    {:name      :sso-saml
     :available (premium-features/enable-sso-saml?)
     :enabled   (ee-sso-settings/saml-enabled)}
-   {:name      :sso-slack
-    :available (premium-features/enable-sso-slack?)
-    :enabled   (sso-settings/slack-connect-enabled)}
    {:name      :scim
     :available (premium-features/enable-scim?)
     :enabled   (boolean (scim/scim-enabled))}

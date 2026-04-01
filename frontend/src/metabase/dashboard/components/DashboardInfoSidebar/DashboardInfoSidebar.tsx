@@ -7,6 +7,8 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useListRevisionsQuery } from "metabase/api";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
+import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import {
   Sidesheet,
   SidesheetCard,
@@ -15,8 +17,6 @@ import {
 import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import { Timeline } from "metabase/common/components/Timeline";
-import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import {
@@ -252,7 +252,7 @@ const HistoryTab = ({
 
   return (
     <SidesheetCard>
-      <Timeline
+      <RevisionHistoryTimeline
         events={events}
         data-testid="dashboard-history-list"
         revert={(revision) =>

@@ -105,8 +105,7 @@
                :created_at (serdes/date)}})
 
 (defmethod serdes/storage-path "TransformTag" [tt _ctx]
-  (let [{:keys [id label]} (-> tt serdes/path last)]
-    ["transforms" "transform_tags" (serdes/storage-leaf-file-name id label)]))
+  [{:label "transforms"} {:label "transform_tags"} {:label (:name tt) :key (:entity_id tt)}])
 
 ;; Event hooks for remote-sync tracking
 (t2/define-after-insert :model/TransformTag [tag]

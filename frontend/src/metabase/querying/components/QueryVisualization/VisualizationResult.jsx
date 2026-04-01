@@ -9,6 +9,7 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
+import { zoomInRow } from "metabase/query_builder/actions";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
@@ -66,7 +67,7 @@ export class VisualizationResult extends Component {
       className,
       isRunning,
       isShowingSummarySidebar,
-      onEditSummary,
+      editSummary,
       renderEmptyMessage,
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -142,7 +143,7 @@ export class VisualizationResult extends Component {
             isQueryBuilder={true}
             isShowingSummarySidebar={isShowingSummarySidebar}
             isRunning={isRunning}
-            onEditSummary={onEditSummary}
+            editSummary={editSummary}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}
             canToggleSeriesVisibility
@@ -150,6 +151,7 @@ export class VisualizationResult extends Component {
             timelineEvents={timelineEvents}
             token={token}
             selectedTimelineEventIds={selectedTimelineEventIds}
+            getExtraDataForClick={() => ({ zoomInRow })}
             handleVisualizationClick={this.props.handleVisualizationClick}
             onOpenTimelines={this.props.onOpenTimelines}
             onSelectTimelineEvents={this.props.selectTimelineEvents}

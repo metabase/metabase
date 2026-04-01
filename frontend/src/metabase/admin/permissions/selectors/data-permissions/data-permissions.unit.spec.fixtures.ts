@@ -24,6 +24,12 @@ export const normalizedMetadata = {
       tables: [10, 11, 12, 13],
       id: 3,
     },
+    "4": {
+      name: "Destination Database",
+      tables: [],
+      id: 4,
+      router_database_id: 2,
+    },
   },
   schemas: {
     "2:schema_1": {
@@ -121,7 +127,7 @@ export const normalizedMetadata = {
   },
   snippets: {},
   revisions: {},
-  databasesList: [2, 3],
+  databasesList: [2, 3, 4],
 
   groups: {
     "1": createMockGroup({

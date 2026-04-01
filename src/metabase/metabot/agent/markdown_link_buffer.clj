@@ -8,7 +8,6 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.links :as links]
-   [metabase.system.core :as system]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -17,37 +16,17 @@
 
 (def initial-state
   "Initial parser state."
-  {:buffer  ""
-   :queries {}
-   :charts  {}})
+  {:buffer             ""
+   :queries            {}
+   :charts             {}
+   :link-registry-atom (atom {})})
 
 (defn with-context
-  "Update the queries and charts context in the state."
-  [state queries charts]
-  (assoc state :queries queries :charts charts))
-
-;;; Slack Link Resolution
-
-(def ^:private slack-link-pattern
-  "Regex matching a complete Slack-format link <metabase://type/id|text>."
-  #"<(metabase://[^>|]+)(?:\|([^>]*))?>")
-
-(defn- resolve-slack-link
-  "Resolve a single Slack-format metabase:// link match. Returns the replacement string."
-  [queries charts [_ url link-text]]
-  (if-let [resolved (links/resolve-metabase-uri url queries charts)]
-    (let [absolute-url (str (system/site-url) resolved)]
-      (if link-text
-        (str "<" absolute-url "|" link-text ">")
-        (str "<" absolute-url ">")))
-    (do
-      (log/warn "Failed to resolve Slack link URL" {:url url})
-      (or link-text url))))
-
-(defn- resolve-slack-links
-  "Resolve all Slack-format metabase:// links in text."
-  [text queries charts]
-  (str/replace text slack-link-pattern (partial resolve-slack-link queries charts)))
+  "Update the queries, charts, and link-registry-atom context in the state."
+  ([state queries charts]
+   (assoc state :queries queries :charts charts))
+  ([state queries charts link-registry-atom]
+   (assoc state :queries queries :charts charts :link-registry-atom link-registry-atom)))
 
 ;;; Buffering Logic
 
@@ -66,17 +45,29 @@
                     (re-find #"\[[^\]]*\]\([^)]*$" suffix)) ; unclosed (
             last-open))))))
 
+(def ^:private slack-link-prefix
+  "The prefix that starts a Slack-format metabase:// link."
+  "<metabase://")
+
 (defn- find-potential-slack-link-start
   "Find the index of a potential incomplete Slack-format metabase:// link.
-   Only buffers on `<metabase://` prefix — regular `<` characters must NOT trigger buffering.
+   Detects both complete `<metabase://` prefixes and partial prefixes at the end
+   of text (e.g., `<meta`, `<metabase:/`) to handle streaming chunk boundaries.
    Returns nil if no potential incomplete link exists."
   [text]
-  (let [idx (str/last-index-of text "<metabase://")]
-    (when idx
+  (let [idx (str/last-index-of text slack-link-prefix)]
+    (if idx
+      ;; Found full prefix — buffer if the link is incomplete (no closing >)
       (let [suffix (subs text idx)]
-        ;; Only buffer if there's no closing > (i.e., the link is incomplete)
-        (when-not (re-find slack-link-pattern suffix)
-          idx)))))
+        (when-not (re-find links/slack-link-pattern suffix)
+          idx))
+      ;; Check if text ends with any partial prefix of "<metabase://"
+      (loop [prefix-len (min (dec (count slack-link-prefix))
+                             (count text))]
+        (when (pos? prefix-len)
+          (if (str/ends-with? text (subs slack-link-prefix 0 prefix-len))
+            (- (count text) prefix-len)
+            (recur (dec prefix-len))))))))
 
 (defn- find-potential-link-start
   "Find the index of the earliest potential incomplete link start.
@@ -96,8 +87,8 @@
   [{:keys [buffer] :as state} chunk]
   (let [text        (str buffer chunk)
         ;; Resolve complete markdown links, then Slack-format links
-        resolved    (-> (links/resolve-links text (:queries state) (:charts state))
-                        (resolve-slack-links (:queries state) (:charts state)))
+        resolved    (-> (links/resolve-links text (:queries state) (:charts state) (:link-registry-atom state))
+                        (links/resolve-slack-links (:queries state) (:charts state) (:link-registry-atom state)))
         ;; Then check for incomplete link at the end
         split-point (find-potential-link-start resolved)]
     (if split-point
@@ -131,12 +122,14 @@
 
    Parameters:
    - initial-queries: Initial map of query-id to query data
-   - initial-charts: Initial map of chart-id to chart data"
-  [initial-queries initial-charts]
+   - initial-charts: Initial map of chart-id to chart data
+   - link-registry-atom: Atom of {resolved-url original-metabase-uri}"
+  [initial-queries initial-charts link-registry-atom]
   (fn [rf]
     (let [state   (volatile! (with-context initial-state
                                (or initial-queries {})
-                               (or initial-charts {})))
+                               (or initial-charts {})
+                               link-registry-atom))
           queries (volatile! (or initial-queries {}))
           charts  (volatile! (or initial-charts {}))]
       (fn

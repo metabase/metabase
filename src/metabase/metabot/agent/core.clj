@@ -6,13 +6,14 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.metabot.agent.analytics :as agent-analytics]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.agent.tools :as agent-tools]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -141,13 +142,14 @@
   [:sequential ::message])
 
 (mr/def ::state
-  "Agent state containing queries, charts, chart-configs, todos, and transforms."
+  "Agent state containing queries, charts, chart-configs, todos, transforms, and link-registry."
   [:map
    [:queries {:optional true} [:map-of [:or :string :keyword] :map]]
    [:charts {:optional true} [:map-of [:or :string :keyword] :map]]
    [:chart-configs {:optional true} [:map-of [:or :string :keyword] :map]]
    [:todos {:optional true} [:sequential :map]]
-   [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]])
+   [:transforms {:optional true} [:map-of [:or :string :keyword] :map]]
+   [:link-registry {:optional true} [:map-of [:or :string :keyword] :string]]])
 
 (mr/def ::context
   "Context information for the agent."
@@ -195,16 +197,38 @@
     :else                         :stop))
 
 ;;; Call LLM
+(defn- part->invert-links-key
+  "Return the key that might contain links that need to be inverted or nil if no such key exists."
+  [part]
+  (cond
+    (and (= (:type part) :text) (string? (:text part)))
+    :text
+    (and (= (:role part) :user) (string? (:content part)))
+    :content))
+
+(defn- invert-links
+  "Apply link inversion to all :text parts in a sequence of AISDK parts.
+  Also inverts :content in user-role parts (which contain resolved URLs from prior requests)."
+  [parts registry-map]
+  (if (empty? registry-map)
+    parts
+    (mapv (fn [part]
+            (let [links-key (part->invert-links-key part)]
+              (cond-> part
+                links-key (-> (update links-key links/invert-links registry-map)
+                              (update links-key links/invert-slack-links registry-map)))))
+          parts)))
 
 (defn- call-llm
   "Call the LLM and stream processed parts.
 
   Builds AISDK parts from memory and passes them to the adapter which converts
   them to its native wire format."
-  [memory context profile tools iteration tracking-opts]
+  [memory context profile tools iteration tracking-opts link-registry-atom]
   (let [model        (:model profile)
         system-msg   (messages/build-system-message context profile tools)
-        input-parts  (messages/build-message-history memory)
+        input-parts  (-> (messages/build-message-history context memory)
+                         (invert-links @link-registry-atom))
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
@@ -215,7 +239,8 @@
                    :parts     input-parts
                    :tools     (vec tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
-                                         (get-in memory [:state :charts] {}))
+                                         (get-in memory [:state :charts] {})
+                                         link-registry-atom)
               (self/call-llm model (:content system-msg) input-parts tools tracking-opts llm-opts))))
 
 ;;; Memory management
@@ -331,6 +356,37 @@
           state
           (:user_is_viewing context)))
 
+(defn chart-config->chart
+  "Create chart structure from chart-config"
+  [id {:keys [query timeline_events image_base_64] :as chart-config}]
+  {:chart_id id
+   :queries [query]
+   :image_base_64 image_base_64
+   :timeline_events (or timeline_events [])
+   ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
+   ;;                           what is the reason behind that if any and either add it or drop.
+   :visualization_settings nil
+   :chart_config chart-config})
+
+(defn seed-charts
+  "Reduce the chart-configs from context into charts."
+  [state context]
+  (reduce
+   ;; This logic is flawed for items with more than 1 chart config. It expects at most 1 chart config per viewing item.
+   ;; TODO (lbrdnk 2026-03-24): Figure out what is reasonable solution here. (ie no overwriting single config)
+   (fn [acc {:keys [id chart_configs] :as _item}]
+     ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
+     (if-not (seq chart_configs)
+       acc
+       (update acc :charts merge
+               (into {}
+                     (map (comp
+                           (juxt :chart_id identity)
+                           (partial chart-config->chart id)))
+                     chart_configs))))
+   state
+   (:user_is_viewing context)))
+
 ;;; Main loop
 
 (defn- init-agent
@@ -343,14 +399,16 @@
         base-tools   (profiles/get-tools-for-profile profile-id capabilities)
         seeded       (-> (or state {})
                          (seed-state context)
-                         (seed-chart-configs context))
+                         (seed-chart-configs context)
+                         (seed-charts context))
         memory       (-> (memory/initialize messages seeded context)
                          (memory/load-queries-from-state seeded)
                          (memory/load-charts-from-state seeded)
                          (memory/load-transforms-from-state seeded)
-                         (memory/load-todos-from-state seeded))
+                         (memory/load-todos-from-state seeded)
+                         (memory/load-link-registry-from-state seeded))
         memory-atom  (atom memory)
-        tools        (agent-tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
+        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
@@ -403,18 +461,22 @@
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools context memory-atom tracking-opts]} agent
-          max-iter      (:max-iterations profile 10)
-          tracking-opts (assoc tracking-opts :iteration iteration)
-          parts-atom    (atom [])
-          llm-call      (call-llm @memory-atom context profile tools iteration tracking-opts)
-          xf         (comp (accumulate-usage-xf usage-atom)
-                           (u/tee-xf parts-atom))
+          max-iter           (:max-iterations profile 10)
+          tracking-opts      (assoc tracking-opts :iteration iteration)
+          memory             @memory-atom
+          parts-atom         (atom [])
+          link-registry-atom (atom (get-in memory [:state :link-registry] {}))
+          llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
+          xf                 (comp (accumulate-usage-xf usage-atom)
+                                   (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
           ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
-          result'    (reduce (xf rf) result llm-call)
-          parts      @parts-atom]
+          result'            (reduce (xf rf) result llm-call)
+          parts              @parts-atom]
+      ;; Sync link registry back to memory after streaming completes
+      (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
       ;; Capture response for debug log
       (when *debug-log*
         (debug-log! {:iteration iteration
@@ -522,6 +584,10 @@
                     result))
                 (catch Exception e
                   (prometheus/inc! :metabase-metabot/agent-errors labels)
+                  (when (:api-error (ex-data e))
+                    (log/debugf "API error details: status=%s body=%s"
+                                (:status (ex-data e))
+                                (pr-str (:body (ex-data e)))))
                   (if (:api-error (ex-data e))
                     (log/errorf "Agent loop API error: %s" (ex-message e))
                     (log/error e "Agent loop error"))

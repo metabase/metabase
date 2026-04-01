@@ -20,10 +20,7 @@ import {
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
-import {
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -145,12 +142,12 @@ export function setup(
     metabotInitialState?: MetabotState;
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
+    isHosted?: boolean;
   } | void,
 ) {
-  mockSettings({
-    "token-features": createMockTokenFeatures({
-      metabot_v3: true,
-    }),
+  const settings = mockSettings({
+    "llm-metabot-configured?": true,
+    "is-hosted?": options?.isHosted ?? false,
   });
 
   setupEnterprisePlugins();
@@ -181,6 +178,7 @@ export function setup(
       storeInitialState: createMockState({
         currentUser: currentUser ? currentUser : undefined,
         metabot: metabotInitialState,
+        settings,
       }),
     },
   );

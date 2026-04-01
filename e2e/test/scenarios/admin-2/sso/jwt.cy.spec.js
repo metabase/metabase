@@ -22,7 +22,10 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
       /JWT Identity Provider URI/i,
       "https://example.test",
     );
-    cy.button("Generate key").click();
+    cy.button("Set up key").click();
+    H.modal().within(() => {
+      cy.button("Done").click();
+    });
     cy.button("Save and enable").click();
     cy.wait("@updateSettings");
     H.goToAuthOverviewPage();
@@ -73,13 +76,18 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
+    cy.findByLabelText(/String used by the JWT signing key/i).should(
+      "have.value",
+      "**********00",
+    );
+
     cy.button("Regenerate key").click();
     H.modal().within(() => {
-      cy.findByText("Regenerate JWT signing key?").should("exist");
+      cy.findByText("Set up secret key").should("exist");
       cy.findByText(
         "This will cause existing tokens to stop working until the identity provider is updated with the new key.",
       ).should("exist");
-      cy.button("Yes").click();
+      cy.button("Done").click();
     });
     cy.button("Save changes").click();
     cy.wait("@updateSettings");
