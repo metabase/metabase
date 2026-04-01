@@ -83,22 +83,22 @@
       (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [driver.settings/*allow-testing-h2-connections* true]
-                    (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
-                  nil
-                  (catch Throwable e
-                    e))]
-      (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
-      (database-routing/with-database-routing-off
-        (let [metadata-results (sync-metadata/sync-db-metadata! database)
-              analyze-results (when (:is_full_sync database)
-                                (analyze/analyze-db! database))
-              refingerprint-results (when (and (:refingerprint database)
-                                               (should-refingerprint-fields? analyze-results))
-                                      (analyze/refingerprint-db! database))]
-          (cond-> {:metadata-results metadata-results}
-            analyze-results (assoc :analyze-results analyze-results)
-            refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
+                    (binding [driver.settings/*allow-testing-h2-connections* true]
+                      (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
+                    nil
+                    (catch Throwable e
+                      e))]
+        (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
+        (database-routing/with-database-routing-off
+          (let [metadata-results (sync-metadata/sync-db-metadata! database)
+                analyze-results (when (:is_full_sync database)
+                                  (analyze/analyze-db! database))
+                refingerprint-results (when (and (:refingerprint database)
+                                                 (should-refingerprint-fields? analyze-results))
+                                        (analyze/refingerprint-db! database))]
+            (cond-> {:metadata-results metadata-results}
+              analyze-results (assoc :analyze-results analyze-results)
+              refingerprint-results (assoc :refingerprint-results refingerprint-results))))))))
 
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
