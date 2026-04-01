@@ -113,7 +113,11 @@
           databases (mt/user-http-request :crowberto :get 200 "agent/v1/database")]
       (is (pos? (count databases)))
       (is (= #{:id :type :name :engine :description}
-             (into #{} (mapcat keys) databases))))))
+             (into #{} (mapcat keys) databases)))))
+
+  (testing "User without data permissions gets empty list"
+    (mt/with-no-data-perms-for-all-users!
+      (is (= [] (mt/user-http-request :rasta :get 200 "agent/v1/database"))))))
 
 (deftest get-database-details-test
   (testing "Returns only expected keys without tables"
@@ -136,7 +140,11 @@
   (testing "Tables include fields when requested"
     (let [db (mt/user-http-request :rasta :get 200
                                    (str "agent/v1/database/" (mt/id) "?with-tables=true&with-fields=true"))]
-      (is (every? #(seq (:fields %)) (:tables db))))))
+      (is (every? #(seq (:fields %)) (:tables db)))))
+
+  (testing "User without data permissions gets 403"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/user-http-request :rasta :get 403 (str "agent/v1/database/" (mt/id))))))
 
 (deftest get-metric-details-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
