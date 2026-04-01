@@ -3,6 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
@@ -27,7 +28,8 @@
 (task/defjob
   ^{:doc "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."}
   TaskHistoryCleanup [_]
-  (task-history-cleanup!))
+  (checkout-tracking/with-checkout-reason :task-history-cleanup
+    (task-history-cleanup!)))
 
 (def ^:private job-key     "metabase.task.task-history-cleanup.job")
 (def ^:private trigger-key "metabase.task.task-history-cleanup.trigger")

@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.task.core :as task]
@@ -42,7 +43,8 @@
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Initial _suggested prompts_ generation for internal Metabot."}
   SuggestedPromptsGenerator [_ctx]
-  (maybe-generate-suggested-prompts!))
+  (checkout-tracking/with-checkout-reason :metabot-suggestions
+    (maybe-generate-suggested-prompts!)))
 
 (defmethod task/init! ::SuggestedPromptsGenerator
   [_]

@@ -3,6 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.task.core :as task]
    [metabase.transforms.settings :as transforms.settings]
@@ -22,7 +23,8 @@
 (task/defjob  ^{:doc "Timeout long-running tasks that have been lost by a worker."
                 org.quartz.DisallowConcurrentExecution true}
   TimeoutTransforms [ctx]
-  (timeout-transform-runs! ctx))
+  (checkout-tracking/with-checkout-reason :transform-timeout
+    (timeout-transform-runs! ctx)))
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))

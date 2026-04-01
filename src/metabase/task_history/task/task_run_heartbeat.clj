@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
@@ -81,7 +82,8 @@
 (task/defjob
   ^{:doc "Send heartbeat for running task runs and mark orphaned runs as :unknown"}
   TaskRunHeartbeat [_]
-  (task-run-heartbeat!))
+  (checkout-tracking/with-checkout-reason :task-heartbeat
+    (task-run-heartbeat!)))
 
 (def ^:private job-key     "metabase.task.task-run-heartbeat.job")
 (def ^:private trigger-key "metabase.task.task-run-heartbeat.trigger")
