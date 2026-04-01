@@ -6,6 +6,7 @@
    [metabase.llm.settings :as llm]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]])
@@ -484,6 +485,33 @@
 
          (rf result chunk))))))
 
+(defn missing-api-key-ex
+  "Create a standardized missing-API-key exception for provider adapters."
+  [llm-type]
+  (ex-info (tru "No {0} API key is set" llm-type)
+           {:api-error  true
+            :error-code :api-key-missing}))
+
+(defn rethrow-api-error!
+  "Rethrow a provider HTTP exception with a translated, user-facing message.
+
+  `res->message` receives the decoded response map and must return the message
+  to surface to the client.  If the exception already carries `:api-error true`
+  in its ex-data (e.g. a missing-API-key error from `request-with-proxy`) it is
+  rethrown as-is so the original message is preserved."
+  [provider res->message e]
+  (let [data (ex-data e)]
+    (cond
+      (:api-error data) (throw e)
+      (:body data)      (let [res (json/decode-body data)]
+                          (throw (ex-info (res->message res)
+                                          (assoc res
+                                                 :api-error  true
+                                                 :provider   provider
+                                                 :error-code :provider-api-error)
+                                          e)))
+      :else             (throw e))))
+
 (defn request-with-proxy
   "Perform a request directly when provider auth is configured, otherwise via the
   (Metabase Cloud-only) LLM proxy when configured."
@@ -493,7 +521,7 @@
           auth                     auth
           (llm/llm-proxy-base-url) {:url     (llm/llm-proxy-base-url)
                                     :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}}
-          :else                    (throw (ex-info (format "No %s API key is set" llm-type) {:api-error true})))]
+          :else                    (throw (missing-api-key-ex llm-type)))]
     (http/request (-> req
                       (update :url #(str url %))
                       (update :headers merge headers)))))

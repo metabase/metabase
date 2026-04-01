@@ -6,6 +6,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
 
@@ -156,6 +157,15 @@
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
+(defn- openai-errors [res]
+  (case (long (:status res 0))
+    401 (tru "OpenAI API key expired or invalid")
+    403 (tru "OpenAI API key has insufficient permissions")
+    404 (tru "OpenAI API endpoint or model listing is unavailable")
+    429 (tru "OpenAI API has rate limited us")
+    500 (tru "OpenAI API is not working but not saying why")
+    (tru "Unhandled error accessing OpenAI API")))
+
 (defn- list-models*
   [auth]
   (try
@@ -170,17 +180,7 @@
                         :display_name (:id model)})
                      (reverse (sort-by :created (get-in res [:body :data]))))})
     (catch Exception e
-      (if-let [res (some-> (ex-data e) json/decode-body)]
-        (let [status (:status res)
-              msg    (case (int status)
-                       401 "OpenAI API key expired or invalid"
-                       403 "OpenAI API key has insufficient permissions"
-                       404 "OpenAI API endpoint or model listing is unavailable"
-                       429 "OpenAI API has rate limited us"
-                       500 "OpenAI API is not working but not saying why"
-                       "Unhandled error accessing OpenAI API")]
-          (throw (ex-info msg (assoc res :api-error true) e)))
-        (throw e)))))
+      (core/rethrow-api-error! "openai" openai-errors e))))
 
 (defn list-models
   "List available OpenAI models using the configured API key."
@@ -190,7 +190,7 @@
                     :headers {"Authorization" (str "Bearer " api-key)}})))
   ([api-key]
    (when (str/blank? api-key)
-     (throw (ex-info "No OpenAI API key is set" {:api-error true})))
+     (throw (core/missing-api-key-ex "OpenAI")))
    (list-models* {:url     (llm/llm-openai-api-base-url)
                   :headers {"Authorization" (str "Bearer " api-key)}})))
 
@@ -230,9 +230,7 @@
                                               :body    (json/encode req)})]
         (core/sse-reducible (:body res)))
       (catch Exception e
-        (if-let [res (ex-data e)]
-          (throw (ex-info (.getMessage e) (json/decode-body res)))
-          (throw e))))))
+        (core/rethrow-api-error! "openai" openai-errors e)))))
 
 (defn openai
   "Call OpenAI API, return AISDK stream."

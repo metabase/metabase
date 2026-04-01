@@ -14,6 +14,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -90,6 +91,19 @@
                 :description doc
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
+(defn- openrouter-errors [res]
+  (case (long (:status res 0))
+    401 (tru "OpenRouter API key expired or invalid")
+    402 (tru "OpenRouter has insufficient credits")
+    403 (tru "OpenRouter API key has insufficient permissions")
+    404 (tru "OpenRouter model listing endpoint is unavailable")
+    429 (tru "OpenRouter has rate limited us")
+    500 (tru "OpenRouter returned an internal server error")
+    502 (tru "OpenRouter upstream provider returned an error")
+    503 (tru "OpenRouter service is unavailable")
+    (or (-> res :body :error :message)
+        (tru "Unhandled error accessing OpenRouter API"))))
+
 (defn- list-models*
   [auth]
   (try
@@ -106,20 +120,7 @@
                         :display_name (or (:name model) (:id model))})
                      (reverse (sort-by :created (get-in res [:body :data]))))})
     (catch Exception e
-      (if-let [res (some-> (ex-data e) json/decode-body)]
-        (let [status (:status res)
-              msg    (case (int status)
-                       401 "OpenRouter API key expired or invalid"
-                       402 "OpenRouter: insufficient credits"
-                       403 "OpenRouter API key has insufficient permissions"
-                       404 "OpenRouter: model listing endpoint unavailable"
-                       429 "OpenRouter: rate limited"
-                       500 "OpenRouter: internal server error"
-                       502 "OpenRouter: upstream provider error"
-                       503 "OpenRouter: service unavailable"
-                       "Unhandled error accessing OpenRouter API")]
-          (throw (ex-info msg (assoc res :api-error true) e)))
-        (throw e)))))
+      (core/rethrow-api-error! "openrouter" openrouter-errors e))))
 
 (defn list-models
   "List available OpenRouter models using the configured API key."
@@ -128,7 +129,7 @@
                        :headers {"Authorization" (str "Bearer " api-key)}})))
   ([api-key]
    (when (str/blank? api-key)
-     (throw (ex-info "No OpenRouter API key is set" {:api-error true})))
+     (throw (core/missing-api-key-ex "OpenRouter")))
    (list-models* {:url     (llm/llm-openrouter-api-base-url)
                   :headers {"Authorization" (str "Bearer " api-key)}})))
 
@@ -297,21 +298,7 @@
                                                 :body    (json/encode req)})]
           (core/sse-reducible (:body res)))
         (catch Exception e
-          (if-let [res (some-> (ex-data e) json/decode-body)]
-            (let [status (:status res)
-                  msg    (case (int status)
-                           401 "OpenRouter API key expired or invalid"
-                           402 "OpenRouter: insufficient credits"
-                           403 "OpenRouter API key has insufficient permissions"
-                           404 "OpenRouter: model not found or endpoint unavailable"
-                           429 "OpenRouter: rate limited"
-                           500 "OpenRouter: internal server error"
-                           502 "OpenRouter: upstream provider error"
-                           503 "OpenRouter: service unavailable"
-                           (or (-> res :body :error :message)
-                               "Unhandled error accessing OpenRouter API"))]
-              (throw (ex-info msg (assoc res :api-error true) e)))
-            (throw e)))))))
+          (core/rethrow-api-error! "openrouter" openrouter-errors e))))))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."

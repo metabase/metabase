@@ -1,10 +1,14 @@
 (ns metabase.metabot.self.openrouter-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
-   [metabase.metabot.test-util :as test-util]))
+   [metabase.metabot.test-util :as test-util]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -179,3 +183,34 @@
                 :usage {:promptTokens pos-int? :completionTokens pos-int?}}]
               (remove #(= (:type %) :text) res)))
       (is (< 10 (count (filter #(= (:type %) :text) res)))))))
+
+(deftest openrouter-auth-preferences
+  (mt/with-temporary-setting-values [premium-features/premium-embedding-token "proxy-token"
+                                     llm.settings/llm-openrouter-api-key      "sk-ant-byok"
+                                     llm.settings/llm-proxy-base-url          "https://proxy.example"]
+    (testing "Prefers BYOK over ai proxy"
+      (with-redefs [self.core/sse-reducible identity
+                    http/request            (fn [req] {:body req})]
+        (is (=? {:method  :post
+                 :url     "https://openrouter.ai/api/v1/chat/completions"
+                 :headers {"Authorization" "Bearer sk-ant-byok"}
+                 :body    string?}
+                (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
+
+    (testing "Uses ai proxy when BYOK is missing"
+      (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
+        (with-redefs [self.core/sse-reducible identity
+                      http/request            (fn [req] {:body req})]
+          (is (=? {:method  :post
+                   :url     "https://proxy.example/v1/chat/completions"
+                   :headers {"x-metabase-instance-token" "proxy-token"}
+                   :body    string?}
+                  (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]}))))))
+
+    (testing "Throws an error if nothing is defined"
+      (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil
+                                         llm.settings/llm-proxy-base-url    nil]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"No OpenRouter API key is set"
+             (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))))
