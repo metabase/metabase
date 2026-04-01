@@ -73,13 +73,6 @@
 
 ;;; ------------------------------------------------ Fetch & Update ------------------------------------------------
 
-(defn- repo-asset-paths
-  "List all file paths under `dist/assets/` in the repo, returned relative to that prefix."
-  [snapshot]
-  (let [prefix "dist/assets/"]
-    (->> (rs.git/list-files snapshot)
-         (filter #(str/starts-with? % prefix))
-         (map #(subs % (count prefix))))))
 
 (defn fetch-and-update!
   "Fetch index.js and manifest from the plugin's git repo and update the DB record.
@@ -140,15 +133,11 @@
       (read-bundle-from-git plugin))))
 
 (defn- asset-whitelisted?
-  "Check whether an asset path is allowed by the plugin's manifest.
-   Parses the manifest's declared assets, expands globs against available files in
-   the repo, and returns true if asset-path is in the expanded set."
-  [{:keys [manifest]} snapshot ^String asset-path]
+  "Check whether an asset path is explicitly listed in the plugin's manifest."
+  [{:keys [manifest]} ^String asset-path]
   (try
     (when-let [parsed (some-> manifest manifest/parse-manifest)]
-      (let [declared  (manifest/asset-paths parsed)
-            available (repo-asset-paths snapshot)
-            allowed   (set (manifest/expand-globs declared available))]
+      (let [allowed (set (manifest/asset-paths parsed))]
         (contains? allowed asset-path)))
     (catch Exception e
       (log/warnf "Failed to check asset whitelist for %s: %s" asset-path (ex-message e))
@@ -160,10 +149,10 @@
    Returns a byte array or nil."
   ^bytes [plugin-id ^String asset-path]
   (when-let [{:keys [resolved_commit] :as plugin} (select-plugin-for-read plugin-id)]
-    (when resolved_commit
+    (when (and resolved_commit
+               (asset-whitelisted? plugin asset-path))
       (let [snapshot (plugin-snapshot plugin)]
-        (when (asset-whitelisted? plugin snapshot asset-path)
-          (read-asset-from-git snapshot resolved_commit asset-path))))))
+        (read-asset-from-git snapshot resolved_commit asset-path))))))
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
