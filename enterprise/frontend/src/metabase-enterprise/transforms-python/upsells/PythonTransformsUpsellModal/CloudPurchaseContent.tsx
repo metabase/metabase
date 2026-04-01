@@ -36,7 +36,7 @@ export const CloudPurchaseContent = ({
     settingUpModalHandlers.open();
     try {
       await purchaseCloudAddOn({
-        product_type: "transforms-advanced",
+        product_type: "transforms-advanced-metered",
       }).unwrap();
       window.location.href = Urls.transformList(); // On success, do a full-page redirect to transforms list
     } catch {

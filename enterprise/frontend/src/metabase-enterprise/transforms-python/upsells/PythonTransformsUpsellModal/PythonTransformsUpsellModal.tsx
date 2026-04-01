@@ -39,6 +39,7 @@ export function PythonTransformsUpsellModal({
   const isHosted = useSelector(getIsHosted);
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
+  // TODO: Add a better loading state
   const { isLoading, error, advancedTransformsAddOn } = useTransformsBilling();
 
   useEffect(() => {

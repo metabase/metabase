@@ -42,7 +42,8 @@ export type AddOnProductType =
   | "python-execution"
   | "transforms-basic"
   | "transforms-basic-metered"
-  | "transforms-advanced";
+  | "transforms-advanced"
+  | "transforms-advanced-metered";
 
 interface IBillingInfoData {
   billing_period_months?: number | null;
