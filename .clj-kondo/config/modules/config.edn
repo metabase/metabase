@@ -2634,10 +2634,9 @@
 
   enterprise/agent-api
   {:team "Metabot"
-   :api  #{metabase-enterprise.agent-api.workspace}
+   :api  #{}
    :uses #{api
-           util
-           enterprise/workspaces}}
+           util}}
 
   enterprise/analytics
   {:team "UX West"
