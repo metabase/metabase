@@ -2,10 +2,9 @@ import type React from "react";
 import { useEffect, useRef } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { useRouter } from "metabase/router/useRouter";
 import { Box } from "metabase/ui";
-
-import { NotFound } from "../ErrorPages";
 
 import S from "./AdminSettingsLayout.module.css";
 
