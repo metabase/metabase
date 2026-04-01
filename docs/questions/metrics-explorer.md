@@ -1,15 +1,27 @@
 ---
 title: Metrics explorer
-summary: Explore metrics and measures across dimensions, compare them side by side, and drill into the data — without building a question from scratch.
+summary: Explore metrics and measures across dimensions and compare them side by side.
 ---
 
 # Metrics explorer
 
-DON'T READ ME YET I'M CLAUDE-GENERATED
+The Metrics Explorer is a space for ad-hoc analysis of [metrics](../data-modeling/metrics.md) and [measures](../data-studio/data-structure.md#measures)
 
-The Metrics Explorer is a space for ad-hoc analysis of [metrics](../data-modeling/metrics.md) and [measures](../data-studio/data-structure.md#measures) without building a question from scratch. You can show one or more metrics or measures, slice them by different dimensions, filter the data, and compare trends side by side.
+![Metrics explorer](../questions/images/)
 
-To open the Metrics Explorer, click **Explore** from any metric. You can also go directly to `/explore`.
+Metrics explorer can help you visualize trends and breakdowns of different metrics and measures - including metrics and measures built on different data sources - in one place. For example, you might want to see how the revenue trend compares to changes in customer sentiment for different products.
+
+Metrics explorer is where you can:
+
+- Visualize multiple metrics and measures along shared dimension
+
+## Explore a metric or a measure
+
+To open a **metric** in the Metrics Explorer:
+
+1. Navigate to the metric.
+
+   click **Explore** from any metric. You can also go directly to `<your metabase URL>/explore`.
 
 ## Compare metrics and measures
 
