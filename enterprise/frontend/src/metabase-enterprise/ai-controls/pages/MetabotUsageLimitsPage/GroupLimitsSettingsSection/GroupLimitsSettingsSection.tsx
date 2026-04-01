@@ -17,11 +17,10 @@ import {
 } from "metabase-enterprise/api";
 import type { MetabotLimitPeriod } from "metabase-types/api";
 
-import { SpecificTenantsTab } from "./SpecificTenantsTab";
-import { TenantGroupsTab } from "./TenantGroupsTab";
-import { UserGroupsTab } from "./UserGroupsTab";
+import { GroupLimitsTab } from "./GroupLimitsTab";
+import { TenantLimitsTab } from "./TenantLimitsTab";
 
-type GroupLimitsTab = "user-groups" | "tenant-groups" | "specific-tenants";
+type GroupLimitsTabValue = "user-groups" | "tenant-groups" | "specific-tenants";
 
 const SAVE_DEBOUNCE_MS = 500;
 
@@ -29,7 +28,8 @@ export function GroupLimitsSettingsSection() {
   const isUsingTenants = useSetting("use-tenants");
   const limitPeriod =
     (useSetting("metabot-limit-reset-rate") as MetabotLimitPeriod) ?? "monthly";
-  const [activeTab, setActiveTab] = useState<GroupLimitsTab>("user-groups");
+  const [activeTab, setActiveTab] =
+    useState<GroupLimitsTabValue>("user-groups");
   const { sendErrorToast } = useMetadataToasts();
 
   // Groups data
@@ -91,31 +91,28 @@ export function GroupLimitsSettingsSection() {
     SAVE_DEBOUNCE_MS,
   );
 
-  const sectionTitle = isUsingTenants
-    ? t`Group and tenant limits`
-    : t`Group limits`;
-
   if (!isUsingTenants) {
     return (
-      <SettingsSection title={sectionTitle}>
-        <UserGroupsTab
-          groups={userGroups}
-          isLoading={isLoadingUserGroups}
+      <SettingsSection title={t`Group limits`}>
+        <GroupLimitsTab
           error={userGroupsError}
-          limitPeriod={limitPeriod}
           groupLimits={groupLimits ?? []}
+          groups={userGroups}
           instanceLimit={instanceLimit}
+          isLoading={isLoadingUserGroups}
+          limitPeriod={limitPeriod}
           onGroupLimitChange={debouncedSaveGroupLimit}
+          variant="regular-groups"
         />
       </SettingsSection>
     );
   }
 
   return (
-    <SettingsSection title={sectionTitle}>
+    <SettingsSection title={t`Group and tenant limits`}>
       <Tabs
         value={activeTab}
-        onChange={(value) => setActiveTab(value as GroupLimitsTab)}
+        onChange={(value) => setActiveTab(value as GroupLimitsTabValue)}
       >
         <Tabs.List mb="md">
           <Tabs.Tab value="user-groups">{t`User groups`}</Tabs.Tab>
@@ -124,36 +121,38 @@ export function GroupLimitsSettingsSection() {
         </Tabs.List>
 
         <Tabs.Panel value="user-groups">
-          <UserGroupsTab
-            groups={userGroups}
-            isLoading={isLoadingUserGroups}
+          <GroupLimitsTab
             error={userGroupsError}
-            limitPeriod={limitPeriod}
             groupLimits={groupLimits ?? []}
+            groups={userGroups}
             instanceLimit={instanceLimit}
+            isLoading={isLoadingUserGroups}
+            limitPeriod={limitPeriod}
             onGroupLimitChange={debouncedSaveGroupLimit}
+            variant="regular-groups"
           />
         </Tabs.Panel>
 
         <Tabs.Panel value="tenant-groups">
-          <TenantGroupsTab
-            tenantGroups={tenantGroups}
-            isLoading={isLoadingTenantGroups}
+          <GroupLimitsTab
             error={tenantGroupsError}
-            limitPeriod={limitPeriod}
             groupLimits={groupLimits ?? []}
+            groups={tenantGroups}
             instanceLimit={instanceLimit}
+            isLoading={isLoadingTenantGroups}
+            limitPeriod={limitPeriod}
             onGroupLimitChange={debouncedSaveGroupLimit}
+            variant="tenant-groups"
           />
         </Tabs.Panel>
 
         <Tabs.Panel value="specific-tenants">
-          <SpecificTenantsTab
-            tenants={tenants}
-            isLoading={isLoadingTenants}
+          <TenantLimitsTab
             error={tenantsError}
-            tenantLimits={tenantLimits ?? []}
+            isLoading={isLoadingTenants}
             onTenantLimitChange={debouncedSaveTenantLimit}
+            tenantLimits={tenantLimits ?? []}
+            tenants={tenants}
           />
         </Tabs.Panel>
       </Tabs>
