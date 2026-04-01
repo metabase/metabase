@@ -37,7 +37,7 @@
             (is (= "no" (get by-type "permission/metabot-nql")))
             (is (= "no" (get by-type "permission/metabot-other-tools")))))))))
 
-(deftest ^:parallel update-permissions-test
+(deftest update-permissions-test
   (mt/with-premium-features #{:ai-controls}
     (testing "PUT /api/ee/ai-controls/permissions"
       (testing "requires superuser"
