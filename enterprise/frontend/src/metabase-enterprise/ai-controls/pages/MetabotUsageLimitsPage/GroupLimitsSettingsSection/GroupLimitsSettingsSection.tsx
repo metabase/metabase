@@ -15,7 +15,7 @@ import {
   useUpdateAIControlsGroupLimitMutation,
   useUpdateAIControlsTenantLimitMutation,
 } from "metabase-enterprise/api";
-import type { MetabotLimitPeriod } from "metabase-types/api";
+import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import { GroupLimitsTab } from "./GroupLimitsTab";
 import { TenantLimitsTab } from "./TenantLimitsTab";
@@ -28,6 +28,8 @@ export function GroupLimitsSettingsSection() {
   const isUsingTenants = useSetting("use-tenants");
   const limitPeriod =
     (useSetting("metabot-limit-reset-rate") as MetabotLimitPeriod) ?? "monthly";
+  const limitType =
+    (useSetting("metabot-limit-unit") as MetabotLimitType) ?? "tokens";
   const [activeTab, setActiveTab] =
     useState<GroupLimitsTabValue>("user-groups");
   const { sendErrorToast } = useMetadataToasts();
@@ -101,6 +103,7 @@ export function GroupLimitsSettingsSection() {
           instanceLimit={instanceLimit}
           isLoading={isLoadingUserGroups}
           limitPeriod={limitPeriod}
+          limitType={limitType}
           onGroupLimitChange={debouncedSaveGroupLimit}
           variant="regular-groups"
         />
@@ -128,6 +131,7 @@ export function GroupLimitsSettingsSection() {
             instanceLimit={instanceLimit}
             isLoading={isLoadingUserGroups}
             limitPeriod={limitPeriod}
+            limitType={limitType}
             onGroupLimitChange={debouncedSaveGroupLimit}
             variant="regular-groups"
           />
@@ -141,6 +145,7 @@ export function GroupLimitsSettingsSection() {
             instanceLimit={instanceLimit}
             isLoading={isLoadingTenantGroups}
             limitPeriod={limitPeriod}
+            limitType={limitType}
             onGroupLimitChange={debouncedSaveGroupLimit}
             variant="tenant-groups"
           />
@@ -150,6 +155,8 @@ export function GroupLimitsSettingsSection() {
           <TenantLimitsTab
             error={tenantsError}
             isLoading={isLoadingTenants}
+            limitPeriod={limitPeriod}
+            limitType={limitType}
             onTenantLimitChange={debouncedSaveTenantLimit}
             tenantLimits={tenantLimits ?? []}
             tenants={tenants}

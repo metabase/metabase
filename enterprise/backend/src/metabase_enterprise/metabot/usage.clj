@@ -63,10 +63,11 @@
                      base-where)]
     (case limit-type
       :tokens
-      (or (:sum (t2/query-one {:select [[[:sum :total_tokens] :sum]]
-                               :from   [:ai_usage_log]
-                               :where  full-where}))
-          0)
+      (quot (or (:sum (t2/query-one {:select [[[:sum :total_tokens] :sum]]
+                                     :from   [:ai_usage_log]
+                                     :where  full-where}))
+                0)
+            1000000)
 
       :conversations
       (:cnt (t2/query-one {:select [[[:count :*] :cnt]]

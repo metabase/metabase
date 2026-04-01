@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Alert, Box, Icon, Stack, Text, TextInput } from "metabase/ui";
 import type {
   MetabotLimitPeriod,
+  MetabotLimitType,
   MetabotTenantLimit,
   Tenant,
 } from "metabase-types/api";
@@ -16,6 +17,7 @@ type SpecificTenantsTabProps = {
   error: unknown;
   isLoading: boolean;
   limitPeriod: MetabotLimitPeriod;
+  limitType: MetabotLimitType;
   onTenantLimitChange: (tenantId: number, maxUsage: number | null) => void;
   tenantLimits: MetabotTenantLimit[];
   tenants: Tenant[] | undefined;
@@ -25,6 +27,7 @@ export function TenantLimitsTab({
   error,
   isLoading,
   limitPeriod,
+  limitType,
   onTenantLimitChange,
   tenantLimits,
   tenants,
@@ -101,8 +104,11 @@ export function TenantLimitsTab({
                     <tr>
                       <th className={S.HeaderCell}>{t`Tenant`}</th>
                       <th className={S.HeaderCell}>
-                        {periodI18nContext.adjective
-                          .t`Max total ${periodAdjective} token usage`}
+                        {limitType === "tokens"
+                          ? periodI18nContext.adjective
+                              .t`Max total ${periodAdjective} token usage (millions)`
+                          : periodI18nContext.adjective
+                              .t`Max total ${periodAdjective} conversation count`}
                       </th>
                     </tr>
                   </thead>
@@ -125,8 +131,13 @@ export function TenantLimitsTab({
                             classNames={{ input: S.LimitInput }}
                             type="number"
                             min={1}
-                            aria-label={periodI18nContext.adjective
-                              .t`Max total ${periodAdjective} tokens for ${tenant.name}`}
+                            aria-label={
+                              limitType === "tokens"
+                                ? periodI18nContext.adjective
+                                    .t`Max total ${periodAdjective} tokens for ${tenant.name} (millions)`
+                                : c("{0} is the tenant name")
+                                    .t`Max total ${periodAdjective} conversations for ${tenant.name}`
+                            }
                           />
                         </td>
                       </tr>

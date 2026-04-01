@@ -151,45 +151,48 @@
 (deftest instance-limit-exceeded-returns-message-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (testing "Instance limit: at/over limit returns quota message"
-      (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
-        (let [user-id (mt/user->id :rasta)]
-          (insert-usage! user-id 150)
-          (try
-            (mt/with-test-user :rasta
-              (is (string? (usage/check-usage-limits!))))
-            (finally
-              (cleanup-test-usage! user-id))))))))
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
+      (testing "Instance limit: at/over limit returns quota message"
+        (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
+          (let [user-id (mt/user->id :rasta)]
+            (insert-usage! user-id 150000000)
+            (try
+              (mt/with-test-user :rasta
+                (is (= "test limit reached" (usage/check-usage-limits!))))
+              (finally
+                (cleanup-test-usage! user-id)))))))))
 
 (deftest instance-limit-exactly-at-limit-returns-message-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (testing "Instance limit: exactly at limit returns quota message (>= check)"
-      (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
-        (let [user-id (mt/user->id :rasta)]
-          (insert-usage! user-id 100)
-          (try
-            (mt/with-test-user :rasta
-              (is (string? (usage/check-usage-limits!))))
-            (finally
-              (cleanup-test-usage! user-id))))))))
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
+      (testing "Instance limit: exactly at limit returns quota message (>= check)"
+        (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
+          (let [user-id (mt/user->id :rasta)]
+            (insert-usage! user-id 100000000)
+            (try
+              (mt/with-test-user :rasta
+                (is (= "test limit reached" (usage/check-usage-limits!))))
+              (finally
+                (cleanup-test-usage! user-id)))))))))
 
 ;;; ------------------------------------------ Tenant limit tests ------------------------------------------
 
 (deftest tenant-limit-exceeded-returns-message-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (testing "Tenant limit: over limit returns quota message"
-      (mt/with-temp [:model/Tenant {tenant-id :id} {}
-                     :model/MetabotInstanceLimit _ {:tenant_id tenant-id :max_usage 50}]
-        (let [user-id (mt/user->id :rasta)]
-          (insert-usage! user-id 100 tenant-id)
-          (try
-            (binding [api/*current-user-id* user-id
-                      api/*current-user*    (delay {:tenant_id tenant-id})]
-              (is (string? (usage/check-usage-limits!))))
-            (finally
-              (cleanup-test-usage! user-id))))))))
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
+      (testing "Tenant limit: over limit returns quota message"
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                       :model/MetabotInstanceLimit _ {:tenant_id tenant-id :max_usage 50}]
+          (let [user-id (mt/user->id :rasta)]
+            (insert-usage! user-id 100000000 tenant-id)
+            (try
+              (binding [api/*current-user-id* user-id
+                        api/*current-user*    (delay {:tenant_id tenant-id})]
+                (is (= "test limit reached" (usage/check-usage-limits!))))
+              (finally
+                (cleanup-test-usage! user-id)))))))))
 
 (deftest tenant-limit-nil-max-usage-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
@@ -219,21 +222,23 @@
 (deftest user-group-limit-exceeded-returns-message-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (testing "User group limit: user over their group limit returns message"
-      (let [user-id   (mt/user->id :rasta)
-            group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
-            group-id  (first group-ids)]
-        (mt/with-temp [:model/MetabotGroupLimit _ {:group_id group-id :max_usage 50}]
-          (insert-usage! user-id 100)
-          (try
-            (mt/with-test-user :rasta
-              (is (string? (usage/check-usage-limits!))))
-            (finally
-              (cleanup-test-usage! user-id))))))))
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
+      (testing "User group limit: user over their group limit returns message"
+        (let [user-id   (mt/user->id :rasta)
+              group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
+              group-id  (first group-ids)]
+          (mt/with-temp [:model/MetabotGroupLimit _ {:group_id group-id :max_usage 50}]
+            (insert-usage! user-id 100000000)
+            (try
+              (mt/with-test-user :rasta
+                (is (= "test limit reached" (usage/check-usage-limits!))))
+              (finally
+                (cleanup-test-usage! user-id)))))))))
 
 (deftest user-group-limit-takes-max-across-groups-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
+    (t2/delete! :model/MetabotInstanceLimit :tenant_id nil)
     (testing "User group limit: takes the max limit across all groups the user is in"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-temp [:model/PermissionsGroup {g1 :id} {:name "Low limit group"}
@@ -242,7 +247,7 @@
                        :model/PermissionsGroupMembership _ {:group_id g2 :user_id user-id}
                        :model/MetabotGroupLimit _ {:group_id g1 :max_usage 10}
                        :model/MetabotGroupLimit _ {:group_id g2 :max_usage 1000}]
-          (insert-usage! user-id 50)
+          (insert-usage! user-id 50000000)
           (try
             (mt/with-test-user :rasta
               ;; 50 < 1000 (the max across groups), so should pass
@@ -267,7 +272,8 @@
 (deftest conversations-limit-type-counts-rows-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (mt/with-temp-env-var-value! [:mb-metabot-limit-unit "conversations"]
+    (mt/with-temporary-setting-values [metabot-limit-unit "conversations"
+                                       metabot-quota-reached-message "test limit reached"]
       (testing "Instance limit with :conversations type counts rows, not tokens"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 2}]
           (let [user-id (mt/user->id :rasta)]
@@ -276,14 +282,14 @@
               (insert-usage! user-id 1))
             (try
               (mt/with-test-user :rasta
-                (is (string? (usage/check-usage-limits!))))
+                (is (= "test limit reached" (usage/check-usage-limits!))))
               (finally
                 (cleanup-test-usage! user-id)))))))))
 
 (deftest conversations-under-limit-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (mt/with-temp-env-var-value! [:mb-metabot-limit-unit "conversations"]
+    (mt/with-temporary-setting-values [metabot-limit-unit "conversations"]
       (testing "Instance limit with :conversations type: under limit returns nil"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
           (let [user-id (mt/user->id :rasta)]
@@ -299,11 +305,11 @@
 (deftest custom-quota-message-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (mt/with-temp-env-var-value! [:mb-metabot-quota-reached-message "Custom limit message"]
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "Custom limit message"]
       (testing "check-usage-limits! returns the configured quota message"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 1}]
           (let [user-id (mt/user->id :rasta)]
-            (insert-usage! user-id 100)
+            (insert-usage! user-id 2000000)
             (try
               (mt/with-test-user :rasta
                 (is (= "Custom limit message" (usage/check-usage-limits!))))
@@ -315,15 +321,16 @@
 (deftest instance-limit-checked-first-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (testing "Instance limit blocks even when user group limit would allow"
-      (let [user-id   (mt/user->id :rasta)
-            group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
-            group-id  (first group-ids)]
-        (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 1}
-                       :model/MetabotGroupLimit _ {:group_id group-id :max_usage 999999}]
-          (insert-usage! user-id 100)
-          (try
-            (mt/with-test-user :rasta
-              (is (string? (usage/check-usage-limits!))))
-            (finally
-              (cleanup-test-usage! user-id))))))))
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
+      (testing "Instance limit blocks even when user group limit would allow"
+        (let [user-id   (mt/user->id :rasta)
+              group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
+              group-id  (first group-ids)]
+          (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 1}
+                         :model/MetabotGroupLimit _ {:group_id group-id :max_usage 999999}]
+            (insert-usage! user-id 2000000)
+            (try
+              (mt/with-test-user :rasta
+                (is (= "test limit reached" (usage/check-usage-limits!))))
+              (finally
+                (cleanup-test-usage! user-id)))))))))

@@ -165,9 +165,17 @@ export function GeneralLimitsSettingsSection() {
           />
         </Stack>
         <TextInput
-          label={c(
-            "{0} indicates the limit reset period, e.g., daily, weekly, monthly",
-          ).t`Total ${limitLabel.toLowerCase()} instance token limit`}
+          label={
+            limitType === "tokens"
+              ? c(
+                  "{0} indicates the limit reset period, e.g., daily, weekly, monthly",
+                )
+                  .t`Total ${limitLabel.toLowerCase()} instance limit (millions of tokens)`
+              : c(
+                  "{0} indicates the limit reset period, e.g., daily, weekly, monthly",
+                )
+                  .t`Total ${limitLabel.toLowerCase()} instance limit (conversations)`
+          }
           description={t`This is the maximum amount all users should be able to use in total.`}
           placeholder={t`Unlimited`}
           classNames={{

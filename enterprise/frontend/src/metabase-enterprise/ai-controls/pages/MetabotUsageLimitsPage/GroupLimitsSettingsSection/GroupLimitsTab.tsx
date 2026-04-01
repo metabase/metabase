@@ -8,6 +8,7 @@ import type {
   GroupInfo,
   MetabotGroupLimit,
   MetabotLimitPeriod,
+  MetabotLimitType,
 } from "metabase-types/api";
 
 import S from "./GroupLimitsSettingsSection.module.css";
@@ -19,6 +20,7 @@ type GroupLimitsTabProps = {
   isLoading: boolean;
   error: unknown;
   limitPeriod: MetabotLimitPeriod;
+  limitType: MetabotLimitType;
   groupLimits: MetabotGroupLimit[];
   instanceLimit: number | null;
   onGroupLimitChange: (groupId: number, maxUsage: number | null) => void;
@@ -30,6 +32,7 @@ export function GroupLimitsTab({
   isLoading,
   error,
   limitPeriod,
+  limitType,
   groupLimits,
   instanceLimit,
   onGroupLimitChange,
@@ -84,8 +87,11 @@ export function GroupLimitsTab({
                 <tr>
                   <th className={S.HeaderCell}>{columnHeader}</th>
                   <th className={S.HeaderCell}>
-                    {periodI18nContext.noun
-                      .t`Max tokens per user each ${periodNoun}`}
+                    {limitType === "tokens"
+                      ? periodI18nContext.noun
+                          .t`Max tokens per user each ${periodNoun} (millions)`
+                      : periodI18nContext.noun
+                          .t`Max conversations per user each ${periodNoun}`}
                   </th>
                 </tr>
               </thead>
@@ -106,8 +112,13 @@ export function GroupLimitsTab({
                         classNames={{ input: S.LimitInput }}
                         type="number"
                         min={1}
-                        aria-label={c("{0} is the group name")
-                          .t`Max tokens per user for ${group.name}`}
+                        aria-label={
+                          limitType === "tokens"
+                            ? c("{0} is the group name")
+                                .t`Max tokens per user for ${group.name} (millions)`
+                            : c("{0} is the group name")
+                                .t`Max conversations per user for ${group.name}`
+                        }
                       />
                     </td>
                   </tr>
