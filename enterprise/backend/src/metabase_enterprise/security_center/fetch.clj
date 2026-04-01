@@ -16,17 +16,18 @@
 (defn- fetch-advisories-from-store
   "GET advisories from the MetaStore. Returns a seq of advisory maps or nil on failure."
   []
-  (let [token     (premium-features/premium-embedding-token)
-        site-uuid (premium-features/site-uuid-for-premium-features-token-checks)
-        url       (advisories-url token premium-features/token-check-url)
-        resp      (http/get url
-                            {:query-params       {:site-uuid  site-uuid
-                                                  :mb-version (:tag config/mb-version-info)}
-                             :throw-exceptions   false
-                             :socket-timeout     5000
-                             :connection-timeout 2000})]
-    (when (http/success? resp)
-      (:advisories (json/decode+kw (:body resp))))))
+  (when-let [token (premium-features/premium-embedding-token)]
+    (let [site-uuid (premium-features/site-uuid-for-premium-features-token-checks)
+          url       (advisories-url token premium-features/token-check-url)
+          resp      (http/get url
+                              {:query-params       {:site-uuid  site-uuid
+                                                    :mb-version (:tag config/mb-version-info)}
+                               :throw-exceptions   false
+                               :socket-timeout     5000
+                               :connection-timeout 2000})]
+      (if (http/success? resp)
+        (:advisories (json/decode+kw (:body resp)))
+        (log/warnf "Advisory fetch failed with status %s" (:status resp))))))
 
 (defn- upsert-advisory!
   "Insert or update a single advisory by :advisory_id.
@@ -45,12 +46,16 @@
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."
   []
-  (if-let [advisories (seq (fetch-advisories-from-store))]
-    (do
-      (doseq [advisory advisories]
-        (try
-          (upsert-advisory! advisory)
-          (catch Exception e
-            (log/warnf e "Error upserting advisory %s" (:advisory_id advisory)))))
-      (log/infof "Synced %d advisories from MetaStore" (count advisories)))
-    (log/info "No new advisories from MetaStore")))
+  (let [advisories (try
+                     (fetch-advisories-from-store)
+                     (catch Exception e
+                       (log/warn e "Error fetching advisories from MetaStore")))]
+    (if (seq advisories)
+      (do
+        (doseq [advisory advisories]
+          (try
+            (upsert-advisory! advisory)
+            (catch Exception e
+              (log/warnf e "Error upserting advisory %s" (:advisory_id advisory)))))
+        (log/infof "Synced %d advisories from MetaStore" (count advisories)))
+      (log/info "No new advisories from MetaStore"))))
