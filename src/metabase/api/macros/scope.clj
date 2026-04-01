@@ -39,6 +39,8 @@
    middleware knows scope enforcement already happened. This allows `enforce-scope` to be applied at the
    namespace level while individual endpoints use `ensure-scopes-checked` as a safety net."
   [required-scope]
+  ;; Dev-time warning only — fires at middleware construction (load time), not per-request.
+  ;; The middleware is returned regardless; this just surfaces unregistered scopes early.
   (when (and config/is-dev? (not (api-scope/registered-scope? required-scope)))
     (log/warnf "Unregistered scope in endpoint: %s" required-scope))
   (fn [handler]

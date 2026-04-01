@@ -304,7 +304,7 @@
   "Should we allow admins to configure separate write connection credentials?"
   :writable-connection)
 
-(define-premium-feature enable-ai-controls?
+(define-premium-feature ^{:added "0.61.0"} enable-ai-controls?
   "Should we enable AI controls (metabot permissions, scope management)?"
   :ai-controls)
 
