@@ -14,7 +14,6 @@
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.core :as metabot]
-   [metabase.metabot.limits :as limits]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -183,7 +182,7 @@
   (when-not (llm.settings/llm-anthropic-api-key)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
-  (when-let [limit-msg (limits/check-usage-limits!)]
+  (when-let [limit-msg (metabot/check-usage-limits!)]
     (throw (ex-info limit-msg {:status-code 429})))
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
                              (sql-gen-throttlers :user-id)    api/*current-user-id*]

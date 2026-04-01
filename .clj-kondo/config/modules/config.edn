@@ -2969,6 +2969,8 @@
               metabot
               models
               premium-features
+              settings
+              users
               util
               enterprise/dependencies
               enterprise/transforms-python}

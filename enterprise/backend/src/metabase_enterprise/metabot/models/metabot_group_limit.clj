@@ -20,6 +20,16 @@
   [group-id]
   (t2/select-one :model/MetabotGroupLimit :group_id group-id))
 
+(defn limit-for-user
+  "Returns the maximum `max_usage` across all group limits for groups the user belongs to.
+   Returns nil if no group limits are configured for any of the user's groups."
+  [user-id]
+  (:max_usage
+   (t2/query-one {:select [[[:max :gl.max_usage] :max_usage]]
+                  :from   [[:permissions_group_membership :pgm]]
+                  :join   [[:metabot_group_limit :gl] [:= :pgm.group_id :gl.group_id]]
+                  :where  [:= :pgm.user_id user-id]})))
+
 (defn set-group-limit!
   "Sets or removes the limit for a specific group. Pass nil to remove (unlimited).
    Returns the updated row, or nil if removed."

@@ -594,7 +594,7 @@ interface PublicSettings {
   "metabot-name": string;
   "metabot-icon": string | null;
   "metabot-show-illustrations": boolean;
-  "metabot-limit-type": MetabotLimitType;
+  "metabot-limit-unit": MetabotLimitType;
   "metabot-limit-reset-rate": MetabotLimitPeriod;
   "metabot-quota-reached-message": string | null;
   "metabot-chat-system-prompt": string | null;

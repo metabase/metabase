@@ -370,7 +370,7 @@ export const createMockSettings = (
   "metabot-name": "Metabot",
   "metabot-icon": "metabot",
   "metabot-show-illustrations": true,
-  "metabot-limit-type": "tokens",
+  "metabot-limit-unit": "tokens",
   "metabot-limit-reset-rate": "monthly",
   "metabot-quota-reached-message": null,
   "metabot-chat-system-prompt": null,

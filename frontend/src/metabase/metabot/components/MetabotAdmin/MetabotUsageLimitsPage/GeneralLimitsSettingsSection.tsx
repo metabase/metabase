@@ -27,7 +27,7 @@ const SAVE_DEBOUNCE_MS = 500;
 export function GeneralLimitsSettingsSection() {
   // Settings
   const { value: savedLimitType, updateSetting: updateLimitTypeSetting } =
-    useAdminSetting("metabot-limit-type");
+    useAdminSetting("metabot-limit-unit");
   const { value: savedLimitPeriod, updateSetting: updateLimitPeriodSetting } =
     useAdminSetting("metabot-limit-reset-rate");
   const { value: savedQuotaMessage, updateSetting: updateQuotaMessageSetting } =
@@ -116,7 +116,7 @@ export function GeneralLimitsSettingsSection() {
   const handleLimitTypeChange = (value: MetabotLimitType) => {
     setLimitType(value);
     updateLimitTypeSetting({
-      key: "metabot-limit-type",
+      key: "metabot-limit-unit",
       value,
       toast: false,
     });
