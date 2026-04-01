@@ -1,13 +1,15 @@
 /**
  * Value formatting utilities.
  *
- * These are stub implementations that provide TypeScript types for plugin
- * development. At runtime, the Vite `metabaseVizExternals` plugin replaces
- * imports from "@metabase/custom-viz/format" with virtual modules that
- * read from `window.__METABASE_VIZ_API__.formatValue`.
+ * At runtime inside a plugin bundle, this delegates to
+ * `window.__METABASE_VIZ_API__.formatValue` which is set by Metabase
+ * before the plugin executes.
  */
 import type { FormatValue, FormatValueOptions } from "./types/format";
 
-export const formatValue: FormatValue = () => "";
+declare const window: { __METABASE_VIZ_API__?: { formatValue: FormatValue } };
+
+export const formatValue: FormatValue = (value, options) =>
+  window.__METABASE_VIZ_API__!.formatValue(value, options);
 
 export type { FormatValue, FormatValueOptions };

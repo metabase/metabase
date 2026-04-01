@@ -450,6 +450,7 @@
            appearance
            collections
            config
+           custom-viz-plugin
            dashboards
            driver
            events
@@ -470,7 +471,8 @@
            types
            util}
    :model-exports #{:model/Channel :model/ChannelTemplate}
-   :model-imports #{:model/Dashboard
+   :model-imports #{:model/CustomVizPlugin
+                    :model/Dashboard
                     :model/Database
                     :model/PulseChannel
                     :model/User}}
@@ -604,6 +606,12 @@
            util}
    :model-exports #{:model/Comment}
    :model-imports #{:model/Document :model/User}}
+
+  custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase.custom-viz-plugin.core}
+   :uses #{premium-features}
+   :friends #{enterprise/custom-viz-plugin}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
@@ -2763,6 +2771,21 @@
            util
            enterprise/api}}
 
+  enterprise/custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase-enterprise.custom-viz-plugin.api
+           metabase-enterprise.custom-viz-plugin.core
+           metabase-enterprise.custom-viz-plugin.init}
+   :uses #{api
+           config
+           models
+           premium-features
+           util
+           enterprise/api
+           enterprise/remote-sync}
+   :model-exports #{:model/CustomVizPlugin}
+   :model-imports #{:model/CustomVizPlugin}}
+
   enterprise/core
   {:team "DevEx"
    :api  #{metabase-enterprise.core.init}
@@ -2944,7 +2967,6 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
-
   enterprise/metabot
   {:team    "Metabot"
    :api     #{}
@@ -2961,7 +2983,6 @@
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/Card :model/Transform}}
-
 
   enterprise/permission-debug
   {:team "UX West"
@@ -2984,7 +3005,8 @@
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
-           metabase-enterprise.remote-sync.init}
+           metabase-enterprise.remote-sync.init
+           metabase-enterprise.remote-sync.source.git}
    :uses #{analytics
            api
            app-db
@@ -3133,6 +3155,7 @@
            collections
            config
            events
+           lib
            logger
            models
            plugins

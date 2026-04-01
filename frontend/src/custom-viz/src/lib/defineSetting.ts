@@ -42,10 +42,12 @@ export function createDefineSetting<
       series: Series,
       settings: CustomVisualizationSettings,
     ) => CustomVisualizationSettings[Key];
-    getProps(
-      object: Series,
-      vizSettings: CustomVisualizationSettings,
-    ): PropsFromWidget<W>;
+    getProps?: PropsFromWidget<W> extends never
+      ? never
+      : (
+          object: Series,
+          vizSettings: CustomVisualizationSettings,
+        ) => PropsFromWidget<W>;
     getValue?: (
       series: Series,
       settings: CustomVisualizationSettings,

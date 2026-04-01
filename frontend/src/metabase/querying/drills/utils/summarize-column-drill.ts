@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { editSummary } from "metabase/query_builder/actions";
+import { editSummary } from "metabase/redux/query-builder";
 import type {
   ClickActionBase,
   Drill,

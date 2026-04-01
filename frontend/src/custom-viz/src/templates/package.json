@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite build --watch & vite preview",
+    "dev": "vite build --watch",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {

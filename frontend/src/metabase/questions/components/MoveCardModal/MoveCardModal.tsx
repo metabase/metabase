@@ -18,7 +18,7 @@ import { Dashboards } from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
+import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Icon, Radio, Title } from "metabase/ui";
 import type { Card } from "metabase-types/api";

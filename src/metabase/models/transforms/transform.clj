@@ -344,6 +344,18 @@
   [_transform]
   [:name :created_at])
 
+(defn- import-maybe-int-database-fk
+  "Import a database reference back to an ID. Tolerates raw numeric IDs from older exports
+  where source-tables database_id values were serialized without conversion."
+  [v]
+  (if (pos-int? v) v (serdes/*import-database-fk* v)))
+
+(defn- import-maybe-int-table-fk
+  "Import a table reference back to an ID. Tolerates raw numeric IDs from older exports
+  where source-tables table_id values were serialized without conversion."
+  [v]
+  (if (pos-int? v) v (serdes/*import-table-fk* v)))
+
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
@@ -353,15 +365,28 @@
                :owner_user_id      (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)
                :source_database_id (serdes/fk :model/Database :name)
-               :source             {:export #(update % :query serdes/export-mbql)
+               :source             {:export (fn [source]
+                                              (-> source
+                                                  (m/update-existing :query serdes/export-mbql)
+                                                  (m/update-existing :source-database serdes/*export-database-fk*)
+                                                  (m/update-existing :source-tables
+                                                                     (fn [entries]
+                                                                       (->> (transforms-base.u/normalize-source-tables entries)
+                                                                            (mapv (fn [entry]
+                                                                                    (-> entry
+                                                                                        (m/update-existing :table_id serdes/*export-table-fk*)
+                                                                                        (m/update-existing :database_id serdes/*export-database-fk*)))))))))
                                     :import (fn [source]
                                               (-> source
+                                                  (m/update-existing :query serdes/import-mbql)
+                                                  (m/update-existing :source-database import-maybe-int-database-fk)
                                                   (m/update-existing :source-tables
-                                                                     (fn [st]
-                                                                       (if (map? st)
-                                                                         (transforms-base.u/source-tables-map->vec st)
-                                                                         st)))
-                                                  (m/update-existing :query serdes/import-mbql)))}
+                                                                     (fn [entries]
+                                                                       (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
+                                                                            (mapv (fn [entry]
+                                                                                    (-> entry
+                                                                                        (m/update-existing :table_id import-maybe-int-table-fk)
+                                                                                        (m/update-existing :database_id import-maybe-int-database-fk)))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
@@ -376,15 +401,13 @@
       [[{:model "Database" :id source_database_id}]])
     (for [{tag-id :tag_id} tags]
       [{:model "TransformTag" :id tag-id}])
-    (serdes/mbql-deps source))))
+    (serdes/mbql-deps source)
+    (for [{:keys [table_id]} (:source-tables source)
+          :when (vector? table_id)]
+      (serdes/table->path table_id)))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
-  ;; Path: ["collections" "<nested ... collections>" "transforms" "<entity_id_name>"]
-  ;; Use default collection path, then restructure similar to NativeQuerySnippet
-  (let [basis (serdes/storage-default-collection-path transform ctx)
-        file  (last basis)
-        colls (->> basis rest (drop-last 2))] ; Drop "collections" at start, and last two elements
-    (concat ["collections"] colls ["transforms" file])))
+  (serdes/storage-default-collection-path transform ctx "transforms"))
 
 (defmethod serdes/required "Transform"
   [_model id]

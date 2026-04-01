@@ -1,9 +1,12 @@
+import type { ComponentType } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
 import {
@@ -12,7 +15,10 @@ import {
   measureTextWidth,
 } from "metabase/lib/measure-text";
 import visualizations, { registerVisualization } from "metabase/visualizations";
-import type { Visualization } from "metabase/visualizations/types/visualization";
+import type {
+  Visualization,
+  VisualizationProps,
+} from "metabase/visualizations/types/visualization";
 import * as isa from "metabase-lib/v1/types/utils/isa";
 import type {
   CustomVizPluginRuntime,
@@ -90,7 +96,7 @@ export function getPluginAssetUrl(
   if (!assetPath) {
     return undefined;
   }
-  return `/api/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`;
+  return `/api/ee/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -115,17 +121,20 @@ export function isCustomVizDisplay(display: string | undefined): boolean {
 export function useCustomVizPlugins({
   enabled = true,
 }: { enabled?: boolean } = {}) {
+  const { token, uuid } = useEmbeddingEntityContext();
+  const isPublicOrStaticEmbed = Boolean(token || uuid);
+  const shouldLoad = enabled && !isPublicOrStaticEmbed;
   const { data: plugins } = useListCustomVizPluginsQuery(undefined, {
-    skip: !enabled,
+    skip: !shouldLoad,
   });
 
   return plugins;
 }
 
 /**
- * Dev mode: listen for Server-Sent Events from the Vite notify plugin.
- * The SSE server runs on the port after the dev_bundle_url port (e.g. 5175).
- * CSP must allow the SSE origin via MB_CUSTOM_VIZ_DEV_SERVER_URL env var.
+ * Dev mode: listen for Server-Sent Events from the custom viz dev server.
+ * The SSE endpoint is at /__sse on the same origin as dev_bundle_url.
+ * CSP must allow the dev server origin via MB_CUSTOM_VIZ_DEV_SERVER_URL env var.
  */
 function useCustomVizDevReload(
   display: string | undefined,
@@ -145,8 +154,7 @@ function useCustomVizDevReload(
     }
 
     const devUrl = new URL(plugin.dev_bundle_url);
-    const notifyPort = Number(devUrl.port) + 1;
-    const sseUrl = `http://${devUrl.hostname}:${notifyPort}`;
+    const sseUrl = `${devUrl.origin}/__sse`;
 
     const eventSource = new EventSource(sseUrl);
 
@@ -339,7 +347,12 @@ export async function loadCustomVizPlugin(
     const identifier = `custom:${plugin.identifier}` as VisualizationDisplay;
 
     // Attach the required static properties onto the component function
-    const Component = vizDef.VisualizationComponent as Visualization;
+    const Component = ExplicitSize<VisualizationProps>()(
+      vizDef.VisualizationComponent as ComponentType<
+        VisualizationProps & { width: number | null; height: number | null }
+      >,
+    ) as Visualization;
+
     Object.assign(Component, {
       identifier,
       getUiName: () => plugin.display_name,

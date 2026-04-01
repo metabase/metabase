@@ -1,6 +1,6 @@
 import { resolve } from "path";
 import { createServer } from "http";
-import { watch, cpSync } from "fs";
+import { watch, cpSync, existsSync } from "fs";
 import { defineConfig } from "vite";
 
 /**
@@ -13,8 +13,6 @@ import { defineConfig } from "vite";
 function metabaseVizExternals() {
   const VIRTUAL_REACT = "\0virtual:react";
   const VIRTUAL_JSX_RUNTIME = "\0virtual:react/jsx-runtime";
-  const VIRTUAL_CUSTOM_VIZ = "\0virtual:@metabase/custom-viz";
-
   return {
     name: "metabase-viz-externals",
     enforce: "pre" as const,
@@ -25,9 +23,6 @@ function metabaseVizExternals() {
       }
       if (source === "react/jsx-runtime") {
         return VIRTUAL_JSX_RUNTIME;
-      }
-      if (source === "@metabase/custom-viz") {
-        return VIRTUAL_CUSTOM_VIZ;
       }
       return null;
     },
@@ -46,67 +41,125 @@ function metabaseVizExternals() {
           "export const { jsx, jsxs, Fragment } = jsxRuntime;",
         ].join("\n");
       }
-      if (id === VIRTUAL_CUSTOM_VIZ) {
-        return [
-          "const ct = window.__METABASE_VIZ_API__.columnTypes;",
-          "export const { isDate, isNumeric, isInteger, isBoolean, isString, isStringLike, isSummable, isNumericBaseType, isDateWithoutTime, isNumber, isFloat, isTime, isFK, isPK, isEntityName, isTitle, isProduct, isSource, isAddress, isScore, isQuantity, isCategory, isAny, isState, isCountry, isCoordinate, isLatitude, isLongitude, isCurrency, isPercentage, isID, isURL, isEmail, isAvatarURL, isImageURL, hasLatitudeAndLongitudeColumns } = ct;",
-          "export const formatValue = window.__METABASE_VIZ_API__.formatValue;",
-          "export const measureText = window.__METABASE_VIZ_API__.measureText;",
-          "export const measureTextWidth = window.__METABASE_VIZ_API__.measureTextWidth;",
-          "export const measureTextHeight = window.__METABASE_VIZ_API__.measureTextHeight;",
-        ].join("\n");
-      }
       return null;
     },
   };
 }
 
-const NOTIFY_PORT = 5175;
+const DEV_PORT = 5174;
 
 /**
- * Vite plugin that starts a tiny SSE server and sends a "reload" event
- * to all connected clients after each rebuild completes.
- * Metabase's frontend connects to this to live-reload the custom viz.
+ * Vite plugin that starts a dev server serving both static files from dist/
+ * and an SSE endpoint at /__sse for hot-reload notifications.
+ * Metabase's frontend connects to /__sse on the same origin as dev_bundle_url.
  */
-function metabaseNotifyReload() {
+function metabaseDevServer() {
   const clients = new Set<import("http").ServerResponse>();
   let server: ReturnType<typeof createServer> | null = null;
 
   return {
-    name: "metabase-notify-reload",
+    name: "metabase-dev-server",
 
     buildStart() {
       if (server) {
         return;
       }
+
+      const distDir = resolve(__dirname, "dist");
+
       server = createServer((req, res) => {
-        res.writeHead(200, {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-          "Access-Control-Allow-Origin": "*",
+        const url = req.url ?? "/";
+
+        // SSE endpoint for hot-reload
+        if (url === "/__sse") {
+          res.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+          });
+          clients.add(res);
+          req.on("close", () => clients.delete(res));
+          return;
+        }
+
+        // CORS headers for all static responses
+        res.setHeader("Access-Control-Allow-Origin", "*");
+
+        // Serve static files from dist/
+        const { readFile, stat } = require("fs");
+        const { join, extname } = require("path");
+
+        const filePath =
+          url === "/" ? join(distDir, "index.html") : join(distDir, url);
+
+        // Prevent directory traversal
+        if (!filePath.startsWith(distDir)) {
+          res.writeHead(403);
+          res.end("Forbidden");
+          return;
+        }
+
+        stat(filePath, (err: NodeJS.ErrnoException | null) => {
+          if (err) {
+            res.writeHead(404);
+            res.end("Not found");
+            return;
+          }
+
+          const mimeTypes: Record<string, string> = {
+            ".html": "text/html",
+            ".js": "application/javascript",
+            ".css": "text/css",
+            ".json": "application/json",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".svg": "image/svg+xml",
+            ".ico": "image/x-icon",
+          };
+          const contentType =
+            mimeTypes[extname(filePath)] ?? "application/octet-stream";
+
+          readFile(
+            filePath,
+            (readErr: NodeJS.ErrnoException | null, data: Buffer) => {
+              if (readErr) {
+                res.writeHead(500);
+                res.end("Internal server error");
+                return;
+              }
+              res.writeHead(200, { "Content-Type": contentType });
+              res.end(data);
+            },
+          );
         });
-        clients.add(res);
-        req.on("close", () => clients.delete(res));
       });
-      server.listen(NOTIFY_PORT, () => {
+
+      server.listen(DEV_PORT, () => {
         console.log(
-          `[metabase-notify] SSE server listening on http://localhost:${NOTIFY_PORT}`,
+          `[custom-viz] Dev server listening on http://localhost:${DEV_PORT}`,
         );
       });
 
       // Watch public/assets/ for changes — copy to dist/assets/ and notify
       const assetsDir = resolve(__dirname, "public/assets");
-      watch(assetsDir, { recursive: true }, (_event, filename) => {
-        if (!filename) {
-          return;
-        }
-        cpSync(resolve(assetsDir, filename), resolve(__dirname, "dist/assets", filename));
-        for (const client of clients) {
-          client.write("data: reload\n\n");
-        }
-        console.log(`[metabase-notify] Asset changed: ${filename}, notified ${clients.size} client(s)`);
-      });
+      if (existsSync(assetsDir)) {
+        watch(assetsDir, { recursive: true }, (_event, filename) => {
+          if (!filename) {
+            return;
+          }
+          cpSync(
+            resolve(assetsDir, filename),
+            resolve(__dirname, "dist/assets", filename),
+          );
+          for (const client of clients) {
+            client.write("data: reload\n\n");
+          }
+          console.log(
+            `[custom-viz] Asset changed: ${filename}, notified ${clients.size} client(s)`,
+          );
+        });
+      }
     },
 
     closeBundle() {
@@ -114,7 +167,7 @@ function metabaseNotifyReload() {
         client.write("data: reload\n\n");
       }
       console.log(
-        `[metabase-notify] Build complete, notified ${clients.size} client(s)`,
+        `[custom-viz] Build complete, notified ${clients.size} client(s)`,
       );
     },
   };
@@ -123,8 +176,12 @@ function metabaseNotifyReload() {
 const isWatch = process.argv.includes("--watch");
 
 export default defineConfig({
-  plugins: [metabaseVizExternals(), ...(isWatch ? [metabaseNotifyReload()] : [])],
+  plugins: [metabaseVizExternals(), ...(isWatch ? [metabaseDevServer()] : [])],
   publicDir: "public",
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("production"),
+    "process.env": JSON.stringify({}),
+  },
   build: {
     outDir: "dist",
     lib: {
@@ -133,10 +190,5 @@ export default defineConfig({
       fileName: () => "index.js",
       name: "__customVizPlugin__",
     },
-  },
-  preview: {
-    port: 5174,
-    host: true,
-    cors: true,
   },
 });

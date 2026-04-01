@@ -13,7 +13,7 @@ export const customVizPluginApi = Api.injectEndpoints({
     listCustomVizPlugins: builder.query<CustomVizPluginRuntime[], void>({
       query: () => ({
         method: "GET",
-        url: "/api/custom-viz-plugin/list",
+        url: "/api/ee/custom-viz-plugin/list",
       }),
       providesTags: (plugins = []) => [
         listTag("custom-viz-plugin"),
@@ -23,7 +23,7 @@ export const customVizPluginApi = Api.injectEndpoints({
     listAllCustomVizPlugins: builder.query<CustomVizPlugin[], void>({
       query: () => ({
         method: "GET",
-        url: "/api/custom-viz-plugin",
+        url: "/api/ee/custom-viz-plugin",
       }),
       providesTags: (plugins = []) => [
         listTag("custom-viz-plugin"),
@@ -36,7 +36,7 @@ export const customVizPluginApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/custom-viz-plugin",
+        url: "/api/ee/custom-viz-plugin",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -45,7 +45,7 @@ export const customVizPluginApi = Api.injectEndpoints({
     deleteCustomVizPlugin: builder.mutation<void, number>({
       query: (id) => ({
         method: "DELETE",
-        url: `/api/custom-viz-plugin/${id}`,
+        url: `/api/ee/custom-viz-plugin/${id}`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("custom-viz-plugin")]),
@@ -56,7 +56,7 @@ export const customVizPluginApi = Api.injectEndpoints({
     >({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/custom-viz-plugin/${id}`,
+        url: `/api/ee/custom-viz-plugin/${id}`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -71,7 +71,7 @@ export const customVizPluginApi = Api.injectEndpoints({
     >({
       query: ({ id, ...body }) => ({
         method: "PUT",
-        url: `/api/custom-viz-plugin/${id}/dev-url`,
+        url: `/api/ee/custom-viz-plugin/${id}/dev-url`,
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
@@ -83,7 +83,7 @@ export const customVizPluginApi = Api.injectEndpoints({
     refreshCustomVizPlugin: builder.mutation<CustomVizPlugin, number>({
       query: (id) => ({
         method: "POST",
-        url: `/api/custom-viz-plugin/${id}/refresh`,
+        url: `/api/ee/custom-viz-plugin/${id}/refresh`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [

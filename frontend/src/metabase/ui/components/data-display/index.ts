@@ -2,6 +2,7 @@ export * from "./Accordion";
 export * from "./Avatar";
 export * from "./Badge";
 export * from "./Card";
+export * from "./Ellipsified";
 export * from "./Image";
 export * from "./Indicator";
 export * from "./Kbd";

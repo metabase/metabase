@@ -8,7 +8,7 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
-   [metabase.custom-viz-plugin.cache :as custom-viz-plugin.cache]
+   [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
@@ -113,7 +113,7 @@
         (and (str/starts-with? (name display-type) "custom:")
              (let [identifier (subs (name display-type) (count "custom:"))
                    plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
-               (some-> plugin :id custom-viz-plugin.cache/get-bundle :content)))
+               (some-> plugin :id custom-viz-plugin/get-bundle :content)))
         (chart-type :javascript_visualization "display-type is a custom visualization with static support")
 
         (#{:pin_map :state :country} display-type)

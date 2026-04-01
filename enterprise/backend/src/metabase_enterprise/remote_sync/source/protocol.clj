@@ -51,13 +51,19 @@
     "Writes multiple files to the source with a commit message.
 
     Takes a SourceSnapshot instance implementing this protocol, a message (the commit message to use when writing files),
-    and files (a sequence of file specs). Each file spec is a map with either:
-    - :path and :content keys for writing/updating a file
-    - :path and :remove? true for recursively removing all files at that path
+    and files (a sequence of file specs). Each file spec is a map with :path and :content keys.
 
-    Removal entries with empty paths are no-ops. Removing non-existent paths is also a no-op (idempotent).
+    All existing files within managed directories that are not in the write set are removed.
+    Files outside managed directories are always preserved.
 
     Returns the version of the written files.")
+
+  (read-file-bytes [snapshot path]
+    "Reads the contents of a file from the snapshot as a byte array.
+
+    Takes a SourceSnapshot instance implementing this protocol and a path (the relative path to the file to read).
+
+    Returns the file contents as a byte array, or nil if the file doesn't exist.")
 
   (version [snapshot]
     "Gets a version identifier for the current state of the snapshot.

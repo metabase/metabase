@@ -1,5 +1,6 @@
 /* eslint-disable complexity */
 import cx from "classnames";
+import type { LocationDescriptorObject } from "history";
 import React, {
   type CSSProperties,
   type ComponentType,
@@ -142,6 +143,7 @@ type VisualizationOwnProps = {
   isAction?: boolean;
   isDashboard?: boolean;
   isDocument?: boolean;
+  isMetricsViewer?: boolean;
   isMobile?: boolean;
   isRunning?: boolean;
   isShowingSummarySidebar?: boolean;
@@ -185,6 +187,7 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
   /** When true, internal click behaviors (dashboard/question links) are preserved */
   enableEntityNavigation?: boolean;
 } & VisualizationPassThroughProps;
@@ -273,6 +276,7 @@ class Visualization extends PureComponent<
     isEditing: false,
     isEmbeddingSdk: false,
     isFullscreen: false,
+    isMetricsViewer: false,
     isPreviewing: false,
     isQueryBuilder: false,
     isSettings: false,
@@ -582,6 +586,7 @@ class Visualization extends PureComponent<
       {
         dispatch: this.props.dispatch,
         onChangeCardAndRun: this.handleOnChangeCardAndRun,
+        onSameOriginNavigation: this.props.onSameOriginNavigation,
       },
     );
 
@@ -669,6 +674,7 @@ class Visualization extends PureComponent<
       isEditing,
       isEmbeddingSdk,
       isFullscreen,
+      isMetricsViewer,
       isMobile,
       isObjectDetail,
       isPreviewing,
@@ -762,6 +768,7 @@ class Visualization extends PureComponent<
             e instanceof ChartSettingsError &&
             visualization?.hasEmptyState &&
             !isDashboard &&
+            !isMetricsViewer &&
             // For the SDK the EmptyVizState component in some cases (a small container) looks really weird,
             // so at least temporarily we don't display it when rendered in the SDK.
             !isEmbeddingSdk
@@ -937,6 +944,7 @@ class Visualization extends PureComponent<
                     isEditing={!!isEditing}
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
+                    isMetricsViewer={!!isMetricsViewer}
                     isMobile={!!isMobile}
                     isVisualizer={!!isVisualizer}
                     isVisualizerCard={isVisualizerDashCard}
@@ -1008,6 +1016,7 @@ class Visualization extends PureComponent<
               clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
               onUpdateQuestion={this.props.onUpdateQuestion}
+              onSameOriginNavigation={this.props.onSameOriginNavigation}
               onClose={this.hideActions}
               series={series}
               onUpdateVisualizationSettings={onUpdateVisualizationSettings}
