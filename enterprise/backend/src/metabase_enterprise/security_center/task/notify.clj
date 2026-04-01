@@ -9,6 +9,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.security-center.notification :as notification]
+   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -43,14 +44,15 @@
   "Check all unacknowledged active/error advisories and send repeat notifications
    for those that are due based on their severity cadence."
   []
-  (let [advisories (unacknowledged-active-advisories)]
-    (doseq [advisory advisories
-            :when (due-for-notification? advisory)]
-      (try
-        (notification/notify-advisory! advisory)
-        (catch Exception e
-          (log/warnf e "Failed to send repeat notification for advisory %s"
-                     (:advisory_id advisory)))))))
+  (when (premium-features/has-feature? :admin-security-center)
+    (let [advisories (unacknowledged-active-advisories)]
+      (doseq [advisory advisories
+              :when (due-for-notification? advisory)]
+        (try
+          (notification/notify-advisory! advisory)
+          (catch Exception e
+            (log/warnf e "Failed to send repeat notification for advisory %s"
+                       (:advisory_id advisory))))))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Send repeat notifications for unacknowledged security advisories"}
