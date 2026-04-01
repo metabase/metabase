@@ -93,15 +93,7 @@ You can explore metrics, break them out by different dimensions, and compare met
 
 ![Metrics explorer](./images/metric-explorer.png)
 
-To see a metric in the Metrics Explorer, visit the metric and click **Explore** in the top right corner.
-
-### Breaking out by dimension
-
-Every metric page shows how the metric breaks down across its available dimensions — by time, by category, by geography, and so on. Click any breakdown to dig in further.
-
-### Comparing metrics and drilling into the data
-
-Use the [Metrics Explorer](../questions/metrics-explorer.md) to load one or more metrics or measures, compare them side by side, break them out by dimension, and drill into the data. Click **Explore** from any metric to open it.
+To see a metric in the Metrics Explorer, visit the metric and click **Explore** in the top right corner. You can add more metrics, breakouts, and filters to compare metrics along different dimensions.
 
 ## Metric data sources
 
@@ -148,22 +140,11 @@ You can see all metrics on your instance:
 
 Because metrics live in collections, are attached to a data source, and define a query, permissions for metrics are determined by a combination of [collection permissions](../permissions/collections.md), ["View data" permissions](../permissions/data.md#can-view-data-permission), and ["Create queries" permissions](../permissions/data.md#create-queries-permissions).
 
-To **create or edit** a metric's definition, people need to have the following permissions:
-
-- "View data"" permissions that aren't "blocked" on the metric's data source;
-- At least "Query builder" Create queries permissions on the metric's data source;
-- "Curate" permissions on the collection where the metric is saved.
-
-To **view** a computed metric, people need to have:
-
-- "View data"" permissions that aren't "blocked" on the metric's data source;
-- "View" permissions on the collection where the metric is saved.
-
-To **use** a metric in the query builder, people need to have:
-
-- "View data" permission on the data source that isn't "blocked";
-- At least "Query builder" Create queries permissions;
-- "Curate" permissions on the collection where the metric is saved.
+| Metric action \ Permissions       | View data     | Create queries           | Collection |
+| --------------------------------- | ------------- | ------------------------ | ---------- |
+| **Create** or **edit** definition | Not "Blocked" | At least "Query builder" | Curate     |
+| **View**                          | Not "Blocked" | Any                      | View       |
+| **Use** in the query builder      | Not "Blocked" | At least "Query builder" | View       |
 
 Anyone who has these permissions will be able to interact with the metric: for example, anyone with curate permissions to a collection, and "Create queries" permission on a data source will be able to create metrics in the collection that they can curate.
 
