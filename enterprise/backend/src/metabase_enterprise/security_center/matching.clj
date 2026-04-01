@@ -57,11 +57,14 @@
    Enforced by Postgres and MySQL; H2 treats it as an advisory hint."
   [hsql-query]
   (t2/with-transaction [^java.sql.Connection conn]
-    (.setReadOnly conn true)
-    (try
+    (if (.isReadOnly conn)
       (mdb/query hsql-query)
-      (finally
-        (.setReadOnly conn false)))))
+      (do
+        (.setReadOnly conn true)
+        (try
+          (mdb/query hsql-query)
+          (finally
+            (.setReadOnly conn false)))))))
 
 (mu/defn execute-matching-query! :- QueryResult
   "Execute a matching query against the appdb.
