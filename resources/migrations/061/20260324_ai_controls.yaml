@@ -49,7 +49,7 @@ databaseChangeLog:
                   name: group_id
 
   - changeSet:
-      id: v61.ge2e24a
+      id: v61.gasgewas-fk
       author: nvoxland
       comment: Add foreign key on metabot_permissions.group_id referencing permissions_group
       changes:
@@ -100,59 +100,3 @@ databaseChangeLog:
                 SELECT id FROM permissions_group
                 WHERE magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
               )
-
-  - changeSet:
-      id: v61.t42424d
-      author: nvoxland
-      comment: Create metabot_instance_limit table for instance-wide and per-tenant usage limits
-      changes:
-        - createTable:
-            tableName: metabot_instance_limit
-            remarks: Usage limits at the instance or tenant level. tenant_id NULL = instance-wide limit.
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: tenant_id
-                  type: int
-                  remarks: 'Tenant ID for per-tenant limits. NULL for instance-wide limit.'
-              - column:
-                  name: max_usage
-                  type: int
-                  remarks: 'Maximum usage allowed in the billing period. NULL means unlimited.'
-
-  - changeSet:
-      id: v61.gr34fp
-      author: nvoxland
-      comment: Create metabot_group_limit table for per-group usage limits
-      changes:
-        - createTable:
-            tableName: metabot_group_limit
-            remarks: Usage limits per permissions group. A user''s effective limit is the max across their groups.
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: group_id
-                  type: int
-                  remarks: 'The permissions group this limit applies to.'
-                  constraints:
-                    nullable: false
-              - column:
-                  name: max_usage
-                  type: int
-                  remarks: 'Maximum usage allowed in the billing period. NULL means unlimited.'
-        - addUniqueConstraint:
-            tableName: metabot_group_limit
-            columnNames: group_id
-            constraintName: unique_metabot_group_limit_group_id
