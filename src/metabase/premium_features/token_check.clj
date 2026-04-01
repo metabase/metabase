@@ -659,10 +659,14 @@
     (throw (ee-feature-error feature-name))))
 
 (defn is-trial?
-  "True if the current premium token is a trial subscription."
+  "True if the current premium token is a trial subscription.
+   Returns false if the token cannot be checked (e.g. network error)."
   []
-  (boolean (:trial (some-> (premium-features.settings/premium-embedding-token)
-                           (check-token)))))
+  (try
+    (boolean (:trial (some-> (premium-features.settings/premium-embedding-token)
+                             (check-token))))
+    (catch Throwable _
+      false)))
 
 (defn assert-not-trial
   "Throw an error if the current token is a trial subscription.
