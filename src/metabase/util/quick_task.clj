@@ -22,18 +22,26 @@
 (defonce ^:private executor
   (delay (Executors/newFixedThreadPool 1 ^ThreadFactory thread-factory)))
 
-(def ^:dynamic *task-timeout-ms*
-  "Maximum time in milliseconds a quick-task is allowed to run before being cancelled.
-   Default is 2 hours."
-  (* 2 60 60 1000))
+(def ^:private default-task-timeout-minutes 120)
+
+(defn task-timeout-ms
+  "Returns the task timeout in milliseconds. Reads from the `MB_QUICK_TASK_TIMEOUT_MINUTES` env var,
+   defaulting to 120 minutes (2 hours)."
+  []
+  (let [env-val (System/getenv "MB_QUICK_TASK_TIMEOUT_MINUTES")]
+    (* (long (if (some? env-val)
+               (parse-long env-val)
+               default-task-timeout-minutes))
+       60 1000)))
 
 (defn submit-task!
   "Submit a task to the single thread executor. Each task is run on a separate thread with a timeout
-   of [[*task-timeout-ms*]]. If a task exceeds the timeout, it is cancelled and the executor moves on
-   to the next queued task. This prevents a single stuck task from blocking all subsequent tasks."
+   controlled by the `MB_QUICK_TASK_TIMEOUT_MINUTES` env var (default 120 minutes). If a task exceeds
+   the timeout, it is cancelled and the executor moves on to the next queued task. This prevents a
+   single stuck task from blocking all subsequent tasks."
   ^Future [^Callable f]
   {:pre [(some? f)]}
-  (let [timeout-ms (long *task-timeout-ms*)
+  (let [timeout-ms (long (task-timeout-ms))
         task       (bound-fn* f)
         wrapped    (fn []
                      (let [fut (FutureTask. ^Callable task)
