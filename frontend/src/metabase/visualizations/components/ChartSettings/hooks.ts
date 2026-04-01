@@ -1,12 +1,18 @@
 import { assocIn } from "icepick";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
 import { updateSettings } from "metabase/visualizations/lib/settings";
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  SettingsExtra,
+  Widget,
+} from "metabase/visualizations/types/visualization";
 import type Question from "metabase-lib/v1/Question";
 import type {
   RawSeries,
@@ -70,3 +76,53 @@ export const useChartSettingsState = ({
     transformedSeries,
   };
 };
+
+export function useSettingsWidgets({
+  series,
+  transformedSeries,
+  handleChangeSettings,
+  isDashboard = false,
+  extra,
+}: {
+  series: Series;
+  transformedSeries?: RawSeries | TransformedSeries;
+  handleChangeSettings: (settings: VisualizationSettings) => void;
+  isDashboard?: boolean;
+  extra?: SettingsExtra;
+}): Widget[] {
+  const display = series?.[0]?.card?.display;
+  const { loading: customVizLoading } =
+    PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
+
+  const [widgets, setWidgets] = useState<Widget[]>(() =>
+    getSettingsWidgetsForSeries(
+      transformedSeries,
+      handleChangeSettings,
+      isDashboard,
+      extra,
+    ),
+  );
+
+  useEffect(() => {
+    if (customVizLoading) {
+      return;
+    }
+
+    setWidgets(
+      getSettingsWidgetsForSeries(
+        transformedSeries,
+        handleChangeSettings,
+        isDashboard,
+        extra,
+      ),
+    );
+  }, [
+    customVizLoading,
+    transformedSeries,
+    handleChangeSettings,
+    isDashboard,
+    extra,
+  ]);
+
+  return widgets;
+}
