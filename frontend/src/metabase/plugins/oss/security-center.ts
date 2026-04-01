@@ -2,16 +2,22 @@ import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
+type SecurityCenterNavItemProps = {
+  currentPath: string;
+};
+
 type SecurityCenterPlugin = {
   isEnabled: boolean;
   SecurityCenterPage: ComponentType;
   SecurityCenterBanner: ComponentType;
+  SecurityCenterNavItem: ComponentType<SecurityCenterNavItemProps>;
 };
 
 const getDefaultPlugin = (): SecurityCenterPlugin => ({
   isEnabled: false,
   SecurityCenterPage: PluginPlaceholder,
   SecurityCenterBanner: PluginPlaceholder,
+  SecurityCenterNavItem: PluginPlaceholder,
 });
 
 export const PLUGIN_SECURITY_CENTER = getDefaultPlugin();

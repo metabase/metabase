@@ -1,13 +1,26 @@
 .root {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 65px - 4rem);
+  height: calc(100vh - 65px);
   min-height: 0;
+  padding: 2rem 3rem 0;
 }
 
 .header {
   flex-shrink: 0;
   padding-bottom: var(--mantine-spacing-lg);
+}
+
+@media screen and (max-width: 64em) {
+  .root {
+    padding-inline: 2rem;
+  }
+}
+
+@media screen and (max-width: 40em) {
+  .root {
+    padding-inline: 1rem;
+  }
 }
 
 .content {

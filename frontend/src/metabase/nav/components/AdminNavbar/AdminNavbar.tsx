@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon } from "metabase/ui";
@@ -86,6 +87,11 @@ export const AdminNavbar = ({
               currentPath={currentPath}
             />
           ))}
+          {PLUGIN_SECURITY_CENTER.isEnabled && (
+            <PLUGIN_SECURITY_CENTER.SecurityCenterNavItem
+              currentPath={currentPath}
+            />
+          )}
         </AdminNavbarItems>
 
         {!isPaidPlan && isAdmin && <StoreLink />}
