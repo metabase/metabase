@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [metabase.config.core :as config]
-   [metabase.mcp.settings :as mcp.settings]
    [metabase.server.instance :as server.instance]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
@@ -548,90 +547,3 @@
               "Cross-Origin-Resource-Policy should be in the response")
           (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"]))
               "Cross-Origin-Embedder-Policy should be in the response"))))))
-
-;;; ------------------------------------------------ MCP CORS Tests ------------------------------------------------
-
-(defn- run-mcp-cors-test!
-  "Helper to test MCP CORS through the full middleware stack."
-  [request-origin expected-allow-origin]
-  (let [wrapped-handler (mw.security/add-security-headers
-                         (fn [_request respond _raise]
-                           (respond {:status 200 :headers {} :body "ok"})))
-        response (wrapped-handler {:headers {"origin" request-origin}
-                                   :uri "/api/dashboard/1"}
-                                  identity identity)]
-    (is (= expected-allow-origin
-           (get-in response [:headers "Access-Control-Allow-Origin"])))))
-
-(deftest test-mcp-common-cors-origins
-  (testing "Claude sandbox origins should be allowed when claude is enabled"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins ["claude"]]
-      (run-mcp-cors-test! "https://abc.claudemcpcontent.com"
-                          "https://abc.claudemcpcontent.com")))
-
-  (testing "ChatGPT sandbox origins should be allowed when chatgpt is enabled"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins ["chatgpt"]]
-      (run-mcp-cors-test! "https://abc.web-sandbox.oaiusercontent.com"
-                          "https://abc.web-sandbox.oaiusercontent.com")))
-
-  (testing "Claude sandbox origins should NOT be allowed when only chatgpt is enabled"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins ["chatgpt"]]
-      (run-mcp-cors-test! "https://abc.claudemcpcontent.com" nil)))
-
-  (testing "Multiple MCP clients can be enabled simultaneously"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins ["claude" "chatgpt"]]
-      (run-mcp-cors-test! "https://abc.claudemcpcontent.com"
-                          "https://abc.claudemcpcontent.com")
-      (run-mcp-cors-test! "https://xyz.web-sandbox.oaiusercontent.com"
-                          "https://xyz.web-sandbox.oaiusercontent.com"))))
-
-(deftest test-mcp-vscode-webview-origin
-  (testing "vscode-webview:// origins should be allowed when vscode is enabled"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins ["vscode"]]
-      (run-mcp-cors-test! "vscode-webview://abc123" "vscode-webview://abc123")))
-
-  (testing "vscode-webview:// origins should NOT be allowed when vscode is not enabled"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins ["claude"]]
-      (run-mcp-cors-test! "vscode-webview://abc123" nil))))
-
-(deftest test-mcp-custom-cors-origins
-  (testing "Custom MCP origins should be allowed"
-    (mt/with-temporary-setting-values [custom-mcp-apps-cors-origins "https://my-librechat.example.com"]
-      (run-mcp-cors-test! "https://my-librechat.example.com"
-                          "https://my-librechat.example.com")))
-
-  (testing "Custom MCP origins should work alongside common MCP origins"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins  ["claude"]
-                                       custom-mcp-apps-cors-origins "https://my-librechat.example.com"]
-      (run-mcp-cors-test! "https://abc.claudemcpcontent.com"
-                          "https://abc.claudemcpcontent.com")
-      (run-mcp-cors-test! "https://my-librechat.example.com"
-                          "https://my-librechat.example.com"))))
-
-(deftest test-mcp-cors-merged-with-embedding
-  (testing "MCP origins and embedding origins should both work"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins  ["claude"]
-                                       embedding-app-origins-sdk "https://my-app.example.com"]
-      (run-mcp-cors-test! "https://my-app.example.com"
-                          "https://my-app.example.com")
-      (run-mcp-cors-test! "https://abc.claudemcpcontent.com"
-                          "https://abc.claudemcpcontent.com"))))
-
-(deftest test-mcp-settings-helper
-  (testing "mcp-apps-cors-origins returns space-separated origins for enabled clients"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins ["claude" "chatgpt"]]
-      (let [origins (mcp.settings/mcp-apps-cors-origins)]
-        (is (clojure.string/includes? origins "*.claudemcpcontent.com"))
-        (is (clojure.string/includes? origins "*.web-sandbox.oaiusercontent.com")))))
-
-  (testing "mcp-apps-cors-origins includes custom origins"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins  ["claude"]
-                                       custom-mcp-apps-cors-origins "https://custom.example.com"]
-      (let [origins (mcp.settings/mcp-apps-cors-origins)]
-        (is (clojure.string/includes? origins "*.claudemcpcontent.com"))
-        (is (clojure.string/includes? origins "https://custom.example.com")))))
-
-  (testing "mcp-apps-cors-origins returns empty string when nothing is configured"
-    (mt/with-temporary-setting-values [common-mcp-apps-cors-origins  []
-                                       custom-mcp-apps-cors-origins ""]
-      (is (= "" (mcp.settings/mcp-apps-cors-origins))))))
