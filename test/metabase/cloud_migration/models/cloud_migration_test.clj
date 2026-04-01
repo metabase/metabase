@@ -10,8 +10,9 @@
    [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [thunk]
-                      (mt/discard-setting-changes [read-only-mode]
-                        (thunk))))
+                      (mt/test-helpers-set-global-values!
+                        (mt/discard-setting-changes [read-only-mode]
+                          (thunk)))))
 
 (defmacro mock-external-calls!
   "Mock external calls around migration creation."

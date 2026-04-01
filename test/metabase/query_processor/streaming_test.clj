@@ -270,8 +270,9 @@
                   :time           #inst "1899-12-31T00:23:18.000-00:00"
                   :time-ltz       #inst "1899-12-31T07:23:18.000-00:00"
                   :time-tz        #inst "1899-12-31T07:23:18.000-00:00"})))
-            (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-              (test-results
+            (mt/test-helpers-set-global-values!
+              (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                (test-results
                (case export-format
                  (:csv :json)
                  ;; With the updates to make exports conform with FE behavior (See #36726) dates and times are now
@@ -303,7 +304,7 @@
                   :datetime-tz-id #inst "2019-11-01T00:23:18.331-00:00"
                   :time           #inst "1899-12-31T00:23:18.000-00:00"
                   :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
-                  :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
+                  :time-tz        #inst "1899-12-31T23:23:18.000-00:00"}))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Export E2E tests                                                   |

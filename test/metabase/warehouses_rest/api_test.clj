@@ -1571,14 +1571,15 @@
                    :model/FieldValues values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}
                    :model/FieldValues values-2 {:field_id (u/the-id field-2), :values [1 2 3 4]}]
 
-      (snowplow-test/with-fake-snowplow-collector
-        (is (= {:status "ok"}
-               (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
+      (mt/test-helpers-set-global-values!
+        (snowplow-test/with-fake-snowplow-collector
+          (is (= {:status "ok"}
+                 (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
 
-        (testing "triggers snowplow event"
-          (is (=?
-               {"event" "database_discard_field_values", "target_id" (u/the-id db)}
-               (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))
+          (testing "triggers snowplow event"
+            (is (=?
+                 {"event" "database_discard_field_values", "target_id" (u/the-id db)}
+                 (:data (last (snowplow-test/pop-event-data-and-user-id!))))))))
 
       (testing "values-1 still exists?"
         (is (= false

@@ -186,5 +186,5 @@
   {:node node})
 
 (defn use-fixtures [{:keys [node config]}]
-  (warn-about-disallowed-parallel-forms node config)
+  (warn-about-disallowed-parallel-forms node (get-in config [:linters :metabase/validate-deftest]))
   {:node node})

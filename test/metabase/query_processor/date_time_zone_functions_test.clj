@@ -1173,21 +1173,22 @@
 
 ;;; there is an Athena version of this test in [[metabase.driver.athena-test/datetime-diff-time-zones-test]]
 (deftest datetime-diff-time-zones-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff :test/timestamptz-type)
-    (mt/dataset diff-time-zones-cases
-      (let [diffs (fn [a-str b-str]
-                    (let [units [:second :minute :hour :day :week :month :quarter :year]]
-                      (->> (mt/run-mbql-query times
-                             {:filter [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
-                              :expressions (into {} (for [unit units]
-                                                      [(name unit) [:datetime-diff $a_dt_tz $b_dt_tz unit]]))
-                              :fields (into [] (for [unit units]
-                                                 [:expression (name unit)]))})
-                           (mt/formatted-rows
-                            (repeat (count units) int))
-                           first
-                           (zipmap units))))]
-        (run-datetime-diff-time-zone-tests! diffs)))))
+  (mt/test-helpers-set-global-values!
+    (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff :test/timestamptz-type)
+      (mt/dataset diff-time-zones-cases
+        (let [diffs (fn [a-str b-str]
+                      (let [units [:second :minute :hour :day :week :month :quarter :year]]
+                        (->> (mt/run-mbql-query times
+                               {:filter [:and [:= a-str $a_dt_tz_text] [:= b-str $b_dt_tz_text]]
+                                :expressions (into {} (for [unit units]
+                                                        [(name unit) [:datetime-diff $a_dt_tz $b_dt_tz unit]]))
+                                :fields (into [] (for [unit units]
+                                                   [:expression (name unit)]))})
+                             (mt/formatted-rows
+                              (repeat (count units) int))
+                             first
+                             (zipmap units))))]
+          (run-datetime-diff-time-zone-tests! diffs))))))
 
 (deftest ^:parallel datetime-diff-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)

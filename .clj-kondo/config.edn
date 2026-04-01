@@ -189,6 +189,11 @@
      metabase-enterprise.workspaces.test-util/create-ready-ws!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
+     metabase.test/discard-setting-changes!
+     metabase.test/test-helpers-set-global-values!
+     metabase.test.util/discard-setting-changes!
+     metabase.test.util.thread-local/do-test-helpers-set-global-values!
+     metabase.test.util.thread-local/test-helpers-set-global-values!
      metabase.util/run-count!
      next.jdbc/execute!}}
 
@@ -643,14 +648,17 @@
    metabase.test.util.generators.jvm/with-random-cards                                                                       hooks.metabase.test.util.generators.jvm/with-random-cards
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
+   metabase.test.util/discard-setting-changes!                                                                               hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
    metabase.test.util/with-prometheus-system!                                                                                hooks.common/with-two-bindings
    metabase.test.util/with-temp-file                                                                                         hooks.metabase.test.util/with-temp-file
    metabase.test.util/with-temporary-setting-values                                                                          hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test.util/with-temporary-setting-values!                                                                         hooks.metabase.test.util/with-temporary-setting-values
    metabase.test/$ids                                                                                                        hooks.metabase.test.data/$ids
    metabase.test/dataset                                                                                                     hooks.metabase.test.data/dataset
    metabase.test/discard-setting-changes                                                                                     hooks.common/with-ignored-first-arg
+   metabase.test/discard-setting-changes!                                                                                    hooks.common/with-ignored-first-arg
    metabase.test/mbql-query                                                                                                  hooks.metabase.test.data/mbql-query
    metabase.test/query                                                                                                       hooks.metabase.test.data/mbql-query
    metabase.test/run-mbql-query                                                                                              hooks.metabase.test.data/mbql-query
@@ -667,6 +675,7 @@
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test/with-temporary-setting-values!                                                                              hooks.metabase.test.util/with-temporary-setting-values
    metabase.users-rest.api-test/with-temp-user-email!                                                                        hooks.common/with-one-binding
    metabase.util.i18n/deferred-trs                                                                                           hooks.metabase.util.i18n/deferred-trs
    metabase.util.i18n/deferred-tru                                                                                           hooks.metabase.util.i18n/deferred-tru
@@ -722,9 +731,11 @@
    metabase.test.data.users/with-group-for-user                                                 macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value!                                                  macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                                         macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.test.util/with-temporary-raw-setting-values!                                        macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.test/with-group-for-user                                                            macros.metabase.test.data.users/with-group-for-user
    metabase.test/with-temp-env-var-value!                                                       macros.metabase.test.util/with-temp-env-var-value!
    metabase.test/with-temporary-raw-setting-values                                              macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.test/with-temporary-raw-setting-values!                                             macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
    metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
