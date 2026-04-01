@@ -183,6 +183,7 @@ describe("(metabase#45042)", () => {
   });
 });
 
+// TODO: I think these need to move out of admin reproductions
 describe("(metabase#46714)", () => {
   const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -196,9 +197,9 @@ describe("(metabase#46714)", () => {
     );
     cy.wait("@metadata");
 
-    cy.findByTestId("segment-editor").findByText("Orders").should("be.visible");
+    H.DataModel.SegmentEditor.get().findByText("Orders").should("be.visible");
 
-    cy.findByTestId("segment-editor")
+    H.DataModel.SegmentEditor.get()
       .findByText("Add filters to narrow your answer")
       .click();
   });
@@ -211,25 +212,21 @@ describe("(metabase#46714)", () => {
       cy.findByLabelText("Starting from…").click();
     });
 
-    H.relativeDatePicker.setValue(
-      { value: 68, unit: "day" },
-      H.segmentEditorPopover,
-    );
+    H.relativeDatePicker.setValue({ value: 68, unit: "day" }, H.popover);
 
     H.relativeDatePicker.setStartingFrom(
       {
         value: 70,
         unit: "day",
       },
-      H.segmentEditorPopover,
+      H.popover,
     );
 
     H.popover().findByText("Add filter").click();
 
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Created At is in the previous 68 days, starting 70 days ago",
-    );
+    cy.findAllByTestId("notebook-cell-item")
+      .contains("Created At is in the previous 68 days, starting 70 days ago")
+      .should("exist");
   });
 
   it("should not hide operator select menu behind the main filter popover", () => {
@@ -246,10 +243,9 @@ describe("(metabase#46714)", () => {
     H.popover().findByPlaceholderText("Enter a number").clear().type("1000");
     H.popover().findByText("Add filter").click();
 
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Total is less than 1000",
-    );
+    cy.findAllByTestId("notebook-cell-item")
+      .contains("Total is less than 1000")
+      .should("exist");
   });
 });
 

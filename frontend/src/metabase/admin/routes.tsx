@@ -99,9 +99,15 @@ export const getRoutes = (
         <Route
           path="datamodel(/**)"
           onEnter={({ location }, replace) => {
-            const newPath = location.pathname.replace(
+            let newPath = location.pathname.replace(
               /\/admin\/datamodel/,
               "/data-studio/data",
+            );
+            // Old admin segment paths (/segments, /segment/create, /segment/:id, etc.)
+            // don't exist at the top level of /data-studio/data — redirect to root
+            newPath = newPath.replace(
+              /^(\/data-studio\/data)\/segments?\b.*$/,
+              "$1",
             );
             replace(newPath);
           }}

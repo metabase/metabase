@@ -1154,11 +1154,10 @@ describe("issue 21528", () => {
 
     cy.log("The following scenario breaks on 46");
     // Navigating to another page via JavaScript is faster than using `cy.visit(...)` to load the whole page again.
-    cy.visit("/data-studio/data");
-    cy.findByRole("main")
-      .findByText("Start by selecting data to model")
-      .should("be.visible");
-    cy.location("pathname").should("eq", "/data-studio/data");
+    // TODO: Unclear if this is still valuable
+    H.goToDataStudio();
+    cy.findByTestId("data-model").should("be.visible");
+    cy.location("pathname").should("contain", "/data-studio/data");
     H.goToMainApp();
 
     H.openNavigationSidebar();
