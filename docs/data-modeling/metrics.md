@@ -3,7 +3,7 @@ title: Metrics
 redirect_from:
   - /docs/latest/administration-guide/07-segments-and-metrics
   - /docs/latest/data-modeling/segments-and-metrics
-summary: Metrics are reusable, standardized calculations that let your team consistently define important numbers across your Metabase.
+summary: Metrics are reusable, standardized aggregations that let your team consistently define important numbers across your Metabase.
 ---
 
 # Metrics
@@ -18,15 +18,13 @@ For example, you may want to create a metric that calculates revenue, so people 
 
 ## How metrics work
 
-Think of a metric like a saved reusable formula. For example, you can create a metric on a `Survey` table to save the calculation `(CountIf([Score] >= 9) - CountIf([Score] <= 6)) / Count()` (aka Net Promoter Score). Other people in you org will be able to just select the metric in the query builder when they want to compute NPS instead of writing their own calculations.
-
-Metrics can be used in questions built with the [graphical query builder](../questions/query-builder/editor.md).
+Think of a metric like a reusable formula. For example, you can create a metric on a `Survey` table that calculates `(CountIf([Score] >= 9) - CountIf([Score] <= 6)) / Count()` (a.k.a. Net Promoter Score). Now other people in your Metabase, instead of writing their own version of NPS, can simply look up that agreed-upon NPS metric, or refer to it in the [query builder](../questions/query-builder/editor.md) when creating new questions.
 
 Metrics have three components:
 
-- [**Data source**](#metric-data-sources): metrics are attached to a specific data source and can be used in any question which is built on that data source.
-- [**Formula**](#metric-formula): a saved aggregation formula that determines how the metric will be computed.
-- [**Optional default time dimension**](#metric-default-time-dimension): default time dimension is used when displaying metric as a standalone card on a dashboard or a pinned item in the collection. Time dimension does not affect how the metric is computed.
+- [**Data source**](#metric-data-sources): metrics are associated with a specific data source and can be used in any question built on that data source.
+- [**Formula**](#metric-formula): the aggregation's definition.
+- [**Optional default time dimension**](#metric-default-time-dimension): a default time dimension to be used when displaying the metric as a standalone card on a dashboard or a pinned item in the collection. This time dimension doesn't affect how the metric is computed.
 
 Metabase will show the metrics as an option in the query builder along with the basic aggregations like Count or Sum.
 
@@ -40,7 +38,7 @@ When you start a question on a [data source that has a metric defined](#metric-d
 
 ![Common metrics](./images/common-metrics.png)
 
-Custom metrics work just like built-in metrics (Count, Sum etc): you can break out metrics by dimensions, use multiple metrics in one query, reference metrics in custom expressions.
+Custom metrics work just like built-in metrics (Count, Sum etc): you can break out metrics by dimensions, include multiple metrics, and refer to metrics in custom expressions.
 
 ![Metric built on top of other metrics](./images/use-metric-in-qb.png)
 
@@ -64,8 +62,8 @@ To create a metric:
 
 3. Define your metric. The metric editor is similar to the regular query builder, with two key differences:
 
-   - The aggregation section is called [**Formula**](#metric-formula). You can use [custom expressions](../questions/query-builder/expressions.md) to define the formula, for example `SumIf([Total], [Plan] != 'free')`. This formula is what defines how your metric is computed.
-   - The group by section is called the [**Default time dimension**](#metric-default-time-dimension). The default time dimension is used only when displaying the metric as a standalone card on a dashboard or collection hme page, but it's not used for computing the metric (you can specify any other dimension when actually using the metric).
+   - The [**Formula**](#metric-formula) block is where you define your aggregation. You can use [custom expressions](../questions/query-builder/expressions.md) to write the formula, for example `SumIf([Total], [Plan] != 'free')`.
+   - The [**Default time dimension**](#metric-default-time-dimension) is where you can optionally include a default way for Metabase to group the metric by time when displaying the metric on a dashboard, document, or collection card. This time dimension isn't used for computing the metric (you can specify any other dimension when actually using the metric).
 
    ![Formula](./images/formula.png)
 
@@ -111,7 +109,7 @@ Metrics are attached to a specific data source. This means that if you define a 
 
 You can build metrics on tables, saved questions, models, and other metrics.
 
-We don't recommend using joins in metric definitions. If you need to build a metric that uses information from multiple tables, consider making a [transform](../data-studio/transforms/transforms-overview.md) joining tables, and then create a matric on the output of that transform.
+We don't recommend using joins in metric definitions. If you need to build a metric that uses information from multiple tables, consider making a [transform](../data-studio/transforms/transforms-overview.md) to join those tables, _then_ create a metric on the table the transform creates.
 
 ## Metric formula
 
@@ -159,7 +157,7 @@ To **create or edit** a metric's definition, people need to have the following p
 To **view** a computed metric, people need to have:
 
 - "View data"" permissions that aren't "blocked" on the metric's data source;
-- "Curate" permissions on the collection where the metric is saved.
+- "View" permissions on the collection where the metric is saved.
 
 To **use** a metric in the query builder, people need to have:
 
@@ -177,12 +175,12 @@ By adding metrics to your Library, the query builder will display the metrics mo
 
 On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans, you can [mark metrics as verified](../exploration-and-organization/content-verification.md).
 
-Prefer using [Library metrics](../data-studio/library.md#metrics) instead of content verification.
+Prefer using the [Library](../data-studio/library.md#metrics) to let people know which metrics they should use.
 
 ## Limitations
 
-- For now, metrics are attached to a specific data source, and can't be used on any other data source, including on data sources derived from metric's original data source.
-- Metrics can only be used in the graphical query builder. See [SQL Snippets](../questions/native-editor/snippets.md) for defining reusable bits of SQL queries.
+- For now, metrics are associated with a specific data source, and can't be used on any other data source, including on data sources derived from metric's original data source.
+- Metrics are only available to the query builder. For defining reusable bits of SQL, check out [Snippets](../questions/native-editor/snippets.md).
 - You can't limit people from creating metrics on data sources they otherwise have permissions to query.
 
 ## Further reading
