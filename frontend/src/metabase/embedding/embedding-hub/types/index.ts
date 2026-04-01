@@ -1,5 +1,4 @@
 export type {
-  DataSegregationStrategy,
   EmbeddingHubStep,
   EmbeddingHubStepId,
   EmbeddingHubAction,
