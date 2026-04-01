@@ -106,7 +106,6 @@ const ReleaseFlags = Object.entries(process.env)
     return flags;
   }, initialFlags);
 
-console.log({ReleaseFlags, processEnv: process.env});
 
 /** @type {import('@rspack/cli').Configuration} */
 const config = {

@@ -69,7 +69,11 @@
   *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
   *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                         (This shouldn't be necessary now that we run migrations inside a transaction, but is
-                        available just in case)."
+                        available just in case).
+
+  After running standard migrations, also runs any pending release-flag migrations from
+  'migrations/release-flags/' for each enabled RF_ environment variable.
+  See [[liquibase/run-release-flag-migrations-if-needed!]] for details."
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
    & args]
@@ -89,8 +93,10 @@
 
         (log/info "Liquibase is ready.")
         (case direction
-          :up            (liquibase/migrate-up-if-needed! liquibase data-source)
-          :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
+          :up            (do (liquibase/migrate-up-if-needed! liquibase data-source)
+                             (liquibase/run-release-flag-migrations-if-needed! liquibase data-source))
+          :force         (do (liquibase/force-migrate-up-if-needed! liquibase data-source)
+                             (liquibase/run-release-flag-migrations-if-needed! liquibase data-source))
           :down          (apply liquibase/rollback-major-version! conn liquibase false args)
           :down-force    (apply liquibase/rollback-major-version! conn liquibase true args)
           :print         (print-migrations-and-quit-if-needed! liquibase data-source)

@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: vRF.2026-04-01T00:00:00
+      author: iethree
+      context: rf-joke-of-the-day
+      comment: Create jokes table
+      changes:
+        - createTable:
+            tableName: jokes
+            remarks: stores jokes for the joke of the day feature
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: setup
+                  type: ${text.type}
+                  remarks: setup for the joke
+              - column:
+                  name: punchline
+                  type: ${text.type}
+                  remarks: punchline for the joke
