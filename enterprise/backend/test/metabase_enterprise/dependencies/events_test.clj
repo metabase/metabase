@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
@@ -262,6 +263,20 @@
          (assert-stale :snippet snippet-id)
          (events/publish-event! :event/snippet-update {:object snippet :user-id api/*current-user-id*})
          (assert-stale :snippet snippet-id))))))
+
+(deftest mark-stale-failure-does-not-propagate-test
+  (testing "When mark-stale! throws, the event handler catches the error and the API call is not affected"
+    (run-with-dependencies-setup!
+     (fn [mp]
+       (let [products (lib.metadata/table mp (mt/id :products))]
+         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}]
+           (with-redefs [deps.dependency-status/mark-stale!
+                         (fn [_ _] (throw (ex-info "Simulated DB failure" {})))]
+             ;; Should not throw — the error is caught and logged
+             (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*}))
+           ;; Entity should NOT be stale (mark-stale! failed)
+           (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id :stale true))
+               "Entity should not be marked stale when mark-stale! fails")))))))
 
 (deftest ^:sequential native-transform-updates-dependencies-test
   (testing "native transform update events trigger dependency calculations"
