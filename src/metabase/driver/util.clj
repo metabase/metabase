@@ -772,10 +772,21 @@
        (map first)
        (apply str)))
 
-;; WARNING: Changing this prefix requires backwards compatibility handling for existing workspaces.
-;; The prefix is used to identify isolation namespaces in the database, and existing workspaces
-;; will have namespaces created with the current prefix.
+;; WARNING: Do NOT change this prefix. It is baked into existing workspace schemas in production databases.
+;; Changing it would require extreme care for backwards compatibility. If you need to match against this
+;; prefix, use [[workspace-isolated-schema?]] or [[workspace-isolated-schema-clause]] rather than hardcoding it.
 (def ^:private workspace-isolated-prefix "mb__isolation")
+
+(defn workspace-isolated-schema?
+  "Returns true if the given schema name belongs to a workspace isolation namespace."
+  [schema-name]
+  (str/starts-with? schema-name (str workspace-isolated-prefix "_")))
+
+(defn workspace-isolated-schema-clause
+  "Returns a HoneySQL [:like column pattern] clause that matches workspace isolation schemas.
+   `column` is typically `:schema`."
+  [column]
+  [:like column (str workspace-isolated-prefix "_%")])
 
 (defn workspace-isolation-namespace-name
   "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
