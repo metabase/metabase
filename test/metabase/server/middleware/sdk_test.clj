@@ -140,11 +140,11 @@
   (testing "returns all fields from request values"
     (is (= {:embedding_hostname   "app.example.com"
             :embedding_path       "/dashboard/1"
-            :sanitized_user_agent "Mozilla/5.0"
+            :sanitized_user_agent "Browser (Chrome/OS X)"
             :ip_address           "10.0.0.1"}
            (sdk/pii-request-info {:origin     "https://app.example.com"
                                   :referer    "https://app.example.com/dashboard/1?x=y"
-                                  :user-agent "Mozilla/5.0"
+                                  :user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                                   :ip-address "10.0.0.1"}))))
   (testing "handles nil values gracefully"
     (is (= {:embedding_hostname nil, :embedding_path nil, :sanitized_user_agent nil, :ip_address nil}
@@ -220,7 +220,7 @@
   (let [request (-> (ring.mock/request :get "/api/public/card/1")
                     (ring.mock/header "origin" "https://app.example.com")
                     (ring.mock/header "referer" "https://app.example.com/dashboard/1?x=y")
-                    (ring.mock/header "user-agent" "Mozilla/5.0")
+                    (ring.mock/header "user-agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                     (assoc :remote-addr "10.0.0.1"))]
     (testing "PII fields populated when setting enabled and request bound"
       (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
@@ -228,7 +228,7 @@
           (let [result (sdk/include-sdk-info {})]
             (is (= "app.example.com"  (:embedding_hostname result)))
             (is (= "/dashboard/1"     (:embedding_path result)))
-            (is (= "Mozilla/5.0"      (:sanitized_user_agent result)))
+            (is (= "Browser (Chrome/OS X)" (:sanitized_user_agent result)))
             (is (= "10.0.0.1"         (:ip_address result)))))))
     (testing "PII fields nil when setting disabled"
       (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]

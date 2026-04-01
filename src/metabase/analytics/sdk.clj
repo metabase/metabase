@@ -13,6 +13,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.request.current :as request.current]
+   [metabase.request.user-agent :as request.ua]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -76,7 +77,7 @@
   [{:keys [origin referer user-agent ip-address]}]
   {:embedding_hostname   (extract-hostname origin)
    :embedding_path       (extract-path referer)
-   :sanitized_user_agent (some-> user-agent (subs 0 (min (count user-agent) 512)))
+   :sanitized_user_agent (request.ua/describe-user-agent user-agent)
    :ip_address           ip-address})
 
 (defn- pii-fields

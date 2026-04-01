@@ -8,13 +8,13 @@
    [metabase.config.core :as config]
    [metabase.embedding.util :as embed.util]
    [metabase.request.current :as request.current]
+   [metabase.request.user-agent :as request.ua]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [user-agent :as user-agent])
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.time ZoneId)))
 
@@ -98,20 +98,7 @@
 (defn describe-user-agent
   "Format a user-agent string from a request in a human-friendly way."
   [user-agent-string]
-  (when-not (str/blank? user-agent-string)
-    (when-let [{device-type     :type-name
-                {os-name :name} :os
-                browser-name    :name} (some-> user-agent-string user-agent/parse not-empty)]
-      (let [non-blank    (fn [s]
-                           (when-not (str/blank? s)
-                             s))
-            device-type  (or (non-blank device-type)
-                             (tru "Unknown device type"))
-            os-name      (or (non-blank os-name)
-                             (tru "Unknown OS"))
-            browser-name (or (non-blank browser-name)
-                             (tru "Unknown browser"))]
-        (format "%s (%s/%s)" device-type browser-name os-name)))))
+  (request.ua/describe-user-agent user-agent-string))
 
 (defn- describe-location [{:keys [city region country]}]
   (when-let [info (not-empty (remove str/blank? [city region country]))]
