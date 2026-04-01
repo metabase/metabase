@@ -153,6 +153,6 @@ Deleting a measure will not break questions using it. The questions that use the
 2. Scroll down and switch to **Measures** and choose your measure.
 3. On the measure's page, click on the **three dots** icon next to the measure's name and select **Remove measure**.
 
-### Explore measure
+### Explore a measure
 
 You can explore measures along dimensions and compare measures and measures in the [Metrics Explorer](../questions/metrics-explorer.md).
