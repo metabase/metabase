@@ -249,10 +249,10 @@ export function ManageCustomVisualizationsPage() {
 
       {plugins && plugins.length === 0 && !isLoading && (
         <Box
+          bdrs="md"
+          bg="background-primary"
           p="xl"
           style={{
-            borderRadius: "var(--mb-radius-md)",
-            backgroundColor: "var(--mb-color-bg-white)",
             minHeight: "20rem",
             display: "flex",
             alignItems: "center",
@@ -265,10 +265,10 @@ export function ManageCustomVisualizationsPage() {
 
       {plugins && plugins.length > 0 && (
         <Box
+          bdrs="md"
+          bg="background-primary"
           className={S.pluginList}
           style={{
-            borderRadius: "var(--mb-radius-md)",
-            backgroundColor: "var(--mb-color-bg-white)",
             overflow: "hidden",
           }}
         >
@@ -343,12 +343,7 @@ export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
       description={t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
     >
       <SettingsSection>
-        <Box
-          style={{
-            borderRadius: "var(--mb-radius-md)",
-            backgroundColor: "var(--mb-color-bg-white)",
-          }}
-        >
+        <Box bdrs="md" bg="background-primary">
           <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
             {({ dirty }) => (
               <Form>

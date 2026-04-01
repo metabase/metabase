@@ -584,6 +584,10 @@
                     result))
                 (catch Exception e
                   (prometheus/inc! :metabase-metabot/agent-errors labels)
+                  (when (:api-error (ex-data e))
+                    (log/debugf "API error details: status=%s body=%s"
+                                (:status (ex-data e))
+                                (pr-str (:body (ex-data e)))))
                   (if (:api-error (ex-data e))
                     (log/errorf "Agent loop API error: %s" (ex-message e))
                     (log/error e "Agent loop error"))

@@ -70,10 +70,12 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
+      "frontend/src/custom-viz/src/templates/**",
+      "frontend/src/custom-viz/src/vite-env.d.ts",
+      "frontend/src/custom-viz/vite.config.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
       "e2e/embedding-sdk-host-apps/**",
-      "frontend/src/metabase-types/openapi/types.gen.ts",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",

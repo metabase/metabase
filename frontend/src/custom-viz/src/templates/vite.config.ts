@@ -99,7 +99,8 @@ function metabaseDevServer() {
         const { readFile, stat } = require("fs");
         const { join, extname } = require("path");
 
-        const filePath = join(distDir, url);
+        const filePath =
+          url === "/" ? join(distDir, "index.html") : join(distDir, url);
 
         // Prevent directory traversal
         if (!filePath.startsWith(distDir)) {
@@ -125,17 +126,21 @@ function metabaseDevServer() {
             ".svg": "image/svg+xml",
             ".ico": "image/x-icon",
           };
-          const contentType = mimeTypes[extname(filePath)] ?? "application/octet-stream";
+          const contentType =
+            mimeTypes[extname(filePath)] ?? "application/octet-stream";
 
-          readFile(filePath, (readErr: NodeJS.ErrnoException | null, data: Buffer) => {
-            if (readErr) {
-              res.writeHead(500);
-              res.end("Internal server error");
-              return;
-            }
-            res.writeHead(200, { "Content-Type": contentType });
-            res.end(data);
-          });
+          readFile(
+            filePath,
+            (readErr: NodeJS.ErrnoException | null, data: Buffer) => {
+              if (readErr) {
+                res.writeHead(500);
+                res.end("Internal server error");
+                return;
+              }
+              res.writeHead(200, { "Content-Type": contentType });
+              res.end(data);
+            },
+          );
         });
       });
 
@@ -153,11 +158,16 @@ function metabaseDevServer() {
           if (!filename) {
             return;
           }
-          cpSync(resolve(assetsDir, filename), resolve(__dirname, "dist/assets", filename));
+          cpSync(
+            resolve(assetsDir, filename),
+            resolve(__dirname, "dist/assets", filename),
+          );
           for (const client of clients) {
             client.write("data: reload\n\n");
           }
-          console.log(`[custom-viz] Asset changed: ${filename}, notified ${clients.size} client(s)`);
+          console.log(
+            `[custom-viz] Asset changed: ${filename}, notified ${clients.size} client(s)`,
+          );
         });
       }
     },

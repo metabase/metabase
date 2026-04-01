@@ -28,7 +28,6 @@
                               :embedding-simple
                               :embedding-hub
                               :hosting
-                              :metabot-v3
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -74,7 +73,6 @@
             :embedding_sdk                  true
             :embedding_simple               true
             :hosting                        true
-            :metabot_v3                     true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true

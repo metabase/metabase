@@ -202,7 +202,8 @@
   [filter]
   (let [normalized (normalize-ai-args filter)
         filter-type (:filter-type normalized)
-        normalized (assoc normalized :operation (normalize-construct-operation (:operation normalized)))]
+        normalized (cond-> normalized
+                     (:operation normalized) (update :operation normalize-construct-operation))]
     (case filter-type
       :multi-value (-> normalized
                        (dissoc :filter-type :value)
