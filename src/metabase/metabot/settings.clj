@@ -28,6 +28,7 @@
   :visibility :public
   :encryption :no
   :export?    true
+  :feature    :ai-controls
   :doc        false)
 
 (defsetting metabot-icon
@@ -37,6 +38,7 @@
   :visibility :public
   :encryption :no
   :export?    true
+  :feature    :ai-controls
   :doc        false)
 
 (defsetting metabot-show-illustrations
@@ -46,6 +48,7 @@
   :visibility :public
   :encryption :no
   :export?    true
+  :feature    :ai-controls
   :doc        false)
 
 (defsetting metabot-chat-system-prompt
@@ -55,6 +58,7 @@
   :visibility :admin
   :encryption :no
   :export?    true
+  :feature    :ai-controls
   :doc        false)
 
 (defsetting metabot-nlq-system-prompt
@@ -64,6 +68,7 @@
   :visibility :admin
   :encryption :no
   :export?    true
+  :feature    :ai-controls
   :doc        false)
 
 (defsetting metabot-sql-system-prompt
@@ -73,6 +78,7 @@
   :visibility :admin
   :encryption :no
   :export?    true
+  :feature    :ai-controls
   :doc        false)
 
 (defsetting embedded-metabot-enabled?
