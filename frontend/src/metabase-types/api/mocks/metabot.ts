@@ -23,7 +23,6 @@ export const createMockUserMetabotPermissions = (
 ): UserMetabotPermissionsResponse => ({
   permissions: {
     metabot: "yes",
-    "metabot-model": "medium",
     "metabot-sql-generation": "yes",
     "metabot-nql": "yes",
     "metabot-other-tools": "yes",

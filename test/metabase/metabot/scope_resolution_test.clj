@@ -9,8 +9,7 @@
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :yes
                    :permission/metabot-nql            :no
-                   :permission/metabot-other-tools    :no
-                   :permission/metabot-model          :small})]
+                   :permission/metabot-other-tools    :no})]
       (is (contains? scopes "agent:sql:*"))
       (is (contains? scopes "agent:transforms:*"))
       (is (contains? scopes "agent:snippets:*"))
@@ -21,8 +20,7 @@
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :no
                    :permission/metabot-nql            :yes
-                   :permission/metabot-other-tools    :no
-                   :permission/metabot-model          :small})]
+                   :permission/metabot-other-tools    :no})]
       (is (contains? scopes "agent:notebook:*"))
       (is (contains? scopes "agent:query:*"))
       (is (contains? scopes "agent:table:*"))
@@ -33,8 +31,7 @@
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :no
                    :permission/metabot-nql            :no
-                   :permission/metabot-other-tools    :yes
-                   :permission/metabot-model          :small})]
+                   :permission/metabot-other-tools    :yes})]
       (is (contains? scopes "agent:viz:*"))
       (is (contains? scopes "agent:dashboard:*"))
       (is (contains? scopes "agent:document:*"))
@@ -45,8 +42,7 @@
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :no
                    :permission/metabot-nql            :no
-                   :permission/metabot-other-tools    :no
-                   :permission/metabot-model          :small})]
+                   :permission/metabot-other-tools    :no})]
       (is (contains? scopes "agent:search"))
       (is (contains? scopes "agent:resource:*"))
       (is (contains? scopes "agent:todo:*"))
@@ -74,9 +70,7 @@
       (is (= (:permission/metabot-nql metabot-permissions/perm-type-defaults)
              (:permission/metabot-nql perms)))
       (is (= (:permission/metabot-other-tools metabot-permissions/perm-type-defaults)
-             (:permission/metabot-other-tools perms)))
-      (is (= (:permission/metabot-model metabot-permissions/perm-type-defaults)
-             (:permission/metabot-model perms)))))
+             (:permission/metabot-other-tools perms)))))
 
   (testing "OSS always returns defaults regardless of user-id"
     (let [perms (scope/resolve-user-permissions 1)]

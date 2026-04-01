@@ -7,7 +7,6 @@ import {
   AIToolKey,
   type GroupInfo,
   type MetabotGroupPermission,
-  type MetabotModelSize,
 } from "metabase-types/api";
 
 import S from "./GroupPermissionRow.module.css";
@@ -19,7 +18,7 @@ type GroupPermissionRowProps = {
   onPermissionChange: (
     groupId: number,
     toolKey: AIToolKey,
-    value: "yes" | "no" | MetabotModelSize,
+    value: "yes" | "no",
   ) => void;
 };
 

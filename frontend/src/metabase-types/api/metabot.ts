@@ -318,25 +318,16 @@ export type MetabotSlackSettings =
 
 export enum AIToolKey {
   Metabot = "permission/metabot",
-  Model = "permission/metabot-model",
   ChatAndNLQ = "permission/metabot-nql",
   SQLGeneration = "permission/metabot-sql-generation",
   OtherTools = "permission/metabot-other-tools",
 }
 
-export type MetabotModelSize = "small" | "medium" | "large" | "default";
-
-export type MetabotGroupPermission =
-  | {
-      group_id: number;
-      perm_type: Exclude<AIToolKey, AIToolKey.Model>;
-      perm_value: "yes" | "no";
-    }
-  | {
-      group_id: number;
-      perm_type: AIToolKey.Model;
-      perm_value: MetabotModelSize;
-    };
+export type MetabotGroupPermission = {
+  group_id: number;
+  perm_type: AIToolKey;
+  perm_value: "yes" | "no";
+};
 
 export type MetabotPermissionsResponse = {
   permissions: MetabotGroupPermission[];
@@ -348,7 +339,6 @@ export type UpdateMetabotPermissionsRequest = {
 
 export type UserMetabotPermissions = {
   metabot: "yes" | "no";
-  "metabot-model": MetabotModelSize;
   "metabot-sql-generation": "yes" | "no";
   "metabot-nql": "yes" | "no";
   "metabot-other-tools": "yes" | "no";

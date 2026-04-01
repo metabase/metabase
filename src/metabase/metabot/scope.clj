@@ -145,8 +145,7 @@
   {:permission/metabot                :yes
    :permission/metabot-sql-generation :yes
    :permission/metabot-nql            :yes
-   :permission/metabot-other-tools    :yes
-   :permission/metabot-model          :large})
+   :permission/metabot-other-tools    :yes})
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Permission resolution
