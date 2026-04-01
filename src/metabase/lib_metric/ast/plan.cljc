@@ -99,7 +99,7 @@
 
 (defn validate-arithmetic-ast!
   "Validate that an arithmetic expression AST has consistent group-by dimensions.
-   All leaves must have group-by projections, and the breakout dimensions must be
+   All leaves must have the same number of breakout dimensions, and those dimensions must be
    type-compatible (same effective type, temporal unit, and binning) across all leaves.
    nil values are treated as unknown and compatible with any known value.
    Throws ex-info with :status-code 400 on validation failure."

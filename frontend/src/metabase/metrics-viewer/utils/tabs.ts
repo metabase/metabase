@@ -767,7 +767,7 @@ export function findMatchingDimensionForTab(
   entityIndexToSourceId?: Map<number, MetricSourceId>,
 ): string | null {
   const dimensions = getDimensionsByType(def);
-  const config = TAB_TYPE_REGISTRY.find((config) => config.type === tab.type);
+  const config = getTabConfig(tab.type);
 
   if (config?.matchMode !== "aggregate") {
     return findExactColumnMatch(

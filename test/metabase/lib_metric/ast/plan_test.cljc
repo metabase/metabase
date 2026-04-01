@@ -167,15 +167,6 @@
 
 ;;; -------------------------------------------------- validate-arithmetic-ast! --------------------------------------------------
 
-(deftest ^:parallel validate-arithmetic-ast-missing-projections-test
-  (testing "throws 400 when leaves are missing projections"
-    (let [expr (make-expression-arithmetic :+ [(make-expression-leaf uuid-a [])
-                                               (make-expression-leaf uuid-b [])])]
-      (is (thrown-with-msg?
-           #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
-           #"require projections"
-           (ast.plan/validate-arithmetic-ast! expr))))))
-
 (deftest ^:parallel validate-arithmetic-ast-mismatched-dims-test
   (testing "throws 400 when leaves have different number of breakout dimensions"
     (let [expr (make-expression-arithmetic :+ [(make-expression-leaf uuid-a [dim-1])

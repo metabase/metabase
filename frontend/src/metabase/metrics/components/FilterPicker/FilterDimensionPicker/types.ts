@@ -11,7 +11,10 @@ export type DimensionListItem = {
 export type DimensionSection = BaseSection<DimensionListItem>;
 
 export type MetricGroup = {
+  id: number;
   metricName: string;
+  metricCount?: number;
   icon?: "metric" | "ruler";
+  colors: string[] | undefined;
   sections: DimensionSection[];
 };

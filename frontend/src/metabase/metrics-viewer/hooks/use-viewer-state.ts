@@ -592,39 +592,44 @@ export function useViewerState(): UseViewerStateResult {
         // but the temporarily incorrect ordering breaks our handling of the browser's forward/back buttons
         // so wrap updateDefinition in a setTimeout to ensure it runs after addDefinition
         setTimeout(() => {
-          const definition = transform
-            ? transform(rawDefinition)
-            : rawDefinition;
-          updateDefinition(id, definition);
+          try {
+            const definition = transform
+              ? transform(rawDefinition)
+              : rawDefinition;
+            updateDefinition(id, definition);
 
-          if (stateRef.current.tabs.length === 0) {
-            const definitions: Record<MetricSourceId, MetricDefinition | null> =
-              {
+            if (stateRef.current.tabs.length === 0) {
+              const definitions: Record<
+                MetricSourceId,
+                MetricDefinition | null
+              > = {
                 [id]: definition,
               };
-            // Find entity indices for this sourceId
-            const entityIndicesWithSourceId = stateRef.current.formulaEntities
-              .map((e, i) =>
-                e.type === "metric" && e.id === id
-                  ? { entityIndex: i, sourceId: id }
-                  : null,
-              )
-              .filter(
-                (x): x is { entityIndex: number; sourceId: MetricSourceId } =>
-                  x != null,
+              // Find entity indices for this sourceId
+              const entityIndicesWithSourceId = stateRef.current.formulaEntities
+                .map((e, i) =>
+                  e.type === "metric" && e.id === id
+                    ? { entityIndex: i, sourceId: id }
+                    : null,
+                )
+                .filter(
+                  (x): x is { entityIndex: number; sourceId: MetricSourceId } =>
+                    x != null,
+                );
+              const tabs = computeDefaultTabs(
+                definitions,
+                entityIndicesWithSourceId,
               );
-            const tabs = computeDefaultTabs(
-              definitions,
-              entityIndicesWithSourceId,
-            );
-            for (const tab of tabs) {
-              addTab(tab);
+              for (const tab of tabs) {
+                addTab(tab);
+              }
             }
+          } finally {
+            clearLoading(id);
           }
         }, 0);
       } catch {
         removeDefinition(id);
-      } finally {
         clearLoading(id);
       }
     },
@@ -652,11 +657,14 @@ export function useViewerState(): UseViewerStateResult {
         const definition = await loader();
         // see comment above setTimeout in loadDefinition
         setTimeout(() => {
-          updateDefinition(newId, definition);
+          try {
+            updateDefinition(newId, definition);
+          } finally {
+            clearLoading(newId);
+          }
         }, 0);
       } catch {
         removeDefinition(newId);
-      } finally {
         clearLoading(newId);
       }
     },
