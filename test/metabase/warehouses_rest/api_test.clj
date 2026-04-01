@@ -3,9 +3,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [clojurewerkz.quartzite.scheduler :as qs]
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -278,25 +280,38 @@
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id))))))))
 
-(deftest get-database-usage-info-many-tables-test
-  (testing "usage_info should work with more than 65K tables (GHY-2413)"
+(defn- find-in-clauses
+  "Walk a HoneySQL map and return any [:in ...] clauses where the value is a collection."
+  [hsql]
+  (let [results (volatile! [])]
+    (walk/postwalk
+     (fn [form]
+       (when (and (vector? form)
+                  (let [[op _ coll] form]
+                    (and
+                     (= :in op)
+                     (= 3 (count form))
+                     (coll? coll)
+                     (not (map? coll)))))
+         (vswap! results conj form))
+       form)
+     hsql)
+    @results))
+
+(deftest get-database-usage-info-no-large-in-test
+  (testing "usage_info query should not use IN clauses with more than 100 items (GHY-2413)"
     (mt/with-temp
-      [:model/Database {db-id :id} {}]
-      (mt/with-model-cleanup [:model/Table]
-        (t2/query [(str "INSERT INTO metabase_table (db_id, name, active, field_order, created_at, updated_at)"
-                        " WITH RECURSIVE nums(x) AS ("
-                        "   SELECT 1"
-                        "   UNION ALL"
-                        "   SELECT x + 1 FROM nums WHERE x < 66000"
-                        " )"
-                        " SELECT ?, CONCAT('table_', x), TRUE, 'database', NOW(), NOW()"
-                        " FROM nums")
-                   db-id])
-        (is (= {:question 0
-                :dataset  0
-                :metric   0
-                :segment  0}
-               (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id))))))))
+      [:model/Database {db-id :id} {}
+       :model/Table    _           {:db_id db-id}]
+      (let [queries    (volatile! [])
+            orig-query mdb/query]
+        (with-redefs [mdb/query (fn [hsql]
+                                  (vswap! queries conj hsql)
+                                  (orig-query hsql))]
+          (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))
+        (doseq [q @queries]
+          (is (empty? (find-in-clauses q))
+              "usage_info should not generate IN clauses with inline collections"))))))
 
 (deftest ^:parallel get-database-usage-info-test-2
   (mt/with-temp
