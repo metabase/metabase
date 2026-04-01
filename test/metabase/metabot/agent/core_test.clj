@@ -688,7 +688,9 @@
     :model "test-model" :id "msg-1"}])
 
 (deftest user-intent-snowplow-fires-event-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-metabot-provider                test-provider
+                                     llm-metabot-internal-tasks-enabled? true
+                                     llm-anthropic-api-key               "sk-ant-test"]
     (testing "fires :snowplow/ai_service_event 'user_intent' when :track-user-intent? is true"
       (let [rasta-id (mt/user->id :rasta)]
         (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
@@ -745,16 +747,28 @@
                     agent-analytics/classify-and-track-user-intent-async!
                     (fn [_ _] (swap! classify-called inc))]
         (testing "does not call classify-and-track-user-intent-async! when llm-metabot-internal-tasks-enabled? is false"
-          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? false]
+          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? false
+                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
+                                             llm-anthropic-api-key               "sk-ant-test"]
+            (run-agent-loop! opts)
+            (is (zero? @classify-called))))
+        (testing "does not call classify-and-track-user-intent-async! when api key is not configured"
+          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
+                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
+                                             llm-anthropic-api-key               nil]
             (run-agent-loop! opts)
             (is (zero? @classify-called))))
         (testing "calls classify-and-track-user-intent-async! when llm-metabot-internal-tasks-enabled? is true"
-          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true]
+          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
+                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
+                                             llm-anthropic-api-key               "sk-ant-test"]
             (run-agent-loop! opts)
             (is (= 1 @classify-called))))))))
 
 (deftest user-intent-classifier-exception-swallowed-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-metabot-provider                test-provider
+                                     llm-metabot-internal-tasks-enabled? true
+                                     llm-anthropic-api-key               "sk-ant-test"]
     (testing "does not propagate exception if classify-user-intent throws"
       (let [classify-called (atom false)]
         (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))

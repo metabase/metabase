@@ -10,7 +10,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.metabot.agent.core :as agent]
-   [metabase.metabot.api.describe]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
    [metabase.metabot.api.permissions]
@@ -32,9 +31,6 @@
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)))
-
-(comment
-  metabase.metabot.api.describe/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -435,5 +431,4 @@
      "/document"     metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
      "/slack"    metabase.slackbot.api/routes})
-   (api.macros/ns-handler 'metabase.metabot.api.describe +auth)
    (api.macros/ns-handler *ns* +auth)))

@@ -1,7 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ReactMarkdown, { type Options } from "react-markdown";
+import ReactMarkdown, {
+  type Options,
+  defaultUrlTransform,
+} from "react-markdown";
 import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
@@ -12,6 +15,7 @@ import { getParameterValues } from "metabase/dashboard/selectors";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
+import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type { VisualizationGridSize } from "metabase/visualizations/types";
 import type {
@@ -51,6 +55,13 @@ const REMARK_PLUGINS = [remarkGfm];
 const REHYPE_PLUGINS: Options["rehypePlugins"] = [
   [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
 ];
+
+function urlTransform(url: string): string {
+  if (DATA_IMAGE_URI_PATTERN.test(url)) {
+    return url;
+  }
+  return defaultUrlTransform(url);
+}
 
 export function Text({
   onUpdateVisualizationSettings,
@@ -129,6 +140,7 @@ export function Text({
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}
+              urlTransform={urlTransform}
               className={cx(
                 CS.full,
                 CS.flexFull,
@@ -186,6 +198,7 @@ export function Text({
           )}
           remarkPlugins={REMARK_PLUGINS}
           rehypePlugins={REHYPE_PLUGINS}
+          urlTransform={urlTransform}
         >
           {content}
         </ReactMarkdown>
