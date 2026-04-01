@@ -11,7 +11,6 @@
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
-   (java.util Date)
    (org.quartz DisallowConcurrentExecution)))
 
 (set! *warn-on-reflection* true)
@@ -41,7 +40,7 @@
                    (jobs/with-identity (jobs/key job-key)))
           trigger (triggers/build
                    (triggers/with-identity (triggers/key trigger-key))
-                   (triggers/start-at (Date. (+ (System/currentTimeMillis) (* 30 60 1000))))
+                   (triggers/start-now)
                    (triggers/with-schedule
                     (simple/schedule
                      (simple/with-interval-in-hours 6)
