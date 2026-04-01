@@ -775,18 +775,19 @@
 ;; WARNING: Do NOT change this prefix. It is baked into existing workspace schemas in production databases.
 ;; Changing it would require extreme care for backwards compatibility. If you need to match against this
 ;; prefix, use [[workspace-isolated-schema?]] or [[workspace-isolated-schema-clause]] rather than hardcoding it.
-(def ^:private workspace-isolated-prefix "mb__isolation")
+(def ^:private workspace-isolated-prefix "mb__isolation_")
+(def ^:private workspace-isolated-like-pattern (str workspace-isolated-prefix "%"))
 
 (defn workspace-isolated-schema?
   "Returns true if the given schema name belongs to a workspace isolation namespace."
   [schema-name]
-  (str/starts-with? schema-name (str workspace-isolated-prefix "_")))
+  (str/starts-with? schema-name workspace-isolated-prefix))
 
 (defn workspace-isolated-schema-clause
   "Returns a HoneySQL [:like column pattern] clause that matches workspace isolation schemas.
    `column` is typically `:schema`."
   [column]
-  [:like column (str workspace-isolated-prefix "_%")])
+  [:like column workspace-isolated-like-pattern])
 
 (defn workspace-isolation-namespace-name
   "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
@@ -795,13 +796,13 @@
   (assert (some? (:id workspace)) "Workspace must have an :id")
   (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
         clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
-    (format "%s_%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
+    (format "%s%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
 
 (defn workspace-isolation-user-name
   "Generate username for workspace isolation."
   [workspace]
   (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
-    (format "%s_%s_%s" workspace-isolated-prefix instance-slug (:id workspace))))
+    (format "%s%s_%s" workspace-isolated-prefix instance-slug (:id workspace))))
 
 (def ^:private workspace-password-char-sets
   "Character sets for password generation. Cycles through these to ensure representation from each."
