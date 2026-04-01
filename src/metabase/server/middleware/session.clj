@@ -243,7 +243,7 @@
                            api-key-info "api-key")]
     (merge
      request
-     (some-> (or session-info api-key-info) (dissoc :auth-provider))
+     (dissoc (or session-info api-key-info) :auth-provider)
      (when auth-method {:auth-method auth-method})
      (when x-metabase-locale
        (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))

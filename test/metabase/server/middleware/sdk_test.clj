@@ -223,7 +223,7 @@
                     (ring.mock/header "user-agent" "Mozilla/5.0")
                     (assoc :remote-addr "10.0.0.1"))]
     (testing "PII fields populated when setting enabled and request bound"
-      (mt/with-temporary-setting-values [analytics-pii-retension-enabled true]
+      (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
         (request.current/with-current-request request
           (let [result (sdk/include-sdk-info {})]
             (is (= "app.example.com"  (:embedding_hostname result)))
@@ -231,7 +231,7 @@
             (is (= "Mozilla/5.0"      (:sanitized_user_agent result)))
             (is (= "10.0.0.1"         (:ip_address result)))))))
     (testing "PII fields nil when setting disabled"
-      (mt/with-temporary-setting-values [analytics-pii-retension-enabled false]
+      (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
         (request.current/with-current-request request
           (let [result (sdk/include-sdk-info {})]
             (is (nil? (:embedding_hostname result)))
@@ -239,7 +239,7 @@
             (is (nil? (:sanitized_user_agent result)))
             (is (nil? (:ip_address result)))))))
     (testing "PII fields nil when no request bound"
-      (mt/with-temporary-setting-values [analytics-pii-retension-enabled true]
+      (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
         (let [result (sdk/include-sdk-info {})]
           (is (nil? (:embedding_hostname result)))
           (is (nil? (:embedding_path result)))

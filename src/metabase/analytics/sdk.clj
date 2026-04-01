@@ -80,9 +80,9 @@
    :ip_address           ip-address})
 
 (defn- pii-fields
-  "Returns PII fields from the current request when the `analytics-pii-retension-enabled` setting is true."
+  "Returns PII fields from the current request when the `analytics-pii-retention-enabled` setting is true."
   []
-  (when (analytics.settings/analytics-pii-retension-enabled)
+  (when (analytics.settings/analytics-pii-retention-enabled)
     (when-let [request (request.current/current-request)]
       (pii-request-info
        {:origin     (get-in request [:headers "origin"])

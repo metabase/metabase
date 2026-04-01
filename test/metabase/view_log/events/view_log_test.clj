@@ -402,7 +402,7 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (binding [qp.util/*execute-async?* false]
         (testing "PII fields populated when setting enabled"
-          (mt/with-temporary-setting-values [analytics-pii-retension-enabled true]
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
             (public-test/with-temp-public-card [card]
               (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
                              {:request-options {:headers {"origin"     "https://app.example.com"
@@ -412,15 +412,17 @@
                 (let [view (latest-view nil (:id card))]
                   (is (= "app.example.com" (:embedding_hostname view)))
                   (is (= "/dashboard/1"    (:embedding_path view)))
-                  (is (= "TestAgent/1.0"   (:sanitized_user_agent view)))))
+                  (is (= "TestAgent/1.0"   (:sanitized_user_agent view)))
+                  (is (= "127.0.0.1"      (:ip_address view)))))
               (testing "in query_execution"
                 (let [qe (latest-qe (:id card))]
                   (is (= "public"          (:embedding_client qe)))
                   (is (= "app.example.com" (:embedding_hostname qe)))
                   (is (= "/dashboard/1"    (:embedding_path qe)))
-                  (is (= "TestAgent/1.0"   (:sanitized_user_agent qe))))))))
+                  (is (= "TestAgent/1.0"   (:sanitized_user_agent qe)))
+                  (is (= "127.0.0.1"       (:ip_address qe))))))))
         (testing "PII fields nil when setting disabled"
-          (mt/with-temporary-setting-values [analytics-pii-retension-enabled false]
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
             (public-test/with-temp-public-card [card]
               (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
                              {:request-options {:headers {"origin"     "https://app.example.com"
@@ -444,7 +446,7 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (binding [qp.util/*execute-async?* false]
         (testing "PII fields populated via dashboard card query when setting enabled"
-          (mt/with-temporary-setting-values [analytics-pii-retension-enabled true]
+          (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
             (public-test/with-temp-public-dashboard-and-card [dash card dashcard]
               (client/client :get 202 (public-test/dashcard-url dash card dashcard)
                              {:request-options {:headers {"origin"     "https://dash.example.com"
@@ -454,13 +456,15 @@
                 (let [view (latest-view nil (:id card))]
                   (is (= "dash.example.com" (:embedding_hostname view)))
                   (is (= "/analytics"       (:embedding_path view)))
-                  (is (= "DashAgent/2.0"    (:sanitized_user_agent view)))))
+                  (is (= "DashAgent/2.0"    (:sanitized_user_agent view)))
+                  (is (= "127.0.0.1"        (:ip_address view)))))
               (testing "in query_execution"
                 (let [qe (latest-qe (:id card))]
                   (is (= "public"           (:embedding_client qe)))
                   (is (= "dash.example.com" (:embedding_hostname qe)))
                   (is (= "/analytics"       (:embedding_path qe)))
-                  (is (= "DashAgent/2.0"    (:sanitized_user_agent qe))))))))))))
+                  (is (= "DashAgent/2.0"    (:sanitized_user_agent qe)))
+                  (is (= "127.0.0.1"        (:ip_address qe))))))))))))
 
 (deftest auth-method-test
   (mt/with-premium-features #{:audit-app}
