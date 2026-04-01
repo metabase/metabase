@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.driver :as driver]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -53,8 +54,9 @@
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Refresh model indexed columns"}
   ModelIndexRefresh [job-context]
-  (let [{:strs [model-index-id]} (qc/from-job-data job-context)]
-    (refresh-index! model-index-id)))
+  (checkout-tracking/with-checkout-reason :model-index-refresh
+    (let [{:strs [model-index-id]} (qc/from-job-data job-context)]
+      (refresh-index! model-index-id))))
 
 (def ^:private refresh-model-index-key
   "Job key string for refresh job. Call `(jobs/key refresh-model-index-key)` if you need the org.quartz.JobKey

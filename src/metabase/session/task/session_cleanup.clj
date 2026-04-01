@@ -3,6 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
@@ -30,7 +31,8 @@
 (task/defjob ^{:doc "Job that cleans up outdated sessions."}
   SessionCleanup
   [_]
-  (cleanup-sessions!))
+  (checkout-tracking/with-checkout-reason :session-cleanup
+    (cleanup-sessions!)))
 
 (defmethod task/init! ::SessionCleanup [_]
   (let [job (jobs/build

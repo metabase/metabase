@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -254,7 +255,8 @@
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Refresh persisted tables job"}
   PersistenceRefresh [job-context]
-  (refresh-job-fn! job-context))
+  (checkout-tracking/with-checkout-reason :model-persist-refresh
+    (refresh-job-fn! job-context)))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Remove deletable persisted tables"}
