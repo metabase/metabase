@@ -1021,7 +1021,9 @@ describe("issue 19742", () => {
     H.openNavigationSidebar();
     H.DataModel.visitDataStudio();
 
-    H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
+    H.DataModel.TablePicker.getTable("Orders").click();
+    H.DataModel.TableSection.getVisibilityTypeInput().click();
+    H.popover().findByText("Hidden").click();
 
     H.goToMainApp();
 

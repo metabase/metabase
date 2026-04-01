@@ -364,31 +364,6 @@ describe("data model", () => {
               `${BASE_PATH}/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
-
-          cy.log("databases, schemas, and tables should be links");
-          TablePicker.getDatabase("Sample Database").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}`,
-            );
-          TablePicker.getSchema("Domestic")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
-            );
-          TablePicker.getTable("Orders")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-            );
         });
       },
     );

@@ -363,7 +363,11 @@ describe("scenarios > question > saved", () => {
       } else {
         H.DataModel.visit();
         H.DataModel.TablePicker.getTable(name).click();
-        H.DataModel.TablePicker.getTable(name).button("Hide table").click();
+        H.DataModel.TableSection.getVisibilityTypeInput().click();
+        H.popover().findByText("Hidden").click();
+        H.undoToast()
+          .findByText("Table visibility layer updated")
+          .should("be.visible");
       }
     }
 

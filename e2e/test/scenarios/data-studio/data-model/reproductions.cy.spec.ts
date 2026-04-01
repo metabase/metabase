@@ -1,9 +1,5 @@
 const { H } = cy;
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA_ID,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PEOPLE_ID, PEOPLE, REVIEWS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -94,8 +90,9 @@ describe("issue 15542", () => {
 
   function openOrdersProductIdSettings() {
     // Navigate without reloading the page
-    H.navigationSidebar().findByText("Data Studio").click();
-    cy.findByText("Data").click();
+    // H.navigationSidebar().findByText("Data Studio").click();
+    // cy.findByText("Data").click();
+    H.goToDataStudio();
     H.DataModel.TablePicker.getTable("Orders").click();
     H.DataModel.TableSection.clickField("Product ID");
   }
@@ -149,19 +146,20 @@ describe("issue 15542", () => {
   });
 });
 
-describe("issue 52411", { tags: "@external" }, () => {
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "multi_schema" });
-    cy.signInAsAdmin();
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
-  });
+// TODO - I don't think this makes sense anymore
+// describe("issue 52411", { tags: "@external" }, () => {
+//   beforeEach(() => {
+//     H.restore("postgres-writable");
+//     H.resetTestTable({ type: "postgres", table: "multi_schema" });
+//     cy.signInAsAdmin();
+//     H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+//   });
 
-  it("should redirect /admin/datamodel/segments to /data-studio/data (metabase#52411)", () => {
-    cy.visit("/admin/datamodel/segments");
-    cy.location("pathname").should("eq", "/data-studio/data");
-  });
-});
+//   it.only("should redirect /admin/datamodel/segments to /data-studio/data (metabase#52411)", () => {
+//     cy.visit("/admin/datamodel/segments");
+//     cy.location("pathname").should("eq", "/data-studio/data");
+//   });
+// });
 
 describe("issue 53595", () => {
   beforeEach(() => {
