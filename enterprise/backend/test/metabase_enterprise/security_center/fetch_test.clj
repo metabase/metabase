@@ -55,6 +55,17 @@
                :acknowledged_at some?}
               (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-003"))))))
 
+(deftest sync-advisories-parses-edn-matching-query-test
+  (testing "matching_query arrives as an EDN string from the API and is parsed into a map"
+    (let [edn-string "{:default {:select [1] :from [:core_user] :where [:= :email \"x\"] :limit 1}}"
+          expected   {:default {:select [1] :from [:core_user] :where [:= :email "x"] :limit 1}}]
+      (mt/with-model-cleanup [:model/SecurityAdvisory]
+        (with-redefs [fetch/fetch-advisories-from-store
+                      (constantly [(make-advisory "SC-EDN-001" :matching_query edn-string)])]
+          (fetch/sync-advisories!)
+          (is (= expected
+                 (:matching_query (t2/select-one :model/SecurityAdvisory :advisory_id "SC-EDN-001")))))))))
+
 (deftest sync-advisories-handles-fetch-error-test
   (testing "network error doesn't throw"
     (with-redefs [fetch/fetch-advisories-from-store (fn [] (throw (Exception. "connection refused")))]
