@@ -74,6 +74,7 @@
     (in-index? store :measure entity-id)    :measure
     (in-index? store :segment entity-id)    :segment
     (in-index? store :snippet entity-id)    :snippet
+    (in-index? store :transform entity-id)  :transform
     :else nil))
 
 (defn index-file

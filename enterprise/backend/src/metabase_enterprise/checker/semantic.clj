@@ -575,6 +575,26 @@
           card-eids)))
 
 ;;; ===========================================================================
+;;; Transform-specific checks
+;;;
+;;; Transforms have a source query (native or MBQL) and a target table.
+;;; We validate the database ref and run native SQL validation.
+;;; ===========================================================================
+
+(defn- check-transform
+  "Run transform-specific semantic checks. Validates that the source database
+   exists and the query references are valid."
+  [store data]
+  (let [db-name (or (get-in data [:source :query :database])
+                    (:source_database_id data))
+        failures (transient [])]
+    ;; Check database ref
+    (when (and db-name (not (store/in-index? store :database db-name)))
+      (conj! failures {:type :database :name db-name
+                       :message (str "transform references database " db-name " which is not in the schema")}))
+    (persistent! failures)))
+
+;;; ===========================================================================
 ;;; Non-card entity checking — load from files, run common + type-specific checks
 ;;; ===========================================================================
 
@@ -588,8 +608,9 @@
       (let [data     (serdes/load-yaml file)
             failures (into (check-common store data)
                            (case kind
-                             :dashboard (check-dashboard store data)
-                             :document  (check-document store data)
+                             :dashboard  (check-dashboard store data)
+                             :document   (check-document store data)
+                             :transform  (check-transform store data)
                              nil))]
         (when (seq failures)
           [entity-id {:name       (or (:name data) entity-id)
@@ -603,8 +624,9 @@
                     :error      (.getMessage e)}]))))
 
 (defn- check-non-card-entities
-  "Run checks on indexed dashboards, collections, documents, measures, and segments.
-   Cards are checked inline in check-card since their data is already loaded.
+  "Run checks on indexed dashboards, collections, documents, measures, segments,
+   and transforms. Cards are checked inline in check-card since their data is
+   already loaded via the MetadataSource.
    Returns a map of entity-id → result for entities with failures."
   [store]
   (into {}
@@ -614,7 +636,8 @@
          (map #(check-entity-from-file store :collection %) (store/all-refs store :collection))
          (map #(check-entity-from-file store :document %) (store/all-refs store :document))
          (map #(check-entity-from-file store :measure %) (store/all-refs store :measure))
-         (map #(check-entity-from-file store :segment %) (store/all-refs store :segment)))))
+         (map #(check-entity-from-file store :segment %) (store/all-refs store :segment))
+         (map #(check-entity-from-file store :transform %) (store/all-refs store :transform)))))
 
 ;;; ===========================================================================
 ;;; Card validation
@@ -857,7 +880,7 @@
         src          (source/composite-source db-source export-source)
         db-index     (serdes/source-index db-source)
         export-index (serdes/source-index export-source)
-        index        (merge db-index (select-keys export-index [:card :dashboard :collection :document :measure :segment :snippet :duplicates]))]
+        index        (merge db-index (select-keys export-index [:card :dashboard :collection :document :measure :segment :snippet :transform :duplicates]))]
     {:source src :index index :export-source export-source}))
 
 (defn check

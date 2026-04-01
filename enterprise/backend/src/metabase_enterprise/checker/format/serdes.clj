@@ -186,7 +186,8 @@
    "Document"           :document
    "Measure"            :measure
    "Segment"            :segment
-   "NativeQuerySnippet" :snippet})
+   "NativeQuerySnippet" :snippet
+   "Transform"          :transform})
 
 (defn- index-measures-and-segments
   "Walk a databases directory and index measure/segment YAML files by entity_id.
