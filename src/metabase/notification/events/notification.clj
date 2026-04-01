@@ -17,7 +17,8 @@
                                   :event/slack-token-invalid
                                   :event/comment-created
                                   :event/support-access-grant-created
-                                  :event/transform-failed})
+                                  :event/transform-failed
+                                  :event/security-advisory-match})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
