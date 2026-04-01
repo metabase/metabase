@@ -7,7 +7,10 @@ import type {
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
+  UserMetabotPermissionsResponse,
 } from "metabase-types/api";
+
+import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
 
 export function setupMetabotsEndpoints(
   metabots: MetabotInfo[],
@@ -146,4 +149,17 @@ export function setupUpdateMetabotSettingsEndpointWithError(
   body: string,
 ) {
   fetchMock.put("path:/api/metabot/settings", { status, body });
+}
+
+const USER_METABOT_PERMISSIONS_ROUTE_NAME = "metabot-user-permissions";
+
+export function setupUserMetabotPermissionsEndpoint(
+  response?: UserMetabotPermissionsResponse,
+) {
+  fetchMock.removeRoute(USER_METABOT_PERMISSIONS_ROUTE_NAME);
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    response ?? createMockUserMetabotPermissions(),
+    { name: USER_METABOT_PERMISSIONS_ROUTE_NAME, overwriteRoutes: true },
+  );
 }
