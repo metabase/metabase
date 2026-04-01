@@ -46,8 +46,7 @@ export function PythonTransformsUpsellModal({
     trackUpsellViewed({ location: LOCATION, campaign: CAMPAIGN });
   }, []);
 
-  const canUserPurchase = isStoreUser || !isHosted;
-  const shouldShowLeftColumn = canUserPurchase && isHosted;
+  const shouldShowLeftColumn = isStoreUser && isHosted;
 
   return (
     <Modal.Root
@@ -122,7 +121,7 @@ export function PythonTransformsUpsellModal({
                     </Flex>
                   ))}
                 </Stack>
-                {!canUserPurchase && (
+                {!isStoreUser && (
                   <Text fw="bold" lh="md">
                     {anyStoreUserEmailAddress
                       ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
@@ -131,9 +130,7 @@ export function PythonTransformsUpsellModal({
                         t`Please ask a Metabase Store Admin to enable this for you.`}
                   </Text>
                 )}
-                {canUserPurchase && !isHosted && (
-                  <SelfHostedStorePurchaseLink />
-                )}
+                {isStoreUser && !isHosted && <SelfHostedStorePurchaseLink />}
               </Stack>
             </Flex>
           )}
