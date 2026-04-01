@@ -511,4 +511,4 @@
   (let [version (commit-sha source ref-str)]
     (when-not version
       (throw (ex-info (str "Cannot resolve ref: " ref-str) {:ref ref-str})))
-    (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source))))
+    (assoc source :version version)))
