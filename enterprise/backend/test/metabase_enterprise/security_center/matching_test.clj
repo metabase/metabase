@@ -127,6 +127,23 @@
       (testing "no rows were actually deleted"
         (is (pos? (t2/count :model/User)))))))
 
+(deftest matching-query-edn-round-trip-test
+  (testing "matching_query keywords survive EDN round-trip through the DB"
+    (let [honeysql-query {:default {:select [1] :from [:core_user] :where [:= :email "test@example.com"] :limit 1}
+                          :postgres {:select [:id] :from [:core_user] :limit 5}}]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     {:advisory_id       "SC-EDN-001"
+                      :severity          "low"
+                      :title             "EDN round-trip test"
+                      :description       "Test"
+                      :remediation       "Upgrade"
+                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :matching_query    honeysql-query
+                      :match_status      "not_affected"
+                      :published_at      #t "2026-03-24T00:00:00Z"}]
+        (let [reloaded (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
+          (is (= honeysql-query (:matching_query reloaded))))))))
+
 (deftest evaluate-advisory!-test
   (testing "query matches + version in range → active"
     (mt/with-temp [:model/SecurityAdvisory advisory
