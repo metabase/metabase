@@ -47,6 +47,7 @@ export const GitSyncControls = () => {
   const {
     currentData: hasRemoteChangesData,
     isFetching: isFetchingRemoteChanges,
+    isError: hasRemoteChangesError,
   } = useGetHasRemoteChangesQuery(undefined, {
     refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
     skip: !combobox.dropdownOpened,
@@ -201,6 +202,7 @@ export const GitSyncControls = () => {
         {dropdownView === "options" ? (
           <GitSyncOptionsDropdown
             isPullDisabled={!hasRemoteChanges}
+            isPullError={hasRemoteChangesError}
             isLoadingPull={isFetchingRemoteChanges}
             isPushDisabled={!isDirty || isLoading}
             onPullClick={handlePullClick}

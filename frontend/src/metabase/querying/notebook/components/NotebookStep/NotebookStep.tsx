@@ -100,10 +100,7 @@ export function NotebookStep({
 
   return (
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-      <Box
-        className={cx(CS.hoverParent, CS.hoverVisibility, S.StepRoot)}
-        data-testid={step.testID}
-      >
+      <Box className={S.StepRoot} data-testid={step.testID}>
         <Box w={`${(11 / 12) * 100}%`} maw="75rem">
           <StepHeader
             step={step}
