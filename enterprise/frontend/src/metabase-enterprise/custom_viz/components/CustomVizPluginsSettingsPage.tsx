@@ -15,6 +15,7 @@ import {
   useSetCustomVizPluginDevUrlMutation,
   useUpdateCustomVizPluginMutation,
 } from "metabase/api";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import {
   Form,
@@ -35,7 +36,6 @@ import {
   Menu,
   Stack,
   Text,
-  TextInput,
 } from "metabase/ui";
 import type { CustomVizPlugin } from "metabase-types/api";
 
@@ -218,6 +218,11 @@ export function ManageCustomVisualizationsPage() {
   const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
   const [deletePlugin] = useDeleteCustomVizPluginMutation();
 
+  const repoPlugins = useMemo(
+    () => plugins?.filter((p) => !p.dev_only),
+    [plugins],
+  );
+
   const handleDelete = useCallback(
     async (id: number) => {
       await deletePlugin(id).unwrap();
@@ -247,7 +252,7 @@ export function ManageCustomVisualizationsPage() {
         </Flex>
       )}
 
-      {plugins && plugins.length === 0 && !isLoading && (
+      {repoPlugins && repoPlugins.length === 0 && !isLoading && (
         <Box
           bdrs="md"
           bg="background-primary"
@@ -263,7 +268,7 @@ export function ManageCustomVisualizationsPage() {
         </Box>
       )}
 
-      {plugins && plugins.length > 0 && (
+      {repoPlugins && repoPlugins.length > 0 && (
         <Box
           bdrs="md"
           bg="background-primary"
@@ -272,7 +277,7 @@ export function ManageCustomVisualizationsPage() {
             overflow: "hidden",
           }}
         >
-          {plugins.map((plugin) => (
+          {repoPlugins.map((plugin) => (
             <PluginListItem
               key={plugin.id}
               plugin={plugin}
@@ -284,6 +289,8 @@ export function ManageCustomVisualizationsPage() {
     </SettingsPageWrapper>
   );
 }
+
+
 
 export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
   const dispatch = useDispatch();
@@ -334,6 +341,11 @@ export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
 
   if (isEdit && !plugin && plugins) {
     dispatch(push(BASE_PATH));
+    return null;
+  }
+
+  if (isEdit && plugin?.dev_only) {
+    dispatch(push(`${BASE_PATH}/development`));
     return null;
   }
 
@@ -394,34 +406,12 @@ export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
   );
 }
 
-function DevUrlItem({
-  plugin,
-  url,
-  onChange,
-}: {
-  plugin: CustomVizPlugin;
-  url: string;
-  onChange: (pluginId: number, url: string) => void;
-}) {
-  return (
-    <Stack gap="xs">
-      <TextInput
-        label={plugin.display_name}
-        placeholder="http://localhost:5174"
-        value={url}
-        onChange={(e) => onChange(plugin.id, e.currentTarget.value)}
-      />
-    </Stack>
-  );
-}
-
 function AddDevPluginForm() {
   const [createDevPlugin] = useCreateDevCustomVizPluginMutation();
 
   const handleSubmit = useCallback(
-    async (values: { identifier: string; dev_bundle_url: string }) => {
+    async (values: { dev_bundle_url: string }) => {
       await createDevPlugin({
-        identifier: values.identifier,
         dev_bundle_url: values.dev_bundle_url,
       }).unwrap();
     },
@@ -431,7 +421,7 @@ function AddDevPluginForm() {
   return (
     <SettingsSection>
       <FormProvider
-        initialValues={{ identifier: "", dev_bundle_url: "" }}
+        initialValues={{ dev_bundle_url: "" }}
         onSubmit={handleSubmit}
       >
         {({ dirty }) => (
@@ -441,17 +431,11 @@ function AddDevPluginForm() {
                 {t`Add a dev visualization`}
               </Text>
               <FormTextInput
-                name="identifier"
-                label={t`Identifier`}
-                description={t`Unique identifier for this visualization (e.g. "my-heatmap").`}
-                placeholder="my-custom-viz"
-                autoFocus
-              />
-              <FormTextInput
                 name="dev_bundle_url"
                 label={t`Dev server URL`}
                 description={t`URL of the local dev server serving the visualization bundle.`}
                 placeholder="http://localhost:5174"
+                autoFocus
               />
               <FormErrorMessage />
               <Group justify="flex-end">
@@ -469,55 +453,97 @@ function AddDevPluginForm() {
   );
 }
 
+function EditDevPluginForm({ plugin }: { plugin: CustomVizPlugin }) {
+  const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
+  const [deletePlugin] = useDeleteCustomVizPluginMutation();
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleSubmit = useCallback(
+    async (values: { dev_bundle_url: string }) => {
+      await setDevUrl({
+        id: plugin.id,
+        dev_bundle_url: values.dev_bundle_url || null,
+      }).unwrap();
+    },
+    [plugin.id, setDevUrl],
+  );
+
+  const handleRemove = useCallback(async () => {
+    await deletePlugin(plugin.id).unwrap();
+  }, [plugin.id, deletePlugin]);
+
+  return (
+    <SettingsSection>
+      <FormProvider
+        initialValues={{ dev_bundle_url: plugin.dev_bundle_url ?? "" }}
+        onSubmit={handleSubmit}
+        enableReinitialize
+      >
+        {({ dirty }) => (
+          <Form>
+            <Stack gap="lg">
+              <Group gap="sm" align="center">
+                {plugin.dev_bundle_url && (
+                  <Box
+                    w={8}
+                    h={8}
+                    bdrs="xl"
+                    bg="success"
+                    style={{ flexShrink: 0 }}
+                  />
+                )}
+                <Text fw={700} fz="lg">
+                  {plugin.display_name}
+                </Text>
+              </Group>
+              <FormTextInput
+                name="dev_bundle_url"
+                label={t`Dev server URL`}
+                placeholder="http://localhost:5174"
+              />
+              <FormErrorMessage />
+              <Group justify="flex-end">
+                <Button
+                  variant="subtle"
+                  color="error"
+                  onClick={() => setShowConfirm(true)}
+                >
+                  {t`Remove`}
+                </Button>
+                <FormSubmitButton
+                  label={t`Save`}
+                  disabled={!dirty}
+                  variant="filled"
+                />
+              </Group>
+            </Stack>
+          </Form>
+        )}
+      </FormProvider>
+      <ConfirmModal
+        opened={showConfirm}
+        title={t`Remove dev visualization`}
+        message={t`Are you sure you want to remove this dev visualization? This cannot be undone.`}
+        confirmButtonText={t`Remove`}
+        onConfirm={handleRemove}
+        onClose={() => setShowConfirm(false)}
+      />
+    </SettingsSection>
+  );
+}
+
 export function CustomVizDevelopmentPage() {
   const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
-  const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
-  const [devUrls, setDevUrls] = useState<Record<number, string>>({});
-  const [isSaving, setIsSaving] = useState(false);
 
-  const getUrl = (plugin: CustomVizPlugin) =>
-    devUrls[plugin.id] ?? plugin.dev_bundle_url ?? "";
-
-  const handleChange = useCallback((pluginId: number, url: string) => {
-    setDevUrls((prev) => ({ ...prev, [pluginId]: url }));
-  }, []);
-
-  const hasChanges = plugins?.some((plugin) => {
-    const current = devUrls[plugin.id];
-    return current !== undefined && current !== (plugin.dev_bundle_url ?? "");
-  });
-
-  const handleSave = useCallback(async () => {
-    if (!plugins) {
-      return;
-    }
-    setIsSaving(true);
-    try {
-      await Promise.all(
-        plugins
-          .filter((plugin) => {
-            const current = devUrls[plugin.id];
-            return (
-              current !== undefined && current !== (plugin.dev_bundle_url ?? "")
-            );
-          })
-          .map((plugin) =>
-            setDevUrl({
-              id: plugin.id,
-              dev_bundle_url: devUrls[plugin.id] || null,
-            }).unwrap(),
-          ),
-      );
-      setDevUrls({});
-    } finally {
-      setIsSaving(false);
-    }
-  }, [plugins, devUrls, setDevUrl]);
+  const devPlugin = useMemo(
+    () => plugins?.find((p) => p.dev_only),
+    [plugins],
+  );
 
   return (
     <SettingsPageWrapper
       title={t`Development`}
-      description={t`Set dev bundle URLs to load plugin code from a local dev server instead of the stored bundle. Changes take effect on the next page reload.`}
+      description={t`Set a dev bundle URL to load plugin code from a local dev server instead of the stored bundle. Changes take effect on the next page reload.`}
     >
       {isLoading && (
         <Flex justify="center" p="xl">
@@ -525,34 +551,10 @@ export function CustomVizDevelopmentPage() {
         </Flex>
       )}
 
-      <AddDevPluginForm />
-
-      {plugins && plugins.length > 0 && (
-        <SettingsSection>
-          <Stack gap="lg">
-            <Text fw={700} fz="lg">
-              {t`Dev bundle URLs`}
-            </Text>
-            {plugins.map((plugin) => (
-              <DevUrlItem
-                key={plugin.id}
-                plugin={plugin}
-                url={getUrl(plugin)}
-                onChange={handleChange}
-              />
-            ))}
-            <Group justify="flex-end">
-              <Button
-                variant="filled"
-                onClick={handleSave}
-                loading={isSaving}
-                disabled={!hasChanges}
-              >
-                {t`Save`}
-              </Button>
-            </Group>
-          </Stack>
-        </SettingsSection>
+      {devPlugin ? (
+        <EditDevPluginForm plugin={devPlugin} />
+      ) : (
+        <AddDevPluginForm />
       )}
     </SettingsPageWrapper>
   );

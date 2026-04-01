@@ -44,7 +44,7 @@ export interface CreateCustomVizPluginRequest {
 }
 
 export interface CreateDevCustomVizPluginRequest {
-  identifier: string;
+  identifier?: string;
   dev_bundle_url: string;
 }
 

@@ -173,6 +173,12 @@ function metabaseDevServer() {
     },
 
     closeBundle() {
+      // Copy metabase-plugin.json to dist/ so it's served as a static file
+      const manifestSrc = resolve(__dirname, "metabase-plugin.json");
+      if (existsSync(manifestSrc)) {
+        cpSync(manifestSrc, resolve(__dirname, "dist/metabase-plugin.json"));
+      }
+
       for (const client of clients) {
         client.write("data: reload\n\n");
       }

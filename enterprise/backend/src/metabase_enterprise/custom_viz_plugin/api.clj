@@ -139,12 +139,17 @@
   [_route-params
    _query-params
    {:keys [identifier dev_bundle_url]} :- [:map
-                                           [:identifier     ms/NonBlankString]
+                                           [:identifier     {:optional true} [:maybe ms/NonBlankString]]
                                            [:dev_bundle_url ms/NonBlankString]]]
   (api/check-superuser)
-  (let [sentinel-url (str "dev://local/" identifier)
-        ;; best-effort manifest fetch from dev server
-        manifest     (cache/fetch-dev-manifest dev_bundle_url)
+  (let [manifest     (cache/fetch-dev-manifest dev_bundle_url)
+        identifier   (or identifier
+                         (:name manifest)
+                         (throw (ex-info (if manifest
+                                          "metabase-plugin.json is missing a \"name\" field."
+                                          "Could not fetch metabase-plugin.json from the dev server.")
+                                        {:status-code 400})))
+        sentinel-url (str "dev://local/" identifier)
         manifest-str (when manifest (json/encode manifest))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
