@@ -58,6 +58,7 @@
   pii-request-info
   with-auth-method! get-auth-method
   with-client! get-client
+  with-route! get-route
   with-version! get-version]
 
  [metabase.analytics.settings

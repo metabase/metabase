@@ -7,7 +7,12 @@ CREATE OR REPLACE VIEW v_view_log AS
                          model_id AS entity_id,
                          model || '_' || model_id AS entity_qualified_id,
                          embedding_client,
+                         embedding_route,
                          CASE
+                           WHEN COALESCE(embedding_route, embedding_client) = 'public'       THEN 'public-link'
+                           WHEN COALESCE(embedding_route, embedding_client) = 'guest-embed'  THEN 'static-embed'
+                           WHEN COALESCE(embedding_route, embedding_client) = 'metabot'      THEN 'metabot'
+                           WHEN COALESCE(embedding_route, embedding_client) = 'agent-api'    THEN 'agent-api'
                            WHEN embedding_client = 'embedding-sdk-react'         THEN 'sdk'
                            WHEN embedding_client = 'embedding-sdk-react-preview' THEN 'sdk-preview'
                            WHEN embedding_client = 'embedding-iframe'            THEN 'iframe'
@@ -16,8 +21,6 @@ CREATE OR REPLACE VIEW v_view_log AS
                            WHEN embedding_client = 'public-preview'              THEN 'public-link-preview'
                            WHEN embedding_client = 'guest-embed'                 THEN 'static-embed'
                            WHEN embedding_client = 'guest-embed-preview'         THEN 'static-embed-preview'
-                           WHEN embedding_client = 'metabot'                     THEN 'metabot'
-                           WHEN embedding_client = 'agent-api'                   THEN 'agent-api'
                            WHEN embedding_client IS NULL OR embedding_client = '' THEN 'internal'
                            ELSE embedding_client
                          END AS surface,

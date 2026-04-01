@@ -38,6 +38,15 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
+(def ^:dynamic *route* "The API route surface that served this request (e.g. \"public\", \"guest-embed\")." nil)
+
+(defmacro with-route! "Binds [[*route*]] for the duration of `body`."
+  [[value] & body]
+  `(binding [*route* ~value]
+     ~@body))
+
+(defn get-route "Returns [[*route*]]." [] *route*)
+
 (def ^:dynamic *auth-method* "Used to track the authentication method for the current request (e.g. \"password\", \"jwt\", \"api-key\")." nil)
 
 (defmacro with-auth-method! "Binds [[*auth-method*]] for the duration of `body`."
@@ -96,6 +105,7 @@
   [m :- :map]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
+      (update :embedding_route (fn [route] (or *route* route)))
       (update :embedding_version (fn [version] (or *version* version)))
       (update :auth_method (fn [method] (or *auth-method* method)))
       (merge (pii-fields))))
@@ -126,35 +136,34 @@
    ["/api/metabot/" "metabot"]
    ["/api/agent/" "agent-api"]])
 
-(defn- derived-client
-  [{:keys [uri metabase-client-header]}]
-  (let [route-client (first (keep (fn [[prefix client]]
-                                    (when (str/starts-with? (or uri "") prefix) client))
-                                  route-client-mapping))]
-    (or route-client metabase-client-header)))
+(defn- route-surface
+  "Returns the route-based surface identifier for the given URI, or nil if no route matches."
+  [uri]
+  (first (keep (fn [[prefix surface]]
+                 (when (str/starts-with? (or uri "") prefix) surface))
+               route-client-mapping)))
 
 (defn embedding-mw
-  "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
+  "Reads Metabase Client and Version headers and binds them to *client*, *version*, and *route*."
   [handler]
   (fn embedding-mw-fn
     [request respond raise]
-    (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
-          version (get-in request [:headers "x-metabase-client-version"])
-          preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
-          sdk-client (derived-client {:uri (:uri request) :metabase-client-header metabase-client-header})]
-      ;; Keep "-preview" suffix so preview requests are distinguishable for auditing
-      ;; (admins can query sensitive data via the embed preview wizard). Usage analytics
-      ;; views (EMB-1503) will de-emphasize preview but still surface it.
-      (binding [*client* (if preview? (str sdk-client "-preview") sdk-client)
+    (let [client-header (get-in request [:headers "x-metabase-client"])
+          version       (get-in request [:headers "x-metabase-client-version"])
+          preview?      (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
+          route         (route-surface (:uri request))
+          client        (cond-> client-header preview? (some-> (str "-preview")))]
+      (binding [*client*  client
+                *route*   route
                 *version* version]
         (handler request
                  (fn responder [response]
-                   (when (embedding-context? sdk-client)
-                     (track-sdk-response sdk-client response))
+                   (when (and (not route) (embedding-context? client-header))
+                     (track-sdk-response client-header response))
                    (respond response))
                  (fn raiser [response]
-                   (when (embedding-context? sdk-client)
-                     (track-sdk-response sdk-client
+                   (when (and (not route) (embedding-context? client-header))
+                     (track-sdk-response client-header
                                          (if (:status response)
                                            response
                                            {:status 500})))
