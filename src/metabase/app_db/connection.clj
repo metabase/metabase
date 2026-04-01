@@ -2,6 +2,7 @@
   "Functions for getting the application database connection type and JDBC spec, or temporarily overriding them."
   (:require
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
    [metabase.util.log :as log]
@@ -46,16 +47,12 @@
   (getConnection [_]
     (try
       (.. lock readLock lock)
-      (.getConnection data-source)
+      (checkout-tracking/get-tracked-connection data-source)
       (finally
         (.. lock readLock unlock))))
 
-  (getConnection [_ user password]
-    (try
-      (.. lock readLock lock)
-      (.getConnection data-source user password)
-      (finally
-        (.. lock readLock unlock)))))
+  (getConnection [this _user _password]
+    (.getConnection this)))
 
 (alter-meta! #'->ApplicationDB assoc :private true)
 (alter-meta! #'map->ApplicationDB assoc :private true)

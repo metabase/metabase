@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
    [java-time.api :as t]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
@@ -72,11 +73,12 @@
   [max-age-seconds]
   {:pre [(number? max-age-seconds)]}
   (log/trace "Purging old cache entries.")
-  (try
-    (t2/delete! (t2/table-name :model/QueryCache)
-                :updated_at [:<= (seconds-ago max-age-seconds)])
-    (catch Throwable e
-      (log/error e "Error purging old cache entries")))
+  (checkout-tracking/with-checkout-reason :query-cache-purge
+    (try
+      (t2/delete! (t2/table-name :model/QueryCache)
+                  :updated_at [:<= (seconds-ago max-age-seconds)])
+      (catch Throwable e
+        (log/error e "Error purging old cache entries"))))
   nil)
 
 (defn- save-results!
@@ -86,16 +88,17 @@
   (log/debugf "Caching results for query with hash %s." (pr-str (i/short-hex-hash query-hash)))
   (let [final-results (encryption/maybe-encrypt-for-stream results)
         timestamp     (t/offset-date-time)]
-    (try
-      (or (pos? (t2/update! :model/QueryCache {:query_hash query-hash}
-                            {:updated_at timestamp
-                             :results    final-results}))
-          (first (t2/insert-returning-instances! :model/QueryCache
-                                                 :updated_at timestamp
-                                                 :query_hash query-hash
-                                                 :results final-results)))
-      (catch Throwable e
-        (log/error e "Error saving query results to cache.")))
+    (checkout-tracking/with-checkout-reason :query-cache-save
+      (try
+        (or (pos? (t2/update! :model/QueryCache {:query_hash query-hash}
+                              {:updated_at timestamp
+                               :results    final-results}))
+            (first (t2/insert-returning-instances! :model/QueryCache
+                                                   :updated_at timestamp
+                                                   :query_hash query-hash
+                                                   :results final-results)))
+        (catch Throwable e
+          (log/error e "Error saving query results to cache."))))
     nil))
 
 (defmethod i/cache-backend :db

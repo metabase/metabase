@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.update-used-cards
   (:require
    [java-time.api :as t]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.batch-processing.core :as grouper]
    [metabase.lib.metadata :as lib.metadata]
@@ -25,18 +26,19 @@
   (let [card-id->timestamp (update-vals (group-by :id card-id-timestamps)
                                         (fn [xs] (apply t/max (map :timestamp xs))))]
     (log/debugf "Update last_used_at of %d cards" (count card-id->timestamp))
-    (try
-      ;; need to use a shared lock for all updates to the card table
-      (cluster-lock/with-cluster-lock cluster-lock/card-statistics-lock
-        (t2/query {:update [(t2/table-name :model/Card)]
-                   :where  [:in :id (keys card-id->timestamp)]
-                   :set    {:last_used_at (into [:case]
-                                                (mapcat (fn [[id timestamp]]
-                                                          [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
-                                                        card-id->timestamp))
-                            :updated_at :updated_at}}))
-      (catch Throwable e
-        (log/error e "Error updating used cards")))))
+    (checkout-tracking/with-checkout-reason :card-stats-update
+      (try
+        ;; need to use a shared lock for all updates to the card table
+        (cluster-lock/with-cluster-lock cluster-lock/card-statistics-lock
+          (t2/query {:update [(t2/table-name :model/Card)]
+                     :where  [:in :id (keys card-id->timestamp)]
+                     :set    {:last_used_at (into [:case]
+                                                  (mapcat (fn [[id timestamp]]
+                                                            [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
+                                                          card-id->timestamp))
+                              :updated_at :updated_at}}))
+        (catch Throwable e
+          (log/error e "Error updating used cards"))))))
 
 (defonce ^:private update-used-cards-queue
   (delay

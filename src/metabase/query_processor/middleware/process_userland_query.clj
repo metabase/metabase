@@ -9,6 +9,7 @@
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
@@ -63,11 +64,12 @@
       ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
       ;;    attempt to use closed DB connections
       (fn []
-        (log/trace "Saving QueryExecution info")
-        (try
-          (save-execution-metadata!* (add-running-time execution-info'))
-          (catch Throwable e
-            (log/error e "Error saving query execution info")))))))
+        (checkout-tracking/with-checkout-reason :query-execution-log
+          (log/trace "Saving QueryExecution info")
+          (try
+            (save-execution-metadata!* (add-running-time execution-info'))
+            (catch Throwable e
+              (log/error e "Error saving query execution info"))))))))
 
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution

@@ -2,6 +2,7 @@
   "Utility for taking a cluster wide lock using the application database"
   (:require
    [clojure.string :as str]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
@@ -50,17 +51,18 @@
 
 (defn- do-with-cluster-lock*
   [lock-name-str timeout-seconds thunk]
-  (t2/with-transaction [conn]
-    (with-open [stmt (prepare-statement conn lock-name-str timeout-seconds)
-                result-set (.executeQuery stmt)]
-      (when-not (.next result-set)
-        ;; this record will not be visible until the tx commits, so there's no need to lock it
-        ;; we instead rely on concurrent threads having constraint violation trying to insert their own record
-        (t2/query-one {:insert-into [:metabase_cluster_lock]
-                       :columns [:lock_name]
-                       :values [[lock-name-str]]})))
-    (log/debugf "Obtained cluster lock: %s" lock-name-str)
-    (thunk)))
+  (checkout-tracking/with-checkout-reason :cluster-lock
+    (t2/with-transaction [conn]
+      (with-open [stmt (prepare-statement conn lock-name-str timeout-seconds)
+                  result-set (.executeQuery stmt)]
+        (when-not (.next result-set)
+          ;; this record will not be visible until the tx commits, so there's no need to lock it
+          ;; we instead rely on concurrent threads having constraint violation trying to insert their own record
+          (t2/query-one {:insert-into [:metabase_cluster_lock]
+                         :columns [:lock_name]
+                         :values [[lock-name-str]]})))
+      (log/debugf "Obtained cluster lock: %s" lock-name-str)
+      (thunk))))
 
 (mu/defn do-with-cluster-lock
   "Impl for `with-cluster-lock`.
