@@ -16,13 +16,14 @@ import { CAMPAIGN, LOCATION } from "./constants";
 type CloudPurchaseContentProps = {
   handleModalClose: VoidFunction;
   addOn: ICloudAddOnProduct;
+  freeUnitsIncluded: boolean;
 };
 
-// TODO: What should users see if they've already purchased advanced transforms (already used some of their free allotment)?
 // TODO: Rename this
 export const CloudPurchaseContent = ({
   handleModalClose,
   addOn,
+  freeUnitsIncluded,
 }: CloudPurchaseContentProps) => {
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
@@ -55,6 +56,7 @@ export const CloudPurchaseContent = ({
 
   const freeUnitsStr =
     addOn.free_units != null &&
+    freeUnitsIncluded &&
     formatNumber(addOn.free_units, {
       compact: true,
       maximumFractionDigits: addOn.free_units % 1000 ? undefined : 0,
@@ -66,11 +68,16 @@ export const CloudPurchaseContent = ({
   return (
     <>
       <Stack gap="lg">
-        {freeUnitsStr && perRunStr && (
-          <Text fw="bold" lh="sm">
-            {t`${freeUnitsStr} advanced transforms included, then ${perRunStr} per transform run.`}
-          </Text>
-        )}
+        {perRunStr &&
+          (freeUnitsStr ? (
+            <Text fw="bold" lh="sm">
+              {t`${freeUnitsStr} advanced transforms included, then ${perRunStr} per transform run.`}
+            </Text>
+          ) : (
+            <Text fw="bold" lh="sm">
+              {t`You'll be charged ${perRunStr} per transform run.`}
+            </Text>
+          ))}
         <div>
           <Button
             variant="filled"
@@ -83,7 +90,7 @@ export const CloudPurchaseContent = ({
           </Button>
         </div>
         <Text fz="sm" c="text-secondary" lh="md">
-          {t`By clicking upgrade you agree to be charged in accordance with our terms of service.`}
+          {t`By clicking upgrade, you agree to be charged in accordance with our terms of service.`}
         </Text>
       </Stack>
       <TransformsSettingUpModal

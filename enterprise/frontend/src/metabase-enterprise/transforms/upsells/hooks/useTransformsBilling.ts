@@ -38,6 +38,12 @@ export function useTransformsBilling() {
         product_type === "transforms-basic-metered" && self_service,
     ) ?? false;
 
+  const hadAdvancedTransforms =
+    billingInfo?.data?.previous_add_ons?.some(
+      ({ product_type, self_service }) =>
+        product_type === "transforms-advanced-metered" && self_service,
+    ) ?? false;
+
   const basicTransformsAddOn = addOns?.find(
     ({ active, product_type, self_service }) =>
       active && self_service && product_type === "transforms-basic-metered",
@@ -64,6 +70,7 @@ export function useTransformsBilling() {
     basicTransformsAddOn,
     advancedTransformsAddOn,
     hadTransforms,
+    hadAdvancedTransforms,
     isOnTrial,
     trialEndDate,
     hasBasicTransforms,
