@@ -9,6 +9,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
@@ -74,34 +75,35 @@
 
 (defn- sync-and-analyze-database*!
   [database-id]
-  (log/infof "Starting sync task for Database %d." database-id)
-  (when-let [database (or (t2/select-one :model/Database :id database-id)
-                          (do
-                            (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
-                            (log/warnf "Cannot sync Database %d: Database does not exist." database-id)))]
-    (if-let [ex (try
+  (checkout-tracking/with-checkout-reason :database-sync
+    (log/infof "Starting sync task for Database %d." database-id)
+    (when-let [database (or (t2/select-one :model/Database :id database-id)
+                            (do
+                              (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
+                              (log/warnf "Cannot sync Database %d: Database does not exist." database-id)))]
+      (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [driver.settings/*allow-testing-h2-connections* true]
-                    (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
-                  nil
-                  (catch Throwable e
-                    e))]
-      (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
-      (database-routing/with-database-routing-off
-        (let [db-id            (:id database)
-              metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
-                                 (sync-metadata/sync-db-metadata! database))
-              analyze-results  (when (:is_full_sync database)
-                                 (tracing/with-span :sync "sync.analyze" {:db/id db-id}
-                                   (analyze/analyze-db! database)))
-              refingerprint-results (when (and (:refingerprint database)
-                                               (should-refingerprint-fields? analyze-results))
-                                      (tracing/with-span :sync "sync.refingerprint" {:db/id db-id}
-                                        (analyze/refingerprint-db! database)))]
-          (cond-> {:metadata-results metadata-results}
-            analyze-results (assoc :analyze-results analyze-results)
-            refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
+                    (binding [driver.settings/*allow-testing-h2-connections* true]
+                      (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
+                    nil
+                    (catch Throwable e
+                      e))]
+        (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
+        (database-routing/with-database-routing-off
+          (let [db-id            (:id database)
+                metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
+                                   (sync-metadata/sync-db-metadata! database))
+                analyze-results  (when (:is_full_sync database)
+                                   (tracing/with-span :sync "sync.analyze" {:db/id db-id}
+                                     (analyze/analyze-db! database)))
+                refingerprint-results (when (and (:refingerprint database)
+                                                 (should-refingerprint-fields? analyze-results))
+                                        (tracing/with-span :sync "sync.refingerprint" {:db/id db-id}
+                                          (analyze/refingerprint-db! database)))]
+            (cond-> {:metadata-results metadata-results}
+              analyze-results (assoc :analyze-results analyze-results)
+              refingerprint-results (assoc :refingerprint-results refingerprint-results))))))))
 
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
@@ -125,15 +127,16 @@
 (defn- update-field-values!
   "The update field values job, as a function that can be used in a test"
   [job-context]
-  (when-let [database-id (job-context->database-id job-context)]
-    (log/infof "Update Field values task triggered for Database %d." database-id)
-    (when-let [database (or (t2/select-one :model/Database :id database-id)
-                            (do
-                              (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
-                              (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
-      (if (:is_full_sync database)
-        (sync.field-values/update-field-values! database)
-        (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))
+  (checkout-tracking/with-checkout-reason :database-sync
+    (when-let [database-id (job-context->database-id job-context)]
+      (log/infof "Update Field values task triggered for Database %d." database-id)
+      (when-let [database (or (t2/select-one :model/Database :id database-id)
+                              (do
+                                (unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
+                                (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
+        (if (:is_full_sync database)
+          (sync.field-values/update-field-values! database)
+          (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id))))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true
                :doc "Update field values"}
