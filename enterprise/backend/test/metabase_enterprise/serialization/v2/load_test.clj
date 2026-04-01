@@ -239,10 +239,10 @@
 
         (testing "the serialized form is as desired"
           (let [card (first (by-model @serialized "Card"))]
-            (is (=? {:type     :query
-                     :query    {:source-table ["my-db" nil "customers"]
-                                :filter       [:>= [:field ["my-db" nil "customers" "age"] {}] 18]
-                                :aggregation  [[:count]]}
+            (is (=? {:lib/type :mbql/query
+                     :stages   [{:source-table ["my-db" nil "customers"]
+                                 :filters      [[:>= {} [:field {} ["my-db" nil "customers" "age"]] 18]]
+                                 :aggregation  [[:count {}]]}]
                      :database "my-db"}
                     (:dataset_query card)))))
 
@@ -317,14 +317,14 @@
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "exported form is properly converted"
-          (is (= {:database "my-db"
-                  :query    {:filter       [:< [:field ["my-db" nil "customers" "age"] nil] 18]
-                             :source-table ["my-db" nil "customers"]}
-                  :type     :query}
-                 (-> @serialized
-                     (by-model "Segment")
-                     first
-                     :definition))))
+          (is (=? {:database "my-db"
+                   :stages   [{:filters      [[:< {} [:field {} ["my-db" nil "customers" "age"]] 18]]
+                               :source-table ["my-db" nil "customers"]}]
+                   :lib/type :mbql/query}
+                  (-> @serialized
+                      (by-model "Segment")
+                      first
+                      :definition))))
 
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
@@ -357,15 +357,15 @@
                        :database (:id @db1d)}
                       (:definition @seg1d))))))))))
 
-(defn- pmbql-query
-  "Create a simple pMBQL query for the given database and table."
+(defn- mbql5-query
+  "Create a simple MBQL 5 query for the given database and table."
   [db-id table-id]
   (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
         table (lib.metadata/table metadata-provider table-id)]
     (lib/query metadata-provider table)))
 
-(defn- pmbql-segment-definition
-  "Create a simple pMBQL segment definition with a filter."
+(defn- mbql5-segment-definition
+  "Create a simple MBQL 5 segment definition with a filter."
   [db-id table-id field-id]
   (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
         table (lib.metadata/table metadata-provider table-id)
@@ -373,8 +373,8 @@
         field (lib.metadata/field metadata-provider field-id)]
     (lib/filter query (lib/< field 18))))
 
-(defn- pmbql-measure-definition
-  "Create an MBQL5 measure definition with a sum aggregation."
+(defn- mbql5-measure-definition
+  "Create an MBQL 5 measure definition with a sum aggregation."
   [db-id table-id field-id]
   (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
         table (lib.metadata/table metadata-provider table-id)
@@ -393,16 +393,7 @@
           table1s    (atom nil)
           field1s    (atom nil)
           msr1s      (atom nil)
-          user1s     (atom nil)
-          db1d       (atom nil)
-          table1d    (atom nil)
-          field1d    (atom nil)
-          user1d     (atom nil)
-          msr1d      (atom nil)
-          db2d       (atom nil)
-          table2d    (atom nil)
-          field2d    (atom nil)]
-
+          user1s     (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and measure"
           (ts/with-db source-db
@@ -411,50 +402,47 @@
             (reset! field1s (ts/create! :model/Field :name "amount" :table_id (:id @table1s)))
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! msr1s   (ts/create! :model/Measure :table_id (:id @table1s) :name "Total Sales"
-                                        :definition (pmbql-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
+                                        :definition (mbql5-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
                                         :creator_id (:id @user1s)))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (testing "exported form is properly converted"
           (is (=? {:database "my-db"
-                   :query    {:aggregation  [[:sum [:field ["my-db" nil "sales" "amount"] map?]]]
-                              :source-table ["my-db" nil "sales"]}
-                   :type     :query}
+                   :lib/type :mbql/query
+                   :stages   [{:aggregation  [[:sum {} [:field {} ["my-db" nil "sales" "amount"]]]]
+                               :source-table ["my-db" nil "sales"]}]}
                   (-> @serialized
                       (by-model "Measure")
                       first
                       :definition))))
-
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
-            (reset! db2d    (ts/create! :model/Database :name "other-db"))
-            (reset! table2d (ts/create! :model/Table    :name "orders" :db_id (:id @db2d)))
-            (reset! field2d (ts/create! :model/Field    :name "subtotal" :table_id (:id @table2d)))
-            (reset! user1d  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-
-            ;; Load the serialized content.
-            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
-            ;; Fetch the relevant bits
-            (reset! db1d    (t2/select-one :model/Database :name "my-db"))
-            (reset! table1d (t2/select-one :model/Table :name "sales"))
-            (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "amount"))
-            (reset! msr1d   (t2/select-one :model/Measure :name "Total Sales"))
-
-            (testing "the main Database, Table, and Field have different IDs now"
-              (is (not= (:id @db1s) (:id @db1d)))
-              (is (not= (:id @table1s) (:id @table1d)))
-              (is (not= (:id @field1s) (:id @field1d))))
-
-            (is (not= (:definition @msr1s)
-                      (:definition @msr1d)))
-            (testing "the Measure's definition is based on the new Database, Table, and Field IDs"
-              (is (=? {:lib/type :mbql/query
-                       :stages   [{:source-table (:id @table1d)
-                                   :aggregation  [[:sum map? [:field map? (:id @field1d)]]]}]
-                       :database (:id @db1d)}
-                      (:definition @msr1d))))))))))
+            (let [db2d    (ts/create! :model/Database :name "other-db")
+                  table2d (ts/create! :model/Table    :name "orders" :db_id (:id db2d))
+                  _       (ts/create! :model/Field    :name "subtotal" :table_id (:id table2d))
+                  _       (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")]
+              ;; Load the serialized content.
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+              ;; Fetch the relevant bits
+              (let [db1d    (t2/select-one :model/Database :name "my-db")
+                    table1d (t2/select-one :model/Table :name "sales")
+                    field1d (t2/select-one :model/Field :table_id (:id table1d) :name "amount")
+                    msr1d   (t2/select-one :model/Measure :name "Total Sales")]
+                (testing "the main Database, Table, and Field have different IDs now"
+                  (is (pos-int? (:id db1d)))
+                  (is (not= (:id @db1s) (:id db1d)))
+                  (is (pos-int? (:id table1d)))
+                  (is (not= (:id @table1s) (:id table1d)))
+                  (is (pos-int? (:id field1d)))
+                  (is (not= (:id @field1s) (:id field1d))))
+                (is (not= (:definition @msr1s)
+                          (:definition msr1d)))
+                (testing "the Measure's definition is based on the new Database, Table, and Field IDs"
+                  (is (=? {:lib/type :mbql/query
+                           :stages   [{:source-table (:id table1d)
+                                       :aggregation  [[:sum {} [:field {} (:id field1d)]]]}]
+                           :database (:id db1d)}
+                          (:definition msr1d))))))))))))
 
 (deftest measure-referencing-measure-test
   ;; Test that a measure referencing another measure can be serialized and deserialized correctly.
@@ -466,13 +454,7 @@
           field1s    (atom nil)
           msr1s      (atom nil)
           msr2s      (atom nil)
-          user1s     (atom nil)
-          db1d       (atom nil)
-          table1d    (atom nil)
-          field1d    (atom nil)
-          msr1d      (atom nil)
-          msr2d      (atom nil)]
-
+          user1s     (atom nil)]
       (ts/with-dbs [source-db dest-db]
         (testing "serializing measures where one references the other"
           (ts/with-db source-db
@@ -482,7 +464,7 @@
             (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             ;; Create base measure: sum(amount)
             (reset! msr1s   (ts/create! :model/Measure :table_id (:id @table1s) :name "Total Sales"
-                                        :definition (pmbql-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
+                                        :definition (mbql5-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
                                         :creator_id (:id @user1s)))
             ;; Create derived measure: base_measure * 2
             (let [mp (lib-be/application-database-metadata-provider (:id @db1s))
@@ -494,36 +476,34 @@
                                         :definition derived-definition
                                         :creator_id (:id @user1s))))
             (reset! serialized (into [] (serdes.extract/extract {})))))
-
         (testing "exported form has measure reference with entity_id"
           (let [derived-measure (first (filter #(= "Double Sales" (:name %)) (by-model @serialized "Measure")))]
-            (is (=? {:definition {:query {:aggregation [[:* [:measure (:entity_id @msr1s)] 2]]}}}
-                    derived-measure))))
-
+            (is (=? {:definition {:stages [{:aggregation [[:* {} [:measure {} (:entity_id @msr1s)] 2]]}]}}
+                    derived-measure))
+            (is (= #{[{:id "my-db", :model "Database"}]
+                     [{:id "my-db", :model "Database"} {:id "sales", :model "Table"}]
+                     [{:id (:entity_id @msr1s), :model "Measure"}]}
+                   (serdes/mbql-deps (:definition derived-measure))))))
         (testing "deserializing adjusts the measure IDs properly"
           (ts/with-db dest-db
-            (reset! user1s (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
-
+            (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
             ;; Load the serialized content
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-
             ;; Fetch the relevant bits
-            (reset! db1d    (t2/select-one :model/Database :name "my-db"))
-            (reset! table1d (t2/select-one :model/Table :name "sales"))
-            (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "amount"))
-            (reset! msr1d   (t2/select-one :model/Measure :name "Total Sales"))
-            (reset! msr2d   (t2/select-one :model/Measure :name "Double Sales"))
-
-            (testing "both measures were loaded"
-              (is (some? @msr1d))
-              (is (some? @msr2d)))
-
-            (testing "the derived measure's definition references the base measure by new ID"
-              (is (=? {:lib/type :mbql/query
-                       :stages   [{:source-table (:id @table1d)
-                                   :aggregation  [[:* {} [:measure {} (:id @msr1d)] 2]]}]
-                       :database (:id @db1d)}
-                      (:definition @msr2d))))))))))
+            (let [db1d    (t2/select-one :model/Database :name "my-db")
+                  table1d (t2/select-one :model/Table :name "sales")
+                  ;; field1d (t2/select-one :model/Field :table_id (:id table1d) :name "amount")
+                  msr1d   (t2/select-one :model/Measure :name "Total Sales")
+                  msr2d   (t2/select-one :model/Measure :name "Double Sales")]
+              (testing "both measures were loaded"
+                (is (some? msr1d))
+                (is (some? msr2d)))
+              (testing "the derived measure's definition references the base measure by new ID"
+                (is (=? {:lib/type :mbql/query
+                         :stages   [{:source-table (:id table1d)
+                                     :aggregation  [[:* {} [:measure {} (:id msr1d)] 2]]}]
+                         :database (:id db1d)}
+                        (:definition msr2d)))))))))))
 
 (deftest measure-referencing-segment-test
   ;; Test that a measure referencing a segment can be serialized and deserialized correctly.
@@ -567,7 +547,7 @@
 
         (testing "exported form has segment reference with entity_id"
           (let [measure (first (by-model @serialized "Measure"))]
-            (is (=? {:definition {:query {:aggregation [[:count-where [:segment (:entity_id @seg1s)]]]}}}
+            (is (=? {:definition {:stages [{:aggregation [[:count-where {} [:segment {} (:entity_id @seg1s)]]]}]}}
                     measure))))
 
         (testing "deserializing adjusts the segment IDs properly"
@@ -654,7 +634,7 @@
                                      {:name     "Average order total"
                                       :fieldRef [:field "Average order total" {:base-type :type/Float}]
                                       :enabled  true}]
-                  mapping-id        (format "[\"dimension\",[\"fk->\",[\"field\",%d,null],[\"field\",%d,null]]]" (:id @field1s) (:id @field2s))
+                  mapping-id        (json/encode [:dimension [:field (:id @field2s) {:source-field (:id @field1s)}]])
                   mapping-dimension [:dimension [:field (:id @field2s) {:source-field (:id @field1s)}]]]
               (reset! card1s   (ts/create! :model/Card :name "The Card" :database_id (:id @db1s) :table_id (:id @table1s)
                                            :collection_id (:id @coll1s) :creator_id (:id @user1s)
@@ -662,8 +642,7 @@
                                            {:table.pivot_column "SOURCE"
                                             :table.cell_column  "sum"
                                             :table.columns      columns
-                                            :column_settings
-                                            {(str "[\"ref\",[\"field\"," (:id @field2s) ",null]]") {:column_title "Locus"}}}
+                                            :column_settings {(json/encode [:ref [:field (:id @field2s) nil]]) {:column_title "Locus"}}}
                                            :parameter_mappings [{:parameter_id "12345678"
                                                                  :target       [:dimension [:field (:id @field1s) {:source-field (:id @field2s)}]]}]))
               (reset! dashcard1s (ts/create! :model/DashboardCard :dashboard_id (:id @dash1s) :card_id (:id @card1s)
@@ -736,9 +715,7 @@
                                     :column_settings
                                     {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]" {:column_title "Locus"}}}
                       dimension    [:dimension [:field ["my-db" nil "orders" "invoice"] {:source-field ["my-db" nil "orders" "subtotal"]}]]
-                      dimension-id (json/encode [:dimension [:fk->
-                                                             [:field [:my-db nil :orders :subtotal] nil]
-                                                             [:field [:my-db nil :orders :invoice] nil]]])
+                      dimension-id (json/encode [:dimension [:field [:my-db nil :orders :invoice] {:source-field [:my-db nil :orders :subtotal]}]])
                       exp-dashcard (-> exp-card
                                        (assoc :click_behavior {:type     "link"
                                                                :linkType "question"
@@ -1188,11 +1165,11 @@
                                   (serdes.load/load-metabase! ingestion)))))))))
 
 (deftest card-with-snippet-test
-  (let [db1s       (atom nil)
-        table1s    (atom nil)
-        snippet1s  (atom nil)
-        card1s     (atom nil)
-        extracted  (atom nil)]
+  (let [db1s      (atom nil)
+        table1s   (atom nil)
+        snippet1s (atom nil)
+        card1s    (atom nil)
+        extracted (atom nil)]
     (testing "snippets referenced by native cards must be deserialized"
       (mt/with-empty-h2-app-db!
         (reset! db1s      (ts/create! :model/Database :name "my-db"))
@@ -1201,22 +1178,22 @@
         (reset! card1s    (ts/create! :model/Card
                                       :name "the query"
                                       :dataset_query {:database (:id @db1s)
-                                                      :type :native
-                                                      :native {:template-tags {"snippet: things"
-                                                                               {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
-                                                                                :name         "snippet: filtered data"
-                                                                                :display-name "Snippet: Filtered Data"
-                                                                                :type         :snippet
-                                                                                :snippet-name "filtered data"
-                                                                                :snippet-id   (:id @snippet1s)}}
-                                                               :query "SELECT 1;"}}))
+                                                      :type     :native
+                                                      :native   {:template-tags {"snippet: things"
+                                                                                 {:id           "e2d15f07-37b3-01fc-3944-2ff860a5eb46"
+                                                                                  :name         "snippet: filtered data"
+                                                                                  :display-name "Snippet: Filtered Data"
+                                                                                  :type         :snippet
+                                                                                  :snippet-name "filtered data"
+                                                                                  :snippet-id   (:id @snippet1s)}}
+                                                                 :query         "SELECT 1;"}}))
         (ts/create! :model/User :first_name "Geddy" :last_name "Lee" :email "glee@rush.yyz")
 
         (testing "on extraction"
           (reset! extracted (serdes/extract-one "Card" {} @card1s))
-          (is (= (:entity_id @snippet1s)
-                 (-> @extracted :dataset_query :native :template-tags (get "snippet: things") :snippet-id))))
-
+          (is (=? {:stages [{:lib/type      :mbql.stage/native
+                             :template-tags {"snippet: things" {:snippet-id (:entity_id @snippet1s)}}}]}
+                  (:dataset_query @extracted))))
         (testing "when loading"
           (let [new-eid   (u/generate-nano-id)
                 ingestion (ingestion-in-memory [(assoc @extracted :entity_id new-eid)])]
@@ -1880,7 +1857,7 @@
                 field    (ts/create! :model/Field :name "age" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
                 _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
-                                     :definition (pmbql-segment-definition (:id db) (:id table) (:id field))
+                                     :definition (mbql5-segment-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
@@ -1907,7 +1884,7 @@
                 field    (ts/create! :model/Field :name "amount" :table_id (:id table))
                 user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
                 _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
-                                     :definition (pmbql-measure-definition (:id db) (:id table) (:id field))
+                                     :definition (mbql5-measure-definition (:id db) (:id table) (:id field))
                                      :creator_id (:id user))]
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
@@ -1936,7 +1913,7 @@
                                   :collection_id nil
                                   :creator_id    (:id user)
                                   :name          "Example Card"
-                                  :dataset_query (pmbql-query (:id db) (:id table))
+                                  :dataset_query (mbql5-query (:id db) (:id table))
                                   :display       :line)]
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
@@ -1972,7 +1949,7 @@
                                          :name "Test Transform"
                                          :description "A test transform"
                                          :collection_id (:id coll)
-                                         :source {:query (pmbql-query (:id db) (:id table))
+                                         :source {:query (mbql5-query (:id db) (:id table))
                                                   :type "query"}
                                          :target {:database (:id db)
                                                   :type "table"

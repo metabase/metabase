@@ -321,6 +321,77 @@
       (is (= "" (:viewing_context result)))
       (is (= "" (:recent_views result))))))
 
+(deftest format-entity-includes-measures-and-segments-test
+  (testing "table viewing context includes measures and segments when present"
+    (with-redefs [entity-details/get-table-details
+                  (fn [{:keys [table-id with-measures? with-segments?]}]
+                    ;; Verify that with-measures? and with-segments? are requested
+                    (is (true? with-measures?) "should request measures")
+                    (is (true? with-segments?) "should request segments")
+                    {:structured-output
+                     {:id table-id
+                      :type :table
+                      :name "int_shopify_order_facts"
+                      :database_id 2
+                      :database_engine "postgres"
+                      :database_schema "shopify_enriched"
+                      :description "Order facts with enriched data"
+                      :fields [{:field_id "t10-1" :name "order_id" :database_type "INTEGER"}]
+                      :measures [{:id 1 :name "avg_order_value" :display-name "Average Order Value"
+                                  :description "Average value of all orders"}]
+                      :segments [{:id 2 :name "q4_orders" :display-name "Q4 Orders"
+                                  :description "Orders placed in Q4"}]}})]
+      (let [result (user-context/format-viewing-context
+                    {:user_is_viewing [{:type "table" :id 10}]})]
+        (is (re-find #"table" result))
+        (is (re-find #"int_shopify_order_facts" result))
+        (is (re-find #"Measures \(Pre-defined Aggregation Formulas\)" result))
+        (is (re-find #"Average Order Value" result))
+        (is (re-find #"Segments \(Pre-defined Filter Conditions\)" result))
+        (is (re-find #"Q4 Orders" result)))))
+
+  (testing "model viewing context includes measures and segments when present"
+    (with-redefs [entity-details/get-table-details
+                  (fn [{:keys [model-id with-measures? with-segments?]}]
+                    (is (true? with-measures?) "should request measures for model")
+                    (is (true? with-segments?) "should request segments for model")
+                    {:structured-output
+                     {:id model-id
+                      :type :model
+                      :name "Revenue Model"
+                      :database_id 2
+                      :database_engine "postgres"
+                      :description "Revenue model"
+                      :measures [{:id 3 :name "total_revenue" :display-name "Total Revenue"
+                                  :description "Sum of all revenue"}]
+                      :segments [{:id 4 :name "enterprise" :display-name "Enterprise Accounts"
+                                  :description "Enterprise-tier customers"}]}})]
+      (let [result (user-context/format-viewing-context
+                    {:user_is_viewing [{:type "model" :id 20}]})]
+        (is (re-find #"model" result))
+        (is (re-find #"Revenue Model" result))
+        (is (re-find #"Measures" result))
+        (is (re-find #"Total Revenue" result))
+        (is (re-find #"Segments" result))
+        (is (re-find #"Enterprise Accounts" result)))))
+
+  (testing "table viewing context omits measures/segments sections when none exist"
+    (with-redefs [entity-details/get-table-details
+                  (fn [{:keys [table-id]}]
+                    {:structured-output
+                     {:id table-id
+                      :type :table
+                      :name "plain_table"
+                      :database_id 1
+                      :database_engine "h2"
+                      :description "A plain table"
+                      :fields [{:field_id "t1-1" :name "id" :database_type "INTEGER"}]}})]
+      (let [result (user-context/format-viewing-context
+                    {:user_is_viewing [{:type "table" :id 1}]})]
+        (is (re-find #"plain_table" result))
+        (is (not (re-find #"Measures" result)))
+        (is (not (re-find #"Segments" result)))))))
+
 (deftest format-entity-fetches-details-from-db-test
   (testing "question with only type+id fetches name and description from DB"
     (mt/with-test-user :rasta

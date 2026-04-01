@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
+import { Ellipsified } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
 function getTransformColumn(): TreeTableColumnDef<Transform> {

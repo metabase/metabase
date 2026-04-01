@@ -5,13 +5,15 @@ entity_id: 2HzIFwJ6720JAx07UMavl
 name: Test Transform
 source:
   query:
+    "lib/type": mbql/query
+    "lib/metadata": null
     database: My Database
-    query:
-      source-table:
-      - My Database
-      - null
-      - Schemaless Table
-    type: query
+    stages:
+      - "lib/type": mbql.stage/mbql
+        source-table:
+        - My Database
+        - null
+        - Schemaless Table
   type: query
 source_database_id: My Database
 tags:
