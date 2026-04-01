@@ -215,8 +215,9 @@ export function createQueryWithNumberFilter({
   column = findNumericColumn(query),
   operator = "=",
   values = [0],
+  ...parts
 }: NumberFilterQueryOpts = {}) {
-  const clause = Lib.numberFilterClause({ operator, column, values });
+  const clause = Lib.numberFilterClause({ operator, column, values, ...parts });
   return createFilteredQuery(query, clause);
 }
 
@@ -263,12 +264,14 @@ export function createQueryWithSpecificDateFilter({
   operator = "=",
   values = [new Date(2020, 1, 15)],
   hasTime = false,
+  ...parts
 }: SpecificDateFilterOpts = {}) {
   const clause = Lib.specificDateFilterClause({
     operator,
     column,
     values,
     hasTime,
+    ...parts,
   });
   return createFilteredQuery(query, clause);
 }
@@ -333,8 +336,9 @@ export function createQueryWithTimeFilter({
   column = findTimeColumn(query),
   operator = ">",
   values = [dayjs().startOf("day").toDate()],
+  ...parts
 }: TimeFilterOpts = {}) {
-  const clause = Lib.timeFilterClause({ operator, column, values });
+  const clause = Lib.timeFilterClause({ operator, column, values, ...parts });
   return createFilteredQuery(query, clause);
 }
 

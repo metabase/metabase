@@ -1,9 +1,10 @@
-import type * as Lib from "metabase-lib";
-
-import type { CoordinateFilterOperatorInfo } from "./types";
+import type {
+  CoordinateFilterOperatorInfo,
+  CoordinatePickerOperator,
+} from "./types";
 
 export const OPERATORS: Record<
-  Lib.CoordinateFilterOperator,
+  CoordinatePickerOperator,
   CoordinateFilterOperatorInfo
 > = {
   "=": {
@@ -30,6 +31,10 @@ export const OPERATORS: Record<
   },
   between: {
     operator: "between",
+    valueCount: 2,
+  },
+  "not-between": {
+    operator: "not-between",
     valueCount: 2,
   },
   ">=": {

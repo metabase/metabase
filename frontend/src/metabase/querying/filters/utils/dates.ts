@@ -80,7 +80,10 @@ function getSpecificDateValue(
 
   return {
     type: "specific",
-    operator: filterParts.operator,
+    operator:
+      filterParts.operator === "between" && filterParts.isNot
+        ? "not-between"
+        : filterParts.operator,
     values: filterParts.values,
     hasTime: filterParts.hasTime,
   };
@@ -155,8 +158,9 @@ function getSpecificFilterClause(
   value: SpecificDatePickerValue,
 ): Lib.ExpressionClause {
   return Lib.specificDateFilterClause({
-    operator: value.operator,
+    operator: value.operator === "not-between" ? "between" : value.operator,
     column,
+    isNot: value.operator === "not-between",
     values: value.values,
     hasTime: value.hasTime,
   });

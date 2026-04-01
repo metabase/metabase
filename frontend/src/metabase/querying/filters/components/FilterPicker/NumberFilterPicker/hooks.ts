@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import type { NumberOrEmptyValue } from "./types";
-export type { NumberOrEmptyValue } from "./types";
+import type { NumberOrEmptyValue, NumberPickerOperator } from "./types";
+export type { NumberOrEmptyValue, NumberPickerOperator } from "./types";
 import {
   getAvailableOptions,
   getDefaultOperator,
@@ -33,8 +33,12 @@ export function useNumberFilter({
 
   const availableOptions = useMemo(() => getAvailableOptions(column), [column]);
 
-  const [operator, setOperator] = useState(() =>
-    filterParts ? filterParts.operator : getDefaultOperator(query, column),
+  const [operator, setOperator] = useState<NumberPickerOperator>(() =>
+    filterParts
+      ? filterParts.operator === "between" && filterParts.isNot
+        ? "not-between"
+        : filterParts.operator
+      : getDefaultOperator(query, column),
   );
 
   const [values, setValues] = useState(() =>
@@ -53,7 +57,7 @@ export function useNumberFilter({
     isValid,
     getDefaultValues,
     getFilterClause: (
-      operator: Lib.NumberFilterOperator,
+      operator: NumberPickerOperator,
       values: NumberOrEmptyValue[],
     ) => getFilterClause(operator, column, values),
     setOperator,

@@ -1,23 +1,31 @@
 import dayjs from "dayjs";
+import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 import { OPERATORS } from "./constants";
-import type { TimeFilterOperatorOption, TimeValue } from "./types";
+import type {
+  TimeFilterOperatorOption,
+  TimePickerOperator,
+  TimeValue,
+} from "./types";
 
 export function getAvailableOptions(): TimeFilterOperatorOption[] {
   return Object.values(OPERATORS).map(({ operator }) => ({
     operator,
-    displayName: Lib.describeFilterOperator(operator, "temporal"),
+    displayName:
+      operator === "not-between"
+        ? t`Not between`
+        : Lib.describeFilterOperator(operator, "temporal"),
   }));
 }
 
-export function getOptionByOperator(operator: Lib.TimeFilterOperator) {
+export function getOptionByOperator(operator: TimePickerOperator) {
   return OPERATORS[operator];
 }
 
-export function getDefaultOperator(): Lib.TimeFilterOperator {
+export function getDefaultOperator(): TimePickerOperator {
   return "<";
 }
 
@@ -26,7 +34,7 @@ function getDefaultValue() {
 }
 
 export function getDefaultValues(
-  operator: Lib.TimeFilterOperator,
+  operator: TimePickerOperator,
   values: TimeValue[],
 ): TimeValue[] {
   const { valueCount } = OPERATORS[operator];
@@ -37,7 +45,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.TimeFilterOperator,
+  operator: TimePickerOperator,
   column: Lib.ColumnMetadata,
   values: TimeValue[],
 ) {
@@ -45,7 +53,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: Lib.TimeFilterOperator,
+  operator: TimePickerOperator,
   column: Lib.ColumnMetadata,
   values: TimeValue[],
 ) {
@@ -58,7 +66,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.TimeFilterOperator,
+  operator: TimePickerOperator,
   column: Lib.ColumnMetadata,
   values: TimeValue[],
 ): Lib.TimeFilterParts | undefined {
@@ -66,11 +74,12 @@ function getFilterParts(
     return undefined;
   }
 
-  if (operator === "between") {
+  if (operator === "between" || operator === "not-between") {
     const [startTime, endTime] = values;
     return {
-      operator,
+      operator: "between",
       column,
+      isNot: operator === "not-between",
       values: dayjs(endTime).isBefore(startTime)
         ? [endTime, startTime]
         : [startTime, endTime],

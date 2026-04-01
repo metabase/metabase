@@ -34,6 +34,7 @@ const EXPECTED_OPERATORS = [
   "Equal to",
   "Not equal to",
   "Between",
+  "Not between",
   "Greater than",
   "Greater than or equal to",
   "Less than",
@@ -245,6 +246,25 @@ describe("NumberFilterPicker", () => {
         expect(getNextFilterColumnName()).toBe("Total");
       });
 
+      it("should add a not between filter", async () => {
+        const { getNextFilterParts, getNextFilterColumnName } = setup();
+
+        await setOperator("Not between");
+        const leftInput = screen.getByPlaceholderText("Min");
+        const rightInput = screen.getByPlaceholderText("Max");
+        await userEvent.type(leftInput, "5");
+        await userEvent.type(rightInput, "-10.5");
+        await userEvent.click(screen.getByText("Add filter"));
+
+        expect(getNextFilterParts()).toMatchObject({
+          operator: "between",
+          isNot: true,
+          column: expect.anything(),
+          values: [-10.5, 5],
+        });
+        expect(getNextFilterColumnName()).toBe("Total");
+      });
+
       it("should add a filter via keyboard", async () => {
         const { onChange, getNextFilterParts, getNextFilterColumnName } =
           setup();
@@ -408,6 +428,20 @@ describe("NumberFilterPicker", () => {
           expect(screen.getByText("Update filter")).toBeEnabled();
         },
       );
+
+      it("should render a not between filter", () => {
+        setup(
+          createQueryWithNumberFilter({
+            operator: "between",
+            isNot: true,
+            values: [1, 9],
+          }),
+        );
+
+        expect(screen.getByText("Not between")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("1")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("9")).toBeInTheDocument();
+      });
 
       it.each(BETWEEN_TEST_CASES)(
         "should update a filter with %i to %i values",

@@ -3,6 +3,7 @@ export const SPECIFIC_DATE_PICKER_OPERATORS = [
   "<" as const,
   ">" as const,
   "between" as const,
+  "not-between" as const,
 ];
 
 export const EXCLUDE_DATE_PICKER_OPERATORS = [

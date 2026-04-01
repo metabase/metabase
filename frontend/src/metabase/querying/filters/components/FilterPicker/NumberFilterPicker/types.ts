@@ -1,11 +1,13 @@
 import type { FilterOperatorOption } from "metabase/querying/filters/types";
 import type * as Lib from "metabase-lib";
 
+export type NumberPickerOperator = Lib.NumberFilterOperator | "not-between";
+
 export type NumberFilterOperatorOption =
-  FilterOperatorOption<Lib.NumberFilterOperator>;
+  FilterOperatorOption<NumberPickerOperator>;
 
 export type NumberFilterOperatorInfo = {
-  operator: Lib.NumberFilterOperator;
+  operator: NumberPickerOperator;
   valueCount: number;
   hasMultipleValues?: boolean;
 };

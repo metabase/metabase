@@ -153,6 +153,7 @@ export type StringFilterParts = {
 export type NumberFilterParts = {
   operator: NumberFilterOperator;
   dimension: DimensionMetadata;
+  isNot?: boolean;
   values: NumberFilterValue[];
 };
 
@@ -160,6 +161,7 @@ export type CoordinateFilterParts = {
   operator: CoordinateFilterOperator;
   dimension: DimensionMetadata;
   longitudeDimension: DimensionMetadata | null;
+  isNot?: boolean;
   values: NumberFilterValue[];
 };
 
@@ -172,6 +174,7 @@ export type BooleanFilterParts = {
 export type SpecificDateFilterParts = {
   operator: SpecificDateFilterOperator;
   dimension: DimensionMetadata;
+  isNot?: boolean;
   values: Date[];
   hasTime: boolean;
 };
@@ -195,6 +198,7 @@ export type ExcludeDateFilterParts = {
 export type TimeFilterParts = {
   operator: TimeFilterOperator;
   dimension: DimensionMetadata;
+  isNot?: boolean;
   values: Date[];
 };
 

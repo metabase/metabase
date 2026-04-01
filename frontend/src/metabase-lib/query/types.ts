@@ -363,6 +363,7 @@ export type StringFilterParts = {
 export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
+  isNot?: boolean;
   values: NumberFilterValue[];
 };
 
@@ -370,6 +371,7 @@ export type CoordinateFilterParts = {
   operator: CoordinateFilterOperator;
   column: ColumnMetadata;
   longitudeColumn: ColumnMetadata | null;
+  isNot?: boolean;
   values: NumberFilterValue[];
 };
 
@@ -382,6 +384,7 @@ export type BooleanFilterParts = {
 export type SpecificDateFilterParts = {
   operator: SpecificDateFilterOperator;
   column: ColumnMetadata;
+  isNot?: boolean;
   values: Date[];
   hasTime: boolean;
 };
@@ -412,6 +415,7 @@ export type ExcludeDateFilterParts = {
 export type TimeFilterParts = {
   operator: TimeFilterOperator;
   column: ColumnMetadata;
+  isNot?: boolean;
   values: Date[];
 };
 
