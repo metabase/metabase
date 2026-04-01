@@ -387,50 +387,50 @@
                                          :user-id api/*current-user-id*})
                  (deps.test/synchronously-run-backfill!)
                  (is (empty?
-                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))))
+                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))))
 
-  (deftest ^:sequential query-transform-update-handles-downstream-dependencies-test
-    (testing "query transform update events handles downstream dependencies"
-      (run-with-dependencies-setup!
-       (fn [mp]
-         (let [source {:query (lib/native-query mp "select * from orders")
-                       :type :query}
-               target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
-           (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target :source source}
+(deftest ^:sequential query-transform-update-handles-downstream-dependencies-test
+  (testing "query transform update events handles downstream dependencies"
+    (run-with-dependencies-setup!
+     (fn [mp]
+       (let [source {:query (lib/native-query mp "select * from orders")
+                     :type :query}
+             target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]
+         (mt/with-temp [:model/Transform {transform-id :id :as transform} {:target target :source source}
                         ;; test_table is created by the Transform after-insert via upsert-transform-target-table!
-                          :model/Table {} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
-             (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema "Other" :name "test_table")]
-               (testing "initial run"
-                 (events/publish-event! :event/transform-run-complete
-                                        {:object {:db-id (mt/id)
-                                                  :output-schema "Other"
-                                                  :output-table :test_table
-                                                  :transform-id transform-id}
-                                         :user-id api/*current-user-id*})
-                 (is (=? [{:from_entity_type :table
-                           :from_entity_id table-id,
-                           :to_entity_type :transform,
-                           :to_entity_id transform-id}]
-                         (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
-               (testing "keeping target"
+                        :model/Table {} {:schema "Other", :db_id (mt/id), :name "test_table2"}]
+           (let [table-id (t2/select-one-pk :model/Table :db_id (mt/id) :schema "Other" :name "test_table")]
+             (testing "initial run"
+               (events/publish-event! :event/transform-run-complete
+                                      {:object {:db-id (mt/id)
+                                                :output-schema "Other"
+                                                :output-table :test_table
+                                                :transform-id transform-id}
+                                       :user-id api/*current-user-id*})
+               (is (=? [{:from_entity_type :table
+                         :from_entity_id table-id,
+                         :to_entity_type :transform,
+                         :to_entity_id transform-id}]
+                       (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+             (testing "keeping target"
+               (events/publish-event! :event/update-transform
+                                      {:object transform
+                                       :user-id api/*current-user-id*})
+               (deps.test/synchronously-run-backfill!)
+               (is (=? [{:from_entity_type :table
+                         :from_entity_id table-id,
+                         :to_entity_type :transform,
+                         :to_entity_id transform-id}]
+                       (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
+             (testing "changing target update"
+               (t2/update! :model/Transform transform-id {:target (assoc target :name "test_table2")})
+               (let [updated (t2/select-one :model/Transform :id transform-id)]
                  (events/publish-event! :event/update-transform
-                                        {:object transform
+                                        {:object updated
                                          :user-id api/*current-user-id*})
                  (deps.test/synchronously-run-backfill!)
-                 (is (=? [{:from_entity_type :table
-                           :from_entity_id table-id,
-                           :to_entity_type :transform,
-                           :to_entity_id transform-id}]
-                         (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
-               (testing "changing target update"
-                 (t2/update! :model/Transform transform-id {:target (assoc target :name "test_table2")})
-                 (let [updated (t2/select-one :model/Transform :id transform-id)]
-                   (events/publish-event! :event/update-transform
-                                          {:object updated
-                                           :user-id api/*current-user-id*})
-                   (deps.test/synchronously-run-backfill!)
-                   (is (empty?
-                        (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))))))
+                 (is (empty?
+                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))))
 
 (deftest segment-update-sets-correct-dependencies
   (run-with-dependencies-setup!
