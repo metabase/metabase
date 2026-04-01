@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -173,6 +174,12 @@
   [id & fields]
   (-> (t2/select-one (into [:model/Database :id] fields) id)
       api/read-check))
+
+(defn list-databases
+  "Get all databases the current user can read, ordered by name."
+  [& fields]
+  (->> (t2/select (into [:model/Database :id] fields) {:order-by [[:name :asc]]})
+       (filterv mi/can-read?)))
 
 (defn get-table
   "Get the `fields` of the table with ID `id`."
