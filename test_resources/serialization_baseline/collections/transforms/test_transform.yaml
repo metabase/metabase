@@ -4,8 +4,6 @@ description: A test transform for serialization
 entity_id: 2HzIFwJ6720JAx07UMavl
 name: Test Transform
 source_db_id: My Database
-owner_email: null
-owner_user_id: null
 source:
   query:
     "lib/type": mbql/query

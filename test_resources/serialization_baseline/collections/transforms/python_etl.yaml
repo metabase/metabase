@@ -16,7 +16,7 @@ source:
     - null
     - Schemaless Table
   type: python
-source_database_id: My Database
+source_db_id: My Database
 tags: []
 target:
   database: My Database
