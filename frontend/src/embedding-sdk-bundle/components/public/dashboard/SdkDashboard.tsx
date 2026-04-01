@@ -221,6 +221,8 @@ const SdkDashboardInner = ({
   } = useExtractResourceIdFromJwtToken({
     isGuestEmbed,
     resourceId: rawDashboardId,
+    // Skip stale Redux token on first render (e.g. wizard re-issuing a token when toggling parameters); rawToken prop takes precedence.
+    // From the next render onward, tokenFromStore is used and the value is from a refreshed token.
     token: (!isFirstRender ? tokenFromStore : null) ?? rawToken ?? undefined,
   });
 

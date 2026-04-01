@@ -40,7 +40,7 @@ export const refreshGuestSession = createAsyncThunk(
   }): Promise<string> => {
     if (authConfig.isGuest && !authConfig.guestEmbedProviderUri) {
       throw new Error(
-        "guestEmbedProviderUri is required for guest embed token refresh",
+        "guestEmbedProviderUri is required to refresh the guest embed token",
       );
     }
 

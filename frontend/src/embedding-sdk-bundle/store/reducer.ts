@@ -165,6 +165,8 @@ export const sdk = createReducer(initialState, (builder) => {
     state.token = {
       ...state.token,
       rawToken: action.payload,
+      loading: false,
+      error: null,
     };
   });
 

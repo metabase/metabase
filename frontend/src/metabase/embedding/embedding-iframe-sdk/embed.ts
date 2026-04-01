@@ -509,11 +509,21 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
   }
 
+  private reportAuthenticationError(error: unknown) {
+    this.sendMessage("metabase.embed.reportAuthenticationError", {
+      error:
+        error instanceof MetabaseError
+          ? error
+          : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+              url: this.properties.guestEmbedProviderUri ?? "",
+              message: error instanceof Error ? error.message : String(error),
+            }),
+    });
+  }
+
   private async _authenticate() {
     if (!this._authManager) {
-      this.sendMessage("metabase.embed.reportAuthenticationError", {
-        error: SSO_NOT_ALLOWED(),
-      });
+      this.reportAuthenticationError(SSO_NOT_ALLOWED());
 
       return;
     }
@@ -535,15 +545,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         questionId: undefined,
       });
     } catch (error) {
-      this.sendMessage("metabase.embed.reportAuthenticationError", {
-        error:
-          error instanceof MetabaseError
-            ? error
-            : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
-                url: this.properties.guestEmbedProviderUri ?? "",
-                message: error instanceof Error ? error.message : String(error),
-              }),
-      });
+      this.reportAuthenticationError(error);
       // Send settings without a token so ComponentProvider can mount and display the error.
       this._updateSettings({
         dashboardId: undefined,
@@ -559,15 +561,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         guestToken: token,
       });
     } catch (error) {
-      this.sendMessage("metabase.embed.reportAuthenticationError", {
-        error:
-          error instanceof MetabaseError
-            ? error
-            : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
-                url: this.properties.guestEmbedProviderUri ?? "",
-                message: error instanceof Error ? error.message : String(error),
-              }),
-      });
+      this.reportAuthenticationError(error);
     }
   }
 
@@ -583,28 +577,31 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       this.properties;
 
     if (!guestEmbedProviderUri) {
-      return "";
+      throw MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+        url: String(guestEmbedProviderUri),
+        message: "Guest embed provider URI is not configured.",
+      });
     }
 
-    const guestEmbedProviderUrl = new URL(
+    const guestEmbedProviderUriFullPath = new URL(
       guestEmbedProviderUri,
       window.location.origin,
     );
-    guestEmbedProviderUrl.searchParams.set("response", "json");
+    guestEmbedProviderUriFullPath.searchParams.set("response", "json");
 
     const entityType =
       componentName === "metabase-dashboard" ? "dashboard" : "question";
 
     const isRefreshingToken = expiredToken !== undefined;
 
-    // Prefer the attribute entity ID; fall back to decoding the expired token
+    // Prefer the attribute resource ID; fall back to decoding the expired token
     // for the static token case (no dashboardId/questionId attribute).
-    const attributeEntityId =
+    const attributeResourceId =
       componentName === "metabase-dashboard" ? dashboardId : questionId;
-    const tokenEntityId = isRefreshingToken
+    const tokenResourceId = isRefreshingToken
       ? decodeJwt(expiredToken)?.resource?.[entityType]
       : undefined;
-    const entityId = attributeEntityId ?? tokenEntityId;
+    const resourceId = attributeResourceId ?? tokenResourceId;
 
     // Only works in React 19
     const objectCustomContext = this["custom-context"];
@@ -612,11 +609,11 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     const customContext = objectCustomContext ?? stringCustomContext;
     const body = {
       entityType,
-      entityId,
+      entityId: resourceId,
       ...(customContext !== undefined && { customContext }),
     };
 
-    const response = await fetch(guestEmbedProviderUrl.toString(), {
+    const response = await fetch(guestEmbedProviderUriFullPath.toString(), {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -632,7 +629,11 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     const data = await response.json();
 
-    if (typeof data !== "object" || typeof data.jwt !== "string") {
+    if (
+      data == null ||
+      typeof data !== "object" ||
+      typeof data.jwt !== "string"
+    ) {
       throw MetabaseErrors.DEFAULT_ENDPOINT_ERROR({
         actual: JSON.stringify(data),
       });
