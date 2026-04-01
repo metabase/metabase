@@ -10,8 +10,5 @@ export function getMapRegionForDimension(
   if (LibMetric.isCountry(dimension)) {
     return "world_countries";
   }
-  if (LibMetric.isCity(dimension)) {
-    return "us_states";
-  }
   return null;
 }
