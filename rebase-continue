@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "stack",
+        "restack"
+      ],
+      "branch": "emb-1489-move-cors-settings-to-oss-and-show-cors-in-security-tab"
+    }
+  ]
 }
