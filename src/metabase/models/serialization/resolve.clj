@@ -92,7 +92,7 @@
 
     ;; legacy field refs, still used in parameters and result metadata `field_ref`
     [#{:field "field"} (fully-qualified-name :guard vector?) (opts :guard (some-fn map? nil))]
-    [:field (import-field-fk resolver fully-qualified-name) (some-> opts mbql-fully-qualified-names->ids*)]
+    [:field (import-field-fk resolver fully-qualified-name) (some->> opts (mbql-fully-qualified-names->ids* resolver))]
 
     ;; MBQL 3 `:field-id` can (allegedly) still show up sometimes? Support it just in case.
     [(tag :guard #{:field :field-id "field" "field-id"}) (id :guard vector?)]
@@ -108,12 +108,12 @@
         (assoc :database (if (= fully-qualified-name "database/__virtual")
                            lib.schema.id/saved-questions-virtual-database-id
                            (import-fk-keyed resolver fully-qualified-name :model/Database :name)))
-        mbql-fully-qualified-names->ids*) ; Process other keys
+        (->> (mbql-fully-qualified-names->ids* resolver)))
 
     {:card-id (entity-id :guard portable-id?)}
     (-> &match
         (assoc :card-id (import-fk resolver entity-id 'Card))
-        mbql-fully-qualified-names->ids*) ; Process other keys
+        (->> (mbql-fully-qualified-names->ids* resolver)))
 
     [#{:metric "metric"} opts (entity-id :guard portable-id?)]
     [:metric (mbql-fully-qualified-names->ids* resolver opts)
@@ -140,28 +140,28 @@
     {:source-table (_ :guard vector?)}
     (-> &match
         (update :source-table (partial import-table-fk resolver))
-        (mbql-fully-qualified-names->ids* resolver))
+        (->> (mbql-fully-qualified-names->ids* resolver)))
 
     {:source_table (_ :guard vector?)}
     (-> &match
         (update :source_table (partial import-table-fk resolver))
-        (mbql-fully-qualified-names->ids* resolver))
+        (->> (mbql-fully-qualified-names->ids* resolver)))
 
     ;; support legacy MBQL 4 for the Audit v2 queries
     {:source-table (id :guard portable-id?)}
     (-> &match
         (assoc :source-table (str "card__" (import-fk resolver id 'Card)))
-        (mbql-fully-qualified-names->ids* resolver))
+        (->> (mbql-fully-qualified-names->ids* resolver)))
 
     {:source-card (id :guard portable-id?)}
     (-> &match
         (assoc :source-card (import-fk resolver id 'Card))
-        (mbql-fully-qualified-names->ids* resolver))
+        (->> (mbql-fully-qualified-names->ids* resolver)))
 
     {:snippet-id (id :guard portable-id?)}
     (-> &match
         (assoc :snippet-id (import-fk resolver id 'NativeQuerySnippet))
-        (mbql-fully-qualified-names->ids* resolver))))
+        (->> (mbql-fully-qualified-names->ids* resolver)))))
 
 (defn import-mbql
   "Given an MBQL expression with portable IDs, convert back to numeric IDs.

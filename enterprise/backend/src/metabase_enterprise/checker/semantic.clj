@@ -254,19 +254,22 @@
   [store !failures query]
   (when query
     (try
-      (let [;; Step 1: keywordize string operators and keyword args
-            query   (-> query
-                        (m/update-existing :query keywordize-mbql-operators)
-                        (m/update-existing :native keywordize-mbql-operators))
+      (let [;; Step 1: keywordize string operators and keyword args within stages
+            query   (update query :stages
+                            (fn [stages]
+                              (mapv (fn [stage]
+                                      (-> stage
+                                          (m/update-existing :native keywordize-mbql-operators)
+                                          (cond-> (not (:native stage))
+                                            (keywordize-mbql-operators))))
+                                    (or stages []))))
             ;; Step 2: resolve portable refs to integer IDs
             db-name (:database query)
             db-id   (when (string? db-name) (resolve-db-name store !failures db-name))
             query   (cond-> query db-id (assoc :database db-id))
             resolver (make-import-resolver store !failures :sentinel? true)
             query   (binding [resolve/*import-resolver* resolver]
-                      (resolve/import-mbql query))
-            ;; Step 3: legacy normalizer handles remaining string→keyword
-            query   (mbql.normalize/normalize query)]
+                      (resolve/import-mbql query))]
         query)
       (catch Exception _
         ;; If normalization/resolution fails, return the partially-processed query.
