@@ -87,6 +87,8 @@
           (log/error e "Failed to record Prometheus metrics for Quartz trigger completion"))))))
 
 (defn add-listeners-to-scheduler!
-  "Add triggers to the quartz scheduler, must be initialized before adding."
+  "Add job and trigger listeners to the quartz scheduler, must be initialized before adding."
   []
-  (task/add-job-listener! (create-job-execution-listener)))
+  (task/add-job-listener! (create-job-execution-listener))
+  (when-let [scheduler (task/scheduler)]
+    (task/add-trigger-listener! (create-trigger-listener scheduler))))
