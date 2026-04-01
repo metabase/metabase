@@ -11,16 +11,16 @@ import type { CardId, DatetimeUnit, TemporalUnit } from "metabase-types/api";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
-  MetricsViewerFormulaEntity,
   MetricsViewerTabState,
 } from "../types/viewer-state";
 
 import type { DimensionFilterValue } from "./dimension-filters";
 import { findDimensionById } from "./dimension-lookup";
+import type { MetricSlot } from "./metric-slots";
 
 type MetricsViewerClickActionParams = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  formulaEntities: MetricsViewerFormulaEntity[];
+  metricSlots: MetricSlot[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   cardIdToDimensionId: Record<CardId, number>;
@@ -28,19 +28,19 @@ type MetricsViewerClickActionParams = {
 
 export class MetricsViewerClickActionsMode implements ClickActionsMode {
   private definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  private formulaEntities: MetricsViewerFormulaEntity[];
+  private metricSlots: MetricSlot[];
   private tab: MetricsViewerTabState;
   private onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   private cardIdToDimensionId: Record<CardId, number>;
   constructor({
     definitions,
-    formulaEntities,
+    metricSlots,
     tab,
     onTabUpdate,
     cardIdToDimensionId,
   }: MetricsViewerClickActionParams) {
     this.definitions = definitions;
-    this.formulaEntities = formulaEntities;
+    this.metricSlots = metricSlots;
     this.tab = tab;
     this.onTabUpdate = onTabUpdate;
     this.cardIdToDimensionId = cardIdToDimensionId;
@@ -50,14 +50,13 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
     if (cardId == null) {
       return [];
     }
-    const entityIndex = this.cardIdToDimensionId[cardId];
-    const entity =
-      entityIndex != null ? this.formulaEntities[entityIndex] : undefined;
-    const definition =
-      entity?.type === "metric" ? this.definitions[entity.id] : undefined;
+    // cardIdToDimensionId now maps card ID → slot index
+    const slotIndex = this.cardIdToDimensionId[cardId];
+    const slot = slotIndex != null ? this.metricSlots[slotIndex] : undefined;
+    const definition = slot ? this.definitions[slot.sourceId] : undefined;
     const params = {
       definition,
-      entityIndex,
+      slotIndex,
       tab: this.tab,
       onTabUpdate: this.onTabUpdate,
       clickObject,
@@ -70,7 +69,7 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
 
 type GetActionParams = {
   definition: MetricsViewerDefinitionEntry | undefined; //definition that was clicked on
-  entityIndex: number | undefined;
+  slotIndex: number | undefined;
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   clickObject: ClickObject;
@@ -78,12 +77,12 @@ type GetActionParams = {
 
 function getZoomInTimeSeriesAction({
   definition,
-  entityIndex,
+  slotIndex,
   tab,
   onTabUpdate,
   clickObject,
 }: GetActionParams): ClickAction | undefined {
-  if (!definition || !definition.definition || entityIndex == null) {
+  if (!definition || !definition.definition || slotIndex == null) {
     return;
   }
   const dimension = clickObject.dimensions?.[0];
@@ -96,7 +95,7 @@ function getZoomInTimeSeriesAction({
   }
   const nextTemporalUnit = getNextTemporalUnit(
     definition,
-    entityIndex,
+    slotIndex,
     tab,
     currentTemporalUnit,
   );
@@ -173,12 +172,12 @@ const nextTemporalUnitMap: Partial<Record<TemporalUnit, TemporalUnit>> = {
 
 function getNextTemporalUnit(
   entry: MetricsViewerDefinitionEntry,
-  entityIndex: number,
+  slotIndex: number,
   tab: MetricsViewerTabState,
   currentUnit: TemporalUnit,
 ): TemporalUnit | undefined {
   const definition = entry.definition;
-  const dimensionId = tab.dimensionMapping[entityIndex];
+  const dimensionId = tab.dimensionMapping[slotIndex];
   if (!definition || !dimensionId) {
     return undefined;
   }

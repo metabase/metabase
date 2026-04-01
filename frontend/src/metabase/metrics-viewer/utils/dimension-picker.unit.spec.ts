@@ -105,7 +105,7 @@ describe("getAvailableDimensionsForPicker", () => {
   it("returns dimensions for a single metric source", () => {
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
-      [{ entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
       new Set(),
     );
 
@@ -120,7 +120,7 @@ describe("getAvailableDimensionsForPicker", () => {
   it("returns dimensions for a second metric source", () => {
     const result = getAvailableDimensionsForPicker(
       { [ORDERS_SOURCE_ID]: ordersDefinition },
-      [{ entityIndex: 0, sourceId: ORDERS_SOURCE_ID }],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: ORDERS_SOURCE_ID }],
       new Set(),
     );
 
@@ -139,8 +139,8 @@ describe("getAvailableDimensionsForPicker", () => {
         [ORDERS_SOURCE_ID]: ordersDefinition,
       },
       [
-        { entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
-        { entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
       ],
       new Set(),
     );
@@ -180,7 +180,7 @@ describe("getAvailableDimensionsForPicker", () => {
 
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
-      [{ entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
       new Set(allIds),
     );
 

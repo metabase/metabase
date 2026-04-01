@@ -13,6 +13,7 @@ import type {
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
+import type { MetricSlot } from "./metric-slots";
 import { type TabInfo, getDimensionIcon, getDimensionsByType } from "./tabs";
 
 // ── Dimension picker ──
@@ -36,21 +37,18 @@ interface DimensionEntry {
   tabType: MetricsViewerTabType;
   group?: DimensionGroup;
   sourceId: MetricSourceId;
-  entityIndex: number;
+  slotIndex: number;
 }
 
 function collectAllDimensionEntries(
-  entityIndicesWithSourceId: {
-    entityIndex: number;
-    sourceId: MetricSourceId;
-  }[],
+  metricSlots: MetricSlot[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   existingTabDimensionIds: Set<string>,
 ): DimensionEntry[] {
   const entries: DimensionEntry[] = [];
 
-  for (const { entityIndex, sourceId } of entityIndicesWithSourceId) {
-    const def = definitionsBySourceId[sourceId];
+  for (const slot of metricSlots) {
+    const def = definitionsBySourceId[slot.sourceId];
     if (!def) {
       continue;
     }
@@ -67,8 +65,8 @@ function collectAllDimensionEntries(
         icon: getDimensionIcon(info.dimensionMetadata),
         tabType: info.dimensionType,
         group: info.group,
-        sourceId,
-        entityIndex,
+        sourceId: slot.sourceId,
+        slotIndex: slot.slotIndex,
       });
     }
   }
@@ -97,20 +95,17 @@ function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
 
 export function getAvailableDimensionsForPicker(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
-  entityIndicesWithSourceId: {
-    entityIndex: number;
-    sourceId: MetricSourceId;
-  }[],
+  metricSlots: MetricSlot[],
   existingTabDimensionIds: Set<string>,
 ): AvailableDimensionsResult {
   const result: AvailableDimensionsResult = { shared: [], bySource: {} };
 
-  if (entityIndicesWithSourceId.length === 0) {
+  if (metricSlots.length === 0) {
     return result;
   }
 
   const entries = collectAllDimensionEntries(
-    entityIndicesWithSourceId,
+    metricSlots,
     definitionsBySourceId,
     existingTabDimensionIds,
   );
@@ -131,7 +126,7 @@ export function getAvailableDimensionsForPicker(
           type: first.tabType,
           label: first.label,
           dimensionMapping: Object.fromEntries(
-            group.map((entry) => [entry.entityIndex, entry.id]),
+            group.map((entry) => [entry.slotIndex, entry.id]),
           ),
         },
       });
@@ -144,7 +139,7 @@ export function getAvailableDimensionsForPicker(
           tabInfo: {
             type: entry.tabType,
             label: entry.label,
-            dimensionMapping: { [entry.entityIndex]: entry.id },
+            dimensionMapping: { [entry.slotIndex]: entry.id },
           },
         });
       }
@@ -154,8 +149,8 @@ export function getAvailableDimensionsForPicker(
   result.shared.sort((first, second) =>
     first.tabInfo.label.localeCompare(second.tabInfo.label),
   );
-  for (const { sourceId } of entityIndicesWithSourceId) {
-    result.bySource[sourceId]?.sort((first, second) =>
+  for (const slot of metricSlots) {
+    result.bySource[slot.sourceId]?.sort((first, second) =>
       first.tabInfo.label.localeCompare(second.tabInfo.label),
     );
   }

@@ -35,6 +35,12 @@ import {
   getEffectiveDefinitionEntry,
   getEffectiveTokenDefinitionEntry,
 } from "../utils/definition-entries";
+import type { MetricSlot } from "../utils/metric-slots";
+import {
+  computeMetricSlots,
+  findExpressionTokenSlot,
+  findStandaloneSlot,
+} from "../utils/metric-slots";
 import { parseExpression } from "../utils/parse-expression";
 import { getTabConfig } from "../utils/tab-config";
 
@@ -74,14 +80,14 @@ type ExpressionItemError = {
 
 function getModifiedDefinitionForTab(
   definition: MetricsViewerDefinitionEntry,
-  entityIndex: number,
+  slotIndex: number,
   tab: MetricsViewerTabState,
 ): MetricDefinition | null {
   if (!definition.definition) {
     return null;
   }
   const tabConfig = getTabConfig(tab.type);
-  const dimensionId = tab.dimensionMapping[entityIndex];
+  const dimensionId = tab.dimensionMapping[slotIndex];
   if (!dimensionId) {
     if (tabConfig.minDimensions > 0) {
       return null;
@@ -97,9 +103,10 @@ function getModifiedDefinitionForTab(
 
 function buildArithmeticRequest(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  formulaEntities: MetricsViewerFormulaEntity[],
   tab: MetricsViewerTabState,
   entity: ExpressionDefinitionEntry,
+  metricSlots: MetricSlot[],
+  entityIndex: number,
 ):
   | {
       definition: JsMetricDefinition;
@@ -129,13 +136,12 @@ function buildArithmeticRequest(
     }
 
     const definition = getEffectiveTokenDefinitionEntry(token, definitions);
-    // Find entity index for this token's sourceId
-    const tokenEntityIndex = formulaEntities.findIndex(
-      (e) => e.type === "metric" && e.id === token.sourceId,
-    );
+    // Find the specific slot for this expression token
+    const tokenSlot = findExpressionTokenSlot(metricSlots, entityIndex, i);
+    const slotIndex = tokenSlot?.slotIndex ?? -1;
     const modifiedDefinition = getModifiedDefinitionForTab(
       definition,
-      tokenEntityIndex,
+      slotIndex,
       tab,
     );
     if (!modifiedDefinition) {
@@ -216,6 +222,7 @@ function buildQueryItems(
     };
   }
 
+  const metricSlots = computeMetricSlots(formulaEntities);
   const datasetRequests: DatasetRequest[] = [];
   const expressionItemsConfig: ExpressionItemConfig[] = [];
   const expressionItemsErrors: ExpressionItemError[] = [];
@@ -223,9 +230,11 @@ function buildQueryItems(
   formulaEntities.forEach((entity, index) => {
     if (isMetricEntry(entity)) {
       const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
+      const slot = findStandaloneSlot(metricSlots, index);
+      const slotIndex = slot?.slotIndex ?? -1;
       const modifiedDefinition = getModifiedDefinitionForTab(
         effectiveEntry,
-        index,
+        slotIndex,
         tab,
       );
 
@@ -245,9 +254,10 @@ function buildQueryItems(
     if (isExpressionEntry(entity)) {
       const requestData = buildArithmeticRequest(
         definitions,
-        formulaEntities,
         tab,
         entity,
+        metricSlots,
+        index,
       );
 
       if (requestData && "error" in requestData) {

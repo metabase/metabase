@@ -46,7 +46,7 @@ export function exploreMetricDimension({
         type: dimensionType,
         label: label ?? null,
         display: displayType,
-        definitions: [{ entityIndex: 0, dimensionId }],
+        definitions: [{ slotIndex: 0, dimensionId }],
       },
     ],
     selectedTabId: dimensionId,

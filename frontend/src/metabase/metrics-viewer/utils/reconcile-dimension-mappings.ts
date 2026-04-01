@@ -1,59 +1,74 @@
 import { getObjectEntries } from "metabase/lib/objects";
 
 import type {
+  MetricSourceId,
   MetricsViewerFormulaEntity,
   MetricsViewerTabState,
 } from "../types/viewer-state";
 
+import type { MetricSlot } from "./metric-slots";
+import { computeMetricSlots } from "./metric-slots";
+
 /**
- * Build a stable identity key for an entity so we can match old ↔ new
- * across formula-entity list changes.
+ * Compute a stable identity string for a slot, used to match old ↔ new across
+ * formula-entity list changes.
+ *
+ * - Standalone metric slots: `m:<sourceId>:<occurrence>` (occurrence counted
+ *   among standalone slots with the same sourceId).
+ * - Expression token slots: `x:<expressionEntityId>:<tokenPosition>`.
  */
-function entityKey(e: MetricsViewerFormulaEntity): string {
-  return e.type === "metric" ? `m:${e.id}` : `x:${e.id}`;
+function computeSlotIdentities(
+  slots: MetricSlot[],
+  entities: MetricsViewerFormulaEntity[],
+): string[] {
+  const standaloneCounts = new Map<string, number>();
+  return slots.map((slot) => {
+    if (slot.tokenPosition === undefined) {
+      const key = `m:${slot.sourceId}`;
+      const nth = (standaloneCounts.get(key) ?? 0) + 1;
+      standaloneCounts.set(key, nth);
+      return `${key}:${nth}`;
+    }
+    const entity = entities[slot.entityIndex];
+    const exprId = entity?.type === "expression" ? entity.id : "unknown";
+    return `x:${exprId}:${slot.tokenPosition}`;
+  });
 }
 
 /**
  * When formulaEntities change (add/remove/reorder), dimensionMapping keys
- * (entity indices) may become stale.  This function rebuilds each tab's
+ * (slot indices) may become stale.  This function rebuilds each tab's
  * dimensionMapping so that:
  *
- * 1. Existing entries are remapped to the correct (possibly shifted) index.
- * 2. *New* entity instances that share an identity with an already-mapped
- *    entity inherit the same dimensionId — so adding a second "Revenue"
- *    metric automatically gets the tab's existing dimension for "Revenue".
+ * 1. Existing entries are remapped to the correct (possibly shifted) slot index.
+ * 2. *New* slots that share a sourceId with an already-mapped slot inherit
+ *    the same dimensionId — so adding a second "Revenue" metric or a new
+ *    expression token referencing "Revenue" automatically gets the tab's
+ *    existing dimension for "Revenue".
  */
 export function reconcileDimensionMappings(
   tabs: MetricsViewerTabState[],
   oldEntities: MetricsViewerFormulaEntity[],
   newEntities: MetricsViewerFormulaEntity[],
 ): MetricsViewerTabState[] {
-  // ── Build occurrence maps for old entities ──
+  const oldSlots = computeMetricSlots(oldEntities);
+  const newSlots = computeMetricSlots(newEntities);
 
-  const occurrenceCountOld = new Map<string, number>();
-  const oldIndexToOccurrence = new Map<number, { key: string; nth: number }>();
+  // ── Build identity maps ──
 
-  for (let i = 0; i < oldEntities.length; i++) {
-    const key = entityKey(oldEntities[i]);
-    const nth = (occurrenceCountOld.get(key) ?? 0) + 1;
-    occurrenceCountOld.set(key, nth);
-    oldIndexToOccurrence.set(i, { key, nth });
+  const oldIdentities = computeSlotIdentities(oldSlots, oldEntities);
+  const newIdentities = computeSlotIdentities(newSlots, newEntities);
+
+  // old identity → old slot index
+  const oldIdentityToSlotIndex = new Map<string, number>();
+  for (let i = 0; i < oldSlots.length; i++) {
+    oldIdentityToSlotIndex.set(oldIdentities[i], oldSlots[i].slotIndex);
   }
 
-  // ── Build occurrence maps for new entities ──
-
-  const occurrenceCountNew = new Map<string, number>();
-  /** "key:nth" → new index */
-  const newOccurrenceToIndex = new Map<string, number>();
-  /** new index → entity identity key */
-  const newIndexToKey = new Map<number, string>();
-
-  for (let i = 0; i < newEntities.length; i++) {
-    const key = entityKey(newEntities[i]);
-    const nth = (occurrenceCountNew.get(key) ?? 0) + 1;
-    occurrenceCountNew.set(key, nth);
-    newOccurrenceToIndex.set(`${key}:${nth}`, i);
-    newIndexToKey.set(i, key);
+  // new identity → new slot index
+  const newIdentityToSlotIndex = new Map<string, number>();
+  for (let i = 0; i < newSlots.length; i++) {
+    newIdentityToSlotIndex.set(newIdentities[i], newSlots[i].slotIndex);
   }
 
   // ── Reconcile each tab ──
@@ -62,37 +77,40 @@ export function reconcileDimensionMappings(
     const newMapping: Record<number, string | null> = {};
     let changed = false;
 
-    // 1. Remap existing entries from old index → new index
+    // 1. Remap existing entries from old slot index → new slot index
     for (const [oldKey, dimId] of getObjectEntries(tab.dimensionMapping)) {
-      const oldIndex = Number(oldKey);
-      const occ = oldIndexToOccurrence.get(oldIndex);
-      if (!occ) {
+      const oldSlotIndex = Number(oldKey);
+      const oldIdentity = oldIdentities[oldSlotIndex];
+      if (!oldIdentity) {
         changed = true;
-        continue; // entity no longer exists
+        continue; // slot no longer exists
       }
-      const newIndex = newOccurrenceToIndex.get(`${occ.key}:${occ.nth}`);
-      if (newIndex == null) {
+      const newSlotIndex = newIdentityToSlotIndex.get(oldIdentity);
+      if (newSlotIndex == null) {
         changed = true;
-        continue; // this occurrence was removed
+        continue; // this slot was removed
       }
-      if (newIndex !== oldIndex) {
+      if (newSlotIndex !== oldSlotIndex) {
         changed = true;
       }
-      newMapping[newIndex] = dimId;
+      newMapping[newSlotIndex] = dimId;
     }
 
-    // 2. For any new entity index not yet in the mapping, check if another
-    //    instance of the same metric already has a dimension in this tab.
-    //    If so, inherit it — this handles the "add second Revenue" case.
-    for (let i = 0; i < newEntities.length; i++) {
-      if (i in newMapping) {
+    // 2. For any new slot not yet in the mapping, check if another
+    //    slot with the same sourceId already has a dimension in this tab.
+    //    If so, inherit it — this handles the "add second Revenue" case
+    //    and expression tokens referencing already-mapped metrics.
+    for (const slot of newSlots) {
+      if (slot.slotIndex in newMapping) {
         continue; // already mapped
       }
-      const key = newIndexToKey.get(i)!;
-      // Find an existing mapping entry with the same identity key
-      const siblingDimId = findSiblingDimension(newMapping, newIndexToKey, key);
+      const siblingDimId = findSiblingDimension(
+        newMapping,
+        newSlots,
+        slot.sourceId,
+      );
       if (siblingDimId !== undefined) {
-        newMapping[i] = siblingDimId;
+        newMapping[slot.slotIndex] = siblingDimId;
         changed = true;
       }
     }
@@ -102,17 +120,18 @@ export function reconcileDimensionMappings(
 }
 
 /**
- * Look through the already-remapped entries for one with the same entity
- * identity key and return its dimension id.
+ * Look through the already-remapped entries for a slot with the same
+ * sourceId and return its dimension id.
  */
 function findSiblingDimension(
   mapping: Record<number, string | null>,
-  indexToKey: Map<number, string>,
-  targetKey: string,
+  slots: MetricSlot[],
+  targetSourceId: MetricSourceId,
 ): string | null | undefined {
   for (const [idxStr, dimId] of Object.entries(mapping)) {
     const idx = Number(idxStr);
-    if (indexToKey.get(idx) === targetKey) {
+    const slot = slots.find((s) => s.slotIndex === idx);
+    if (slot && slot.sourceId === targetSourceId) {
       return dimId;
     }
   }

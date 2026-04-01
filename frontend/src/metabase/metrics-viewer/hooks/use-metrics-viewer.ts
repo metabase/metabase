@@ -39,6 +39,7 @@ import type {
   SourceDisplayInfo,
 } from "../utils/dimension-picker";
 import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
+import { computeMetricSlots } from "../utils/metric-slots";
 import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
 import {
   createMeasureSourceId,
@@ -86,10 +87,10 @@ export interface UseMetricsViewerResult {
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
   changeTabDimension: (
     tabId: string,
-    entityIndex: number,
+    slotIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  removeTabDimension: (tabId: string, entityIndex: number) => void;
+  removeTabDimension: (tabId: string, slotIndex: number) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
@@ -274,16 +275,8 @@ export function useMetricsViewer({
     return out;
   }, [state.formulaEntities]);
 
-  const entityIndicesWithSourceId = useMemo(
-    () =>
-      state.formulaEntities
-        .map((e, i) =>
-          isMetricEntry(e) ? { entityIndex: i, sourceId: e.id } : null,
-        )
-        .filter(
-          (x): x is { entityIndex: number; sourceId: MetricSourceId } =>
-            x != null,
-        ),
+  const metricSlots = useMemo(
+    () => computeMetricSlots(state.formulaEntities),
     [state.formulaEntities],
   );
 
@@ -321,21 +314,21 @@ export function useMetricsViewer({
   );
 
   const effectiveTabs = useMemo(() => {
-    // Build entity-index-keyed dimension lookup from formulaEntities
-    const dimsByEntityIndex = new Map<
+    // Build slot-index-keyed dimension lookup from metricSlots
+    const dimsBySlotIndex = new Map<
       number,
       Map<string, { displayName: string }>
     >();
-    state.formulaEntities.forEach((entity, index) => {
-      if (entity.type !== "metric") {
-        return;
-      }
-      const entry = state.definitions[entity.id];
+    for (const slot of metricSlots) {
+      const entry = state.definitions[slot.sourceId];
       if (!entry?.definition) {
-        return;
+        continue;
       }
-      dimsByEntityIndex.set(index, getDimensionsByType(entry.definition));
-    });
+      dimsBySlotIndex.set(
+        slot.slotIndex,
+        getDimensionsByType(entry.definition),
+      );
+    }
 
     return state.tabs.map((tab) => {
       const names: string[] = [];
@@ -343,9 +336,9 @@ export function useMetricsViewer({
         if (dimensionId == null) {
           continue;
         }
-        const entityIndex = Number(key);
-        const entityDimensions = dimsByEntityIndex.get(entityIndex);
-        const dimensionInfo = entityDimensions?.get(dimensionId);
+        const slotIndex = Number(key);
+        const slotDimensions = dimsBySlotIndex.get(slotIndex);
+        const dimensionInfo = slotDimensions?.get(dimensionId);
         if (dimensionInfo) {
           names.push(dimensionInfo.displayName);
         }
@@ -353,16 +346,16 @@ export function useMetricsViewer({
       const label = resolveCommonTabLabel(names);
       return label != null && label !== tab.label ? { ...tab, label } : tab;
     });
-  }, [state.tabs, state.formulaEntities, state.definitions]);
+  }, [state.tabs, metricSlots, state.definitions]);
 
   const availableDimensions = useMemo(
     () =>
       getAvailableDimensionsForPicker(
         definitionsBySourceId,
-        entityIndicesWithSourceId,
+        metricSlots,
         existingTabDimensionIds,
       ),
-    [definitionsBySourceId, entityIndicesWithSourceId, existingTabDimensionIds],
+    [definitionsBySourceId, metricSlots, existingTabDimensionIds],
   );
 
   const addMetric = useCallback(

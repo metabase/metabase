@@ -74,7 +74,7 @@ interface SerializedSource {
 }
 
 interface SerializedTabDef {
-  entityIndex: number;
+  slotIndex: number;
   dimensionId?: string;
 }
 
@@ -216,7 +216,7 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
     display: tab.display,
     definitions: getObjectEntries(tab.dimensionMapping).map(
       ([key, dimensionId]) => ({
-        entityIndex: Number(key),
+        slotIndex: Number(key),
         ...(dimensionId != null ? { dimensionId } : {}),
       }),
     ),
@@ -235,7 +235,7 @@ export function deserializeTab(
 ): MetricsViewerTabState {
   const dimensionMapping: Record<number, string | null> = {};
   for (const serializedDefinition of serializedTab.definitions) {
-    dimensionMapping[serializedDefinition.entityIndex] =
+    dimensionMapping[serializedDefinition.slotIndex] =
       serializedDefinition.dimensionId ?? null;
   }
   return {
@@ -383,7 +383,7 @@ const sourceSchema = defineCompactSchema<SerializedSource>({
 });
 
 const tabDefSchema = defineCompactSchema<SerializedTabDef>({
-  entityIndex: "i",
+  slotIndex: "i",
   dimensionId: { key: "d", optional: true },
 });
 

@@ -117,11 +117,11 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   isExecuting={isExecuting}
                   expressionItems={expressionItems}
                   onTabUpdate={updateActiveTab}
-                  onDimensionChange={(entityIndex, dim) =>
-                    changeTabDimension(activeTab.id, entityIndex, dim)
+                  onDimensionChange={(slotIndex, dim) =>
+                    changeTabDimension(activeTab.id, slotIndex, dim)
                   }
-                  onDimensionRemove={(entityIndex) =>
-                    removeTabDimension(activeTab.id, entityIndex)
+                  onDimensionRemove={(slotIndex) =>
+                    removeTabDimension(activeTab.id, slotIndex)
                   }
                 />
               ) : hasLoadedDefinitions ? (

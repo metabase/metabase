@@ -199,22 +199,34 @@ describe("reconcileDimensionMappings", () => {
     });
   });
 
-  // ── Expression entities ─────────────────────────────────────────────────
+  // ── Expression token slots ──────────────────────────────────────────────
 
-  it("handles expression entities like metric entities", () => {
-    const expr = expression("Revenue + Orders");
+  it("handles expression tokens as independent slots", () => {
+    // Expression "Revenue + Orders" has two metric tokens
+    const expr = expression("Revenue + Orders", [
+      { type: "metric", sourceId: REVENUE, count: 1 },
+      { type: "operator", op: "+" },
+      { type: "metric", sourceId: ORDERS, count: 1 },
+    ]);
+    // old: [Revenue standalone, expr] → slots: 0=Revenue(standalone), 1=Revenue(expr tok 0), 2=Orders(expr tok 2)
     const old = [metric(REVENUE), expr];
-    const next = [metric(REVENUE), expr, expr]; // second expression instance
+    // next: same, plus a second standalone Orders → slots: 0=Revenue, 1=Revenue(tok), 2=Orders(tok), 3=Orders(standalone)
+    const next = [metric(REVENUE), expr, metric(ORDERS)];
     const tab = makeTab({
-      dimensionMapping: { 0: "dim-rev", 1: "dim-expr" },
+      dimensionMapping: {
+        0: "dim-rev", // standalone Revenue slot
+        1: "dim-rev", // expression token Revenue slot
+        2: "dim-ord", // expression token Orders slot
+      },
     });
 
     const result = reconcileDimensionMappings([tab], old, next);
 
     expect(result[0].dimensionMapping).toEqual({
-      0: "dim-rev",
-      1: "dim-expr",
-      2: "dim-expr", // inherited from expression sibling
+      0: "dim-rev", // standalone Revenue — unchanged
+      1: "dim-rev", // expression token Revenue — unchanged
+      2: "dim-ord", // expression token Orders — unchanged
+      3: "dim-ord", // new standalone Orders — inherited from sibling (expr token Orders)
     });
   });
 

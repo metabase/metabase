@@ -4,7 +4,14 @@ import type { IconName } from "metabase/ui";
 import { Flex } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
+import type { MetricSourceId } from "../../types/viewer-state";
+
+import { ExpressionDimensionPill } from "./ExpressionDimensionPill";
+
+// ── Standalone metric pill item ──
+
 export interface DimensionItem {
+  type?: "metric";
   id: number;
   label?: string;
   icon?: IconName;
@@ -12,13 +19,37 @@ export interface DimensionItem {
   availableOptions: DimensionOption[];
 }
 
+// ── Expression pill item (one pill per expression entity) ──
+
+export interface ExpressionMetricSource {
+  /** Slot index in dimensionMapping — used as the callback key. */
+  slotIndex: number;
+  sourceId: MetricSourceId;
+  metricName: string;
+  metricCount?: number;
+  colors?: string[];
+  currentDimensionLabel?: string;
+  availableOptions: DimensionOption[];
+}
+
+export interface ExpressionDimensionItem {
+  type: "expression";
+  /** Expression entity index — used as the React key. */
+  id: number;
+  colors?: string[];
+  /** Aggregate label derived from selected dimensions. */
+  label?: string;
+  metricSources: ExpressionMetricSource[];
+}
+
+export type DimensionPillBarItem = DimensionItem | ExpressionDimensionItem;
+
+// ── Component ──
+
 export interface DimensionPillBarProps {
-  items: DimensionItem[];
-  onDimensionChange: (
-    entityIndex: number,
-    dimension: DimensionMetadata,
-  ) => void;
-  onDimensionRemove?: (entityIndex: number) => void;
+  items: DimensionPillBarItem[];
+  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
+  onDimensionRemove?: (slotIndex: number) => void;
   disabled?: boolean;
 }
 
@@ -44,20 +75,29 @@ export function DimensionPillBar({
       wrap="wrap"
       data-testid="metrics-viewer-dimension-pill-container"
     >
-      {items.map((item) => (
-        <DimensionPill
-          key={item.id}
-          label={item.label}
-          icon={item.icon}
-          colors={item.colors}
-          options={item.availableOptions}
-          onSelect={(dimension) => onDimensionChange(item.id, dimension)}
-          onRemove={
-            onDimensionRemove ? () => onDimensionRemove(item.id) : undefined
-          }
-          disabled={disabled}
-        />
-      ))}
+      {items.map((item) =>
+        item.type === "expression" ? (
+          <ExpressionDimensionPill
+            key={`expr-${item.id}`}
+            item={item}
+            onDimensionChange={onDimensionChange}
+            disabled={disabled}
+          />
+        ) : (
+          <DimensionPill
+            key={item.id}
+            label={item.label}
+            icon={item.icon}
+            colors={item.colors}
+            options={item.availableOptions}
+            onSelect={(dimension) => onDimensionChange(item.id, dimension)}
+            onRemove={
+              onDimensionRemove ? () => onDimensionRemove(item.id) : undefined
+            }
+            disabled={disabled}
+          />
+        ),
+      )}
     </Flex>
   );
 }

@@ -112,9 +112,9 @@ export interface MetricsViewerTabState {
 // ── Page state ──
 
 export interface MetricsViewerPageState {
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  formulaEntities: MetricsViewerFormulaEntity[];
-  tabs: MetricsViewerTabState[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>; // pristine definitions for unique metrics used in formula
+  formulaEntities: MetricsViewerFormulaEntity[]; // specific items used in formula, definitions there contains filters
+  tabs: MetricsViewerTabState[]; // visualization settings for a tab
   selectedTabId: string | null;
 }
 

@@ -24,6 +24,7 @@ import type {
 import { isMetricEntry } from "../../../types/viewer-state";
 import { getProjectionInfo } from "../../../utils/definition-builder";
 import type { DimensionFilterValue } from "../../../utils/dimension-filters";
+import { computeMetricSlots } from "../../../utils/metric-slots";
 import {
   buildArithmeticSeriesFromResult,
   buildDimensionItemsFromDefinitions,
@@ -54,11 +55,8 @@ type MetricsViewerTabContentProps = {
    */
   standaloneSourceIds?: Set<MetricSourceId> | null;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  onDimensionChange: (
-    entityIndex: number,
-    dimension: DimensionMetadata,
-  ) => void;
-  onDimensionRemove: (entityIndex: number) => void;
+  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
+  onDimensionRemove: (slotIndex: number) => void;
 };
 
 export function MetricsViewerTabContent({
@@ -75,6 +73,11 @@ export function MetricsViewerTabContent({
   onDimensionChange,
   onDimensionRemove,
 }: MetricsViewerTabContentProps) {
+  const metricSlots = useMemo(
+    () => computeMetricSlots(formulaEntities),
+    [formulaEntities],
+  );
+
   const metricSourceIds = useMemo(
     () => formulaEntities.filter(isMetricEntry).map((e) => e.id),
     [formulaEntities],
@@ -132,6 +135,7 @@ export function MetricsViewerTabContent({
         definitions,
         uniqueNames,
         totalEntityCount,
+        metricSlots,
       );
 
     return {
@@ -148,6 +152,7 @@ export function MetricsViewerTabContent({
     sourceColors,
     definitions,
     uniqueNames,
+    metricSlots,
   ]);
 
   const isLoading = useMemo(() => {
@@ -198,7 +203,9 @@ export function MetricsViewerTabContent({
         tab.dimensionMapping,
         modifiedDefinitionsByIndex,
         sourceColors,
+        metricSlots,
         formulaEntities,
+        tab.projectionConfig,
         dimensionFilter,
       ),
     [
@@ -206,15 +213,25 @@ export function MetricsViewerTabContent({
       tab.dimensionMapping,
       modifiedDefinitionsByIndex,
       sourceColors,
+      metricSlots,
       formulaEntities,
+      tab.projectionConfig,
       dimensionFilter,
     ],
   );
 
   const definitionForControls = useMemo((): MetricDefinition | null => {
     for (const key of getObjectKeys(tab.dimensionMapping)) {
-      const entityIndex = Number(key);
-      const modDef = modifiedDefinitionsByIndex.get(entityIndex);
+      const slotIndex = Number(key);
+      const slot = metricSlots[slotIndex];
+      if (!slot) {
+        continue;
+      }
+      // For standalone slots, use the entity-index-keyed modified def
+      const modDef =
+        slot.tokenPosition === undefined
+          ? modifiedDefinitionsByIndex.get(slot.entityIndex)
+          : undefined;
       if (!modDef) {
         continue;
       }
@@ -225,13 +242,20 @@ export function MetricsViewerTabContent({
       }
     }
     return null;
-  }, [tab.dimensionMapping, modifiedDefinitionsByIndex]);
+  }, [tab.dimensionMapping, modifiedDefinitionsByIndex, metricSlots]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
     for (const key of getObjectKeys(tab.dimensionMapping)) {
-      const entityIndex = Number(key);
-      const modDef = modifiedDefinitionsByIndex.get(entityIndex);
+      const slotIndex = Number(key);
+      const slot = metricSlots[slotIndex];
+      if (!slot) {
+        continue;
+      }
+      const modDef =
+        slot.tokenPosition === undefined
+          ? modifiedDefinitionsByIndex.get(slot.entityIndex)
+          : undefined;
       if (!modDef) {
         continue;
       }
@@ -241,7 +265,7 @@ export function MetricsViewerTabContent({
       }
     }
     return filterDimensions;
-  }, [tab.dimensionMapping, modifiedDefinitionsByIndex]);
+  }, [tab.dimensionMapping, modifiedDefinitionsByIndex, metricSlots]);
 
   const updateProjectionConfig = useCallback(
     (updates: Partial<MetricsViewerTabProjectionConfig>) => {
@@ -322,7 +346,7 @@ export function MetricsViewerTabContent({
         onDimensionRemove={dimensionRemoveHandler}
         onBrush={isTimeTab ? handleBrush : undefined}
         definitions={definitions}
-        formulaEntities={formulaEntities}
+        metricSlots={metricSlots}
         tab={tab}
         onTabUpdate={onTabUpdate}
         cardIdToDimensionId={cardIdToDimensionId}
