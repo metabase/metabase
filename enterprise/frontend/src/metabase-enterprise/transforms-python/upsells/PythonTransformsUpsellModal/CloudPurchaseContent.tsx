@@ -11,7 +11,7 @@ import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
 import type { ICloudAddOnProduct } from "metabase-types/api/store";
 
-const CAMPAIGN = "data-studio-python-transforms";
+const CAMPAIGN = "data-studio-python-transforms"; // TODO: already in constants?
 const LOCATION = "data-studio-transforms";
 
 type CloudPurchaseContentProps = {
@@ -19,6 +19,8 @@ type CloudPurchaseContentProps = {
   addOn: ICloudAddOnProduct;
 };
 
+// TODO: What should users see if they've already purchased advanced transforms (already used some of their free allotment)?
+// TODO: Rename this
 export const CloudPurchaseContent = ({
   handleModalClose,
   addOn,
