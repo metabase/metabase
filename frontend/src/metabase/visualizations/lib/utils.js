@@ -517,3 +517,6 @@ export function findSensibleSankeyColumns(data) {
     metric: metricColumn.name,
   };
 }
+
+export const DATA_IMAGE_URI_PATTERN =
+  /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;
