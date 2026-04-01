@@ -2,6 +2,7 @@ name: Check Migration Versions
 
 on:
   pull_request:
+    types: [opened, synchronize, labeled, unlabeled]
     paths:
       - 'resources/migrations/**'
 
