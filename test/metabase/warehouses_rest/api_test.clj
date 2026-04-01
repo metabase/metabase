@@ -819,15 +819,15 @@
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table    _ {:db_id db-id, :active false, :name "INACTIVE_TABLE"}
                  :model/Table    _ {:db_id db-id, :active true, :name "ACTIVE_TABLE"}]
-    (testing "remove_inactive=true excludes inactive tables"
+    (testing "GET /api/database/:id/metadata?remove_inactive=true"
       (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
                         :tables)]
         (is (= ["ACTIVE_TABLE"] (map :name tables)))))
-    (testing "remove_inactive=false includes inactive tables"
+    (testing "GET /api/database/:id/metadata?remove_inactive=false"
       (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=false" db-id))
                         :tables)]
         (is (= #{"ACTIVE_TABLE" "INACTIVE_TABLE"} (set (map :name tables))))))
-    (testing "default (no remove_inactive param) includes inactive tables"
+    (testing "GET /api/database/:id/metadata"
       (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id))
                         :tables)]
         (is (= #{"ACTIVE_TABLE" "INACTIVE_TABLE"} (set (map :name tables))))))))
