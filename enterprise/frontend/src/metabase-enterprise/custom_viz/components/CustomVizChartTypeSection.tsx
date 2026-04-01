@@ -52,7 +52,7 @@ export function CustomVizChartTypeSection({
             justify="flex-start"
             grow={false}
           >
-            {customVizPlugins.map(plugin => {
+            {customVizPlugins.map((plugin) => {
               const displayType =
                 `custom:${plugin.identifier}` as CardDisplayType;
               return (

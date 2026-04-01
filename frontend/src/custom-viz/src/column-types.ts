@@ -24,8 +24,10 @@ export const isBoolean: ColumnPredicate = (col) => ct().isBoolean(col);
 export const isString: ColumnPredicate = (col) => ct().isString(col);
 export const isStringLike: ColumnPredicate = (col) => ct().isStringLike(col);
 export const isSummable: ColumnPredicate = (col) => ct().isSummable(col);
-export const isNumericBaseType: ColumnPredicate = (col) => ct().isNumericBaseType(col);
-export const isDateWithoutTime: ColumnPredicate = (col) => ct().isDateWithoutTime(col);
+export const isNumericBaseType: ColumnPredicate = (col) =>
+  ct().isNumericBaseType(col);
+export const isDateWithoutTime: ColumnPredicate = (col) =>
+  ct().isDateWithoutTime(col);
 export const isNumber: ColumnPredicate = (col) => ct().isNumber(col);
 export const isFloat: ColumnPredicate = (col) => ct().isFloat(col);
 export const isTime: ColumnPredicate = (col) => ct().isTime(col);
@@ -52,7 +54,8 @@ export const isURL: ColumnPredicate = (col) => ct().isURL(col);
 export const isEmail: ColumnPredicate = (col) => ct().isEmail(col);
 export const isAvatarURL: ColumnPredicate = (col) => ct().isAvatarURL(col);
 export const isImageURL: ColumnPredicate = (col) => ct().isImageURL(col);
-export const hasLatitudeAndLongitudeColumns: (cols: Column[]) => boolean =
-  (cols) => ct().hasLatitudeAndLongitudeColumns(cols);
+export const hasLatitudeAndLongitudeColumns: (cols: Column[]) => boolean = (
+  cols,
+) => ct().hasLatitudeAndLongitudeColumns(cols);
 
 export type { ColumnPredicate, ColumnTypes };
