@@ -18,7 +18,6 @@ source:
         - null
         - Schemaless Table
   type: query
-source_database_id: My Database
 tags:
 - entity_id: TUtH6I5SqautNtUZoZ6Ti
   position: 0

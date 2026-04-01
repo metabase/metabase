@@ -2305,7 +2305,6 @@
                             :description "A python transform"
                             :entity_id "pythonEtlPythonEtlxxx"
                             :collection_id coll-id
-                            :source_database_id db-id
                             :source {:type "python"
                                      :source-database db-id
                                      :source-tables [{:alias "orders"

@@ -1969,7 +1969,7 @@
               (let [transform (t2/select-one :model/Transform :name "Test Transform")
                     db        (t2/select-one :model/Database :name "my-db")]
                 (is (some? transform))
-                (is (= (:id db) (:source_database_id transform)))))))))))
+                (is (= (:id db) (:source_db_id transform)))))))))))
 
 (deftest dashboard-minimal-required-properties-test
   (testing "Dashboard deserialized with only: serdes/meta, entity_id, name, creator_id"
