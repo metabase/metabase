@@ -26,6 +26,7 @@ type NotificationChannelConfigProps = ReturnType<
 > & {
   opened: boolean;
   onClose: () => void;
+  resetConfig: () => void;
 };
 
 export function NotificationChannelConfigModal({
