@@ -67,71 +67,73 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
   };
 };
 
-const makeVisualizationComponent = (_getAssetUrl: (path: string) => string) => (props: CustomVisualizationProps<Settings>) => {
-  const { height, series, settings, width } = props;
-  const { threshold } = settings;
-  const value = series[0].data.rows[0][0];
+const makeVisualizationComponent =
+  (_getAssetUrl: (path: string) => string) =>
+  (props: CustomVisualizationProps<Settings>) => {
+    const { height, series, settings, width } = props;
+    const { threshold } = settings;
+    const value = series[0].data.rows[0][0];
 
-  if (!height || !width) {
-    return null;
-  }
+    if (!height || !width) {
+      return null;
+    }
 
-  if (typeof value !== "number" || typeof threshold !== "number") {
-    throw new Error("Value and threshold need to be numbers");
-  }
+    if (typeof value !== "number" || typeof threshold !== "number") {
+      throw new Error("Value and threshold need to be numbers");
+    }
 
-  const emoji = value >= threshold ? "👍" : "👎";
+    const emoji = value >= threshold ? "👍" : "👎";
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        width,
-        height,
-        fontSize: "10rem",
-      }}
-    >
-      {emoji}
-    </div>
-  );
-};
-
-const makeStaticVisualizationComponent = (getAssetUrl: (path: string) => string) => (
-  props: CustomStaticVisualizationProps<Settings>,
-) => {
-  const width = 540;
-  const height = 360;
-  const { series, settings } = props;
-  const { threshold } = settings;
-  const value = series[0].data.rows[0][0];
-
-  if (typeof value !== "number" || typeof threshold !== "number") {
-    throw new Error("Value and threshold need to be numbers");
-  }
-
-  const emoji =
-    value >= threshold ? (
-      <img src={getAssetUrl("thumbs-up.png")} />
-    ) : (
-      <img src={getAssetUrl("thumbs-down.png")} />
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          width,
+          height,
+          fontSize: "10rem",
+        }}
+      >
+        {emoji}
+      </div>
     );
+  };
 
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        width,
-        height,
-        fontSize: "10rem",
-      }}
-    >
-      {emoji}
-    </div>
-  );
-};
+const makeStaticVisualizationComponent =
+  (getAssetUrl: (path: string) => string) =>
+  (props: CustomStaticVisualizationProps<Settings>) => {
+    const width = 540;
+    const height = 360;
+    const { series, settings } = props;
+    const { threshold } = settings;
+    const value = series[0].data.rows[0][0];
+
+    if (typeof value !== "number" || typeof threshold !== "number") {
+      throw new Error("Value and threshold need to be numbers");
+    }
+
+    const emoji =
+      value >= threshold ? (
+        <img src={getAssetUrl("thumbs-up.png")} />
+      ) : (
+        <img src={getAssetUrl("thumbs-down.png")} />
+      );
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          width,
+          height,
+          fontSize: "10rem",
+        }}
+      >
+        {emoji}
+      </div>
+    );
+  };
 
 export default createVisualization;

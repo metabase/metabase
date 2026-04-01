@@ -11,6 +11,7 @@ import {
 import { getDashboard } from "metabase/dashboard/selectors";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { MetabotStore } from "metabase/metabot/components/MetabotChat/MetabotStore";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import Question from "metabase-lib/v1/Question";
 import type { CollectionId, Dashboard } from "metabase-types/api";
@@ -129,6 +130,7 @@ function MainNavbar({
       data-element-id="navbar-root"
     >
       <NavRoot isOpen={isOpen}>
+        <MetabotStore />
         <MainNavbarContainer
           isOpen={isOpen}
           location={location}

@@ -20,7 +20,6 @@ import {
   createMockRecentCollectionItem,
   createMockRecentTableItem,
   createMockSearchResult,
-  createMockTokenFeatures,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
@@ -454,9 +453,7 @@ describe("CommandSuggestion", () => {
 
     describe("when metabot is enabled", () => {
       beforeEach(() => {
-        mockSettings({
-          "token-features": createMockTokenFeatures({ metabot_v3: true }),
-        });
+        mockSettings({});
         setupEnterprisePlugins();
       });
 

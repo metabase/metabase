@@ -45,7 +45,7 @@ export type SelectProps = {
   placeholderNoOptions?: string;
 };
 
-export type ToggleProps = {};
+export type ToggleProps = never;
 
 export type SegmentedControlProps = {
   options: {

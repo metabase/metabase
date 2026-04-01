@@ -5,6 +5,11 @@ on:
     - cron: "0 2 * * *" # Every day at 2 AM UTC
   workflow_dispatch:
     inputs:
+      force:
+        description: "⚠️ DESTRUCTIVE: Force-push from upstream, overwriting any fork-only commits"
+        required: false
+        default: false
+        type: boolean
       release_branch_count:
         description: "Number of most recent release branches to sync (0 to skip)"
         required: false
@@ -30,14 +35,27 @@ jobs:
       - name: Fetch upstream master
         run: git fetch metabase master
 
-      - name: Force-sync master from upstream
+      - name: Sync master from upstream
+        env:
+          FORCE: ${{ inputs.force || 'false' }}
         run: |
           if git diff --quiet master metabase/master; then
             echo "master is already up to date — skipping push"
-          else
-            git checkout master
+            exit 0
+          fi
+
+          git checkout master
+
+          if [ "$FORCE" = "true" ]; then
+            echo "⚠️  Force-syncing master (overwriting fork-only commits)"
             git reset --hard metabase/master
             git push origin master --force
+          else
+            if git pull metabase master; then
+              git push origin master
+            else
+              echo "::warning::master has diverged from upstream — skipping (use force to override)"
+            fi
           fi
 
   sync-release-branches:
@@ -57,9 +75,10 @@ jobs:
       - name: Fetch upstream release branches
         run: git fetch metabase 'refs/heads/release-*:refs/remotes/metabase/release-*'
 
-      - name: Force-sync most recent release branches from upstream
+      - name: Sync most recent release branches from upstream
         env:
           BRANCH_COUNT: ${{ inputs.release_branch_count || '5' }}
+          FORCE: ${{ inputs.force || 'false' }}
         run: |
           # Get only canonical release branches (release-x.NN.x), skip ad-hoc branches like backports
           branches=$(git branch -r --list 'metabase/release-*' | sed 's|^ *||' | grep -E '^metabase/release-x\.[0-9]+\.x$' | sort -t. -k2,2rn | head -n "$BRANCH_COUNT")
@@ -77,8 +96,18 @@ jobs:
               fi
             fi
 
-            echo "Syncing $branch_name..."
-            git checkout -B "$branch_name" "$branch"
-            git push origin "$branch_name" --force
+            if [ "$FORCE" = "true" ]; then
+              echo "⚠️  Force-syncing $branch_name (overwriting fork-only commits)"
+              git checkout -B "$branch_name" "$branch"
+              git push origin "$branch_name" --force
+            else
+              git checkout -B "$branch_name" "origin/$branch_name" 2>/dev/null || git checkout -B "$branch_name" "$branch"
+              if git pull metabase "$branch_name"; then
+                git push origin "$branch_name"
+              else
+                echo "::warning::$branch_name has diverged from upstream — skipping (use force to override)"
+              fi
+            fi
+
             echo "::endgroup::"
           done
