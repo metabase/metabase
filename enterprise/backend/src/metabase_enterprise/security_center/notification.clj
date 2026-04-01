@@ -12,7 +12,7 @@
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.notification.send :as notification.send]
+   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
@@ -83,6 +83,6 @@
   (events/publish-event! :event/security-advisory-match
                          (advisory-event-info advisory))
   ;; Send email + Slack via notification pipeline
-  (notification.send/send-notification! (build-notification advisory))
+  (notification/send-notification! (build-notification advisory))
   (t2/update! :model/SecurityAdvisory (:id advisory)
               {:last_notified_at (mi/now)}))

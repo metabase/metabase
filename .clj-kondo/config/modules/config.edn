@@ -3106,6 +3106,8 @@
            config
            events
            models
+           notification
+           permissions
            premium-features
            settings
            task
