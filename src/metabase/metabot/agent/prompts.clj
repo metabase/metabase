@@ -9,7 +9,6 @@
   - Template caching for performance"
   (:require
    [clojure.java.io :as io]
-   [metabase.metabot.models.metabot-permissions :as metabot-permissions]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.util.log :as log]
@@ -225,7 +224,7 @@
             recent-views         (or (get context :recent_views)
                                      (get context :recent-views))
             perms                (or scope/*current-user-metabot-permissions*
-                                     metabot-permissions/perm-type-defaults)
+                                     scope/perm-type-defaults)
             has-sql?             (= :yes (:permission/metabot-sql-generation perms))
             has-nql?             (= :yes (:permission/metabot-nql perms))
             template-context     {:metabot_name              (metabot.settings/metabot-name)

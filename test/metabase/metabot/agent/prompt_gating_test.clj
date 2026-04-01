@@ -17,26 +17,22 @@
 (def ^:private all-yes-perms
   {:permission/metabot-sql-generation :yes
    :permission/metabot-nql            :yes
-   :permission/metabot-other-tools    :yes
-   :permission/metabot-model          :large})
+   :permission/metabot-other-tools    :yes})
 
 (def ^:private no-sql-perms
   {:permission/metabot-sql-generation :no
    :permission/metabot-nql            :yes
-   :permission/metabot-other-tools    :yes
-   :permission/metabot-model          :large})
+   :permission/metabot-other-tools    :yes})
 
 (def ^:private no-nql-perms
   {:permission/metabot-sql-generation :yes
    :permission/metabot-nql            :no
-   :permission/metabot-other-tools    :yes
-   :permission/metabot-model          :large})
+   :permission/metabot-other-tools    :yes})
 
 (def ^:private all-no-perms
   {:permission/metabot-sql-generation :no
    :permission/metabot-nql            :no
-   :permission/metabot-other-tools    :no
-   :permission/metabot-model          :small})
+   :permission/metabot-other-tools    :no})
 
 (deftest ^:parallel prompt-includes-sql-sections-when-permitted-test
   (let [rendered (render-internal-template all-yes-perms)]
@@ -89,8 +85,7 @@
         without-other (render-internal-template
                        {:permission/metabot-sql-generation :yes
                         :permission/metabot-nql            :yes
-                        :permission/metabot-other-tools    :no
-                        :permission/metabot-model          :large})]
+                        :permission/metabot-other-tools    :no})]
     (testing "dashboard routing included when permitted"
       (is (re-find #"Use X-ray auto-generated dashboard tool" with-other)))
     (testing "dashboard routing excluded when not permitted"
@@ -103,8 +98,7 @@
         without-queries (render-internal-template
                          {:permission/metabot-sql-generation :no
                           :permission/metabot-nql            :no
-                          :permission/metabot-other-tools    :yes
-                          :permission/metabot-model          :large})]
+                          :permission/metabot-other-tools    :yes})]
     (testing "query-focused sections included when NQL or SQL is available"
       (is (re-find #"CRITICAL CONSTRAINTS" with-queries))
       (is (re-find #"Verify Data Structure" with-queries))
@@ -175,8 +169,7 @@
   (let [with-nlq    (render-slackbot-template all-yes-perms)
         without-nlq (render-slackbot-template {:permission/metabot-sql-generation :yes
                                                :permission/metabot-nql            :no
-                                               :permission/metabot-other-tools    :yes
-                                               :permission/metabot-model          :large})]
+                                               :permission/metabot-other-tools    :yes})]
     (testing "NLQ sections included when permitted"
       (is (re-find #"construct_notebook_query" with-nlq))
       (is (re-find #"Data Exploration Workflow" with-nlq))
@@ -194,8 +187,7 @@
   (let [with-other    (render-slackbot-template all-yes-perms)
         without-other (render-slackbot-template {:permission/metabot-sql-generation :yes
                                                  :permission/metabot-nql            :yes
-                                                 :permission/metabot-other-tools    :no
-                                                 :permission/metabot-model          :large})]
+                                                 :permission/metabot-other-tools    :no})]
     (testing "other-tools sections included when permitted"
       (is (re-find #"static_viz" with-other))
       (is (re-find #"Visualization Titles" with-other))

@@ -418,9 +418,11 @@ Examples of CORRECT links:
 ✓ [Regional Sales Breakdown](metabase://chart/8f26466c-164c-4e06-a1e7-1dfcce99b08b)
 ✓ [Customer Dashboard](metabase://dashboard/123)
 ✓ [Total Revenue Metric](metabase://metric/456)
+✓ [Orders Table](metabase://table/789)
 
 Examples of WRONG links (DO NOT USE):
 ✗ [Regional Sales](/chart/8f26466c-164c-4e06-a1e7-1dfcce99b08b) ← Missing metabase:// protocol
+✗ [Customers](/table/456) ← Missing metabase:// protocol, not a valid link
 ✗ [Chart 123](metabase://chart/123) ← Not descriptive
 
 ALWAYS:

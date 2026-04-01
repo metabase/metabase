@@ -17,7 +17,6 @@
    [:permissions
     [:map
      [:metabot [:enum :yes :no]]
-     [:metabot-model [:enum :large :medium :small]]
      [:metabot-sql-generation [:enum :yes :no]]
      [:metabot-nql [:enum :yes :no]]
      [:metabot-other-tools [:enum :yes :no]]]]])

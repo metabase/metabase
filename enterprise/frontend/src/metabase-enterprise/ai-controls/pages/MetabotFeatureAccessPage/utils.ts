@@ -7,11 +7,7 @@ import {
   useGetAIControlsGroupPermissionsQuery,
   useUpdateAIControlsGroupPermissionsMutation,
 } from "metabase-enterprise/api";
-import {
-  AIToolKey,
-  type MetabotGroupPermission,
-  type MetabotModelSize,
-} from "metabase-types/api";
+import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
 
 export const getAIToolItems = (): Array<{ key: AIToolKey; label: string }> => {
   return [
@@ -57,7 +53,7 @@ export const useMetabotGroupPermissions = () => {
   const onPermissionChange = (
     groupId: number,
     tool: AIToolKey,
-    value: "yes" | "no" | MetabotModelSize,
+    value: "yes" | "no",
   ) => {
     setGroupPermissions((prevPermissions) => {
       const updatedPermissions = prevPermissions.map((permission) => {

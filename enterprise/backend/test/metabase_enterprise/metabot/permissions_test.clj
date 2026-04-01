@@ -12,10 +12,9 @@
                      :model/PermissionsGroupMembership _ {:user_id  user-id
                                                           :group_id group-id}]
         (let [perms (scope/resolve-user-permissions user-id)]
-          ;; all-internal-users magic group has yes/medium from migration
+          ;; all-internal-users magic group has yes from migration
           (is (= :yes (:permission/metabot-sql-generation perms)))
-          (is (= :yes (:permission/metabot-nql perms)))
-          (is (= :medium (:permission/metabot-model perms))))))
+          (is (= :yes (:permission/metabot-nql perms))))))
 
     (testing "user in group with stored permissions gets those values"
       (mt/with-temp [:model/User {user-id :id} {}
@@ -43,13 +42,13 @@
                                                   :perm_type  :permission/metabot-sql-generation
                                                   :perm_value :yes}
                      :model/MetabotPermissions _ {:group_id   group-a
-                                                  :perm_type  :permission/metabot-model
-                                                  :perm_value :small}
+                                                  :perm_type  :permission/metabot-nql
+                                                  :perm_value :no}
                      :model/MetabotPermissions _ {:group_id   group-b
-                                                  :perm_type  :permission/metabot-model
-                                                  :perm_value :large}]
+                                                  :perm_type  :permission/metabot-nql
+                                                  :perm_value :yes}]
         (let [perms (scope/resolve-user-permissions user-id)]
           (is (= :yes (:permission/metabot-sql-generation perms))
-              ":yes wins over :no")
-          (is (= :large (:permission/metabot-model perms))
-              ":large wins over :small"))))))
+              ":yes wins over :no for sql-generation")
+          (is (= :yes (:permission/metabot-nql perms))
+              ":yes wins over :no for nql"))))))

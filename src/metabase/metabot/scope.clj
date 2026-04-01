@@ -7,7 +7,6 @@
   scope grants."
   (:require
    [metabase.api-scope.core :as api-scope]
-   [metabase.metabot.models.metabot-permissions :as metabot-permissions]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [deferred-tru]]
    [potemkin :as p]))
@@ -109,6 +108,28 @@
   (deferred-tru "View metric definitions"))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; Metabot permission type definitions
+;;; ──────────────────────────────────────────────────────────────────
+
+(def metabot-permissions
+  "Metabot permission definitions. Values are ordered from most permissive to least permissive."
+  {:permission/metabot                  {:values [:yes :no]}
+   :permission/metabot-sql-generation   {:values [:yes :no]}
+   :permission/metabot-nql              {:values [:yes :no]}
+   :permission/metabot-other-tools      {:values [:yes :no]}})
+
+(def perm-types
+  "The set of defined metabot permission types."
+  (set (keys metabot-permissions)))
+
+(def perm-type-defaults
+  "Default values for each metabot permission type."
+  {:permission/metabot                  :no
+   :permission/metabot-sql-generation   :no
+   :permission/metabot-nql              :no
+   :permission/metabot-other-tools      :no})
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; Metabot-specific scope state
 ;;; ──────────────────────────────────────────────────────────────────
 
@@ -122,7 +143,7 @@
   "Map of metabot permission type to value for the current user.
   e.g. `{:permission/metabot-sql-generation :yes, :permission/metabot-nql :no, ...}`.
   Bind in the request path alongside `*current-user-scope*`. When nil,
-  consumers should fall back to `metabot-permissions/perm-type-defaults`."
+  consumers should fall back to `perm-type-defaults`."
   nil)
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -145,8 +166,7 @@
   {:permission/metabot                :yes
    :permission/metabot-sql-generation :yes
    :permission/metabot-nql            :yes
-   :permission/metabot-other-tools    :yes
-   :permission/metabot-model          :large})
+   :permission/metabot-other-tools    :yes})
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Permission resolution
@@ -157,7 +177,7 @@
   return the most permissive value. Values are ordered most→least permissive
   in `metabot-permissions`."
   [perm-type values]
-  (let [ordering (get-in metabot-permissions/metabot-permissions [perm-type :values])
+  (let [ordering (get-in metabot-permissions [perm-type :values])
         rank     (into {} (map-indexed (fn [i v] [v i]) ordering))]
     ;; Lowest index = most permissive
     (first (sort-by #(get rank % Integer/MAX_VALUE) values))))
@@ -169,7 +189,7 @@
   OSS implementation returns defaults for all users."
   metabase-enterprise.metabot.permissions
   [_user-id]
-  metabot-permissions/perm-type-defaults)
+  perm-type-defaults)
 
 (defn user-metabot-perms->scopes
   "Convert a resolved metabot permissions map into a set of scope strings.
@@ -182,4 +202,4 @@
        (into acc (get perm-type->scopes perm-type))
        acc))
    always-granted-scopes
-   (or perms metabot-permissions/perm-type-defaults)))
+   (or perms perm-type-defaults)))
