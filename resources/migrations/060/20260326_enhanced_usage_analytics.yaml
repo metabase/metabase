@@ -262,7 +262,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v60.2026-03-26T00:00:21
-      author: bgrabow
+      author: bcm
       comment: Add embedding_route column to view_log for API surface tracking
       changes:
         - addColumn:
@@ -277,7 +277,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v60.2026-03-26T00:00:22
-      author: bgrabow
+      author: bcm
       comment: Add embedding_route column to query_execution for API surface tracking
       changes:
         - addColumn:
