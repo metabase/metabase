@@ -776,7 +776,8 @@
 ;; Changing it would require extreme care for backwards compatibility. If you need to match against this
 ;; prefix, use [[workspace-isolated-schema?]] or [[workspace-isolated-schema-clause]] rather than hardcoding it.
 (def ^:private workspace-isolated-prefix "mb__isolation_")
-(def ^:private workspace-isolated-like-pattern (str workspace-isolated-prefix "%"))
+;; Escaped for SQL LIKE: underscores are wildcards, so we escape them with backslash.
+(def ^:private workspace-isolated-like-pattern "mb\\_\\_isolation\\_%")
 
 (defn workspace-isolated-schema?
   "Returns true if the given schema name belongs to a workspace isolation namespace."
