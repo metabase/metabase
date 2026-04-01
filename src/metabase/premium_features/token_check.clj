@@ -658,6 +658,20 @@
   (when-not (some has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
 
+(defn is-trial?
+  "True if the current premium token is a trial subscription."
+  []
+  (boolean (:trial (some-> (premium-features.settings/premium-embedding-token)
+                           (check-token)))))
+
+(defn assert-not-trial
+  "Throw an error if the current token is a trial subscription.
+   `feature-name` should be a localized string."
+  [feature-name]
+  (when (is-trial?)
+    (throw (ex-info (tru "{0} is not available on trial subscriptions." feature-name)
+                    {:status-code 402 :status "error-premium-feature-not-available"}))))
+
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."
   []

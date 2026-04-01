@@ -1,6 +1,7 @@
 (ns metabase-enterprise.security-center.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -56,6 +57,20 @@
             (is (= "SC-TEST-001" (-> response :advisories first :advisory_id)))))
         (testing "non-superuser gets 403"
           (mt/user-http-request :rasta :get 403 "ee/security-center"))))))
+
+(deftest trial-subscription-gate-test
+  (testing "Security Center is not available on trial subscriptions"
+    (mt/with-premium-features #{:admin-security-center}
+      (with-redefs [token-check/is-trial? (constantly true)]
+        (testing "GET /api/ee/security-center returns 402 for trial"
+          (is (=? {:message  "Security Center is not available on trial subscriptions."
+                   :status   "error-premium-feature-not-available"}
+                  (mt/user-http-request :crowberto :get 402 "ee/security-center"))))
+        (testing "POST acknowledge returns 402 for trial"
+          (is (=? {:message  "Security Center is not available on trial subscriptions."
+                   :status   "error-premium-feature-not-available"}
+                  (mt/user-http-request :crowberto :post 402
+                                        "ee/security-center/SC-TEST-001/acknowledge"))))))))
 
 (deftest acknowledge-advisory-test
   (testing "POST /api/ee/security-center/:id/acknowledge"

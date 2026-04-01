@@ -5,6 +5,18 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :as i18n]))
 
+(defn +require-non-trial
+  "Wraps Ring `handler`. Returns 402 if the current token is a trial subscription.
+   Argument order is `[handler feature-name]` so it can be used with `->`."
+  [handler feature-name]
+  (assert (i18n/localized-string? feature-name), "`feature-name` must be i18ned")
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (premium-features/assert-not-trial feature-name)
+     (handler request respond raise))
+   (fn [prefix]
+     (open-api/open-api-spec handler prefix))))
+
 (defn +require-premium-feature
   "Wraps Ring `handler`. Check that we have a premium token with `feature` (a keyword; see
   [[metabase.premium-features.core]] for a list of current features) or return a 401 if it is not.
