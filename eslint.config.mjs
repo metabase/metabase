@@ -325,12 +325,6 @@ const configs = [
       "i18next/no-literal-string": "off",
     },
   },
-  {
-    files: ["frontend/src/custom-viz/src/templates/index.tsx"],
-    rules: {
-      "import/no-default-export": "off",
-    },
-  },
   // ts configs
   ...tseslint.configs.recommended.map((config) => ({
     ...config,
@@ -954,6 +948,12 @@ const configs = [
       "metabase/no-literal-metabase-strings": "off",
       "metabase/no-color-literals": "off",
       "no-console": "off",
+    },
+  },
+  {
+    files: ["frontend/src/custom-viz/src/templates/index.tsx"],
+    rules: {
+      "import/no-default-export": "off",
     },
   },
   {
