@@ -664,13 +664,12 @@
   []
   (-> (-token-status) :trial boolean))
 
-(defn assert-not-trial
-  "Throw an error if the current token is a trial subscription.
-   `feature-name` should be a localized string."
-  [feature-name]
-  (when (is-trial?)
-    (throw (ex-info (tru "{0} is not available on trial subscriptions." feature-name)
-                    {:status-code 402 :status "error-premium-feature-not-available"}))))
+(defn security-center-enabled?
+  "True if the current instance has Security Center access.
+   Requires both the `:admin-security-center` feature flag AND a non-trial subscription."
+  []
+  (and (has-feature? :admin-security-center)
+       (not (is-trial?))))
 
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."

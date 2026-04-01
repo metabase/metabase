@@ -8,6 +8,5 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [metabase-enterprise.api.routes.common
-  +require-non-trial
   +require-premium-feature
   +when-premium-feature])

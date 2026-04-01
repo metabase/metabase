@@ -23,9 +23,9 @@
   assert-airgap-allows-user-creation!
   assert-has-feature
   assert-has-any-features
-  assert-not-trial
   ee-feature-error
   is-trial?
+  security-center-enabled?
   has-any-features?
   has-feature?
   log-enabled?
