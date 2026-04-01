@@ -1,4 +1,4 @@
-(ns metabase-enterprise.metabot.limits
+(ns metabase-enterprise.metabot.usage
   "Enterprise implementation of metabot usage logging and limit checking."
   (:require
    [clojure.core.memoize :as memoize]
@@ -36,8 +36,6 @@
                      :request_id        request-id}))
       (catch Exception e
         (log/warn e "Failed to log LLM usage to ai_usage_log")))))
-
-;;; ------------------------------------------------ Limit Checking ------------------------------------------------
 
 (defn- period-start
   "Return the start of the current billing period as an Instant, based on the reset rate setting."
@@ -112,12 +110,12 @@
 
 (def ^:private check-tenant-limit*
   (memoize/ttl
-   (fn [tenant-id] (check-tenant-limit tenant-id))
+   check-tenant-limit
    :ttl/threshold cache-ttl-ms))
 
 (def ^:private check-user-limit*
   (memoize/ttl
-   (fn [user-id] (check-user-limit user-id))
+   check-user-limit
    :ttl/threshold cache-ttl-ms))
 
 (defn clear-limit-cache!

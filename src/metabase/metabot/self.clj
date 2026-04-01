@@ -14,11 +14,11 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
-   [metabase.metabot.limits :as limits]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.usage :as usage]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]]))
@@ -179,7 +179,7 @@
                  :session-id          session-id
                  :source              source
                  :tag                 tag})
-               (limits/log-ai-usage!
+               (usage/log-ai-usage!
                 {:source            (or tag source "unknown")
                  :model             model
                  :prompt-tokens     prompt
@@ -268,7 +268,7 @@
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
   ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
-   (if-let [limit-msg (limits/check-usage-limits!)]
+   (if-let [limit-msg (usage/check-usage-limits!)]
      (reify clojure.lang.IReduceInit
        (reduce [_ rf init]
          (rf init {:type :text :text limit-msg})))

@@ -1,13 +1,11 @@
-(ns metabase-enterprise.metabot.limits-test
+(ns metabase-enterprise.metabot.usage-test
   (:require
-   [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.metabot.limits :as ee.limits]
+   [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.metabot.usage :as ee.usage]
    [metabase.api.common :as api]
-   [metabase.metabot.limits :as limits]
+   [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
-
-(use-fixtures :each (fn [f] (ee.limits/clear-limit-cache!) (f)))
 
 (defn- insert-usage!
   "Insert a test ai_usage_log row for the given user with the specified total_tokens."
@@ -34,7 +32,7 @@
       (let [user-id (mt/user->id :rasta)]
         (mt/with-test-user :rasta
           (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "log-test")]
-            (limits/log-ai-usage!
+            (usage/log-ai-usage!
              {:source            "log-test"
               :model             "anthropic/claude-test"
               :prompt-tokens     100
@@ -59,7 +57,7 @@
         (mt/with-test-user :rasta
           (let [before-count (t2/count :model/AiUsageLog :user_id user-id
                                        :source "user-intent-classification")]
-            (limits/log-ai-usage!
+            (usage/log-ai-usage!
              {:source            "user-intent-classification"
               :model             "anthropic/claude-test"
               :prompt-tokens     10
@@ -73,7 +71,7 @@
     (testing "log-ai-usage! uses api/*current-user-id* when user-id not provided"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-test-user :rasta
-          (limits/log-ai-usage!
+          (usage/log-ai-usage!
            {:source            "binding-test"
             :model             "test/model"
             :prompt-tokens     1
@@ -89,7 +87,7 @@
   (mt/with-premium-features #{:ai-controls}
     (testing "log-ai-usage! converts keyword profile-id to string"
       (mt/with-test-user :rasta
-        (limits/log-ai-usage!
+        (usage/log-ai-usage!
          {:source            "profile-test"
           :model             "test/model"
           :prompt-tokens     1
@@ -107,7 +105,7 @@
     (testing "log-ai-usage! uses explicitly passed user-id over bound value"
       (let [crowberto-id (mt/user->id :crowberto)]
         (mt/with-test-user :rasta
-          (limits/log-ai-usage!
+          (usage/log-ai-usage!
            {:source            "explicit-user-test"
             :model             "test/model"
             :prompt-tokens     1
@@ -124,50 +122,55 @@
 
 (deftest no-limits-configured-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "check-usage-limits! returns nil when no limits are configured"
       (mt/with-test-user :rasta
-        (is (nil? (limits/check-usage-limits!)))))))
+        (is (nil? (usage/check-usage-limits!)))))))
 
 (deftest instance-limit-nil-max-usage-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "Instance limit with nil max_usage means unlimited"
       (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage nil}]
         (let [user-id (mt/user->id :rasta)]
           (insert-usage! user-id 999999)
           (try
             (mt/with-test-user :rasta
-              (is (nil? (limits/check-usage-limits!))))
+              (is (nil? (usage/check-usage-limits!))))
             (finally
               (cleanup-test-usage! user-id))))))))
 
 (deftest instance-limit-under-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "Instance limit: under limit returns nil"
       (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 999999999}]
         (mt/with-test-user :rasta
-          (is (nil? (limits/check-usage-limits!))))))))
+          (is (nil? (usage/check-usage-limits!))))))))
 
 (deftest instance-limit-exceeded-returns-message-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "Instance limit: at/over limit returns quota message"
       (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
         (let [user-id (mt/user->id :rasta)]
           (insert-usage! user-id 150)
           (try
             (mt/with-test-user :rasta
-              (is (string? (limits/check-usage-limits!))))
+              (is (string? (usage/check-usage-limits!))))
             (finally
               (cleanup-test-usage! user-id))))))))
 
 (deftest instance-limit-exactly-at-limit-returns-message-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "Instance limit: exactly at limit returns quota message (>= check)"
       (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
         (let [user-id (mt/user->id :rasta)]
           (insert-usage! user-id 100)
           (try
             (mt/with-test-user :rasta
-              (is (string? (limits/check-usage-limits!))))
+              (is (string? (usage/check-usage-limits!))))
             (finally
               (cleanup-test-usage! user-id))))))))
 
@@ -175,6 +178,7 @@
 
 (deftest tenant-limit-exceeded-returns-message-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "Tenant limit: over limit returns quota message"
       (mt/with-temp [:model/Tenant {tenant-id :id} {}
                      :model/MetabotInstanceLimit _ {:tenant_id tenant-id :max_usage 50}]
@@ -183,12 +187,13 @@
           (try
             (binding [api/*current-user-id* user-id
                       api/*current-user*    (delay {:tenant_id tenant-id})]
-              (is (string? (limits/check-usage-limits!))))
+              (is (string? (usage/check-usage-limits!))))
             (finally
               (cleanup-test-usage! user-id))))))))
 
 (deftest tenant-limit-nil-max-usage-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "Tenant limit with nil max_usage means unlimited"
       (mt/with-temp [:model/Tenant {tenant-id :id} {}
                      :model/MetabotInstanceLimit _ {:tenant_id tenant-id :max_usage nil}]
@@ -197,21 +202,23 @@
           (try
             (binding [api/*current-user-id* user-id
                       api/*current-user*    (delay {:tenant_id tenant-id})]
-              (is (nil? (limits/check-usage-limits!))))
+              (is (nil? (usage/check-usage-limits!))))
             (finally
               (cleanup-test-usage! user-id))))))))
 
 (deftest no-tenant-skips-tenant-check-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "User without a tenant skips tenant limit check"
       (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 999999999}]
         (mt/with-test-user :rasta
-          (is (nil? (limits/check-usage-limits!))))))))
+          (is (nil? (usage/check-usage-limits!))))))))
 
 ;;; ------------------------------------------ User group limit tests ------------------------------------------
 
 (deftest user-group-limit-exceeded-returns-message-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "User group limit: user over their group limit returns message"
       (let [user-id   (mt/user->id :rasta)
             group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
@@ -220,12 +227,13 @@
           (insert-usage! user-id 100)
           (try
             (mt/with-test-user :rasta
-              (is (string? (limits/check-usage-limits!))))
+              (is (string? (usage/check-usage-limits!))))
             (finally
               (cleanup-test-usage! user-id))))))))
 
 (deftest user-group-limit-takes-max-across-groups-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "User group limit: takes the max limit across all groups the user is in"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-temp [:model/PermissionsGroup {g1 :id} {:name "Low limit group"}
@@ -238,18 +246,19 @@
           (try
             (mt/with-test-user :rasta
               ;; 50 < 1000 (the max across groups), so should pass
-              (is (nil? (limits/check-usage-limits!))))
+              (is (nil? (usage/check-usage-limits!))))
             (finally
               (cleanup-test-usage! user-id))))))))
 
 (deftest user-group-no-limit-configured-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "User with no group limits configured returns nil"
       (let [user-id (mt/user->id :rasta)]
         (insert-usage! user-id 999999)
         (try
           (mt/with-test-user :rasta
-            (is (nil? (limits/check-usage-limits!))))
+            (is (nil? (usage/check-usage-limits!))))
           (finally
             (cleanup-test-usage! user-id)))))))
 
@@ -257,6 +266,7 @@
 
 (deftest conversations-limit-type-counts-rows-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (mt/with-temp-env-var-value! [:mb-metabot-limit-unit "conversations"]
       (testing "Instance limit with :conversations type counts rows, not tokens"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 2}]
@@ -266,12 +276,13 @@
               (insert-usage! user-id 1))
             (try
               (mt/with-test-user :rasta
-                (is (string? (limits/check-usage-limits!))))
+                (is (string? (usage/check-usage-limits!))))
               (finally
                 (cleanup-test-usage! user-id)))))))))
 
 (deftest conversations-under-limit-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (mt/with-temp-env-var-value! [:mb-metabot-limit-unit "conversations"]
       (testing "Instance limit with :conversations type: under limit returns nil"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
@@ -279,7 +290,7 @@
             (insert-usage! user-id 1)
             (try
               (mt/with-test-user :rasta
-                (is (nil? (limits/check-usage-limits!))))
+                (is (nil? (usage/check-usage-limits!))))
               (finally
                 (cleanup-test-usage! user-id)))))))))
 
@@ -287,6 +298,7 @@
 
 (deftest custom-quota-message-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (mt/with-temp-env-var-value! [:mb-metabot-quota-reached-message "Custom limit message"]
       (testing "check-usage-limits! returns the configured quota message"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 1}]
@@ -294,7 +306,7 @@
             (insert-usage! user-id 100)
             (try
               (mt/with-test-user :rasta
-                (is (= "Custom limit message" (limits/check-usage-limits!))))
+                (is (= "Custom limit message" (usage/check-usage-limits!))))
               (finally
                 (cleanup-test-usage! user-id)))))))))
 
@@ -302,6 +314,7 @@
 
 (deftest instance-limit-checked-first-test
   (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
     (testing "Instance limit blocks even when user group limit would allow"
       (let [user-id   (mt/user->id :rasta)
             group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
@@ -311,6 +324,6 @@
           (insert-usage! user-id 100)
           (try
             (mt/with-test-user :rasta
-              (is (string? (limits/check-usage-limits!))))
+              (is (string? (usage/check-usage-limits!))))
             (finally
               (cleanup-test-usage! user-id))))))))

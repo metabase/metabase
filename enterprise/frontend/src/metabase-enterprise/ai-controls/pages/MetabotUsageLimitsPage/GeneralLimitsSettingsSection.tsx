@@ -103,7 +103,7 @@ export function GeneralLimitsSettingsSection() {
   const limitTypeOptions: LimitTypeOption[] = useMemo(() => {
     return [
       { value: "tokens", label: t`By token usage` },
-      { value: "conversation", label: t`By conversation count` },
+      { value: "conversations", label: t`By conversation count` },
     ];
   }, []);
 

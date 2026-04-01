@@ -2965,6 +2965,7 @@
               mcp
               metabot}
    :uses    #{api
+              app-db
               lib-be
               metabot
               models
@@ -2973,7 +2974,8 @@
               users
               util
               enterprise/dependencies
-              enterprise/transforms-python}
+              enterprise/transforms-python
+              task}
    :model-imports #{:model/Card :model/Transform}}
 
 
