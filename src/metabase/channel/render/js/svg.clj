@@ -231,7 +231,12 @@
   "Clojure entrypoint to render javascript visualizations. This functions is dynamic only for testing purposes.
    `custom-viz-bundles` is an optional seq of `{:identifier str :source str :assets map}` maps for custom visualization plugins."
   [cards-with-data dashcard-viz-settings custom-viz-bundles]
-  (let [response (with-static-viz-context context
+  (let [options (json/encode {:applicationColors (appearance/application-colors)
+                              :startOfWeek      (lib-be/start-of-week)
+                              :customFormatting  (appearance/custom-formatting)
+                              :tokenFeatures    (premium-features/token-features)})
+        response (with-static-viz-context context
+                   (js.engine/execute-fn-name context "initialize_context" options)
                    (when (seq custom-viz-bundles)
                      (taint-context!)
                      (doseq [{:keys [identifier source assets]} custom-viz-bundles]
@@ -241,10 +246,7 @@
                    (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                          (json/encode cards-with-data)
                                                          (json/encode dashcard-viz-settings)
-                                                         (json/encode {:applicationColors (appearance/application-colors)
-                                                                       :startOfWeek (lib-be/start-of-week)
-                                                                       :customFormatting (appearance/custom-formatting)
-                                                                       :tokenFeatures (premium-features/token-features)}))))]
+                                                         options)))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
