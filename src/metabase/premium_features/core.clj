@@ -34,6 +34,7 @@
   quotas
   TokenStatus
   clear-cache!
+  token-check-url
   transform-stats]
 
  (metabase.premium-features.settings

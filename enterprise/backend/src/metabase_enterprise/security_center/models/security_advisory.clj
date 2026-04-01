@@ -17,6 +17,10 @@
    ;; EDN because HoneySQL treats keywords as identifiers and strings as values.
    :matching_query    mi/transform-edn})
 
+(t2/define-before-insert :model/SecurityAdvisory
+  [advisory]
+  (assoc advisory :fetched_at (mi/now)))
+
 (methodical/defmethod t2/batched-hydrate [:model/SecurityAdvisory :acknowledged_by]
   "Hydrate `acknowledged_by` from an int FK to a User map with `:id`, `:common_name`, and `:email`."
   [_model k advisories]
