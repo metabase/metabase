@@ -7,13 +7,13 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest ^:parallel customization-settings-require-ai-controls-test
+(deftest customization-settings-require-ai-controls-test
   (testing "without :ai-controls feature, customization settings return defaults and reject writes"
     (mt/with-premium-features #{}
       (testing "branding settings return defaults"
         (is (= "Metabot" (metabot.settings/metabot-name)))
         (is (= "metabot" (metabot.settings/metabot-icon)))
-        (is (= true (metabot.settings/metabot-show-illustrations))))
+        (is (true? (metabot.settings/metabot-show-illustrations))))
       (testing "system prompt settings return defaults"
         (is (= "" (metabot.settings/metabot-chat-system-prompt)))
         (is (= "" (metabot.settings/metabot-nlq-system-prompt)))
