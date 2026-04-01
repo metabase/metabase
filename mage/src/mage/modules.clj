@@ -117,6 +117,7 @@
      internal-stats
      llm
      login-history
+     mcp
      metabot
      notification
      permissions
