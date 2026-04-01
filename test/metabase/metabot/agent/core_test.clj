@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
@@ -288,7 +289,7 @@
               llm-call-count  (atom 0)
             ;; Scripted LLM responses - uses real table ID from test DB
               llm-responses
-              [ ;; Iteration 1: Search for orders table
+              [;; Iteration 1: Search for orders table
                [{:type :start :id "msg-1"}
                 {:type      :tool-input
                  :id        "call-search-1"
@@ -680,7 +681,9 @@
     :model "test-model" :id "msg-1"}])
 
 (deftest user-intent-snowplow-fires-event-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-metabot-provider                test-provider
+                                     llm-metabot-internal-tasks-enabled? true
+                                     llm-anthropic-api-key               "sk-ant-test"]
     (testing "fires :snowplow/ai_service_event 'user_intent' when :track-user-intent? is true"
       (let [rasta-id (mt/user->id :rasta)]
         (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
@@ -737,23 +740,35 @@
                     agent-analytics/classify-and-track-user-intent-async!
                     (fn [_ _] (swap! classify-called inc))]
         (testing "does not call classify-and-track-user-intent-async! when llm-metabot-internal-tasks-enabled? is false"
-          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? false]
+          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? false
+                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
+                                             llm-anthropic-api-key               "sk-ant-test"]
+            (run-agent-loop! opts)
+            (is (zero? @classify-called))))
+        (testing "does not call classify-and-track-user-intent-async! when api key is not configured"
+          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
+                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
+                                             llm-anthropic-api-key               nil]
             (run-agent-loop! opts)
             (is (zero? @classify-called))))
         (testing "calls classify-and-track-user-intent-async! when llm-metabot-internal-tasks-enabled? is true"
-          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true]
+          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
+                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
+                                             llm-anthropic-api-key               "sk-ant-test"]
             (run-agent-loop! opts)
             (is (= 1 @classify-called))))))))
 
 (deftest user-intent-classifier-exception-swallowed-test
-  (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+  (mt/with-temporary-setting-values [llm-metabot-provider                test-provider
+                                     llm-metabot-internal-tasks-enabled? true
+                                     llm-anthropic-api-key               "sk-ant-test"]
     (testing "does not propagate exception if classify-user-intent throws"
       (let [classify-called (atom false)]
         (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
                       self/call-llm         (fn [& _]
                                               (reset! classify-called true)
                                               (throw (ex-info "LLM error" {})))]
-          ;; Should not throw — exception is caught inside the background future
+            ;; Should not throw — exception is caught inside the background future
           (run-agent-loop! {:messages            [{:role :user :content "test"}]
                             :state               {}
                             :context             {}
@@ -762,3 +777,32 @@
                                                   :track-user-intent?  true}})
           (tu/poll-until 5000 @classify-called)
           (is (true? @classify-called)))))))
+
+(deftest chart-configs-loaded-into-charts-test
+  (let [query (lib/native-query (mt/metadata-provider) "select 1")
+        chart-config {:display_type "pie"
+                      :query query
+                      :image_base_64 "asdf"
+                      :series {}
+                      :timeline_events []}
+        memory (-> (#'agent/init-agent {:profile-id :internal
+                                        :context {:user_is_viewing
+                                                  [{:chart_configs [chart-config]}]}})
+                   :memory-atom
+                   deref)
+
+        chart-configs (get-in memory [:state :chart-configs])
+        chart-configs-key (first (keys chart-configs))
+        charts (get-in memory [:state :charts])
+        chart-key (first (keys charts))]
+    (testing "Loaded charts from chart configs into memory"
+      (is (string? chart-key))
+      (is (=? {chart-key {:chart_id chart-key
+                          :timeline_events []
+                          :queries [query]
+                          :chart_config chart-config}}
+              charts)))
+    (testing "Loaded chart configs into memory"
+      (is (every? string? (keys chart-configs)))
+      (is (=? {chart-configs-key chart-config}
+              chart-configs)))))

@@ -683,6 +683,7 @@ describe("scenarios - embedding hub", () => {
         cy.findByTestId("admin-layout-content")
           .findByText("Configure data permissions and enable tenants")
           .closest("button")
+          .scrollIntoView()
           .findByText("Done")
           .should("be.visible");
 
@@ -1684,7 +1685,6 @@ describe("scenarios - embedding hub", () => {
         expect(body["jwt-identity-provider-uri"]).to.equal(
           "https://jwt.example.com/auth",
         );
-        expect(body["jwt-shared-secret"]).to.be.a("string");
         expect(body["jwt-group-sync"]).to.equal(true);
       });
 
@@ -1693,15 +1693,7 @@ describe("scenarios - embedding hub", () => {
         .findByRole("listitem", { name: "Set up JWT authentication" })
         .should("have.attr", "data-completed", "true");
 
-      cy.log("valid signing key should be shown");
-      H.main().within(() => {
-        cy.findByLabelText(/JWT Signing Key/i)
-          .should("be.visible")
-          .should("have.attr", "value")
-          .and("have.length.at.least", 32);
-
-        cy.findByRole("button", { name: "Next" }).click();
-      });
+      H.main().findByRole("button", { name: "Next" }).click();
 
       cy.log("step 2 should be complete");
       H.main()

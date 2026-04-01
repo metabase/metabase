@@ -53,10 +53,14 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn make-sse
-  "Encode a sequence of values as an SSE data stream string."
+  "Encode a sequence of values as an SSE data stream string.
+  Includes `event:` lines like the real Anthropic/OpenAI APIs do."
   ^String [v]
-  (->> (map json/encode v)
-       (map #(str "data: " % "\n\n"))
+  (->> v
+       (map (fn [item]
+              (let [event-type (or (some-> (:type item) name)
+                                   "message")]
+                (str "event: " event-type "\ndata: " (json/encode item) "\n\n"))))
        (str/join)))
 
 ;;; ──────────────────────────────────────────────────────────────────

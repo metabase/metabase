@@ -6,7 +6,7 @@ redirect_from:
 
 # Set up Slack
 
-_Admin > Settings > Notification channels > Slack_
+_Admin > Settings > Slack_
 
 If you want to have your [dashboard subscriptions](../dashboards/subscriptions.md) or [alerts](../questions/alerts.md) sent to Slack channels (or people on Slack), you need to first integrate your Metabase with Slack.
 
@@ -16,7 +16,7 @@ Both admins and people with [settings access](../permissions/application.md#sett
 
 For Metabase to post to your Slack channels, you’ll need to create a Slack App and make it available to Metabase.
 
-1. In Metabase, go to **Admin > Settings > Notification channels**.
+1. In Metabase, go to **Admin > Settings > Slack**.
 2. Click **Connect to Slack**.
 3. Click **Create a Slack App**. Metabase will open a new tab with the Slack website.
 4. On the Slack website, click **Create an App**.
@@ -49,7 +49,7 @@ For Metabase to post to your Slack channels, you’ll need to create a Slack App
          - groups:read
    ```
 
-   The manifest just take cares of some settings for your app and helps speed things along.
+   The manifest just takes care of some settings for your app and helps speed things along.
 
 7. Click the **Next** button. Then hit **Create** to set up your Slack app.
 
@@ -63,7 +63,7 @@ For Metabase to post to your Slack channels, you’ll need to create a Slack App
 
 Once you [created the app](#create-your-slack-app) and [installed it in your workspace](#install-your-app-to-your-workspace), you tell Metabase to use it by giving Metabase the OAuth token for the app.
 
-To obtain the OAuth token for the Slack aopp:
+To obtain the OAuth token for the Slack app:
 
 1. Go to the Slack site page for your Slack app.
 2. On the Slack page for your app, go to **OAuth & Permissions** in the left sidebar.
@@ -71,11 +71,19 @@ To obtain the OAuth token for the Slack aopp:
 
 To set up the app in Metabase:
 
-1. In Metabase, go to **Admin > Settings > Notification channels > Slack**. Click **Connect to Slack**.
+1. In Metabase, go to **Admin > Settings > Slack**. Click **Connect to Slack**.
 2. Paste the token into **Slack bot user OAuth token**.
 3. **Save changes** in Metabase.
 
    Metabase will automatically run a quick test to check that the API token is working properly. If something goes wrong, it'll give you an error message.
+
+## Set your app icon
+
+To give your Slack app the Metabot avatar:
+
+1. In Metabase, go to **Admin > Settings > Slack** and click **Download App Icon**.
+2. On the Slack site, go to your app's **Basic Information** page.
+3. Under **Display Information**, upload the icon you downloaded.
 
 ## Sending alerts and subscriptions to private Slack channels
 
@@ -89,7 +97,7 @@ To add your app to a private Slack channel:
 
 Once you added the app to a private channel, you should see the channel in the list of channels when setting up a subscription or alerts within 10 mins (it can take a little time for Metabase to see all the channels the app has been invited to).
 
-In order for metabase to see private channels, the app must have the `groups:read` OAuth scope. Although this scope should be granted when setting up the app through Metabase, older installations might not have this scope.
+In order for Metabase to see private channels, the app must have the `groups:read` OAuth scope. Although this scope should be granted when setting up the app through Metabase, older installations might not have this scope.
 
 To check or edit your OAuth settings:
 
@@ -99,10 +107,40 @@ To check or edit your OAuth settings:
 4. Under **Scopes**, add the `groups:read` scope if it's not added already.
 5. Reinstall the app by clicking the **Reinstall** button under **OAuth Tokens**.
 
+## Natural language questions in Slack
+
+> Natural language questions in Slack require [Metabot](../ai/metabot.md).
+
+![Natural language questions in Slack](../ai/metabot-slack.png)
+
+Once you've connected Slack, you can let people chat with [Metabot](../ai/metabot.md) directly in Slack channels. For more on what Metabot can do in Slack, see [Metabot in Slack](../ai/metabot-slack.md).
+
+### Prerequisites
+
+- [Slack connected to Metabase](#create-your-slack-app).
+- [Metabot set up](../ai/settings.md) on your Cloud instance. If Metabot isn't set up yet, you'll see a notice to **Go to Metabot connection settings** first.
+- [Encryption at rest](../databases/encrypting-details-at-rest.md) enabled.
+
+### Set up Metabot in Slack
+
+1. Go to **Admin > Settings > Slack**.
+2. Under **Natural language questions in Slack**, enter the credentials from your Slack app's **Basic Information** page (under **App Credentials**):
+   - **Client ID**
+   - **Client Secret** (click **Show** to reveal)
+   - **Signing Secret** (click **Show** to reveal)
+3. Click **Save changes**.
+4. If Metabase detects missing OAuth scopes, follow the prompts to update your Slack app's permissions and reinstall the app.
+5. Toggle **Let people chat with Metabot** to enable or disable Metabot in Slack.
+
+To remove the Metabot Slack configuration, click **Remove** at the bottom of the section.
+
 ## Further reading
 
 - [Alerts](../questions/alerts.md)
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
+- [Metabot](../ai/metabot.md)
+- [Metabot in Slack](../ai/metabot-slack.md)
+- [Metabot AI settings](../ai/settings.md)
 - [Notification permissions](../permissions/notifications.md)
 - [Setting up email](./email.md)
 - [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
