@@ -139,7 +139,7 @@ export const metabotApi = Api.injectEndpoints({
     getMetabotPermissions: builder.query<MetabotPermissionsResponse, void>({
       query: () => ({
         method: "GET",
-        url: "/api/metabot/permissions",
+        url: "/api/ee/ai-controls/permissions",
       }),
       providesTags: () => [listTag("metabot-permissions")],
     }),
@@ -159,7 +159,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "PUT",
-        url: "/api/metabot/permissions",
+        url: "/api/ee/ai-controls/permissions",
         body,
       }),
       invalidatesTags: [listTag("metabot-permissions")],

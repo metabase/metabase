@@ -4,13 +4,10 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text, Textarea } from "metabase/ui";
-
-import { MetabotNavPane } from "../MetabotNavPane";
 
 import S from "./MetabotSystemPromptsPage.module.css";
 import type { SystemPromptSettingKey } from "./hooks/useSystemPromptInput";
@@ -30,24 +27,22 @@ function SystemPromptPage({
   const { inputText, onInputChange } = useSystemPromptInput(settingKey);
 
   return (
-    <AdminSettingsLayout sidebar={<MetabotNavPane />}>
-      <SettingsPageWrapper title={title} mt="sm">
-        <SettingsSection>
-          <LoadingAndErrorWrapper loading={false}>
-            <Text c="text-secondary" size="md" mb="lg">
-              {description}
-            </Text>
-            <Textarea
-              aria-label={title}
-              className={S.textareaWrapper}
-              onChange={onInputChange}
-              placeholder={getPlaceholder()}
-              value={inputText}
-            />
-          </LoadingAndErrorWrapper>
-        </SettingsSection>
-      </SettingsPageWrapper>
-    </AdminSettingsLayout>
+    <SettingsPageWrapper title={title} mt="sm">
+      <SettingsSection>
+        <LoadingAndErrorWrapper loading={false}>
+          <Text c="text-secondary" size="md" mb="lg">
+            {description}
+          </Text>
+          <Textarea
+            aria-label={title}
+            className={S.textareaWrapper}
+            onChange={onInputChange}
+            placeholder={getPlaceholder()}
+            value={inputText}
+          />
+        </LoadingAndErrorWrapper>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 }
 
