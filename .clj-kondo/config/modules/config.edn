@@ -1766,6 +1766,7 @@
            config
            embedding
            permissions ; FIXME
+           premium-features
            session
            settings
            users
@@ -1898,7 +1899,8 @@
            tracing
            users
            util
-           enterprise/sso}}
+           enterprise/sso}
+   :model-imports #{:model/Session}}
 
   session
   {:team "UX West"
