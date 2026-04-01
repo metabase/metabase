@@ -1049,7 +1049,6 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
             },
           );
           cy.wait("@dashboard");
-          // cy.wait("@cardQuery");
           // The funnel should render without crashing
           cy.findByTestId("funnel-chart").should("exist");
           // Dimension labels should be translated
