@@ -58,8 +58,7 @@
     (try
       (driver/the-initialized-driver driver)
       (let [with-params (lib/add-parameters-for-template-tags query)
-            compiled    (binding [driver/*driver* driver
-                                  qp.i/*skip-middleware-because-app-db-access* true]
+            compiled    (binding [qp.i/*skip-middleware-because-app-db-access* true]
                           (qp.compile/compile-with-inline-parameters with-params))]
         (:query compiled))
       (catch Throwable t

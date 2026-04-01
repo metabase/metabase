@@ -455,13 +455,75 @@
         {:type :dashboard :entity-id dash-id
          :message (str "dashboard_id " dash-id " points to a " (name kind) ", not a dashboard")}))))
 
+(defn- validate-parent-id
+  "Validate that `parent_id` on a collection points to a known collection.
+   Returns a failure map or nil."
+  [store data]
+  (when-let [parent-id (:parent_id data)]
+    (let [kind (store/index-kind-of store parent-id)]
+      (cond
+        (nil? kind)
+        {:type :collection :entity-id parent-id
+         :message (str "parent_id " parent-id " not found")}
+
+        (not= :collection kind)
+        {:type :collection :entity-id parent-id
+         :message (str "parent_id " parent-id " points to a " (name kind) ", not a collection")}))))
+
+(defn- validate-document-id
+  "Validate that `document_id` in `data` points to a known document.
+   Returns a failure map or nil."
+  [store data]
+  (when-let [doc-id (:document_id data)]
+    (let [kind (store/index-kind-of store doc-id)]
+      (cond
+        (nil? kind)
+        {:type :document :entity-id doc-id
+         :message (str "document_id " doc-id " not found")}
+
+        (not= :document kind)
+        {:type :document :entity-id doc-id
+         :message (str "document_id " doc-id " points to a " (name kind) ", not a document")}))))
+
+(defn- validate-container-exclusion
+  "Validate that a card doesn't have both dashboard_id and document_id set.
+   Returns a failure map or nil."
+  [_store data]
+  (when (and (:dashboard_id data) (:document_id data))
+    {:type :container-conflict
+     :message "card has both dashboard_id and document_id set — only one container allowed"}))
+
+(defn- validate-container-collection-match
+  "Validate that a card nested under a dashboard or document has the same
+   collection_id as its container. Returns a failure map or nil."
+  [store data]
+  (when-let [container-id (or (:dashboard_id data) (:document_id data))]
+    (let [container-kind (if (:dashboard_id data) :dashboard :document)
+          container-file (store/index-file store container-kind container-id)]
+      (when container-file
+        (try
+          (let [container-data (serdes/load-yaml container-file)
+                container-coll (:collection_id container-data)
+                card-coll      (:collection_id data)]
+            (when (and card-coll container-coll
+                       (not= card-coll container-coll))
+              {:type :container-collection-mismatch
+               :message (str "card collection_id " card-coll
+                             " doesn't match its " (name container-kind)
+                             "'s collection_id " container-coll)}))
+          (catch Exception _ nil))))))
+
 (defn- check-common
   "Run checks that apply to any entity (card, dashboard, metric, etc.).
    Returns a vector of failure maps, or empty vector if all checks pass."
   [store data]
   (filterv some?
            [(validate-collection-id store data)
-            (validate-dashboard-id store data)]))
+            (validate-dashboard-id store data)
+            (validate-document-id store data)
+            (validate-parent-id store data)
+            (validate-container-exclusion store data)
+            (validate-container-collection-match store data)]))
 
 ;;; ===========================================================================
 ;;; Dashboard-specific checks
@@ -564,18 +626,49 @@
           child-embeds (mapcat extract-card-embeds (:content node))]
       (concat embeds child-embeds))))
 
+(defn- extract-entity-links
+  "Walk a ProseMirror content tree and extract entity references from link hrefs.
+   Links like /dashboard/ABC or /question/ABC reference entities by entity_id."
+  [node]
+  (when (map? node)
+    (let [;; Check marks on text nodes for links
+          mark-links (when-let [marks (:marks node)]
+                       (keep (fn [mark]
+                               (when (= "link" (:type mark))
+                                 (when-let [href (get-in mark [:attrs :href])]
+                                   (when-let [[_ kind eid] (re-matches #"/(dashboard|question|card|collection)/(.+)" (str href))]
+                                     {:kind (case kind
+                                              "dashboard"  :dashboard
+                                              "question"   :card
+                                              "card"       :card
+                                              "collection" :collection)
+                                      :entity-id eid}))))
+                             marks))
+          child-links (mapcat extract-entity-links (:content node))]
+      (concat mark-links child-links))))
+
 (defn- check-document
-  "Run document-specific semantic checks. Validates that embedded card refs resolve."
+  "Run document-specific semantic checks. Validates embedded card refs and entity links."
   [store data]
   (let [doc       (:document data)
-        card-eids (extract-card-embeds doc)]
+        card-eids (extract-card-embeds doc)
+        links     (extract-entity-links doc)]
     (into []
-          (keep (fn [card-eid]
-                  (when-not (store/in-index? store :card card-eid)
-                    {:type :document-card-ref
-                     :entity-id card-eid
-                     :message (str "document embeds card " card-eid " which is not in the export")})))
-          card-eids)))
+          cat
+          [;; Check card embeds
+           (keep (fn [card-eid]
+                   (when-not (store/in-index? store :card card-eid)
+                     {:type :document-card-ref
+                      :entity-id card-eid
+                      :message (str "document embeds card " card-eid " which is not in the export")}))
+                 card-eids)
+           ;; Check entity links in href attributes
+           (keep (fn [{:keys [kind entity-id]}]
+                   (when-not (store/in-index? store kind entity-id)
+                     {:type :document-link
+                      :entity-id entity-id
+                      :message (str "document links to " (name kind) " " entity-id " which is not in the export")}))
+                 links)])))
 
 ;;; ===========================================================================
 ;;; Transform-specific checks

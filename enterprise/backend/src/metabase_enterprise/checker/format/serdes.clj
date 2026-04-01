@@ -71,6 +71,90 @@
         (str/trim model)))
     (catch Exception _ nil)))
 
+(defn- extract-serdes-meta
+  "Extract the entity-level serdes/meta path from a YAML file.
+   Returns a vector of {:id :model} maps, or nil if not found.
+   Parses the full YAML and reads the :serdes/meta key."
+  [^String file-path]
+  (try
+    (let [data (yaml/parse-string (slurp file-path))
+          meta-entries (:serdes/meta data)]
+      (when (seq meta-entries)
+        (vec meta-entries)))
+    (catch Exception _ nil)))
+
+(def ^:private schema-model->kind
+  "Map serdes/meta model names to index kinds for schema directory entities."
+  {"Database" :database
+   "Table"    :table
+   "Field"    :field
+   "Measure"  :measure
+   "Segment"  :segment})
+
+(defn- serdes-meta->index-entry
+  "Convert a serdes/meta path to an index entry {:kind :ref :file}.
+   The last model in the path determines the kind.
+   The ref is built from the id values."
+  [meta-path file-path]
+  (let [last-entry (peek meta-path)
+        kind       (get schema-model->kind (:model last-entry))]
+    (when kind
+      (case kind
+        :database {:kind :database
+                   :ref  (:id last-entry)
+                   :file file-path}
+        :table    (let [ids (mapv :id meta-path)]
+                    {:kind :table
+                     :ref  (case (count ids)
+                             2 [(first ids) nil (second ids)]
+                             3 [(first ids) (second ids) (nth ids 2)]
+                             ids)
+                     :file file-path})
+        :field    (let [ids (mapv :id meta-path)]
+                    {:kind :field
+                     :ref  (case (count ids)
+                             3 [(first ids) nil (second ids) (nth ids 2)]
+                             4 [(first ids) (second ids) (nth ids 2) (nth ids 3)]
+                             ids)
+                     :file file-path})
+        (:measure :segment)
+        (when-let [entity-id (extract-entity-id file-path)]
+          {:kind kind :ref entity-id :file file-path})))))
+
+(defn- index-schema-dir
+  "Walk a schema directory and build an index from serdes/meta in each YAML file.
+   Does not assume any directory structure — reads metadata from file content.
+   Also registers database names found in any entity's metadata path.
+   Returns a vector of {:kind :ref :file} index entries."
+  [schema-dir]
+  (let [databases-seen (volatile! {})  ; db-name → first file-path
+        entries (into []
+                      (keep (fn [^java.io.File file]
+                              (when (and (.isFile file)
+                                         (str/ends-with? (.getName file) ".yaml"))
+                                (let [path      (.getPath file)
+                                      meta-path (extract-serdes-meta path)]
+                                  (when meta-path
+                                    ;; Track database names from metadata paths
+                                    (when (and (>= (count meta-path) 1)
+                                               (= "Database" (:model (first meta-path))))
+                                      (let [db-name (:id (first meta-path))]
+                                        (when-not (contains? @databases-seen db-name)
+                                          (vswap! databases-seen assoc db-name path))))
+                                    (serdes-meta->index-entry meta-path path))))))
+                      (file-seq (io/file schema-dir)))]
+    ;; Add database entries inferred from children, but only for databases
+    ;; that don't already have their own YAML file in the primary entries
+    (let [primary-dbs (into #{}
+                            (keep (fn [{:keys [kind ref]}]
+                                    (when (= kind :database) ref)))
+                            entries)]
+      (into entries
+            (keep (fn [[db-name file-path]]
+                    (when-not (contains? primary-dbs db-name)
+                      {:kind :database :ref db-name :file file-path})))
+            @databases-seen))))
+
 ;;; ===========================================================================
 ;;; File Walking - Build index of all entities
 ;;; ===========================================================================
@@ -106,24 +190,8 @@
 ;;; When it hits :entity or :files, it emits {:kind :ref :file} index entries.
 ;;; ---------------------------------------------------------------------------
 
-(def ^:private table-layout
-  "Shared layout for a table directory and its fields."
-  [:each
-   [:entity :table]
-   [:maybe [:dir "fields" [:files :field]]]])
-
-(def ^:private database-layout
-  "Layout descriptor for the databases/ tree."
-  [:dir "databases"
-   [:each                                           ; <db-name>/
-    [:entity :database]                             ;   <db-name>.yaml
-    [:maybe                                         ;   with schemas:
-     [:dir "schemas"
-      [:each                                        ;     <schema>/
-       [:dir "tables" table-layout]]]]
-    [:maybe                                         ;   without schemas (schema-less):
-     [:dir "tables"
-      [:insert nil table-layout]]]]])
+;; The database layout grammar is no longer used — schema directories are
+;; indexed by reading serdes/meta from each YAML file. See index-schema-dir.
 
 (defn- subdirs
   "Subdirectories of `dir`, or [] if it doesn't exist."
@@ -233,8 +301,8 @@
   [export-dir]
   (let [databases-dir (io/file export-dir "databases")
         entries (concat
-                 (walk-layout (io/file export-dir) [] database-layout)
-                 (index-measures-and-segments databases-dir)
+                 (when (.isDirectory databases-dir)
+                   (index-schema-dir databases-dir))
                  (index-collections-tree export-dir))
         ;; Group by [kind ref] to find duplicates
         by-key  (reduce (fn [m {:keys [kind ref file]}]
@@ -254,29 +322,14 @@
     (cond-> index
       (seq dupes) (assoc :duplicates dupes))))
 
-(def ^:private databases-dir-layout
-  "Layout descriptor for a directory that IS the databases directory.
-   Unlike `database-layout`, this does not expect a `databases/` subdirectory —
-   the directory itself contains database subdirectories directly."
-  [:each                                             ; <db-name>/
-   [:entity :database]                               ;   <db-name>.yaml
-   [:maybe                                           ;   with schemas:
-    [:dir "schemas"
-     [:each                                          ;     <schema>/
-      [:dir "tables" table-layout]]]]
-   [:maybe                                           ;   without schemas (schema-less):
-    [:dir "tables"
-     [:insert nil table-layout]]]])
-
 (defn build-database-dir-index
-  "Build index of database/table/field/measure/segment entities from a directory
-   that IS the databases directory (contains db subdirectories directly).
+  "Build index of database/table/field/measure/segment entities from a schema
+   directory by reading serdes/meta from each YAML file. Does not assume any
+   directory structure.
 
    Returns `{kind {ref file-path}}` with :database, :table, :field, :measure, :segment entries."
   [databases-dir]
-  (let [entries (concat
-                 (walk-layout (io/file databases-dir) [] databases-dir-layout)
-                 (index-measures-and-segments databases-dir))]
+  (let [entries (index-schema-dir databases-dir)]
     (reduce (fn [idx {:keys [kind ref file]}]
               (assoc-in idx [kind ref] file))
             {}
