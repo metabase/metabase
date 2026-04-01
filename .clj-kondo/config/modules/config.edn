@@ -297,7 +297,8 @@
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setup}
-   :uses #{auth-provider
+   :uses #{analytics
+           auth-provider
            classloader
            config
            connection-pool
