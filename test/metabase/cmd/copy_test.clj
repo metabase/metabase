@@ -35,7 +35,7 @@
     :model/DashboardFavorite
     :model/DatabaseRouter
     :model/Dependency
-    :model/McpSession
+
     :model/PremiumFeaturesCache
     :model/PythonLibrary
     :model/Query

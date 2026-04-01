@@ -22,7 +22,8 @@
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
-   (java.nio.charset StandardCharsets)))
+   (java.nio.charset StandardCharsets)
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -84,36 +85,29 @@
       (:not-found
        :scope-denied) (jsonrpc-error id -32602 "Resource not found")
       :ok             (let [user-id     api/*current-user-id*
-                            session-key (when user-id (mcp.session/get-or-create-embedding-session-key! session-id user-id))]
+                            session-key (when user-id (mcp.session/get-or-create-session-key! session-id user-id))]
                         (jsonrpc-response id (mcp.resources/read-resource uri {:session-key session-key}))))))
 
 (defn- handle-ping [id _params]
   (jsonrpc-response id {}))
 
 (defn- dispatch-request
-  "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications.
-   `*session` is an atom holding the current session map, updated in-place when
-   `mark-initialized!` is called so that later messages in the same batch see the new state."
-  [{:keys [id method params] :as _msg} *session token-scopes]
-  (let [{sid :id, :keys [initialized]} @*session]
-    (try
-      (case method
-        "notifications/initialized" (do (mcp.session/mark-initialized! sid)
-                                        (swap! *session assoc :initialized true)
-                                        nil)
-        "tools/list"                (handle-tools-list id params token-scopes)
-        "tools/call"                (handle-tools-call id params token-scopes)
-        "resources/list"            (handle-resources-list id params token-scopes)
-        "resources/read"            (if initialized
-                                      (handle-resources-read id params sid token-scopes)
-                                      (jsonrpc-error id -32600 "Session not initialized"))
-        "ping"                      (handle-ping id params)
-        (if id
-          (jsonrpc-error id -32601 (str "Method not found: " method))
-          nil))
-      (catch Throwable e
-        (log/error e "Error dispatching JSON-RPC method" method)
-        (jsonrpc-error id -32603 (or (ex-message e) "Internal error"))))))
+  "Dispatch a single JSON-RPC request. Returns a response map or nil for notifications."
+  [{:keys [id method params] :as _msg} session-id token-scopes]
+  (try
+    (case method
+      "notifications/initialized" nil
+      "tools/list"                (handle-tools-list id params token-scopes)
+      "tools/call"                (handle-tools-call id params token-scopes)
+      "resources/list"            (handle-resources-list id params token-scopes)
+      "resources/read"            (handle-resources-read id params session-id token-scopes)
+      "ping"                      (handle-ping id params)
+      (if id
+        (jsonrpc-error id -32601 (str "Method not found: " method))
+        nil))
+    (catch Throwable e
+      (log/error e "Error dispatching JSON-RPC method" method)
+      (jsonrpc-error id -32603 (or (ex-message e) "Internal error")))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------
 
@@ -165,20 +159,26 @@
                   (catch Exception _ false))
         (json-response 403 (jsonrpc-error nil -32600 "Origin not allowed"))))))
 
+(defn- valid-session-id?
+  "Return true if `session-id` looks like a UUID (the format `create!` produces)."
+  [session-id]
+  (and (string? session-id)
+       (try (UUID/fromString session-id) true
+            (catch IllegalArgumentException _ false))))
+
 (defn- require-valid-session
-  "Look up the MCP session by header value and verify it belongs to `user-id`.
-   Returns the session map or an error response."
-  [user-id session-id]
+  "Validate the Mcp-Session-Id header value. The session is just a UUID correlator —
+   authentication is handled separately by cookie or bearer token."
+  [_user-id session-id]
   (cond
     (str/blank? session-id)
     {:error (json-response 400 (jsonrpc-error nil -32600 "Missing Mcp-Session-Id header"))}
 
+    (not (valid-session-id? session-id))
+    {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))}
+
     :else
-    (if-let [session (mcp.session/get-valid session-id)]
-      (if (= (:user_id session) user-id)
-        {:session session}
-        {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))})
-      {:error (json-response 404 (jsonrpc-error nil -32600 "Invalid or expired session"))})))
+    {:session-id session-id}))
 
 ;;; -------------------------------------------------- Handlers ---------------------------------------------------
 
@@ -213,12 +213,11 @@
 
       ;; All other requests require a valid session
       :else
-      (let [{:keys [session error]} (require-valid-session user-id session-id)]
+      (let [{:keys [session-id error]} (require-valid-session user-id session-id)]
         (if error
           error
-          (let [messages    (if batch? body [body])
-                *session  (atom session)
-                responses (into [] (keep #(dispatch-request % *session (:token-scopes request))) messages)]
+          (let [messages  (if batch? body [body])
+                responses (into [] (keep #(dispatch-request % session-id (:token-scopes request))) messages)]
             (cond
               (empty? responses)
               {:status 202 :headers {} :body ""}
@@ -259,8 +258,8 @@
 (defn- handle-delete
   "Handle a DELETE request to tear down a session."
   [user-id request]
-  (let [session-id (get-in request [:headers "mcp-session-id"])
-        {:keys [error]} (require-valid-session user-id session-id)]
+  (let [session-id-header (get-in request [:headers "mcp-session-id"])
+        {:keys [session-id error]} (require-valid-session user-id session-id-header)]
     (or error
         (do (mcp.session/delete! session-id)
             {:status 200 :headers {"Content-Type" "application/json"} :body ""}))))
