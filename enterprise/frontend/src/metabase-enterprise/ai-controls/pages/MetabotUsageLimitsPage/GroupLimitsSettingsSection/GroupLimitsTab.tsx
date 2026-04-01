@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { capitalize } from "metabase/lib/formatting/strings";
 import { Box, Stack, Text, TextInput } from "metabase/ui";
 import type {
   GroupInfo,
@@ -10,8 +11,10 @@ import type {
 } from "metabase-types/api";
 
 import S from "./GroupLimitsSettingsSection.module.css";
+import { getLimitPeriodLabel } from "./utils";
 
-type UserGroupsTabProps = {
+type GroupLimitsTabProps = {
+  variant: "regular-groups" | "tenant-groups";
   groups: GroupInfo[] | undefined;
   isLoading: boolean;
   error: unknown;
@@ -21,7 +24,8 @@ type UserGroupsTabProps = {
   onGroupLimitChange: (groupId: number, maxUsage: number | null) => void;
 };
 
-export function UserGroupsTab({
+export function GroupLimitsTab({
+  variant,
   groups,
   isLoading,
   error,
@@ -29,7 +33,7 @@ export function UserGroupsTab({
   groupLimits,
   instanceLimit,
   onGroupLimitChange,
-}: UserGroupsTabProps) {
+}: GroupLimitsTabProps) {
   const [localLimits, setLocalLimits] = useState<Record<number, string>>({});
 
   const groupLimitsMap = useMemo(() => {
@@ -49,8 +53,6 @@ export function UserGroupsTab({
     setLocalLimits(newLimits);
   }, [groupLimits]);
 
-  const periodLabel = getPeriodLabel(limitPeriod);
-
   const placeholder =
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
@@ -60,25 +62,30 @@ export function UserGroupsTab({
     onGroupLimitChange(groupId, maxUsage);
   };
 
+  const {
+    periodNoun,
+    periodI18nContext,
+    columnHeader,
+    description,
+    errorMessage,
+  } = getLabels(limitPeriod, variant);
+
   return (
     <Stack gap="xl">
-      <Text c="text-secondary">
-        {t`Monthly limits for each individual user in each group. If a user belongs to more than one group, they'll be given the highest limit among all the groups they belong to.`}
-      </Text>
+      <Text c="text-secondary">{description}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
-        error={error ? t`Error loading groups` : null}
+        error={error ? errorMessage : null}
       >
         {groups && (
           <Box className={S.TableContainer}>
             <table className={S.Table}>
               <thead>
                 <tr>
-                  <th className={S.HeaderCell}>{t`Group`}</th>
+                  <th className={S.HeaderCell}>{columnHeader}</th>
                   <th className={S.HeaderCell}>
-                    {c(
-                      "{0} indicates the limit reset period, e.g., daily, weekly, monthly",
-                    ).t`Max tokens per user each ${periodLabel}`}
+                    {periodI18nContext.noun
+                      .t`Max tokens per user each ${periodNoun}`}
                   </th>
                 </tr>
               </thead>
@@ -114,14 +121,35 @@ export function UserGroupsTab({
   );
 }
 
-function getPeriodLabel(limitPeriod: MetabotLimitPeriod): string {
-  switch (limitPeriod) {
-    case "daily":
-      return t`day`;
-    case "weekly":
-      return t`week`;
-    case "monthly":
-    default:
-      return t`month`;
-  }
+function getLabels(
+  limitPeriod: MetabotLimitPeriod,
+  variant: GroupLimitsTabProps["variant"],
+) {
+  const {
+    noun: periodNoun,
+    adjective: periodAdjective,
+    i18nContext,
+  } = getLimitPeriodLabel(limitPeriod);
+
+  const description =
+    variant === "tenant-groups"
+      ? i18nContext.adjective
+          .t`${capitalize(periodAdjective)} limits for each individual user in each tenant group.`
+      : i18nContext.adjective
+          .t`${capitalize(periodAdjective)} limits for each individual user in each group. If a user belongs to more than one group, they'll be given the highest limit among all the groups they belong to.`;
+
+  const errorMessage =
+    variant === "tenant-groups"
+      ? t`Error loading tenant groups`
+      : t`Error loading groups`;
+
+  const columnHeader = variant === "tenant-groups" ? t`Tenant group` : t`Group`;
+
+  return {
+    columnHeader,
+    description,
+    errorMessage,
+    periodNoun,
+    periodI18nContext: i18nContext,
+  };
 }

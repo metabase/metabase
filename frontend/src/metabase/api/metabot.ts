@@ -3,18 +3,14 @@ import type {
   MetabotFeedback,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
-  MetabotGroupLimit,
   MetabotId,
   MetabotInfo,
-  MetabotInstanceLimit,
   MetabotPermissionsResponse,
   MetabotProvider,
   MetabotSettingsResponse,
   MetabotSlackSettings,
-  MetabotTenantLimit,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
-  UpdateMetabotPermissionsRequest,
   UpdateMetabotSettingsRequest,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
@@ -144,7 +140,7 @@ export const metabotApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/ee/ai-controls/permissions",
       }),
-      providesTags: () => [listTag("metabot-permissions")],
+      providesTags: () => [listTag("metabot-user-permissions")],
     }),
     getUserMetabotPermissions: builder.query<
       UserMetabotPermissionsResponse,
@@ -154,77 +150,7 @@ export const metabotApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/metabot/permissions/user-permissions",
       }),
-      providesTags: () => [listTag("metabot-permissions")],
-    }),
-    updateMetabotPermissions: builder.mutation<
-      void,
-      UpdateMetabotPermissionsRequest
-    >({
-      query: (body) => ({
-        method: "PUT",
-        url: "/api/ee/ai-controls/permissions",
-        body,
-      }),
-      invalidatesTags: [listTag("metabot-permissions")],
-    }),
-
-    // Usage limits endpoints
-    getMetabotInstanceLimit: builder.query<MetabotInstanceLimit, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/ee/ai-controls/usage/instance",
-      }),
-      providesTags: () => [listTag("metabot-usage-instance-limit")],
-    }),
-    updateMetabotInstanceLimit: builder.mutation<
-      MetabotInstanceLimit,
-      MetabotInstanceLimit
-    >({
-      query: (body) => ({
-        method: "PUT",
-        url: "/api/ee/ai-controls/usage/instance",
-        body,
-      }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("metabot-usage-instance-limit")]),
-    }),
-    getMetabotGroupLimits: builder.query<MetabotGroupLimit[], void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/ee/ai-controls/usage/group",
-      }),
-      providesTags: () => [listTag("metabot-usage-group-limits")],
-    }),
-    updateMetabotGroupLimit: builder.mutation<
-      MetabotGroupLimit,
-      { groupId: number; max_usage: number | null }
-    >({
-      query: ({ groupId, max_usage }) => ({
-        method: "PUT",
-        url: `/api/ee/ai-controls/usage/group/${groupId}`,
-        body: { max_usage },
-      }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("metabot-usage-group-limits")]),
-    }),
-    getMetabotTenantLimits: builder.query<MetabotTenantLimit[], void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/ee/ai-controls/usage/tenant",
-      }),
-      providesTags: () => [listTag("metabot-usage-tenant-limits")],
-    }),
-    updateMetabotTenantLimit: builder.mutation<
-      MetabotTenantLimit,
-      { tenantId: number; max_usage: number | null }
-    >({
-      query: ({ tenantId, max_usage }) => ({
-        method: "PUT",
-        url: `/api/ee/ai-controls/usage/tenant/${tenantId}`,
-        body: { max_usage },
-      }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("metabot-usage-tenant-limits")]),
+      providesTags: () => [listTag("metabot-user-permissions")],
     }),
   }),
 });
@@ -242,11 +168,4 @@ export const {
   useUpdateMetabotSlackSettingsMutation,
   useGetMetabotPermissionsQuery,
   useGetUserMetabotPermissionsQuery,
-  useUpdateMetabotPermissionsMutation,
-  useGetMetabotInstanceLimitQuery,
-  useUpdateMetabotInstanceLimitMutation,
-  useGetMetabotGroupLimitsQuery,
-  useUpdateMetabotGroupLimitMutation,
-  useGetMetabotTenantLimitsQuery,
-  useUpdateMetabotTenantLimitMutation,
 } = metabotApi;
