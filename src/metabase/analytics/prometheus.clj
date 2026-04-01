@@ -14,7 +14,6 @@
    [iapetos.registry.collectors :as collectors]
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
-   [metabase.analytics.settings :refer [prometheus-server-port]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -232,7 +231,16 @@
 (defn- product-collectors
   []
   ;; Iapetos will use "default" if we do not provide a namespace, so explicitly set, e.g. `metabase-email`:
-  [(prometheus/gauge :metabase-info/build
+  [(prometheus/gauge :metabase-appdb/connections-busy
+                     {:description "App DB connections currently held, by checkout reason."
+                      :labels [:reason]})
+   (prometheus/gauge :metabase-appdb/connections-waiting
+                     {:description "Threads waiting for an app DB connection, by checkout reason."
+                      :labels [:reason]})
+   (prometheus/counter :metabase-appdb/checkouts-total
+                       {:description "Total app DB connection checkouts, by reason."
+                        :labels [:reason]})
+   (prometheus/gauge :metabase-info/build
                      {:description "An info metric used to attach build info like version, which is high cardinality."
                       :labels [:tag :hash :date :version :major-version]})
    (prometheus/gauge :metabase-startup/jvm-to-complete-millis
@@ -615,7 +623,7 @@
   "Start the prometheus metric collector and web-server."
   []
   (when-not system
-    (let [port (prometheus-server-port)]
+    (let [port ((requiring-resolve 'metabase.analytics.settings/prometheus-server-port))]
       (when-not port
         (log/info "Running prometheus metrics without a webserver"))
       (locking #'system

@@ -5,6 +5,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -343,10 +344,11 @@
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
    Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
-  (transduce (comp (partition-all insert-batch-size)
-                   (map (partial batch-update! context)))
-             (partial merge-with +)
-             document-reducible))
+  (checkout-tracking/with-checkout-reason :search-index
+    (transduce (comp (partition-all insert-batch-size)
+                     (map (partial batch-update! context)))
+               (partial merge-with +)
+               document-reducible)))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! :search/updating document-reducible))

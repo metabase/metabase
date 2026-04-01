@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.settings :as audit-app.settings]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -65,11 +66,12 @@
 
 (defn- truncate-audit-tables!
   []
-  (run!
-   (fn [{:keys [model timestamp-col]}]
-     (task-history/with-task-history {:task "task-history-cleanup"}
-       (truncate-table! model timestamp-col)))
-   (audit-models-to-truncate)))
+  (checkout-tracking/with-checkout-reason :audit-truncation
+    (run!
+     (fn [{:keys [model timestamp-col]}]
+       (task-history/with-task-history {:task "task-history-cleanup"}
+         (truncate-table! model timestamp-col)))
+     (audit-models-to-truncate))))
 
 (task/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
   (truncate-audit-tables!))
