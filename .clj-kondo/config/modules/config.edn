@@ -1318,7 +1318,6 @@
            metabase.mq.init}
    :uses #{analytics
            app-db
-           config
            models
            settings
            startup
