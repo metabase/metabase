@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "74a08a7a2df3993ad39b6dca5674f968bbf937fe"
+  },
+  "upstream": {
+    "branch": "emb-1489-move-cors-settings-to-oss-and-show-cors-in-security-tab"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 71648,
+        "gqlID": "PR_kwDOAczgH87OoNw6"
+      }
+    }
   }
 }
