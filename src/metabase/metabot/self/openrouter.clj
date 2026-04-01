@@ -8,13 +8,11 @@
   The agent loop produces AISDK parts as its canonical message format. This
   adapter converts those directly to Chat Completions messages."
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -93,13 +91,16 @@
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
 (defn- list-models*
-  [base-url auth]
+  [auth]
   (try
-    (let [res (http/get (str base-url "/v1/models")
-                        {:as      :json
-                         :headers (merge auth {"Content-Type" "application/json"
-                                               "HTTP-Referer" "https://metabase.com"
-                                               "X-Title"      "Metabase"})})]
+    (let [res (core/request-with-proxy "OpenRouter"
+                                       auth
+                                       {:method  :get
+                                        :url     "/v1/models"
+                                        :as      :json
+                                        :headers {"Content-Type" "application/json"
+                                                  "HTTP-Referer" "https://metabase.com"
+                                                  "X-Title"      "Metabase"}})]
       {:models (mapv (fn [model]
                        {:id           (:id model)
                         :display_name (or (:name model) (:id model))})
@@ -122,15 +123,14 @@
 
 (defn list-models
   "List available OpenRouter models using the configured API key."
-  ([] (if-let [proxy (llm/llm-proxy-base-url)]
-        (list-models* (str proxy "/llm/openrouter")
-                      {"x-metabase-instance-token" (premium-features/premium-embedding-token)})
-        (list-models (llm/llm-openrouter-api-key))))
+  ([] (list-models* (when-let [api-key (not-empty (llm/llm-openrouter-api-key))]
+                      {:url     (llm/llm-openrouter-api-base-url)
+                       :headers {"Authorization" (str "Bearer " api-key)}})))
   ([api-key]
    (when (str/blank? api-key)
      (throw (ex-info "No OpenRouter API key is set" {:api-error true})))
-   (list-models* (llm/llm-openrouter-api-base-url)
-                 {"Authorization" (str "Bearer " api-key)})))
+   (list-models* {:url     (llm/llm-openrouter-api-base-url)
+                  :headers {"Authorization" (str "Bearer " api-key)}})))
 
 ;;; Streaming response → AISDK v5 chunks
 
@@ -257,65 +257,61 @@
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.)."
   [{:keys [model system input tools temperature max-tokens tool_choice schema]
     :or   {model "anthropic/claude-haiku-4-5"}} :- core/LLMRequestOpts]
-  (let [proxy    (llm/llm-proxy-base-url)
-        base-url (if proxy
-                   (str proxy "/llm/openrouter")
-                   (llm/llm-openrouter-api-base-url))
-        auth     (if proxy
-                   {"x-metabase-instance-token" (premium-features/premium-embedding-token)}
-                   {"Authorization" (str "Bearer " (llm/llm-openrouter-api-key))})]
-    (when-not proxy
-      (when-not (llm/llm-openrouter-api-key)
-        (throw (ex-info "No OpenRouter API key is set" {:api-error true}))))
-    (let [messages  (cond-> (parts->cc-messages input)
-                      system (as-> msgs (into [{:role "system" :content system}] msgs)))
-          all-tools (or (when schema
-                           ;; Structured output: force a tool call with the given JSON schema
-                          [{:type     "function"
-                            :function {:name        "structured_output"
-                                       :description "Output structured data"
-                                       :parameters  schema}}])
-                        (seq (mapv tool->openai-chat tools)))
-          req       (cond-> {:model             model
-                             :stream            true
-                             :stream_options    {:include_usage true}
-                             :messages          messages}
-                      all-tools   (assoc :tools       (vec all-tools)
-                                         :tool_choice (cond
-                                                        schema      "required"
-                                                        tool_choice tool_choice
-                                                        :else       "auto"))
-                      temperature (assoc :temperature temperature)
-                      max-tokens  (assoc :max_tokens max-tokens))]
-      (log/debug "OpenRouter request" {:model model :msg-count (count messages) :tools (count (or tools []))})
-      (with-span :info {:name       :metabot.openrouter/request
-                        :model      model
-                        :msg-count  (count messages)
-                        :tool-count (count (or tools []))}
-        (try
-          (let [res (http/post (str base-url "/v1/chat/completions")
-                               {:as      :stream
-                                :headers (merge auth {"Content-Type" "application/json"
-                                                      "HTTP-Referer" "https://metabase.com"
-                                                      "X-Title"      "Metabase"})
-                                :body    (json/encode req)})]
-            (core/sse-reducible (:body res)))
-          (catch Exception e
-            (if-let [res (some-> (ex-data e) json/decode-body)]
-              (let [status (:status res)
-                    msg    (case (int status)
-                             401 "OpenRouter API key expired or invalid"
-                             402 "OpenRouter: insufficient credits"
-                             403 "OpenRouter API key has insufficient permissions"
-                             404 "OpenRouter: model not found or endpoint unavailable"
-                             429 "OpenRouter: rate limited"
-                             500 "OpenRouter: internal server error"
-                             502 "OpenRouter: upstream provider error"
-                             503 "OpenRouter: service unavailable"
-                             (or (-> res :body :error :message)
-                                 "Unhandled error accessing OpenRouter API"))]
-                (throw (ex-info msg (assoc res :api-error true) e)))
-              (throw e))))))))
+  (let [messages  (cond-> (parts->cc-messages input)
+                    system (as-> msgs (into [{:role "system" :content system}] msgs)))
+        all-tools (or (when schema
+                        ;; Structured output: force a tool call with the given JSON schema
+                        [{:type     "function"
+                          :function {:name        "structured_output"
+                                     :description "Output structured data"
+                                     :parameters  schema}}])
+                      (seq (mapv tool->openai-chat tools)))
+        req       (cond-> {:model             model
+                           :stream            true
+                           :stream_options    {:include_usage true}
+                           :messages          messages}
+                    all-tools   (assoc :tools       (vec all-tools)
+                                       :tool_choice (cond
+                                                      schema      "required"
+                                                      tool_choice tool_choice
+                                                      :else       "auto"))
+                    temperature (assoc :temperature temperature)
+                    max-tokens  (assoc :max_tokens max-tokens))]
+    (log/debug "OpenRouter request" {:model model :msg-count (count messages) :tools (count (or tools []))})
+    (with-span :info {:name       :metabot.openrouter/request
+                      :model      model
+                      :msg-count  (count messages)
+                      :tool-count (count (or tools []))}
+      (try
+        (let [api-key (not-empty (llm/llm-openrouter-api-key))
+              res     (core/request-with-proxy "OpenRouter"
+                                               (when api-key
+                                                 {:url     (llm/llm-openrouter-api-base-url)
+                                                  :headers {"Authorization" (str "Bearer " api-key)}})
+                                               {:method  :post
+                                                :url     "/v1/chat/completions"
+                                                :as      :stream
+                                                :headers {"Content-Type" "application/json"
+                                                          "HTTP-Referer" "https://metabase.com"
+                                                          "X-Title"      "Metabase"}
+                                                :body    (json/encode req)})]
+          (core/sse-reducible (:body res)))
+        (catch Exception e
+          (if-let [res (some-> (ex-data e) json/decode-body)]
+            (let [status (:status res)
+                  msg    (case (int status)
+                           401 "OpenRouter API key expired or invalid"
+                           402 "OpenRouter: insufficient credits"
+                           403 "OpenRouter API key has insufficient permissions"
+                           404 "OpenRouter: model not found or endpoint unavailable"
+                           429 "OpenRouter: rate limited"
+                           500 "OpenRouter: internal server error"
+                           502 "OpenRouter: upstream provider error"
+                           503 "OpenRouter: service unavailable"
+                           (or (-> res :body :error :message)
+                               "Unhandled error accessing OpenRouter API"))]
+              (throw (ex-info msg (assoc res :api-error true) e)))
+            (throw e)))))))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."
