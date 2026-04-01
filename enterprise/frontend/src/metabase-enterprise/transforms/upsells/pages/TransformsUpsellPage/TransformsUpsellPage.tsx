@@ -108,6 +108,10 @@ export function TransformsUpsellPage() {
                 </Text>
               )
             }
+            finePrint={
+              hadTransforms &&
+              t`By clicking Enable transforms, you agree to be charged ${perRunStr} per successful transform run.`
+            }
             leftContent={
               !shouldShowAgreement ? undefined : (
                 <>

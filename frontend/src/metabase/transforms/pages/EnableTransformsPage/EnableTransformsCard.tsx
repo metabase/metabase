@@ -19,11 +19,13 @@ import {
 export function EnableTransformsCard({
   onEnableClick,
   permissionsErrorMessage,
+  finePrint,
   leftContent,
   loading,
 }: {
   onEnableClick: () => void;
   permissionsErrorMessage?: React.ReactNode;
+  finePrint?: React.ReactNode;
   leftContent?: React.ReactNode;
   loading?: boolean;
 }) {
@@ -56,6 +58,11 @@ export function EnableTransformsCard({
                     variant="primary"
                     onClick={onEnableClick}
                   >{t`Enable transforms`}</Button>
+                  {finePrint && (
+                    <Text c="text-secondary" lh={1.4} maw="28rem">
+                      {finePrint}
+                    </Text>
+                  )}
                   {!hasDbThatSupportsTransforms && (
                     <Alert
                       color="warning"
