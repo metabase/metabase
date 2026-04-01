@@ -47,6 +47,11 @@
                                :high     (trs "High")
                                :medium   (trs "Medium")
                                :low      (trs "Low"))
+         :severity_color     (case severity
+                               :critical "#E65050"
+                               :high     "#F0830E"
+                               :medium   "#F0C431"
+                               :low      "#509EE3")
          :status_label       (case match_status
                                :active (trs "Active")
                                :error  (trs "Error"))

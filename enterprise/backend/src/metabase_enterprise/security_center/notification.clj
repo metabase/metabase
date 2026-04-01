@@ -38,12 +38,9 @@
   "Resolve email recipients from the `security-center-email-recipients` setting.
    nil → all admins (admin group). Non-nil → the specific email addresses."
   []
-  (if-let [emails (settings/security-center-email-recipients)]
-    (mapv (fn [email] {:type    :notification-recipient/raw-value
-                       :details {:value email}})
-          emails)
-    [{:type                 :notification-recipient/group
-      :permissions_group_id (:id (perms/admin-group))}]))
+  (or (settings/security-center-email-recipients)
+      [{:type                 :notification-recipient/group
+        :permissions_group_id (:id (perms/admin-group))}]))
 
 (defn- slack-recipients
   "Resolve Slack recipient from the `security-center-slack-channel` setting.

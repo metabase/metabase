@@ -4,7 +4,7 @@
   </div>
   <div style="text-align: center; margin: 0 auto; max-width: 500px">
     <div style="text-align: left">
-      <div style="display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #fff; background-color: {{#if (eq payload.event_info.object.severity "critical")}}#E65050{{else}}{{#if (eq payload.event_info.object.severity "high")}}#F0830E{{else}}{{#if (eq payload.event_info.object.severity "medium")}}#F0C431{{else}}#509EE3{{/if}}{{/if}}{{/if}}; margin-bottom: 16px;">
+      <div style="display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #fff; background-color: {{payload.custom.severity_color}}; margin-bottom: 16px;">
         {{payload.custom.severity_label}}
       </div>
       <h2 style="font-weight: normal; color: #4C545B; line-height: 34px; margin-top: 12px;">Security Advisory: {{payload.event_info.object.title}}</h2>
