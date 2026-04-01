@@ -4,6 +4,7 @@
    [metabase.metabot.api]
    [metabase.metabot.limits]
    [metabase.metabot.scope]
+   [metabase.metabot.usage-log]
    [potemkin :as p]))
 
 (p/import-vars

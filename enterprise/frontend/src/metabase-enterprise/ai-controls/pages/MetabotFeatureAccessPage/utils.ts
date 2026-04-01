@@ -25,7 +25,8 @@ export const getAIToolItems = (): Array<{ key: AIToolKey; label: string }> => {
 const PERMISSIONS_SAVE_DEBOUNCE = 500;
 
 export const useMetabotGroupPermissions = () => {
-  const { data: permissionsQueryData } = useGetMetabotPermissionsQuery();
+  const { data: permissionsQueryData, error: permissionsQueryError } =
+    useGetMetabotPermissionsQuery();
   const [updateMetabotPermissions] = useUpdateMetabotPermissionsMutation();
   const [groupPermissions, setGroupPermissions] = useState<
     MetabotGroupPermission[]
@@ -78,5 +79,6 @@ export const useMetabotGroupPermissions = () => {
   return {
     groupPermissions,
     onPermissionChange,
+    error: permissionsQueryError ? t`Failed to load Metabot permissions` : null,
   };
 };

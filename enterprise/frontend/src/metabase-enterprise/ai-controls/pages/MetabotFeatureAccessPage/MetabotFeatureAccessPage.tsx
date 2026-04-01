@@ -1,13 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
-import { Title } from "metabase/ui";
-
-import { MetabotNavPane } from "../MetabotNavPane";
 
 import { AiFeatureAccessTable } from "./AiFeatureAccessTable";
 import { GroupCategoryTabs } from "./GroupCategoryTabs";
@@ -36,29 +33,27 @@ export function MetabotFeatureAccessPage() {
     { skip: !isUsingTenants },
   );
 
-  const { groupPermissions, onPermissionChange } = useMetabotGroupPermissions();
+  const {
+    groupPermissions,
+    onPermissionChange,
+    error: permissionsError,
+  } = useMetabotGroupPermissions();
 
   const activeGroups =
     activeTab === "tenant-groups" ? tenantGroups : userGroups;
   const isLoading =
     activeTab === "tenant-groups" ? isLoadingTenantGroups : isLoadingUserGroups;
-  const error =
+  const groupsError =
     activeTab === "tenant-groups" ? tenantGroupsError : userGroupsError;
+  const error = groupsError || permissionsError;
 
   return (
-    <AdminSettingsLayout sidebar={<MetabotNavPane />} maw="50rem">
-      <Title order={1} mb="md" mt="sm">
-        {t`AI feature access`}
-      </Title>
-
+    <SettingsPageWrapper title={t`AI feature access`} mt="sm">
       {isUsingTenants && (
         <GroupCategoryTabs setActiveTab={setActiveTab} activeTab={activeTab} />
       )}
 
-      <LoadingAndErrorWrapper
-        loading={isLoading}
-        error={error ? t`Error loading groups` : null}
-      >
+      <LoadingAndErrorWrapper loading={isLoading} error={error || null}>
         {activeGroups && (
           <AiFeatureAccessTable
             groups={activeGroups}
@@ -67,6 +62,6 @@ export function MetabotFeatureAccessPage() {
           />
         )}
       </LoadingAndErrorWrapper>
-    </AdminSettingsLayout>
+    </SettingsPageWrapper>
   );
 }

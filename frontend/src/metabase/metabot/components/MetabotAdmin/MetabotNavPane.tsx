@@ -7,6 +7,7 @@ import {
 import { useSetting } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
+  PLUGIN_AI_CONTROLS,
   PLUGIN_EMBEDDING_IFRAME_SDK,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
@@ -32,43 +33,6 @@ export function MetabotNavPane() {
               label={t`Metabot`}
               path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`}
             />
-            <AdminNavItem
-              icon="lock"
-              label={t`Usage controls`}
-              folderPattern="usage-controls"
-            >
-              <AdminNavItem
-                label={t`AI feature access`}
-                path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-feature-access`}
-              />
-              <AdminNavItem
-                label={t`AI usage limits`}
-                path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/usage-controls/ai-usage-limits`}
-              />
-            </AdminNavItem>
-            <AdminNavItem
-              icon="palette"
-              label={t`Customization`}
-              path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/customization`}
-            />
-            <AdminNavItem
-              icon="document"
-              label={t`System prompts`}
-              folderPattern="system-prompts"
-            >
-              <AdminNavItem
-                label={t`Metabot chat`}
-                path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts/metabot-chat`}
-              />
-              <AdminNavItem
-                label={t`Natural language queries`}
-                path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts/natural-language-queries`}
-              />
-              <AdminNavItem
-                label={t`SQL generation`}
-                path={`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}/system-prompts/sql-generation`}
-              />
-            </AdminNavItem>
             {hasEmbedding && (
               <AdminNavItem
                 icon="embed"
@@ -76,6 +40,7 @@ export function MetabotNavPane() {
                 path={`/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`}
               />
             )}
+            {PLUGIN_AI_CONTROLS.getAiControlsNavItems()}
           </>
         )}
       </AdminNavWrapper>

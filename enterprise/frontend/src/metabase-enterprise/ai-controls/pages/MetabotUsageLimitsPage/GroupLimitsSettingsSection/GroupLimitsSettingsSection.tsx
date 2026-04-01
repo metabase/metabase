@@ -12,6 +12,7 @@ import {
   useUpdateMetabotTenantLimitMutation,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Tabs } from "metabase/ui";
 import type { MetabotLimitPeriod } from "metabase-types/api";
@@ -29,6 +30,7 @@ export function GroupLimitsSettingsSection() {
   const limitPeriod =
     (useSetting("metabot-limit-reset-rate") as MetabotLimitPeriod) ?? "monthly";
   const [activeTab, setActiveTab] = useState<GroupLimitsTab>("user-groups");
+  const { sendErrorToast } = useMetadataToasts();
 
   // Groups data
   const {
@@ -69,14 +71,22 @@ export function GroupLimitsSettingsSection() {
 
   const debouncedSaveGroupLimit = useDebouncedCallback(
     async (groupId: number, maxUsage: number | null) => {
-      await updateGroupLimit({ groupId, max_usage: maxUsage });
+      try {
+        await updateGroupLimit({ groupId, max_usage: maxUsage }).unwrap();
+      } catch {
+        sendErrorToast(t`Failed to update group limit`);
+      }
     },
     SAVE_DEBOUNCE_MS,
   );
 
   const debouncedSaveTenantLimit = useDebouncedCallback(
     async (tenantId: number, maxUsage: number | null) => {
-      await updateTenantLimit({ tenantId, max_usage: maxUsage });
+      try {
+        await updateTenantLimit({ tenantId, max_usage: maxUsage }).unwrap();
+      } catch {
+        sendErrorToast(t`Failed to update tenant limit`);
+      }
     },
     SAVE_DEBOUNCE_MS,
   );

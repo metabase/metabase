@@ -8,6 +8,7 @@ import {
   useUpdateMetabotInstanceLimitMutation,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   SegmentedControl,
   type SegmentedControlItem,
@@ -46,6 +47,7 @@ export function GeneralLimitsSettingsSection() {
   );
   const [instanceLimitInput, setInstanceLimitInput] = useState("");
   const [quotaMessage, setQuotaMessage] = useState(savedQuotaMessage ?? "");
+  const { sendErrorToast } = useMetadataToasts();
 
   // Sync from backend when settings load
   useEffect(() => {
@@ -77,19 +79,26 @@ export function GeneralLimitsSettingsSection() {
   // Debounced save functions
   const debouncedSaveInstanceLimit = useDebouncedCallback(
     async (value: string) => {
-      const maxUsage = value ? Number(value) : null;
-      await updateInstanceLimit({ max_usage: maxUsage });
+      try {
+        const maxUsage = value ? Number(value) : null;
+        await updateInstanceLimit({ max_usage: maxUsage }).unwrap();
+      } catch {
+        sendErrorToast(t`Failed to update instance limit`);
+      }
     },
     SAVE_DEBOUNCE_MS,
   );
 
-  const debouncedSaveQuotaMessage = useDebouncedCallback((value: string) => {
-    updateQuotaMessageSetting({
-      key: "metabot-quota-reached-message",
-      value: value || null,
-      toast: false,
-    });
-  }, SAVE_DEBOUNCE_MS);
+  const debouncedSaveQuotaMessage = useDebouncedCallback(
+    async (value: string) => {
+      updateQuotaMessageSetting({
+        key: "metabot-quota-reached-message",
+        value: value || null,
+        toast: false,
+      });
+    },
+    SAVE_DEBOUNCE_MS,
+  );
 
   const limitTypeOptions: LimitTypeOption[] = useMemo(() => {
     return [

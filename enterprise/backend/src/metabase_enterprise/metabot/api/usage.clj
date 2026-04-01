@@ -5,6 +5,7 @@
    [metabase-enterprise.metabot.models.metabot-instance-limit :as instance-limit]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.api.routes.common :refer [+auth]]))
 
 (defn- without-id [row]

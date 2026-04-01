@@ -1,23 +1,17 @@
-import { IndexRoute, Route } from "react-router";
+import { Route } from "react-router";
 
-import { MetabotAdminLayout } from "./MetabotAdminLayout";
-import { MetabotConfig } from "./MetabotConfig";
-import { MetabotCustomizationPage } from "./MetabotCustomizationPage";
-import { MetabotFeatureAccessPage } from "./MetabotFeatureAccessPage";
-import { MetabotSetup } from "./MetabotSetup";
+import { MetabotCustomizationPage } from "./pages/MetabotCustomizationPage";
+import { MetabotFeatureAccessPage } from "./pages/MetabotFeatureAccessPage";
 import {
   MetabotChatPromptPage,
   NaturalLanguagePromptPage,
   SqlGenerationPromptPage,
-} from "./MetabotSystemPromptsPage";
-import { MetabotUsageLimitsPage } from "./MetabotUsageLimitsPage";
+} from "./pages/MetabotSystemPromptsPage";
+import { MetabotUsageLimitsPage } from "./pages/MetabotUsageLimitsPage";
 
-export function getAdminRoutes() {
-  return [
-    <Route key="layout" component={MetabotAdminLayout}>
-      <IndexRoute key="index" component={MetabotConfig} />
-      <Route key="setup" path="setup" component={MetabotSetup} />
-      <Route key="metabot" path=":metabotId" component={MetabotConfig} />
+export function getAiControlsRoutes() {
+  return (
+    <>
       <Route
         key="ai-feature-access"
         path=":metabotId/usage-controls/ai-feature-access"
@@ -48,6 +42,6 @@ export function getAdminRoutes() {
         path=":metabotId/system-prompts/sql-generation"
         component={SqlGenerationPromptPage}
       />
-    </Route>,
-  ];
+    </>
+  );
 }
