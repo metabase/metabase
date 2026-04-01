@@ -160,6 +160,6 @@ export function setupUserMetabotPermissionsEndpoint(
   fetchMock.get(
     "path:/api/metabot/permissions/user-permissions",
     response ?? createMockUserMetabotPermissions(),
-    { name: USER_METABOT_PERMISSIONS_ROUTE_NAME, overwriteRoutes: true },
+    { name: USER_METABOT_PERMISSIONS_ROUTE_NAME },
   );
 }

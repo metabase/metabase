@@ -38,7 +38,7 @@ function setup({
   const settings = mockSettings({
     "llm-metabot-configured?": true,
     "metabot-enabled?": isMetabotEnabled,
-    "token-features": createMockTokenFeatures({ metabot_v3: true }),
+    "token-features": createMockTokenFeatures({ ai_controls: true }),
   });
   setupEnterprisePlugins();
 

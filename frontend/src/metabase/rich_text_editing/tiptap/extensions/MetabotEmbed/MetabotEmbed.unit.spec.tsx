@@ -37,7 +37,7 @@ describe("MetabotEmbed", () => {
       createMockUserMetabotPermissions(),
     );
     mockSettings({
-      "token-features": createMockTokenFeatures({ metabot_v3: true }),
+      "token-features": createMockTokenFeatures({ ai_controls: true }),
     });
     setupEnterprisePlugins();
   });
