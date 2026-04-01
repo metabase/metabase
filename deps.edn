@@ -94,7 +94,6 @@
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}
-  lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
   metabase/saml20-clj                       {:mvn/version "4.2.1"
@@ -109,8 +108,6 @@
                                              :git/sha "b4a2d78647a049870b316753d7aae7fb4ade3ae5"} ; patched to resolve an issue causing OOM
   net.carcdr/oidc-provider                  {:mvn/version "0.6.2"}              ; OAuth/OIDC server abstract implementation
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
-  net.clojars.wkok/openai-clojure           {:mvn/version "0.23.0"
-                                             :exclusions  [lambdaisland/uri]}   ; OpenAI
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [org.slf4j/slf4j-api]}
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.2"               ; HTML / CSS rendering
