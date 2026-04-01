@@ -50,6 +50,7 @@ while IFS= read -r file; do
   dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9]*\)/.*|\1|p')
   [[ -z "$dir" ]] && continue
   dir_version=$((10#$dir))
+  dir=$(printf "%03d" "$dir_version")
 
   if [[ "$constraint" == "=" && "$dir_version" -ne "$version" ]] ||
      [[ "$constraint" == "<=" && "$dir_version" -gt "$version" ]]; then
