@@ -47,6 +47,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)
+   (java.util.concurrent CountDownLatch)
    (org.quartz JobDetail TriggerKey)))
 
 (set! *warn-on-reflection* true)
@@ -1513,6 +1514,27 @@
                 (is (=?
                      {"event" "database_manual_sync", "target_id" db-id}
                      (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
+
+(deftest sync-schema-executes-when-executor-busy-test
+  (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
+    (let [sync-called?  (promise)
+          blocker-latch (CountDownLatch. 1)]
+      (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details (:details (mt/db))}]
+        (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db-id)
+                      analyze/analyze-db!             (constantly nil)]
+          ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
+          ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
+          ;; the quick-task timeout and gets evicted.
+          (with-redefs [quick-task/task-timeout-ms (constantly 1000)]
+            (quick-task/submit-task! (fn [] (.await blocker-latch))))
+          (try
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
+            ;; The sync task is queued behind the blocker. After the blocker times out
+            ;; and is cancelled, the sync task should execute.
+            (testing "sync executes after stuck task is evicted"
+              (is (true? (deref sync-called? 10000 :sync-never-called))))
+            (finally
+              (.countDown blocker-latch))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
