@@ -106,6 +106,38 @@
           table    (mt/user-http-request :rasta :get 200 (str "agent/v1/table/" table-id "?with-field-values=true"))]
       (is (some #(seq (:field_values %)) (:fields table))))))
 
+(deftest list-databases-test
+  (testing "Returns a list of databases with only expected keys"
+    ;; Reference a table to ensure the test database exists
+    (let [_         (mt/id :orders)
+          databases (mt/user-http-request :crowberto :get 200 "agent/v1/database")]
+      (is (pos? (count databases)))
+      (is (= #{:id :type :name :engine :description}
+             (into #{} (mapcat keys) databases))))))
+
+(deftest get-database-details-test
+  (testing "Returns only expected keys without tables"
+    (let [db (mt/user-http-request :rasta :get 200 (str "agent/v1/database/" (mt/id)))]
+      (is (= #{:id :type :name :engine :description} (set (keys db))))
+      (is (= "database" (:type db)))
+      (is (= (mt/id) (:id db)))))
+
+  (testing "Returns 404 for non-existent database"
+    (is (= "Not found."
+           (mt/user-http-request :rasta :get 404 "agent/v1/database/999999"))))
+
+  (testing "Tables are included when requested, with only expected keys"
+    (let [db (mt/user-http-request :rasta :get 200
+                                   (str "agent/v1/database/" (mt/id) "?with-tables=true"))]
+      (is (= #{:id :type :name :engine :description :tables} (set (keys db))))
+      (is (pos? (count (:tables db))))
+      (is (every? #(empty? (:fields %)) (:tables db)))))
+
+  (testing "Tables include fields when requested"
+    (let [db (mt/user-http-request :rasta :get 200
+                                   (str "agent/v1/database/" (mt/id) "?with-tables=true&with-fields=true"))]
+      (is (every? #(seq (:fields %)) (:tables db))))))
+
 (deftest get-metric-details-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                      :type          :metric
