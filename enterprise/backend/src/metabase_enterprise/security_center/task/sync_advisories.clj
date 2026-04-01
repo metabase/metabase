@@ -40,7 +40,6 @@
                    (jobs/with-identity (jobs/key job-key)))
           trigger (triggers/build
                    (triggers/with-identity (triggers/key trigger-key))
-                   (triggers/start-now)
                    (triggers/with-schedule
                     (simple/schedule
                      (simple/with-interval-in-hours 6)
