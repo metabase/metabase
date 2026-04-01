@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { MathOperator } from "metabase-types/api";
+import { MATH_OPERATORS, isMathOperator } from "metabase-types/api";
 
 import type {
   ExpressionSubToken,
@@ -26,7 +26,9 @@ export function buildExpressionForPill(
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     const prev = tokens[i - 1];
-    if (i > 0 && prev?.type !== "open-paren" && token.type !== "close-paren") {
+    const needsSpace =
+      i > 0 && prev?.type !== "open-paren" && token.type !== "close-paren";
+    if (needsSpace) {
       curr += " ";
     }
     if (token.type === "open-paren") {
@@ -93,10 +95,12 @@ export function buildFullText(
 
 const COMMA = ",";
 
-const EXPRESSION_DELIMITERS = new Set(["+", "-", "*", "/", "(", ")", COMMA]);
-
-/** Delimiters that are always boundaries (everything except comma). */
-const NON_COMMA_DELIMITERS = new Set(["+", "-", "*", "/", "(", ")"]);
+const PAREN_DELIMITERS = ["(", ")"] as const;
+const NON_COMMA_DELIMITERS = new Set<string>([
+  ...MATH_OPERATORS,
+  ...PAREN_DELIMITERS,
+]);
+const EXPRESSION_DELIMITERS = new Set<string>([...NON_COMMA_DELIMITERS, COMMA]);
 
 /** Returns true for characters that form word continuations (letters, digits, underscore). */
 function isWordChar(ch: string): boolean {
@@ -169,13 +173,15 @@ export function getWordAtCursor(
     // Check if `before` ends with a known metric name
     const beforeLower = before.toLowerCase();
     for (const name of metricNamesLower) {
-      if (
-        beforeLower.endsWith(name) &&
-        (before.length === name.length ||
-          NON_COMMA_DELIMITERS.has(before[before.length - name.length - 1]) ||
-          before[before.length - name.length - 1] === COMMA ||
-          before[before.length - name.length - 1] === " ")
-      ) {
+      const charBeforeName = before[before.length - name.length - 1];
+      const isAtTextStart = before.length === name.length;
+      const hasDelimiterBefore =
+        NON_COMMA_DELIMITERS.has(charBeforeName) ||
+        charBeforeName === COMMA ||
+        charBeforeName === " ";
+      const endsWithMetricName =
+        beforeLower.endsWith(name) && (isAtTextStart || hasDelimiterBefore);
+      if (endsWithMetricName) {
         return true;
       }
     }
@@ -227,10 +233,11 @@ function findSeparatorCommaPositions(
   const metricRanges = allTokens.filter((t) => t.type === "metric");
   const commas: number[] = [];
   for (let i = 0; i < text.length; i++) {
-    if (
-      text[i] === COMMA &&
-      !metricRanges.some((r) => i >= r.from && i < r.to)
-    ) {
+    const isComma = text[i] === COMMA;
+    const isInsideMetricToken = metricRanges.some(
+      (r) => i >= r.from && i < r.to,
+    );
+    if (isComma && !isInsideMetricToken) {
       commas.push(i);
     }
   }
@@ -265,22 +272,20 @@ function groupTokensBySegment(
 
 /** Strip position info from a positioned token, dropping unknown tokens. */
 function stripPositions(token: PositionedToken): ExpressionSubToken | null {
-  if (token.type === "metric") {
-    return { type: "metric", sourceId: token.sourceId, count: 0 };
+  switch (token.type) {
+    case "metric":
+      return { type: "metric", sourceId: token.sourceId, count: 0 };
+    case "operator":
+      return { type: "operator", op: token.op };
+    case "constant":
+      return { type: "constant", value: token.value };
+    case "open-paren":
+      return { type: "open-paren" };
+    case "close-paren":
+      return { type: "close-paren" };
+    case "unknown":
+      return null;
   }
-  if (token.type === "operator") {
-    return { type: "operator", op: token.op };
-  }
-  if (token.type === "constant") {
-    return { type: "constant", value: token.value };
-  }
-  if (token.type === "open-paren") {
-    return { type: "open-paren" };
-  }
-  if (token.type === "unknown") {
-    return null;
-  }
-  return { type: "close-paren" };
 }
 
 /**
@@ -479,10 +484,9 @@ export function validateExpression(
         return t`Operator right after opening parenthesis`;
       }
     }
-    if (
-      token.type === "close-paren" &&
-      prevSignificant?.type === "open-paren"
-    ) {
+    const isEmptyParens =
+      token.type === "close-paren" && prevSignificant?.type === "open-paren";
+    if (isEmptyParens) {
       return t`Empty parentheses`;
     }
     prevSignificant = token;
@@ -559,7 +563,8 @@ export function parseFullTextWithPositions(
   while (i < text.length) {
     const ch = text[i];
 
-    if (ch === " " || ch === "\t") {
+    const isWhitespace = ch === " " || ch === "\t";
+    if (isWhitespace) {
       i++;
       continue;
     }
@@ -583,7 +588,7 @@ export function parseFullTextWithPositions(
       continue;
     }
 
-    if (ch === "+" || ch === "-" || ch === "*" || ch === "/") {
+    if (isMathOperator(ch)) {
       const lastToken = tokens.length > 0 ? tokens[tokens.length - 1] : null;
       const isUnaryContext =
         lastToken === null ||
@@ -606,7 +611,7 @@ export function parseFullTextWithPositions(
 
       tokens.push({
         type: "operator",
-        op: ch as MathOperator,
+        op: ch,
         from: i,
         to: i + 1,
       });
@@ -634,11 +639,9 @@ export function parseFullTextWithPositions(
         const nextCh = text[nextI];
         // Accept the match unless the next character continues an
         // alphanumeric word (e.g. "Revenue" inside "Revenues").
-        if (
-          !nextCh ||
-          !isWordChar(nextCh) ||
-          !isWordChar(name[name.length - 1])
-        ) {
+        const isWordBoundary =
+          !nextCh || !isWordChar(nextCh) || !isWordChar(name[name.length - 1]);
+        if (isWordBoundary) {
           tokens.push({
             type: "metric",
             sourceId,
@@ -659,11 +662,9 @@ export function parseFullTextWithPositions(
       i++;
       while (i < text.length) {
         const char = text[i];
-        if (
-          EXPRESSION_DELIMITERS.has(char) ||
-          char === " " ||
-          isDigit(char)
-        ) {
+        const isTokenBoundary =
+          EXPRESSION_DELIMITERS.has(char) || char === " " || isDigit(char);
+        if (isTokenBoundary) {
           break;
         }
         // Check if a metric name starts here — if so, stop the unknown span
@@ -672,11 +673,11 @@ export function parseFullTextWithPositions(
           if (lower.startsWith(name, i)) {
             const nameEndIndex = i + name.length;
             const afterNameChar = text[nameEndIndex];
-            if (
+            const isMetricBoundary =
               !afterNameChar ||
               afterNameChar === " " ||
-              EXPRESSION_DELIMITERS.has(afterNameChar)
-            ) {
+              EXPRESSION_DELIMITERS.has(afterNameChar);
+            if (isMetricBoundary) {
               metricStartsHere = true;
               break;
             }
@@ -829,15 +830,17 @@ export function filterSearchResults<T extends SearchResultLike>(
   selectedMeasureIds: Set<number>,
   excludeMetric?: ExcludeMetric,
 ): T[] {
-  return results.filter(
-    (result) =>
-      (result.model === "metric"
-        ? !selectedMetricIds.has(result.id)
-        : !selectedMeasureIds.has(result.id)) &&
-      (!excludeMetric ||
-        result.id !== excludeMetric.id ||
-        result.model !== excludeMetric.sourceType),
-  );
+  return results.filter((result) => {
+    const isAlreadySelected =
+      result.model === "metric"
+        ? selectedMetricIds.has(result.id)
+        : selectedMeasureIds.has(result.id);
+    const isExcluded =
+      excludeMetric &&
+      result.id === excludeMetric.id &&
+      result.model === excludeMetric.sourceType;
+    return !isAlreadySelected && !isExcluded;
+  });
 }
 
 /**

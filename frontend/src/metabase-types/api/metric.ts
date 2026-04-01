@@ -23,11 +23,11 @@ export type Metric = {
   result_column_name?: string;
 };
 
-export type MathOperator = "+" | "-" | "*" | "/";
-export const MATH_OPERATORS: MathOperator[] = ["+", "-", "*", "/"];
+export const MATH_OPERATORS = ["+", "-", "*", "/"] as const;
+export type MathOperator = (typeof MATH_OPERATORS)[number];
 
 export function isMathOperator(key: string): key is MathOperator {
-  return key === "+" || key === "-" || key === "*" || key === "/";
+  return (MATH_OPERATORS as readonly string[]).includes(key);
 }
 
 export type ExpressionRef =
