@@ -52,7 +52,8 @@
           (log/warnf e "Failed to send repeat notification for advisory %s"
                      (:advisory_id advisory)))))))
 
-(task/defjob ^{:doc "Send repeat notifications for unacknowledged security advisories"}
+(task/defjob ^{org.quartz.DisallowConcurrentExecution true
+               :doc "Send repeat notifications for unacknowledged security advisories"}
   SecurityAdvisoryNotify [_]
   (log/debug "Running security advisory repeat notification task")
   (send-repeat-notifications!))
