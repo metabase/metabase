@@ -1,7 +1,24 @@
 (ns metabase.metabot.models.metabot-permissions
-  "Metabot permission type definitions and defaults.
-  The Toucan2 model registration for `:model/MetabotPermissions` lives in
-  [[metabase-enterprise.metabot.permissions]].")
+  "Metabot permission type definitions, defaults, and Toucan2 model registration
+  for `:model/MetabotPermissions`."
+  (:require
+   [metabase.models.interface :as mi]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Model registration
+;;; ──────────────────────────────────────────────────────────────────
+
+(methodical/defmethod t2/table-name :model/MetabotPermissions [_model] :metabot_permissions)
+
+(doto :model/MetabotPermissions
+  (derive :metabase/model)
+  (derive ::mi/write-policy.superuser))
+
+(t2/deftransforms :model/MetabotPermissions
+  {:perm_type  mi/transform-keyword
+   :perm_value mi/transform-keyword})
 
 (def metabot-permissions
   "Metabot permission definitions. Values are ordered from most permissive to least permissive."

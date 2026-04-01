@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.app-db.core :as mdb]
    [metabase.metabot.models.metabot-permissions :as metabot-permissions]
    [toucan2.core :as t2]))
 
@@ -63,12 +62,11 @@
     (doseq [{:keys [group_id perm_type perm_value]} permissions]
       (let [perm-type-kw  (keyword perm_type)
             perm-value-kw (keyword perm_value)]
-        (mdb/update-or-insert! :model/MetabotPermissions
-                               {:group_id  group_id
-                                :perm_type perm-type-kw}
-                               (constantly {:group_id   group_id
-                                            :perm_type  perm-type-kw
-                                            :perm_value perm-value-kw})))))
+        (if (t2/exists? :model/MetabotPermissions :group_id group_id :perm_type perm-type-kw)
+          (t2/update! :model/MetabotPermissions {:group_id group_id :perm_type perm-type-kw} {:perm_value perm-value-kw})
+          (t2/insert! :model/MetabotPermissions {:group_id   group_id
+                                                 :perm_type  perm-type-kw
+                                                 :perm_value perm-value-kw})))))
   (all-permissions))
 
 (def ^{:arglists '([request respond raise])} routes
