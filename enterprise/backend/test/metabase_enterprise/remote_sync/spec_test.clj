@@ -245,12 +245,6 @@
     (let [spec (spec/spec-for-model-key :model/Card)]
       (is (nil? (spec/build-sync-object-fields spec nil))))))
 
-;;; ------------------------------------------- Removal Path Building Tests ------------------------------------------
-
-;; Note: build-all-removal-paths uses serdes/storage-path to generate paths.
-;; The actual paths are tested in impl_test.clj integration tests which verify
-;; the full export/import cycle with real database entities.
-
 ;;; --------------------------------------------- Fields for Sync Tests -----------------------------------------------
 
 (deftest fields-for-sync-test

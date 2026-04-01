@@ -2,9 +2,8 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { SelectList } from "metabase/common/components/SelectList";
-import { Button, Icon, Popover } from "metabase/ui";
+import { Button, Ellipsified, Icon, Popover } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 

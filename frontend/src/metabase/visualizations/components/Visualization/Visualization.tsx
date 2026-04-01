@@ -142,6 +142,7 @@ type VisualizationOwnProps = {
   isAction?: boolean;
   isDashboard?: boolean;
   isDocument?: boolean;
+  isMetricsViewer?: boolean;
   isMobile?: boolean;
   isRunning?: boolean;
   isShowingSummarySidebar?: boolean;
@@ -274,6 +275,7 @@ class Visualization extends PureComponent<
     isEditing: false,
     isEmbeddingSdk: false,
     isFullscreen: false,
+    isMetricsViewer: false,
     isPreviewing: false,
     isQueryBuilder: false,
     isSettings: false,
@@ -671,6 +673,7 @@ class Visualization extends PureComponent<
       isEditing,
       isEmbeddingSdk,
       isFullscreen,
+      isMetricsViewer,
       isMobile,
       isObjectDetail,
       isPreviewing,
@@ -764,6 +767,7 @@ class Visualization extends PureComponent<
             e instanceof ChartSettingsError &&
             visualization?.hasEmptyState &&
             !isDashboard &&
+            !isMetricsViewer &&
             // For the SDK the EmptyVizState component in some cases (a small container) looks really weird,
             // so at least temporarily we don't display it when rendered in the SDK.
             !isEmbeddingSdk
@@ -939,6 +943,7 @@ class Visualization extends PureComponent<
                     isEditing={!!isEditing}
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
+                    isMetricsViewer={!!isMetricsViewer}
                     isMobile={!!isMobile}
                     isVisualizer={!!isVisualizer}
                     isVisualizerCard={isVisualizerDashCard}
