@@ -42,14 +42,14 @@
        :user_invited_join_url      (join-url user-id (when from-setup "/admin/databases/create"))}
       :event/security-advisory-match
       (let [{:keys [severity match_status]} (:object event-info)]
-        {:severity_label  (case severity
-                            :critical (trs "Critical")
-                            :high     (trs "High")
-                            :medium   (trs "Medium")
-                            :low      (trs "Low"))
-         :status_label    (case match_status
-                            :active (trs "Active")
-                            :error  (trs "Error"))
+        {:severity_label     (case severity
+                               :critical (trs "Critical")
+                               :high     (trs "High")
+                               :medium   (trs "Medium")
+                               :low      (trs "Low"))
+         :status_label       (case match_status
+                               :active (trs "Active")
+                               :error  (trs "Error"))
          :security_center_url (str (system/site-url) "/admin/security")})
       {})))
 
