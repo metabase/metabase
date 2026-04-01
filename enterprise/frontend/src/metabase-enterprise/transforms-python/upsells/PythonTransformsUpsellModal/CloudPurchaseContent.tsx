@@ -11,8 +11,7 @@ import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
 import type { ICloudAddOnProduct } from "metabase-types/api/store";
 
-const CAMPAIGN = "data-studio-python-transforms"; // TODO: already in constants?
-const LOCATION = "data-studio-transforms";
+import { CAMPAIGN, LOCATION } from "./constants";
 
 type CloudPurchaseContentProps = {
   handleModalClose: VoidFunction;
