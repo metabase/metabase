@@ -100,6 +100,58 @@
       ["dimension" ["field" ["DB" "SCHEMA" "TABLE" "FIELD"] {:source-field ["DB" "SCHEMA" "TABLE" "FIELD2"]}]]
       [:dimension [:field 3 {:source-field 3}]])))
 
+(deftest ^:parallel export-mbql-3-field-id-ref-in-viz-settings-test
+  (testing "Allegedly viz settings can still contain MBQL 3 `:field-id` refs, make sure we export them properly"
+    (binding [serdes/*export-field-fk* (constantly ["A" "B" "C" "D"])]
+      (are [clause expected] (= expected
+                                (#'serdes/export-mbql clause))
+
+        [:field-id 1]
+        [:field-id ["A" "B" "C" "D"]]
+
+        ["field-id" 1]
+        [:field-id ["A" "B" "C" "D"]]
+
+        [:fk-> [:field-id 1] [:field-id 2]]
+        [:fk-> [:field-id ["A" "B" "C" "D"]] [:field-id ["A" "B" "C" "D"]]]
+
+        ["fk->" ["field-id" 1] ["field-id" 2]]
+        ["fk->" [:field-id ["A" "B" "C" "D"]] [:field-id ["A" "B" "C" "D"]]]))))
+
+(deftest ^:parallel export-visualization-settings-test
+  (binding [serdes/*export-field-fk* (constantly ["A" "B" "C" "D"])
+            serdes/*export-fk*       (fn [id model]
+                                       (format "%s___%d" (name model) id))]
+    (is (= {:column_settings
+            {"[\"ref\",[\"field\",[\"A\",\"B\",\"C\",\"D\"],null]]"
+             {:column_title "Locus"
+              :click_behavior
+              {:type     "link"
+               :linkType "question"
+               :targetId "Card___1"
+               :parameterMapping
+               {"[\"dimension\",[\"field\",[\"A\",\"B\",\"C\",\"D\"],{\"source-field\":[\"A\",\"B\",\"C\",\"D\"]}]]"
+                {:id     "[\"dimension\",[\"field\",[\"A\",\"B\",\"C\",\"D\"],{\"source-field\":[\"A\",\"B\",\"C\",\"D\"]}]]"
+                 :source {:type "column", :id "Category_ID", :name "Category ID"}
+                 :target {:type      "dimension"
+                          :id        "[\"dimension\",[\"field\",[\"A\",\"B\",\"C\",\"D\"],{\"source-field\":[\"A\",\"B\",\"C\",\"D\"]}]]"
+                          :dimension [:dimension [:field ["A" "B" "C" "D"] {:source-field ["A" "B" "C" "D"]}]]}}}}}}}
+           (serdes/export-visualization-settings
+            {:column_settings
+             {"[\"ref\",[\"field\",54,null]]"
+              {:column_title "Locus"
+               :click_behavior
+               {:type     "link"
+                :linkType "question"
+                :targetId 1
+                :parameterMapping
+                {(keyword "[\"dimension\",[\"field\",54,{\"source-field\":53}]]")
+                 {:id     "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
+                  :source {:type "column", :id "Category_ID", :name "Category ID"}
+                  :target {:type      "dimension"
+                           :id        "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
+                           :dimension ["dimension" [:field 54 {:source-field 53}]]}}}}},}})))))
+
 (deftest ^:parallel import-viz-settings-test
   (binding [serdes/*import-field-fk* (constantly 3)]
     (is (= {:column_settings

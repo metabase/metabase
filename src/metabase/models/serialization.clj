@@ -957,6 +957,7 @@
   `(try
      ~@body
      (catch clojure.lang.ExceptionInfo e#
+       (log/debugf e# "Caught error in fk-elide")
        (when-not (= (::type (ex-data e#)) :target-not-found)
          (throw e#))
        nil)))
@@ -1150,16 +1151,24 @@
 
 ;;; ## MBQL Fields
 
-(mu/defn- mbql-ref? :- [:maybe [:enum :field :dimension :metric :segment :measure]]
+(mu/defn- mbql-ref? :- [:maybe [:enum :field :field-id :dimension :metric :segment :measure]]
   "Is given form an MBQL entity reference?"
   [form]
   (when (and (vector? form)
-             (#{:field :dimension :metric :segment :measure} (keyword (first form))))
+             (#{:field :field-id :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
+
+(mr/def ::mbql-3-field-id-ref
+  "Ultra-legacy MBQL 3 `:field-id` ref; which (allegedly) can show up in viz settings; this schema is only here so we
+  can use Lib normalization in [[normalize-mbql-ref]]."
+  [:tuple
+   [:= {:decode/normalize lib.schema.common/normalize-keyword} :field-id]
+   pos-int?])
 
 (defn- normalize-mbql-ref [mbql]
   (let [tag    (mbql-ref? mbql)
         schema (case tag
+                 :field-id  ::mbql-3-field-id-ref
                  :field     [:multi
                              {:dispatch #(and (vector? %)
                                               (map? (second %)))}
@@ -1237,16 +1246,6 @@
     [:measure opts (id :guard pos-int?)]
     [:measure (export-mbql-map opts) (*export-fk* id 'Measure)]))
 
-(defn- other-mbql-clause? [x]
-  (and (vector? x)
-       (keyword? (first x))
-       (map? (second x))))
-
-(defn- export-other-mbql-clause [[tag opts & args]]
-  (into [tag (export-mbql-map opts)]
-        (map export-mbql)
-        args))
-
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
@@ -1254,11 +1253,10 @@
   ;; if required UUIDs are already calculated don't recalculate when we recurse.
   (binding [*required-lib-uuids-for-export* (or *required-lib-uuids-for-export* (collect-required-lib-uuids x))]
     (cond
-      (mbql-ref? x)          (export-mbql-ref x)
-      (other-mbql-clause? x) (export-other-mbql-clause x)
-      (sequential? x)        (mapv export-mbql x)
-      (map? x)               (export-mbql-map x)
-      :else                  x)))
+      (mbql-ref? x)   (export-mbql-ref x)
+      (sequential? x) (mapv export-mbql x)
+      (map? x)        (export-mbql-map x)
+      :else           x)))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."
@@ -1548,15 +1546,18 @@
   been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
   ported by [[export-viz-click-behavior-mapping]]."
   [mappings]
-  (into {} (for [[kw-key mapping] mappings
-                 ;; Mapping keyword shouldn't been a keyword in the first place, it's just how it's processed after
-                 ;; being selected from db. In an ideal world we'd either have different data layout for
-                 ;; click_behavior or not convert it's keys to a keywords. We need its full content here.
-                 :let [k (u/qualified-name kw-key)]]
-             (if (mb.viz/dimension-param-mapping? mapping)
-               [(json-export-mbql k)
-                (export-viz-click-behavior-mapping mapping)]
-               [k mapping]))))
+  (into {}
+        (comp (map (fn [[k v]]
+                     ;; Mapping keyword shouldn't been a keyword in the first place, it's just how it's processed
+                     ;; after being selected from db. In an ideal world we'd either have different data layout for
+                     ;; click_behavior or not convert it's keys to a keywords. We need its full content here.
+                     [(u/qualified-name k) v]))
+              (map (fn [[k mapping]]
+                     (if (mb.viz/dimension-param-mapping? mapping)
+                       [(json-export-mbql k)
+                        (export-viz-click-behavior-mapping mapping)]
+                       [k mapping]))))
+        mappings))
 
 (defn- import-viz-click-behavior-mappings
   "The exported form of `:parameterMapping` on a `:click_behavior` viz settings is a map of JSON strings which contain
@@ -1589,28 +1590,13 @@
           (m/update-existing-in [:pivot_table.column_split :rows] import-mbql)
           (m/update-existing-in [:pivot_table.column_split :columns] import-mbql)))
 
-(defn- export-visualizations [entity]
-  (lib.util.match/replace-lite entity
-    [#{"field" :field}       (opts :guard map?) (id :guard pos-int?)] [:field    (export-visualizations opts) (*export-field-fk* id)]
-    ;; legacy refs (MBQL 4)
-    [#{"field" :field}       (id :guard pos-int?) opts]               [:field    (*export-field-fk* id) (export-visualizations opts)]
-    ;; super-legacy refs (MBQL 3)... not sure these can even still show up IRL
-    [#{"field-id" :field-id} (id :guard pos-int?)]                    [:field-id (*export-field-fk* id)]
-    [#{"field-id" :field-id} (id :guard pos-int?) opts]               [:field-id (*export-field-fk* id) (export-visualizations opts)]
-
-    (_ :guard map?)
-    (m/map-vals export-visualizations &match)
-
-    (_ :guard vector?)
-    (mapv export-visualizations &match)))
-
 (defn- export-column-settings
   "Column settings use a JSON-encoded string as a map key, and it contains field numbers.
   This function parses those keys, converts the IDs to portable values, and serializes them back to JSON."
   [settings]
   (when settings
     (-> settings
-        (update-keys #(-> % json/decode export-visualizations json/encode))
+        (update-keys #(-> % json/decode export-mbql json/encode))
         (update-vals export-viz-click-behavior))))
 
 (defn- export-card-dimension-ref
@@ -1652,7 +1638,7 @@
   [settings]
   (when settings
     (-> settings
-        export-visualizations
+        export-mbql
         export-viz-link-card
         export-viz-click-behavior
         export-visualizer-settings
