@@ -58,8 +58,8 @@
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
     :model/AiUsageLog                        metabase.metabot.models.ai-usage-log
-    :model/MetabotGroupLimit                 metabase.metabot.models.metabot-group-limit
-    :model/MetabotInstanceLimit              metabase.metabot.models.metabot-instance-limit
+    :model/MetabotGroupLimit                 metabase-enterprise.metabot.models.metabot-group-limit
+    :model/MetabotInstanceLimit              metabase-enterprise.metabot.models.metabot-instance-limit
     :model/MetabotPermissions                metabase-enterprise.metabot.permissions
     :model/MetabotPrompt                     metabase.metabot.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index

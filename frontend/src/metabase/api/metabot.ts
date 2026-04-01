@@ -172,7 +172,7 @@ export const metabotApi = Api.injectEndpoints({
     getMetabotInstanceLimit: builder.query<MetabotInstanceLimit, void>({
       query: () => ({
         method: "GET",
-        url: "/api/metabot/usage/instance",
+        url: "/api/ee/ai-controls/usage/instance",
       }),
       providesTags: () => [listTag("metabot-usage-instance-limit")],
     }),
@@ -182,7 +182,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "PUT",
-        url: "/api/metabot/usage/instance",
+        url: "/api/ee/ai-controls/usage/instance",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -191,7 +191,7 @@ export const metabotApi = Api.injectEndpoints({
     getMetabotGroupLimits: builder.query<MetabotGroupLimit[], void>({
       query: () => ({
         method: "GET",
-        url: "/api/metabot/usage/group",
+        url: "/api/ee/ai-controls/usage/group",
       }),
       providesTags: () => [listTag("metabot-usage-group-limits")],
     }),
@@ -201,7 +201,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: ({ groupId, max_usage }) => ({
         method: "PUT",
-        url: `/api/metabot/usage/group/${groupId}`,
+        url: `/api/ee/ai-controls/usage/group/${groupId}`,
         body: { max_usage },
       }),
       invalidatesTags: (_, error) =>
@@ -210,7 +210,7 @@ export const metabotApi = Api.injectEndpoints({
     getMetabotTenantLimits: builder.query<MetabotTenantLimit[], void>({
       query: () => ({
         method: "GET",
-        url: "/api/metabot/usage/tenant",
+        url: "/api/ee/ai-controls/usage/tenant",
       }),
       providesTags: () => [listTag("metabot-usage-tenant-limits")],
     }),
@@ -220,7 +220,7 @@ export const metabotApi = Api.injectEndpoints({
     >({
       query: ({ tenantId, max_usage }) => ({
         method: "PUT",
-        url: `/api/metabot/usage/tenant/${tenantId}`,
+        url: `/api/ee/ai-controls/usage/tenant/${tenantId}`,
         body: { max_usage },
       }),
       invalidatesTags: (_, error) =>
