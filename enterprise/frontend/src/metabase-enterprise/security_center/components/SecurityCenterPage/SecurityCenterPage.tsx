@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { useSetting } from "metabase/common/hooks";
 import {
   ActionIcon,
   Box,
@@ -16,15 +17,13 @@ import {
 import { useNotificationConfig } from "../../hooks/use-notification-config";
 import { useSecurityAdvisories } from "../../hooks/use-security-advisories";
 import type { AdvisoryFilter } from "../../types";
-import { filterAdvisories } from "../../utils";
+import { filterAdvisories, getTargetUpgradeVersion } from "../../utils";
 import { AdvisoryFilterBar } from "../AdvisoryFilterBar/AdvisoryFilterBar";
 import { AdvisoryList } from "../AdvisoryList/AdvisoryList";
 import { NotificationChannelConfigModal } from "../NotificationChannelConfig/NotificationChannelConfig";
+import { UpgradeBanner } from "../UpgradeBanner/UpgradeBanner";
 
 import S from "./SecurityCenterPage.module.css";
-
-// TODO: replace with actual version from settings once available
-const CURRENT_VERSION = "v0.59.3";
 
 const DEFAULT_FILTER: AdvisoryFilter = {
   severity: "all",
@@ -37,7 +36,10 @@ export function SecurityCenterPage() {
   const [filter, setFilter] = useState<AdvisoryFilter>(DEFAULT_FILTER);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const notificationConfig = useNotificationConfig();
+  const version = useSetting("version");
 
+  const currentVersion = version?.tag ?? "";
+  const targetVersion = getTargetUpgradeVersion(advisories);
   const filtered = filterAdvisories(advisories, filter);
 
   return (
@@ -57,8 +59,9 @@ export function SecurityCenterPage() {
           </Tooltip>
         </Group>
         <Text c="text-secondary" data-testid="current-version">
-          {t`Current version`}: {CURRENT_VERSION}
+          {t`Current version`}: {currentVersion}
         </Text>
+        {targetVersion && <UpgradeBanner targetVersion={targetVersion} />}
       </Stack>
       <Stack gap="xl" className={S.content}>
         <AdvisoryFilterBar
