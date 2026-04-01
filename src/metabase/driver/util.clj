@@ -777,12 +777,16 @@
 ;; prefix, use [[workspace-isolated-schema?]] or [[workspace-isolated-schema-clause]] rather than hardcoding it.
 (def ^:private workspace-isolated-prefix "mb__isolation_")
 ;; Escaped for SQL LIKE: underscores are wildcards, so we escape them with backslash.
-(def ^:private workspace-isolated-like-pattern "mb\\_\\_isolation\\_%")
+;; The default escape character works across all supported app-database engines (H2, Postgres, MySQL, MariaDB),
+;; so an explicit ESCAPE clause is not necessary.
+(def ^:private workspace-isolated-like-pattern
+  (str (str/replace workspace-isolated-prefix "_" "\\_") "%"))
 
 (defn workspace-isolated-schema?
   "Returns true if the given schema name belongs to a workspace isolation namespace."
   [schema-name]
-  (str/starts-with? schema-name workspace-isolated-prefix))
+  (and (some? schema-name)
+       (str/starts-with? schema-name workspace-isolated-prefix)))
 
 (defn workspace-isolated-schema-clause
   "Returns a HoneySQL [:like column pattern] clause that matches workspace isolation schemas.
