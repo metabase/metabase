@@ -15,19 +15,27 @@
 ;;; ------------------------------------------------ Version Parsing ------------------------------------------------
 
 (def ^:private ParsedVersion
-  "A parsed version triple [major minor patch]."
-  [:tuple :int :int :int])
+  "Version vector: numeric segments from before any `-suffix`, plus a pre-release
+   sentinel (0=pre-release, 1=stable). Variable length — works with 3-segment
+   (v0.57.3), 4-segment (v0.55.17.5), or any other format."
+  [:vector :int])
 
 (def ^:private QueryResult
   "Result of executing a matching query: true (matched), false (no match), or :error."
   [:or :boolean [:= :error]])
 
 (mu/defn parse-version :- [:maybe ParsedVersion]
-  "Parse a version string like `\"v1.57.16\"` into `[major minor patch]` ints.
-   Returns nil if the string can't be parsed."
+  "Parse a version string loosely into a comparable int vector.
+   Extracts numeric segments before any `-suffix`, appends a pre-release sentinel
+   (0=pre-release, 1=stable). Returns nil if no numeric segments found."
   [version-string :- [:maybe :string]]
-  (when-let [[_ major minor patch] (some->> version-string (re-find #"v?(\d+)\.(\d+)\.(\d+)"))]
-    [(parse-long major) (parse-long minor) (parse-long patch)]))
+  (when-let [segments (some->> version-string
+                               (re-matcher #"[^-]+")
+                               re-find
+                               (re-seq #"\d+")
+                               (mapv parse-long)
+                               seq)]
+    (conj (vec segments) (if (re-find #"-\w" version-string) 0 1))))
 
 (defn- version-in-range?
   "True if `version` (parsed triple) is >= min and < fixed."
