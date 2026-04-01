@@ -1,3 +1,5 @@
+import { compareVersions } from "metabase/lib/utils";
+
 import type { Advisory, AdvisoryFilter, AdvisorySeverity } from "./types";
 
 const SEVERITY_ORDER: Record<AdvisorySeverity, number> = {
@@ -34,6 +36,27 @@ export function filterAdvisories(
     }
     return true;
   });
+}
+
+/**
+ * Returns the highest `fixed` version across all active (unresolved) advisories,
+ * which is the minimum version the instance should upgrade to.
+ */
+export function getTargetUpgradeVersion(advisories: Advisory[]): string | null {
+  let target: string | null = null;
+
+  for (const advisory of advisories) {
+    if (!isAffected(advisory)) {
+      continue;
+    }
+    for (const range of advisory.affected_versions) {
+      if (target === null || compareVersions(range.fixed, target) === 1) {
+        target = range.fixed;
+      }
+    }
+  }
+
+  return target;
 }
 
 export function sortAdvisories(advisories: Advisory[]): Advisory[] {

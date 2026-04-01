@@ -19,5 +19,6 @@
   [:sequential ::version-range])
 
 (mr/def ::matching-query
-  "HoneySQL query keyed by dialect. nil means affects all instances."
-  [:maybe [:map-of :string :any]])
+  "HoneySQL query keyed by dialect. nil means affects all instances.
+   Stored as EDN to preserve keywords that HoneySQL requires for identifiers/operators."
+  [:maybe [:map-of :keyword :map]])

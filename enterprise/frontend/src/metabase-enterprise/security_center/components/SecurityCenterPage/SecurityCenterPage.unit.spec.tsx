@@ -2,6 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import { createMockVersion } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import * as notificationHook from "../../hooks/use-notification-config";
 import * as advisoriesHook from "../../hooks/use-security-advisories";
@@ -54,9 +56,16 @@ function setup(advisories: Advisory[] = []) {
     updateSlackHandler: jest.fn(),
     toggleSlack: jest.fn(),
     save: jest.fn(),
+    resetConfig: jest.fn(),
   });
 
-  renderWithProviders(<SecurityCenterPage />);
+  renderWithProviders(<SecurityCenterPage />, {
+    storeInitialState: {
+      settings: createMockSettingsState({
+        version: createMockVersion({ tag: "v0.59.3" }),
+      }),
+    },
+  });
 }
 
 describe("SecurityCenterPage", () => {
@@ -195,5 +204,82 @@ describe("SecurityCenterPage", () => {
     setup([]);
 
     expect(screen.getByTestId("advisory-filter-bar")).toBeInTheDocument();
+  });
+
+  describe("upgrade banner", () => {
+    it("shows the upgrade banner when there are active advisories", () => {
+      const advisories = [
+        makeAdvisory({
+          advisory_id: "1",
+          match_status: "active",
+          affected_versions: [{ min: "0.58.0", fixed: "0.59.4" }],
+        }),
+      ];
+
+      setup(advisories);
+
+      const banner = screen.getByTestId("upgrade-banner");
+      expect(banner).toBeInTheDocument();
+      expect(banner).toHaveTextContent("0.59.4");
+      expect(banner).toHaveTextContent("A security update is available");
+    });
+
+    it("does not show the upgrade banner when there are no active advisories", () => {
+      const advisories = [
+        makeAdvisory({
+          advisory_id: "1",
+          match_status: "not_affected",
+        }),
+      ];
+
+      setup(advisories);
+
+      expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
+    });
+
+    it("shows the highest fixed version across multiple active advisories", () => {
+      const advisories = [
+        makeAdvisory({
+          advisory_id: "1",
+          match_status: "active",
+          affected_versions: [{ min: "0.58.0", fixed: "0.59.2" }],
+        }),
+        makeAdvisory({
+          advisory_id: "2",
+          match_status: "active",
+          affected_versions: [{ min: "0.58.0", fixed: "0.59.5" }],
+        }),
+      ];
+
+      setup(advisories);
+
+      const banner = screen.getByTestId("upgrade-banner");
+      expect(banner).toHaveTextContent("0.59.5");
+    });
+
+    it("includes a link to upgrade instructions", () => {
+      const advisories = [
+        makeAdvisory({
+          advisory_id: "1",
+          match_status: "active",
+          affected_versions: [{ min: "0.58.0", fixed: "0.59.4" }],
+        }),
+      ];
+
+      setup(advisories);
+
+      const link = screen.getByText("View upgrade instructions");
+      expect(link).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase",
+      );
+      expect(link).toHaveAttribute("target", "_blank");
+    });
+
+    it("does not show the upgrade banner when there are no advisories", () => {
+      setup([]);
+
+      expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
+    });
   });
 });

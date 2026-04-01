@@ -4,6 +4,7 @@
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase-enterprise.security-center.seed]
+   [metabase-enterprise.security-center.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
