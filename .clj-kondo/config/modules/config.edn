@@ -1150,9 +1150,7 @@
            session
            settings
            system
-           task
-           util}
-   :model-imports #{:model/Session}}
+           util}}
 
   measures
   {:team "Graphy"
