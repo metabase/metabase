@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { isCypressActive } from "metabase/env";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 
 import {
@@ -70,7 +71,7 @@ export function MetabotStore() {
   }, []);
 
   const today = new Date().toISOString().slice(0, 10);
-  if (today !== "2026-04-01") {
+  if (today !== "2026-04-01" || isCypressActive) {
     return null;
   }
 
