@@ -660,13 +660,9 @@
 
 (defn is-trial?
   "True if the current premium token is a trial subscription.
-   Returns false if the token cannot be checked (e.g. network error)."
+   Returns false if there is no token or the status cannot be fetched."
   []
-  (try
-    (boolean (:trial (some-> (premium-features.settings/premium-embedding-token)
-                             (check-token))))
-    (catch Throwable _
-      false)))
+  (boolean (:trial (premium-features.settings/token-status))))
 
 (defn assert-not-trial
   "Throw an error if the current token is a trial subscription.
