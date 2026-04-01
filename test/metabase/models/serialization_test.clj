@@ -1,0 +1,126 @@
+(ns metabase.models.serialization-test
+  (:require
+   [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.models.serialization :as serdes]))
+
+(deftest ^:parallel drop-mbql-5-uuids-on-export-test
+  (binding [serdes/*export-field-fk* (constantly ::field-id)]
+    (is (= [:field nil :metabase.models.serialization-test/field-id]
+           (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1])))
+    (binding [serdes/*required-lib-uuids-for-export* #{"00000000-0000-0000-0000-000000000001"}]
+      (is (= [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} :metabase.models.serialization-test/field-id]
+             (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1])))
+      (is (= [:field nil :metabase.models.serialization-test/field-id]
+             (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1]))))))
+
+(deftest ^:parallel drop-mbql-5-uuids-on-export-test-2
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                  (lib/filter (lib/= (meta/field-metadata :venues :id) 1))
+                  (lib/aggregate (-> (lib/count)
+                                     (lib/update-options assoc :lib/uuid "00000000-0000-0000-0000-000000000000")))
+                  (as-> $query (lib/order-by $query (first (lib/aggregations-metadata $query)))))]
+    (is (= #{"00000000-0000-0000-0000-000000000000"}
+           (#'serdes/collect-required-lib-uuids query)))
+    (binding [serdes/*export-database-fk* (constantly "DATABASE")
+              serdes/*export-table-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE"])
+              serdes/*export-field-fk*    (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])]
+      (is (= {:lib/type :mbql/query
+              :database "DATABASE"
+              :stages   [{:lib/type     :mbql.stage/mbql
+                          :source-table ["DATABASE" "SCHEMA" "TABLE"]
+                          :filters      [[:=
+                                          nil
+                                          [:field
+                                           {:effective-type :type/BigInteger, :base-type :type/BigInteger}
+                                           ["DATABASE" "SCHEMA" "TABLE" "FIELD"]]
+                                          1]]
+                          :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+                          :order-by     [[:asc
+                                          nil
+                                          [:aggregation
+                                           {:base-type       :type/Integer
+                                            :effective-type  :type/Integer
+                                            :lib/source-name "count"}
+                                           "00000000-0000-0000-0000-000000000000"]]]}]}
+             (serdes/export-mbql query))))))
+
+(deftest ^:parallel hydrate-mbql-5-uuids-on-import-test
+  ;; when read out of the YAML, map keys should get keywordized but not other strings
+  (let [query {:lib/type "mbql/query"
+               :database "DATABASE"
+               :stages   [{:lib/type     "mbql.stage/mbql"
+                           :source-table ["DATABASE" "SCHEMA" "TABLE"]
+                           :filters      [["="
+                                           nil
+                                           ["field"
+                                            {:effective-type "type/BigInteger", :base-type "type/BigInteger"}
+                                            ["DATABASE" "SCHEMA" "TABLE" "FIELD"]]
+                                           1]]
+                           :aggregation  [["count" {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+                           :order-by     [["asc"
+                                           nil
+                                           [:aggregation {:base-type       "type/Integer"
+                                                          :effective-type  "type/Integer"
+                                                          :lib/source-name "count"}
+                                            "00000000-0000-0000-0000-000000000000"]]]}]}]
+    (binding [serdes/*import-database-fk* (constantly 1)
+              serdes/*import-table-fk*    (constantly 2)
+              serdes/*import-field-fk*    (constantly 3)]
+      (is (=? {:lib/type :mbql/query
+               :database 1
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table 2
+                           :filters      [[:=
+                                           {:lib/uuid string?}
+                                           [:field
+                                            {:lib/uuid       string?
+                                             :effective-type :type/BigInteger
+                                             :base-type      :type/BigInteger}
+                                            3]
+                                           1]]
+                           :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+                           :order-by     [[:asc
+                                           {:lib/uuid string?}
+                                           [:aggregation
+                                            {:base-type       :type/Integer
+                                             :effective-type  :type/Integer
+                                             :lib/source-name "count"}
+                                            "00000000-0000-0000-0000-000000000000"]]]}]}
+              (serdes/import-mbql query))))))
+
+(deftest ^:parallel hydrate-mbql-5-uuids-on-import-test-2
+  (binding [serdes/*import-field-fk* (constantly 3)]
+    (are [x expected] (=? expected
+                          (serdes/import-mbql x))
+      ["field" nil ["DB" "SCHEMA" "TABLE" "FIELD"]]
+      [:field {:lib/uuid string?} 3]
+
+      ["dimension" ["field" ["DB" "SCHEMA" "TABLE" "FIELD"] {:source-field ["DB" "SCHEMA" "TABLE" "FIELD2"]}]]
+      [:dimension [:field 3 {:source-field 3}]])))
+
+(deftest ^:parallel import-viz-settings-test
+  (binding [serdes/*import-field-fk* (constantly 3)]
+    (is (= {:column_settings
+            {"[\"ref\",[\"field\",3,null]]"
+             {:click_behavior
+              {:parameterMapping
+               {"[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
+                {:id     "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
+                 :target {:type      "dimension"
+                          :dimension [:dimension [:field 3 {:source-field 3}]]
+                          :id        "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"}}}}}}}
+           (serdes/import-visualization-settings
+            {:column_settings
+             {"[\"ref\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],null]]"
+              {:click_behavior
+               {:parameterMapping
+                {"[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"
+                 {:id     "[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"
+                  :target {:type      "dimension"
+                           :dimension [:dimension
+                                       [:field
+                                        ["my-db" nil "orders" "invoice"]
+                                        {:source-field ["my-db" nil "orders" "subtotal"]}]]
+                           :id        "[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"}}}}}}})))))

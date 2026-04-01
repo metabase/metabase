@@ -338,10 +338,10 @@
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
                    :dataset_query {:stages   [{:source-table ["My Database" nil "Schemaless Table"]
-                                               :filters      [[:>= {}
+                                               :filters      [[:>= nil
                                                                [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]
                                                                18]]
-                                               :aggregation  [[:count {}]]}]
+                                               :aggregation  [[:count nil]]}]
                                    :database "My Database"}
                    :created_at    string?}
                   ser))
@@ -440,7 +440,7 @@
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
                    :dataset_query {:stages   [{:source-card c4-eid
-                                               :aggregation [[:count {}]]}]
+                                               :aggregation [[:count nil]]}]
                                    :database "My Database"}
                    :created_at    string?}
                   ser))
@@ -904,7 +904,7 @@
                    :definition  {:database "My Database",
                                  :lib/type :mbql/query
                                  :stages   [{:source-table ["My Database" nil "Schemaless Table"],
-                                             :filters      [[:< {}
+                                             :filters      [[:< nil
                                                              [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]
                                                              18]]}]}
                    :created_at  string?}
@@ -1003,7 +1003,7 @@
                            :definition  {:database "My Database"
                                          :lib/type :mbql/query
                                          :stages   [{:source-table ["My Database" nil "My Table"]
-                                                     :aggregation  [[:* {} [:measure {} m1-eid] 2]]}]}}
+                                                     :aggregation  [[:* nil [:measure {} m1-eid] 2]]}]}}
                           ser))
                   (testing "depends on the referenced Measure"
                     (is (contains? (set (serdes/dependencies ser))
@@ -1046,7 +1046,7 @@
                        :definition  {:database "My Database"
                                      :lib/type :mbql/query
                                      :stages   [{:source-table ["My Database" nil "My Table"]
-                                                 :aggregation  [[:count-where {} [:segment {} seg-eid]]]}]}}
+                                                 :aggregation  [[:count-where nil [:segment nil seg-eid]]]}]}}
                       ser))
               (testing "depends on the referenced Segment"
                 (is (contains? (set (serdes/dependencies ser))
