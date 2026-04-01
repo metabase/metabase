@@ -347,7 +347,7 @@ export async function loadCustomVizPlugin(
     const identifier = `custom:${plugin.identifier}` as VisualizationDisplay;
 
     // Attach the required static properties onto the component function
-    const Component = ExplicitSize<VisualizationProps>()(
+    const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
       vizDef.VisualizationComponent as ComponentType<
         VisualizationProps & { width: number | null; height: number | null }
       >,
