@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
@@ -13,6 +13,7 @@ import { getParameterValues } from "metabase/dashboard/selectors";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
+import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 
 import {
@@ -33,6 +34,13 @@ const REMARK_PLUGINS = [remarkGfm];
 const REHYPE_PLUGINS = [
   [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
 ];
+
+function urlTransform(url) {
+  if (DATA_IMAGE_URI_PATTERN.test(url)) {
+    return url;
+  }
+  return defaultUrlTransform(url);
+}
 
 export function Text({
   onUpdateVisualizationSettings,
@@ -109,6 +117,7 @@ export function Text({
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}
+              urlTransform={urlTransform}
               className={cx(
                 CS.full,
                 CS.flexFull,
@@ -166,6 +175,7 @@ export function Text({
             "text-card-markdown",
             getSettingsStyle(settings),
           )}
+          urlTransform={urlTransform}
         >
           {content}
         </ReactMarkdown>
