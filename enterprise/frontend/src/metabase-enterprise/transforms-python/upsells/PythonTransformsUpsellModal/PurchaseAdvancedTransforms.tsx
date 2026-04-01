@@ -13,18 +13,17 @@ import type { ICloudAddOnProduct } from "metabase-types/api/store";
 
 import { CAMPAIGN, LOCATION } from "./constants";
 
-type CloudPurchaseContentProps = {
+type PurchaseAdvancedTransformsProps = {
   handleModalClose: VoidFunction;
   addOn: ICloudAddOnProduct;
   freeUnitsIncluded: boolean;
 };
 
-// TODO: Rename this
-export const CloudPurchaseContent = ({
+export const PurchaseAdvancedTransforms = ({
   handleModalClose,
   addOn,
   freeUnitsIncluded,
-}: CloudPurchaseContentProps) => {
+}: PurchaseAdvancedTransformsProps) => {
   const [purchaseCloudAddOn, { isLoading: isPurchasing }] =
     usePurchaseCloudAddOnMutation();
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);

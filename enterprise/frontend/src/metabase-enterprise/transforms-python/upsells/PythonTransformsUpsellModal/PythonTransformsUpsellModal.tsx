@@ -19,7 +19,7 @@ import {
 } from "metabase/ui";
 import { useTransformsBilling } from "metabase-enterprise/transforms/upsells/hooks";
 
-import { CloudPurchaseContent } from "./CloudPurchaseContent";
+import { PurchaseAdvancedTransforms } from "./PurchaseAdvancedTransforms";
 import { CAMPAIGN, LOCATION } from "./constants";
 
 type PythonTransformsUpsellModalProps = {
@@ -85,7 +85,7 @@ export function PythonTransformsUpsellModal({
                       {t`Error fetching information about available add-ons.`}
                     </Text>
                   ) : (
-                    <CloudPurchaseContent
+                    <PurchaseAdvancedTransforms
                       handleModalClose={onClose}
                       addOn={advancedTransformsAddOn}
                       freeUnitsIncluded={!hadAdvancedTransforms}

@@ -13,7 +13,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { CloudPurchaseContent } from "./CloudPurchaseContent";
+import { PurchaseAdvancedTransforms } from "./PurchaseAdvancedTransforms";
 
 const setup = () => {
   const handleModalClose = jest.fn();
@@ -34,7 +34,7 @@ const setup = () => {
   setupPropertiesEndpoints(settings);
 
   renderWithProviders(
-    <CloudPurchaseContent
+    <PurchaseAdvancedTransforms
       handleModalClose={handleModalClose}
       addOn={mockAdvancedTransformsAddOn}
       freeUnitsIncluded
@@ -47,7 +47,7 @@ const setup = () => {
   return { handleModalClose };
 };
 
-describe("CloudPurchaseContent", () => {
+describe("PurchaseAdvancedTransforms", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
