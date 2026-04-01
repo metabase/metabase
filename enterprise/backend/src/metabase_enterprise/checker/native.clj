@@ -18,6 +18,7 @@
    [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.query-processor.interface :as qp.i]
    [metabase.util.log :as log]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.init]))
@@ -57,7 +58,8 @@
     (try
       (driver/the-initialized-driver driver)
       (let [with-params (lib/add-parameters-for-template-tags query)
-            compiled    (binding [driver/*driver* driver]
+            compiled    (binding [driver/*driver* driver
+                                  qp.i/*skip-middleware-because-app-db-access* true]
                           (qp.compile/compile-with-inline-parameters with-params))]
         (:query compiled))
       (catch Throwable t

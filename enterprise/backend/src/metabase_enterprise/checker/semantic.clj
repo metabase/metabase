@@ -17,16 +17,16 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.checker.format.serdes :as serdes]
    [metabase-enterprise.checker.native :as native]
    [metabase-enterprise.checker.source :as source]
    [metabase-enterprise.checker.store :as store]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [medley.core :as medley]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.util.malli.fn :as mu.fn]))
 
@@ -256,8 +256,8 @@
     (try
       (let [;; Step 1: keywordize string operators and keyword args
             query   (-> query
-                        (medley/update-existing :query keywordize-mbql-operators)
-                        (medley/update-existing :native keywordize-mbql-operators))
+                        (m/update-existing :query keywordize-mbql-operators)
+                        (m/update-existing :native keywordize-mbql-operators))
             ;; Step 2: resolve portable refs to integer IDs
             db-name (:database query)
             db-id   (when (string? db-name) (resolve-db-name store !failures db-name))
