@@ -106,11 +106,11 @@
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]
-                            [:ai.provider :auth-provider]]
+                            [:auth_identity.provider :auth-provider]]
                 :from      [[:core_session :session]]
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]
                             [:tenant] [:= :tenant.id :user.tenant_id]
-                            [:auth_identity :ai] [:= :ai.id :session.auth_identity_id]]
+                            [:auth_identity] [:= :auth_identity.id :session.auth_identity_id]]
                 :where     [:and
                             (if enable-tenants?
                               [:or [:= :tenant.id nil] :tenant.is_active]
