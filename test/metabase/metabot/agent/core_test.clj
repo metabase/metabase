@@ -413,38 +413,39 @@
                        (:usage (second usages)))))))))
 
       (testing "cumulative usage works across multiple models"
-        (let [call-count (atom 0)]
-          (with-redefs [openrouter/openrouter
-                        (fn [_]
-                          (let [n (swap! call-count inc)]
-                            (case (int n)
-                              1 (mut/mock-llm-response
-                                 [{:type :start :id "msg-1"}
-                                  {:type      :tool-input
-                                   :id        "t1"
-                                   :function  "search"
-                                   :arguments {:query "test"}}
-                                  {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                                   :model "model-a" :id "msg-1"}])
-                              (mut/mock-llm-response
-                               [{:type :start :id "msg-2"}
-                                {:type :text :text "Done"}
-                                {:type :usage :usage {:promptTokens 200 :completionTokens 40}
-                                 :model "model-b" :id "msg-2"}]))))]
-            (let [result (mt/with-log-level [metabase.metabot.agent.core :warn]
-                           (into [] (agent/run-agent-loop
-                                     {:messages   [{:role :user :content "test"}]
-                                      :state      {}
-                                      :profile-id :embedding_next
-                                      :context    {}})))
-                  usages (filterv #(= :usage (:type %)) result)]
-              (testing "different models accumulate independently"
-                (is (= "model-a" (:model (first usages))))
-                (is (= {:promptTokens 100 :completionTokens 20}
-                       (:usage (first usages))))
-                (is (= "model-b" (:model (second usages))))
-                (is (= {:promptTokens 200 :completionTokens 40}
-                       (:usage (second usages))))))))))))
+      (let [call-count (atom 0)]
+        (with-redefs [openrouter/openrouter
+                      (fn [_]
+                        (let [n (swap! call-count inc)]
+                          (case (int n)
+                            1 (mut/mock-llm-response
+                               [{:type :start :id "msg-1"}
+                                {:type      :tool-input
+                                 :id        "t1"
+                                 :function  "search"
+                                 :arguments {:query "test"}}
+                                {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                 :model "model-a" :id "msg-1"}])
+                            (mut/mock-llm-response
+                             [{:type :start :id "msg-2"}
+                              {:type :text :text "Done"}
+                              {:type :usage :usage {:promptTokens 200 :completionTokens 40}
+                               :model "model-b" :id "msg-2"}]))))]
+          (let [result (mt/with-log-level [metabase.metabot.agent.core :warn]
+                         (into [] (agent/run-agent-loop
+                                   {:messages   [{:role :user :content "test"}]
+                                    :state      {}
+                                    :profile-id :embedding_next
+                                    :context    {}})))
+                usages (filterv #(= :usage (:type %)) result)]
+            (testing "model is always the canonical provider-and-model from the profile"
+              (is (= test-provider (:model (first usages))))
+              (is (= test-provider (:model (second usages)))))
+            (testing "usage accumulates under the single provider key"
+              (is (= {:promptTokens 100 :completionTokens 20}
+                     (:usage (first usages))))
+              (is (= {:promptTokens 300 :completionTokens 60}
+                     (:usage (second usages))))))))))))
 
 (deftest run-agent-loop-retries-on-rate-limit-test
   (mt/as-admin

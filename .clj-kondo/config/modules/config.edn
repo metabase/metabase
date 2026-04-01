@@ -1007,7 +1007,8 @@
    :api  #{metabase.internal-stats.core
            metabase.internal-stats.metabot}
    :uses #{app-db
-           models}
+           models
+           util}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/MetabotMessage
