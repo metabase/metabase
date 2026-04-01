@@ -24,6 +24,7 @@
   "Result of executing a matching query: true (matched), false (no match), or :error."
   [:or :boolean [:= :error]])
 
+;; TODO (Ngoc - 2026-04-01) - consider using semver4j once it's available in the codebase
 (mu/defn parse-version :- [:maybe ParsedVersion]
   "Parse a version string loosely into a comparable int vector.
    Extracts numeric segments before any `-suffix`, appends a pre-release sentinel
