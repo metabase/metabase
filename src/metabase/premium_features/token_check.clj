@@ -662,7 +662,7 @@
   "True if the current premium token is a trial subscription.
    Returns false if there is no token or the status cannot be fetched."
   []
-  (boolean (:trial (premium-features.settings/token-status))))
+  (-> (-token-status) :trial boolean))
 
 (defn assert-not-trial
   "Throw an error if the current token is a trial subscription.
