@@ -150,7 +150,7 @@
                   :source {:type "column", :id "Category_ID", :name "Category ID"}
                   :target {:type      "dimension"
                            :id        "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
-                           :dimension ["dimension" [:field 54 {:source-field 53}]]}}}}},}})))))
+                           :dimension ["dimension" [:field 54 {:source-field 53}]]}}}}}}})))))
 
 (deftest ^:parallel import-viz-settings-test
   (binding [serdes/*import-field-fk* (constantly 3)]
