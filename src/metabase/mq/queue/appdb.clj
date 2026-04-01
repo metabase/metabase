@@ -17,9 +17,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- queue-max-retries []
-  ((requiring-resolve 'metabase.mq.settings/queue-max-retries)))
-
 (defn- for-update-clause
   "Returns the FOR UPDATE clause for the current app DB.
   Uses SKIP LOCKED on PostgreSQL and MySQL to avoid blocking on rows locked by other nodes.
@@ -89,7 +86,7 @@
   "Recovers processing batches whose heartbeat is older than the stale timeout.
   Returns the number of batches recovered."
   []
-  (let [max-retries (queue-max-retries)
+  (let [max-retries (@@q.impl/queue-max-retries)
         threshold   (Timestamp/from (.minusMillis (Instant/now) stale-processing-timeout-ms))
         recovered   (atom 0)]
     (doseq [row (t2/select :queue_message_batch :status "processing" :status_heartbeat [:< threshold])]
@@ -185,9 +182,9 @@
   [_ queue-name bundle-id]
   (let [row     (t2/select-one :queue_message_batch :id bundle-id :owner owner-id)
         updated (when row
-                  (if (>= (inc (:failures row)) (queue-max-retries))
+                  (if (>= (inc (:failures row)) (@@q.impl/queue-max-retries))
                     (do
-                      (log/warnf "Message %d has reached max failures (%d), marking as failed" bundle-id (queue-max-retries))
+                      (log/warnf "Message %d has reached max failures (%d), marking as failed" bundle-id (@@q.impl/queue-max-retries))
                       (mq.analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)})
                       (t2/update! :queue_message_batch
                                   {:id bundle-id :owner owner-id}

@@ -1,6 +1,8 @@
 (ns metabase.mq.queue.appdb-test
   (:require
    [clojure.test :refer :all]
+   [metabase.mq.analytics :as mq.analytics]
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
@@ -239,5 +241,80 @@
           (let [row (t2/select-one :queue_message_batch :id message-id)]
             (is (= "processing" (:status row)))
             (is (= 0 (:failures row))))))
+      (finally
+        (t2/delete! :queue_message_batch :queue_name (name queue-name))))))
+
+(deftest heartbeat-test
+  (let [queue-name (keyword "queue" (str "heartbeat-test-" (random-uuid)))]
+    (try
+      (let [message-id         (t2/insert-returning-pk! :queue_message_batch
+                                                        {:queue_name (name queue-name)
+                                                         :messages   (json/encode ["msg"])
+                                                         :status     "processing"
+                                                         :owner      @#'q.appdb/owner-id})
+            original-heartbeat (:status_heartbeat (t2/select-one :queue_message_batch :id message-id))]
+        (Thread/sleep 100) ; Ensure enough time passes for timestamp to differ
+        (with-redefs [mq.impl/busy-channels          (constantly #{queue-name})
+                      mq.impl/active-handler-metadata (fn [_ch] {:bundle-id message-id})]
+          (#'q.appdb/update-heartbeats!))
+        (testing "Heartbeat is updated after update-heartbeats!"
+          (let [updated-heartbeat (:status_heartbeat (t2/select-one :queue_message_batch :id message-id))]
+            (is (not= original-heartbeat updated-heartbeat)
+                "Heartbeat timestamp should be updated"))))
+      (finally
+        (t2/delete! :queue_message_batch :queue_name (name queue-name))))))
+
+(deftest cleanup-failed-batches-test
+  (let [queue-name (keyword "queue" (str "cleanup-test-" (random-uuid)))
+        old-ts     (Timestamp/from (.minusMillis (Instant/now) (+ (* 7 24 60 60 1000) 60000)))]
+    (try
+      (testing "Failed batch older than 7 days is deleted"
+        (let [old-id (t2/insert-returning-pk! :queue_message_batch
+                                              {:queue_name       (name queue-name)
+                                               :messages         (json/encode ["old-msg"])
+                                               :status           "failed"
+                                               :status_heartbeat old-ts})]
+          (#'q.appdb/cleanup-failed-batches!)
+          (is (nil? (t2/select-one :queue_message_batch :id old-id))
+              "Old failed batch should be deleted")))
+
+      (testing "Recent failed batch is not deleted"
+        (let [recent-id (t2/insert-returning-pk! :queue_message_batch
+                                                 {:queue_name (name queue-name)
+                                                  :messages   (json/encode ["recent-msg"])
+                                                  :status     "failed"})]
+          (#'q.appdb/cleanup-failed-batches!)
+          (is (some? (t2/select-one :queue_message_batch :id recent-id))
+              "Recent failed batch should not be deleted")
+          (t2/delete! :queue_message_batch :id recent-id)))
+
+      (testing "Non-failed batch with old heartbeat is not cleaned up"
+        (let [pending-id (t2/insert-returning-pk! :queue_message_batch
+                                                  {:queue_name       (name queue-name)
+                                                   :messages         (json/encode ["pending-msg"])
+                                                   :status           "pending"
+                                                   :status_heartbeat old-ts})]
+          (#'q.appdb/cleanup-failed-batches!)
+          (is (some? (t2/select-one :queue_message_batch :id pending-id))
+              "Non-failed batch should not be deleted")
+          (t2/delete! :queue_message_batch :id pending-id)))
+      (finally
+        (t2/delete! :queue_message_batch :queue_name (name queue-name))))))
+
+(deftest update-depth-gauges-test
+  (let [queue-name  (keyword "queue" (str "depth-gauge-test-" (random-uuid)))
+        gauge-calls (atom [])]
+    (try
+      (t2/insert! :queue_message_batch {:queue_name (name queue-name) :messages (json/encode ["m1"]) :status "pending"})
+      (t2/insert! :queue_message_batch {:queue_name (name queue-name) :messages (json/encode ["m2"]) :status "failed"})
+      (with-redefs [mq.analytics/set! (fn [metric labels value]
+                                        (when (= metric :metabase-mq/appdb-queue-depth)
+                                          (swap! gauge-calls conj {:labels labels :value value})))]
+        (#'q.appdb/update-depth-gauges!))
+      (testing "Gauge is emitted for each queue/status combination"
+        (let [calls-for-queue (filter #(= (name queue-name) (-> % :labels :channel)) @gauge-calls)
+              by-status       (into {} (map (juxt #(-> % :labels :status) :value)) calls-for-queue)]
+          (is (= 1 (get by-status "pending")) "Should count 1 pending message")
+          (is (= 1 (get by-status "failed")) "Should count 1 failed message")))
       (finally
         (t2/delete! :queue_message_batch :queue_name (name queue-name))))))

@@ -9,6 +9,9 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private last-activity*
+  (delay (requiring-resolve 'metabase.mq.impl/last-activity*)))
+
 (def ^:dynamic *defer-in-transaction?*
   "When true (the default), messages published inside a transaction are deferred
   until after the transaction commits. Bind to false in sync/test mode where
@@ -32,7 +35,7 @@
                          {:channel (name channel)}
                          (- before-count (count messages))))
     (when (seq messages)
-      (swap! @(requiring-resolve 'metabase.mq.impl/last-activity*) assoc channel (System/nanoTime))
+      (swap! @@last-activity* assoc channel (System/nanoTime))
       (publish-buffer/buffered-publish! channel messages)
       (mq.analytics/inc! :metabase-mq/messages-published
                          {:transport (namespace channel) :channel (name channel)}

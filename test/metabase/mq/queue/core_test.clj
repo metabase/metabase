@@ -3,11 +3,12 @@
    [clojure.test :refer :all]
    [metabase.app-db.connection :as app-db.conn]
    [metabase.mq.core :as mq]
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.publish :as mq.publish]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.test-util :as mq.tu])
   (:import (clojure.lang ExceptionInfo)
-           (java.util.concurrent CyclicBarrier)))
+           (java.util.concurrent CountDownLatch CyclicBarrier)))
 
 (set! *warn-on-reflection* true)
 
@@ -239,3 +240,24 @@
           (mq/put q i)))
       (testing "All messages are delivered in order"
         (is (= (range 10) @received))))))
+
+(deftest exclusive-queue-single-active-handler-test
+  "Verifies that submit-delivery! returns false for a channel that already has an
+   active handler, enforcing at-most-one concurrent delivery per channel."
+  (mq.impl/start-worker-pool!)
+  (mq.tu/with-sync-mq
+    (let [queue-name :queue/exclusive-concurrency-test
+          latch      (CountDownLatch. 1)]
+      (mq/listen! queue-name {:exclusive true}
+                  (fn [_] (.await latch))) ; Block listener until released
+      (testing "First submission succeeds and marks the channel as busy"
+        (is (true? (mq.impl/submit-delivery! queue-name ["msg1"] nil nil nil)))
+        (Thread/sleep 50) ; Give worker thread time to start and block on latch
+        (is (true? (mq.impl/channel-busy? queue-name))))
+      (testing "Second submission returns false while channel is busy"
+        (is (false? (mq.impl/submit-delivery! queue-name ["msg2"] nil nil nil))))
+      (.countDown latch) ; Release the listener
+      (Thread/sleep 100) ; Wait for delivery to complete and active-handlers to clear
+      (testing "Channel is no longer busy after delivery completes"
+        (is (false? (mq.impl/channel-busy? queue-name))))
+      (mq/unlisten! queue-name))))

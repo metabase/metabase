@@ -30,13 +30,12 @@
 (defn register-listener!
   "Atomically registers a listener for the given channel, throwing if one already exists."
   [channel listener-map]
-  (let [already-registered? (atom false)]
-    (swap! *listeners*
-           (fn [m]
-             (if (contains? m channel)
-               (do (reset! already-registered? true) m)
-               (assoc m channel listener-map))))
-    (when @already-registered?
+  (let [[old _] (swap-vals! *listeners*
+                            (fn [m]
+                              (if (contains? m channel)
+                                m
+                                (assoc m channel listener-map))))]
+    (when (contains? old channel)
       (throw (ex-info (str "Listener already registered for " (namespace channel) " " (name channel))
                       {:channel channel})))))
 

@@ -1,13 +1,16 @@
 (ns metabase.mq.topic.appdb-test
   (:require
    [clojure.test :refer :all]
+   [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.topic.appdb]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.transport-impl]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.sql Timestamp)
+           (java.time Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -65,3 +68,59 @@
       (is (pos? (t2/count :topic_message_batch :topic_name (name topic-name)))))
     ;; cleanup
     (t2/delete! :topic_message_batch :topic_name (name topic-name))))
+
+(deftest cleanup-old-messages-test
+  (let [topic-name (str "cleanup-test-" (random-uuid))
+        old-ts     (Timestamp/from (.minusMillis (Instant/now) (+ (* 60 60 1000) 60000)))]
+    (try
+      (testing "Topic messages older than 1 hour are deleted"
+        (t2/query {:insert-into :topic_message_batch
+                   :values      [{:topic_name topic-name
+                                  :messages   (json/encode ["old-msg"])
+                                  :created_at old-ts}]})
+        (let [old-row (t2/select-one :topic_message_batch :topic_name topic-name)]
+          (#'metabase.mq.topic.appdb/cleanup-old-messages!)
+          (is (nil? (t2/select-one :topic_message_batch :id (:id old-row)))
+              "Old topic message should be deleted")))
+
+      (testing "Recent topic messages are not deleted"
+        (t2/insert! :topic_message_batch {:topic_name topic-name :messages (json/encode ["recent-msg"])})
+        (let [recent-row (t2/select-one :topic_message_batch :topic_name topic-name)]
+          (#'metabase.mq.topic.appdb/cleanup-old-messages!)
+          (is (some? (t2/select-one :topic_message_batch :id (:id recent-row)))
+              "Recent topic message should not be deleted")))
+      (finally
+        (t2/delete! :topic_message_batch :topic_name topic-name)))))
+
+(deftest lag-gauge-test
+  (let [topic-name  (keyword "topic" (str "lag-gauge-test-" (random-uuid)))
+        gauge-calls (atom [])]
+    (try
+      ;; Publish two messages and look up their IDs from the DB
+      (topic.backend/publish! :topic.backend/appdb topic-name ["m1"])
+      (let [id1 (:id (first (t2/query {:select   [:id]
+                                       :from     [:topic_message_batch]
+                                       :where    [:= :topic_name (name topic-name)]
+                                       :order-by [[:id :desc]]
+                                       :limit    1})))]
+        ;; Subscriber has read up to id1
+        (swap! @#'metabase.mq.topic.appdb/offsets assoc topic-name id1)
+        ;; Publish a second message (unread)
+        (topic.backend/publish! :topic.backend/appdb topic-name ["m2"])
+        (let [id2 (:id (first (t2/query {:select   [:id]
+                                         :from     [:topic_message_batch]
+                                         :where    [:= :topic_name (name topic-name)]
+                                         :order-by [[:id :desc]]
+                                         :limit    1})))]
+          (with-redefs [mq.analytics/set! (fn [metric labels value]
+                                            (when (= metric :metabase-mq/appdb-topic-subscriber-lag)
+                                              (swap! gauge-calls conj {:labels labels :value value})))]
+            (#'metabase.mq.topic.appdb/update-lag-gauges!))
+          (testing "Lag gauge is emitted with the correct unread count"
+            (let [call (first (filter #(= (name topic-name) (-> % :labels :channel)) @gauge-calls))]
+              (is (some? call) "Gauge should be recorded for the test topic")
+              (is (= (- id2 id1) (:value call))
+                  "Lag should equal the difference between max-id and current offset")))))
+      (finally
+        (swap! @#'metabase.mq.topic.appdb/offsets dissoc topic-name)
+        (t2/delete! :topic_message_batch :topic_name (name topic-name))))))

@@ -54,11 +54,13 @@
 
 ;;; ------------------------------------------- Polling -------------------------------------------
 
+(def ^:private bundle-registry
+  (delay (requiring-resolve 'metabase.mq.queue.memory/*bundle-registry*)))
+
 (defn- register-bundle!
   "Registers a bundle in the queue memory backend's bundle registry for retry tracking."
   [bundle-id messages]
-  (swap! @(requiring-resolve 'metabase.mq.queue.memory/*bundle-registry*)
-         assoc bundle-id {:messages messages :failures 0}))
+  (swap! @@bundle-registry assoc bundle-id {:messages messages :failures 0}))
 
 (defn- poll-once!
   "Drains all non-busy channels and submits messages for delivery.

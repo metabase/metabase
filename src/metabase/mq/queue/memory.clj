@@ -5,12 +5,10 @@
    [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.memory :as memory]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.impl :as q.impl]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-(defn- queue-max-retries []
-  ((requiring-resolve 'metabase.mq.settings/queue-max-retries)))
 
 (def ^:dynamic *bundle-registry*
   "Maps bundle-id -> {:messages [...] :failures n} for retry tracking."
@@ -32,9 +30,9 @@
   (when-let [{:keys [messages failures]} (get @*bundle-registry* bundle-id)]
     (swap! *bundle-registry* dissoc bundle-id)
     (let [new-failures (inc failures)]
-      (if (>= new-failures (queue-max-retries))
+      (if (>= new-failures (@@q.impl/queue-max-retries))
         (do
-          (log/warnf "Bundle %s has reached max failures (%d), dropping" bundle-id (queue-max-retries))
+          (log/warnf "Bundle %s has reached max failures (%d), dropping" bundle-id (@@q.impl/queue-max-retries))
           (mq.analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)}))
         (do
           (mq.analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})

@@ -126,3 +126,15 @@ databaseChangeLog:
                   name: topic_name
               - column:
                   name: id
+
+  - changeSet:
+      id: v61.8867df
+      author: nvoxland
+      comment: Index topic_message_batch.created_at for efficient cleanup queries
+      changes:
+        - createIndex:
+            tableName: topic_message_batch
+            indexName: idx_topic_message_batch_created_at
+            columns:
+              - column:
+                  name: created_at

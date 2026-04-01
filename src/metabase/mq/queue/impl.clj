@@ -24,6 +24,10 @@
               (map (fn [[k _v]] (name k))))
         @listener/*listeners*))
 
+(def queue-max-retries
+  "Lazily-resolved var for `metabase.mq.settings/queue-max-retries`. Use `@@q.impl/queue-max-retries` to read the current value."
+  (delay (requiring-resolve 'metabase.mq.settings/queue-max-retries)))
+
 (defmacro with-queue
   "Runs the body with the ability to add messages to the given queue.
   Messages are buffered and only published if the body completes successfully.
