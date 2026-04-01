@@ -125,8 +125,6 @@ export function initializeContext(options) {
 }
 
 export function RenderChart(rawSeries, dashcardSettings, options) {
-  initializeContext(options);
-
   const renderingContext = createStaticRenderingContext(
     options.applicationColors,
   );

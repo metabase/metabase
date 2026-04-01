@@ -37,39 +37,20 @@ function funnel(data, settings, tokenFeatures) {
 }
 
 
-// Pending custom viz plugin registrations, deferred until enterprise overrides are applied.
-var __pendingCustomVizRegistrations__ = [];
+function initialize_context(options) {
+  StaticViz.initializeContext(JSON.parse(options));
+}
 
 function register_custom_viz_plugin(identifier, assetsJson) {
   if (typeof __customVizPlugin__ === "function") {
     var assets = assetsJson ? JSON.parse(assetsJson) : {};
-    // Capture the factory now (before __customVizPlugin__ is overwritten by the next bundle load),
-    // but defer the actual registration until javascript_visualization runs initializeContext,
-    // which applies enterprise overrides and activates the real EE registerCustomVizPlugin.
-    __pendingCustomVizRegistrations__.push({
-      factory: __customVizPlugin__,
-      identifier,
-      assets,
-    });
+    StaticViz.registerCustomVizPlugin(__customVizPlugin__, identifier, assets);
   }
 }
 
 function javascript_visualization(rawSeries, dashcardSettings, options) {
-  var parsedOptions = JSON.parse(options);
-
-  // Apply enterprise overrides (EE registerCustomVizPlugin + customVizRegistry become active).
-  // This must happen before plugin registration so the real EE registry is populated.
-  StaticViz.initializeContext(parsedOptions);
-
-  // Register all deferred custom viz plugins now that the EE registry is active.
-  for (var i = 0; i < __pendingCustomVizRegistrations__.length; i++) {
-    var r = __pendingCustomVizRegistrations__[i];
-    StaticViz.registerCustomVizPlugin(r.factory, r.identifier, r.assets);
-  }
-  __pendingCustomVizRegistrations__ = [];
-
   var parsedSeries = JSON.parse(rawSeries);
-  var content = StaticViz.RenderChart(parsedSeries, JSON.parse(dashcardSettings), parsedOptions);
+  var content = StaticViz.RenderChart(parsedSeries, JSON.parse(dashcardSettings), JSON.parse(options));
   var type = content.startsWith("<svg") ? "svg" : "html";
 
   return JSON.stringify({ type, content });
