@@ -126,11 +126,11 @@ export type CustomVisualizationProps<CustomVisualizationSettings> = {
 
   settings: CustomVisualizationSettings;
 
-  onVisualizationClick: (
+  onClick: (
     clickObject: ClickObject<CustomVisualizationSettings> | null,
   ) => void;
 
-  onHoverChange: (hoverObject?: HoveredObject | null) => void;
+  onHover: (hoverObject?: HoveredObject | null) => void;
 };
 
 export type ColorGetter = (colorName: string) => string;
