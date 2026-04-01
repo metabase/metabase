@@ -47,7 +47,7 @@ echo ""
 errors=0
 while IFS= read -r file; do
   [[ -z "$file" ]] && continue
-  dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9]*\)/.*|\1|p')
+  dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9][0-9]*\)/.*|\1|p')
   [[ -z "$dir" ]] && continue
   dir_version=$((10#$dir))
   dir=$(printf "%03d" "$dir_version")
