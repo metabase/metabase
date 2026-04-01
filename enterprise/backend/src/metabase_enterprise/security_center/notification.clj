@@ -86,6 +86,7 @@
   (events/publish-event! :event/security-advisory-match
                          (advisory-event-info advisory))
   ;; Send email + Slack via notification pipeline
-  (notification/send-notification! (build-notification advisory))
+  ;; sync, so failure doesn't set last_notified_at
+  (notification/send-notification! (build-notification advisory) :notification/sync? true)
   (t2/update! :model/SecurityAdvisory (:id advisory)
               {:last_notified_at (mi/now)}))
