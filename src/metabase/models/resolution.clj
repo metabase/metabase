@@ -60,7 +60,7 @@
     :model/AiUsageLog                        metabase.metabot.models.ai-usage-log
     :model/MetabotGroupLimit                 metabase-enterprise.metabot.models.metabot-group-limit
     :model/MetabotInstanceLimit              metabase-enterprise.metabot.models.metabot-instance-limit
-    :model/MetabotPermissions                metabase.metabot.models.metabot-permissions
+    :model/MetabotPermissions                metabase-enterprise.metabot.models.metabot-permissions
     :model/MetabotPrompt                     metabase.metabot.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
