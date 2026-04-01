@@ -74,6 +74,7 @@ function setup({
     updateSlackHandler: jest.fn(),
     toggleSlack: jest.fn(),
     save,
+    resetConfig: jest.fn(),
   };
 
   renderWithProviders(<NotificationChannelConfigModal {...props} />, {

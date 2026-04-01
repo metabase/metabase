@@ -144,6 +144,10 @@ export function useNotificationConfig() {
     }).unwrap();
   }, [config, updateSettings]);
 
+  const resetConfig = useCallback(() => {
+    setConfig(initialConfig);
+  }, [initialConfig]);
+
   return {
     config,
     users,
@@ -153,5 +157,6 @@ export function useNotificationConfig() {
     updateSlackHandler,
     toggleSlack,
     save,
+    resetConfig,
   };
 }
