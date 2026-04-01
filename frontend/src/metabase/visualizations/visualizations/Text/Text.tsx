@@ -15,6 +15,7 @@ import { getParameterValues } from "metabase/dashboard/selectors";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
+import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type { VisualizationGridSize } from "metabase/visualizations/types";
 import type {
@@ -54,9 +55,6 @@ const REMARK_PLUGINS = [remarkGfm];
 const REHYPE_PLUGINS: Options["rehypePlugins"] = [
   [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
 ];
-
-const DATA_IMAGE_URI_PATTERN =
-  /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;
 
 function urlTransform(url: string): string {
   if (DATA_IMAGE_URI_PATTERN.test(url)) {

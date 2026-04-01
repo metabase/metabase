@@ -5,6 +5,7 @@ import { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { ColorName } from "metabase/ui/colors/types";
+import { DATA_IMAGE_URI_PATTERN } from "metabase/visualizations/lib/utils";
 
 import { MarkdownRoot } from "./Markdown.styled";
 
@@ -13,9 +14,6 @@ const REMARK_PLUGINS = [remarkGfm];
 const MarkdownLink = (props: AnchorHTMLAttributes<HTMLAnchorElement>) => (
   <a {...props} target="_blank" rel="noopener noreferrer" />
 );
-
-const DATA_IMAGE_URI_PATTERN =
-  /^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i;
 
 function urlTransform(url: string): string {
   if (url.startsWith("metabase://")) {
