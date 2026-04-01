@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -197,3 +198,35 @@
                 (is (= {grandparent-id false, parent-id true, child-id true}
                        (stale-map [grandparent-id parent-id child-id]))
                     "grandparent should NOT be stale, parent and child should be stale (transitive)")))))))))
+
+(deftest ^:sequential wave-propagation-via-entity-check-test
+  (testing "analyze-and-propagate! marks immediate dependents stale, and the job loop drains them in waves"
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (lib-be/with-metadata-provider-cache
+          (mt/with-model-cleanup [:model/AnalysisFinding]
+            (mt/with-temp [:model/Card {gp-id :id :as gp-card} {:dataset_query (lib/query mp products)}
+                           :model/Card {p-id :id :as p-card} {:dataset_query (lib/query mp (lib.metadata/card mp gp-id))}
+                           :model/Card {c-id :id :as c-card} {:dataset_query (lib/query mp (lib.metadata/card mp p-id))}
+                           :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
+                                                :to_entity_type :card :to_entity_id gp-id}
+                           :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
+                                                :to_entity_type :card :to_entity_id p-id}]
+              ;; Analyze all three so they have findings
+              (run! deps.findings/upsert-analysis! [gp-card p-card c-card])
+              (is (= {gp-id false, p-id false, c-id false}
+                     (stale-map [gp-id p-id c-id]))
+                  "all should start as not stale")
+              ;; Mark only the immediate dependents of grandparent (just parent, not child)
+              (deps.findings/mark-immediate-dependents-stale! :card gp-id)
+              (is (= {gp-id false, p-id true, c-id false}
+                     (stale-map [gp-id p-id c-id]))
+                  "only parent should be stale (immediate), child should NOT be stale yet")
+              ;; Run the entity-check job loop — it should analyze parent, which marks child stale,
+              ;; then analyze child in the next wave
+              (#'task.entity-check/check-entities!)
+              (is (= {gp-id false, p-id false, c-id false}
+                     (stale-map [gp-id p-id c-id]))
+                  "after check-entities!, all should be re-analyzed (not stale) — wave propagation worked"))))))))
