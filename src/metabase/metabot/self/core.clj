@@ -1,7 +1,10 @@
 (ns metabase.metabot.self.core
   (:require
+   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.llm.settings :as llm]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -480,3 +483,17 @@
            nil)
 
          (rf result chunk))))))
+
+(defn request-with-proxy
+  "Perform a request directly when provider auth is configured, otherwise via the
+  (Metabase Cloud-only) LLM proxy when configured."
+  [llm-type auth req]
+  (let [{:keys [url headers]}
+        (cond
+          auth                     auth
+          (llm/llm-proxy-base-url) {:url     (llm/llm-proxy-base-url)
+                                    :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}}
+          :else                    (throw (ex-info (format "No %s API key is set" llm-type) {:api-error true})))]
+    (http/request (-> req
+                      (update :url #(str url %))
+                      (update :headers merge headers)))))

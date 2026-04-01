@@ -1,12 +1,10 @@
 (ns metabase.metabot.self.openai
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
-   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
@@ -159,11 +157,14 @@
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
 (defn- list-models*
-  [base-url auth]
+  [auth]
   (try
-    (let [res (http/get (str base-url "/v1/models")
-                        {:as      :json
-                         :headers (assoc auth "Content-Type" "application/json")})]
+    (let [res (core/request-with-proxy "OpenAI"
+                                       auth
+                                       {:method  :get
+                                        :url     "/v1/models"
+                                        :as      :json
+                                        :headers {"Content-Type" "application/json"}})]
       {:models (mapv (fn [model]
                        {:id           (:id model)
                         :display_name (:id model)})
@@ -184,59 +185,54 @@
 (defn list-models
   "List available OpenAI models using the configured API key."
   ([]
-   (if-let [proxy (llm/llm-proxy-base-url)]
-     (list-models* (str proxy "/llm/openai")
-                   {"x-metabase-instance-token" (premium-features/premium-embedding-token)})
-     (list-models (llm/llm-openai-api-key))))
+   (list-models* (when-let [api-key (not-empty (llm/llm-openai-api-key))]
+                   {:url     (llm/llm-openai-api-base-url)
+                    :headers {"Authorization" (str "Bearer " api-key)}})))
   ([api-key]
    (when (str/blank? api-key)
      (throw (ex-info "No OpenAI API key is set" {:api-error true})))
-   (list-models* (llm/llm-openai-api-base-url)
-                 {"Authorization" (str "Bearer " api-key)})))
+   (list-models* {:url     (llm/llm-openai-api-base-url)
+                  :headers {"Authorization" (str "Bearer " api-key)}})))
 
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API."
   [{:keys [model system input tools schema tool_choice temperature max-tokens]
     :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
-  (let [proxy    (llm/llm-proxy-base-url)
-        base-url (if proxy
-                   (str proxy "/llm/openai")
-                   (llm/llm-openai-api-base-url))
-        auth     (if proxy
-                   {"x-metabase-instance-token" (premium-features/premium-embedding-token)}
-                   {"Authorization" (str "Bearer " (llm/llm-openai-api-key))})]
-    (when-not proxy
-      (when-not (llm/llm-openai-api-key)
-        (throw (ex-info "No OpenAI API key is set" {:api-error true}))))
-    (let [all-tools (or (when schema
-                          ;; Structured output: force a tool call with the given JSON schema
-                          [{:type        "function"
-                            :name        "structured_output"
-                            :description "Output structured data"
-                            :parameters  schema}])
-                        (when (seq tools) (mapv tool->openai tools)))
-          req       (cond-> {:model        model
-                             :stream       true
-                             :store        false
-                             :instructions system
-                             :input        (parts->openai-input input)}
-                      all-tools   (assoc :tool_choice (cond
-                                                        schema      "required"
-                                                        tool_choice tool_choice
-                                                        :else       "auto")
-                                         :tools       all-tools)
-                      temperature (assoc :temperature temperature)
-                      max-tokens  (assoc :max_tokens max-tokens))]
-      (try
-        (let [res (http/post (str base-url "/v1/responses")
-                             {:as      :stream
-                              :headers (assoc auth "Content-Type" "application/json")
-                              :body    (json/encode req)})]
-          (core/sse-reducible (:body res)))
-        (catch Exception e
-          (if-let [res (ex-data e)]
-            (throw (ex-info (.getMessage e) (json/decode-body res)))
-            (throw e)))))))
+  (let [all-tools (or (when schema
+                        ;; Structured output: force a tool call with the given JSON schema
+                        [{:type        "function"
+                          :name        "structured_output"
+                          :description "Output structured data"
+                          :parameters  schema}])
+                      (when (seq tools) (mapv tool->openai tools)))
+        req       (cond-> {:model        model
+                           :stream       true
+                           :store        false
+                           :instructions system
+                           :input        (parts->openai-input input)}
+                    all-tools   (assoc :tool_choice (cond
+                                                      schema      "required"
+                                                      tool_choice tool_choice
+                                                      :else       "auto")
+                                       :tools       all-tools)
+                    temperature (assoc :temperature temperature)
+                    max-tokens  (assoc :max_tokens max-tokens))]
+    (try
+      (let [api-key (not-empty (llm/llm-openai-api-key))
+            res     (core/request-with-proxy "OpenAI"
+                                             (when api-key
+                                               {:url     (llm/llm-openai-api-base-url)
+                                                :headers {"Authorization" (str "Bearer " api-key)}})
+                                             {:method  :post
+                                              :url     "/v1/responses"
+                                              :as      :stream
+                                              :headers {"Content-Type" "application/json"}
+                                              :body    (json/encode req)})]
+        (core/sse-reducible (:body res)))
+      (catch Exception e
+        (if-let [res (ex-data e)]
+          (throw (ex-info (.getMessage e) (json/decode-body res)))
+          (throw e))))))
 
 (defn openai
   "Call OpenAI API, return AISDK stream."
