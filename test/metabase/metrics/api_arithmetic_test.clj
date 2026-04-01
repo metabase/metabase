@@ -88,17 +88,17 @@
         (is (= "completed" (:status response)))))))
 
 (deftest arithmetic-missing-projections-test
-  (testing "POST /api/metric/dataset arithmetic without projections returns 400"
+  (testing "POST /api/metric/dataset arithmetic without projections returns scalar result"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
                                        :type          :metric
                                        :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      ;; Arithmetic without projections should fail validation
-      (is (some? (mt/user-http-request :rasta :post 400 "metric/dataset"
-                                       {:definition
-                                        {:expression [:+ {}
-                                                      [:metric {:lib/uuid "a"} (:id metric)]
-                                                      [:metric {:lib/uuid "b"} (:id metric)]]}}))))))
-
+      (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                           {:definition
+                                            {:expression [:+ {}
+                                                          [:metric {:lib/uuid "a"} (:id metric)]
+                                                          [:metric {:lib/uuid "b"} (:id metric)]]}})]
+        (is (= "completed" (:status response)))
+        (is (= 1 (:row_count response)))))))
 (deftest arithmetic-nested-expression-test
   (testing "POST /api/metric/dataset with nested (A + B) * C"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"
