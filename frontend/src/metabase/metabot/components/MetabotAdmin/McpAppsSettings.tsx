@@ -38,7 +38,7 @@ function CommonMcpClientsSection() {
   const mcpClients = getMcpClients();
 
   const { value: savedValue, updateSetting } = useAdminSetting(
-    "common-mcp-apps-cors-origins",
+    "mcp-apps-cors-enabled-clients",
   );
 
   const [enabledClients, setEnabledClients] = useState<string[]>(
@@ -58,7 +58,7 @@ function CommonMcpClientsSection() {
       setEnabledClients(updated);
 
       updateSetting({
-        key: "common-mcp-apps-cors-origins",
+        key: "mcp-apps-cors-enabled-clients",
         value: updated,
       });
     },

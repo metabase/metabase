@@ -220,7 +220,7 @@ export const createMockSettings = (
     },
   },
   "custom-geojson-enabled": true,
-  "common-mcp-apps-cors-origins": [],
+  "mcp-apps-cors-enabled-clients": [],
   "custom-formatting": {},
   "custom-homepage": false,
   "custom-homepage-dashboard": null,

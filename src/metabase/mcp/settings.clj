@@ -18,7 +18,7 @@
 
 ;;; ------------------------------------------------ Settings ------------------------------------------------
 
-(defsetting common-mcp-apps-cors-origins
+(defsetting mcp-apps-cors-enabled-clients
   (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")
   :type       :csv
   :default    []
@@ -41,11 +41,11 @@
 (defn mcp-apps-cors-origins
   "Returns space-separated CORS origins from both common and custom MCP client settings."
   []
-  (let [common-domains (mapcat #(get mcp-client-apps-sandbox-domains % []) (common-mcp-apps-cors-origins))
+  (let [common-domains (mapcat #(get mcp-client-apps-sandbox-domains % []) (mcp-apps-cors-enabled-clients))
         custom-domains (custom-mcp-apps-cors-origins)]
     (str/trim (str/join " " (concat common-domains (when (seq custom-domains) [custom-domains]))))))
 
 (defn mcp-apps-vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."
   []
-  (some #{"vscode"} (common-mcp-apps-cors-origins)))
+  (some #{"vscode"} (mcp-apps-cors-enabled-clients)))

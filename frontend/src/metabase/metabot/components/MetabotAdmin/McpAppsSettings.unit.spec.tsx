@@ -21,7 +21,7 @@ const setup = async ({
   customOrigins?: string;
 } = {}) => {
   const settings = createMockSettings({
-    "common-mcp-apps-cors-origins": commonOrigins,
+    "mcp-apps-cors-enabled-clients": commonOrigins,
     "custom-mcp-apps-cors-origins": customOrigins,
   });
 
@@ -57,7 +57,7 @@ describe("McpAppsSettings", () => {
     expect(puts).toHaveLength(1);
 
     const [{ url, body }] = puts;
-    expect(url).toContain("/setting/common-mcp-apps-cors-origins");
+    expect(url).toContain("/setting/mcp-apps-cors-enabled-clients");
     expect(body).toEqual({ value: ["claude"] });
   });
 
