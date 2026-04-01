@@ -167,11 +167,12 @@
                                                    where (sql.helpers/where :or where))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy [:archived :content :description :entity_id :name :template_tags]
-   :skip [:dependency_analysis_version]
-   :transform {:created_at (serdes/date)
+  {:copy      [:archived :content :description :entity_id :name :template_tags]
+   :skip      [:dependency_analysis_version]
+   :transform {:created_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
-               :creator_id (serdes/fk :model/User)}})
+               :creator_id    (serdes/fk :model/User)}
+   :defaults {:archived false}})
 
 (defmethod serdes/required "NativeQuerySnippet"
   [_model id]
@@ -184,13 +185,7 @@
     [[{:model "Collection" :id collection_id}]]))
 
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
-  ;; Intended path here is ["snippets" "<nested ... collections>" "<snippet_eid_and_slug>"]
-  ;; We just the default path, then pull it apart.
-  ;; The default is ["collections" "<nested ... collections>" "nativequerysnippets" "<base_name>"]
-  (let [basis (serdes/storage-default-collection-path snippet ctx)
-        file  (last basis)
-        colls (->> basis rest (drop-last 2))] ; Drops the "collections" at the start, and the last two.
-    (concat ["snippets"] colls [file])))
+  (serdes/storage-default-collection-path snippet ctx "snippets"))
 
 (defmethod serdes/load-one! "NativeQuerySnippet" [ingested maybe-local]
   ;; if we got local snippet in db and it has same name as incoming one, we can be sure

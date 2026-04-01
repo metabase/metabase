@@ -48,7 +48,6 @@ import {
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockResultsMetadata,
   createMockSettings,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
@@ -206,8 +205,6 @@ export const TEST_MODEL_DATASET = createMockDataset({
 });
 
 export const TEST_COLLECTION = createMockCollection();
-
-export const TEST_METADATA = createMockResultsMetadata();
 
 const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,

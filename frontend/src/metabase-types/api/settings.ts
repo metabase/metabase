@@ -265,7 +265,6 @@ const tokenStatusFeatures = [
   "embedding-hub",
   "hosting",
   "metabase-store-managed",
-  "metabot-v3",
   "no-upsell",
   "official-collections",
   "query-reference-validation",
@@ -350,7 +349,6 @@ export const tokenFeatures = [
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
-  "metabot_v3",
   "database_routing",
   "development_mode",
   "etl_connections",
@@ -366,6 +364,7 @@ export const tokenFeatures = [
   "tenants",
   "workspaces",
   "writable_connection",
+  "ai_controls",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];

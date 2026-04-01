@@ -2,12 +2,19 @@
   "API namespace for the `metabase.metabot` module."
   (:require
    [metabase.metabot.api]
+   [metabase.metabot.scope]
    [metabase.metabot.usage-log]
    [potemkin :as p]))
 
 (p/import-vars
  [metabase.metabot.api
-  routes])
+  routes]
+ [metabase.metabot.scope
+  agent-metric-read
+  agent-query-construct
+  agent-query-execute
+  agent-search
+  agent-table-read])
 
 (p/import-vars
  [metabase.metabot.usage-log

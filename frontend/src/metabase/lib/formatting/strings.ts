@@ -17,10 +17,6 @@ export function capitalize(str: string, { lowercase = true } = {}) {
   return firstChar + rest;
 }
 
-export function uncapitalize(str: string) {
-  return str.charAt(0).toLowerCase() + str.slice(1);
-}
-
 export function inflect(
   str: string,
   count: number,

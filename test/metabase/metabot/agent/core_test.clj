@@ -80,10 +80,10 @@
                                   :state      {}
                                   :profile-id :embedding_next
                                   :context    {}}))]
-        ;; Should get parts + state data
-        ;; Note: :finish is not emitted as a part; it's handled by aisdk-line-xf completion
+            ;; Should get parts + state data
+            ;; Note: :finish is not emitted as a part; it's handled by aisdk-line-xf completion
             (is (pos? (count result)))
-        ;; Should have state data (final part)
+            ;; Should have state data (final part)
             (is (some #(= :data (:type %)) result)))))
 
       (testing "sql profile requests required tool choice"
@@ -117,11 +117,11 @@
                                     :state      {}
                                     :profile-id :embedding_next
                                     :context    {}}))]
-          ;; Should complete successfully
+              ;; Should complete successfully
               (is (pos? (count result)))
-          ;; Should have state data (final part)
+              ;; Should have state data (final part)
               (is (some #(= :data (:type %)) result))
-          ;; Should have tool-related parts
+              ;; Should have tool-related parts
               (is (some #(= :tool-input (:type %)) result))))))
 
       (testing "handles errors gracefully"
@@ -133,7 +133,7 @@
                                     :state      {}
                                     :profile-id :embedding_next
                                     :context    {}})))]
-        ;; Should get error message
+            ;; Should get error message
             (is (some #(= :error (:type %)) result))))))))
 
 ;; Note: build-messages-for-llm is now internal to call-llm
@@ -176,11 +176,11 @@
                                   :state      {}
                                   :profile-id :embedding_next
                                   :context    {}}))]
-        ;; Verify basic structure
+            ;; Verify basic structure
             (is (pos? (count result)))
-        ;; Should have text part
+            ;; Should have text part
             (is (some #(= :text (:type %)) result))
-        ;; Should have state data part (finish is handled by aisdk-line-xf, not emitted as part)
+            ;; Should have state data part (finish is handled by aisdk-line-xf, not emitted as part)
             (is (some #(and (= :data (:type %))
                             (map? (:data %)))
                       result))))))))

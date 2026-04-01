@@ -20,10 +20,6 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 import { MetabotSetup } from "./MetabotSetup";
 import type { MetabotApiKeyProvider } from "./utils";
 
-jest.mock("./MetabotNavPane", () => ({
-  MetabotNavPane: () => <div>Metabot navigation</div>,
-}));
-
 jest.mock("./MetabotProviderApiKey", () => ({
   MetabotProviderApiKey: ({
     provider,

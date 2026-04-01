@@ -6,7 +6,6 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
-  createMockTokenFeatures,
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
@@ -35,7 +34,6 @@ jest.mock("../components/MetabotChat", () => {
 function setup() {
   const settings = mockSettings({
     "llm-metabot-configured?": true,
-    "token-features": createMockTokenFeatures({ metabot_v3: true }),
   });
 
   setupEnterprisePlugins();

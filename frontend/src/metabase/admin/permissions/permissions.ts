@@ -64,18 +64,6 @@ function isErrorAction(action: UnknownAction) {
   return action.error === true;
 }
 
-const INITIALIZE_DATA_PERMISSIONS =
-  "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
-export const initializeDataPermissions = createThunkAction(
-  INITIALIZE_DATA_PERMISSIONS,
-  () => async (dispatch) => {
-    await Promise.all([
-      dispatch(loadDataPermissions()),
-      dispatch(Groups.actions.fetchList()),
-    ]);
-  },
-);
-
 export const LOAD_DATA_PERMISSIONS =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS";
 export const loadDataPermissions = createThunkAction(

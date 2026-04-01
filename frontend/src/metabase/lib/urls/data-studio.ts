@@ -241,26 +241,6 @@ export function newDataStudioDataModelMeasure({
   return `${dataStudioData({ databaseId, schemaName, tableId, tab: "measures" })}/new`;
 }
 
-export type NewDataStudioQueryModelParams = {
-  collectionId?: CollectionId;
-};
-
-export function newDataStudioQueryModel(
-  params: NewDataStudioQueryModelParams = {},
-) {
-  return `${dataStudioLibrary()}/models/new/query${getQueryString(params)}`;
-}
-
-export type NewDataStudioNativeModelParams = {
-  collectionId?: CollectionId;
-};
-
-export function newDataStudioNativeModel(
-  params: NewDataStudioNativeModelParams = {},
-) {
-  return `${dataStudioLibrary()}/models/new/native${getQueryString(params)}`;
-}
-
 export type NewDataStudioMetricProps = {
   collectionId?: CollectionId;
 };
@@ -333,12 +313,4 @@ export function dataStudioWorkspace(
 
 export function dataStudioSegment(segmentId: SegmentId) {
   return `${dataStudioLibrary()}/segments/${segmentId}`;
-}
-
-export function newDataStudioSegment(tableId: TableId) {
-  return `${dataStudioLibrary()}/segments/new?tableId=${tableId}`;
-}
-
-export function dataStudioSegmentDependencies(segmentId: SegmentId) {
-  return `${dataStudioSegment(segmentId)}/dependencies`;
 }

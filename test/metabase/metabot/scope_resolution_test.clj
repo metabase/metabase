@@ -1,8 +1,8 @@
 (ns metabase.metabot.scope-resolution-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.metabot.scope :as scope]
-   [metabase.test :as mt]))
+   [metabase.metabot.models.metabot-permissions :as metabot-permissions]
+   [metabase.metabot.scope :as scope]))
 
 (deftest user-metabot-perms->scopes-test
   (testing "sql-generation :yes grants sql, transforms, snippets scopes"
@@ -69,53 +69,15 @@
 (deftest resolve-user-permissions-test
   (testing "nil user-id returns defaults"
     (let [perms (scope/resolve-user-permissions nil)]
-      (is (= :no (:permission/metabot-sql-generation perms)))
-      (is (= :no (:permission/metabot-nql perms)))
-      (is (= :no (:permission/metabot-other-tools perms)))
-      (is (= :small (:permission/metabot-model perms)))))
+      (is (= (:permission/metabot-sql-generation metabot-permissions/perm-type-defaults)
+             (:permission/metabot-sql-generation perms)))
+      (is (= (:permission/metabot-nql metabot-permissions/perm-type-defaults)
+             (:permission/metabot-nql perms)))
+      (is (= (:permission/metabot-other-tools metabot-permissions/perm-type-defaults)
+             (:permission/metabot-other-tools perms)))
+      (is (= (:permission/metabot-model metabot-permissions/perm-type-defaults)
+             (:permission/metabot-model perms)))))
 
-  (testing "user with no stored permissions gets defaults"
-    (mt/with-temp [:model/User {user-id :id} {}
-                   :model/PermissionsGroup {group-id :id} {:name "Test Group"}
-                   :model/PermissionsGroupMembership _ {:user_id  user-id
-                                                        :group_id group-id}]
-      (let [perms (scope/resolve-user-permissions user-id)]
-        (is (= :no (:permission/metabot-sql-generation perms)))
-        (is (= :no (:permission/metabot-nql perms)))
-        (is (= :small (:permission/metabot-model perms))))))
-
-  (testing "user in group with stored permissions gets those values"
-    (mt/with-temp [:model/User {user-id :id} {}
-                   :model/PermissionsGroup {group-id :id} {:name "SQL Group"}
-                   :model/PermissionsGroupMembership _ {:user_id  user-id
-                                                        :group_id group-id}
-                   :model/MetabotPermissions _ {:group_id   group-id
-                                                :perm_type  :permission/metabot-sql-generation
-                                                :perm_value :yes}]
-      (let [perms (scope/resolve-user-permissions user-id)]
-        (is (= :yes (:permission/metabot-sql-generation perms)))
-        (is (= :no (:permission/metabot-nql perms))))))
-
-  (testing "most permissive wins across multiple groups"
-    (mt/with-temp [:model/User {user-id :id} {}
-                   :model/PermissionsGroup {group-a :id} {:name "Group A"}
-                   :model/PermissionsGroup {group-b :id} {:name "Group B"}
-                   :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-a}
-                   :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-b}
-                   :model/MetabotPermissions _ {:group_id   group-a
-                                                :perm_type  :permission/metabot-sql-generation
-                                                :perm_value :no}
-                   :model/MetabotPermissions _ {:group_id   group-b
-                                                :perm_type  :permission/metabot-sql-generation
-                                                :perm_value :yes}
-                   :model/MetabotPermissions _ {:group_id   group-a
-                                                :perm_type  :permission/metabot-model
-                                                :perm_value :small}
-                   :model/MetabotPermissions _ {:group_id   group-b
-                                                :perm_type  :permission/metabot-model
-                                                :perm_value :large}]
-      (let [perms (scope/resolve-user-permissions user-id)]
-        (is (= :yes (:permission/metabot-sql-generation perms))
-            ":yes wins over :no")
-        (is (= :large (:permission/metabot-model perms))
-            ":large wins over :small")))))
+  (testing "OSS always returns defaults regardless of user-id"
+    (let [perms (scope/resolve-user-permissions 1)]
+      (is (= metabot-permissions/perm-type-defaults perms)))))

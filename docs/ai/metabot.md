@@ -71,7 +71,7 @@ You can also ask Metabot to tell you about specific tables in your database.
 
 When you ask Metabot to create a chart from natural language, it first looks for existing questions that might answer your request. If it finds a relevant question, it'll point you to that instead of creating something new. Otherwise, Metabot will use the [query builder](../questions/query-builder/editor.md) to create a new chart for you.
 
-Keep in mind that Metabot is still learning the query builder. Metabot can only handle basic query builder operations, and it lacks access to the library of [custom expressions](../questions/query-builder/expressions-list.md). Metabot is also limited to single-level aggregation and grouping, so if you need more complex analysis, you can take over and refine the query yourself, or switch to the SQL editor.
+Metabot is not magic, and it's [still learning Metabase and the query builder](#current-limitations).
 
 ## Metabot in the native editor
 
@@ -122,6 +122,18 @@ Use **AI exploration** to start a new conversation with Metabot when you don’t
 Open it from **+ New → AI exploration**, then ask a question or pick one of the suggested prompts.
 
 When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. Admins can set a **Collection for natural language querying** to scope AI exploration to a specific collection and its subcollections. You can still refer to content outside that scope by explicitly @-mentioning it in your prompt. See [Metabot AI settings](../ai/settings.md) for more details.
+
+## Current limitations
+
+Metabot is getting smarter all the time, but there are some things it can't do yet:
+
+- **Custom expressions.** Metabot can't use [custom expressions](../questions/query-builder/expressions-list.md) in query builder questions.
+- **Multi-level aggregation.** Metabot is limited to a single level of aggregation and grouping.
+- **SQL variables.** Metabot can't generate SQL queries that include [SQL parameters](../questions/native-editor/sql-parameters.md) (like filters or field filters).
+- **Goal lines.** Metabot can't add [goal lines](../questions/visualizations/line-bar-and-area-charts.md#goal-lines) to charts.
+- **Chart formatting.** Metabot can't change visualization settings like colors, axis labels, or number formatting.
+- **Managing alerts.** [Metabot in Slack](./metabot-slack.md) can create alerts and dashboard subscriptions, but can't modify or delete existing ones.
+- **Search.** Metabot can only search for tables, metrics, questions, models, and dashboards. It can't discover segments, measures, documents, collections, actions, or indexed entities on its own — but it can use segments and measures in ad-hoc queries (for example, filtering by a segment).
 
 ## Metabot in Slack
 

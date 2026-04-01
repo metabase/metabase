@@ -16,6 +16,16 @@
 (comment
   metabase-enterprise.impersonation.model/keep-me)
 
+(defn- parse-default-value
+  "Parse a default value string into a Clojure value.
+  Only cares about boolean defaults (TRUE/FALSE/'true'/'false'); returns nil for everything else."
+  [default-value]
+  (when default-value
+    (case (u/upper-case-en default-value)
+      ("TRUE" "'TRUE'")   true
+      ("FALSE" "'FALSE'") false
+      nil)))
+
 (def ^:private datetime? #{"timestamptz"
                            "TIMESTAMP WITH TIME ZONE"
                            "timestamp"})
@@ -114,4 +124,21 @@
                                          inner-spec (serdes/make-spec (name model) nil)]]
               (testing (format "%s has %s declared as `parent-ref`" model backward-fk)
                 (is (= (serdes/parent-ref)
-                       (get-in inner-spec [:transform backward-fk])))))))))))
+                       (get-in inner-spec [:transform backward-fk]))))))
+
+          (testing ":defaults match actual DB field defaults"
+            (let [serialized-fields (set (concat (:copy spec) (keys (:transform spec))))
+                  declared-defaults (or (:defaults spec) {})]
+              ;; Every DB field with a boolean default that is serialized should be in :defaults
+              (doseq [[field-name field] fields
+                      :let [field-kw   (keyword (u/lower-case-en field-name))
+                            db-default (some-> field :default parse-default-value)]
+                      :when (and (some? db-default)
+                                 (contains? serialized-fields field-kw))]
+                (testing (format "`%s.%s` has DB default %s" m (name field-kw) (pr-str db-default))
+                  (is (contains? declared-defaults field-kw))
+                  (is (= db-default (get declared-defaults field-kw)))))
+              ;; Every entry in :defaults should reference a serialized field
+              (doseq [field-kw (keys declared-defaults)]
+                (testing (format "`%s.%s` in :defaults is a serialized field" m (name field-kw))
+                  (is (contains? serialized-fields field-kw)))))))))))

@@ -45,8 +45,9 @@
   [token-scopes tool-scope]
   (or (nil? token-scopes)
       (contains? token-scopes ::scope/unrestricted)
-      (when (some? tool-scope)
-        (api-scope/scope-matches? token-scopes tool-scope))))
+      (when (and (some? tool-scope)
+                 (api-scope/scope-matches? token-scopes tool-scope))
+        true)))
 
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
