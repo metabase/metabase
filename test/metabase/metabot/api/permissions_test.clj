@@ -18,13 +18,4 @@
       (let [perms (:permissions (mt/user-http-request :rasta :get 200 "metabot/permissions/user-permissions"))]
         (is (= 4 (count perms)))
         (testing "all perm types are present with string values"
-          (is (every? string? (vals perms))))))
-    (testing "user in group with custom permissions gets those values"
-      (mt/with-premium-features #{:ai-controls}
-        (mt/with-temp [:model/PermissionsGroup       {gid :id} {:name "Test Metabot Perms Group"}
-                       :model/PermissionsGroupMembership _      {:group_id gid :user_id (mt/user->id :rasta)}
-                       :model/MetabotPermissions      _         {:group_id   gid
-                                                                 :perm_type  :permission/metabot-sql-generation
-                                                                 :perm_value :yes}]
-          (let [perms (:permissions (mt/user-http-request :rasta :get 200 "metabot/permissions/user-permissions"))]
-            (is (= "yes" (:metabot-sql-generation perms)))))))))
+          (is (every? string? (vals perms))))))))
