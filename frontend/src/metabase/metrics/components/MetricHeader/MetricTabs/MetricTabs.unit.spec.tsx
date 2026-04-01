@@ -6,6 +6,7 @@ import { renderWithProviders, waitFor } from "__support__/ui";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
+  createMockField,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import {
@@ -51,6 +52,7 @@ describe("MetricTabs", () => {
       type: "metric",
       can_write: true,
       last_query_start: "2024-01-01T00:00:00Z",
+      result_metadata: [createMockField({ base_type: "type/Integer" })],
       ...cardOverrides,
     });
 
