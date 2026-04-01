@@ -432,12 +432,13 @@
                                     :profile-id :embedding_next
                                     :context    {}})))
                 usages (filterv #(= :usage (:type %)) result)]
-            (testing "different models accumulate independently"
-              (is (= "model-a" (:model (first usages))))
+            (testing "model is always the canonical provider-and-model from the profile"
+              (is (= test-provider (:model (first usages))))
+              (is (= test-provider (:model (second usages)))))
+            (testing "usage accumulates under the single provider key"
               (is (= {:promptTokens 100 :completionTokens 20}
                      (:usage (first usages))))
-              (is (= "model-b" (:model (second usages))))
-              (is (= {:promptTokens 200 :completionTokens 40}
+              (is (= {:promptTokens 300 :completionTokens 60}
                      (:usage (second usages)))))))))))
 
 (deftest run-agent-loop-retries-on-rate-limit-test
