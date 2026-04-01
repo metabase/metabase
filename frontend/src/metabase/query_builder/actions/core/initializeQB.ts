@@ -76,11 +76,25 @@ function getCardForBlankQuestion(
   const tableId = options.table ? parseInt(options.table) : undefined;
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
 
+  // Ok here in the qb init
+  // how is the empty dataset_query mbql5 created?
   let question = Question.create({
     DEPRECATED_RAW_MBQL_databaseId: databaseId,
     DEPRECATED_RAW_MBQL_tableId: tableId,
     metadata,
   });
+
+  // // just the side effect
+  // if (databaseId){
+  //   console.log("TTT")
+  //   const legacyQuery = question.datasetQuery()
+  //   const query = Lib.fromJsQuery(
+  //       Lib.metadataProvider(databaseId, metadata),
+  //       legacyQuery
+  //   );
+  //   question.setQuery(query);
+  //   console.log(question)
+  // }
 
   if (databaseId && tableId) {
     if (typeof segmentId === "number") {
@@ -279,6 +293,7 @@ async function handleQBInit(
     ? deserializeCard(serializedCard)
     : undefined;
 
+  // returning the card here
   let { card, originalCard } = await resolveCards({
     cardId,
     deserializedCard,
@@ -369,6 +384,8 @@ async function handleQBInit(
   }
 
   const finalCard = question.card();
+  console.log("FINCA")
+  console.log(finalCard)
 
   const parameterValues = getParameterValuesForQuestion({
     card: finalCard,

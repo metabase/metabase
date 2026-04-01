@@ -410,6 +410,11 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     queryStartTime,
   } = props;
 
+  console.log("QBQB")
+  // console.log(question)
+  // console.log(originalQuestion)
+  console.log(props)
+
   usePageTitleWithLoadingTime(documentTitle || card?.name || t`Question`, {
     titleIndex: 1,
     startTime: queryStartTime,

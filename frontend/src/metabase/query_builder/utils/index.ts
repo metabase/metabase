@@ -7,7 +7,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, Field, Series } from "metabase-types/api";
+import type { Card, DatasetQuery, Field, Series } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 interface GetPathNameFromQueryBuilderModeOptions {
@@ -43,16 +43,29 @@ export function getURLForCardState(
   dirty: boolean,
   query: QueryParams = {},
   objectId: string,
+  question?: Question,
 ) {
   interface Options {
     hash: string;
     query: QueryParams;
     objectId?: string;
   }
+
+  const cardToSerialize =
+    question && card
+      ? {
+          ...card,
+          dataset_query: Lib.toJsQuery(question.query()) as DatasetQuery,
+        }
+      : card;
+
+  console.log("CASER")
+  console.log(cardToSerialize)
+
   const options: Options = {
     hash:
-      card && dirty
-        ? serializeCardForUrl(card, {
+      cardToSerialize && dirty
+        ? serializeCardForUrl(cardToSerialize, {
             includeOriginalCardId: true,
             includeDatasetQuery: true,
             includeDisplayIsLocked: true,
@@ -60,6 +73,9 @@ export function getURLForCardState(
         : "",
     query,
   };
+  console.log("OOS")
+  console.log(options)
+  
   const isAdHocQuestion = !card.id;
   if (objectId != null) {
     if (isAdHocQuestion) {
