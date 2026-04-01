@@ -1,4 +1,3 @@
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getIsHosted } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -7,13 +6,9 @@ import {
   useListAddOnsQuery,
 } from "metabase-enterprise/api";
 
-// TODO: Check for unused props in useTransformsBilling once basic and advanced transforms pricing has been updated
 export function useTransformsBilling() {
   const isAdmin = useSelector(getUserIsAdmin);
-  const tokenStatus = useSetting("token-status");
   const isHosted = useSelector(getIsHosted);
-  const hasTransforms = useHasTokenFeature("transforms-basic");
-  const hasPythonTransforms = useHasTokenFeature("transforms-python");
 
   const {
     data: addOns,
@@ -57,22 +52,12 @@ export function useTransformsBilling() {
       product_type === "transforms-advanced-metered",
   );
 
-  const isOnTrial = tokenStatus?.trial ?? false;
-  const trialEndDate = tokenStatus?.["valid-thru"];
-
-  // Check if user already has basic transforms
-  const hasBasicTransforms = Boolean(hasTransforms && !hasPythonTransforms);
-
   return {
     error: addOnsError || billingInfoError,
     isLoading: addOnsLoading || billingInfoLoading,
-    billingPeriodMonths,
     basicTransformsAddOn,
     advancedTransformsAddOn,
     hadTransforms,
     hadAdvancedTransforms,
-    isOnTrial,
-    trialEndDate,
-    hasBasicTransforms,
   };
 }

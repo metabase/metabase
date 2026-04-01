@@ -7,11 +7,7 @@ import {
   setupPropertiesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import {
-  createMockSettings,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
   createMockState,
@@ -20,7 +16,6 @@ import {
 import { TransformsUpsellPage } from "./TransformsUpsellPage";
 
 type SetupOpts = {
-  hasBasicTransforms?: boolean;
   hadTransforms?: boolean;
   isHosted: boolean;
   isStoreUser: boolean;
@@ -30,7 +25,6 @@ type SetupOpts = {
 export const setup = ({
   isHosted,
   isStoreUser,
-  hasBasicTransforms,
   hadTransforms = false,
   isOnTrial = false,
 }: SetupOpts) => {
@@ -43,9 +37,6 @@ export const setup = ({
       "store-users": isStoreUser ? [{ email: currentUser.email }] : [],
       trial: isOnTrial,
     },
-    "token-features": createMockTokenFeatures({
-      "transforms-basic": !!hasBasicTransforms,
-    }),
   });
   const state = createMockState({
     settings: createMockSettingsState(settings),

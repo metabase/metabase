@@ -4,11 +4,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import {
-  createMockSettings,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 import type { AddOnProductType } from "metabase-types/api/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -16,8 +12,6 @@ import { useTransformsBilling } from "./useTransformsBilling";
 
 type SetupOpts = {
   isHosted?: boolean;
-  hasBasicTransforms?: boolean;
-  hasPythonTransforms?: boolean;
   hasBasicTransformsAddOn?: boolean;
   hasAdvancedTransformsAddOn?: boolean;
   previousAddOns?: Array<{
@@ -28,27 +22,17 @@ type SetupOpts = {
 
 function setup({
   isHosted = true,
-  hasBasicTransforms = false,
-  hasPythonTransforms = false,
   hasBasicTransformsAddOn = true,
   hasAdvancedTransformsAddOn = true,
   previousAddOns = [],
 }: SetupOpts = {}) {
   const settings = createMockSettings({
     "is-hosted?": isHosted,
-    "token-features": createMockTokenFeatures({
-      "transforms-basic": hasBasicTransforms,
-      "transforms-python": hasPythonTransforms,
-    }),
   });
 
   const storeInitialState = createMockState({
     settings: mockSettings({
       "is-hosted?": isHosted,
-      "token-features": createMockTokenFeatures({
-        "transforms-basic": hasBasicTransforms,
-        "transforms-python": hasPythonTransforms,
-      }),
     }),
     currentUser: createMockUser({ is_superuser: true }),
   });
@@ -93,47 +77,6 @@ describe("useTransformsBilling", () => {
 
       expect(result.current.basicTransformsAddOn).toBeUndefined();
       expect(result.current.advancedTransformsAddOn).toBeUndefined();
-    });
-  });
-
-  describe("token features", () => {
-    it("should return hasBasicTransforms=false when no transforms feature", async () => {
-      const { result } = setup({
-        hasBasicTransforms: false,
-        hasPythonTransforms: false,
-      });
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      expect(result.current.hasBasicTransforms).toBe(false);
-    });
-
-    it("should return hasBasicTransforms=true when transforms is enabled but not python", async () => {
-      const { result } = setup({
-        hasBasicTransforms: true,
-        hasPythonTransforms: false,
-      });
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      expect(result.current.hasBasicTransforms).toBe(true);
-    });
-
-    it("should return hasBasicTransforms=false when both transforms and python are enabled", async () => {
-      const { result } = setup({
-        hasBasicTransforms: true,
-        hasPythonTransforms: true,
-      });
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      expect(result.current.hasBasicTransforms).toBe(false);
     });
   });
 
