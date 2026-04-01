@@ -100,8 +100,8 @@
           (metabot.settings/metabot-quota-reached-message))))))
 
 (def ^:private ^:const cache-ttl-ms
-  "Cache TTL in milliseconds (5 minutes)."
-  (* 5 60 1000))
+  "Cache TTL in milliseconds."
+  (* 10 1000))
 
 (def ^:private check-instance-limit*
   (memoize/ttl
