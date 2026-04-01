@@ -713,6 +713,7 @@
            metabase.indexed-entities.init}
    :uses #{analytics
            api
+           app-db
            driver
            legacy-mbql
            lib
@@ -934,6 +935,7 @@
            metabase.notification.payload.core}
    :uses #{analytics
            api
+           app-db
            appearance
            auth-identity
            channel
@@ -1588,6 +1590,7 @@
            metabase.transforms.util}
    :uses #{analytics
            api
+           app-db
            channel
            database-routing
            driver
