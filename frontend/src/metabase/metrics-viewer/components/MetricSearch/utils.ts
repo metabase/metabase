@@ -509,26 +509,31 @@ export type PositionedToken = (
   | { type: "unknown"; text: string }
 ) & { from: number; to: number };
 
+function isDigit(ch: string | undefined): boolean {
+  return ch !== undefined && ch >= "0" && ch <= "9";
+}
+
+function skipDigits(text: string, index: number): number {
+  while (index < text.length && isDigit(text[index])) {
+    index++;
+  }
+  return index;
+}
+
 function consumeNumber(text: string, startIndex: number): number | null {
   let index = startIndex;
-  if (index >= text.length || text[index] < "0" || text[index] > "9") {
+
+  const startsWithDot = text[index] === "." && isDigit(text[index + 1]);
+  if (!startsWithDot && !isDigit(text[index])) {
     return null;
   }
-  while (index < text.length && text[index] >= "0" && text[index] <= "9") {
-    index++;
+
+  index = skipDigits(text, index);
+
+  if (text[index] === "." && isDigit(text[index + 1])) {
+    index = skipDigits(text, index + 1);
   }
-  if (
-    index < text.length &&
-    text[index] === "." &&
-    index + 1 < text.length &&
-    text[index + 1] >= "0" &&
-    text[index + 1] <= "9"
-  ) {
-    index++;
-    while (index < text.length && text[index] >= "0" && text[index] <= "9") {
-      index++;
-    }
-  }
+
   return index;
 }
 
@@ -609,7 +614,8 @@ export function parseFullTextWithPositions(
       continue;
     }
 
-    if (ch >= "0" && ch <= "9") {
+    const isNumberStart = isDigit(ch) || (ch === "." && isDigit(text[i + 1]));
+    if (isNumberStart) {
       const endIndex = consumeNumber(text, i)!;
       tokens.push({
         type: "constant",
@@ -656,7 +662,7 @@ export function parseFullTextWithPositions(
         if (
           EXPRESSION_DELIMITERS.has(char) ||
           char === " " ||
-          (char >= "0" && char <= "9")
+          isDigit(char)
         ) {
           break;
         }

@@ -358,6 +358,33 @@ describe("parseFullText — numeric literal parsing", () => {
     });
   });
 
+  it("parses a leading-dot decimal like .5", () => {
+    const result = parseFullText(".5 * Revenue", metricEntries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [k(0.5), op("*"), m("metric:1")],
+    });
+  });
+
+  it("parses a metric multiplied by a leading-dot decimal", () => {
+    const result = parseFullText("Revenue * .85", metricEntries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [m("metric:1"), op("*"), k(0.85)],
+    });
+  });
+
+  it("parses a negative leading-dot decimal", () => {
+    const result = parseFullText("-.5 * Revenue", metricEntries);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      type: "expression",
+      tokens: [k(-0.5), op("*"), m("metric:1")],
+    });
+  });
+
   it("does not parse a trailing dot as part of the number", () => {
     // "1." — trailing dot with no digit after it; "1" is the constant, "." is
     // dropped (unknown tokens are filtered out of committed data)
@@ -516,6 +543,34 @@ describe("parseFullText — negative numbers", () => {
     "Revenue * -0.85",
   ])("does not report validation errors for: %s", (text) => {
     expect(findInvalidRanges(text, metricEntries)).toEqual([]);
+  });
+
+  it("parses metric minus negative constant without spaces (Revenue--50)", () => {
+    const result = parseFullText("Revenue--50", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:Revenue - -50",
+        type: "expression",
+        name: "Revenue - -50",
+        tokens: [metric("metric:1"), op("-"), constant(-50)],
+      },
+    ]);
+  });
+
+  it("parses metric minus negative decimal without spaces (Revenue--0.5)", () => {
+    const result = parseFullText("Revenue--0.5", metricEntries);
+    expect(result).toEqual([
+      {
+        id: "expression:Revenue - -0.5",
+        type: "expression",
+        name: "Revenue - -0.5",
+        tokens: [metric("metric:1"), op("-"), constant(-0.5)],
+      },
+    ]);
+  });
+
+  it("does not report validation errors for Revenue--50", () => {
+    expect(findInvalidRanges("Revenue--50", metricEntries)).toEqual([]);
   });
 
   it("still treats minus as binary operator after a metric", () => {
