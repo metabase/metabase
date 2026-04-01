@@ -14,9 +14,6 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { useTransformsBilling } from "./useTransformsBilling";
 
-const BASIC_PRICE = 101;
-const ADVANCED_PRICE = 251;
-
 type SetupOpts = {
   isHosted?: boolean;
   hasBasicTransforms?: boolean;
@@ -60,8 +57,6 @@ function setup({
   setupBillingEndpoints({
     hasBasicTransformsAddOn,
     hasAdvancedTransformsAddOn,
-    transformsBasicPrice: BASIC_PRICE,
-    transformsAdvancedPrice: ADVANCED_PRICE,
     previousAddOns,
   });
 
@@ -85,7 +80,7 @@ describe("useTransformsBilling", () => {
       );
       expect(result.current.advancedTransformsAddOn).toBeDefined();
       expect(result.current.advancedTransformsAddOn?.product_type).toBe(
-        "transforms-advanced",
+        "transforms-advanced-metered",
       );
     });
 
@@ -222,9 +217,6 @@ describe("useTransformsBilling", () => {
       });
 
       expect(result.current.basicTransformsAddOn).toBeDefined();
-      expect(result.current.basicTransformsAddOn?.default_base_fee).toBe(
-        BASIC_PRICE,
-      );
       expect(result.current.advancedTransformsAddOn).toBeUndefined();
     });
 
@@ -241,9 +233,6 @@ describe("useTransformsBilling", () => {
 
       expect(result.current.basicTransformsAddOn).toBeUndefined();
       expect(result.current.advancedTransformsAddOn).toBeDefined();
-      expect(result.current.advancedTransformsAddOn?.default_base_fee).toBe(
-        ADVANCED_PRICE,
-      );
     });
   });
 });
