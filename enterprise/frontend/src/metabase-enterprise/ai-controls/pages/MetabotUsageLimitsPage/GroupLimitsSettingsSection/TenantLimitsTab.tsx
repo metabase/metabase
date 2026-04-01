@@ -1,8 +1,12 @@
+import { useDebouncedCallback } from "@mantine/hooks";
 import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
+import { type Dictionary, isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Alert, Box, Icon, Stack, Text, TextInput } from "metabase/ui";
+import { useUpdateAIControlsTenantLimitMutation } from "metabase-enterprise/api";
 import type {
   MetabotLimitPeriod,
   MetabotLimitType,
@@ -11,48 +15,70 @@ import type {
 } from "metabase-types/api";
 
 import S from "./GroupLimitsSettingsSection.module.css";
-import { getLimitPeriodLabel } from "./utils";
+import { SAVE_DEBOUNCE_MS, getLimitPeriodLabel } from "./utils";
 
 type SpecificTenantsTabProps = {
   error: unknown;
+  instanceLimit: number | null;
   isLoading: boolean;
   limitPeriod: MetabotLimitPeriod;
   limitType: MetabotLimitType;
-  onTenantLimitChange: (tenantId: number, maxUsage: number | null) => void;
   tenantLimits: MetabotTenantLimit[];
   tenants: Tenant[] | undefined;
 };
 
 export function TenantLimitsTab({
   error,
+  instanceLimit,
   isLoading,
   limitPeriod,
   limitType,
-  onTenantLimitChange,
   tenantLimits,
   tenants,
 }: SpecificTenantsTabProps) {
   const [search, setSearch] = useState("");
-  const [localLimits, setLocalLimits] = useState<Record<number, string>>({});
+  const [updateTenantLimit] = useUpdateAIControlsTenantLimitMutation();
+  const [localLimitsMap, setLocalLimitsMap] = useState<Dictionary<number>>({});
+  const limitsMap = useMemo(
+    () =>
+      (tenantLimits || []).reduce((map, limitObj) => {
+        return { ...map, [limitObj.tenant_id]: limitObj.max_usage };
+      }, {} as Dictionary<number>),
+    [tenantLimits],
+  );
+  const { sendErrorToast } = useMetadataToasts();
 
-  const tenantLimitsMap = useMemo(() => {
-    const map: Record<number, number | null> = {};
-    for (const tl of tenantLimits) {
-      map[tl.tenant_id] = tl.max_usage;
-    }
-    return map;
-  }, [tenantLimits]);
-
-  // Sync local state from API data
+  // Local state initialization
   useEffect(() => {
-    const newLimits: Record<number, string> = {};
-    for (const tl of tenantLimits) {
-      if (tl.max_usage != null) {
-        newLimits[tl.tenant_id] = String(tl.max_usage);
+    if (!isEmpty(localLimitsMap) || isEmpty(limitsMap)) {
+      return;
+    }
+
+    setLocalLimitsMap(limitsMap);
+  }, [limitsMap, localLimitsMap]);
+
+  const debouncedSaveTenantLimits = useDebouncedCallback(async () => {
+    for (const tenantId in localLimitsMap) {
+      if (limitsMap[tenantId] !== localLimitsMap[tenantId]) {
+        updateTenantLimit({
+          tenantId: Number(tenantId),
+          max_usage: localLimitsMap[tenantId],
+        })
+          .unwrap()
+          .catch(() => {
+            sendErrorToast(t`Failed to update a tenant limit`);
+          });
       }
     }
-    setLocalLimits(newLimits);
-  }, [tenantLimits]);
+  }, SAVE_DEBOUNCE_MS);
+
+  const handleChange = (tenantId: number, value: string) => {
+    setLocalLimitsMap((prev) => ({
+      ...prev,
+      [tenantId]: value ? Number(value) : null,
+    }));
+    debouncedSaveTenantLimits();
+  };
 
   const filteredTenants = useMemo(() => {
     if (!tenants) {
@@ -67,14 +93,11 @@ export function TenantLimitsTab({
     );
   }, [tenants, search]);
 
-  const handleChange = (tenantId: number, value: string) => {
-    setLocalLimits((prev) => ({ ...prev, [tenantId]: value }));
-    const maxUsage = value ? Number(value) : null;
-    onTenantLimitChange(tenantId, maxUsage);
-  };
   const noTenantsToShow = tenants?.length === 0 && !error && !isLoading;
   const { adjective: periodAdjective, i18nContext: periodI18nContext } =
     getLimitPeriodLabel(limitPeriod);
+  const placeholder =
+    instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
   return (
     <Stack gap="xl">
@@ -118,13 +141,8 @@ export function TenantLimitsTab({
                         <td className={S.BodyCell}>{tenant.name}</td>
                         <td className={S.BodyCell}>
                           <TextInput
-                            placeholder={t`Unlimited`}
-                            value={
-                              localLimits[tenant.id] ??
-                              (tenantLimitsMap[tenant.id] != null
-                                ? String(tenantLimitsMap[tenant.id])
-                                : "")
-                            }
+                            placeholder={placeholder}
+                            value={localLimitsMap?.[tenant.id] ?? ""}
                             onChange={(e) =>
                               handleChange(tenant.id, e.target.value)
                             }

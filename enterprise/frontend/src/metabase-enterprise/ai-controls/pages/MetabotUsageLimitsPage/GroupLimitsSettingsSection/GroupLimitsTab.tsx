@@ -1,9 +1,13 @@
+import { useDebouncedCallback } from "@mantine/hooks";
 import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
+import { type Dictionary, isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { capitalize } from "metabase/lib/formatting/strings";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Stack, Text, TextInput } from "metabase/ui";
+import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
 import type {
   GroupInfo,
   MetabotGroupLimit,
@@ -12,18 +16,17 @@ import type {
 } from "metabase-types/api";
 
 import S from "./GroupLimitsSettingsSection.module.css";
-import { getLimitPeriodLabel } from "./utils";
+import { SAVE_DEBOUNCE_MS, getLimitPeriodLabel } from "./utils";
 
 type GroupLimitsTabProps = {
-  variant: "regular-groups" | "tenant-groups";
-  groups: GroupInfo[] | undefined;
-  isLoading: boolean;
   error: unknown;
+  groupLimits: MetabotGroupLimit[];
+  groups: GroupInfo[] | undefined;
+  instanceLimit: number | null;
+  isLoading: boolean;
   limitPeriod: MetabotLimitPeriod;
   limitType: MetabotLimitType;
-  groupLimits: MetabotGroupLimit[];
-  instanceLimit: number | null;
-  onGroupLimitChange: (groupId: number, maxUsage: number | null) => void;
+  variant: "regular-groups" | "tenant-groups";
 };
 
 export function GroupLimitsTab({
@@ -35,34 +38,51 @@ export function GroupLimitsTab({
   limitType,
   groupLimits,
   instanceLimit,
-  onGroupLimitChange,
 }: GroupLimitsTabProps) {
-  const [localLimits, setLocalLimits] = useState<Record<number, string>>({});
+  const [updateGroupLimit] = useUpdateAIControlsGroupLimitMutation();
+  const [localLimitsMap, setLocalLimitsMap] = useState<Dictionary<number>>({});
+  const limitsMap = useMemo(
+    () =>
+      (groupLimits || []).reduce((map, limitObj) => {
+        return { ...map, [limitObj.group_id]: limitObj.max_usage };
+      }, {} as Dictionary<number>),
+    [groupLimits],
+  );
+  const { sendErrorToast } = useMetadataToasts();
 
-  const groupLimitsMap = useMemo(() => {
-    const map: Record<number, number> = {};
-    for (const gl of groupLimits) {
-      map[gl.group_id] = gl.max_usage;
-    }
-    return map;
-  }, [groupLimits]);
-
-  // Sync local state from API data
+  // Local state initialization
   useEffect(() => {
-    const newLimits: Record<number, string> = {};
-    for (const gl of groupLimits) {
-      newLimits[gl.group_id] = String(gl.max_usage);
+    if (!isEmpty(localLimitsMap) || isEmpty(limitsMap)) {
+      return;
     }
-    setLocalLimits(newLimits);
-  }, [groupLimits]);
+
+    setLocalLimitsMap(limitsMap);
+  }, [limitsMap, localLimitsMap]);
+
+  const debouncedSaveGroupLimits = useDebouncedCallback(async () => {
+    for (const groupId in localLimitsMap) {
+      if (limitsMap[groupId] !== localLimitsMap[groupId]) {
+        updateGroupLimit({
+          groupId: Number(groupId),
+          max_usage: localLimitsMap[groupId],
+        })
+          .unwrap()
+          .catch(() => {
+            sendErrorToast(t`Failed to update a group limit`);
+          });
+      }
+    }
+  }, SAVE_DEBOUNCE_MS);
 
   const placeholder =
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
   const handleChange = (groupId: number, value: string) => {
-    setLocalLimits((prev) => ({ ...prev, [groupId]: value }));
-    const maxUsage = value ? Number(value) : null;
-    onGroupLimitChange(groupId, maxUsage);
+    setLocalLimitsMap((prev) => ({
+      ...prev,
+      [groupId]: value ? Number(value) : null,
+    }));
+    debouncedSaveGroupLimits();
   };
 
   const {
@@ -102,12 +122,7 @@ export function GroupLimitsTab({
                     <td className={S.BodyCell}>
                       <TextInput
                         placeholder={placeholder}
-                        value={
-                          localLimits[group.id] ??
-                          (groupLimitsMap[group.id] != null
-                            ? String(groupLimitsMap[group.id])
-                            : "")
-                        }
+                        value={localLimitsMap?.[group.id] ?? ""}
                         onChange={(e) => handleChange(group.id, e.target.value)}
                         classNames={{ input: S.LimitInput }}
                         type="number"

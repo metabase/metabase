@@ -1,19 +1,15 @@
-import { useDebouncedCallback } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Tabs } from "metabase/ui";
 import {
   useGetAIControlsGroupLimitsQuery,
   useGetAIControlsInstanceLimitQuery,
   useGetAIControlsTenantLimitsQuery,
-  useUpdateAIControlsGroupLimitMutation,
-  useUpdateAIControlsTenantLimitMutation,
 } from "metabase-enterprise/api";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
@@ -21,8 +17,6 @@ import { GroupLimitsTab } from "./GroupLimitsTab";
 import { TenantLimitsTab } from "./TenantLimitsTab";
 
 type GroupLimitsTabValue = "user-groups" | "tenant-groups" | "specific-tenants";
-
-const SAVE_DEBOUNCE_MS = 500;
 
 export function GroupLimitsSettingsSection() {
   const isUsingTenants = useSetting("use-tenants");
@@ -32,7 +26,6 @@ export function GroupLimitsSettingsSection() {
     (useSetting("metabot-limit-unit") as MetabotLimitType) ?? "tokens";
   const [activeTab, setActiveTab] =
     useState<GroupLimitsTabValue>("user-groups");
-  const { sendErrorToast } = useMetadataToasts();
 
   // Groups data
   const {
@@ -67,32 +60,6 @@ export function GroupLimitsSettingsSection() {
 
   const instanceLimit = instanceLimitData?.max_usage ?? null;
 
-  // Mutations
-  const [updateGroupLimit] = useUpdateAIControlsGroupLimitMutation();
-  const [updateTenantLimit] = useUpdateAIControlsTenantLimitMutation();
-
-  const debouncedSaveGroupLimit = useDebouncedCallback(
-    async (groupId: number, maxUsage: number | null) => {
-      try {
-        await updateGroupLimit({ groupId, max_usage: maxUsage }).unwrap();
-      } catch {
-        sendErrorToast(t`Failed to update group limit`);
-      }
-    },
-    SAVE_DEBOUNCE_MS,
-  );
-
-  const debouncedSaveTenantLimit = useDebouncedCallback(
-    async (tenantId: number, maxUsage: number | null) => {
-      try {
-        await updateTenantLimit({ tenantId, max_usage: maxUsage }).unwrap();
-      } catch {
-        sendErrorToast(t`Failed to update tenant limit`);
-      }
-    },
-    SAVE_DEBOUNCE_MS,
-  );
-
   if (!isUsingTenants) {
     return (
       <SettingsSection title={t`Group limits`}>
@@ -104,7 +71,6 @@ export function GroupLimitsSettingsSection() {
           isLoading={isLoadingUserGroups}
           limitPeriod={limitPeriod}
           limitType={limitType}
-          onGroupLimitChange={debouncedSaveGroupLimit}
           variant="regular-groups"
         />
       </SettingsSection>
@@ -132,7 +98,6 @@ export function GroupLimitsSettingsSection() {
             isLoading={isLoadingUserGroups}
             limitPeriod={limitPeriod}
             limitType={limitType}
-            onGroupLimitChange={debouncedSaveGroupLimit}
             variant="regular-groups"
           />
         </Tabs.Panel>
@@ -146,7 +111,6 @@ export function GroupLimitsSettingsSection() {
             isLoading={isLoadingTenantGroups}
             limitPeriod={limitPeriod}
             limitType={limitType}
-            onGroupLimitChange={debouncedSaveGroupLimit}
             variant="tenant-groups"
           />
         </Tabs.Panel>
@@ -154,10 +118,10 @@ export function GroupLimitsSettingsSection() {
         <Tabs.Panel value="specific-tenants">
           <TenantLimitsTab
             error={tenantsError}
+            instanceLimit={instanceLimit}
             isLoading={isLoadingTenants}
             limitPeriod={limitPeriod}
             limitType={limitType}
-            onTenantLimitChange={debouncedSaveTenantLimit}
             tenantLimits={tenantLimits ?? []}
             tenants={tenants}
           />

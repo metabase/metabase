@@ -1,6 +1,6 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useEffect, useMemo, useState } from "react";
-import { c, t } from "ttag";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
@@ -19,6 +19,7 @@ import {
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import S from "./GeneralLimitsSettingsSection.module.css";
+import { getLimitPeriodLabel } from "./GroupLimitsSettingsSection/utils";
 
 type LimitTypeOption = SegmentedControlItem<MetabotLimitType>;
 type PeriodOption = SegmentedControlItem<MetabotLimitPeriod>;
@@ -98,13 +99,6 @@ export function GeneralLimitsSettingsSection() {
     ];
   }, []);
 
-  const limitLabel: string = useMemo(() => {
-    const selectedOption = resetPeriodOptions.find(
-      (option) => option.value === limitPeriod,
-    );
-    return String(selectedOption?.label || t`Monthly`);
-  }, [limitPeriod, resetPeriodOptions]);
-
   const handleLimitTypeChange = (value: MetabotLimitType) => {
     setLimitType(value);
     updateLimitTypeSetting({
@@ -123,19 +117,20 @@ export function GeneralLimitsSettingsSection() {
     });
   };
 
-  const handleInstanceLimitChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleInstanceLimitChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInstanceLimitInput(value);
     debouncedSaveInstanceLimit(value);
   };
 
-  const handleQuotaMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQuotaMessageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuotaMessage(value);
     debouncedSaveQuotaMessage(value);
   };
+
+  const { i18nContext, adjective: periodAdjective } =
+    getLimitPeriodLabel(limitPeriod);
 
   return (
     <SettingsSection title={t`Settings and general limits`}>
@@ -167,14 +162,10 @@ export function GeneralLimitsSettingsSection() {
         <TextInput
           label={
             limitType === "tokens"
-              ? c(
-                  "{0} indicates the limit reset period, e.g., daily, weekly, monthly",
-                )
-                  .t`Total ${limitLabel.toLowerCase()} instance limit (millions of tokens)`
-              : c(
-                  "{0} indicates the limit reset period, e.g., daily, weekly, monthly",
-                )
-                  .t`Total ${limitLabel.toLowerCase()} instance limit (conversations)`
+              ? i18nContext.adjective
+                  .t`Total ${periodAdjective.toLowerCase()} instance limit (millions of tokens)`
+              : i18nContext.adjective
+                  .t`Total ${periodAdjective.toLowerCase()} instance limit (conversations)`
           }
           description={t`This is the maximum amount all users should be able to use in total.`}
           placeholder={t`Unlimited`}
@@ -189,10 +180,8 @@ export function GeneralLimitsSettingsSection() {
         />
         <TextInput
           label={t`Quota-reached message`}
-          description={c(
-            "{0} indicates the limit reset period, e.g., daily, weekly, monthly",
-          )
-            .t`The message shown to users when they reach their ${limitLabel.toLowerCase()} quota.`}
+          description={i18nContext.adjective
+            .t`The message shown to users when they reach their ${periodAdjective.toLowerCase()} quota.`}
           placeholder={t`You've reached your limit for the month.`}
           classNames={{
             input: S.QuotaMessageInput,
