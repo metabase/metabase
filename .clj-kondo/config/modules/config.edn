@@ -1109,6 +1109,7 @@
            driver
            lib
            lib-be
+           metabot
            models
            request
            settings

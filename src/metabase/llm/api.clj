@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -99,7 +100,7 @@
     (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))
   (let [provider (some-> (metabot.settings/llm-metabot-provider)
-                         (clojure.string/split #"/" 2)
+                         (str/split #"/" 2)
                          first)]
     (metabot.self/list-models provider)))
 

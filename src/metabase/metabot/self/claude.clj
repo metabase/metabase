@@ -6,6 +6,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]]))
@@ -166,9 +167,7 @@
        merge-consecutive
        vec))
 
-;;; ──────────────────────────────────────────────────────────────────
 ;;; Tool definition format
-;;; ──────────────────────────────────────────────────────────────────
 
 (defn- tool->claude
   "Convert a tool definition map to Claude API format.
@@ -184,6 +183,17 @@
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
+(defn- anthropic-errors [res]
+  (case (long (:status res 0))
+    401 (tru "Anthropic API key expired or invalid")
+    403 (tru "Anthropic API key has insufficient permissions")
+    404 (tru "Anthropic API endpoint is unavailable or the model was not found")
+    413 (tru "Anthropic API rejected our request because it was too large")
+    429 (tru "Anthropic API has rate limited us")
+    500 (tru "Anthropic API is not working but not saying why")
+    529 (tru "Anthropic API is overloaded and is asking us to wait")
+    (tru "Unhandled error accessing Anthropic API")))
+
 (defn- list-models*
   [auth]
   (try
@@ -196,18 +206,7 @@
           models (reverse (sort-by :created_at (:data body)))]
       {:models (map #(select-keys % [:id :display_name]) models)})
     (catch Exception e
-      (if-let [res (some-> (ex-data e) json/decode-body)]
-        (let [status (:status res)
-              msg    (case (int status)
-                       401 "Anthropic API key expired or invalid"
-                       403 "Anthropic API key has not enough permissions"
-                       404 "Anthropic API is telling us we cannot access this URL anymore?"
-                       429 "Anthropic API has rate limited us"
-                       500 "Anthropic API is not working but not saying why"
-                       529 "Anthropic API is overloaded and is asking us to wait"
-                       "Unhandled error accessing Anthropic API")]
-          (throw (ex-info msg (assoc res :api-error true) e)))
-        (throw e)))))
+      (core/rethrow-api-error! "anthropic" anthropic-errors e))))
 
 (defn list-models
   "List available Anthropic models using the configured API key."
@@ -217,7 +216,7 @@
                     :headers {"x-api-key" api-key}})))
   ([api-key]
    (when (str/blank? api-key)
-     (throw (ex-info "No Anthropic API key is set" {:api-error true})))
+     (throw (core/missing-api-key-ex "Anthropic")))
    (list-models* {:url     (llm/llm-anthropic-api-base-url)
                   :headers {"x-api-key" api-key}})))
 
@@ -261,20 +260,7 @@
                                                 :body    (json/encode req)})]
           (core/sse-reducible (:body res)))
         (catch Exception e
-          (if-let [res (some-> (ex-data e)
-                               json/decode-body)]
-            (let [status (:status res)
-                  msg    (case (int status)
-                           401 "Anthropic API key expired or invalid"
-                           403 "Anthropic API key has not enough permissions"
-                           404 "Anthropic API is telling us we cannot access this URL anymore?"
-                           413 "Anthropic API is not happy with our request being too big"
-                           429 "Anthropic API has rate limited us"
-                           500 "Anthropic API is not working but not saying why"
-                           529 "Anthropic API is overloaded and is asking us to wait"
-                           "Unhandled error accessing Anthropic API")]
-              (throw (ex-info msg (assoc res :api-error true) e)))
-            (throw e)))))))
+          (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"

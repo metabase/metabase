@@ -1,10 +1,14 @@
 (ns metabase.metabot.self.openai-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.test-util :as test-util]))
+   [metabase.metabot.test-util :as test-util]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -125,3 +129,34 @@
               :output  #"Error:.*failed"}]
             (openai/parts->openai-input
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+
+(deftest openai-auth-preferences
+  (mt/with-temporary-setting-values [premium-features/premium-embedding-token "proxy-token"
+                                     llm.settings/llm-openai-api-key          "sk-ant-byok"
+                                     llm.settings/llm-proxy-base-url          "https://proxy.example"]
+    (testing "Prefers BYOK over ai proxy"
+      (with-redefs [self.core/sse-reducible identity
+                    http/request            (fn [req] {:body req})]
+        (is (=? {:method  :post
+                 :url     "https://api.openai.com/v1/responses"
+                 :headers {"Authorization" "Bearer sk-ant-byok"}
+                 :body    string?}
+                (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
+
+    (testing "Uses ai proxy when BYOK is missing"
+      (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+        (with-redefs [self.core/sse-reducible identity
+                      http/request            (fn [req] {:body req})]
+          (is (=? {:method  :post
+                   :url     "https://proxy.example/v1/responses"
+                   :headers {"x-metabase-instance-token" "proxy-token"}
+                   :body    string?}
+                  (openai/openai-raw {:input [{:role :user :content "hi"}]}))))))
+
+    (testing "Throws an error if nothing is defined"
+      (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil
+                                         llm.settings/llm-proxy-base-url    nil]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"No OpenAI API key is set"
+             (openai/openai-raw {:input [{:role :user :content "hi"}]})))))))
