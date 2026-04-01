@@ -129,7 +129,7 @@
 (defn- select-plugin-for-read
   "Select the fields needed for git read operations."
   [plugin-id]
-  (t2/select-one [:model/CustomVizPlugin :id :repo_url :access_token :pinned_version :resolved_commit]
+  (t2/select-one [:model/CustomVizPlugin :id :repo_url :access_token :pinned_version :resolved_commit :manifest]
                  :id plugin-id))
 
 (defn get-bundle
@@ -143,15 +143,13 @@
   "Check whether an asset path is allowed by the plugin's manifest.
    Parses the manifest's declared assets, expands globs against available files in
    the repo, and returns true if asset-path is in the expanded set."
-  [snapshot ^String asset-path]
+  [{:keys [manifest]} snapshot ^String asset-path]
   (try
-    (let [manifest-str (rs.git/read-file snapshot (manifest/manifest-path))
-          parsed       (when manifest-str (manifest/parse-manifest manifest-str))]
-      (when parsed
-        (let [declared  (manifest/asset-paths parsed)
-              available (repo-asset-paths snapshot)
-              allowed   (set (manifest/expand-globs declared available))]
-          (contains? allowed asset-path))))
+    (when-let [parsed (some-> manifest manifest/parse-manifest)]
+      (let [declared  (manifest/asset-paths parsed)
+            available (repo-asset-paths snapshot)
+            allowed   (set (manifest/expand-globs declared available))]
+        (contains? allowed asset-path)))
     (catch Exception e
       (log/warnf "Failed to check asset whitelist for %s: %s" asset-path (ex-message e))
       false)))
@@ -164,7 +162,7 @@
   (when-let [{:keys [resolved_commit] :as plugin} (select-plugin-for-read plugin-id)]
     (when resolved_commit
       (let [snapshot (plugin-snapshot plugin)]
-        (when (asset-whitelisted? snapshot asset-path)
+        (when (asset-whitelisted? plugin snapshot asset-path)
           (read-asset-from-git snapshot resolved_commit asset-path))))))
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
@@ -216,9 +214,7 @@
   [id dev-bundle-url]
   (let [url (when (seq dev-bundle-url) dev-bundle-url)]
     (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})
-    (if url
-      (swap! dev-bundle-urls assoc id url)
-      (swap! dev-bundle-urls assoc id ::none))))
+    (swap! dev-bundle-urls assoc id (or url ::none))))
 
 (defn resolve-dev-bundle
   "Resolve the dev bundle URL for a plugin. Checks in-memory cache first, falls back to DB."
@@ -227,11 +223,8 @@
     (if (some? cached)
       (when-not (= cached ::none) cached)
       (let [url (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id)]
-        (if (seq url)
-          (do (swap! dev-bundle-urls assoc id url)
-              url)
-          (do (swap! dev-bundle-urls assoc id ::none)
-              nil))))))
+        (swap! dev-bundle-urls assoc id (if (seq url) url ::none))
+        (when (seq url) url)))))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 
