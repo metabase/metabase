@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Requires: BASE_REF, CURRENT_VERSION (for master)
+# Optional: PR_LABELS (comma-separated, for backport handling)
 
 if [[ -z "${BASE_REF:-}" ]]; then
   echo "ERROR: BASE_REF is not set." >&2
@@ -10,23 +11,36 @@ fi
 
 echo "BASE_REF: ${BASE_REF}"
 
-# Determine expected version from target branch
+labels="${PR_LABELS:-}"
+
+# Determine the expected version and constraint
 if [[ "$BASE_REF" =~ ^release-x\.([0-9]+)\.x$ ]]; then
-  expected_version="${BASH_REMATCH[1]}"
+  version="${BASH_REMATCH[1]}"
+  constraint="<="
 elif [[ "$BASE_REF" == "master" ]]; then
   if [[ -z "${CURRENT_VERSION:-}" ]]; then
     echo "ERROR: CURRENT_VERSION is not set." >&2
     exit 1
   fi
   echo "CURRENT_VERSION: ${CURRENT_VERSION}"
-  expected_version=$((CURRENT_VERSION + 1))
+
+  if [[ ",$labels," == *",triple-backport,"* ]]; then
+    version=$((CURRENT_VERSION - 2))
+  elif [[ ",$labels," == *",double-backport,"* ]]; then
+    version=$((CURRENT_VERSION - 1))
+  elif [[ ",$labels," == *",backport,"* ]]; then
+    version=$((CURRENT_VERSION))
+  else
+    version=$((CURRENT_VERSION + 1))
+  fi
+  constraint="="
 else
   echo "Target branch '${BASE_REF}' is not master or a release branch — skipping."
   exit 0
 fi
 
-expected_dir=$(printf "%03d" "$expected_version")
-echo "Expected directory: ${expected_dir}/"
+expected_dir=$(printf "%03d" "$version")
+echo "Expected directory: ${constraint} ${expected_dir}"
 echo ""
 
 # Check that new migration files are in the correct directory
@@ -34,8 +48,12 @@ errors=0
 while IFS= read -r file; do
   [[ -z "$file" ]] && continue
   dir=$(echo "$file" | sed -n 's|resources/migrations/\([0-9]*\)/.*|\1|p')
-  if [[ -n "$dir" && "$dir" != "$expected_dir" ]]; then
-    echo "ERROR: ${file} is in ${dir}/ but expected ${expected_dir}/" >&2
+  [[ -z "$dir" ]] && continue
+  dir_version=$((10#$dir))
+
+  if [[ "$constraint" == "=" && "$dir_version" -ne "$version" ]] ||
+     [[ "$constraint" == "<=" && "$dir_version" -gt "$version" ]]; then
+    echo "ERROR: ${file} is in ${dir} but expected ${constraint} ${expected_dir}" >&2
     errors=$((errors + 1))
   fi
 done < <(git diff --name-only --diff-filter=A "origin/${BASE_REF}..HEAD" -- 'resources/migrations/**/*.yaml')
@@ -43,7 +61,6 @@ done < <(git diff --name-only --diff-filter=A "origin/${BASE_REF}..HEAD" -- 'res
 if [[ "$errors" -gt 0 ]]; then
   echo "" >&2
   echo "${errors} error(s) found." >&2
-  echo "PRs targeting ${BASE_REF} should add migrations to ${expected_dir}/." >&2
   exit 1
 fi
 

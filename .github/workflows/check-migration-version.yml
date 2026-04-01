@@ -23,4 +23,5 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: bin/check-migration-versions
