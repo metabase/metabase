@@ -132,9 +132,10 @@ export function useCustomVizPlugins({
 }
 
 /**
- * Dev mode: listen for Server-Sent Events from the custom viz dev server.
- * The SSE endpoint is at /__sse on the same origin as dev_bundle_url.
- * CSP must allow the dev server origin via MB_CUSTOM_VIZ_DEV_SERVER_URL env var.
+ * Dev mode: listen for Server-Sent Events proxied through the Metabase backend.
+ * The SSE proxy endpoint is at /api/ee/custom-viz-plugin/:id/dev-sse, which
+ * forwards events from the dev server's /__sse endpoint. This avoids the need
+ * for a CSP exception for the dev server origin.
  */
 function useCustomVizDevReload(
   display: string | undefined,
@@ -153,8 +154,7 @@ function useCustomVizDevReload(
       return;
     }
 
-    const devUrl = new URL(plugin.dev_bundle_url);
-    const sseUrl = `${devUrl.origin}/__sse`;
+    const sseUrl = `/api/ee/custom-viz-plugin/${plugin.id}/dev-sse`;
 
     const eventSource = new EventSource(sseUrl);
 
@@ -347,7 +347,7 @@ export async function loadCustomVizPlugin(
     const identifier = `custom:${plugin.identifier}` as VisualizationDisplay;
 
     // Attach the required static properties onto the component function
-    const Component = ExplicitSize<VisualizationProps>()(
+    const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
       vizDef.VisualizationComponent as ComponentType<
         VisualizationProps & { width: number | null; height: number | null }
       >,

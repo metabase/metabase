@@ -122,7 +122,6 @@
 
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
-(def ^:private custom-viz-dev-server-url (env/env :mb-custom-viz-dev-server-url))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
@@ -182,8 +181,6 @@
                                  ;; Snowplow analytics
                                  (when (analytics/anon-tracking-enabled)
                                    (setting/get-value-of-type :string :snowplow-url))
-                                 ;; Custom viz dev server (set via MB_CUSTOM_VIZ_DEV_SERVER_URL)
-                                 custom-viz-dev-server-url
                                  ;; Webpack dev server
                                  (when config/is-dev?
                                    (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))

@@ -1,6 +1,6 @@
 import { resolve } from "path";
 import { createServer } from "http";
-import { watch, cpSync, existsSync } from "fs";
+import { watch, cpSync, existsSync, readFileSync } from "fs";
 import { defineConfig } from "vite";
 
 /**
@@ -48,6 +48,8 @@ function metabaseVizExternals() {
 
 const DEV_PORT = 5174;
 
+const landingPageHtml = readFileSync(resolve(__dirname, "dev-server-landing.html"), "utf-8");
+
 /**
  * Vite plugin that starts a dev server serving both static files from dist/
  * and an SSE endpoint at /__sse for hot-reload notifications.
@@ -83,6 +85,13 @@ function metabaseDevServer() {
           return;
         }
 
+        // Landing page with sync instructions
+        if (url === "/") {
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(landingPageHtml);
+          return;
+        }
+
         // CORS headers for all static responses
         res.setHeader("Access-Control-Allow-Origin", "*");
 
@@ -90,7 +99,7 @@ function metabaseDevServer() {
         const { readFile, stat } = require("fs");
         const { join, extname } = require("path");
 
-        const filePath = url === "/" ? join(distDir, "index.html") : join(distDir, url);
+        const filePath = join(distDir, url);
 
         // Prevent directory traversal
         if (!filePath.startsWith(distDir)) {
@@ -134,6 +143,7 @@ function metabaseDevServer() {
         console.log(
           `[custom-viz] Dev server listening on http://localhost:${DEV_PORT}`,
         );
+        console.log(`[custom-viz] Open http://localhost:${DEV_PORT} for setup instructions`);
       });
 
       // Watch public/assets/ for changes — copy to dist/assets/ and notify

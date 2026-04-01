@@ -1,15 +1,21 @@
 (ns metabase-enterprise.custom-viz-plugin.api
   "/api/ee/custom-viz-plugin endpoints."
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.server.streaming-response :as sr]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io BufferedReader InputStream InputStreamReader OutputStream)
+   (java.net HttpURLConnection URI)))
 
 (set! *warn-on-reflection* true)
 
@@ -262,6 +268,41 @@
   (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
+
+(api.macros/defendpoint :get "/:id/dev-sse" :- :any
+  "Proxy Server-Sent Events from the plugin's dev server.
+   Connects to `{dev_bundle_url}/__sse` and forwards events to the browser.
+   This avoids the need for a CSP exception for the dev server origin."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [dev-url (cache/resolve-dev-bundle id)]
+    (when-not dev-url
+      (throw (ex-info "No dev server URL configured" {:status-code 404})))
+    (let [sse-url (str (cache/dev-base-url dev-url) "__sse")]
+      (sr/streaming-response {:content-type "text/event-stream"
+                              :status       200
+                              :headers      {"Cache-Control"      "no-cache"
+                                             "Connection"         "keep-alive"
+                                             "X-Accel-Buffering"  "no"}}
+        [^OutputStream os canceled-chan]
+        (let [uri  (URI. sse-url)
+              conn ^HttpURLConnection (.openConnection (.toURL uri))]
+          (.setRequestMethod conn "GET")
+          (.setRequestProperty conn "Accept" "text/event-stream")
+          (.setConnectTimeout conn 5000)
+          (.setReadTimeout conn 0)
+          (try
+            (with-open [^InputStream is (.getInputStream conn)
+                        rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
+              (loop []
+                (when-not (a/poll! canceled-chan)
+                  (when-let [line (.readLine rdr)]
+                    (.write os (.getBytes (str line "\n") "UTF-8"))
+                    (.flush os)
+                    (recur)))))
+            (catch Exception e
+              (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e)))
+            (finally
+              (.disconnect conn))))))))
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the bundle from the git repository."

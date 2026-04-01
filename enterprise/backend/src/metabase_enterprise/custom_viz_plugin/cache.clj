@@ -168,7 +168,7 @@
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
-(defn- dev-base-url
+(defn dev-base-url
   "Ensure the base URL ends with a slash for proper path joining."
   ^String [^String url]
   (if (str/ends-with? url "/") url (str url "/")))

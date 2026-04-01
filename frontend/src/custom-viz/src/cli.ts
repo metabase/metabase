@@ -91,8 +91,19 @@ program
     console.log("Next steps:");
     console.log(`  cd ${name}`);
     console.log("  npm install");
-    console.log("  npm run dev      # Watch mode");
+    console.log("  npm run dev      # Start dev server with hot-reload");
     console.log("  npm run build    # Production build");
+    console.log();
+    console.log("Syncing with a Metabase instance:");
+    console.log(
+      "  1. Register or select your plugin in Metabase Admin → Custom Visualizations",
+    );
+    console.log(
+      `  2. Set the dev server URL to http://localhost:5174 on the plugin`,
+    );
+    console.log(
+      "  3. Changes will hot-reload automatically in your Metabase instance",
+    );
   });
 
 program
