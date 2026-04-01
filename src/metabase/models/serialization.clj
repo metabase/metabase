@@ -1162,7 +1162,7 @@
         schema (case tag
                  :field     [:multi
                              {:dispatch #(and (vector? %)
-                                              ((some-fn map? nil?) (second %)))}
+                                              (map? (second %)))}
                              [true  :mbql.clause/field]
                              [false ::mbql.s/field]] ; legacy MBQL clause
                  :dimension ::lib.schema.parameter/dimension
@@ -1203,9 +1203,9 @@
        ::mb.viz/param-mapping-source (update m k *export-field-fk*)
        :segment                      (update m k *export-fk* :model/Segment)
        :snippet-id                   (update m k *export-fk* :model/NativeQuerySnippet)
-       :lib/uuid                     (if (contains? *required-lib-uuids-for-export* v)
-                                       m
-                                       (not-empty (dissoc m :lib/uuid)))
+       :lib/uuid                     (cond-> m
+                                       (not (contains? *required-lib-uuids-for-export* v))
+                                       (dissoc :lib/uuid))
        #_else                        (update m k export-mbql)))
    m
    m))
@@ -1300,7 +1300,7 @@
 (defn- import-mbql-update-refs
   [entity]
   (lib.util.match/replace-lite entity
-    [#{:field "field"} (opts :guard (some-fn map? nil?)) (fully-qualified-name :guard vector?)]
+    [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (import-mbql-map opts) (*import-field-fk* fully-qualified-name)]
 
     ;; legacy field refs, still used in parameters and result metadata `field_ref`
@@ -1336,9 +1336,14 @@
     (import-mbql-map m)))
 
 (defn- normalize-imported [x]
-  (if (mbql-ref? x)
-    (normalize-mbql-ref x)
-    (lib/normalize x)))
+  (when x
+    (try
+      (if (mbql-ref? x)
+        (normalize-mbql-ref x)
+        (lib/normalize x))
+      (catch Throwable e
+        (log/warn e "Error normalizing imported MBQL")
+        x))))
 
 (defn- import-mbql*
   [x]
@@ -1357,14 +1362,14 @@
 
 (defn- mbql-deps-vector [entity]
   (match entity
-    [:field     (opts :guard (some-fn map? nil?)) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
-    ["field"    (opts :guard (some-fn map? nil?)) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
-    [:metric    (opts :guard (some-fn map? nil?)) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
-    ["metric"   (opts :guard (some-fn map? nil?)) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
-    [:segment   (opts :guard (some-fn map? nil?)) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
-    ["segment"  (opts :guard (some-fn map? nil?)) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
-    [:measure   (opts :guard (some-fn map? nil?)) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
-    ["measure"  (opts :guard (some-fn map? nil?)) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
+    [:field     (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
+    ["field"    (opts :guard map?) (id :guard vector?)]      (into #{(field->path id)}            (mbql-deps-map opts))
+    [:metric    (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
+    ["metric"   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Card" :id id}]}    (mbql-deps-map opts))
+    [:segment   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
+    ["segment"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Segment" :id id}]} (mbql-deps-map opts))
+    [:measure   (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
+    ["measure"  (opts :guard map?) (id :guard portable-id?)] (into #{[{:model "Measure" :id id}]} (mbql-deps-map opts))
     ;; legacy (MBQL 4) refs
     [:field     (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
     ["field"    (id :guard vector?) opts] (into #{(field->path id)} (mbql-deps-map opts))
@@ -1430,12 +1435,12 @@
        (map import-mbql)
        (map #(m/update-existing % :card_id *import-fk* 'Card))))
 
-(defn export-parameters
+(mu/defn export-parameters
   "Given the :parameter field of a `Card` or `Dashboard`, as a vector of maps, converts
   it to a portable form with the CardIds/FieldIds replaced with `[db schema table field]` references.
   Parameters are sorted by `:id` for stable serialization output. A `:position` field is added
   to preserve display order through the sort."
-  [parameters]
+  [parameters :- [:maybe [:sequential :map]]]
   (->> parameters
        (map-indexed (fn [i p] (assoc p :position i)))
        (sort-by :id)
@@ -1668,7 +1673,7 @@
 
 (defn- import-visualizations [entity]
   (lib.util.match/replace-lite entity
-    [#{:field "field"} (opts :guard (some-fn map? nil?)) (fully-qualified-name :guard vector?)]
+    [#{:field "field"} (opts :guard map?) (fully-qualified-name :guard vector?)]
     [:field (import-visualizations opts) (*import-field-fk* fully-qualified-name)]
 
     ;; legacy (MBQL 4) field refs

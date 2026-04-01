@@ -7,12 +7,12 @@
 
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test
   (binding [serdes/*export-field-fk* (constantly ::field-id)]
-    (is (= [:field nil :metabase.models.serialization-test/field-id]
+    (is (= [:field {} :metabase.models.serialization-test/field-id]
            (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1])))
     (binding [serdes/*required-lib-uuids-for-export* #{"00000000-0000-0000-0000-000000000001"}]
       (is (= [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} :metabase.models.serialization-test/field-id]
              (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1])))
-      (is (= [:field nil :metabase.models.serialization-test/field-id]
+      (is (= [:field {} :metabase.models.serialization-test/field-id]
              (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1]))))))
 
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test-2
@@ -31,14 +31,14 @@
               :stages   [{:lib/type     :mbql.stage/mbql
                           :source-table ["DATABASE" "SCHEMA" "TABLE"]
                           :filters      [[:=
-                                          nil
+                                          {}
                                           [:field
                                            {:effective-type :type/BigInteger, :base-type :type/BigInteger}
                                            ["DATABASE" "SCHEMA" "TABLE" "FIELD"]]
                                           1]]
                           :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
                           :order-by     [[:asc
-                                          nil
+                                          {}
                                           [:aggregation
                                            {:base-type       :type/Integer
                                             :effective-type  :type/Integer
@@ -53,14 +53,14 @@
                :stages   [{:lib/type     "mbql.stage/mbql"
                            :source-table ["DATABASE" "SCHEMA" "TABLE"]
                            :filters      [["="
-                                           nil
+                                           {}
                                            ["field"
                                             {:effective-type "type/BigInteger", :base-type "type/BigInteger"}
                                             ["DATABASE" "SCHEMA" "TABLE" "FIELD"]]
                                            1]]
                            :aggregation  [["count" {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
                            :order-by     [["asc"
-                                           nil
+                                           {}
                                            [:aggregation {:base-type       "type/Integer"
                                                           :effective-type  "type/Integer"
                                                           :lib/source-name "count"}
@@ -94,7 +94,7 @@
   (binding [serdes/*import-field-fk* (constantly 3)]
     (are [x expected] (=? expected
                           (serdes/import-mbql x))
-      ["field" nil ["DB" "SCHEMA" "TABLE" "FIELD"]]
+      ["field" {} ["DB" "SCHEMA" "TABLE" "FIELD"]]
       [:field {:lib/uuid string?} 3]
 
       ["dimension" ["field" ["DB" "SCHEMA" "TABLE" "FIELD"] {:source-field ["DB" "SCHEMA" "TABLE" "FIELD2"]}]]
@@ -124,3 +124,21 @@
                                         ["my-db" nil "orders" "invoice"]
                                         {:source-field ["my-db" nil "orders" "subtotal"]}]]
                            :id        "[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"}}}}}}})))))
+
+(deftest ^:parallel export-parameters-test
+  (binding [serdes/*export-fk*       (fn [id model]
+                                       (format "%s___%d" (name model) id))
+            serdes/*export-field-fk* (constantly ["DATABASE" "SCHEMA" "TABLE" "FIELD"])]
+    (is (= [{:id                   "abc"
+             :name                 "CATEGORY"
+             :position             0
+             :type                 :category
+             :values_source_config {:card_id     "Card___1"
+                                    :value_field [:field ["DATABASE" "SCHEMA" "TABLE" "FIELD"] nil]}
+             :values_source_type   :card}]
+           (serdes/export-parameters [{:id                   "abc"
+                                       :type                 :category
+                                       :name                 "CATEGORY"
+                                       :values_source_type   :card
+                                       :values_source_config {:card_id 1, :value_field [:field 53 nil]}
+                                       :position             0}])))))
