@@ -1,14 +1,12 @@
-import type { ReleaseFlag } from "metabase-types/api";
+export type ReleaseFlag = "joke-of-the-day";
 
-export const setReleaseFlags = (flags: Record<ReleaseFlag, boolean>) => {
-  window.MetabaseReleaseFlags = {
-    ...(window.MetabaseReleaseFlags ?? {}),
-    ...flags,
-  };
-};
+export type ReleaseFlagMap = Record<ReleaseFlag, boolean>;
+
+const MetabaseReleaseFlags: ReleaseFlagMap =
+  (process.env.RELEASE_FLAGS as unknown as ReleaseFlagMap) ?? {};
 
 export const hasReleaseFlag = (flag: ReleaseFlag): boolean => {
-  return !!window?.MetabaseReleaseFlags?.[flag];
+  return MetabaseReleaseFlags?.[flag];
 };
 
 // hang this on the window so we can call it in clojureScript

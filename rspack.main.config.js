@@ -1,6 +1,8 @@
 // @ts-check
 /* eslint-env node */
 
+/* eslint-disable depend/ban-dependencies -- it is prohibitively difficult to load the env file for all scripts that call rspack */
+require("dotenv").config();
 const fs = require("fs");
 
 const rspack = require("@rspack/core");
@@ -93,6 +95,18 @@ class OnScriptError {
     });
   }
 }
+
+/** @type {Record<string, boolean>} */
+const initialFlags = {};
+const ReleaseFlags = Object.entries(process.env)
+  .filter(([key]) => key.startsWith("RF_"))
+  .reduce((flags /** @type Record<string, boolean> **/, [key, value]) => {
+    const flagName = key.slice(3).toLowerCase().replace(/_/g, "-");
+    flags[flagName] = value === "true";
+    return flags;
+  }, initialFlags);
+
+console.log({ReleaseFlags, processEnv: process.env});
 
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
@@ -296,6 +310,9 @@ const config = {
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
+    }),
+    new rspack.DefinePlugin({
+      "process.env.RELEASE_FLAGS": JSON.stringify(ReleaseFlags),
     }),
   ],
 };

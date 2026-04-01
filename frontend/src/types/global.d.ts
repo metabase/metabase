@@ -1,8 +1,7 @@
-import type { ReleaseFlag } from "metabase-types/api";
+import type { ReleaseFlag } from "metabase/lib/release-flags";
 declare global {
   interface Window {
     MetabaseBootstrap: any;
-    MetabaseReleaseFlags?: Record<ReleaseFlag, boolean>;
     hasReleaseFlag?: (flag: ReleaseFlag) => boolean;
     MetabaseRoot?: string;
     MetabaseNonce?: string;
