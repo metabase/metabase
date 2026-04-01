@@ -7,7 +7,7 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import type { NotificationConfig } from "../../hooks/use-notification-config";
 
-import { NotificationChannelConfigModal } from "./NotificationChannelConfig";
+import { NotificationChannelConfigModal } from "./NotificationChannelConfigModal";
 
 const DEFAULT_CONFIG: NotificationConfig = {
   email: {
