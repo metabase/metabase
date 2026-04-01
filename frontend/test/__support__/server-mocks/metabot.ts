@@ -1,6 +1,7 @@
 import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
+  MetabotGroupPermission,
   MetabotId,
   MetabotInfo,
   MetabotSettingsResponse,
@@ -148,6 +149,34 @@ export function setupUpdateMetabotSettingsEndpointWithError(
   body: string,
 ) {
   fetchMock.put("path:/api/metabot/settings", { status, body });
+}
+
+const METABOT_GROUP_PERMISSIONS_ROUTE_NAME = "metabot-group-permissions";
+
+export function setupMetabotGroupPermissionsEndpoint(
+  permissions: MetabotGroupPermission[] = [],
+) {
+  fetchMock.removeRoute(METABOT_GROUP_PERMISSIONS_ROUTE_NAME);
+  fetchMock.get(
+    "path:/api/ee/ai-controls/permissions",
+    {
+      permissions,
+      limit: 50,
+      offset: 0,
+      total: permissions.length,
+    },
+    { name: METABOT_GROUP_PERMISSIONS_ROUTE_NAME },
+  );
+}
+
+const UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME =
+  "update-metabot-group-permissions";
+
+export function setupUpdateMetabotGroupPermissionsEndpoint() {
+  fetchMock.removeRoute(UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME);
+  fetchMock.put("path:/api/ee/ai-controls/permissions", 200, {
+    name: UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME,
+  });
 }
 
 const USER_METABOT_PERMISSIONS_ROUTE_NAME = "metabot-user-permissions";

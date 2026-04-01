@@ -1,5 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useEffect, useState } from "react";
 
 import { useAdminSetting } from "metabase/api/utils";
 
@@ -13,6 +13,12 @@ const DEBOUNCE_DELAY = 500;
 export function useSystemPromptInput(settingKey: SystemPromptSettingKey) {
   const { value: systemPrompt, updateSetting } = useAdminSetting(settingKey);
   const [inputText, setInputText] = useState<string>(systemPrompt || "");
+
+  useEffect(() => {
+    if (systemPrompt != null) {
+      setInputText(systemPrompt);
+    }
+  }, [systemPrompt]);
 
   const debouncedUpdateSystemPrompt = useDebouncedCallback((value: string) => {
     updateSetting({
