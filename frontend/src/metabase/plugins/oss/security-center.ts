@@ -5,11 +5,13 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 type SecurityCenterPlugin = {
   isEnabled: boolean;
   SecurityCenterPage: ComponentType;
+  SecurityCenterBanner: ComponentType;
 };
 
 const getDefaultPlugin = (): SecurityCenterPlugin => ({
   isEnabled: false,
   SecurityCenterPage: PluginPlaceholder,
+  SecurityCenterBanner: PluginPlaceholder,
 });
 
 export const PLUGIN_SECURITY_CENTER = getDefaultPlugin();
