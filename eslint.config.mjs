@@ -70,7 +70,6 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
-      "frontend/src/custom-viz/src/templates/**",
       "frontend/src/custom-viz/src/vite-env.d.ts",
       "frontend/src/custom-viz/vite.config.ts",
       "e2e/support/cypress_sample_database.js",
@@ -324,6 +323,12 @@ const configs = [
     ],
     rules: {
       "i18next/no-literal-string": "off",
+    },
+  },
+  {
+    files: ["frontend/src/custom-viz/src/templates/index.tsx"],
+    rules: {
+      "import/no-default-export": "off",
     },
   },
   // ts configs
