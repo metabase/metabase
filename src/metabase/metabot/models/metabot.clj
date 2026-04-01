@@ -46,4 +46,5 @@
    :transform {:created_at    (serdes/date)
                :updated_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
-               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id opts)}})
+               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id opts)}
+   :defaults {:use_verified_content false}})
