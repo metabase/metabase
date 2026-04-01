@@ -10,6 +10,7 @@
    setting."
   (:require
    [metabase-enterprise.security-center.settings :as settings]
+   [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -57,9 +58,10 @@
 (defn- build-handlers
   "Build the notification handlers (email + optional Slack) with dynamically resolved recipients."
   []
-  (let [handlers [{:channel_type :channel/email
-                   :template     email-template
-                   :recipients   (email-recipients)}]]
+  (let [handlers (when (channel.settings/email-configured?)
+                   [{:channel_type :channel/email
+                     :template     email-template
+                     :recipients   (email-recipients)}])]
     (if-let [slack-recipients (slack-recipients)]
       (conj handlers {:channel_type :channel/slack
                       :recipients   slack-recipients})

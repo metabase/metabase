@@ -3103,6 +3103,7 @@
            metabase-enterprise.security-center.settings}
    :uses #{api
            app-db
+           channel
            config
            events
            models
