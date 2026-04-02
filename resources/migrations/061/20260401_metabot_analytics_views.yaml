@@ -3,10 +3,10 @@
 ## Internal Metabase Database for admin analytics.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/060_update_migrations.yaml
+  - logicalFilePath: migrations/061_update_migrations.yaml
 
   - changeSet:
-      id: v60.2026-04-01T10:00:00
+      id: v61.2026-04-01T10:00:00
       author: noahmoss
       comment: Create v_metabot_conversations view for AI analytics
       changes:
@@ -26,7 +26,7 @@ databaseChangeLog:
         - sql: DROP VIEW IF EXISTS v_metabot_conversations
 
   - changeSet:
-      id: v60.2026-04-01T10:00:01
+      id: v61.2026-04-01T10:00:01
       author: noahmoss
       comment: Create v_metabot_messages view for AI analytics
       changes:
@@ -46,7 +46,7 @@ databaseChangeLog:
         - sql: DROP VIEW IF EXISTS v_metabot_messages
 
   - changeSet:
-      id: v60.2026-04-01T10:00:02
+      id: v61.2026-04-01T10:00:02
       author: noahmoss
       comment: Create v_metabot_usage view for AI analytics
       changes:
