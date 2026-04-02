@@ -144,6 +144,16 @@
                        :error_description message}}
       retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))
 
+(defmacro ^:private with-throttling-429
+  "Like [[throttle/with-throttling]], but returns HTTP 429 with Retry-After instead of
+   throwing an unhandled exception (which the generic middleware would turn into a 500)."
+  {:style/indent 1}
+  [bindings & body]
+  `(try
+     (throttle/with-throttling ~bindings ~@body)
+     (catch ExceptionInfo e#
+       (throttle-response e#))))
+
 ;;; ------------------------------------------------ Endpoints ----------------------------------------------------
 
 (api.macros/defendpoint :post "/register"
@@ -155,45 +165,42 @@
     {:status  403
      :headers {"Content-Type" "application/json"}
      :body    {"error" "registration_not_supported"}}
-    (try
-      (throttle/with-throttling [registration-throttler (request/ip-address request)]
-        (or (when-let [provider (oauth-server/get-provider)]
-              (if (nil? body)
-                {:status  400
-                 :headers {"Content-Type" "application/json"}
-                 :body    {"error"             "invalid_client_metadata"
-                           "error_description" "Invalid or missing JSON body"}}
-                (try
-                  ;; MCP clients frequently omit application_type, scope, and may request
-                  ;; unsupported grant types. We are required to support poorly-configured
-                  ;; clients, so we apply sensible defaults here:
-                  ;; - application_type defaults to "native" (not the RFC default "web") so
-                  ;;   CLI tools and desktop apps can use HTTP loopback redirects.
-                  ;; - scope defaults to all provider-supported scopes when not specified.
-                  (let [body       (cond-> body
-                                     (not (contains? body :application_type))
-                                     (assoc :application_type "native")
-                                     (not (contains? body :scope))
-                                     (assoc :scope (str/join " " (oauth-server/all-agent-scopes)))
-                                     ;; Remove client_credentials grant type — tokens issued without a
-                                     ;; user context are unusable for MCP (validate-bearer-token requires
-                                     ;; a valid user-id).
-                                     (contains? body :grant_types)
-                                     (update :grant_types (fn [gts] (vec (remove #{"client_credentials"} gts)))))
-                        response   (oidc/dynamic-register-client provider body)
-                        client-id  (:client_id response)]
-                    ;; Mark as dynamically registered (the library doesn't know about registration_type)
-                    (proto/update-client (:client-store provider) client-id {:registration-type "dynamic"})
-                    {:status  201
-                     :headers {"Content-Type" "application/json"}
-                     :body    response})
-                  (catch ExceptionInfo e
-                    (reg/registration-error-response
-                     (ex-message e)
-                     (:error_description (ex-data e)))))))
-            {:status 404 :body {:error "not_found"}}))
-      (catch ExceptionInfo e
-        (throttle-response e)))))
+    (with-throttling-429 [registration-throttler (request/ip-address request)]
+      (or (when-let [provider (oauth-server/get-provider)]
+            (if (nil? body)
+              {:status  400
+               :headers {"Content-Type" "application/json"}
+               :body    {"error"             "invalid_client_metadata"
+                         "error_description" "Invalid or missing JSON body"}}
+              (try
+                ;; MCP clients frequently omit application_type, scope, and may request
+                ;; unsupported grant types. We are required to support poorly-configured
+                ;; clients, so we apply sensible defaults here:
+                ;; - application_type defaults to "native" (not the RFC default "web") so
+                ;;   CLI tools and desktop apps can use HTTP loopback redirects.
+                ;; - scope defaults to all provider-supported scopes when not specified.
+                (let [body       (cond-> body
+                                   (not (contains? body :application_type))
+                                   (assoc :application_type "native")
+                                   (not (contains? body :scope))
+                                   (assoc :scope (str/join " " (oauth-server/all-agent-scopes)))
+                                   ;; Remove client_credentials grant type — tokens issued without a
+                                   ;; user context are unusable for MCP (validate-bearer-token requires
+                                   ;; a valid user-id).
+                                   (contains? body :grant_types)
+                                   (update :grant_types (fn [gts] (vec (remove #{"client_credentials"} gts)))))
+                      response   (oidc/dynamic-register-client provider body)
+                      client-id  (:client_id response)]
+                  ;; Mark as dynamically registered (the library doesn't know about registration_type)
+                  (proto/update-client (:client-store provider) client-id {:registration-type "dynamic"})
+                  {:status  201
+                   :headers {"Content-Type" "application/json"}
+                   :body    response})
+                (catch ExceptionInfo e
+                  (reg/registration-error-response
+                   (ex-message e)
+                   (:error_description (ex-data e)))))))
+          {:status 404 :body {:error "not_found"}}))))
 
 (api.macros/defendpoint :get "/register/:client-id"
   :- [:map [:status [:enum 200 401 404]] [:body :map]]
@@ -256,42 +263,39 @@
     {:status  401
      :headers {"Content-Type" "application/json"}
      :body    {:error "unauthorized"}}
-    (try
-      (throttle/with-throttling [authorize-decision-throttler (:metabase-user-id request)]
-        (or (when-let [provider (oauth-server/get-provider)]
-              (let [cookie-token (get-in request [:cookies csrf-cookie-name :value])
-                    form-token   (some-> (:csrf_token body) str)
-                    auth-params  (select-keys body oauth-param-keys)
-                    params-sig   (some-> (:params_sig body) str)]
-                (if (or (str/blank? cookie-token)
-                        (str/blank? form-token)
-                        (not (oidc-util/constant-time-eq? cookie-token form-token)))
-                  {:status  403
-                   :headers {"Content-Type" "application/json"}
-                   :body    {:error "csrf_validation_failed"}}
-                  (let [approved (= "true" (str (:approved body)))]
-                    (try
-                      (let [parsed        (oidc/parse-authorization-request provider auth-params)
-                            ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
-                            ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
-                            parsed-params (select-keys parsed oauth-param-keys)]
-                        (if (or (str/blank? params-sig)
-                                (not (re-matches #"[a-fA-F0-9]+" params-sig))
-                                (odd? (count params-sig))
-                                (not (verify-oauth-params-signature cookie-token parsed-params params-sig)))
-                          {:status  403
-                           :headers {"Content-Type" "application/json"}
-                           :body    {:error "params_tampered"}}
-                          (redirect-authorization-decision provider parsed approved request)))
-                      (catch ExceptionInfo e
-                        (log/warn e "OAuth authorization decision failed")
-                        {:status  400
+    (with-throttling-429 [authorize-decision-throttler (:metabase-user-id request)]
+      (or (when-let [provider (oauth-server/get-provider)]
+            (let [cookie-token (get-in request [:cookies csrf-cookie-name :value])
+                  form-token   (some-> (:csrf_token body) str)
+                  auth-params  (select-keys body oauth-param-keys)
+                  params-sig   (some-> (:params_sig body) str)]
+              (if (or (str/blank? cookie-token)
+                      (str/blank? form-token)
+                      (not (oidc-util/constant-time-eq? cookie-token form-token)))
+                {:status  403
+                 :headers {"Content-Type" "application/json"}
+                 :body    {:error "csrf_validation_failed"}}
+                (let [approved (= "true" (str (:approved body)))]
+                  (try
+                    (let [parsed        (oidc/parse-authorization-request provider auth-params)
+                          ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
+                          ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
+                          parsed-params (select-keys parsed oauth-param-keys)]
+                      (if (or (str/blank? params-sig)
+                              (not (re-matches #"[a-fA-F0-9]+" params-sig))
+                              (odd? (count params-sig))
+                              (not (verify-oauth-params-signature cookie-token parsed-params params-sig)))
+                        {:status  403
                          :headers {"Content-Type" "application/json"}
-                         :body    {:error             "invalid_request"
-                                   :error_description "The authorization request is invalid."}}))))))
-            {:status 404 :body {:error "not_found"}}))
-      (catch ExceptionInfo e
-        (throttle-response e)))))
+                         :body    {:error "params_tampered"}}
+                        (redirect-authorization-decision provider parsed approved request)))
+                    (catch ExceptionInfo e
+                      (log/warn e "OAuth authorization decision failed")
+                      {:status  400
+                       :headers {"Content-Type" "application/json"}
+                       :body    {:error             "invalid_request"
+                                 :error_description "The authorization request is invalid."}}))))))
+          {:status 404 :body {:error "not_found"}}))))
 
 (api.macros/defendpoint :post "/token"
   :- [:map [:status [:enum 200 400 401 404 429]] [:body :map]]
@@ -302,31 +306,28 @@
         ;; Fall back to IP when client_id isn't in the body (e.g. confidential clients using
         ;; HTTP Basic auth) to avoid pooling unrelated clients into a shared throttle bucket.
         client-id  (or (:client_id body) ip-address)]
-    (try
-      (throttle/with-throttling [(token-throttlers :client-id)  client-id
-                                 (token-throttlers :ip-address) ip-address]
-        (or (when-let [provider (oauth-server/get-provider)]
-              (let [authorization-header (get-in request [:headers "authorization"])]
-                (try
-                  (let [response (oidc/token-request provider body authorization-header)]
-                    {:status  200
+    (with-throttling-429 [(token-throttlers :client-id)  client-id
+                          (token-throttlers :ip-address) ip-address]
+      (or (when-let [provider (oauth-server/get-provider)]
+            (let [authorization-header (get-in request [:headers "authorization"])]
+              (try
+                (let [response (oidc/token-request provider body authorization-header)]
+                  {:status  200
+                   :headers {"Content-Type"  "application/json"
+                             "Cache-Control" "no-store"
+                             "Pragma"        "no-cache"}
+                   :body    response})
+                (catch ExceptionInfo e
+                  (log/warn e "OAuth token request failed")
+                  (let [data  (ex-data e)
+                        error (or (:error data) "invalid_request")]
+                    {:status  (if (= error "invalid_client") 401 400)
                      :headers {"Content-Type"  "application/json"
                                "Cache-Control" "no-store"
                                "Pragma"        "no-cache"}
-                     :body    response})
-                  (catch ExceptionInfo e
-                    (log/warn e "OAuth token request failed")
-                    (let [data  (ex-data e)
-                          error (or (:error data) "invalid_request")]
-                      {:status  (if (= error "invalid_client") 401 400)
-                       :headers {"Content-Type"  "application/json"
-                                 "Cache-Control" "no-store"
-                                 "Pragma"        "no-cache"}
-                       :body    {:error             error
-                                 :error_description (or (:error_description data) "The token request is invalid.")}})))))
-            {:status 404 :body {:error "not_found"}}))
-      (catch ExceptionInfo e
-        (throttle-response e)))))
+                     :body    {:error             error
+                               :error_description (or (:error_description data) "The token request is invalid.")}})))))
+          {:status 404 :body {:error "not_found"}}))))
 
 (api.macros/defendpoint :post "/revoke"
   :- [:map [:status [:enum 200 404]]]
