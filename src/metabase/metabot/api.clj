@@ -213,10 +213,12 @@
 
 (defn- legacy->modern-query
   [query]
-  (lib/query-from-legacy-inner-query
-   (lib-be/application-database-metadata-provider (:database query))
-   (:database query)
-   (:query query)))
+  (if-not (= :mbql-version/legacy (lib/normalized-mbql-version query))
+    query
+    (lib/query-from-legacy-inner-query
+     (lib-be/application-database-metadata-provider (:database query))
+     (:database query)
+     (:query query))))
 
 (def upgradable-item-types
   "User is viewing item types with query and chart configs. Upgradeable by [[upgrade-viewing-queries]]."
