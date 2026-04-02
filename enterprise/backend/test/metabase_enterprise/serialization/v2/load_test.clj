@@ -2114,3 +2114,46 @@
           (ts/with-db dest-db
             (serdes.load/load-metabase! (ingestion-in-memory @serialized))
             (is (= 1 (t2/count :model/Metabot :entity_id @metabot-eid)))))))))
+
+(deftest channel-minimal-required-properties-test
+  (testing "Channel deserialized with only: name, type, details"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (ts/create! :model/Channel :name "Minimal Channel"
+                      :type :channel/email
+                      :details {:host "smtp.example.com" :port 587}
+                      :description "Some description")
+          (reset! serialized (into [] (serdes.extract/extract {}))))
+
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Channel" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :name :type :details])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [channel (t2/select-one :model/Channel :name "Minimal Channel")]
+              (is (some? channel))
+              (is (= :channel/email (:type channel))))))))))
+
+(deftest metabot-minimal-required-properties-test
+  (testing "Metabot deserialized with only: entity_id, name"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (ts/create! :model/Metabot :name "Minimal Bot"
+                      :description "Some description"
+                      :use_verified_content false)
+          (reset! serialized (into [] (serdes.extract/extract {:include-metabot true}))))
+
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Metabot" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [metabot (t2/select-one :model/Metabot :name "Minimal Bot")]
+              (is (some? metabot))
+              (is (= "Minimal Bot" (:name metabot))))))))))

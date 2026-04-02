@@ -2713,24 +2713,44 @@
 (deftest channel-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
-      [:model/Channel {channel-id :id} {:name "Test Channel"
-                                        :type :channel/email
-                                        :details {:host "smtp.example.com" :port 587}
-                                        :description "A test channel"}]
-      (testing "channel extraction"
-        (let [ser (ts/extract-one "Channel" channel-id)]
-          (is (=? {:serdes/meta [{:model "Channel" :id "Test Channel"}]
-                   :name "Test Channel"
+      [:model/Channel {email-id :id} {:name "Email Channel"
+                                      :type :channel/email
+                                      :details {:host "smtp.example.com" :port 587}
+                                      :description "An email channel"}
+       :model/Channel {http-id :id}  {:name "HTTP Channel"
+                                      :type :channel/http
+                                      :details {:url "https://example.com/webhook"
+                                                :method "POST"
+                                                :auth-method "none"}
+                                      :description "An HTTP channel"}]
+      (testing "email channel extraction"
+        (let [ser (ts/extract-one "Channel" email-id)]
+          (is (=? {:serdes/meta [{:model "Channel" :id "Email Channel"}]
+                   :name "Email Channel"
                    :type :channel/email
-                   :description "A test channel"
+                   :description "An email channel"
                    :details {:host "smtp.example.com" :port 587}
                    :created_at string?}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :active)))))
 
-      (testing "channel storage-path uses top-level channels directory"
-        (let [ser (ts/extract-one "Channel" channel-id)]
-          (is (= [{:label "channels"} {:label "Test Channel" :key "Test Channel"}]
-                 (serdes/storage-path ser {}))))))))
+      (testing "http channel extraction"
+        (let [ser (ts/extract-one "Channel" http-id)]
+          (is (=? {:serdes/meta [{:model "Channel" :id "HTTP Channel"}]
+                   :name "HTTP Channel"
+                   :type :channel/http
+                   :description "An HTTP channel"
+                   :details {:url "https://example.com/webhook"
+                             :method "POST"
+                             :auth-method "none"}
+                   :created_at string?}
+                  ser))))
 
+      (testing "channel storage-path uses top-level channels directory"
+        (let [ser (ts/extract-one "Channel" email-id)]
+          (is (= [{:label "channels"} {:label "Email Channel" :key "Email Channel"}]
+                 (serdes/storage-path ser {}))))
+        (let [ser (ts/extract-one "Channel" http-id)]
+          (is (= [{:label "channels"} {:label "HTTP Channel" :key "HTTP Channel"}]
+                 (serdes/storage-path ser {}))))))))
