@@ -86,11 +86,6 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
     getName: () => "__CUSTOM_VIZ_NAME__",
     minSize: { width: 4, height: 4 },
     defaultSize: { width: 4, height: 4 },
-    isSensible({ cols, rows }) {
-      return (
-        cols.length === 1 && rows.length === 1 && typeof rows[0][0] === "number"
-      );
-    },
     checkRenderable(series, settings) {
       if (series.length !== 1) {
         throw new Error("Only 1 series is supported");

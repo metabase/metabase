@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import _ from "underscore";
 
-import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import visualizations from "metabase/visualizations";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import type Question from "metabase-lib/v1/Question";
@@ -61,7 +60,6 @@ export const getSensibleVisualizations = ({
     .filter(
       ([display, config]) =>
         !config.hidden &&
-        !PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display) &&
         (isCardDisplayType(display) || !isVirtualCardDisplayType(display)),
     )
     .map(([vizType]) => vizType as CardDisplayType);

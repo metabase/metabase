@@ -22,9 +22,6 @@ export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
   return {
     id: "my-custom-viz",
     getName: () => "My custom viz",
-    isSensible() {
-      return true;
-    },
     checkRenderable() {},
     settings: {
       apiKey: defineSetting({
