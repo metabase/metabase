@@ -126,6 +126,12 @@
   (memoize/memo-clear! check-tenant-limit*)
   (memoize/memo-clear! check-user-limit*))
 
+(defenterprise clear-metabot-limit-cache!
+  "EE implementation: clears the memoized limit-check results so they re-evaluate immediately."
+  :feature :none
+  []
+  (clear-limit-cache!))
+
 (defenterprise check-usage-limits!
   "Check all usage limits for the current user. Returns nil if all limits are within bounds,
   or a user-friendly error message string if any limit is exceeded.

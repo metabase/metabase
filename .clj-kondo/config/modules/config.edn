@@ -2148,10 +2148,11 @@
            config
            lib
            lib-be
+           metabot
            premium-features
            search
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/AiUsageLog :model/Card :model/Dashboard}}
 
   tiles
   {:team "UX West"
