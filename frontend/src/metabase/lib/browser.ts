@@ -54,10 +54,11 @@ export const isTouchDevice = () => {
   }
 
   if (typeof window.matchMedia === "function") {
-    const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
-    const cannotHover = window.matchMedia("(hover: none)").matches;
+    const hasCoarsePointerSupport =
+      window.matchMedia("(pointer: coarse)").matches;
+    const hasHoverSupport = window.matchMedia("(hover: hover)").matches;
 
-    if (hasCoarsePointer && cannotHover) {
+    if (hasCoarsePointerSupport && !hasHoverSupport) {
       return true;
     }
   }
