@@ -200,22 +200,16 @@ export const getRoutes = (
 
             {/* EE with non-starter plan has embedding settings on different pages */}
             {hasSimpleEmbedding && (
-              <>
-                <Route path="guest" component={GuestEmbedsSettings} />
-
-                <Route path="security" component={EmbeddingSecuritySettings} />
-              </>
+              <Route path="guest" component={GuestEmbedsSettings} />
             )}
+
+            <Route path="security" component={EmbeddingSecuritySettings} />
           </Route>
         </Route>
 
         {/* OSS/Starter has all embedding settings on the same page */}
         {!hasSimpleEmbedding && (
-          <>
-            <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
-
-            <Redirect from="/admin/embedding/security" to="/admin/embedding" />
-          </>
+          <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
         )}
 
         {/* Backwards compatibility for embedding settings */}

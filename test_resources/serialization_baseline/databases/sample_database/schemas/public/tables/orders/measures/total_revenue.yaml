@@ -1,0 +1,30 @@
+created_at: '2026-04-02T01:50:06.081195Z'
+creator_id: admin@example.com
+definition:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - sum
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+entity_id: 8WteUpyQQqObrxLv4KQ-j
+name: Total Revenue
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+serdes/meta:
+- id: 8WteUpyQQqObrxLv4KQ-j
+  label: total_revenue
+  model: Measure

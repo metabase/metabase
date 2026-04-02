@@ -338,4 +338,19 @@
 
     (testing "empty path returns empty vector"
       (let [fns (atom {})]
-        (is (= [] (resolve-path fns [])))))))
+        (is (= [] (resolve-path fns [])))))
+
+    (testing "same slug under different parent paths does not collide"
+      (let [fns (atom {})]
+        (is (= ["collections" "transforms" "my_transform"]
+               (resolve-path fns [{:label "collections" :key "collections"}
+                                  {:label "transforms"  :key "ns-transforms"}
+                                  {:label "My Transform" :key "t-1"}])))
+        (is (= ["databases" "mydb" "schemas" "transforms" "tables" "target"]
+               (resolve-path fns [{:label "databases"  :key "databases"}
+                                  {:label "mydb"       :key "db-1"}
+                                  {:label "schemas"    :key "schemas"}
+                                  {:label "transforms" :key "schema-transforms"}
+                                  {:label "tables"     :key "tables"}
+                                  {:label "target"     :key "table-1"}]))
+            "transforms under databases/.../schemas/ should not get _2 suffix")))))

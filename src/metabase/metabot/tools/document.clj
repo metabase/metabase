@@ -93,7 +93,7 @@
 - Use this tool when an existing model or metric does not answer the user's question.
 - Do NOT use this tool if there is a model or metric that can answer the user's question
   unless the user is requesting SQL."
-  [_args :- [:maybe [:map {:closed true}]]]
+  [_args :- [:map {:closed true}]]
   (try
     (let [refs         (context-references)
           database-ids (referenced-database-ids refs)]

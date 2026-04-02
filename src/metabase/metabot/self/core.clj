@@ -416,7 +416,7 @@
                          (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
           results  (try
                      (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                           arguments (coerce-stringified-json arguments)
+                           arguments (or (coerce-stringified-json arguments) {})
                            decode    (tool-decode-fn tool)
                            arguments (cond-> arguments decode decode)]
                        (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})

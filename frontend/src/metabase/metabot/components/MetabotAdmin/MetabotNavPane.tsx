@@ -43,6 +43,11 @@ export function MetabotNavPane() {
             {PLUGIN_AI_CONTROLS.getAiControlsNavItems()}
           </>
         )}
+        <AdminNavItem
+          icon="bolt"
+          label={t`MCP apps`}
+          path="/admin/metabot/mcp"
+        />
       </AdminNavWrapper>
     </Flex>
   );
