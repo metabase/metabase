@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useMemo } from "react";
 
 import {
   useAcknowledgeAdvisoryMutation,
@@ -11,20 +11,15 @@ export function useSecurityAdvisories() {
   const { data: response, isLoading } = useListSecurityAdvisoriesQuery();
   const [acknowledgeApi] = useAcknowledgeAdvisoryMutation();
 
-  const advisories: Advisory[] = response?.advisories ?? [];
-  const lastCheckedAt = response?.last_checked_at ?? null;
-
-  const acknowledgeAdvisory = useCallback(
-    (advisoryId: string) => {
-      acknowledgeApi(advisoryId);
-    },
-    [acknowledgeApi],
+  const advisories: Advisory[] = useMemo(
+    () => response?.advisories ?? [],
+    [response?.advisories],
   );
 
   return {
     data: advisories,
-    lastCheckedAt,
+    lastCheckedAt: response?.last_checked_at ?? null,
     isLoading,
-    acknowledgeAdvisory,
+    acknowledgeAdvisory: acknowledgeApi,
   };
 }

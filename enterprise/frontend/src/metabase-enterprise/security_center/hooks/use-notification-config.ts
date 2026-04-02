@@ -89,7 +89,10 @@ export function useNotificationConfig() {
   const { data: channelInfo } = useGetChannelInfoQuery();
   const [updateSettings] = useUpdateSettingsMutation();
 
-  const users: User[] = userRecipients?.data ?? [];
+  const users: User[] = useMemo(
+    () => userRecipients?.data ?? [],
+    [userRecipients?.data],
+  );
   const channels: ChannelApiResponse["channels"] | undefined =
     channelInfo?.channels;
 

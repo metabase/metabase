@@ -269,9 +269,6 @@ export const getRoutes = (
           {getMetabotAdminRoutes()}
         </Route>
 
-        {/* Redirect old settings-based security center URL */}
-        <Redirect from="settings/security-center" to="/admin/security-center" />
-
         {PLUGIN_SECURITY_CENTER.isEnabled && (
           <Route
             path="security-center"
