@@ -120,6 +120,9 @@
                                                       [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [identifier (parse-repo-name repo_url)
+        _          (api/check-400
+                    (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
+                    (format "A custom visualization with identifier \"%s\" already exists." identifier))
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                           :repo_url        repo_url
                                                           :access_token    access_token
@@ -146,9 +149,12 @@
         identifier   (or identifier
                          (:name manifest)
                          (throw (ex-info (if manifest
-                                          "metabase-plugin.json is missing a \"name\" field."
-                                          "Could not fetch metabase-plugin.json from the dev server.")
-                                        {:status-code 400})))
+                                           "metabase-plugin.json is missing a \"name\" field."
+                                           "Could not fetch metabase-plugin.json from the dev server.")
+                                         {:status-code 400})))
+        _            (api/check-400
+                      (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
+                      (format "A custom visualization with identifier \"%s\" already exists." identifier))
         sentinel-url (str "dev://local/" identifier)
         manifest-str (when manifest (json/encode manifest))
         display-name (or (:name manifest) identifier)
