@@ -14,7 +14,7 @@
 (def ^:dynamic *checkout-reason*
   "The reason for the current app DB connection checkout. Defaults to `:api-request`.
   Bind this with [[with-checkout-reason]] at call sites."
-  :api-request)
+  :unknown)
 
 (defmacro with-checkout-reason
   "Execute `body` with `*checkout-reason*` bound to `reason`."
@@ -50,6 +50,19 @@
 
              :else
              (.invoke ^java.lang.reflect.Method method conn (or args (object-array 0))))))))))
+
+(defn with-checkout-reason-meta
+  "Given a map, returns the map with `*checkout-reason*` attached to metadata.
+   Used for propagation of checkout reason across threads (e.g., async notification dispatch)."
+  [m]
+  (vary-meta m assoc ::checkout-reason *checkout-reason*))
+
+(defmacro with-restored-checkout-reason
+  "Given a map presumably containing metadata from [[with-checkout-reason-meta]], restores `*checkout-reason*` and
+  executes body."
+  [m & body]
+  `(binding [*checkout-reason* (or (::checkout-reason (meta ~m)) :unknown)]
+     ~@body))
 
 (defn get-tracked-connection
   "Get a connection from `data-source`, tracking checkout reason from [[*checkout-reason*]].

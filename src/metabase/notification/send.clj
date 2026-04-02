@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.channel.core :as channel]
    [metabase.config.core :as config]
    [metabase.notification.models :as models.notification]
@@ -365,7 +366,8 @@
                                                  (when-let [notification (take-notification-with-timeout! queue 1000)]
                                                    (log/with-restored-context-from-meta notification
                                                      (task-history/with-restored-run-id notification
-                                                       (send-notification-sync! notification))))
+                                                       (checkout-tracking/with-restored-checkout-reason notification
+                                                         (send-notification-sync! notification)))))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
@@ -383,7 +385,8 @@
                           (ensure-enough-workers!)
                           (put-notification! queue (-> notification
                                                        log/with-context-meta
-                                                       task-history/with-run-id-meta))
+                                                       task-history/with-run-id-meta
+                                                       checkout-tracking/with-checkout-reason-meta))
                           ::ok)
                         (do
                           (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))

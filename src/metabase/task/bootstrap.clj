@@ -1,5 +1,6 @@
 (ns metabase.task.bootstrap
   (:require
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.classloader.core :as classloader]))
 
 (set! *warn-on-reflection* true)
@@ -29,10 +30,11 @@
     ;; very important! Fetch a new connection from the connection pool rather than using currently bound Connection if
     ;; one already exists -- because Quartz will close this connection when done, we don't want to screw up the
     ;; calling block
-    (let [conn (.getConnection (app-db))]
-      (if-let [interceptor @connection-interceptor]
-        (interceptor conn)
-        conn)))
+    (checkout-tracking/with-checkout-reason :quartz
+      (let [conn (.getConnection (app-db))]
+        (if-let [interceptor @connection-interceptor]
+          (interceptor conn)
+          conn))))
   (shutdown [_]))
 
 (when-not *compile-files*

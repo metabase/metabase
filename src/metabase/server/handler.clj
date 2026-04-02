@@ -98,6 +98,7 @@
         #'wrap-gzip                                  ; GZIP response if client can handle it
         #'mw.trace/wrap-trace                         ; Create root OpenTelemetry span per request (after request-id is available)
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
+        #'mw.misc/bind-checkout-reason                  ; tag app DB connection checkouts as :api-request
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
