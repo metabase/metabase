@@ -215,6 +215,27 @@ export const DashboardTable = {
   },
 };
 
+const stripedOrdersWithPeople = [
+  {
+    ...ordersWithPeople,
+    card: {
+      ...ordersWithPeople.card,
+      visualization_settings: {
+        ...ordersWithPeople.card.visualization_settings,
+        "table.striped": true,
+      },
+    },
+  },
+];
+
+export const DashboardTableStripedRows = {
+  render: DefaultTemplate,
+  args: {
+    series: stripedOrdersWithPeople,
+    isDashboard: true,
+  },
+};
+
 export const DashboardTableEmbeddingTheme = {
   render: DefaultTemplate,
   args: {
