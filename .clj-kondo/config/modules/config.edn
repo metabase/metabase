@@ -3110,6 +3110,7 @@
            notification
            permissions
            premium-features
+           seed ;; TODO: remove
            settings
            task
            util}
