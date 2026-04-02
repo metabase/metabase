@@ -6,6 +6,9 @@
    [compojure.response]
    [medley.core :as m]
    [metabase.config.core :as config]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
@@ -494,3 +497,61 @@
     (is (= [{:type :text, :text "solo"}]
            (into [] (#'api/combine-text-parts-xf)
                  [{:type :text, :text "solo"}])))))
+
+(defn- legacy-query
+  "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."
+  []
+  {:database (mt/id)
+   :query    {:source-table (mt/id :orders)}
+   :type     :query})
+
+(deftest upgrade-viewing-queries-upgradable-types-test
+  (doseq [item-type ["adhoc" "question" "metric" "model"]]
+    (testing (str "upgrades query for type=" item-type)
+      (let [result (#'api/upgrade-viewing-queries [{:type item-type :query (legacy-query)}])
+            q      (:query (first result))]
+        (is (= :mbql/query (:lib/type q)))
+        (is (= (mt/id) (:database q)))))))
+
+(deftest upgrade-viewing-queries-chart-configs-test
+  (let [lq     (legacy-query)
+        item   {:type          "adhoc"
+                :query         lq
+                :chart_configs [{:query lq}
+                                {:query lq}]}
+        result (first (#'api/upgrade-viewing-queries [item]))]
+    (is (= :mbql/query (:lib/type (:query result))))
+    (is (every? #(= :mbql/query (:lib/type (:query %)))
+                (:chart_configs result)))))
+
+(deftest upgrade-viewing-queries-missing-keys-test
+  (testing "items without :query are unchanged"
+    (let [item {:type "adhoc"}]
+      (is (= [item] (#'api/upgrade-viewing-queries [item])))))
+  (testing "items without :chart_configs keep no chart_configs"
+    (let [result (first (#'api/upgrade-viewing-queries [{:type "question" :query (legacy-query)}]))]
+      (is (nil? (:chart_configs result))))))
+
+(deftest upgrade-viewing-queries-mixed-items-test
+  (let [lq     (legacy-query)
+        items  [{:type "adhoc" :query lq}
+                {:type "dashboard"}
+                {:type "model" :query lq :chart_configs [{:query lq}]}]
+        result (#'api/upgrade-viewing-queries items)]
+    (is (=? [{:query {:lib/type :mbql/query}}
+             {}
+             {:query {:lib/type :mbql/query}
+              :chart_configs [{:query {:lib/type :mbql/query}}]}]
+            result))))
+
+(deftest upgrade-viewing-queries-idempotence-test
+  (let [mp meta/metadata-provider
+        lq     (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+        items  [{:type "adhoc" :query lq}
+                {:type "dashboard"}
+                {:type "model" :query lq :chart_configs [{:query lq}]}]
+        result (#'api/upgrade-viewing-queries items)]
+    (is (=? [{:type "adhoc" :query lq}
+             {:type "dashboard"}
+             {:type "model" :query lq :chart_configs [{:query lq}]}]
+            result))))
