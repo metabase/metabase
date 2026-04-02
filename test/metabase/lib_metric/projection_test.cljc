@@ -172,13 +172,14 @@
       (is (= 1 (count (:projections result))))
       (is (= :metric (:type typed-proj)))
       (is (= 1 (:id typed-proj)))
+      (is (= uuid-1 (:lib/uuid typed-proj)))
       (is (= :dimension (first dim-ref)))
       (is (= uuid-1 (nth dim-ref 2))))))
 
 (deftest ^:parallel project-appends-to-existing-projections-test
   (testing "project appends new projection to existing typed projection"
     (let [definition (assoc valid-definition
-                            :projections [{:type :metric :id 1 :projection [dim-ref-1]}])
+                            :projections [{:type :metric :id 1 :lib/uuid uuid-1 :projection [dim-ref-1]}])
           result     (lib-metric.projection/project definition (lib-metric.dimension/reference dimension-2))
           dim-refs   (get-in result [:projections 0 :projection])]
       (is (= 1 (count (:projections result))))
@@ -213,7 +214,7 @@
     ;; we can't fully test projection-dimension without integration tests.
     ;; This test verifies the function exists and handles errors appropriately.
     (let [definition (assoc valid-definition
-                            :projections [{:type :metric :id 1 :projection [dim-ref-1]}])]
+                            :projections [{:type :metric :id 1 :lib/uuid uuid-1 :projection [dim-ref-1]}])]
       (is (thrown? #?(:clj Exception :cljs js/Error)
                    (lib-metric.projection/projection-dimension definition dim-ref-1))))))
 

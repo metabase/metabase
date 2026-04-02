@@ -159,15 +159,15 @@
 (deftest ^:parallel projections-returns-projections-from-definition-test
   (let [projection  [:dimension {} uuid-1]
         definition  (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
-                        (assoc :projections [{:type :metric :id 42 :projection [projection]}]))]
-    (is (= [{:type :metric :id 42 :projection [projection]}]
+                        (assoc :projections [{:type :metric :id 42 :lib/uuid "tp-uuid" :projection [projection]}]))]
+    (is (= [{:type :metric :id 42 :lib/uuid "tp-uuid" :projection [projection]}]
            (lib-metric.definition/projections definition)))))
 
 (deftest ^:parallel projections-returns-multiple-projections-test
   (let [projection-1 [:dimension {} uuid-1]
         projection-2 [:dimension {:temporal-unit :month} uuid-2]
         definition   (-> (lib-metric.definition/from-metric-metadata mock-provider sample-metric-metadata)
-                         (assoc :projections [{:type :metric :id 42 :projection [projection-1 projection-2]}]))]
+                         (assoc :projections [{:type :metric :id 42 :lib/uuid "tp-uuid" :projection [projection-1 projection-2]}]))]
     (is (= [projection-1 projection-2]
            (lib-metric.definition/flat-projections (lib-metric.definition/projections definition))))))
 
@@ -204,13 +204,13 @@
     (let [dr1 [:dimension {} "d1"]
           dr2 [:dimension {} "d2"]]
       (is (= [dr1 dr2]
-             (lib-metric.definition/flat-projections [{:type :metric :id 1 :projection [dr1 dr2]}])))))
+             (lib-metric.definition/flat-projections [{:type :metric :id 1 :lib/uuid "a" :projection [dr1 dr2]}])))))
   (testing "multiple entries"
     (let [dr1 [:dimension {} "d1"]
           dr2 [:dimension {} "d2"]]
       (is (= [dr1 dr2]
-             (lib-metric.definition/flat-projections [{:type :metric :id 1 :projection [dr1]}
-                                                      {:type :measure :id 2 :projection [dr2]}]))))))
+             (lib-metric.definition/flat-projections [{:type :metric :id 1 :lib/uuid "a" :projection [dr1]}
+                                                      {:type :measure :id 2 :lib/uuid "b" :projection [dr2]}]))))))
 
 ;;; -------------------------------------------------- expression-leaves --------------------------------------------------
 
