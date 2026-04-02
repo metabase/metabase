@@ -847,7 +847,16 @@
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
   (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (t2/delete! :model/Revision :model "Card", :model_id id))
+  (t2/delete! :model/Revision :model "Card", :model_id id)
+  ;; delete any card-type notifications for this card — must materialize IDs first because
+  ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
+  ;; return empty by the time the actual DELETE executes.
+  (when-let [notification-ids (seq (t2/select-pks-set :model/Notification
+                                                      :payload_type :notification/card
+                                                      :payload_id [:in {:select [:id]
+                                                                        :from   [:notification_card]
+                                                                        :where  [:= :card_id id]}]))]
+    (t2/delete! :model/Notification :id [:in notification-ids])))
 
 (defmethod serdes/hash-fields :model/Card
   [_card]
