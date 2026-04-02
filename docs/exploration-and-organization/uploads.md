@@ -1,26 +1,53 @@
 ---
 title: Uploading data
+description: Upload CSV files to Metabase to create models. Requires uploads enabled by an admin, data permissions on the upload schema, and Curate access to the target collection.
 ---
 
 # Uploading data
 
-If an admin has [set up uploads](../databases/uploads.md), you can upload CSV data by clicking on the **Upload** icon in the top right of the collection page.
+You can upload CSV files to Metabase to query, visualize, and share.
+
+## Upload requirements
+
+To upload CSV data, you'll need:
+
+- Uploads [enabled](../databases/uploads.md) by an admin.
+- [Data permissions](../permissions/data.md): your group needs **Can view** data access and **Create queries** access (query builder or higher) for the upload schema. (Unless you're an admin, you can't see what groups you're in; just noting this here so you know groups are a thing. Ask your admin to put you in a group with these privileges).
+- [Curate access](../permissions/collections.md#curate-access) to the collection you want to upload to.
+
+The upload icon only appears in collections where you have Curate access. Everyone has Curate access to their [personal collection](../permissions/collections.md#personal-collections), so you can always upload there.
+
+## Uploading a CSV file
+
+**From a collection page**:
+
+1. Go to the collection where you want to save the uploaded data.
+2. Click the **Upload** icon (the cloud with an arrow) in the upper right of the collection page.
+3. Select your CSV file.
 
 ![Upload CSV data](../databases/images/upload-icon.png)
+
+**From the sidebar**:
+
+1. Click the **Add data** button (**+**) next to **DATA** in the left sidebar.
+2. Select **CSV**.
+3. Drag and drop a file or click **Select a file**.
+4. Choose the destination collection at the bottom of the modal.
+5. Click **Upload**.
+
+You can also add data from [Google Sheets](../cloud/google-sheets.md) (Metabase Cloud only).
 
 ## Create, append, or replace models with uploads
 
 When you upload a CSV file, Metabase may ask to select a destination for that upload (depending on whether there are other uploads).
 
-If your CSV has the same columns as a model from a previously uploaded file, you can append data to that model. Otherwise, you can create a new [model](../data-modeling/models.md). if you want to:
+If your CSV has the same columns as a model from a previously uploaded file, you can append data to that model. Otherwise, you can create a new [model](../data-modeling/models.md). You can:
 
 - Create a new model
 - [Append to an existing model created by an upload](#appending-to-a-model-created-by-an-upload)
 - [Replace the data for an existing model created by an upload](#replacing-the-data-of-an-uploaded-model)
 
 Metabase will create a [model](../data-modeling/models.md) that contains that CSV data, as well as the model's underlying table.
-
-Uploads will only be available if your admin has enabled uploads for your Metabase, and you're in a group with Unrestricted access to the schema used to store those uploads. See [Uploading data](../databases/uploads.md).
 
 ## Appending to a model created by an upload
 
