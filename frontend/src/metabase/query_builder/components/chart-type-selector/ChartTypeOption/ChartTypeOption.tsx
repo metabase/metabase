@@ -2,14 +2,14 @@ import cx from "classnames";
 
 import { ActionIcon, Center, Icon, Stack, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import type { CardDisplayType } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 import ChartTypeOptionS from "./ChartTypeOption.module.css";
 
 export type ChartTypeOptionProps = {
-  onSelectVisualization: (display: CardDisplayType) => void;
-  visualizationType: CardDisplayType;
-  selectedVisualization: CardDisplayType;
+  onSelectVisualization: (display: VisualizationDisplay) => void;
+  visualizationType: VisualizationDisplay;
+  selectedVisualization: VisualizationDisplay;
   onOpenSettings?: () => void;
 };
 

@@ -8,6 +8,7 @@ import {
   type CardDisplayType,
   type CustomVizDisplayType,
   type Dataset,
+  type VisualizationDisplay,
   isCardDisplayType,
   isCustomVizDisplay,
 } from "metabase-types/api";
@@ -27,7 +28,7 @@ export const useQuestionVisualizationState = ({
   const selectedVisualization = question?.display() ?? "table";
 
   const updateQuestionVisualization = useCallback(
-    (display: CardDisplayType) => {
+    (display: VisualizationDisplay) => {
       if (!question || selectedVisualization === display) {
         return;
       }

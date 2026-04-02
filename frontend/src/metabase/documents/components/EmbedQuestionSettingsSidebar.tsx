@@ -16,7 +16,7 @@ import {
 } from "metabase/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
-  CardDisplayType,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -55,7 +55,7 @@ export const EmbedQuestionSettingsSidebar = ({
   } = useCardData({ id: cardId });
 
   const { sensibleItems, nonsensibleItems, selectedElem } =
-    useVisualizationOptions(dataset, card?.display as CardDisplayType);
+    useVisualizationOptions(dataset, card?.display as VisualizationDisplay);
 
   const { ensureDraftCard } = useDraftCardOperations(
     draftCard,
@@ -85,7 +85,7 @@ export const EmbedQuestionSettingsSidebar = ({
     }
   };
 
-  const handleVisualizationTypeChange = (display: CardDisplayType) => {
+  const handleVisualizationTypeChange = (display: VisualizationDisplay) => {
     if (selectedEmbedIndex !== null) {
       if (!draftCard) {
         const actualCardId = ensureDraftCard({ display }, true);
