@@ -41,7 +41,7 @@
 (defn mcp-apps-cors-origins
   "Returns space-separated CORS origins from both common and custom MCP client settings."
   []
-  (let [common-domains (mapcat mcp-client-apps-sandbox-domains (mcp-apps-cors-enabled-clients)) 
+  (let [common-domains (mapcat mcp-client-apps-sandbox-domains (mcp-apps-cors-enabled-clients))
         custom-domains (str/split (mcp-apps-cors-custom-origins) #"\s+")]
     (->> (concat common-domains custom-domains)
          (map str/trim)
@@ -52,3 +52,12 @@
   "Returns true if vscode/cursor is enabled in common MCP apps."
   []
   (some #{"vscode"} (mcp-apps-cors-enabled-clients)))
+
+(defn mcp-apps-sandbox-origin?
+  "Returns true if the origin matches an enabled MCP client's non-standard sandbox pattern.
+   Currently handles vscode-webview:// origins used by VS Code and Cursor."
+  [raw-origin]
+  (when raw-origin
+    (condp #(str/starts-with? %2 %1) raw-origin
+      "vscode-webview://" (mcp-apps-vscode-webview-enabled?)
+      false)))

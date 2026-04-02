@@ -260,21 +260,13 @@
                    (approved-port? (:port origin) (:port approved-origin))))
                 approved-list)))))))
 
-(defn- mcp-sandbox-origin?
-  "Returns true if the origin matches an enabled MCP client's non-standard sandbox pattern.
-   Currently handles vscode-webview:// origins used by VS Code and Cursor."
-  [raw-origin]
-  (and raw-origin
-       (mcp.settings/mcp-apps-vscode-webview-enabled?)
-       (str/starts-with? raw-origin "vscode-webview://")))
-
 (defn access-control-headers
   "Returns headers for CORS requests. Merges embedding SDK origins and MCP app origins."
   [origin approved-origins]
   (let [mcp-origins       (mcp.settings/mcp-apps-cors-origins)
         all-origins       (str/trim (str approved-origins " " mcp-origins))
         localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
-        mcp-sandbox?       (mcp-sandbox-origin? origin)]
+        mcp-sandbox?       (mcp.settings/mcp-apps-sandbox-origin? origin)]
     (when (or (seq all-origins) localhost-allowed? mcp-sandbox?)
       (merge
        (when (or (approved-origin? origin all-origins) mcp-sandbox?)
