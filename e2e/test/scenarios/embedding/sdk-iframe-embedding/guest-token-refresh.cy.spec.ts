@@ -37,37 +37,6 @@ function signJwt({
     .then((token) => token);
 }
 
-const COMPONENT_TAGS = {
-  dashboard: "metabase-dashboard",
-  question: "metabase-question",
-} as const;
-
-function visitGuestEmbedPage({
-  component,
-  attributes = {},
-}: {
-  component: "dashboard" | "question";
-  attributes?: Record<string, string | number>;
-}) {
-  const tagName = COMPONENT_TAGS[component];
-  const attrString = Object.entries(attributes)
-    .map(([k, v]) => `${k}="${v}"`)
-    .join(" ");
-
-  H.visitCustomHtmlPage(`
-    ${H.getNewEmbedScriptTag({ loadType: "sync" })}
-    <script>
-      defineMetabaseConfig({
-        instanceUrl: "http://localhost:4000",
-        isGuest: true,
-        guestEmbedProviderUri: "${PROVIDER_PATH}",
-      });
-    </script>
-    <style>${tagName} { height: 100vh; }</style>
-    <${tagName} ${attrString} />
-  `);
-}
-
 const PRICE_DASHBOARD_PARAMETER = {
   name: "Price greater than",
   slug: "price",
@@ -86,30 +55,19 @@ const CATEGORY_DASHBOARD_PARAMETER = {
 
 describe("scenarios > embedding > sdk iframe embedding > guest token refresh", () => {
   function createDashboardWithQuestion() {
-    createQuestion({
-      name: "Orders",
-      query: { "source-table": ORDERS_ID },
-    }).then(({ body: question }) => {
-      cy.request("POST", "/api/dashboard", {
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Orders",
+        query: { "source-table": ORDERS_ID },
+      },
+      dashboardDetails: {
         name: "Guest Token Refresh Dashboard",
-      }).then(({ body: dashboard }) => {
-        cy.wrap(dashboard.id).as("dashboardId");
-
-        cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-          enable_embedding: true,
-          embedding_type: "guest-embed",
-          dashcards: [
-            {
-              id: -1,
-              card_id: question.id,
-              row: 0,
-              col: 0,
-              size_x: 11,
-              size_y: 6,
-            },
-          ],
-        });
-      });
+        enable_embedding: true,
+        embedding_type: "guest-embed",
+      },
+      cardDetails: { row: 0, col: 0, size_x: 11, size_y: 6 },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("dashboardId");
     });
   }
 
@@ -297,12 +255,20 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     req.reply({ statusCode: 200, body: { jwt: freshToken } });
                   }).as("guestTokenProvider");
 
-                  visitGuestEmbedPage({
-                    component: "dashboard",
-                    attributes: {
-                      token: expiredToken,
-                      "custom-context": "test-custom-context",
+                  H.loadSdkIframeEmbedTestPage({
+                    metabaseConfig: {
+                      isGuest: true,
+                      guestEmbedProviderUri: PROVIDER_PATH,
                     },
+                    elements: [
+                      {
+                        component: "metabase-dashboard",
+                        attributes: {
+                          token: expiredToken,
+                          "custom-context": "test-custom-context",
+                        },
+                      },
+                    ],
                   });
 
                   cy.wait("@guestTokenProvider").then((interception) => {
@@ -337,9 +303,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                 req.reply({ statusCode: 500 });
               }).as("guestTokenProvider");
 
-              visitGuestEmbedPage({
-                component: "dashboard",
-                attributes: { token: expiredToken },
+              H.loadSdkIframeEmbedTestPage({
+                metabaseConfig: {
+                  isGuest: true,
+                  guestEmbedProviderUri: PROVIDER_PATH,
+                },
+                elements: [
+                  {
+                    component: "metabase-dashboard",
+                    attributes: { token: expiredToken },
+                  },
+                ],
               });
 
               cy.wait("@guestTokenProvider");
@@ -366,9 +340,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     });
                   }).as("guestTokenProvider");
 
-                  visitGuestEmbedPage({
-                    component: "dashboard",
-                    attributes: { token: expiredToken },
+                  H.loadSdkIframeEmbedTestPage({
+                    metabaseConfig: {
+                      isGuest: true,
+                      guestEmbedProviderUri: PROVIDER_PATH,
+                    },
+                    elements: [
+                      {
+                        component: "metabase-dashboard",
+                        attributes: { token: expiredToken },
+                      },
+                    ],
                   });
 
                   cy.wait("@guestTokenProvider");
@@ -402,9 +384,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     req.reply({ statusCode: 200, body: { jwt: freshToken } });
                   }).as("guestTokenProvider");
 
-                  visitGuestEmbedPage({
-                    component: "dashboard",
-                    attributes: { token: shortLivedToken },
+                  H.loadSdkIframeEmbedTestPage({
+                    metabaseConfig: {
+                      isGuest: true,
+                      guestEmbedProviderUri: PROVIDER_PATH,
+                    },
+                    elements: [
+                      {
+                        component: "metabase-dashboard",
+                        attributes: { token: shortLivedToken },
+                      },
+                    ],
                   });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -463,9 +453,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     req.reply({ statusCode: 200, body: { jwt: freshToken } });
                   }).as("guestTokenProvider");
 
-                  visitGuestEmbedPage({
-                    component: "dashboard",
-                    attributes: { token: shortLivedToken },
+                  H.loadSdkIframeEmbedTestPage({
+                    metabaseConfig: {
+                      isGuest: true,
+                      guestEmbedProviderUri: PROVIDER_PATH,
+                    },
+                    elements: [
+                      {
+                        component: "metabase-dashboard",
+                        attributes: { token: shortLivedToken },
+                      },
+                    ],
                   });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -525,12 +523,20 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                 req.reply({ statusCode: 200, body: { jwt: freshToken } });
               }).as("guestTokenProvider");
 
-              visitGuestEmbedPage({
-                component: "dashboard",
-                attributes: {
-                  "dashboard-id": dashboardId,
-                  "custom-context": "test-custom-context",
+              H.loadSdkIframeEmbedTestPage({
+                metabaseConfig: {
+                  isGuest: true,
+                  guestEmbedProviderUri: PROVIDER_PATH,
                 },
+                elements: [
+                  {
+                    component: "metabase-dashboard",
+                    attributes: {
+                      "dashboard-id": dashboardId,
+                      "custom-context": "test-custom-context",
+                    },
+                  },
+                ],
               });
 
               cy.wait("@guestTokenProvider").then((interception) => {
@@ -562,9 +568,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
             req.reply({ statusCode: 500 });
           }).as("guestTokenProvider");
 
-          visitGuestEmbedPage({
-            component: "dashboard",
-            attributes: { "dashboard-id": dashboardId },
+          H.loadSdkIframeEmbedTestPage({
+            metabaseConfig: {
+              isGuest: true,
+              guestEmbedProviderUri: PROVIDER_PATH,
+            },
+            elements: [
+              {
+                component: "metabase-dashboard",
+                attributes: { "dashboard-id": dashboardId },
+              },
+            ],
           });
 
           cy.wait("@guestTokenProvider");
@@ -587,9 +601,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                 });
               }).as("guestTokenProvider");
 
-              visitGuestEmbedPage({
-                component: "dashboard",
-                attributes: { "dashboard-id": dashboardId },
+              H.loadSdkIframeEmbedTestPage({
+                metabaseConfig: {
+                  isGuest: true,
+                  guestEmbedProviderUri: PROVIDER_PATH,
+                },
+                elements: [
+                  {
+                    component: "metabase-dashboard",
+                    attributes: { "dashboard-id": dashboardId },
+                  },
+                ],
               });
 
               cy.wait("@guestTokenProvider");
@@ -623,12 +645,20 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     req.reply({ statusCode: 200, body: { jwt: freshToken } });
                   }).as("guestTokenProvider");
 
-                  visitGuestEmbedPage({
-                    component: "question",
-                    attributes: {
-                      token: expiredToken,
-                      "custom-context": "test-custom-context",
+                  H.loadSdkIframeEmbedTestPage({
+                    metabaseConfig: {
+                      isGuest: true,
+                      guestEmbedProviderUri: PROVIDER_PATH,
                     },
+                    elements: [
+                      {
+                        component: "metabase-question",
+                        attributes: {
+                          token: expiredToken,
+                          "custom-context": "test-custom-context",
+                        },
+                      },
+                    ],
                   });
 
                   cy.wait("@guestTokenProvider").then((interception) => {
@@ -665,9 +695,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                 req.reply({ statusCode: 500 });
               }).as("guestTokenProvider");
 
-              visitGuestEmbedPage({
-                component: "question",
-                attributes: { token: expiredToken },
+              H.loadSdkIframeEmbedTestPage({
+                metabaseConfig: {
+                  isGuest: true,
+                  guestEmbedProviderUri: PROVIDER_PATH,
+                },
+                elements: [
+                  {
+                    component: "metabase-question",
+                    attributes: { token: expiredToken },
+                  },
+                ],
               });
 
               cy.wait("@guestTokenProvider");
@@ -694,9 +732,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     });
                   }).as("guestTokenProvider");
 
-                  visitGuestEmbedPage({
-                    component: "question",
-                    attributes: { token: expiredToken },
+                  H.loadSdkIframeEmbedTestPage({
+                    metabaseConfig: {
+                      isGuest: true,
+                      guestEmbedProviderUri: PROVIDER_PATH,
+                    },
+                    elements: [
+                      {
+                        component: "metabase-question",
+                        attributes: { token: expiredToken },
+                      },
+                    ],
                   });
 
                   cy.wait("@guestTokenProvider");
@@ -730,9 +776,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     req.reply({ statusCode: 200, body: { jwt: freshToken } });
                   }).as("guestTokenProvider");
 
-                  visitGuestEmbedPage({
-                    component: "question",
-                    attributes: { token: shortLivedToken },
+                  H.loadSdkIframeEmbedTestPage({
+                    metabaseConfig: {
+                      isGuest: true,
+                      guestEmbedProviderUri: PROVIDER_PATH,
+                    },
+                    elements: [
+                      {
+                        component: "metabase-question",
+                        attributes: { token: shortLivedToken },
+                      },
+                    ],
                   });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -791,9 +845,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     req.reply({ statusCode: 200, body: { jwt: freshToken } });
                   }).as("guestTokenProvider");
 
-                  visitGuestEmbedPage({
-                    component: "question",
-                    attributes: { token: shortLivedToken },
+                  H.loadSdkIframeEmbedTestPage({
+                    metabaseConfig: {
+                      isGuest: true,
+                      guestEmbedProviderUri: PROVIDER_PATH,
+                    },
+                    elements: [
+                      {
+                        component: "metabase-question",
+                        attributes: { token: shortLivedToken },
+                      },
+                    ],
                   });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -854,12 +916,20 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
               req.reply({ statusCode: 200, body: { jwt: freshToken } });
             }).as("guestTokenProvider");
 
-            visitGuestEmbedPage({
-              component: "question",
-              attributes: {
-                "question-id": questionId,
-                "custom-context": "test-custom-context",
+            H.loadSdkIframeEmbedTestPage({
+              metabaseConfig: {
+                isGuest: true,
+                guestEmbedProviderUri: PROVIDER_PATH,
               },
+              elements: [
+                {
+                  component: "metabase-question",
+                  attributes: {
+                    "question-id": questionId,
+                    "custom-context": "test-custom-context",
+                  },
+                },
+              ],
             });
 
             cy.wait("@guestTokenProvider").then((interception) => {
@@ -892,9 +962,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
             req.reply({ statusCode: 500 });
           }).as("guestTokenProvider");
 
-          visitGuestEmbedPage({
-            component: "question",
-            attributes: { "question-id": questionId },
+          H.loadSdkIframeEmbedTestPage({
+            metabaseConfig: {
+              isGuest: true,
+              guestEmbedProviderUri: PROVIDER_PATH,
+            },
+            elements: [
+              {
+                component: "metabase-question",
+                attributes: { "question-id": questionId },
+              },
+            ],
           });
 
           cy.wait("@guestTokenProvider");
@@ -916,9 +994,17 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
               });
             }).as("guestTokenProvider");
 
-            visitGuestEmbedPage({
-              component: "question",
-              attributes: { "question-id": questionId },
+            H.loadSdkIframeEmbedTestPage({
+              metabaseConfig: {
+                isGuest: true,
+                guestEmbedProviderUri: PROVIDER_PATH,
+              },
+              elements: [
+                {
+                  component: "metabase-question",
+                  attributes: { "question-id": questionId },
+                },
+              ],
             });
 
             cy.wait("@guestTokenProvider");
