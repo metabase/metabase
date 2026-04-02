@@ -408,6 +408,115 @@
       (is (empty? (:bad-refs result)) "Valid SQL should have no bad refs"))))
 
 ;;; ===========================================================================
+;;; Computed result-metadata tests
+;;;
+;;; When YAML has no result_metadata, the checker computes it from the query
+;;; so deps.analysis can verify card subquery column references.
+;;; ===========================================================================
+
+(deftest mbql-card-computes-result-metadata-test
+  (testing "MBQL card without result_metadata computes columns from query"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables    {["DB" "PUBLIC" "ORDERS"] {:name "ORDERS" :schema "PUBLIC"}}
+                    :fields    {["DB" "PUBLIC" "ORDERS" "ID"]
+                                {:name "ID" :base_type "type/BigInteger" :database_type "BIGINT"
+                                 :table_id ["DB" "PUBLIC" "ORDERS"]}
+                                ["DB" "PUBLIC" "ORDERS" "TOTAL"]
+                                {:name "TOTAL" :base_type "type/Float" :database_type "DOUBLE PRECISION"
+                                 :table_id ["DB" "PUBLIC" "ORDERS"]}}
+                    ;; Card with MBQL query but no result_metadata
+                    :cards     {"mbql-card" {:name "MBQL Card"
+                                             :entity_id "mbql-card"
+                                             :type "question"
+                                             :dataset_query {:database "DB"
+                                                             :type "query"
+                                                             :query {:source-table ["DB" "PUBLIC" "ORDERS"]}}}
+                                ;; Native card referencing the MBQL card's columns
+                                "native-card" {:name "Native Ref"
+                                                :entity_id "native-card"
+                                                :type "question"
+                                                :dataset_query {:database "DB"
+                                                                :type "native"
+                                                                :native {:query "SELECT ID FROM {{#1-mbql}}"
+                                                                         :template-tags {"#1-mbql" {:type :card
+                                                                                                    :name "#1-mbql"
+                                                                                                    :card-id "mbql-card"}}}}}}}
+          source  (helpers/make-memory-source entities)
+          index   (helpers/make-memory-index entities)
+          results (checker/check-entities source index ["native-card"])
+          result  (get results "native-card")]
+      (is (some? result))
+      ;; ID exists in ORDERS and in the MBQL card's computed result-metadata,
+      ;; so it should NOT be flagged as missing
+      (is (not (some #(and (= :missing-column (:type %))
+                           (= "ID" (:name %)))
+                     (:native-errors result)))
+          "ID should not be flagged — it exists in the MBQL card's computed columns"))))
+
+(deftest mbql-card-named-aggregation-in-result-metadata-test
+  (testing "Named aggregation columns appear in computed result-metadata"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables    {["DB" "PUBLIC" "ORDERS"] {:name "ORDERS" :schema "PUBLIC"}}
+                    :fields    {["DB" "PUBLIC" "ORDERS" "TOTAL"]
+                                {:name "TOTAL" :base_type "type/Float" :database_type "DOUBLE PRECISION"
+                                 :table_id ["DB" "PUBLIC" "ORDERS"]}}
+                    ;; Card with named aggregation but no result_metadata
+                    :cards     {"agg-card" {:name "Agg Card"
+                                            :entity_id "agg-card"
+                                            :type "question"
+                                            :dataset_query {:database "DB"
+                                                            :type "query"
+                                                            :query {:source-table ["DB" "PUBLIC" "ORDERS"]
+                                                                    :aggregation [[:sum {:name "total_revenue"
+                                                                                         :display-name "Total Revenue"}
+                                                                                   [:field
+                                                                                    ["DB" "PUBLIC" "ORDERS" "TOTAL"]
+                                                                                    {:base-type :type/Float}]]]}}}
+                                ;; Native card referencing the named aggregation column
+                                "ref-card" {:name "Ref Card"
+                                             :entity_id "ref-card"
+                                             :type "question"
+                                             :dataset_query {:database "DB"
+                                                             :type "native"
+                                                             :native {:query "SELECT total_revenue FROM {{#1-agg}}"
+                                                                      :template-tags {"#1-agg" {:type :card
+                                                                                                :name "#1-agg"
+                                                                                                :card-id "agg-card"}}}}}}}
+          source  (helpers/make-memory-source entities)
+          index   (helpers/make-memory-index entities)
+          results (checker/check-entities source index ["ref-card"])
+          result  (get results "ref-card")]
+      (is (some? result))
+      (is (not (some #(and (= :missing-column (:type %))
+                           (= "total_revenue" (:name %)))
+                     (:native-errors result)))
+          "total_revenue should not be flagged — it's a named aggregation in the source card"))))
+
+(deftest native-card-without-result-metadata-no-false-positives-test
+  (testing "Native card without result_metadata doesn't produce false positive errors"
+    (let [entities {:databases {"DB" {:name "DB" :engine "h2"}}
+                    :tables    {["DB" "PUBLIC" "ORDERS"] {:name "ORDERS" :schema "PUBLIC"}}
+                    :fields    {["DB" "PUBLIC" "ORDERS" "ID"]
+                                {:name "ID" :base_type "type/BigInteger" :database_type "BIGINT"
+                                 :table_id ["DB" "PUBLIC" "ORDERS"]}
+                                ["DB" "PUBLIC" "ORDERS" "TOTAL"]
+                                {:name "TOTAL" :base_type "type/Float" :database_type "DOUBLE PRECISION"
+                                 :table_id ["DB" "PUBLIC" "ORDERS"]}}
+                    :cards     {"sql-card" {:name "SQL Card"
+                                            :entity_id "sql-card"
+                                            :type "question"
+                                            :dataset_query {:database "DB"
+                                                            :type "native"
+                                                            :native {:query "SELECT ID, TOTAL FROM ORDERS"}}}}}
+          source  (helpers/make-memory-source entities)
+          index   (helpers/make-memory-index entities)
+          results (checker/check-entities source index ["sql-card"])
+          result  (get results "sql-card")]
+      (is (some? result))
+      (is (nil? (:error result)))
+      (is (empty? (:bad-refs result)) "Valid native SQL should have no bad refs"))))
+
+;;; ===========================================================================
 ;;; Measure and Segment reference tests
 ;;; ===========================================================================
 

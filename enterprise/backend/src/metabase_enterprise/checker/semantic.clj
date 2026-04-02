@@ -285,6 +285,8 @@
               db-id   (when (string? db-name) (resolve-db-name store !failures db-name))]
           (cond-> query db-id (assoc :database db-id)))))))
 
+(declare compute-result-metadata)
+
 (defn- ->card-metadata
   "Convert a cached card entity to lib metadata. Returns the metadata map with
    ::resolution-failures and ::missing-database keys when resolution fails."
@@ -298,10 +300,14 @@
         db-name    (get-in data [:dataset_query :database])
         db-id      (when (string? db-name) (resolve-db-name store !failures db-name))
         dataset-query   (convert-dataset-query store !failures (:dataset_query data))
-        result-metadata (when-let [cols (seq (:result_metadata data))]
+        result-metadata (if-let [cols (seq (:result_metadata data))]
                           (->> cols
                                (map (partial convert-result-metadata-column resolver store !failures))
-                               (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))]
+                               (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))
+                          ;; No result_metadata in YAML — compute from the query so that
+                          ;; deps.analysis/card-column-exists? can verify card subquery columns.
+                          (when (and dataset-query db-id)
+                            (compute-result-metadata store dataset-query)))]
     (cond-> {:lib/type        :metadata/card
              :id              (:id data)
              :name            (:name data)
@@ -474,6 +480,18 @@
   "Create a MetadataProvider backed by a store."
   [store]
   (->SourceMetadataProvider store))
+
+(defn- compute-result-metadata
+  "Compute result metadata for a resolved dataset-query by building a lib query
+   and calling returned-columns. Used when YAML has no result_metadata so that
+   deps.analysis can verify card subquery column references."
+  [store dataset-query]
+  (try
+    (let [provider (make-provider store)
+          query    (lib/query provider dataset-query)]
+      (mapv #(select-keys % [:name :base-type :effective-type :semantic-type :display-name])
+            (lib/returned-columns query)))
+    (catch Exception _ nil)))
 
 ;;; ===========================================================================
 ;;; Common entity checks — apply to any entity type
