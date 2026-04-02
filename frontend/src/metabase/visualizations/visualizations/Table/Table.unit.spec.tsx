@@ -326,6 +326,17 @@ describe("dashboard client-side sorting", () => {
   });
 });
 
+describe("table.striped", () => {
+  it("should be a display toggle disabled by default", () => {
+    const setting = Table.settings["table.striped"];
+
+    expect(setting).toBeDefined();
+    expect(setting.widget).toBe("toggle");
+    expect(setting.inline).toBe(true);
+    expect(setting.getDefault?.()).toBe(false);
+  });
+});
+
 describe("text_wrapping", () => {
   describe("in columnSettings", () => {
     function assertDefined<T>(
