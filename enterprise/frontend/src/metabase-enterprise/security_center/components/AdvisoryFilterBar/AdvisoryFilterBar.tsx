@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
 import { Checkbox, Group, Select } from "metabase/ui";
+import type { AdvisorySeverity } from "metabase-types/api";
 
-import type { AdvisoryFilter, AdvisorySeverity } from "../../types";
+import type { AdvisoryFilter } from "../../types";
 
 interface AdvisoryFilterBarProps {
   filter: AdvisoryFilter;

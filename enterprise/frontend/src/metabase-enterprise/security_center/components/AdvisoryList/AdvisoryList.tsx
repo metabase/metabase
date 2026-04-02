@@ -1,6 +1,6 @@
 import { Stack } from "metabase/ui";
+import type { Advisory, AdvisoryId } from "metabase-types/api";
 
-import type { Advisory, AdvisoryId } from "../../types";
 import { sortAdvisories } from "../../utils";
 import { AdvisoryCard } from "../AdvisoryCard/AdvisoryCard";
 

@@ -11,8 +11,12 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import type {
+  Advisory,
+  AdvisoryId,
+  AdvisorySeverity,
+} from "metabase-types/api";
 
-import type { Advisory, AdvisoryId, AdvisorySeverity } from "../../types";
 import { isAcknowledged, isAffected } from "../../utils";
 
 import S from "./AdvisoryCard.module.css";

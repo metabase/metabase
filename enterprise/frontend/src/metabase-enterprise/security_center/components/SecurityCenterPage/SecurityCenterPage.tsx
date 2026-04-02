@@ -66,13 +66,13 @@ export function SecurityCenterPage() {
       </Stack>
       <Stack gap="xl" className={S.content}>
         <AdvisoryFilterBar
-          className={S["filter-bar"]}
+          className={S.filterBar}
           filter={filter}
           onChange={setFilter}
         />
         {nothingToShow ? (
           <EmptyState
-            className={S["empty-state"]}
+            className={S.emptyState}
             icon="shield_outline"
             message={
               advisories.length === 0
