@@ -7547,6 +7547,9 @@
               "type" : "null"
             } ]
           },
+          "qp/native-sandbox-column.propagate-coercion?" : {
+            "type" : "boolean"
+          },
           "lib/internal-remap" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.internal"
@@ -7624,6 +7627,9 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "qp/native-sandbox-column.force-coercion-strategy" : {
+            "type" : "string"
           },
           "lib/source" : {
             "oneOf" : [ {
@@ -9253,6 +9259,9 @@
                 "type" : "null"
               } ]
             },
+            "qp/native-sandbox-column.propagate-coercion?" : {
+              "type" : "boolean"
+            },
             "lib/internal-remap" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.internal"
@@ -9361,6 +9370,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "qp/native-sandbox-column.force-coercion-strategy" : {
+              "type" : "string"
             },
             "lib/source" : {
               "oneOf" : [ {
@@ -11014,6 +11026,9 @@
                 "type" : "null"
               } ]
             },
+            "qp/native-sandbox-column.propagate-coercion?" : {
+              "type" : "boolean"
+            },
             "has-field-values" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.has-field-values"
@@ -11079,6 +11094,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "qp/native-sandbox-column.force-coercion-strategy" : {
+              "type" : "string"
             },
             "lib/source" : {
               "oneOf" : [ {
@@ -11509,6 +11527,9 @@
                   "type" : "null"
                 } ]
               },
+              "qp/native-sandbox-column.propagate-coercion?" : {
+                "type" : "boolean"
+              },
               "has-field-values" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.has-field-values"
@@ -11574,6 +11595,9 @@
                 }, {
                   "type" : "null"
                 } ]
+              },
+              "qp/native-sandbox-column.force-coercion-strategy" : {
+                "type" : "string"
               },
               "lib/source" : {
                 "oneOf" : [ {
