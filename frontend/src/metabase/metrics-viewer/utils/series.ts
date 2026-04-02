@@ -48,40 +48,43 @@ import { getModifiedDefinition } from "./definition-cache";
 import {
   entryHasBreakout,
   getEffectiveDefinitionEntry,
+  getEffectiveTokenDefinitionEntry,
   getEntryBreakout,
 } from "./definition-entries";
 import { findDimensionById } from "./dimension-lookup";
-import type { MetricSlot } from "./metric-slots";
-import { findStandaloneSlot, slotsForEntity } from "./metric-slots";
+import {
+  type MetricSlot,
+  findExpressionTokenSlot,
+  findStandaloneSlot,
+  slotsForEntity,
+} from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
 export function buildArithmeticSeriesFromResult(
+  entry: ExpressionDefinitionEntry,
+  entryIndex: number,
+  metricSlots: MetricSlot[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   dimensionMapping: Record<number, DimensionId | null>,
   display: MetricsViewerDisplayType,
   arithmeticResult: Dataset,
-  modifiedDefinitions: Record<MetricSourceId, MetricDefinition>,
-  expressionName: string,
+  modifiedDefinitions: Record<number, MetricDefinition>,
   sourceColors: string[] | undefined,
-  formulaEntities: MetricsViewerFormulaEntity[],
 ): SingleSeries[] {
   if (!arithmeticResult.data?.cols?.length) {
     return [];
   }
 
-  const modDefMap = new Map(Object.entries(modifiedDefinitions)) as Map<
-    MetricSourceId,
-    MetricDefinition
-  >;
   const vizSettings = getVizSettingsBySourceId(
     display,
-    Object.values(definitions),
+    entry,
+    entryIndex,
+    metricSlots,
     definitions,
-    modDefMap,
+    modifiedDefinitions,
     dimensionMapping,
-    formulaEntities,
   );
   if (!vizSettings) {
     return [];
@@ -96,12 +99,12 @@ export function buildArithmeticSeriesFromResult(
     true,
     1,
     null,
-    expressionName,
+    entry.name,
   );
 
   return [
     {
-      card: createSeriesCard(cardId, expressionName, display, {
+      card: createSeriesCard(cardId, entry.name, display, {
         ...vizSettings,
         ...computeColorVizSettings({
           displayType: display,
@@ -120,49 +123,56 @@ export function buildArithmeticSeriesFromResult(
  */
 function getVizSettingsBySourceId(
   display: MetricsViewerDisplayType,
-  entries: MetricsViewerDefinitionEntry[],
+  entry: ExpressionDefinitionEntry,
+  entryIndex: number,
+  metricSlots: MetricSlot[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
+  modifiedDefinitions: Record<number, MetricDefinition>,
   dimensionMapping: Record<number, DimensionId | null>,
-  formulaEntities: MetricsViewerFormulaEntity[],
 ): VisualizationSettings | null {
   const displayConfig = DISPLAY_TYPE_REGISTRY[display];
 
-  // Build a sourceId → first entity index lookup for dimension mapping
-  const sourceIdToEntityIndex = new Map<MetricSourceId, number>();
-  formulaEntities.forEach((entity, index) => {
-    if (isMetricEntry(entity) && !sourceIdToEntityIndex.has(entity.id)) {
-      sourceIdToEntityIndex.set(entity.id, index);
-    }
-  });
+  return entry.tokens.reduce<VisualizationSettings | null>(
+    (found, token, tokenIndex) => {
+      if (found) {
+        return found;
+      }
 
-  return entries.reduce<VisualizationSettings | null>((found, entry) => {
-    if (found) {
-      return found;
-    }
-    const definition = definitions[entry.id]?.definition;
-    const modifiedDefinition = modifiedDefinitions.get(entry.id);
-    if (!definition || !modifiedDefinition) {
-      return null;
-    }
-
-    const entityIndex = sourceIdToEntityIndex.get(entry.id);
-    const dimensionId =
-      entityIndex != null ? dimensionMapping[entityIndex] : undefined;
-
-    if (displayConfig.dimensionRequired) {
-      if (!dimensionId) {
+      if (token.type !== "metric") {
         return null;
       }
-      const dimension = findDimensionById(definition, dimensionId);
-      if (!dimension) {
+
+      const entry = getEffectiveTokenDefinitionEntry(token, definitions);
+      const definition = entry.definition;
+      const modifiedDefinition = modifiedDefinitions[tokenIndex];
+
+      if (!definition || !modifiedDefinition) {
         return null;
       }
-      return displayConfig.getSettings(modifiedDefinition, dimension);
-    }
 
-    return displayConfig.getSettings(modifiedDefinition);
-  }, null);
+      const tokenSlot = findExpressionTokenSlot(
+        metricSlots,
+        entryIndex,
+        tokenIndex,
+      );
+      const slotIndex = tokenSlot?.slotIndex ?? -1;
+      const dimensionId = dimensionMapping[slotIndex];
+
+      if (displayConfig.dimensionRequired) {
+        if (!dimensionId) {
+          return null;
+        }
+        const dimension = findDimensionById(definition, dimensionId);
+        if (!dimension) {
+          return null;
+        }
+        return displayConfig.getSettings(modifiedDefinition, dimension);
+      }
+
+      return displayConfig.getSettings(modifiedDefinition);
+    },
+    null,
+  );
 }
 
 /**
@@ -825,11 +835,13 @@ function buildExpressionMetricSources(
         slotIndex: slot.slotIndex,
         sourceId: slot.sourceId,
         metricName,
-        metricCount:
-          (slot.tokenPosition &&
-            entity.tokens[slot.tokenPosition]?.type === "metric" &&
-            entity.tokens[slot.tokenPosition].count) ??
-          undefined,
+        metricCount: (() => {
+          if (slot.tokenPosition == null) {
+            return undefined;
+          }
+          const token = entity.tokens[slot.tokenPosition];
+          return token?.type === "metric" ? token.count : undefined;
+        })(),
         colors: entryColors,
         currentDimensionLabel,
         availableOptions: computeAvailableOptions(

@@ -153,6 +153,114 @@ function addDefinitionToTabs(
   });
 }
 
+/**
+ * For each tab, find slots that have no dimension assigned yet but whose
+ * definition IS loaded, and try to smart-match a dimension using the same
+ * logic as `addDefinitionToTabs`.  This handles both timing orderings:
+ *  - definition loaded before formula committed (called from setFormulaEntities)
+ *  - formula committed before definition loaded (called from updateDefinition)
+ */
+function assignDimensionsForUnmappedSlots(
+  tabs: MetricsViewerTabState[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  formulaEntities: MetricsViewerFormulaEntity[],
+): MetricsViewerTabState[] {
+  const slots = computeMetricSlots(formulaEntities);
+  if (slots.length === 0) {
+    return tabs;
+  }
+
+  const slotIndexToSourceId = new Map<number, MetricSourceId>();
+  for (const slot of slots) {
+    slotIndexToSourceId.set(slot.slotIndex, slot.sourceId);
+  }
+
+  return tabs.map((tab) => {
+    if (tab.label == null) {
+      return tab;
+    }
+
+    // Collect unmapped slots grouped by sourceId.
+    const unmappedBySource = new Map<
+      MetricSourceId,
+      { slotIndices: number[]; definition: MetricDefinition }
+    >();
+
+    for (const slot of slots) {
+      const existing = tab.dimensionMapping[slot.slotIndex];
+      if (existing !== undefined) {
+        continue; // already mapped (even if null — that's an explicit clear)
+      }
+      const defEntry = definitions[slot.sourceId];
+      if (!defEntry?.definition) {
+        continue; // definition not loaded yet
+      }
+      let group = unmappedBySource.get(slot.sourceId);
+      if (!group) {
+        group = { slotIndices: [], definition: defEntry.definition };
+        unmappedBySource.set(slot.sourceId, group);
+      }
+      group.slotIndices.push(slot.slotIndex);
+    }
+
+    if (unmappedBySource.size === 0) {
+      return tab;
+    }
+
+    // Build stored-tab representation for matching.
+    const activeMappings: Record<number, string> = {};
+    for (const [key, value] of getObjectEntries(tab.dimensionMapping)) {
+      if (value != null) {
+        activeMappings[Number(key)] = value;
+      }
+    }
+    const storedTab: StoredMetricsViewerTab = {
+      id: tab.id,
+      type: tab.type,
+      label: tab.label,
+      dimensionsBySource: activeMappings,
+    };
+
+    let newMappings: Record<number, string> | null = null;
+
+    for (const [sourceId, { slotIndices, definition }] of unmappedBySource) {
+      const existingDefinitions = objectFromEntries(
+        Object.values(definitions)
+          .filter((entry) => entry.id !== sourceId && entry.definition != null)
+          .map((entry) => [entry.id, entry.definition] as const),
+      );
+
+      const matchingDimension = findMatchingDimensionForTab(
+        definition,
+        storedTab,
+        existingDefinitions,
+        slotIndexToSourceId,
+      );
+
+      if (matchingDimension) {
+        if (!newMappings) {
+          newMappings = {};
+        }
+        for (const idx of slotIndices) {
+          newMappings[idx] = matchingDimension;
+        }
+      }
+    }
+
+    if (!newMappings) {
+      return tab;
+    }
+
+    return {
+      ...tab,
+      dimensionMapping: {
+        ...tab.dimensionMapping,
+        ...newMappings,
+      },
+    };
+  });
+}
+
 function areTabDimensionsValid(tab: MetricsViewerTabState): boolean {
   const tabConfig = getTabConfig(tab.type);
   return (
@@ -313,12 +421,10 @@ export function useViewerState(): UseViewerStateResult {
           return { ...prev, definitions: newDefinitions };
         }
 
-        const updatedTabs = addDefinitionToTabs(
+        const updatedTabs = assignDimensionsForUnmappedSlots(
           prev.tabs,
           newDefinitions,
           prev.formulaEntities,
-          id,
-          definition,
         );
 
         const newTabs = updatedTabs.filter((tab) => areTabDimensionsValid(tab));
@@ -505,15 +611,23 @@ export function useViewerState(): UseViewerStateResult {
 
   const setFormulaEntities = useCallback(
     (formulaEntities: MetricsViewerFormulaEntity[]) =>
-      setState((prev) => ({
-        ...prev,
-        formulaEntities,
-        tabs: reconcileDimensionMappings(
+      setState((prev) => {
+        const reconciledTabs = reconcileDimensionMappings(
           prev.tabs,
           prev.formulaEntities,
           formulaEntities,
-        ),
-      })),
+        );
+        const tabs = assignDimensionsForUnmappedSlots(
+          reconciledTabs,
+          prev.definitions,
+          formulaEntities,
+        );
+        return {
+          ...prev,
+          formulaEntities,
+          tabs,
+        };
+      }),
     [],
   );
 

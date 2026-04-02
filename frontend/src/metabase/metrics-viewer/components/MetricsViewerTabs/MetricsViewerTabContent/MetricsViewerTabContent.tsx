@@ -102,14 +102,15 @@ export function MetricsViewerTabContent({
       );
 
       return buildArithmeticSeriesFromResult(
+        item.entry,
+        itemIndex,
+        metricSlots,
         definitions,
         tab.dimensionMapping,
         tab.display,
         item.result,
         item.modifiedDefinitions,
-        item.entry.name,
         sourceColors[itemIndex],
-        formulaEntities,
       );
     });
 

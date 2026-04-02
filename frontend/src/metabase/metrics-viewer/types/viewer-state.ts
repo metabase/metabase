@@ -32,17 +32,19 @@ export interface StoredMetricsViewerTab {
 
 // ── Expression sub-tokens ──
 
+export type ExpressionMetricSubToken = {
+  type: "metric";
+  sourceId: MetricSourceId;
+  count: number;
+  definition?: MetricDefinition;
+};
+
 /**
  * Tokens that appear inside a single expression formula.
  * These are the building blocks of an expression definition entry.
  */
 export type ExpressionSubToken =
-  | {
-      type: "metric";
-      sourceId: MetricSourceId;
-      count: number;
-      definition?: MetricDefinition;
-    }
+  | ExpressionMetricSubToken
   | { type: "constant"; value: number }
   | { type: "operator"; op: MathOperator }
   | { type: "open-paren" }
@@ -153,7 +155,7 @@ export type ExpressionItemResult = {
   /** The expression definition entry. */
   entry: ExpressionDefinitionEntry;
   /** Per-source modified definitions used by this expression. */
-  modifiedDefinitions: Record<MetricSourceId, MetricDefinition>;
+  modifiedDefinitions: Record<number, MetricDefinition>;
   result: Dataset | null;
   isExecuting: boolean;
   requestError: string | null; // error from http request
