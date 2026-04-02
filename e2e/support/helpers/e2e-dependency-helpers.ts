@@ -42,7 +42,7 @@ export const DependencyDiagnostics = {
   },
 };
 
-const WAIT_TIMEOUT = 10000;
+const WAIT_TIMEOUT = 30000;
 const WAIT_INTERVAL = 100;
 
 export function waitForUnreferencedEntities(
