@@ -592,7 +592,8 @@
    :custom-help? true
    :arg-schema [:or
                 [:tuple]
-                [:tuple [:enum "up" "stop" "down" "open" "status" "list"]]
+                [:tuple [:enum "open" "status" "list"]]
+                [:cat [:enum "up" "stop" "down"] [:* :string]]
                 [:cat [:= "add"] [:* :string]]
                 [:cat [:= "logs"] [:* :string]]]
    :options [["-h" "--help" "Show help for a command"]
