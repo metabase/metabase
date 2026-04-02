@@ -47,4 +47,3 @@
          (map str/trim)
          (keep not-empty)
          (str/join " "))))
-
