@@ -2,7 +2,7 @@ databaseChangeLog:
 
   # 1. Create the dependency_status table
   - changeSet:
-      id: v60.2026-03-17T00:00:00
+      id: v61.2026-04-02T00:00:00
       author: ericnormand
       comment: Create dependency_status table for async dependency calculation tracking
       changes:
@@ -67,7 +67,7 @@ databaseChangeLog:
 
   # 2. Unique constraint on (entity_type, entity_id)
   - changeSet:
-      id: v60.2026-03-17T00:00:01
+      id: v61.2026-04-02T00:00:01
       author: ericnormand
       comment: Unique constraint to prevent duplicate dependency_status entries
       changes:
@@ -82,7 +82,7 @@ databaseChangeLog:
 
   # 3. Index on stale column (partial on postgres, full on others)
   - changeSet:
-      id: v60.2026-03-17T00:00:02
+      id: v61.2026-04-02T00:00:02
       author: ericnormand
       comment: Add partial index on dependency_status.stale for efficient polling
       changes:
@@ -102,7 +102,7 @@ databaseChangeLog:
   # Entities with version = 0 (never analyzed) get stale=true so the backfill picks them up.
 
   - changeSet:
-      id: v60.2026-03-17T00:00:03
+      id: v61.2026-04-02T00:00:03
       author: ericnormand
       comment: Migrate dependency_analysis_version from report_card to dependency_status
       changes:
@@ -115,7 +115,7 @@ databaseChangeLog:
             sql: DELETE FROM dependency_status WHERE entity_type = 'card'
 
   - changeSet:
-      id: v60.2026-03-17T00:00:04
+      id: v61.2026-04-02T00:00:04
       author: ericnormand
       comment: Migrate dependency_analysis_version from transform to dependency_status
       changes:
@@ -128,7 +128,7 @@ databaseChangeLog:
             sql: DELETE FROM dependency_status WHERE entity_type = 'transform'
 
   - changeSet:
-      id: v60.2026-03-17T00:00:05
+      id: v61.2026-04-02T00:00:05
       author: ericnormand
       comment: Migrate dependency_analysis_version from native_query_snippet to dependency_status
       changes:
@@ -141,7 +141,7 @@ databaseChangeLog:
             sql: DELETE FROM dependency_status WHERE entity_type = 'snippet'
 
   - changeSet:
-      id: v60.2026-03-17T00:00:06
+      id: v61.2026-04-02T00:00:06
       author: ericnormand
       comment: Migrate dependency_analysis_version from report_dashboard to dependency_status
       changes:
@@ -154,7 +154,7 @@ databaseChangeLog:
             sql: DELETE FROM dependency_status WHERE entity_type = 'dashboard'
 
   - changeSet:
-      id: v60.2026-03-17T00:00:07
+      id: v61.2026-04-02T00:00:07
       author: ericnormand
       comment: Migrate dependency_analysis_version from document to dependency_status
       changes:
@@ -167,7 +167,7 @@ databaseChangeLog:
             sql: DELETE FROM dependency_status WHERE entity_type = 'document'
 
   - changeSet:
-      id: v60.2026-03-17T00:00:08
+      id: v61.2026-04-02T00:00:08
       author: ericnormand
       comment: Migrate dependency_analysis_version from sandboxes to dependency_status
       changes:
@@ -180,7 +180,7 @@ databaseChangeLog:
             sql: DELETE FROM dependency_status WHERE entity_type = 'sandbox'
 
   - changeSet:
-      id: v60.2026-03-17T00:00:09
+      id: v61.2026-04-02T00:00:09
       author: ericnormand
       comment: Migrate dependency_analysis_version from segment to dependency_status
       changes:
@@ -193,7 +193,7 @@ databaseChangeLog:
             sql: DELETE FROM dependency_status WHERE entity_type = 'segment'
 
   - changeSet:
-      id: v60.2026-03-17T00:00:10
+      id: v61.2026-04-02T00:00:10
       author: ericnormand
       comment: Migrate dependency_analysis_version from measure to dependency_status
       changes:
@@ -208,7 +208,7 @@ databaseChangeLog:
   # 12-17. Drop indexes on dependency_analysis_version (for tables that have them)
 
   - changeSet:
-      id: v60.2026-03-17T00:00:11
+      id: v61.2026-04-02T00:00:11
       author: ericnormand
       comment: Drop dependency_analysis_version index from report_card
       changes:
@@ -224,7 +224,7 @@ databaseChangeLog:
                   name: dependency_analysis_version
 
   - changeSet:
-      id: v60.2026-03-17T00:00:12
+      id: v61.2026-04-02T00:00:12
       author: ericnormand
       comment: Drop dependency_analysis_version index from transform
       changes:
@@ -240,7 +240,7 @@ databaseChangeLog:
                   name: dependency_analysis_version
 
   - changeSet:
-      id: v60.2026-03-17T00:00:13
+      id: v61.2026-04-02T00:00:13
       author: ericnormand
       comment: Drop dependency_analysis_version index from native_query_snippet
       changes:
@@ -256,7 +256,7 @@ databaseChangeLog:
                   name: dependency_analysis_version
 
   - changeSet:
-      id: v60.2026-03-17T00:00:14
+      id: v61.2026-04-02T00:00:14
       author: ericnormand
       comment: Drop dependency_analysis_version index from report_dashboard
       changes:
@@ -272,7 +272,7 @@ databaseChangeLog:
                   name: dependency_analysis_version
 
   - changeSet:
-      id: v60.2026-03-17T00:00:15
+      id: v61.2026-04-02T00:00:15
       author: ericnormand
       comment: Drop dependency_analysis_version index from document
       changes:
@@ -288,7 +288,7 @@ databaseChangeLog:
                   name: dependency_analysis_version
 
   - changeSet:
-      id: v60.2026-03-17T00:00:16
+      id: v61.2026-04-02T00:00:16
       author: ericnormand
       comment: Drop dependency_analysis_version index from sandboxes
       changes:
@@ -306,7 +306,7 @@ databaseChangeLog:
   # 18-25. Drop dependency_analysis_version columns from all 8 entity tables
 
   - changeSet:
-      id: v60.2026-03-17T00:00:17
+      id: v61.2026-04-02T00:00:17
       author: ericnormand
       comment: Drop dependency_analysis_version column from report_card
       changes:
@@ -325,7 +325,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v60.2026-03-17T00:00:18
+      id: v61.2026-04-02T00:00:18
       author: ericnormand
       comment: Drop dependency_analysis_version column from transform
       changes:
@@ -344,7 +344,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v60.2026-03-17T00:00:19
+      id: v61.2026-04-02T00:00:19
       author: ericnormand
       comment: Drop dependency_analysis_version column from native_query_snippet
       changes:
@@ -363,7 +363,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v60.2026-03-17T00:00:20
+      id: v61.2026-04-02T00:00:20
       author: ericnormand
       comment: Drop dependency_analysis_version column from report_dashboard
       changes:
@@ -382,7 +382,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v60.2026-03-17T00:00:21
+      id: v61.2026-04-02T00:00:21
       author: ericnormand
       comment: Drop dependency_analysis_version column from document
       changes:
@@ -401,7 +401,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v60.2026-03-17T00:00:22
+      id: v61.2026-04-02T00:00:22
       author: ericnormand
       comment: Drop dependency_analysis_version column from sandboxes
       changes:
@@ -420,7 +420,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v60.2026-03-17T00:00:23
+      id: v61.2026-04-02T00:00:23
       author: ericnormand
       comment: Drop dependency_analysis_version column from segment
       changes:
@@ -439,7 +439,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v60.2026-03-17T00:00:24
+      id: v61.2026-04-02T00:00:24
       author: ericnormand
       comment: Drop dependency_analysis_version column from measure
       changes:
