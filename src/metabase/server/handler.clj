@@ -3,6 +3,7 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.pool-metrics :as mw.pool-metrics]
    [metabase.config.core :as config]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.browser-cookie :as mw.browser-cookie]
@@ -98,6 +99,7 @@
         #'wrap-gzip                                  ; GZIP response if client can handle it
         #'mw.trace/wrap-trace                         ; Create root OpenTelemetry span per request (after request-id is available)
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
+        #'mw.pool-metrics/wrap-pool-metrics             ; defer DB pool metrics until response; discard on 404
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias

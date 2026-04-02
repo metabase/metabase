@@ -244,6 +244,7 @@
    :uses #{config
            events
            models
+           request
            settings
            util}
    :model-imports #{:model/Action
@@ -295,10 +296,12 @@
            metabase.app-db.core
            metabase.app-db.init
            metabase.app-db.setup}
-   :uses #{auth-provider
+   :uses #{analytics
+           auth-provider
            classloader
            config
            connection-pool
+           request
            task
            util}
    :model-imports #{:model/Database
@@ -2942,7 +2945,6 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
-
   enterprise/metabot
   {:team    "Metabot"
    :api     #{}
@@ -2959,7 +2961,6 @@
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/Card :model/Transform}}
-
 
   enterprise/permission-debug
   {:team "UX West"

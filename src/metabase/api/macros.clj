@@ -31,6 +31,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -657,7 +658,8 @@
   [:map-of ::method [:sequential [:tuple
                                   (ms/InstanceOfClass clout.core.CompiledRoute)
                                   ::handler
-                                  [:maybe ::route-metadata]]]])
+                                  [:maybe ::route-metadata]
+                                  string?]]])
 
 (mu/defn- ns-handler-map :- ::handler-map
   "Build a map of method => [[clout-route handler metadata]+] used to power the combined ns handler built
@@ -668,10 +670,12 @@
        (group-by #(get-in % [:form :method]))
        (m/map-vals (fn [routes]
                      (mapv (fn [route]
-                             [(clout/route-compile (get-in route [:form :route :path])
-                                                   (get-in route [:form :route :regexes] {}))
-                              (:handler route)
-                              (get-in route [:form :metadata])])
+                             (let [path (get-in route [:form :route :path])]
+                               [(clout/route-compile path
+                                                     (get-in route [:form :route :regexes] {}))
+                                (:handler route)
+                                (get-in route [:form :metadata])
+                                path]))
                            routes)))))
 
 (defn- decode-route-params [route-params]
@@ -691,8 +695,10 @@
         request        (cond-> request
                          path (assoc :path-info path))]
     ;; TODO -- we could probably make this a little faster by unrolling this loop
-    (some (fn [[route handler metadata]]
+    (some (fn [[route handler metadata route-path]]
             (when-let [route-params (clout/route-matches route request)]
+              (request/set-matched-route!
+               (str (str/upper-case (name request-method)) " " (:matched-route-prefix request) route-path))
               [(-> request
                    (assoc :route-params (decode-route-params route-params))
                    (assoc :route-metadata metadata))

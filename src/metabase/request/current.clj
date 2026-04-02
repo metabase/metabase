@@ -7,15 +7,31 @@
 (def ^:private ^:dynamic *request*
   nil)
 
+(def ^:private ^:dynamic *matched-route*
+  "Holds the matched route template for the current request, e.g. `\"/user/current\"`.
+  Bound to `nil` by [[do-with-current-request]], then set via [[set-matched-route!]] when routing matches."
+  nil)
+
 (defn current-request
   "Current Ring request being handled, if any."
   []
   *request*)
 
+(defn matched-route
+  "Return the matched route template for the current request, or `nil` if not yet matched."
+  []
+  *matched-route*)
+
+(defn set-matched-route!
+  "Set the matched route template for the current request. Only works within a [[with-current-request]] binding frame."
+  [route]
+  (set! *matched-route* route))
+
 (defn do-with-current-request
   "Impl for [[with-current-request]]."
   [request thunk]
-  (binding [*request* request]
+  (binding [*request*       request
+            *matched-route* nil]
     (thunk)))
 
 (defmacro with-current-request

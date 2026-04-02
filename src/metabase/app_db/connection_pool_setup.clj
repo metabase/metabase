@@ -33,11 +33,22 @@
 
 ;;; I spun these out into separate functions so we can picc up changes to them in the REPL -- Cam
 
+;;; ------------------------------------------------ Checkout metrics ------------------------------------------------
+
+(def checkout-listener
+  "Atom holding an optional map of `{:on-checkout (fn [connection]) :on-checkin (fn [connection]) :on-destroy (fn [connection])}`.
+  Set by [[metabase.app-db.pool-metrics]] to wire up Prometheus counters without a circular dependency."
+  (atom nil))
+
+;;; ------------------------------------------------ Lifecycle hooks -------------------------------------------------
+
 (defn- on-acquire [_connection]
   (reset! latest-activity (t/offset-date-time)))
 
 (defn- on-check-in [^java.sql.Connection connection]
   (reset! latest-activity (t/offset-date-time))
+  (when-let [on-checkin (:on-checkin @checkout-listener)]
+    (on-checkin connection))
   ;; for Postgres connections, clean up all resources used in the current session. Otherwise we'll just retain a bunch
   ;; of crap and it can eat up as much as 300MB per connection. See
   ;; https://www.postgresql.org/docs/current/sql-discard.html for more info about what this does and
@@ -47,12 +58,14 @@
     (with-open [stmt (.createStatement connection)]
       (.execute stmt "DISCARD ALL;"))))
 
-(defn- on-check-out [_connection]
-  (reset! latest-activity (t/offset-date-time)))
+(defn- on-check-out [connection]
+  (reset! latest-activity (t/offset-date-time))
+  (when-let [on-checkout (:on-checkout @checkout-listener)]
+    (on-checkout connection)))
 
-(defn- on-destroy [_connection]
-  ;; no-op
-  )
+(defn- on-destroy [connection]
+  (when-let [on-destroy* (:on-destroy @checkout-listener)]
+    (on-destroy* connection)))
 
 (p/deftype+ MetabaseConnectionCustomizer []
   ConnectionCustomizer

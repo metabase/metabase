@@ -517,6 +517,12 @@
    (prometheus/counter :metabase-db-connection/type-resolved
                        {:description "Write-data details resolved by effective-details (driver-agnostic). Only incremented when write-data-details are genuinely used, not on fallback or workspace swap."
                         :labels [:connection-type]})
+   (prometheus/counter :metabase-db-connection/checkout-total
+                       {:description "App DB connection pool checkouts by endpoint."
+                        :labels [:endpoint]})
+   (prometheus/counter :metabase-db-connection/checkout-duration-seconds-total
+                       {:description "Cumulative seconds app DB connections were held, by endpoint."
+                        :labels [:endpoint]})
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
                        {:description "Number of Python/GraalVM SQL parsing execution timeouts."})

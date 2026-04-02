@@ -31,8 +31,10 @@
  [metabase.request.current
   current-request
   limit
+  matched-route
   offset
   paged?
+  set-matched-route!
   with-current-request
   with-limit-and-offset]
  [metabase.request.session

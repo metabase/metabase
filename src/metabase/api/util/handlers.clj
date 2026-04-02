@@ -19,7 +19,9 @@
   (fn [request respond raise]
     (if-let [[prefix rest-of-path] (split-path ((some-fn :path-info :uri) request))]
       (if-let [handler (get route-map prefix)]
-        (let [request' (assoc request :path-info rest-of-path)]
+        (let [request' (-> request
+                           (assoc :path-info rest-of-path)
+                           (update :matched-route-prefix str prefix))]
           (handler request' respond raise))
         (respond nil))
       (respond nil))))
