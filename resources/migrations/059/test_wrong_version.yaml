@@ -1,8 +1,0 @@
-databaseChangeLog:
-  - changeSet:
-      id: v59.2026-04-01T00:00:00
-      author: test
-      comment: Wrong version migration to test CI — will be reverted
-      changes:
-        - sql:
-            sql: SELECT 1

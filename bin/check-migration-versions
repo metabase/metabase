@@ -9,6 +9,11 @@ if [[ -z "${BASE_REF:-}" ]]; then
   exit 1
 fi
 
+if ! [[ "$BASE_REF" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+  echo "ERROR: Invalid BASE_REF: '${BASE_REF}'" >&2
+  exit 1
+fi
+
 # Ensure origin/${BASE_REF} is reachable
 if ! git rev-parse "origin/${BASE_REF}" >/dev/null 2>&1; then
   git fetch origin "$BASE_REF" --depth=1 || { echo "ERROR: Could not resolve origin/${BASE_REF}" >&2; exit 1; }
@@ -42,10 +47,21 @@ elif [[ "$BASE_REF" == "master" ]]; then
   # If multiple labels are present, the most conservative (oldest) wins naturally.
   matches=0
   version=$((CURRENT_VERSION + 1))
-  [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))     && ((matches++)) || true
-  [[ ",$labels," == *",double-backport,"* ]] && version=$((CURRENT_VERSION - 1)) && ((matches++)) || true
-  [[ ",$labels," == *",triple-backport,"* ]] && version=$((CURRENT_VERSION - 2)) && ((matches++)) || true
-  [[ $matches -gt 1 ]] && echo "NOTE: Multiple backport labels detected; using most conservative (v${version})." >&2
+  if [[ ",$labels," == *",backport,"* ]]; then
+    version=$((CURRENT_VERSION))
+    ((matches++))
+  fi
+  if [[ ",$labels," == *",double-backport,"* ]]; then
+    version=$((CURRENT_VERSION - 1))
+    ((matches++))
+  fi
+  if [[ ",$labels," == *",triple-backport,"* ]]; then
+    version=$((CURRENT_VERSION - 2))
+    ((matches++))
+  fi
+  if [[ $matches -gt 1 ]]; then
+    echo "NOTE: Multiple backport labels detected; using most conservative (v${version})." >&2
+  fi
   constraint="="
 else
   echo "Target branch '${BASE_REF}' is not master or a release branch — skipping."
