@@ -3099,8 +3099,7 @@
   enterprise/security-center
   {:team "Gadget"
    :api  #{metabase-enterprise.security-center.api
-           metabase-enterprise.security-center.init
-           metabase-enterprise.security-center.settings}
+           metabase-enterprise.security-center.init}
    :uses #{api
            app-db
            channel
@@ -3109,7 +3108,6 @@
            models
            notification
            premium-features
-           seed ;; TODO: remove
            settings
            startup
            task

@@ -93,7 +93,7 @@
                          (advisory-fixture {:advisory_id      "SC-REPEAT-004"
                                             :severity         "high"
                                             :match_status     "active"
-                                            :last_notified_at (t/minus (t/offset-date-time) (t/days 3))})]
+                                            :last_notified_at (t/minus (t/offset-date-time) (t/days 1))})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
               (task.sync/send-repeat-notifications!)
               (is (empty? @notified))))))
@@ -258,9 +258,10 @@
             (notification/notify-advisory! advisory)
             (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))]
               (is (some? email-handler))
-              ;; admin group recipient
-              (is (some #(= :notification-recipient/group (:type %))
-                        (:recipients email-handler))))))))))
+              ;; admin emails resolved as raw-value recipients
+              (is (seq (:recipients email-handler)))
+              (is (every? #(= :notification-recipient/raw-value (:type %))
+                          (:recipients email-handler))))))))))
 
 (deftest email-recipients-custom-list-test
   (testing "when security-center-email-recipients is set, those specific recipients are used"
