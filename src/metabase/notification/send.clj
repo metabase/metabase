@@ -49,7 +49,7 @@
          (unretriable-error? error))))
 
 (defn- channel-send-retrying!
-  [notification-id payload-type handler message parent-id]
+  [notification-id payload-type handler message]
   (let [channel      (or (:channel handler)
                          {:type (:channel_type handler)})
         channel-type (:type channel)]
@@ -62,7 +62,6 @@
                             :retry_errors      (reverse @retry-errors)})]
         (log/debug "Started sending")
         (task-history/with-task-history {:task            "channel-send"
-                                         :parent_id       parent-id
                                          :on-success-info (fn [update-map _result]
                                                             (cond-> update-map
                                                               (seq @retry-errors)
@@ -156,7 +155,6 @@
           (task-history/with-task-history {:task          "notification-send"
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-            [parent-id]
             (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))
                   skip-reason          (notification.payload/skip-reason notification-payload)]
               (if skip-reason
@@ -177,7 +175,7 @@
                                       (handler->channel-name handler)
                                       (-> handler :template :id))
                           (doseq [message messages]
-                            (channel-send-retrying! id payload_type handler message parent-id)))
+                            (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
                           (log/errorf e "Error sending to channel %s" (handler->channel-name handler))))))
                   (log/info "Done processing notification")))
