@@ -32,6 +32,7 @@
    [:user_message_count :int]
    [:assistant_message_count :int]
    [:total_tokens :int]
+   [:estimated_cost :double]
    [:last_message_at [:maybe :any]]
    [:model [:maybe :string]]
    [:user [:maybe UserInfo]]])
@@ -66,7 +67,8 @@
    [:unique_users :int]
    [:user_messages :int]
    [:assistant_messages :int]
-   [:total_tokens :int]])
+   [:total_tokens :int]
+   [:estimated_cost :double]])
 
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
@@ -110,19 +112,27 @@
       [:total_conversations :int]
       [:total_messages :int]
       [:total_tokens :int]
+      [:total_cost :double]
       [:unique_users :int]
       [:conversations_last_30_days :int]
-      [:tokens_last_30_days :int]]
+      [:tokens_last_30_days :int]
+      [:cost_last_30_days :double]]
   "Return summary statistics for AI/Metabot usage."
   []
   (api/check-superuser)
-  (let [thirty-days-ago (days-ago-sql 30)]
+  (let [thirty-days-ago (days-ago-sql 30)
+        cost-totals     (t2/query-one {:select [[[:coalesce [:sum :estimated_cost_usd] 0] :total]
+                                                [[:coalesce
+                                                  [:sum [:case [:>= :created_at thirty-days-ago] :estimated_cost_usd]]
+                                                  0] :last_30]]
+                                       :from   [:ai_usage_log]})]
     {:total_conversations        (or (t2/count :model/MetabotConversation) 0)
      :total_messages             (or (t2/count :model/MetabotMessage {:where [:= :deleted_at nil]}) 0)
      :total_tokens               (or (t2/select-one-fn :sum
                                                        [:model/MetabotMessage [:%sum.total_tokens :sum]]
                                                        {:where [:= :deleted_at nil]})
                                      0)
+     :total_cost                 (or (:total cost-totals) 0.0)
      :unique_users               (or (:count (t2/query-one {:select [[[:count [:distinct :user_id]] :count]]
                                                             :from   [:metabot_conversation]}))
                                      0)
@@ -134,7 +144,8 @@
                                                        {:where [:and
                                                                 [:= :deleted_at nil]
                                                                 [:>= :created_at thirty-days-ago]]})
-                                     0)}))
+                                     0)
+     :cost_last_30_days          (or (:last_30 cost-totals) 0.0)}))
 
 (api.macros/defendpoint :get "/conversations"
   :- [:map
@@ -166,6 +177,8 @@
                                   [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
                                   [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
                                   [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
+                                  [[:raw "(SELECT COALESCE(SUM(a.estimated_cost_usd), 0) FROM ai_usage_log a
+                                           WHERE a.conversation_id = CAST(c.id AS VARCHAR))"] :estimated_cost]
                                   [[:max :m.created_at] :last_message_at]
                                   ;; Subquery for model (first assistant message's profile_id)
                                   [[:raw "(SELECT mm.profile_id FROM metabot_message mm
@@ -232,20 +245,31 @@
   (let [days        (or days 30)
         days-ago    (days-ago-sql days)
         date-col    (cast-to-date-sql :m.created_at)
-        usage-query {:select   [[date-col :usage_date]
-                                [:m.profile_id :model]
-                                [[:count [:distinct :c.id]] :conversation_count]
-                                [[:count [:distinct :c.user_id]] :unique_users]
-                                [[:count [:case [:= :m.role "user"] 1]] :user_messages]
-                                [[:count [:case [:= :m.role "assistant"] 1]] :assistant_messages]
-                                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]]
-                     :from     [[:metabot_message :m]]
-                     :join     [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
-                     :where    [:and
-                                [:= :m.deleted_at nil]
-                                [:>= :m.created_at days-ago]]
-                     :group-by [date-col :m.profile_id]
-                     :order-by [[date-col :asc]]}]
+        ;; Cost query from ai_usage_log, grouped by same dimensions, then joined
+        cost-query  {:select    [[(cast-to-date-sql :created_at) :cost_date]
+                                 [:profile_id :cost_profile]
+                                 [[:coalesce [:sum :estimated_cost_usd] 0] :estimated_cost]]
+                     :from      [:ai_usage_log]
+                     :where     [:>= :created_at days-ago]
+                     :group-by  [(cast-to-date-sql :created_at) :profile_id]}
+        usage-query {:select    [[date-col :usage_date]
+                                 [:m.profile_id :model]
+                                 [[:count [:distinct :c.id]] :conversation_count]
+                                 [[:count [:distinct :c.user_id]] :unique_users]
+                                 [[:count [:case [:= :m.role "user"] 1]] :user_messages]
+                                 [[:count [:case [:= :m.role "assistant"] 1]] :assistant_messages]
+                                 [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
+                                 [[:coalesce :costs.estimated_cost 0] :estimated_cost]]
+                     :from      [[:metabot_message :m]]
+                     :join      [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
+                     :left-join [[cost-query :costs] [:and
+                                                      [:= :costs.cost_date date-col]
+                                                      [:= :costs.cost_profile :m.profile_id]]]
+                     :where     [:and
+                                 [:= :m.deleted_at nil]
+                                 [:>= :m.created_at days-ago]]
+                     :group-by  [date-col :m.profile_id :costs.estimated_cost]
+                     :order-by  [[date-col :asc]]}]
     (t2/query usage-query)))
 
 ;;; -------------------------------------------------- Routes --------------------------------------------------

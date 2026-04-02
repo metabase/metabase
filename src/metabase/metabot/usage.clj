@@ -19,7 +19,8 @@
    [:tenant-id         {:optional true} [:maybe ms/PositiveInt]]
    [:conversation-id   {:optional true} [:maybe :string]]
    [:profile-id        {:optional true} [:maybe :keyword]]
-   [:request-id        {:optional true} [:maybe :string]]])
+   [:request-id        {:optional true} [:maybe :string]]
+   [:estimated-cost-usd {:optional true} [:maybe number?]]])
 
 (defenterprise-schema log-ai-usage! :- :any
   "Record an LLM API call in the ai_usage_log table.

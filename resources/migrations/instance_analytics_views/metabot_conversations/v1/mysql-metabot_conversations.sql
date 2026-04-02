@@ -11,6 +11,9 @@ SELECT
     COUNT(CASE WHEN m.role = 'user' THEN 1 END)                       AS user_message_count,
     COUNT(CASE WHEN m.role = 'assistant' THEN 1 END)                  AS assistant_message_count,
     COALESCE(SUM(m.total_tokens), 0)                                  AS total_tokens,
+    COALESCE((SELECT SUM(a.estimated_cost_usd)
+              FROM ai_usage_log a
+              WHERE a.conversation_id = CAST(c.id AS CHAR)), 0)       AS estimated_cost,
     MAX(m.created_at)                                                 AS last_message_at,
     (SELECT mm.profile_id
      FROM metabot_message mm
