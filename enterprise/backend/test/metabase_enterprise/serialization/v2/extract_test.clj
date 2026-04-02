@@ -2049,7 +2049,11 @@
 
           (testing "metabot depends on its model entities"
             (is (= #{[{:model "Card" :id model-eid}]}
-                   (set (serdes/dependencies ser))))))))))
+                   (set (serdes/dependencies ser)))))
+
+          (testing "metabot storage-path uses top-level metabots directory"
+            (is (= [{:label "metabots"} {:label "Test Metabot" :key metabot-eid}]
+                   (serdes/storage-path ser {})))))))))
 
 (deftest metabot-collection-test
   (mt/with-empty-h2-app-db!
@@ -2705,3 +2709,28 @@
                     {:id "alpha" :name "A param" :type :category}]
           imported (serdes/import-parameters params)]
       (is (= ["zebra" "alpha"] (map :id imported))))))
+
+(deftest channel-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc
+      [:model/Channel {channel-id :id} {:name "Test Channel"
+                                        :type :channel/email
+                                        :details {:host "smtp.example.com" :port 587}
+                                        :description "A test channel"}]
+      (testing "channel extraction"
+        (let [ser (ts/extract-one "Channel" channel-id)]
+          (is (=? {:serdes/meta [{:model "Channel" :id "Test Channel"}]
+                   :name "Test Channel"
+                   :type :channel/email
+                   :description "A test channel"
+                   :details {:host "smtp.example.com" :port 587}
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+          (is (not (contains? ser :active)))))
+
+      (testing "channel storage-path uses top-level channels directory"
+        (let [ser (ts/extract-one "Channel" channel-id)]
+          (is (= [{:label "channels"} {:label "Test Channel" :key "Test Channel"}]
+                 (serdes/storage-path ser {}))))))))
+
