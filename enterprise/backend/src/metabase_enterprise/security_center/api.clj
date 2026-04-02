@@ -8,7 +8,7 @@
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
+   [metabase.api.routes.common :as routes.common :refer [+auth]]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -83,15 +83,16 @@
         (reset! syncing? false))))
   {:status "ok"})
 
-(defn- +check-not-trial
-  "Middleware that returns 402 if the instance is on a trial subscription."
-  [handler]
-  (fn [request respond raise]
-    (when (premium-features/is-trial?)
-      (throw (ex-info (tru "Security Center is not available on trial subscriptions.")
-                      {:status-code 402 :status "error-premium-feature-not-available"})))
-    (handler request respond raise)))
+(def +check-security-center-enabled
+  "Middleware that returns 402 if Security Center is not available on this instance."
+  (routes.common/wrap-middleware-for-open-api-spec-generation
+   (fn [handler]
+     (fn [request respond raise]
+       (when-not (premium-features/security-center-enabled?)
+         (throw (ex-info (tru "Security Center is not available on this instance.")
+                         {:status-code 402 :status "error-premium-feature-not-available"})))
+       (handler request respond raise)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/security-center` routes."
-  (api.macros/ns-handler *ns* +check-not-trial api/+check-superuser +auth))
+  (api.macros/ns-handler *ns* +check-security-center-enabled api/+check-superuser +auth))

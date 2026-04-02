@@ -2815,6 +2815,18 @@ databaseChangeLog:
   - changeSet:
       id: v57.2026-03-30T00:00:02
       author: bronsa
+      comment: Add index on security_advisory.acknowledged_by FK
+      changes:
+        - createIndex:
+            tableName: security_advisory
+            indexName: idx_security_advisory_acknowledged_by
+            columns:
+              - column:
+                  name: acknowledged_by
+
+  - changeSet:
+      id: v57.2026-03-30T00:00:03
+      author: bronsa
       comment: Add FK on security_advisory.acknowledged_by
       changes:
         - addForeignKeyConstraint:
@@ -2825,7 +2837,7 @@ databaseChangeLog:
             constraintName: fk_security_advisory_acknowledged_by
 
   - changeSet:
-      id: v57.2026-03-30T00:00:03
+      id: v57.2026-03-30T00:00:04
       author: bronsa
       comment: Add index on security_advisory.match_status
       changes:

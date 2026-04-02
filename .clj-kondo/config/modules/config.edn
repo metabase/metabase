@@ -3099,8 +3099,7 @@
   enterprise/security-center
   {:team "Gadget"
    :api  #{metabase-enterprise.security-center.api
-           metabase-enterprise.security-center.init
-           metabase-enterprise.security-center.settings}
+           metabase-enterprise.security-center.init}
    :uses #{api
            app-db
            channel
@@ -3108,12 +3107,13 @@
            events
            models
            notification
-           permissions
            premium-features
            settings
+           startup
+           system
            task
            util}
-   :model-exports #{:model/SecurityAdvisory}}
+   :model-imports #{:model/User}}
 
   enterprise/semantic-search
   {:team "Metabot"

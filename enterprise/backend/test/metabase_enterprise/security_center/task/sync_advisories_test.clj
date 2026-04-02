@@ -10,6 +10,8 @@
   (:import
    (java.util.concurrent CountDownLatch TimeUnit)))
 
+(set! *warn-on-reflection* true)
+
 (deftest sync-and-evaluate-test
   (testing "skips when disabled"
     (let [called (atom [])]

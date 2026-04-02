@@ -8,7 +8,10 @@
    [metabase.premium-features.token-check :as token-check]
    [metabase.task.core :as task]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (def ^:private test-advisories
   "Default test advisories covering different severities and match statuses."
@@ -68,11 +71,11 @@
     (mt/with-premium-features #{:admin-security-center}
       (with-redefs [token-check/is-trial? (constantly true)]
         (testing "GET /api/ee/security-center returns 402 for trial"
-          (is (=? {:message  "Security Center is not available on trial subscriptions."
+          (is (=? {:message  "Security Center is not available on this instance."
                    :status   "error-premium-feature-not-available"}
                   (mt/user-http-request :crowberto :get 402 "ee/security-center"))))
         (testing "POST acknowledge returns 402 for trial"
-          (is (=? {:message  "Security Center is not available on trial subscriptions."
+          (is (=? {:message  "Security Center is not available on this instance."
                    :status   "error-premium-feature-not-available"}
                   (mt/user-http-request :crowberto :post 402
                                         "ee/security-center/SC-TEST-001/acknowledge"))))))))

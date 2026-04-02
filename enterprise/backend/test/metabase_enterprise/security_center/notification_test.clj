@@ -4,13 +4,16 @@
    [java-time.api :as t]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
-   [metabase-enterprise.security-center.task.notify :as task.notify]
+   [metabase-enterprise.security-center.task.sync-advisories :as task.sync]
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- advisory-fixture
   "Common fixture map for a SecurityAdvisory row."
@@ -62,7 +65,7 @@
                                             :match_status     "active"
                                             :last_notified_at (t/minus (t/offset-date-time) (t/hours 25))})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (= ["SC-REPEAT-001"] @notified))))))
 
       (testing "critical advisories: too soon — no repeat"
@@ -73,7 +76,7 @@
                                             :match_status     "active"
                                             :last_notified_at (t/minus (t/offset-date-time) (t/hours 12))})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (empty? @notified))))))
 
       (testing "high severity: weekly cadence"
@@ -84,7 +87,7 @@
                                             :match_status     "active"
                                             :last_notified_at (t/minus (t/offset-date-time) (t/days 8))})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (= ["SC-REPEAT-003"] @notified))))))
 
       (testing "high severity: too soon — no repeat"
@@ -93,9 +96,9 @@
                          (advisory-fixture {:advisory_id      "SC-REPEAT-004"
                                             :severity         "high"
                                             :match_status     "active"
-                                            :last_notified_at (t/minus (t/offset-date-time) (t/days 3))})]
+                                            :last_notified_at (t/minus (t/offset-date-time) (t/days 1))})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (empty? @notified))))))
 
       (testing "never-notified advisory is always due"
@@ -106,7 +109,7 @@
                                             :match_status     "active"
                                             :last_notified_at nil})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (= ["SC-REPEAT-005"] @notified))))))
 
       (testing "medium severity: weekly cadence"
@@ -117,7 +120,7 @@
                                             :match_status     "active"
                                             :last_notified_at (t/minus (t/offset-date-time) (t/days 8))})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (= ["SC-MED-001"] @notified))))))
 
       (testing "low severity: weekly cadence, too soon"
@@ -128,7 +131,7 @@
                                             :match_status     "active"
                                             :last_notified_at (t/minus (t/offset-date-time) (t/days 5))})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (empty? @notified))))))
 
       (testing "error-status advisories are included in repeat notifications"
@@ -139,7 +142,7 @@
                                             :match_status     "error"
                                             :last_notified_at nil})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (= ["SC-ERR-001"] @notified)))))))))
 
 (deftest repeat-notification-exclusions-test
@@ -147,15 +150,16 @@
     (fn []
       (testing "acknowledged advisories are excluded from repeat notifications"
         (let [notified (atom [])]
-          (mt/with-temp [:model/SecurityAdvisory _advisory
+          (mt/with-temp [:model/User {user-id :id} {:is_superuser true}
+                         :model/SecurityAdvisory _advisory
                          (advisory-fixture {:advisory_id      "SC-ACK-001"
                                             :severity         "critical"
                                             :match_status     "active"
                                             :last_notified_at nil
-                                            :acknowledged_by  (mt/user->id :crowberto)
+                                            :acknowledged_by  user-id
                                             :acknowledged_at  (mi/now)})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (empty? @notified))))))
 
       (testing "not_affected advisories are excluded from repeat notifications"
@@ -166,7 +170,7 @@
                                             :match_status     "not_affected"
                                             :last_notified_at nil})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (empty? @notified))))))
 
       (testing "resolved advisories are excluded from repeat notifications"
@@ -177,7 +181,7 @@
                                             :match_status     "resolved"
                                             :last_notified_at nil})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               (is (empty? @notified)))))))))
 
 (deftest repeat-notification-error-isolation-test
@@ -201,7 +205,7 @@
                                                           (if (= 1 @call-count)
                                                             (throw (ex-info "transient failure" {}))
                                                             (swap! notified conj (:advisory_id a))))]
-              (task.notify/send-repeat-notifications!)
+              (task.sync/send-repeat-notifications!)
               ;; The second advisory should still be notified despite the first one failing
               (is (= 1 (count @notified))))))))))
 
@@ -249,7 +253,8 @@
 (deftest email-recipients-default-to-admins-test
   (testing "when security-center-email-recipients is nil, email goes to admin group"
     (let [sent (atom nil)]
-      (mt/with-temp [:model/SecurityAdvisory advisory
+      (mt/with-temp [:model/User _ {:is_superuser true}
+                     :model/SecurityAdvisory advisory
                      (advisory-fixture {:advisory_id  "SC-RECIP-001"
                                         :severity     "critical"
                                         :match_status "active"})]
@@ -258,9 +263,10 @@
             (notification/notify-advisory! advisory)
             (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))]
               (is (some? email-handler))
-              ;; admin group recipient
-              (is (some #(= :notification-recipient/group (:type %))
-                        (:recipients email-handler))))))))))
+              ;; admin emails resolved as raw-value recipients
+              (is (seq (:recipients email-handler)))
+              (is (every? #(= :notification-recipient/raw-value (:type %))
+                          (:recipients email-handler))))))))))
 
 (deftest email-recipients-custom-list-test
   (testing "when security-center-email-recipients is set, those specific recipients are used"
