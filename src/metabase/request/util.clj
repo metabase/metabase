@@ -8,7 +8,6 @@
    [metabase.config.core :as config]
    [metabase.embedding.util :as embed.util]
    [metabase.request.current :as request.current]
-   [metabase.request.user-agent :as request.user-agent]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
@@ -66,11 +65,6 @@
   [request]
   (some-> request (get-in [:headers "x-metabase-embedded"]) Boolean/parseBoolean))
 
-(defn ip-address
-  "The IP address a Ring `request` came from. Delegates to [[metabase.request.current/ip-address]]."
-  [request]
-  (request.current/ip-address request))
-
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
   [:map {:closed true}
@@ -86,7 +80,7 @@
                         (log/warn "Login request is missing device ID information"))
         description (or user-agent
                         (log/warn "Login request is missing user-agent information"))
-        ip-address  (or (ip-address request)
+        ip-address  (or (request.current/ip-address request)
                         (log/warn "Unable to determine login request IP address"))]
     (when-not (and id description ip-address)
       (log/warn "Error determining login history for request"))
@@ -94,11 +88,6 @@
      :device_description (or description (trs "unknown")),
      :embedded           (embed.util/is-modular-embedding-request? request)
      :ip_address         (or ip-address (trs "unknown"))}))
-
-(def describe-user-agent
-  "Format a user-agent string from a request in a human-friendly way.
-  Delegates to [[metabase.request.user-agent/describe-user-agent]]."
-  request.user-agent/describe-user-agent)
 
 (defn- describe-location [{:keys [city region country]}]
   (when-let [info (not-empty (remove str/blank? [city region country]))]

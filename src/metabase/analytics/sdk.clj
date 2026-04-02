@@ -23,28 +23,13 @@
 
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
 
-(defmacro with-version! "Used to track information about the metabase embedding client version."
-  [[value] & body]
-  `(binding [*version* ~value]
-     ~@body))
-
 (defn get-version "Returns [[*version*]]." [] *version*)
 
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
 
-(defmacro with-client! "Used to track information about the metabase embedding client client."
-  [[value] & body]
-  `(binding [*client* ~value]
-     ~@body))
-
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
 (def ^:dynamic *route* "Used to track the API route for the current request (e.g. \"public\", \"guest-embed\")." nil)
-
-(defmacro with-route! "Binds [[*route*]] for the duration of `body`."
-  [[value] & body]
-  `(binding [*route* ~value]
-     ~@body))
 
 (defn get-route "Returns [[*route*]]." [] *route*)
 

@@ -220,29 +220,29 @@
 
 (deftest include-analytics-is-idempotent
   (let [m (atom {})]
-    (analytics/with-client! ["client-C"]
-      (analytics/with-route! ["public"]
-        (analytics/with-version! ["1.33.7"]
-          (is (= {:embedding_client "client-C"
-                  :embedding_route  "public"
-                  :embedding_version "1.33.7"
-                  :auth_method       nil}
-                 (analytics/include-sdk-info @m)))
-          (swap! m analytics/include-sdk-info))))
+    (binding [sdk/*client* "client-C"
+              sdk/*route*  "public"
+              sdk/*version* "1.33.7"]
+      (is (= {:embedding_client "client-C"
+              :embedding_route  "public"
+              :embedding_version "1.33.7"
+              :auth_method       nil}
+             (analytics/include-sdk-info @m)))
+      (swap! m analytics/include-sdk-info))
     ;; unset the vars:
-    (analytics/with-client! [nil]
-      (analytics/with-route! [nil]
-        (analytics/with-version! [nil]
-          (is (= {:embedding_client "client-C"
-                  :embedding_route  "public"
-                  :embedding_version "1.33.7"
-                  :auth_method       nil} @m))
-          (testing "the values in m are used when the vars are not set"
-            (is (= {:embedding_client "client-C"
-                    :embedding_route  "public"
-                    :embedding_version "1.33.7"
-                    :auth_method       nil}
-                   (analytics/include-sdk-info @m)))))))))
+    (binding [sdk/*client* nil
+              sdk/*route*  nil
+              sdk/*version* nil]
+      (is (= {:embedding_client "client-C"
+              :embedding_route  "public"
+              :embedding_version "1.33.7"
+              :auth_method       nil} @m))
+      (testing "the values in m are used when the vars are not set"
+        (is (= {:embedding_client "client-C"
+                :embedding_route  "public"
+                :embedding_version "1.33.7"
+                :auth_method       nil}
+               (analytics/include-sdk-info @m)))))))
 
 (deftest include-sdk-info-pii-fields-test
   (let [request (-> (ring.mock/request :get "/api/public/card/1")

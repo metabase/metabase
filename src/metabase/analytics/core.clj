@@ -57,9 +57,9 @@
   include-sdk-info
   pii-request-info
   with-auth-method! get-auth-method
-  with-client!      get-client
-  with-route!       get-route
-  with-version!     get-version]
+  get-client
+  get-route
+  get-version]
 
  [metabase.analytics.settings
 
