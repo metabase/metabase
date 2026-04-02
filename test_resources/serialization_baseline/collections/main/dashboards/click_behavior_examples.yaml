@@ -1,6 +1,6 @@
 name: Click Behavior Examples
 entity_id: c0R_gvn90vURE5hdxK3f0
-created_at: '2026-04-02T01:50:06.081195Z'
+created_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 collection_id: cOlDaShBoArDs0ExAmPlx
 parameters:
@@ -17,7 +17,7 @@ serdes/meta:
 dashcards:
 - entity_id: qaAe9ro4JL3ahgLLne-jG
   card_id: Wo5d6IV8lb63wex29uh6H
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 0
   col: 0
   size_x: 18
@@ -44,7 +44,7 @@ dashcards:
     model: DashboardCard
 - entity_id: iMNmMMABHvbbiVT3ufez6
   card_id: UEWVldEEZ-3sYUjjN54qz
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 0
   col: 18
   size_x: 6
@@ -61,7 +61,7 @@ dashcards:
     model: DashboardCard
 - entity_id: RasgF0LvnoJlu7ModLrqv
   card_id: dYD1j3pQtJdctg8duByUL
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 9
   col: 0
   size_x: 12
@@ -78,7 +78,7 @@ dashcards:
     model: DashboardCard
 - entity_id: NSyK1LJldomowKbt0HpuE
   card_id: ciG63nSLHKRTImt5iWEte
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 9
   col: 12
   size_x: 12

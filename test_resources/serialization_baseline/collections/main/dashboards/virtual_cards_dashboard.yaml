@@ -1,6 +1,6 @@
 name: Virtual Cards Dashboard
 entity_id: Ylbpm_iPeEYav_o0kpUVD
-created_at: '2026-04-02T01:50:06.081195Z'
+created_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 collection_id: cOlDaShBoArDs0ExAmPlx
 parameters: []
@@ -10,7 +10,7 @@ serdes/meta:
   model: Dashboard
 dashcards:
 - entity_id: WcNpxqVEO_rIeWZwjYv7Z
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 0
   col: 0
   size_x: 24
@@ -29,7 +29,7 @@ dashcards:
   - id: WcNpxqVEO_rIeWZwjYv7Z
     model: DashboardCard
 - entity_id: TF6Oiw2C13CgEKtPyHIow
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 1
   col: 0
   size_x: 12
@@ -51,7 +51,7 @@ dashcards:
   - id: TF6Oiw2C13CgEKtPyHIow
     model: DashboardCard
 - entity_id: oGC6qBNiHOKo0tWAHWC1m
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 1
   col: 12
   size_x: 8
@@ -71,7 +71,7 @@ dashcards:
   - id: oGC6qBNiHOKo0tWAHWC1m
     model: DashboardCard
 - entity_id: 7jlJ-VFISvhlHqxeW7rWp
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 2
   col: 12
   size_x: 8
@@ -93,7 +93,7 @@ dashcards:
   - id: 7jlJ-VFISvhlHqxeW7rWp
     model: DashboardCard
 - entity_id: wn16Kfjjjik8153kj14yI
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 4
   col: 0
   size_x: 12
@@ -112,7 +112,7 @@ dashcards:
   - id: wn16Kfjjjik8153kj14yI
     model: DashboardCard
 - entity_id: HZ_JpYrkE8fMEYJg93RKd
-  created_at: '2026-04-02T01:50:06.081195Z'
+  created_at: '2026-04-02T02:59:02.778668Z'
   row: 5
   col: 12
   size_x: 4

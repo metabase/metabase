@@ -31,7 +31,6 @@ dataset_query:
     - PRODUCTS
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
-
 visualization_settings:
   column_settings: null
 card_schema: 23
