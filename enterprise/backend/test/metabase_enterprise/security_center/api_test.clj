@@ -3,7 +3,10 @@
    [clojure.test :refer :all]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (def ^:private test-advisories
   "Default test advisories covering different severities and match statuses."

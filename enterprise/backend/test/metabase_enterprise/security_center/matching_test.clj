@@ -5,7 +5,10 @@
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest ^:parallel parse-version-test
   (testing "3-segment versions"

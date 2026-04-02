@@ -10,7 +10,10 @@
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- advisory-fixture
   "Common fixture map for a SecurityAdvisory row."

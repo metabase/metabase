@@ -3,7 +3,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- make-advisory
   "Build a minimal advisory map. `overrides` are merged in."
