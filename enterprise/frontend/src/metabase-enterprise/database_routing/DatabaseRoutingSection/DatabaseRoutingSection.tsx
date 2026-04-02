@@ -85,10 +85,11 @@ export const DatabaseRoutingSection = ({
   const userAttributeOptions =
     userAttrsReq.data ?? (userAttribute ? [userAttribute] : []);
 
-  const transformsReq = useListTransformsQuery(
+  const transformsQuery = useListTransformsQuery(
     shouldHideSection ? skipToken : { "database-id": database.id },
   );
-  const hasTransforms = (transformsReq.data?.length ?? 0) > 0;
+  const transforms = transformsQuery.data ?? [];
+  const hasTransforms = transforms.length > 0;
 
   const disabledFeatMsg = getDisabledFeatureMessage(database, {
     hasTransforms,
