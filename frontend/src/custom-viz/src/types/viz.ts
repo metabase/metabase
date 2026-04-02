@@ -2,19 +2,24 @@ import type { ComponentType } from "react";
 
 import type { Column, RowValue, Series } from "./data";
 import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
+import type {
+  CreateDefineSetting,
+  CustomVisualizationSettingDefinition,
+} from "./viz-settings";
 
 /**
  * Export this function to define a custom visualization.
  */
-export type CreateCustomVisualization<CustomVisualizationSettings> = (
-  props: CreateCustomVisualizationProps,
+export type CreateCustomVisualization<
+  CustomVisualizationSettings extends Record<string, unknown>,
+> = (
+  props: CreateCustomVisualizationProps<CustomVisualizationSettings>,
 ) => CustomVisualization<CustomVisualizationSettings>;
 
-export type CreateCustomVisualizationProps = {
-  /**
-   * Current user's locale (e.g., "de", "ja", "en").
-   */
-  locale: string;
+export type CreateCustomVisualizationProps<
+  CustomVisualizationSettings extends Record<string, unknown>,
+> = {
+  defineSetting: ReturnType<CreateDefineSetting<CustomVisualizationSettings>>;
 
   /**
    * Returns a URL for a static asset declared in the plugin manifest.
@@ -22,14 +27,12 @@ export type CreateCustomVisualizationProps = {
    * @example getAssetUrl("icon.svg")
    */
   getAssetUrl: (assetPath: string) => string;
+
+  /**
+   * Locale to render visualization with (e.g. "de", "ja", "en").
+   */
+  locale: string;
 };
-
-declare const SettingDefinitionSymbol: unique symbol;
-
-export type CustomVisualizationSettingDefinition<_CustomVisualizationSettings> =
-  {
-    readonly [SettingDefinitionSymbol]: never;
-  };
 
 export type CustomVisualization<CustomVisualizationSettings> = {
   /**
@@ -121,11 +124,11 @@ export type CustomVisualizationProps<CustomVisualizationSettings> = {
 
   settings: CustomVisualizationSettings;
 
-  onVisualizationClick: (
+  onClick: (
     clickObject: ClickObject<CustomVisualizationSettings> | null,
   ) => void;
 
-  onHoverChange: (hoverObject?: HoveredObject | null) => void;
+  onHover: (hoverObject?: HoverObject | null) => void;
 };
 
 export type ColorGetter = (colorName: string) => string;
@@ -181,7 +184,7 @@ export type HoveredDimension = {
   column: Column;
 };
 
-export type HoveredObject = {
+export type HoverObject = {
   index?: number;
   seriesIndex?: number;
   value?: unknown;

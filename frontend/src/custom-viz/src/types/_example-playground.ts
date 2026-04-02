@@ -1,5 +1,3 @@
-import { createDefineSetting } from "../lib";
-
 import type {
   CreateCustomVisualization,
   CustomStaticVisualizationProps,
@@ -13,10 +11,8 @@ type MyVizSettings = {
 };
 
 export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
-  getAssetUrl: _getAssetUrl,
+  defineSetting,
 }) => {
-  const defineSetting = createDefineSetting<MyVizSettings>();
-
   return {
     id: "my-custom-viz",
     getName: () => "My custom viz",

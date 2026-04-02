@@ -25,8 +25,9 @@ function registerCustomVizPlugin(
   assets: any,
 ) {
   const assetMap = assets || {};
+  const defineSetting = <T>(definition: T) => definition;
   const getAssetUrl = (name: string) => assetMap[name] || "";
-  const vizDef = factory({ getAssetUrl });
+  const vizDef = factory({ defineSetting, getAssetUrl });
   const display = `custom:${identifier}` as VisualizationDisplay;
   customVizRegistry.set(display, vizDef);
 
