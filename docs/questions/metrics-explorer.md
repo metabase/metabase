@@ -5,7 +5,7 @@ summary: Explore metrics and measures across dimensions and compare them side by
 
 # Metrics explorer
 
-Metrics Explorer is a space for ad-hoc analysis of [metrics](../data-modeling/metrics.md) and [measures](../data-studio/data-structure.md#measures)
+The metrics Explorer is a space for ad-hoc analysis of [metrics](../data-modeling/metrics.md) and [measures](../data-studio/data-structure.md#measures)
 
 ![Metrics explorer](../questions/images/metrics-explorer.png)
 
@@ -32,7 +32,7 @@ To open a **measure** in the Metrics Explorer, go directly to `[your metabase UR
 
 ## Compare metrics and measures
 
-You can explore multiple metrics or measures to analyze them together. To add a metric or a measure for comparison, type its name in the search bar:
+To compare multiple metrics or measures, search for measure or metric you want to add in the search bar.
 
 ![Compare metrics](./images/compare-metrics.png)
 
@@ -40,7 +40,7 @@ You'll see the dimensions of the first metric/measure below the search bar. You 
 
 ![Compare metrics](./images/two-metrics.png)
 
-When two measures/metrics have shared dimensions - usually when they're associated with the same data source, or the underlying data sources have foreign key relationships to another shared data source - Metabase will automatically detect shared dimensions and offer them for comparison.
+Metabase will automatically detect shared dimensions and offer them for comparison, like when the metrics/measures are associated with the same data source, or the underlying data sources have foreign key relationships to another shared data source.
 
 If your metrics/measures don't have shared dimensions, you'll need to select a dimension for comparison:
 
