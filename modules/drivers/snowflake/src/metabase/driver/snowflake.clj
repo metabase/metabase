@@ -1098,4 +1098,4 @@
                                           qr)])))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
-  "llm/prompts/dialects/snowflake.md")
+  "metabot/prompts/dialects/snowflake.md")

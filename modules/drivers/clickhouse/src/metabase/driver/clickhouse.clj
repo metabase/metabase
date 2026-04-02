@@ -418,4 +418,4 @@
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
-  "llm/prompts/dialects/clickhouse.md")
+  "metabot/prompts/dialects/clickhouse.md")

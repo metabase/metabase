@@ -46,7 +46,7 @@
    [:model       {:optional true} :string]
    [:system      {:optional true} [:maybe :string]]
    [:input       {:optional true} [:sequential :map]]
-   [:tools       {:optional true} [:sequential ToolEntry]]
+   [:tools       {:optional true} [:maybe [:sequential ToolEntry]]]
    [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature {:optional true} [:maybe number?]]
    [:max-tokens  {:optional true} [:maybe :int]]
@@ -94,6 +94,9 @@
                 (recur acc)
 
                 (str/starts-with? line ":")
+                (recur acc)
+
+                (str/starts-with? line "event:")
                 (recur acc)
 
                 :else
@@ -413,7 +416,7 @@
                          (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
           results  (try
                      (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                           arguments (coerce-stringified-json arguments)
+                           arguments (or (coerce-stringified-json arguments) {})
                            decode    (tool-decode-fn tool)
                            arguments (cond-> arguments decode decode)]
                        (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})

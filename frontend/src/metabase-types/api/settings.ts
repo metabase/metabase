@@ -264,7 +264,6 @@ const tokenStatusFeatures = [
   "embedding-hub",
   "hosting",
   "metabase-store-managed",
-  "metabot-v3",
   "no-upsell",
   "official-collections",
   "query-reference-validation",
@@ -349,7 +348,6 @@ export const tokenFeatures = [
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
-  "metabot_v3",
   "database_routing",
   "development_mode",
   "etl_connections",
@@ -510,6 +508,8 @@ interface AdminSettings {
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
   "llm-openai-api-key"?: string;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-openrouter-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
   "openai-model": string | null;
@@ -541,6 +541,7 @@ interface PublicSettings {
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
+  "llm-metabot-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
@@ -711,6 +712,8 @@ export interface EnterpriseSettings extends Settings {
   "landing-page"?: string;
   "llm-openai-api-key"?: string;
   "llm-openai-model"?: string;
+  "llm-metabot-configured?"?: boolean | null;
+  "llm-openrouter-api-key"?: string | null;
   "session-timeout": TimeoutValue | null;
   "search-engine": SearchEngineSettingValue | null;
   "scim-enabled"?: boolean | null;
@@ -763,12 +766,15 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-path-style-access"?: boolean | null;
   "python-runner-timeout-seconds"?: number | null;
   "python-runner-test-run-timeout-seconds"?: number | null;
+  "llm-metabot-provider"?: string | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
   "metabot-slack-signing-secret"?: string | null;
   "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
+  "mcp-apps-cors-enabled-clients": string[] | null;
+  "mcp-apps-cors-custom-origins": string | null;
   /**
    * @deprecated
    */

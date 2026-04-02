@@ -56,8 +56,8 @@
                                     :with-related-tables? false
                                     :with-metrics? false
                                     :with-default-temporal-breakout? false
-                                    :with-measures? false
-                                    :with-segments? false}))
+                                    :with-measures? true
+                                    :with-segments? true}))
                                 %)
                               table-ids)
           model-results (mapv #(safe-fetch
@@ -69,8 +69,8 @@
                                     :with-related-tables? false
                                     :with-metrics? false
                                     :with-default-temporal-breakout? false
-                                    :with-measures? false
-                                    :with-segments? false}))
+                                    :with-measures? true
+                                    :with-segments? true}))
                                 %)
                               model-ids)
           metric-results (mapv #(safe-fetch
@@ -80,7 +80,7 @@
                                      :with-default-temporal-breakout? false
                                      :with-field-values? false
                                      :with-queryable-dimensions? false
-                                     :with-segments? false}))
+                                     :with-segments? true}))
                                  %)
                                metric-ids)
           tables (->> table-results (keep :value) vec)
@@ -136,10 +136,12 @@
 (mu/defn ^{:tool-name "list_available_data_sources"}
   list-available-data-sources-tool
   "List all data sources (metrics and models) available to the metabot instance."
-  [_args :- [:maybe [:map {:closed true}]]]
+  [_args :- [:map {:closed true}]]
   (add-output
    (entity-details-tools/answer-sources {:metabot-id         shared/*metabot-id*
-                                         :with-field-values? false})
+                                         :with-field-values? false
+                                         :with-measures?     true
+                                         :with-segments?     true})
    format-answer-sources-output))
 
 (def ^:private list-available-fields-schema

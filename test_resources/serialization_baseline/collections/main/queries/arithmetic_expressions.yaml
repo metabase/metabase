@@ -1,0 +1,221 @@
+name: Arithmetic Expressions
+entity_id: 1O_2jSo2fD6m3Qr6My7aa
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - sum
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - SUBTOTAL
+    - - sum
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TAX
+    - - sum
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - avg
+      - {}
+      - - field
+        - base-type: type/Integer
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - QUANTITY
+    breakout:
+    - - field
+      - temporal-unit: month
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+    expressions:
+    - - +
+      - lib/expression-name: Total Plus Tax
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - SUBTOTAL
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TAX
+    - - '-'
+      - lib/expression-name: Price Difference
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - SUBTOTAL
+    - - '*'
+      - lib/expression-name: Double Quantity
+      - - field
+        - base-type: type/Integer
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - QUANTITY
+      - 2
+    - - /
+      - lib/expression-name: Per Unit Price
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+      - - field
+        - base-type: type/Integer
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - QUANTITY
+    filters:
+    - - '>'
+      - {}
+      - - expression
+        - {}
+        - Per Unit Price
+      - 10
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: 'Created At: Month'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - temporal-unit: month
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  inherited_temporal_unit: month
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  unit: month
+  visibility_type: normal
+  lib/breakout?: true
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  lib/temporal-unit: month
+- base_type: type/Float
+  display_name: Sum of Subtotal
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 0
+  name: sum
+  source: aggregation
+  lib/deduplicated-name: sum
+  lib/desired-column-alias: sum
+  lib/original-name: sum
+  lib/source: source/aggregations
+  lib/source-column-alias: sum
+- base_type: type/Float
+  display_name: Sum of Tax
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 1
+  name: sum_2
+  source: aggregation
+  lib/deduplicated-name: sum_2
+  lib/desired-column-alias: sum_2
+  lib/original-name: sum
+  lib/source: source/aggregations
+  lib/source-column-alias: sum
+- base_type: type/Float
+  display_name: Sum of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 2
+  name: sum_3
+  source: aggregation
+  lib/deduplicated-name: sum_3
+  lib/desired-column-alias: sum_3
+  lib/original-name: sum
+  lib/source: source/aggregations
+  lib/source-column-alias: sum
+- base_type: type/Float
+  display_name: Average of Quantity
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 3
+  name: avg
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: avg
+  lib/desired-column-alias: avg
+  lib/original-name: avg
+  lib/source: source/aggregations
+  lib/source-column-alias: avg
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: 1O_2jSo2fD6m3Qr6My7aa
+  label: arithmetic_expressions
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

@@ -752,4 +752,4 @@
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
-  "llm/prompts/dialects/h2.md")
+  "metabot/prompts/dialects/h2.md")

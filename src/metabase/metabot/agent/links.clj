@@ -3,11 +3,16 @@
   Converts internal metabase:// links to proper Metabase URLs using agent memory state."
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,7 +24,7 @@
    "metric"    "/metric"
    "dashboard" "/dashboard"
    "question"  "/question"
-   "transform" "/admin/transforms"})
+   "transform" "/data-studio/transforms"})
 
 ;;; Query/Chart URL Generation
 
@@ -35,6 +40,15 @@
         json/encode
         (.getBytes "UTF-8")
         codecs/bytes->b64-str)))
+
+(defn pseudo-card->link
+  "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked."
+  [pc]
+  (str "/question#"
+       (-> pc
+           json/encode
+           (.getBytes "UTF-8")
+           codecs/bytes->b64-str)))
 
 (defn- resolve-query-link
   "Resolve a metabase://query/{id} link to a /question# URL."
@@ -82,21 +96,31 @@
       (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})
       nil)))
 
-(defn- resolve-table-link
-  "Resolve a metabase://table/{id} link to a table page URL.
-  Note: This differs from ai-service (which links to /question#... by fetching database_id).
-  We avoid a DB lookup during streaming by linking directly to the table."
-  [table-id]
-  (let [parsed-id (cond
-                    (int? table-id) table-id
-                    (string? table-id) (when (re-matches #"\d+" table-id)
-                                         (parse-long table-id))
-                    :else nil)]
-    (if-not parsed-id
-      (do
-        (log/warn "Invalid table id for link resolution" {:table-id table-id})
-        nil)
-      (str "/table/" parsed-id))))
+(def ^:private resolve-table-link
+  "Resolve a metabase://table/{id} link to an ad-hoc question URL.
+  Looks up the table's database_id and generates a /question#<base64> URL
+  with a query using that table as the source table.
+
+  Results are cached for 10 minutes."
+  (memoize/ttl
+   (fn [table-id]
+     (let [parsed-id (cond
+                       (int? table-id)    table-id
+                       (string? table-id) (parse-long table-id)
+                       :else              nil)]
+       (if-not parsed-id
+         (do
+           (log/warn "Invalid table id for link resolution" {:table-id table-id})
+           nil)
+         (if-let [db-id (t2/select-one-fn :db_id :model/Table :id parsed-id)]
+           (let [mp    (lib-be/application-database-metadata-provider db-id)
+                 table (lib.metadata/table mp parsed-id)
+                 query (lib/query mp table)]
+             (str "/question#" (query->url-hash query)))
+           (do
+             (log/warn "Table not found for link resolution" {:table-id parsed-id})
+             nil)))))
+   :ttl/threshold (u/minutes->ms 10)))
 
 ;;; Main Link Resolution
 

@@ -5,6 +5,7 @@
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api.common :as api]
+   [metabase.driver.util :as driver.u]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
@@ -86,7 +87,7 @@
    and transitions db_status to :pending. Returns the updated workspace with schema set."
   [workspace database-id]
   (let [database (t2/select-one :model/Database database-id)
-        schema   (ws.u/isolation-namespace-name workspace)
+        schema   (driver.u/workspace-isolation-namespace-name workspace)
         res      (t2/update! :model/Workspace {:id        (:id workspace)
                                                :db_status :uninitialized}
                              {:database_id database-id

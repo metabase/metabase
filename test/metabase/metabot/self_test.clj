@@ -49,8 +49,8 @@
                                               (reset! captured (json/decode+kw (:body opts)))
                                               (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
         (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
-                                           llm-openrouter-api-key "test-key"
-                                           llm-openai-api-key     "test-key"]
+                                           llm-openrouter-api-key "sk-or-v1-test-key"
+                                           llm-openai-api-key     "sk-test-key"]
           (doseq [[model expected] [["anthropic/test-model"  {:type "any"}]
                                     ["openrouter/test-model" "required"]
                                     ["openai/test-model"     "required"]]]
@@ -235,13 +235,23 @@
                    {:type :tool-input :id "call-err" :function "get-time" :arguments {:tz "Invalid/Timezone"}}])
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= (count chunks) (dec (count result))))
-      (let [tool-result (last result)]
-        (is (=? {:type       :tool-output-available
-                 :toolCallId "call-err"
-                 :toolName   "get-time"
-                 :error      {:message string?
-                              :type    string?}}
-                tool-result)))))
+      (is (=? {:type       :tool-output-available
+               :toolCallId "call-err"
+               :toolName   "get-time"
+               :error      {:message string?
+                            :type    string?}}
+              (last result)))))
+
+  (testing "tool-executor-xf handles nil arguments for no-arg tools"
+    (let [chunks (test-util/parts->aisdk-chunks
+                  [{:type :start :id "msg-nil"}
+                   {:type :tool-input :id "call-nil" :function "no-arg" :arguments nil}])
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
+      (is (=? {:type       :tool-output-available
+               :toolCallId "call-nil"
+               :toolName   "no-arg"
+               :result     {:output "ok"}}
+              (last result)))))
 
   (testing "tool-executor-xf ignores unknown tool names"
     (let [chunks (test-util/parts->aisdk-chunks

@@ -3,6 +3,7 @@
    Matches Python AI Service patterns exactly for consistency."
   (:require
    [clojure.string :as str]
+   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
    [metabase.util :as u]
@@ -37,7 +38,9 @@
 (defn- type-flags
   "Build template flags for a single representation type."
   [type]
-  {:is_field (= type :field)
+  {:is_measure (= type :measure)
+   :is_segment (= type :segment)
+   :is_field (= type :field)
    :is_collection (= type :collection)
    :is_related_table (= type :related_table)
    :is_metric (= type :metric)
@@ -119,6 +122,30 @@
     :collection_description     description
     :collection_authority_level authority_level}))
 
+(defn measure->xml
+  "Format a measure for LLM consumption."
+  [{:keys [id name display-name description definition definition-description]}]
+  (render-llm-template
+   :measure
+   {:measure_id           (str id)
+    :measure_name         (or name "")
+    :measure_display_name (or display-name name "")
+    :measure_description  description
+    :measure_definition   (when definition (pr-str definition))
+    :measure_definition_description definition-description}))
+
+(defn segment->xml
+  "Format a segment for LLM consumption."
+  [{:keys [id name display-name description definition definition-description]}]
+  (render-llm-template
+   :segment
+   {:segment_id           (str id)
+    :segment_name         (or name "")
+    :segment_display_name (or display-name name "")
+    :segment_description  description
+    :segment_definition   (when definition (pr-str definition))
+    :segment_definition_description definition-description}))
+
 (defn- related-table->xml
   "Format a related table for LLM consumption."
   [{:keys [id name related_by fully_qualified_name fields]}]
@@ -157,7 +184,7 @@
   "Format table for LLM consumption.
    Matches Python Table.get_llm_representation exactly."
   [{:keys [id name database_id database_engine database_schema
-           description fields related_tables]}]
+           description fields related_tables measures segments]}]
   (let [fqn (fully-qualified-name database_schema name)]
     (render-llm-template
      :table
@@ -170,7 +197,11 @@
       :table_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
       :table_related_tables_xml (when (seq related_tables)
-                                  (str/join "" (map related-table->xml related_tables)))})))
+                                  (str/join "" (map related-table->xml related_tables)))
+      :table_measures_xml       (when (seq measures)
+                                  (str/join "\n" (map measure->xml measures)))
+      :table_segments_xml       (when (seq segments)
+                                  (str/join "\n" (map segment->xml segments)))})))
 
 (defn- model-fully-qualified-name
   "Get fully qualified name for a model (uses slug format)."
@@ -188,7 +219,7 @@
    Matches Python Model.get_llm_representation exactly.
    Note: Python uses <metabase-model> tag but closes with </model>."
   [{:keys [id name description verified fields database_id database_engine
-           related_tables]}]
+           related_tables measures segments]}]
   (let [fqn (model-fully-qualified-name id name)]
     (render-llm-template
      :model
@@ -202,7 +233,11 @@
       :model_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
       :model_related_tables_xml (when (seq related_tables)
-                                  (str/join "\n" (map related-table->xml related_tables)))})))
+                                  (str/join "\n" (map related-table->xml related_tables)))
+      :model_measures_xml       (when (seq measures)
+                                  (str/join "\n" (map measure->xml measures)))
+      :model_segments_xml       (when (seq segments)
+                                  (str/join "\n" (map segment->xml segments)))})))
 
 (defn- format-markdown-row
   "Format a sequence of values as a markdown table row."
@@ -244,7 +279,9 @@
    as query-type \"sql\"."
   [{:keys [query-type result-type query-id database database_id query query-content result]}]
   (let [qtype (or query-type
-                  (when (= :native (:type query)) "sql")
+                  (when (or (= :native (:type query))
+                            (lib.schema/native-only-query? query))
+                    "sql")
                   (when result-type (name result-type))
                   "unknown")]
     (render-llm-template

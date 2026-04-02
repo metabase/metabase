@@ -3,8 +3,8 @@ import { Menu } from "@mantine/core";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useEffect } from "react";
 
-import { useSequencedContentCloseHandler } from "metabase/common/hooks/use-sequenced-content-close-handler";
 import { PreventEagerPortal } from "metabase/ui";
+import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";
 
 // hack to prevent parent TippyPopover from closing when selecting a Menu.Item
 // remove when TippyPopover is no longer used

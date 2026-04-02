@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.serialization.cmd :as cmd]
+   [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -53,13 +54,10 @@
   (filter #(-> % :serdes/meta last :model (= model-name))
           entities))
 
-(defn- collections [dir]
-  (for [coll-dir (subdirs dir)
-        :when (->> ["cards" "dashboards" "timelines"]
-                   (map #(io/file coll-dir %))
-                   (filter #(= % coll-dir))
-                   empty?)]
-    coll-dir))
+(defn- yaml-model-at
+  "Read a YAML file and return its serdes model name."
+  [^File base-dir path-vec]
+  (-> (apply io/file base-dir path-vec) yaml/from-file :serdes/meta last :model))
 
 (defn- file-set [^File dir]
   (let [^Path base (.toPath dir)]
@@ -220,50 +218,44 @@
 
             (testing "for Collections"
               ;; +1 for the Trash collection
-              (is (= 110 (count (for [f (file-set (io/file dump-dir))
-                                      :when (and (= (first f) "collections")
-                                                 (let [[a b] (take-last 2 f)]
-                                                   (= b (str a ".yaml"))))]
-                                  f)))
-                  "which all go in collections/, even the snippets ones"))
+              (let [colls-dir  (io/file dump-dir "collections")
+                    coll-count (count (for [f (file-set colls-dir)
+                                            :when (= "Collection" (yaml-model-at colls-dir f))]
+                                        f))]
+                ;; +1 for Trash collection; exact count may vary by 1 depending on naming collisions
+                (is (<= 109 coll-count 111)
+                    "which all go in collections/, even the snippets ones")))
 
             (testing "for Databases"
               (is (= 10 (count (dir->dir-set (io/file dump-dir "databases"))))))
 
             (testing "for Tables"
               (is (= 100
-                     (reduce + (for [db    (get @entities "Database")
-                                     :let [tables (dir->dir-set (io/file dump-dir "databases" (:name db) "tables"))]]
-                                 (count tables))))
+                     (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
+                                     :let  [tables-dir (io/file dump-dir "databases" db "tables")]
+                                     :when (.exists tables-dir)]
+                                 (count (dir->dir-set tables-dir)))))
                   "Tables are scattered, so the directories are harder to count"))
 
             (testing "for Fields"
               (is (= 1000
-                     (reduce + (for [db    (get @entities "Database")
-                                     table (subdirs (io/file dump-dir "databases" (:name db) "tables"))]
-                                 (->> (io/file table "fields")
-                                      dir->file-set
-                                      count))))
+                     (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
+                                     table (subdirs (io/file dump-dir "databases" db "tables"))
+                                     :let  [fields-dir (io/file table "fields")]
+                                     :when (.exists fields-dir)]
+                                 (count (dir->file-set fields-dir)))))
                   "Fields are scattered, so the directories are harder to count"))
 
-            (testing "for cards"
-              ;; 100 from card, and 10 from simple-model
-              (is (= 110 (->> (io/file dump-dir "collections")
-                              collections
-                              (map (comp count dir->file-set #(io/file % "cards")))
-                              (reduce +)))))
-
-            (testing "for dashboards"
-              (is (= 150 (->> (io/file dump-dir "collections")
-                              collections
-                              (map (comp count dir->file-set #(io/file % "dashboards")))
-                              (reduce +)))))
-
-            (testing "for timelines"
-              (is (= 10 (->> (io/file dump-dir "collections")
-                             collections
-                             (map (comp count dir->file-set #(io/file % "timelines")))
-                             (reduce +)))))
+            (testing "for cards, dashboards, and timelines"
+              ;; In the new storage format, cards/dashboards/timelines are stored directly
+              ;; in collection directories (no per-type subfolders).
+              ;; 100 cards + 10 simple-models + 150 dashboards + 10 timelines = 270
+              ;; We count all yaml files under collections/main/ that are NOT collection definitions.
+              ;; exact count may vary by 1 depending on naming collisions with collection names
+              (let [main-dir (io/file dump-dir "collections" "main")]
+                (is (<= 269 (count (for [f (file-set main-dir)
+                                         :when (not= "Collection" (yaml-model-at main-dir f))]
+                                     f)) 271))))
 
             (testing "for segments"
               (is (= 30 (reduce + (for [db    (dir->dir-set (io/file dump-dir "databases"))
@@ -273,10 +265,12 @@
                                     (count (dir->file-set segments-dir)))))))
 
             (testing "for native query snippets"
-              (is (= 10 (->> (io/file dump-dir "snippets")
-                             collections
-                             (map (comp count dir->file-set))
-                             (reduce +)))))
+              ;; Snippets are now under collections/snippets/ (not a top-level snippets/ dir).
+              ;; Count non-collection yaml files under collections/snippets/.
+              (let [snippets-dir (io/file dump-dir "collections" "snippets")]
+                (is (= 10 (count (for [f (file-set snippets-dir)
+                                       :when (not= "Collection" (yaml-model-at snippets-dir f))]
+                                   f))))))
 
             (testing "for settings"
               (is (.exists (io/file dump-dir "settings.yaml")))))
@@ -885,19 +879,43 @@
                                             :no-data-model true}) dump-dir)
 
           (spit (io/file dump-dir "collections" ".hidden.yaml") "serdes/meta: [{do-not: read}]")
-          (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
 
-          (testing "No exceptions when loading despite unreadable files"
-            (mt/with-log-messages-for-level [logs [metabase-enterprise :error]]
-              (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
-                               (map (comp second second))
-                               (map #(.getName ^File %))
-                               set)]
-                (testing "Hidden YAML wasn't read even though it's not throwing errors"
-                  (is (not (contains? files ".hidden.yaml")))))
-              (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
-                (is (=? [{:level :error, :e Throwable, :message "Error reading file unreadable.yaml"}]
-                        (logs)))))))))))
+          (testing "Hidden YAML files are still silently skipped"
+            (let [{:keys [entities]} (#'ingest/ingest-all (io/file dump-dir))
+                  files (->> entities
+                             (map (comp second second))
+                             (map #(.getName ^File %))
+                             set)]
+              (is (not (contains? files ".hidden.yaml")))))
+
+          (testing "Unparseable non-hidden YAML files are collected as ingestion errors"
+            (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
+            (let [{:keys [errors]} (#'ingest/ingest-all (io/file dump-dir))]
+              (is (= 1 (count errors))))))))))
+
+(deftest ingestion-errors-fail-import-test
+  (testing "Unparseable YAML files cause load-metabase! to fail by default"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (let [coll (ts/create! :model/Collection :name "coll")
+              _    (ts/create! :model/Card :name "card" :collection_id (:id coll))]
+          (storage/store! (extract/extract {:no-settings   true
+                                            :no-data-model true}) dump-dir)
+          (spit (io/file dump-dir "collections" "corrupt.yaml") "\0")
+
+          (testing "continue-on-error false (default) — throws on ingestion errors"
+            (is (thrown-with-msg? Exception #"Failed to read 1 file\(s\) during ingestion: corrupt\.yaml"
+                                  (serdes/with-cache
+                                    (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))))))
+
+          (testing "continue-on-error true — collects ingestion errors without throwing"
+            (let [result (serdes/with-cache
+                           (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)
+                                                       {:continue-on-error true}))]
+              (is (= 1 (count (:errors result)))
+                  "Should have collected exactly 1 ingestion error")
+              (is (seq (:seen result))
+                  "Should have still loaded the valid entities"))))))))
 
 (deftest channel-test
   (mt/test-helpers-set-global-values!
@@ -974,3 +992,25 @@
         (testing "loads well too"
           (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
               "ingested successfully"))))))
+
+(deftest old-format-paths-import-test
+  (testing "serdes can import content stored at old-format paths (entity_id in name, per-type subfolders)"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        ;; Write YAML files using the OLD path format (entity_id_slug, cards/ subfolder)
+        (let [coll-eid   "old-test-coll-xxxxxxx"
+              coll-dir   (io/file dump-dir "collections" (str coll-eid "_test_collection"))
+              coll-yaml  {:serdes/meta [{:model "Collection" :id coll-eid :label "test_collection"}]
+                          :name "Test Collection" :entity_id coll-eid :namespace nil
+                          :slug "test_collection" :archived false}]
+          ;; Old format: collections/entityid_slug/entityid_slug.yaml
+          (dump/spit-yaml! (io/file coll-dir (str coll-eid "_test_collection.yaml")) coll-yaml)
+          ;; Write settings.yaml (required)
+          (dump/spit-yaml! (io/file dump-dir "settings.yaml") {})
+
+          (testing "old-format files can be ingested and loaded"
+            (let [ingestable (ingest/ingest-yaml dump-dir)]
+              (is (serdes/with-cache (serdes.load/load-metabase! ingestable))
+                  "ingestion should succeed")
+              (is (t2/exists? :model/Collection :entity_id coll-eid)
+                  "collection should have been imported from old-format path"))))))))

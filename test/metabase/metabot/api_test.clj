@@ -10,7 +10,9 @@
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
    [metabase.search.test-util :as search.tu]
    [metabase.server.instance :as server.instance]
@@ -22,53 +24,56 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
+
 (deftest native-agent-streaming-test
-  (with-redefs [config/is-dev? true]
-    (let [conversation-id    (str (random-uuid))
-          question           {:role "user" :content "Test native streaming"}
-          historical-message {:role "user" :content "previous message"}]
-      (with-redefs [openrouter/openrouter (fn [_]
-                                            (mut/mock-llm-response
-                                             [{:type :start :id "msg-1"}
-                                              {:type :text :text "Hello from native agent!"}
-                                              {:type  :usage       :usage {:promptTokens 10 :completionTokens 5}
-                                               :model "test-model" :id    "msg-1"}]))]
-        (testing "Native agent streaming request"
-          (mt/with-model-cleanup [:model/MetabotMessage
-                                  [:model/MetabotConversation :created_at]]
-            (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                                 {:message         (:content question)
-                                                  :context         {}
-                                                  :conversation_id conversation-id
-                                                  :history         [historical-message]
-                                                  :state           {}})
-                  lines    (str/split-lines response)
-                  conv     (t2/select-one :model/MetabotConversation :id conversation-id)
-                  messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+    (with-redefs [config/is-dev? true]
+      (let [conversation-id    (str (random-uuid))
+            question           {:role "user" :content "Test native streaming"}
+            historical-message {:role "user" :content "previous message"}]
+        (with-redefs [openrouter/openrouter (fn [_]
+                                              (mut/mock-llm-response
+                                               [{:type :start :id "msg-1"}
+                                                {:type :text :text "Hello from native agent!"}
+                                                {:type  :usage       :usage {:promptTokens 10 :completionTokens 5}
+                                                 :model "test-model" :id    "msg-1"}]))]
+          (testing "Native agent streaming request"
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         (:content question)
+                                                    :context         {}
+                                                    :conversation_id conversation-id
+                                                    :history         [historical-message]
+                                                    :state           {}})
+                    lines    (str/split-lines response)
+                    conv     (t2/select-one :model/MetabotConversation :id conversation-id)
+                    messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
               ;; Native agent emits AI SDK v4 line protocol directly
-              (testing "response contains expected line types"
+                (testing "response contains expected line types"
                 ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
-                (is (=? [#"f:.*"
-                         #"0:.*"
-                         #"2:.*"
-                         #"d:.*"]
-                        (m/distinct-by #(subs % 0 2) lines)))
+                  (is (=? [#"f:.*"
+                           #"0:.*"
+                           #"2:.*"
+                           #"d:.*"]
+                          (m/distinct-by #(subs % 0 2) lines)))
                 ;; Text chunks reassemble to full message
-                (let [text-lines (filter #(str/starts-with? % "0:") lines)]
-                  (is (= "Hello from native agent!"
-                         (apply str (map #(json/decode (subs % 2)) text-lines)))))
+                  (let [text-lines (filter #(str/starts-with? % "0:") lines)]
+                    (is (= "Hello from native agent!"
+                           (apply str (map #(json/decode (subs % 2)) text-lines)))))
                 ;; Finish line includes usage
-                (is (str/includes? (last lines) "promptTokens")))
-              (is (=? {:user_id (mt/user->id :rasta)}
-                      conv))
+                  (is (str/includes? (last lines) "promptTokens")))
+                (is (=? {:user_id (mt/user->id :rasta)}
+                        conv))
               ;; Native agent stores parts in raw format
-              (is (=? [{:total_tokens 0
-                        :role         :user
-                        :data         [{:role "user" :content (:content question)}]}
-                       {:total_tokens pos-int?
-                        :role         :assistant
-                        :data         [{:type "text" :text "Hello from native agent!"}]}]
-                      messages)))))))))
+                (is (=? [{:total_tokens 0
+                          :role         :user
+                          :data         [{:role "user" :content (:content question)}]}
+                         {:total_tokens pos-int?
+                          :role         :assistant
+                          :data         [{:type "text" :text "Hello from native agent!"}]}]
+                        messages))))))))))
 
 (defn ^:private sse-event
   "Format an SSE event as a string for a mock LLM server."
@@ -185,24 +190,194 @@
         (finally
           (.stop llm-server))))))
 
+(deftest settings-get-returns-live-models-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                     llm.settings/llm-anthropic-api-key    "sk-ant-valid"]
+    (with-redefs [metabot.self/list-models (fn
+                                             ([provider]
+                                              (is (= "anthropic" provider))
+                                              {:models [{:id "claude-haiku-4-5"
+                                                         :display_name "Claude Haiku 4.5"}]})
+                                             ([provider {:keys [api-key]}]
+                                              (is (= "anthropic" provider))
+                                              (is (= "sk-ant-valid" api-key))
+                                              {:models [{:id "claude-sonnet-4-5"
+                                                         :display_name "Claude Sonnet 4.5"}
+                                                        {:id "claude-haiku-4-5"
+                                                         :display_name "Claude Haiku 4.5"}
+                                                        {:id "claude-opus-4-5"
+                                                         :display_name "Claude Opus 4.5"}
+                                                        {:id "claude-opus-4-1"
+                                                         :display_name "Claude Opus 4.1"}]}))]
+      (is (= {:value  "anthropic/claude-haiku-4-5"
+              :models [{:id "claude-haiku-4-5"
+                        :display_name "Claude Haiku 4.5"
+                        :group "Haiku"}
+                       {:id "claude-opus-4-5"
+                        :display_name "Claude Opus 4.5"
+                        :group "Opus"}
+                       {:id "claude-opus-4-1"
+                        :display_name "Claude Opus 4.1"
+                        :group "Opus"}
+                       {:id "claude-sonnet-4-5"
+                        :display_name "Claude Sonnet 4.5"
+                        :group "Sonnet"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings" :provider "anthropic"))))))
+
+(deftest settings-get-normalizes-legacy-anthropic-ids-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-valid"]
+    (with-redefs [metabot.self/list-models (fn [_provider {:keys [api-key]}]
+                                             (is (= "sk-ant-valid" api-key))
+                                             {:models [{:id "claude-3-haiku-20240307"
+                                                        :display_name "Claude 3 Haiku"}
+                                                       {:id "claude-haiku-4-5"
+                                                        :display_name "Claude Haiku 4.5"}]})]
+      (is (= {:value  (metabot.settings/llm-metabot-provider)
+              :models [{:id "claude-3-haiku-20240307"
+                        :display_name "Claude 3 Haiku"
+                        :group "Haiku"}
+                       {:id "claude-haiku-4-5"
+                        :display_name "Claude Haiku 4.5"
+                        :group "Haiku"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "anthropic"))))))
+
+(deftest settings-get-groups-openrouter-models-test
+  (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-valid"]
+    (with-redefs [metabot.self/list-models (fn [_provider {:keys [api-key]}]
+                                             (is (= "sk-or-v1-valid" api-key))
+                                             {:models [{:id "openai/gpt-4.1-mini"
+                                                        :display_name "OpenAI: GPT-4.1 mini"}
+                                                       {:id "anthropic/claude-sonnet-4.5"
+                                                        :display_name "Anthropic: Claude Sonnet 4.5"}]})]
+      (is (= {:value  (metabot.settings/llm-metabot-provider)
+              :models [{:id "anthropic/claude-sonnet-4.5"
+                        :display_name "Anthropic: Claude Sonnet 4.5"
+                        :group "Anthropic"}
+                       {:id "openai/gpt-4.1-mini"
+                        :display_name "OpenAI: GPT-4.1 mini"
+                        :group "OpenAI"}]}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "openrouter"))))))
+
+(deftest settings-put-updates-provider-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                     llm.settings/llm-openai-api-key      "sk-valid"]
+    (with-redefs [metabot.self/list-models (fn
+                                             ([provider]
+                                              (is (= "openai" provider))
+                                              {:models [{:id "gpt-4.1-mini"
+                                                         :display_name "GPT-4.1 mini"}]})
+                                             ([provider {:keys [api-key]}]
+                                              (is (= "openai" provider))
+                                              (is (= "sk-valid" api-key))
+                                              {:models [{:id "gpt-4.1-mini"
+                                                         :display_name "GPT-4.1 mini"}]}))]
+      (is (= {:value  "openai/gpt-4.1-mini"
+              :models [{:id "gpt-4.1-mini"
+                        :display_name "GPT-4.1 mini"}]}
+             (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                   {:provider "openai"
+                                    :model    "gpt-4.1-mini"})))
+      (is (= "openai/gpt-4.1-mini"
+             (metabot.settings/llm-metabot-provider))))))
+
+(deftest settings-put-verifies-and-saves-api-keys-test
+  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+    (let [calls (atom 0)]
+      (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                               (swap! calls inc)
+                                               (is (= "anthropic" provider))
+                                               (is (= "sk-ant-valid" api-key))
+                                               (case @calls
+                                                 1 (is (nil? (llm.settings/llm-anthropic-api-key))
+                                                       "verification should happen before saving the key")
+                                                 2 (is (= "sk-ant-valid" (llm.settings/llm-anthropic-api-key))
+                                                       "response should use the saved key")
+                                                 (is false (str "unexpected list-models call: " @calls)))
+                                               {:models [{:id "claude-haiku-4-5"
+                                                          :display_name "Claude Haiku 4.5"}]})]
+        (is (= {:value  (metabot.settings/llm-metabot-provider)
+                :models [{:id "claude-haiku-4-5"
+                          :display_name "Claude Haiku 4.5"
+                          :group "Haiku"}]}
+               (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                     {:provider "anthropic"
+                                      :api-key  "sk-ant-valid"})))
+        (is (= 2 @calls)
+            "should verify first, then fetch models again after saving")
+        (is (= "sk-ant-valid"
+               (llm.settings/llm-anthropic-api-key)))))))
+
+(deftest settings-put-rejects-invalid-api-key-test
+  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+    (let [calls (atom 0)]
+      (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                               (swap! calls inc)
+                                               (is (= "openai" provider))
+                                               (is (= "sk-invalid" api-key))
+                                               (is (nil? (llm.settings/llm-openai-api-key))
+                                                   "failed verification should not save the key")
+                                               (throw (ex-info "OpenAI API key expired or invalid"
+                                                               {:api-error true
+                                                                :status-code 401})))]
+        (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                             {:provider "openai"
+                                              :api-key  "sk-invalid"})]
+          (is (= "OpenAI API key expired or invalid" (:message response)))
+          (is (= 1 @calls)
+              "should stop after the failed verification call")
+          (is (nil? (llm.settings/llm-openai-api-key))))))))
+
+(deftest settings-put-does-not-treat-outages-as-invalid-keys-test
+  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+    (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                             (is (= "openai" provider))
+                                             (is (= "sk-valid" api-key))
+                                             (throw (ex-info "OpenAI API is not working but not saying why"
+                                                             {:api-error true
+                                                              :status-code 500})))]
+      (let [response (mt/user-http-request :crowberto :put 500 "metabot/settings"
+                                           {:provider "openai"
+                                            :api-key  "sk-valid"})]
+        (is (= "OpenAI API is not working but not saying why" (:message response)))
+        (is (nil? (llm.settings/llm-openai-api-key)))))))
+
+(deftest settings-get-surfaces-invalid-api-key-error-test
+  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-invalid"]
+    (with-redefs [metabot.self/list-models (fn [_provider _opts]
+                                             (throw (ex-info "OpenAI API key expired or invalid"
+                                                             {:api-error true
+                                                              :status-code 401})))]
+      (is (= {:value         (metabot.settings/llm-metabot-provider)
+              :api-key-error "OpenAI API key expired or invalid"
+              :models        []}
+             (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                   :provider "openai"))))))
+
+(deftest settings-permissions-test
+  (mt/user-http-request :rasta :get 403 "metabot/settings" :provider "anthropic")
+  (mt/user-http-request :rasta :put 403 "metabot/settings"
+                        {:provider "anthropic"
+                         :model    "claude-haiku-4-5"}))
+
 (deftest endpoints-require-authentication-test
-  (mt/with-premium-features #{:metabot-v3}
-    (testing "Metabot v3 endpoints require authentication"
-      (testing "/agent-streaming"
-        (is (= "Unauthenticated"
-               (mt/client :post 401 "metabot/agent-streaming"
-                          {:message "Test"
-                           :context {}
-                           :conversation_id (str (random-uuid))
-                           :history []
-                           :state {}}))))
-      (testing "/feedback"
-        (is (= "Unauthenticated"
-               (mt/client :post 401 "metabot/feedback"
-                          {:feedback {}})))))))
+  (testing "Metabot v3 endpoints require authentication"
+    (testing "/agent-streaming"
+      (is (= "Unauthenticated"
+             (mt/client :post 401 "metabot/agent-streaming"
+                        {:message "Test"
+                         :context {}
+                         :conversation_id (str (random-uuid))
+                         :history []
+                         :state {}}))))
+    (testing "/feedback"
+      (is (= "Unauthenticated"
+             (mt/client :post 401 "metabot/feedback"
+                        {:feedback {}}))))))
 
 (deftest metabot-enabled-setting-test
-  (mt/with-premium-features #{:metabot-v3}
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
     (let [base-request {:message         "Test"
                         :context         {}
                         :conversation_id (str (random-uuid))

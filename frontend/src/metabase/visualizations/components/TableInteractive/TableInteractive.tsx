@@ -46,7 +46,7 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import {
   getTableCellClickedObject,
@@ -673,8 +673,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   ]);
 
   const dataGridTheme: DataGridTheme = useMemo(
-    () => tableThemeToDataGridTheme(tableTheme),
-    [tableTheme],
+    () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
+    [tableTheme, theme?.other?.fontSize],
   );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {

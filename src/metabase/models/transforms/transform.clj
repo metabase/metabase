@@ -20,6 +20,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as ws.table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -117,7 +118,8 @@
       (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform
         (assoc-in [:target :database] target-db-id)
-        (cond-> table-id (assoc-in [:target :table_id] table-id))
+        (cond-> table-id (-> (assoc-in [:target :table_id] table-id)
+                             (assoc :target_table_id table-id)))
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
@@ -148,7 +150,8 @@
       (assoc :target_db_id target-db-id)
 
       table-id
-      (assoc-in [:target :table_id] table-id)
+      (-> (assoc-in [:target :table_id] table-id)
+          (assoc :target_table_id table-id))
 
       ;; Reset checkpoint when the incremental filter field changes
       (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
@@ -255,9 +258,7 @@
   transform)
 
 (t2/define-before-delete :model/Transform [transform]
-  ;; TODO (Chris 2026-03-19) -- Once we have indexed FKs pointing from both global and workspace transforms
-  ;; to their target table, we should consider synchronously deleting orphaned provisional table rows
-  ;; (tables that have never been physically materialized). See gc-transform-target-tables! for the batch equivalent.
+  (ws.table/delete-orphaned-provisional-table! (:target_table_id transform) (:id transform))
   (events/publish-event! :event/delete-transform {:id (:id transform)})
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
@@ -331,50 +332,61 @@
   :table-with-db-and-fields
   "Fetch tables with their fields. The tables show up under the `:table` property."
   [transforms]
-  (let [table-key-fn (fn [{:keys [target] :as transform}]
-                       [(transforms-base.i/target-db-id transform) (:schema target) (:name target)])
-        table-keys (into #{} (map table-key-fn) transforms)
-        table-keys-with-schema (filter second table-keys)
-        table-keys-without-schema (keep (fn [[db-id schema table-name]]
-                                          (when-not schema
-                                            [db-id table-name]))
-                                        table-keys)
-        tables (when (or (seq table-keys-with-schema) (seq table-keys-without-schema))
-                 (-> (t2/select :model/Table
-                                {:where [:or
-                                         (when (seq table-keys-with-schema)
-                                           [:in [:composite :db_id :schema :name] table-keys-with-schema])
-                                         (when (seq table-keys-without-schema)
-                                           [:and
-                                            [:= :schema nil]
-                                            [:in [:composite :db_id :name] table-keys-without-schema]])]})
-                     (t2/hydrate :db :fields)))
-        table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
+  (let [table-ids (into #{} (keep :target_table_id) transforms)
+        id->table (when (seq table-ids)
+                    (m/index-by :id (-> (t2/select :model/Table :id [:in table-ids])
+                                        (t2/hydrate :db :fields))))]
     (for [transform transforms]
-      (assoc transform :table (get table-keys->table (table-key-fn transform))))))
+      (assoc transform :table
+             (get id->table (:target_table_id transform))))))
 
 (defmethod serdes/hash-fields :model/Transform
   [_transform]
   [:name :created_at])
 
+(defn- import-maybe-int-database-fk
+  "Import a database reference back to an ID. Tolerates raw numeric IDs from older exports
+  where source-tables database_id values were serialized without conversion."
+  [v]
+  (if (pos-int? v) v (serdes/*import-database-fk* v)))
+
+(defn- import-maybe-int-table-fk
+  "Import a table reference back to an ID. Tolerates raw numeric IDs from older exports
+  where source-tables table_id values were serialized without conversion."
+  [v]
+  (if (pos-int? v) v (serdes/*import-table-fk* v)))
+
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value]
+   :skip      [:dependency_analysis_version :source_type :target_db_id :target_table_id :last_checkpoint_value]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
                :collection_id      (serdes/fk :model/Collection)
                :source_database_id (serdes/fk :model/Database :name)
-               :source             {:export #(update % :query serdes/export-mbql)
+               :source             {:export (fn [source]
+                                              (-> source
+                                                  (m/update-existing :query serdes/export-mbql)
+                                                  (m/update-existing :source-database serdes/*export-database-fk*)
+                                                  (m/update-existing :source-tables
+                                                                     (fn [entries]
+                                                                       (->> (transforms-base.u/normalize-source-tables entries)
+                                                                            (mapv (fn [entry]
+                                                                                    (-> entry
+                                                                                        (m/update-existing :table_id serdes/*export-table-fk*)
+                                                                                        (m/update-existing :database_id serdes/*export-database-fk*)))))))))
                                     :import (fn [source]
                                               (-> source
+                                                  (m/update-existing :query serdes/import-mbql)
+                                                  (m/update-existing :source-database import-maybe-int-database-fk)
                                                   (m/update-existing :source-tables
-                                                                     (fn [st]
-                                                                       (if (map? st)
-                                                                         (transforms-base.u/source-tables-map->vec st)
-                                                                         st)))
-                                                  (m/update-existing :query serdes/import-mbql)))}
+                                                                     (fn [entries]
+                                                                       (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
+                                                                            (mapv (fn [entry]
+                                                                                    (-> entry
+                                                                                        (m/update-existing :table_id import-maybe-int-table-fk)
+                                                                                        (m/update-existing :database_id import-maybe-int-database-fk)))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
@@ -389,15 +401,13 @@
       [[{:model "Database" :id source_database_id}]])
     (for [{tag-id :tag_id} tags]
       [{:model "TransformTag" :id tag-id}])
-    (serdes/mbql-deps source))))
+    (serdes/mbql-deps source)
+    (for [{:keys [table_id]} (:source-tables source)
+          :when (vector? table_id)]
+      (serdes/table->path table_id)))))
 
 (defmethod serdes/storage-path "Transform" [transform ctx]
-  ;; Path: ["collections" "<nested ... collections>" "transforms" "<entity_id_name>"]
-  ;; Use default collection path, then restructure similar to NativeQuerySnippet
-  (let [basis (serdes/storage-default-collection-path transform ctx)
-        file  (last basis)
-        colls (->> basis rest (drop-last 2))] ; Drop "collections" at start, and last two elements
-    (concat ["collections"] colls ["transforms" file])))
+  (serdes/storage-default-collection-path transform ctx "transforms"))
 
 (defmethod serdes/required "Transform"
   [_model id]

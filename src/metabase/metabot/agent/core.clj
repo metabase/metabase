@@ -227,7 +227,7 @@
   [memory context profile tools iteration tracking-opts link-registry-atom]
   (let [model        (:model profile)
         system-msg   (messages/build-system-message context profile tools)
-        input-parts  (-> (messages/build-message-history memory)
+        input-parts  (-> (messages/build-message-history context memory)
                          (invert-links @link-registry-atom))
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
@@ -356,6 +356,37 @@
           state
           (:user_is_viewing context)))
 
+(defn chart-config->chart
+  "Create chart structure from chart-config"
+  [id {:keys [query timeline_events image_base_64] :as chart-config}]
+  {:chart_id id
+   :queries [query]
+   :image_base_64 image_base_64
+   :timeline_events (or timeline_events [])
+   ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
+   ;;                           what is the reason behind that if any and either add it or drop.
+   :visualization_settings nil
+   :chart_config chart-config})
+
+(defn seed-charts
+  "Reduce the chart-configs from context into charts."
+  [state context]
+  (reduce
+   ;; This logic is flawed for items with more than 1 chart config. It expects at most 1 chart config per viewing item.
+   ;; TODO (lbrdnk 2026-03-24): Figure out what is reasonable solution here. (ie no overwriting single config)
+   (fn [acc {:keys [id chart_configs] :as _item}]
+     ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
+     (if-not (seq chart_configs)
+       acc
+       (update acc :charts merge
+               (into {}
+                     (map (comp
+                           (juxt :chart_id identity)
+                           (partial chart-config->chart id)))
+                     chart_configs))))
+   state
+   (:user_is_viewing context)))
+
 ;;; Main loop
 
 (defn- init-agent
@@ -368,7 +399,8 @@
         base-tools   (profiles/get-tools-for-profile profile-id capabilities)
         seeded       (-> (or state {})
                          (seed-state context)
-                         (seed-chart-configs context))
+                         (seed-chart-configs context)
+                         (seed-charts context))
         memory       (-> (memory/initialize messages seeded context)
                          (memory/load-queries-from-state seeded)
                          (memory/load-charts-from-state seeded)
@@ -552,6 +584,10 @@
                     result))
                 (catch Exception e
                   (prometheus/inc! :metabase-metabot/agent-errors labels)
+                  (when (:api-error (ex-data e))
+                    (log/debugf "API error details: status=%s body=%s"
+                                (:status (ex-data e))
+                                (pr-str (:body (ex-data e)))))
                   (if (:api-error (ex-data e))
                     (log/errorf "Agent loop API error: %s" (ex-message e))
                     (log/error e "Agent loop error"))

@@ -11,20 +11,24 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins/oss/tenants";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
+import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { ConnectionImpersonationStepContent } from "./ConnectionImpersonationStepContent";
-import {
-  type DataSegregationStrategy,
-  DataSegregationStrategyPicker,
-} from "./DataSegregationStrategyPicker";
+import { DataSegregationStrategyPicker } from "./DataSegregationStrategyPicker";
 import { DatabaseRoutingStepContent } from "./DatabaseRoutingStepContent";
 import { EnableTenantsStepContent } from "./EnableTenantsStepContent";
 import { MoveDashboardStepContent } from "./MoveDashboardStepContent";
-import type { RlsSelectionResult } from "./RlsDataSelector";
-import { RlsDataSelector } from "./RlsDataSelector";
+import type {
+  RlsSelectionResult,
+  TableColumnSelection,
+} from "./RlsDataSelector";
+import {
+  RlsDataSelector,
+  createEmptyTableColumnSelection,
+} from "./RlsDataSelector";
 import S from "./SetupPermissionsAndTenantsPage.module.css";
 import { useLastXrayDashboard } from "./hooks/use-xray-dashboards";
-
+import { createEmptyTenantDraft } from "./utils";
 const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
@@ -42,13 +46,20 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   // Track the tenants created in this onboarding flow
   const [createdTenants, setCreatedTenants] = useState<CreatedTenantData[]>([]);
+  const [needsTenantRecreation, setNeedsTenantRecreation] = useState(false);
+
+  const [tenantDrafts, setTenantDrafts] = useState<CreatedTenantData[]>(() => [
+    createEmptyTenantDraft(1),
+  ]);
 
   // Track RLS selection from the "Select data" step (in-session only)
-  const [rlsSelection, setRlsSelection] = useState<RlsSelectionResult>({
-    fieldIds: [],
-    tableNames: [],
-    columnName: null,
-  });
+  const [rlsSelection, setRlsSelection] = useState<RlsSelectionResult>(
+    createEmptyRlsSelection,
+  );
+
+  const [rlsSelectionsDraft, setRlsSelectionsDraft] = useState<
+    TableColumnSelection[]
+  >(() => [createEmptyTableColumnSelection()]);
 
   const isMoveDashboardDone = checklist?.["move-dashboard-to-shared"] ?? false;
 
@@ -64,7 +75,13 @@ export const SetupPermissionsAndTenantsPage = () => {
   const isDataSegregationSetupDone =
     checklist?.["setup-data-segregation-strategy"] ?? false;
 
-  const isTenantsCreated = checklist?.["create-tenants"] ?? false;
+  const backendStrategy =
+    checklistResponse?.["data-isolation-strategy"] ?? null;
+  const isTenantsCreatedFromBackend = checklist?.["create-tenants"] ?? false;
+  const isTenantsCreated =
+    !needsTenantRecreation &&
+    (createdTenants.length > 0 ||
+      (isTenantsCreatedFromBackend && activeStrategy === backendStrategy));
 
   // When data segregation is finally configured, we permanently
   // mark this step as done. Otherwise rely on UI state.
@@ -162,11 +179,29 @@ export const SetupPermissionsAndTenantsPage = () => {
           <DataSegregationStrategyPicker
             value={activeStrategy}
             onChange={(value) => {
+              const hasStrategyChanged = value !== activeStrategy;
+
               setSelectedStrategy(value);
               setIsStrategyConfirmed(false);
+
+              if (hasStrategyChanged) {
+                setCreatedTenants([]);
+                setTenantDrafts([createEmptyTenantDraft(1)]);
+                setRlsSelection(createEmptyRlsSelection());
+                setRlsSelectionsDraft([createEmptyTableColumnSelection()]);
+              }
             }}
             onConfirm={() => {
+              const confirmedStrategy = activeStrategy;
+              const shouldRecreateTenants =
+                confirmedStrategy !== backendStrategy;
+
               setIsStrategyConfirmed(true);
+              setNeedsTenantRecreation(shouldRecreateTenants);
+
+              if (shouldRecreateTenants) {
+                setCreatedTenants([]);
+              }
 
               // User is re-configuring the data segregation,
               // so we need to _always_ go to the next step.
@@ -184,6 +219,8 @@ export const SetupPermissionsAndTenantsPage = () => {
           {match(activeStrategy)
             .with("row-column-level-security", () => (
               <RlsDataSelector
+                selections={rlsSelectionsDraft}
+                onSelectionsChange={setRlsSelectionsDraft}
                 onSuccess={(result) => {
                   setRlsSelection(result);
 
@@ -207,7 +244,13 @@ export const SetupPermissionsAndTenantsPage = () => {
           title={t`Create tenants`}
         >
           <PLUGIN_TENANTS.CreateTenantsOnboardingStep
-            onTenantsCreated={setCreatedTenants}
+            onTenantsCreated={(tenants) => {
+              setCreatedTenants(tenants);
+              setNeedsTenantRecreation(false);
+              setTenantDrafts([createEmptyTenantDraft(1)]);
+            }}
+            tenants={tenantDrafts}
+            onTenantsChange={setTenantDrafts}
             selectedFieldIds={rlsSelection.fieldIds}
             strategy={activeStrategy}
             rlsColumnName={rlsSelection.columnName}
@@ -230,3 +273,9 @@ export const SetupPermissionsAndTenantsPage = () => {
     </Stack>
   );
 };
+
+const createEmptyRlsSelection = (): RlsSelectionResult => ({
+  fieldIds: [],
+  tableNames: [],
+  columnName: null,
+});

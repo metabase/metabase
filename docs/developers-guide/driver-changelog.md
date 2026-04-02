@@ -22,6 +22,9 @@ title: Driver interface changelog
 - Added a `driver` parameter to `sql.qp/maybe-cast-uuid-for-text-compare`. Any drivers that call this function should
   update it to pass in the `driver` parameter now. An example is in the Snowflake driver's `string-filter` function.
 
+- Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.
+  It should return the query if it is valid and throw otherwise.
+
 ## Metabase 0.59.0
 
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this method to customize how your SQL JDBC driver
