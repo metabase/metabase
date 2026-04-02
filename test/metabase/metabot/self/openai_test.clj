@@ -6,7 +6,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openai :as openai]
-   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
@@ -15,7 +15,7 @@
 (defn- fixture
   "Load cached OpenAI raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
-  (test-util/raw-fixture fixture-name #(openai/openai-raw (merge {:model "gpt-4.1-mini"} opts))))
+  (metabot.tu/raw-fixture fixture-name #(openai/openai-raw (merge {:model "gpt-4.1-mini"} opts))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
@@ -36,7 +36,7 @@
 (deftest ^:parallel openai-tool-calls-conv-test
   (let [raw-chunks (fixture "openai-tool-calls"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
-                             :tools [(test-util/get-time-tool)]})]
+                             :tools [(metabot.tu/get-time-tool)]})]
     (testing "tool call chunks are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
@@ -68,7 +68,7 @@
 (deftest ^:parallel openai-text-and-tool-calls-conv-test
   (let [raw-chunks (fixture "openai-text-and-tool-calls"
                             {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                             :tools [(test-util/get-time-tool)]})]
+                             :tools [(metabot.tu/get-time-tool)]})]
     (testing "text + tool call chunks contain expected types"
       (is (=? [{:type :start}
                {:type :text-start} {:type :text-delta} {:type :text-end}
@@ -131,69 +131,77 @@
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
 
 (deftest openai-auth-preferences
-  (mt/with-temporary-setting-values [premium-features/premium-embedding-token "proxy-token"
-                                     llm.settings/llm-openai-api-key          "sk-ant-byok"
-                                     llm.settings/llm-proxy-base-url          "https://proxy.example"
-                                     llm.settings/llm-byok-enabled            :unset]
-    (testing "Default (unset): prefers BYOK over ai proxy"
-      (with-redefs [self.core/sse-reducible identity
-                    http/request            (fn [req] {:body req})]
-        (is (=? {:method  :post
-                 :url     "https://api.openai.com/v1/responses"
-                 :headers {"Authorization" "Bearer sk-ant-byok"}
-                 :body    string?}
-                (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
-
-    (testing "Default (unset): uses ai proxy when BYOK is missing"
-      (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
-        (with-redefs [self.core/sse-reducible identity
-                      http/request            (fn [req] {:body req})]
-          (is (=? {:method  :post
-                   :url     "https://proxy.example/v1/responses"
-                   :headers {"x-metabase-instance-token" "proxy-token"}
-                   :body    string?}
-                  (openai/openai-raw {:input [{:role :user :content "hi"}]}))))))
-
-    (testing "Default (unset): throws an error if nothing is defined"
-      (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil
-                                         llm.settings/llm-proxy-base-url    nil]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"No OpenAI API key is set"
-             (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
-
-    (testing "byok-enabled=byok: uses BYOK key"
-      (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled :byok]
+  (with-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key          "sk-ant-byok"
+                                       llm.settings/llm-proxy-base-url          "https://proxy.example"
+                                       llm.settings/llm-byok-enabled            :unset]
+      (testing "Default (unset): prefers BYOK over ai proxy"
         (with-redefs [self.core/sse-reducible identity
                       http/request            (fn [req] {:body req})]
           (is (=? {:method  :post
                    :url     "https://api.openai.com/v1/responses"
                    :headers {"Authorization" "Bearer sk-ant-byok"}
-                   :body    string?}
-                  (openai/openai-raw {:input [{:role :user :content "hi"}]}))))))
+                   :body    string?
+                   :meta    {:ai-proxy? false}}
+                  (-> (openai/openai-raw {:input [{:role :user :content "hi"}]})
+                      metabot.tu/inject-meta)))))
 
-    (testing "byok-enabled=byok: throws when no API key even if proxy is configured"
-      (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled :byok
-                                         llm.settings/llm-openai-api-key nil]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"No OpenAI API key is set"
-             (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
+      (testing "Default (unset): uses ai proxy when BYOK is missing"
+        (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+          (with-redefs [self.core/sse-reducible identity
+                        http/request            (fn [req] {:body req})]
+            (is (=? {:method  :post
+                     :url     "https://proxy.example/v1/responses"
+                     :headers {"x-metabase-instance-token" "proxy-token"}
+                     :body    string?
+                     :meta    {:ai-proxy? true}}
+                    (-> (openai/openai-raw {:input [{:role :user :content "hi"}]})
+                        metabot.tu/inject-meta))))))
 
-    (testing "byok-enabled=metabase: uses ai proxy even when BYOK key is available"
-      (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled :metabase]
-        (with-redefs [self.core/sse-reducible identity
-                      http/request            (fn [req] {:body req})]
-          (is (=? {:method  :post
-                   :url     "https://proxy.example/v1/responses"
-                   :headers {"x-metabase-instance-token" "proxy-token"}
-                   :body    string?}
-                  (openai/openai-raw {:input [{:role :user :content "hi"}]}))))))
+      (testing "Default (unset): throws an error if nothing is defined"
+        (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil
+                                           llm.settings/llm-proxy-base-url nil]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No OpenAI API key is set"
+               (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
 
-    (testing "byok-enabled=metabase: throws when proxy is not configured"
-      (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled   :metabase
-                                         llm.settings/llm-proxy-base-url nil]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"AI proxy is not configured"
-             (openai/openai-raw {:input [{:role :user :content "hi"}]})))))))
+      (testing "byok-enabled=byok: uses BYOK key"
+        (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled :byok]
+          (with-redefs [self.core/sse-reducible identity
+                        http/request            (fn [req] {:body req})]
+            (is (=? {:method  :post
+                     :url     "https://api.openai.com/v1/responses"
+                     :headers {"Authorization" "Bearer sk-ant-byok"}
+                     :body    string?
+                     :meta    {:ai-proxy? false}}
+                    (-> (openai/openai-raw {:input [{:role :user :content "hi"}]})
+                        metabot.tu/inject-meta))))))
+
+      (testing "byok-enabled=byok: throws when no API key even if proxy is configured"
+        (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled :byok
+                                           llm.settings/llm-openai-api-key nil]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No OpenAI API key is set"
+               (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
+
+      (testing "byok-enabled=metabase: uses ai proxy even when BYOK key is available"
+        (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled :metabase]
+          (with-redefs [self.core/sse-reducible identity
+                        http/request            (fn [req] {:body req})]
+            (is (=? {:method  :post
+                     :url     "https://proxy.example/v1/responses"
+                     :headers {"x-metabase-instance-token" "proxy-token"}
+                     :body    string?
+                     :meta    {:ai-proxy? true}}
+                    (-> (openai/openai-raw {:input [{:role :user :content "hi"}]})
+                        metabot.tu/inject-meta))))))
+
+      (testing "byok-enabled=metabase: throws when proxy is not configured"
+        (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled   :metabase
+                                           llm.settings/llm-proxy-base-url nil]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"AI proxy is not configured"
+               (openai/openai-raw {:input [{:role :user :content "hi"}]}))))))))

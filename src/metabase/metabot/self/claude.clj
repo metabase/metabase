@@ -247,25 +247,30 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [api-key (not-empty (llm/llm-anthropic-api-key))
-              res     (core/request-with-proxy "Anthropic"
-                                               (when api-key
-                                                 {:url     (llm/llm-anthropic-api-base-url)
-                                                  :headers {"x-api-key" api-key}})
-                                               {:method  :post
-                                                :url     "/v1/messages"
-                                                :as      :stream
-                                                :headers {"anthropic-version" "2023-06-01"
-                                                          "content-type"      "application/json"}
-                                                :body    (json/encode req)})]
-          (core/sse-reducible (:body res)))
+        (let [api-key  (not-empty (llm/llm-anthropic-api-key))
+              response (core/request-with-proxy "Anthropic"
+                                                (when api-key
+                                                  {:url     (llm/llm-anthropic-api-base-url)
+                                                   :headers {"x-api-key" api-key}})
+                                                {:method  :post
+                                                 :url     "/v1/messages"
+                                                 :as      :stream
+                                                 :headers {"anthropic-version" "2023-06-01"
+                                                           "content-type"      "application/json"}
+                                                 :body    (json/encode req)})]
+          (-> (core/sse-reducible (:body response))
+              ;; `:ai-proxy?` in metadata
+              (with-meta (meta response))))
         (catch Exception e
           (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
 
 (defn claude
   "Call Claude API, return AISDK stream"
   [& args]
-  (eduction (claude->aisdk-chunks-xf) (apply claude-raw args)))
+  (let [raw (apply claude-raw args)]
+    (eduction (comp (claude->aisdk-chunks-xf)
+                    (core/tag-ai-proxied-xf (-> raw meta :ai-proxy?)))
+              raw)))
 
 (comment
   ;; Now just use standard `into` - no core.async needed!

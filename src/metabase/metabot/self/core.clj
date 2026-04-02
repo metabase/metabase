@@ -135,8 +135,10 @@
 
 (defn- aisdk-chunks->part [[chunk :as chunks]]
   (case (:type chunk)
-    :start                 {:type :start
-                            :id   (:messageId chunk)}
+    :start                 (cond-> {:type :start
+                                    :id   (:messageId chunk)}
+                             (some? (:ai-proxy? chunk))
+                             (assoc :ai-proxy? (:ai-proxy? chunk)))
     :usage                 chunk
     :error                 chunk
     :text-start            {:type :text
@@ -512,9 +514,21 @@
                                           e)))
       :else             (throw e))))
 
+(defn tag-ai-proxied-xf
+  "Transducer that assocs `:ai-proxy?` onto the `:start` chunk.
+  Provider adapters use this to carry the routing decision from
+  [[request-with-proxy]] through the AISDK chunk stream."
+  [ai-proxy?]
+  (map (fn [chunk]
+         (if (= :start (:type chunk))
+           (assoc chunk :ai-proxy? ai-proxy?)
+           chunk))))
+
 (defn request-with-proxy
   "Perform a request directly when provider auth is configured, otherwise via the
   (Metabase Cloud-only) LLM proxy when configured.
+
+  Returns <http-response> with `:ai-proxy? true` in metadata.
 
   Routing is governed by the `llm-byok-enabled` setting:
     • `:byok`     – only customer API keys; ignores the proxy entirely
@@ -526,17 +540,20 @@
         proxy-auth (when-let [base (llm/llm-proxy-base-url)]
                      {:url     base
                       :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})
-        {:keys [url headers]}
+        {:keys [url headers ai-proxy?]}
         (case byok-mode
-          :byok     (or auth (throw (missing-api-key-ex llm-type)))
-          :metabase (or proxy-auth (throw (ex-info (tru "AI proxy is not configured")
-                                                   {:api-error  true
-                                                    :error-code :proxy-not-configured})))
+          :byok     (-> (or auth (throw (missing-api-key-ex llm-type)))
+                        (assoc :ai-proxy? false))
+          :metabase (-> (or proxy-auth (throw (ex-info (tru "AI proxy is not configured")
+                                                       {:api-error  true
+                                                        :error-code :proxy-not-configured})))
+                        (assoc :ai-proxy? true))
           ;; :unset (default): prefer BYOK, fall back to proxy
           :unset    (cond
-                      auth       auth
-                      proxy-auth proxy-auth
+                      auth       (assoc auth :ai-proxy? false)
+                      proxy-auth (assoc proxy-auth :ai-proxy? true)
                       :else      (throw (missing-api-key-ex llm-type))))]
-    (http/request (-> req
-                      (update :url #(str url %))
-                      (update :headers merge headers)))))
+    (-> (http/request (-> req
+                          (update :url #(str url %))
+                          (update :headers merge headers)))
+        (with-meta {:ai-proxy? (boolean ai-proxy?)}))))

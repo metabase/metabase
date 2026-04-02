@@ -7,6 +7,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn inject-meta
+  "Move metadata directly into a map"
+  [m]
+  (assoc m :meta (meta m)))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Fixture capture / cache
 ;;; ──────────────────────────────────────────────────────────────────

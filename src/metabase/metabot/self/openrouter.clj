@@ -284,23 +284,27 @@
                       :msg-count  (count messages)
                       :tool-count (count (or tools []))}
       (try
-        (let [api-key (not-empty (llm/llm-openrouter-api-key))
-              res     (core/request-with-proxy "OpenRouter"
-                                               (when api-key
-                                                 {:url     (llm/llm-openrouter-api-base-url)
-                                                  :headers {"Authorization" (str "Bearer " api-key)}})
-                                               {:method  :post
-                                                :url     "/v1/chat/completions"
-                                                :as      :stream
-                                                :headers {"Content-Type" "application/json"
-                                                          "HTTP-Referer" "https://metabase.com"
-                                                          "X-Title"      "Metabase"}
-                                                :body    (json/encode req)})]
-          (core/sse-reducible (:body res)))
+        (let [api-key  (not-empty (llm/llm-openrouter-api-key))
+              response (core/request-with-proxy "OpenRouter"
+                                                (when api-key
+                                                  {:url     (llm/llm-openrouter-api-base-url)
+                                                   :headers {"Authorization" (str "Bearer " api-key)}})
+                                                {:method  :post
+                                                 :url     "/v1/chat/completions"
+                                                 :as      :stream
+                                                 :headers {"Content-Type" "application/json"
+                                                           "HTTP-Referer" "https://metabase.com"
+                                                           "X-Title"      "Metabase"}
+                                                 :body    (json/encode req)})]
+          (-> (core/sse-reducible (:body response))
+              (with-meta (meta response))))
         (catch Exception e
           (core/rethrow-api-error! "openrouter" openrouter-errors e))))))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."
   [& args]
-  (eduction (openrouter->aisdk-chunks-xf) (apply openrouter-raw args)))
+  (let [raw (apply openrouter-raw args)]
+    (eduction (comp (openrouter->aisdk-chunks-xf)
+                    (core/tag-ai-proxied-xf (-> raw meta :ai-proxy?)))
+              raw)))
