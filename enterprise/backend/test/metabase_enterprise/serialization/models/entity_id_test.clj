@@ -113,6 +113,7 @@
     :model/ViewLog
     :model/Sandbox
     :model/ConnectionImpersonation
+    :model/SecurityAdvisory
     :model/CloudMigration
     :model/Comment
     :model/CommentReaction

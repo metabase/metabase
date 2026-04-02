@@ -8,6 +8,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest sync-and-evaluate-test
   (testing "skips when disabled"
     (let [called (atom [])]

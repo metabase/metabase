@@ -3,7 +3,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- make-advisory
   "Build a minimal advisory map. `overrides` are merged in."
@@ -42,10 +45,11 @@
               (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-002"))))))
 
 (deftest sync-advisories-preserves-acknowledgement-test
-  (mt/with-temp [:model/SecurityAdvisory _existing
+  (mt/with-temp [:model/User {user-id :id} {:is_superuser true}
+                 :model/SecurityAdvisory _existing
                  (make-advisory "SC-FETCH-003"
                                 :match_status    "active"
-                                :acknowledged_by (mt/user->id :rasta)
+                                :acknowledged_by user-id
                                 :acknowledged_at #t "2026-03-25T00:00:00Z")]
     (with-redefs [fetch/fetch-advisories-from-store
                   (constantly [(make-advisory "SC-FETCH-003" :title "Updated title")])]

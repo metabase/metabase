@@ -1,15 +1,18 @@
 (ns metabase-enterprise.security-center.settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest security-center-email-recipients-test
   (testing "PUT /api/setting/security-center-email-recipients"
     (mt/with-premium-features #{:admin-security-center}
       (testing "superuser can set email recipients"
         (mt/user-http-request :crowberto :put 204 "setting/security-center-email-recipients"
-                              {:value [{:type "notification-recipient/user" :user_id 1 :details nil}]})
-        (is (= [{:type "notification-recipient/user" :user_id 1 :details nil}]
+                              {:value [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]})
+        (is (= [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]
                (mt/user-http-request :crowberto :get 200 "setting/security-center-email-recipients"))))
 
       (testing "superuser can set to null (all admins)"
@@ -23,12 +26,12 @@
 
       (testing "non-superuser gets 403"
         (mt/user-http-request :rasta :put 403 "setting/security-center-email-recipients"
-                              {:value [{:type "notification-recipient/user" :user_id 1 :details nil}]}))))
+                              {:value [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]}))))
 
   (testing "requires premium feature"
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :put 500 "setting/security-center-email-recipients"
-                            {:value [{:type "notification-recipient/user" :user_id 1 :details nil}]}))))
+                            {:value [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]}))))
 
 (deftest security-center-slack-channel-test
   (testing "PUT /api/setting/security-center-slack-channel"
@@ -43,7 +46,7 @@
           (mt/user-http-request :crowberto :put 204 "setting/security-center-slack-channel"
                                 {:value "#security"})
           (is (= "#security"
-                  (mt/user-http-request :crowberto :get 200 "setting/security-center-slack-channel")))))
+                 (mt/user-http-request :crowberto :get 200 "setting/security-center-slack-channel")))))
 
       (testing "superuser can set to null (disable Slack)"
         (mt/user-http-request :crowberto :put 204 "setting/security-center-slack-channel"

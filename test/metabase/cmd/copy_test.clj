@@ -46,6 +46,7 @@
     :model/RemoteSyncTask
     :model/ReplacementRun
     :model/SearchIndexMetadata
+    :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking
     :model/SupportAccessGrantLog
     :model/TaskHistory
