@@ -796,9 +796,9 @@
         (let [card      (lib.metadata/card provider card-id)
               query     (lib/query provider (:dataset-query card))
               refs      (extract-refs-from-query store query provider #{card-id})
-              db-name   (get-in data [:dataset_query :database])
-              is-native? (get-in data [:dataset_query :native :query])
-              sql-refs  (when (and is-native? db-name)
+              db-name    (get-in data [:dataset_query :database])
+              is-native? (lib/native-only-query? query)
+              sql-refs   (when (and is-native? db-name)
                           (native/extract-sql-refs store db-name query))
               refs      (if sql-refs
                           (-> refs
