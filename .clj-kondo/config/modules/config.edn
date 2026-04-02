@@ -3108,13 +3108,13 @@
            events
            models
            notification
-           permissions
            premium-features
            seed ;; TODO: remove
            settings
+           startup
            task
            util}
-   :model-exports #{:model/SecurityAdvisory}}
+   :model-imports #{:model/User}}
 
   enterprise/semantic-search
   {:team "Metabot"
