@@ -1,5 +1,4 @@
 import type { CreateCustomVisualizationProps } from "custom-viz/src/types/viz";
-import { t } from "ttag";
 
 interface BuildCustomVizPropsOptions {
   locale: string;
@@ -11,7 +10,6 @@ export function buildCustomVizProps(
 ): CreateCustomVisualizationProps {
   return {
     locale: opts.locale,
-    translate: (text: string) => t`${text}`,
     getAssetUrl: opts.getAssetUrl,
   };
 }

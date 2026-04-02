@@ -2,7 +2,7 @@ import {
   type CreateCustomVisualization,
   type CustomStaticVisualizationProps,
   type CustomVisualizationProps,
-  defineSetting,
+  createDefineSetting,
 } from "../";
 
 type Settings = {
@@ -12,6 +12,8 @@ type Settings = {
 const createVisualization: CreateCustomVisualization<Settings> = ({
   getAssetUrl,
 }) => {
+  const defineSetting = createDefineSetting<Settings>();
+
   const VisualizationComponent = (
     props: CustomVisualizationProps<Settings>,
   ) => {
@@ -115,7 +117,7 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
     },
     settings: {
       threshold: defineSetting({
-        id: "1",
+        id: "threshold",
         title: "Threshold",
         widget: "number",
         getDefault() {
