@@ -250,7 +250,8 @@
 (deftest email-recipients-default-to-admins-test
   (testing "when security-center-email-recipients is nil, email goes to admin group"
     (let [sent (atom nil)]
-      (mt/with-temp [:model/SecurityAdvisory advisory
+      (mt/with-temp [:model/User _ {:is_superuser true}
+                     :model/SecurityAdvisory advisory
                      (advisory-fixture {:advisory_id  "SC-RECIP-001"
                                         :severity     "critical"
                                         :match_status "active"})]
