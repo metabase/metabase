@@ -120,6 +120,7 @@
      mcp
      metabot
      notification
+     oauth-server
      permissions
      premium-features
      public-sharing
