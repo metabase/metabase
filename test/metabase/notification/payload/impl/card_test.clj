@@ -576,14 +576,14 @@
           (testing "sanity: notification still exists but its payload record is gone"
             (is (t2/exists? :model/Notification (:id notification)))
             (is (not (t2/exists? :model/NotificationCard (:payload_id notification)))))
-          (testing "sending the orphaned notification should deactivate it rather than crash forever"
+          (testing "sending the orphaned notification should delete it rather than crash forever"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Card no longer exists"
                  (#'notification.send/send-notification-sync!
                   (t2/select-one :model/Notification (:id notification))))))
-          (testing "the notification should now be inactive"
-            (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))))))))
+          (testing "the notification should be deleted"
+            (is (not (t2/exists? :model/Notification (:id notification))))))))))
 
 (defn- email->attachment-line-count
   [email]
