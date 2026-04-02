@@ -4,6 +4,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.urls :as urls]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -55,7 +56,7 @@
          :status_label       (case match_status
                                :active (trs "Active")
                                :error  (trs "Error"))
-         :security_center_url (str (system/site-url) "/admin/security")})
+         :security_center_url (urls/security-center-url)})
       {})))
 
 (mu/defmethod notification.payload/payload :notification/system-event
