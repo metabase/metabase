@@ -1,33 +1,40 @@
 (ns metabase-enterprise.checker.semantic
-  "Semantic checker — validates that entity references resolve and queries are correct.
+  "Semantic checker — validates entities from serdes YAML exports without a database.
 
-   Uses MLv2 (metabase.lib) without a database connection.
-   Works with any MetadataSource implementation.
+   Bridges serdes export files into Metabase's lib/metadata system so that
+   existing validation infrastructure (deps.analysis/check-entity) can run
+   against YAML-backed entities.
 
    Architecture:
    1. A *store* (checker.store) holds a MetadataSource, a file index for
       enumeration, a bidirectional ID registry (portable refs ↔ synthetic
       integer IDs), and entity caches.
-   2. Entities are loaded lazily from the source and cached with assigned IDs.
+   2. Entities are loaded lazily from YAML and cached with assigned IDs.
    3. A MetadataProvider backed by the store serves lib/query.
-   4. lib/query and lib/find-bad-refs validate queries.
-   5. checker.native validates native SQL using sql-parsing and sql-tools.
+   4. Query validation delegates to deps.analysis/check-entity, which uses
+      lib/find-bad-refs for MBQL and deps.native-validation for SQL.
+   5. Structural checks (collection_id, dashboard layout, document links)
+      are checker-specific — they validate entity relationships not covered
+      by query analysis.
    6. Unresolved refs get sentinel IDs so queries can still be constructed
-      and lib/find-bad-refs can report the issue with context."
+      and bad refs can be reported with context."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.checker.format.serdes :as serdes]
-   [metabase-enterprise.checker.native :as native]
    [metabase-enterprise.checker.source :as source]
    [metabase-enterprise.checker.store :as store]
+   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; sql-tools.init registers multimethod implementations needed by deps.native-validation
+   [metabase.sql-tools.init]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.serialization.resolve :as resolve]
+   [metabase.query-processor.interface :as qp.i]
    [metabase.util.malli.fn :as mu.fn]))
 
 (set! *warn-on-reflection* true)
@@ -307,6 +314,28 @@
       table-id           (assoc :table-id table-id)
       (seq @!failures)   (assoc ::resolution-failures (vec (distinct @!failures))))))
 
+(defn- ->transform-metadata
+  "Convert a cached transform entity to lib metadata with its source query resolved."
+  [store data]
+  (let [!failures (atom [])
+        query     (convert-dataset-query store !failures (get-in data [:source :query]))]
+    (cond-> {:lib/type :metadata/transform
+             :id       (:id data)
+             :name     (:name data)
+             :source   (assoc (:source data) :query query)}
+      (seq @!failures) (assoc ::resolution-failures (vec (distinct @!failures))))))
+
+(defn- ->segment-metadata
+  "Convert a cached segment entity to lib metadata with its definition resolved."
+  [store data]
+  (let [!failures   (atom [])
+        definition  (convert-dataset-query store !failures (:definition data))]
+    (cond-> {:lib/type   :metadata/segment
+             :id         (:id data)
+             :name       (:name data)
+             :definition definition}
+      (seq @!failures) (assoc ::resolution-failures (vec (distinct @!failures))))))
+
 ;;; ===========================================================================
 ;;; MetadataProvider — serves lib/query from the store
 ;;; ===========================================================================
@@ -399,6 +428,34 @@
             :content  (:content data)})
 
          :else []))
+
+      :metadata/transform
+      (vec
+       (if id
+         (for [tid id
+               :let [eid (store/id->ref store :transform tid)]
+               :when eid
+               :let [data (store/load-transform! store eid)]
+               :when data]
+           (->transform-metadata store data))
+         (for [eid (store/all-refs store :transform)
+               :let [data (store/load-transform! store eid)]
+               :when data]
+           (->transform-metadata store data))))
+
+      :metadata/segment
+      (vec
+       (if id
+         (for [sid id
+               :let [eid (store/id->ref store :segment sid)]
+               :when eid
+               :let [data (store/load-segment! store eid)]
+               :when data]
+           (->segment-metadata store data))
+         (for [eid (store/all-refs store :segment)
+               :let [data (store/load-segment! store eid)]
+               :when data]
+           (->segment-metadata store data))))
 
       nil))
 
@@ -671,68 +728,79 @@
                  links)])))
 
 ;;; ===========================================================================
+;;; deps.analysis helpers
+;;; ===========================================================================
+
+(defn- partition-errors
+  "Split a set of check-entity errors into :bad-refs (MBQL issues) and
+   :native-errors (SQL validation issues like :missing-column, :syntax-error)."
+  [errors]
+  (let [{native true, mbql false} (group-by #(contains? #{:missing-column :syntax-error :missing-table-alias} (:type %))
+                                            errors)]
+    {:bad-refs      (vec mbql)
+     :native-errors (when (seq native) (set native))}))
+
+(defn- humanize-source-entity
+  "Replace synthetic :source-entity-id integers with portable refs (entity-ids
+   or path strings) so error output is meaningful."
+  [store error]
+  (if-let [src-id (:source-entity-id error)]
+    (let [kind   (:source-entity-type error)
+          ref    (case kind
+                   :table (some->> (store/id->ref store :table src-id) (str/join "."))
+                   :card  (or (store/id->ref store :card src-id) src-id)
+                   src-id)]
+      (assoc error :source-entity-id ref))
+    error))
+
+(defn- humanize-errors
+  "Translate all synthetic IDs in a set of errors back to portable refs."
+  [store errors]
+  (when errors
+    (into (empty errors) (map #(humanize-source-entity store %)) errors)))
+
+;;; ===========================================================================
 ;;; Transform-specific checks
 ;;;
 ;;; Transforms have a source query (native or MBQL) and a target table.
-;;; We validate the database ref and run native SQL validation.
+;;; We validate the database ref and the source query via deps.analysis.
 ;;; ===========================================================================
 
-(defn- check-transform-query
-  "Validate a transform's source query (native or MBQL).
-   Returns a map with :unresolved, :bad-refs, :native-errors, :error keys."
-  [store provider query]
-  (let [!failures (atom [])
-        db-name   (:database query)
-        db-id     (when (string? db-name) (resolve-db-name store !failures db-name))
-        resolver  (make-import-resolver store !failures :sentinel? true)
-        query     (cond-> query db-id (assoc :database db-id))
-        query     (-> query
-                      (update :stages
-                              (fn [stages]
-                                (mapv (fn [stage]
-                                        (-> stage
-                                            (m/update-existing :native keywordize-mbql-operators)
-                                            (cond-> (not (:native stage))
-                                              (keywordize-mbql-operators))))
-                                      (or stages []))))
-                      (as-> q (binding [resolve/*import-resolver* resolver]
-                                (resolve/import-mbql q))))]
-    (try
-      (let [query      (lib/query provider query)
-            is-native? (lib/native-only-query? query)
-            bad-refs   (lib/find-bad-refs query)
-            native-errors (when is-native?
-                            (native/validate-native-sql store provider query db-name))]
-        (cond-> {:unresolved @!failures
-                 :bad-refs   bad-refs}
-          (seq native-errors) (assoc :native-errors native-errors)))
-      (catch Exception e
-        {:unresolved @!failures
-         :error      (.getMessage e)}))))
-
 (defn- check-transform
-  "Run transform-specific semantic checks. Validates that the source database
-   exists and that the source query (native or MBQL) is valid.
-   Returns a result map with :unresolved, :native-errors, :bad-refs, :error keys."
-  [store provider data]
-  (let [db-name    (or (get-in data [:source :query :database])
-                       (:source_database_id data))
-        unresolved (atom [])]
-    ;; Check database ref
-    (when (and db-name (not (store/in-index? store :database db-name)))
-      (swap! unresolved conj {:type :database :name db-name
-                              :message (str "transform references database " db-name " which is not in the schema")}))
-    ;; Validate the source query (native SQL or MBQL)
-    (if-let [query (get-in data [:source :query])]
-      (let [result (check-transform-query store provider query)
-            sql    (get-in data [:source :query :stages 0 :native])]
-        (swap! unresolved into (:unresolved result))
-        (cond-> {:unresolved @unresolved}
-          (seq (:native-errors result)) (assoc :native-errors (:native-errors result))
-          (seq (:bad-refs result))      (assoc :bad-refs (:bad-refs result))
-          (:error result)               (assoc :error (:error result))
-          sql                           (assoc :sql sql)))
-      {:unresolved @unresolved})))
+  "Run transform-specific semantic checks via deps.analysis/check-entity.
+   Loads the transform from the store (which caches and assigns IDs), then
+   delegates query validation to deps.analysis.
+   Returns a result map with :unresolved, :native-errors, :bad-refs, :error, :sql keys."
+  [store provider entity-id]
+  (let [data (store/load-transform! store entity-id)]
+    (if (not= "query" (get-in data [:source :type]))
+      ;; Non-query transforms (e.g. python) — no query to validate
+      {:unresolved []}
+      ;; Query-based transforms — validate via deps.analysis
+      (let [db-name      (or (get-in data [:source :query :database])
+                             (:source_database_id data))
+            unresolved   (atom [])
+            transform-id (:id data)
+            sql          (get-in data [:source :query :stages 0 :native])]
+        ;; Check database ref
+        (when (and db-name (not (store/in-index? store :database db-name)))
+          (swap! unresolved conj {:type :database :name db-name
+                                  :message (str "transform references database " db-name " which is not in the schema")}))
+        ;; Resolution failures from converting transform metadata
+        (let [transform-meta (->transform-metadata store data)]
+          (swap! unresolved into (or (::resolution-failures transform-meta) []))
+          ;; Validate via deps.analysis
+          (let [errors (try
+                         (deps.analysis/check-entity provider :transform transform-id)
+                         (catch Exception e
+                           #{{:type :validation-exception-error :message (.getMessage e)}}))
+                {:keys [bad-refs native-errors]} (partition-errors errors)
+                native-errors (humanize-errors store native-errors)
+                bad-refs      (mapv #(humanize-source-entity store %) bad-refs)]
+            (cond-> {:unresolved @unresolved}
+              (seq bad-refs)      (assoc :bad-refs bad-refs)
+              (seq native-errors) (assoc :native-errors native-errors)
+              sql                 (assoc :sql sql))))))))
 
 ;;; ===========================================================================
 ;;; Non-card entity checking — load from files, run common + type-specific checks
@@ -750,7 +818,7 @@
             type-specific  (case kind
                              :dashboard  {:unresolved (check-dashboard store data)}
                              :document   {:unresolved (check-document store data)}
-                             :transform  (check-transform store provider data)
+                             :transform  (check-transform store provider entity-id)
                              {})
             all-unresolved (into common (:unresolved type-specific))
             result         {:name          (or (:name data) entity-id)
@@ -830,66 +898,46 @@
     (catch Exception _ {:tables [] :fields [] :source-cards []})))
 
 ;;; ===========================================================================
-;;; Query checks — apply to entities with a dataset_query
-;;; ===========================================================================
-
-(defn- check-query
-  "Validate an entity's dataset_query. Returns a result map with
-   :refs, :unresolved, :bad-refs, :error, :native-errors."
-  [store provider data]
-  (let [card-meta (->card-metadata store data)
-        card-id   (:id data)]
-    (if-let [missing-db (::missing-database card-meta)]
-      {:unresolved (into [{:type :database :name missing-db}]
-                         (::resolution-failures card-meta))
-       :error      (str "Unknown database: " missing-db)}
-      (try
-        (let [card      (lib.metadata/card provider card-id)
-              query     (lib/query provider (:dataset-query card))
-              refs      (extract-refs-from-query store query provider #{card-id})
-              db-name    (get-in data [:dataset_query :database])
-              is-native? (lib/native-only-query? query)
-              sql-refs   (when (and is-native? db-name)
-                          (native/extract-sql-refs store db-name query))
-              refs      (if sql-refs
-                          (-> refs
-                              (update :tables into (:tables sql-refs))
-                              (update :fields into (:fields sql-refs))
-                              (update :tables #(vec (distinct %)))
-                              (update :fields #(vec (distinct %))))
-                          refs)
-              bad-refs      (lib/find-bad-refs query)
-              native-errors (when is-native?
-                              (native/validate-native-sql store provider query db-name))]
-          (cond-> {:refs     refs
-                   :unresolved (::resolution-failures card-meta)
-                   :bad-refs bad-refs}
-            (seq native-errors) (assoc :native-errors native-errors)))
-        (catch Exception e
-          {:unresolved (::resolution-failures card-meta)
-           :error      (.getMessage e)})))))
-
-;;; ===========================================================================
 ;;; Card checking — common checks + query checks
 ;;; ===========================================================================
 
 (defn check-card
-  "Check a single card: common checks (collection_id) + query validation."
+  "Check a single card: common checks (collection_id) + query validation via deps.analysis."
   [store provider entity-id]
   (try
     (let [data            (store/load-card! store entity-id)
+          card-id         (:id data)
           common-failures (check-common store data)
-          query-result    (check-query store provider data)
-          all-unresolved  (into (or (:unresolved query-result) []) common-failures)]
-      (cond-> {:card-id    (:id data)
+          ;; Resolution failures from converting the card to lib metadata
+          card-meta       (->card-metadata store data)
+          resolution-failures (::resolution-failures card-meta)
+          ;; Use deps.analysis for query validation (bad refs + native SQL)
+          errors          (when-not (::missing-database card-meta)
+                            (try
+                              (deps.analysis/check-entity provider :card card-id)
+                              (catch Exception e
+                                #{{:type :validation-exception-error :message (.getMessage e)}})))
+          {:keys [bad-refs native-errors]} (partition-errors errors)
+          native-errors   (humanize-errors store native-errors)
+          bad-refs        (mapv #(humanize-source-entity store %) bad-refs)
+          ;; Extract refs for display
+          refs            (try
+                            (let [card  (lib.metadata/card provider card-id)
+                                  query (lib/query provider (:dataset-query card))]
+                              (extract-refs-from-query store query provider #{card-id}))
+                            (catch Exception _ nil))
+          all-unresolved  (into (vec (concat resolution-failures
+                                             (when (::missing-database card-meta)
+                                               [{:type :database :name (::missing-database card-meta)}])))
+                                common-failures)]
+      (cond-> {:card-id    card-id
                :name       (:name data)
                :entity-id  entity-id}
-        (seq all-unresolved)          (assoc :unresolved all-unresolved)
-        (:refs query-result)          (assoc :refs (:refs query-result))
-        (:bad-refs query-result)      (assoc :bad-refs (:bad-refs query-result))
-        (:native-errors query-result) (assoc :native-errors (:native-errors query-result))
-        (:error query-result)         (assoc :error (:error query-result))
-        (:warning query-result)       (assoc :warning (:warning query-result))))
+        (seq all-unresolved)   (assoc :unresolved all-unresolved)
+        refs                   (assoc :refs refs)
+        (seq bad-refs)         (assoc :bad-refs bad-refs)
+        (seq native-errors)    (assoc :native-errors native-errors)
+        (::missing-database card-meta) (assoc :error (str "Unknown database: " (::missing-database card-meta)))))
     (catch Exception e
       (let [data (try (store/load-card! store entity-id) (catch Exception _ nil))]
         {:entity-id entity-id
@@ -920,7 +968,10 @@
    `card-ids` — seq of card entity-ids to check (cards need special handling
                 via MetadataProvider; other entity types are checked from files)"
   [source index card-ids]
-  (binding [mu.fn/*enforce* false]
+  (binding [mu.fn/*enforce* false
+            ;; Skip QP middleware that requires the app DB (impersonation, permissions)
+            ;; since the checker runs without a database connection.
+            qp.i/*skip-middleware-because-app-db-access* true]
     (let [store    (store/make-store source index)
           provider (make-provider store)
           card-results (into {}

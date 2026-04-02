@@ -346,6 +346,68 @@
           "Should have unresolved table ref"))))
 
 ;;; ===========================================================================
+;;; Native SQL validation via deps.analysis
+;;;
+;;; These tests verify that deps.analysis/check-entity is properly invoked
+;;; for native SQL cards (requires sql-tools.init to be loaded).
+;;; ===========================================================================
+
+(deftest native-card-bad-sql-produces-native-errors-test
+  (testing "Card with bad SQL produces native-errors, not validation-exception-error"
+    (let [entities {:databases {"Test DB" {:name "Test DB" :engine "h2"}}
+                    :tables    {["Test DB" "PUBLIC" "ORDERS"]
+                                {:name "ORDERS" :schema "PUBLIC"}}
+                    :fields    {["Test DB" "PUBLIC" "ORDERS" "ID"]
+                                {:name "ID" :base_type "type/BigInteger"
+                                 :database_type "BIGINT"
+                                 :table_id ["Test DB" "PUBLIC" "ORDERS"]}}
+                    :cards     {"bad-sql" {:name "Bad SQL"
+                                           :entity_id "bad-sql"
+                                           :type "question"
+                                           :dataset_query {:database "Test DB"
+                                                           :type "native"
+                                                           :native {:query "SELLECT * FROM ORDERS"}}}}}
+          source  (helpers/make-memory-source entities)
+          index   (helpers/make-memory-index entities)
+          results (checker/check-entities source index ["bad-sql"])
+          result  (get results "bad-sql")]
+      (is (some? result))
+      (is (or (seq (:native-errors result))
+              (:error result))
+          "Bad SQL should produce native-errors or error, not validation-exception-error")
+      (is (empty? (filter #(= :validation-exception-error (:type %))
+                          (:bad-refs result)))
+          "Should not have validation-exception-error in bad-refs"))))
+
+(deftest native-card-valid-sql-no-errors-test
+  (testing "Card with valid native SQL produces no errors"
+    (let [entities {:databases {"Test DB" {:name "Test DB" :engine "h2"}}
+                    :tables    {["Test DB" "PUBLIC" "ORDERS"]
+                                {:name "ORDERS" :schema "PUBLIC"}}
+                    :fields    {["Test DB" "PUBLIC" "ORDERS" "ID"]
+                                {:name "ID" :base_type "type/BigInteger"
+                                 :database_type "BIGINT"
+                                 :table_id ["Test DB" "PUBLIC" "ORDERS"]}
+                                ["Test DB" "PUBLIC" "ORDERS" "TOTAL"]
+                                {:name "TOTAL" :base_type "type/Float"
+                                 :database_type "DOUBLE PRECISION"
+                                 :table_id ["Test DB" "PUBLIC" "ORDERS"]}}
+                    :cards     {"good-sql" {:name "Good SQL"
+                                             :entity_id "good-sql"
+                                             :type "question"
+                                             :dataset_query {:database "Test DB"
+                                                             :type "native"
+                                                             :native {:query "SELECT ID, TOTAL FROM ORDERS"}}}}}
+          source  (helpers/make-memory-source entities)
+          index   (helpers/make-memory-index entities)
+          results (checker/check-entities source index ["good-sql"])
+          result  (get results "good-sql")]
+      (is (some? result))
+      (is (nil? (:error result)) (str "Should not error: " (:error result)))
+      (is (empty? (:native-errors result)) "Valid SQL should have no native errors")
+      (is (empty? (:bad-refs result)) "Valid SQL should have no bad refs"))))
+
+;;; ===========================================================================
 ;;; Measure and Segment reference tests
 ;;; ===========================================================================
 

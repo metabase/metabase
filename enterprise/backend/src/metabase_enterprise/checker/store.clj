@@ -197,3 +197,21 @@
         (let [data (yaml/parse-string (slurp file))
               id   (get-or-assign! store :snippet entity-id)]
           (cache-entity! store :snippet entity-id (assoc data :id id))))))
+
+(defn load-transform!
+  "Load and cache a transform from the file index, assigning it an integer ID."
+  [store entity-id]
+  (or (cached-entity store :transform entity-id)
+      (when-let [file (index-file store :transform entity-id)]
+        (let [data (yaml/parse-string (slurp file))
+              id   (get-or-assign! store :transform entity-id)]
+          (cache-entity! store :transform entity-id (assoc data :id id))))))
+
+(defn load-segment!
+  "Load and cache a segment from the file index, assigning it an integer ID."
+  [store entity-id]
+  (or (cached-entity store :segment entity-id)
+      (when-let [file (index-file store :segment entity-id)]
+        (let [data (yaml/parse-string (slurp file))
+              id   (get-or-assign! store :segment entity-id)]
+          (cache-entity! store :segment entity-id (assoc data :id id))))))
