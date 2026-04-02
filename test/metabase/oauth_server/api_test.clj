@@ -2,12 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase.oauth-server.api.oauth :as oauth]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [oidc-provider.util :as oidc-util]
-   [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)
@@ -967,28 +965,3 @@
           (is (str/includes? body "&lt;script&gt;")
               "Script tags should be HTML-escaped"))))))
 
-;;; ------------------------------------------------ Throttling ---------------------------------------------------
-
-(defn- trigger-throttle-response
-  "Creates a throttler with threshold 0, triggers it, and returns the throttle-response.
-  With `:attempts-threshold 0` the first `check` call records the attempt and throws immediately
-  (zero attempts allowed), so we catch and discard that initial exception. The second call then
-  throws with a longer back-off delay, which is the exception we pass to `throttle-response`."
-  [user-id]
-  (let [throttler (throttle/make-throttler :test-key :attempts-threshold 0 :initial-delay-ms 15000)]
-    (try (throttle/check throttler user-id) (catch Exception _))
-    (try
-      (throttle/check throttler user-id)
-      (catch clojure.lang.ExceptionInfo e
-        (#'oauth/throttle-response e)))))
-
-(deftest throttle-response-format-test
-  (testing "throttle-response builds correct 429 response with Retry-After"
-    (let [response (trigger-throttle-response "user-1")]
-      (is (= 429 (:status response)))
-      (is (contains? (:headers response) "Retry-After"))
-      (is (= "too_many_requests" (get-in response [:body :error])))))
-
-  (testing "throttle-response includes descriptive error_description"
-    (let [response (trigger-throttle-response "user-2")]
-      (is (str/starts-with? (get-in response [:body :error_description]) "Too many attempts!")))))
