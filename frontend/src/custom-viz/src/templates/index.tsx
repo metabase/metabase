@@ -1,8 +1,7 @@
-import {
-  type CreateCustomVisualization,
-  type CustomStaticVisualizationProps,
-  type CustomVisualizationProps,
-  createDefineSetting,
+import type {
+  CreateCustomVisualization,
+  CustomStaticVisualizationProps,
+  CustomVisualizationProps,
 } from "../";
 
 type Settings = {
@@ -10,10 +9,9 @@ type Settings = {
 };
 
 const createVisualization: CreateCustomVisualization<Settings> = ({
+  defineSetting,
   getAssetUrl,
 }) => {
-  const defineSetting = createDefineSetting<Settings>();
-
   const VisualizationComponent = (
     props: CustomVisualizationProps<Settings>,
   ) => {

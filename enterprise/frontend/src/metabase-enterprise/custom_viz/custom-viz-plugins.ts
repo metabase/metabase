@@ -1,3 +1,7 @@
+import type {
+  CreateCustomVisualizationProps,
+  CustomVisualizationSettingDefinition,
+} from "custom-viz/src/types";
 import type { ComponentType } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
@@ -24,8 +28,6 @@ import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
-
-import { buildCustomVizProps } from "./custom-viz-props";
 
 type CustomVizPluginDefinition = {
   VisualizationComponent: Visualization;
@@ -325,17 +327,24 @@ export async function loadCustomVizPlugin(
     }
 
     const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
-    const getAssetUrl = (path: string) =>
-      `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
-    const locale =
-      window.MetabaseUserLocalization?.headers?.language ??
-      window.MetabaseSiteLocalization?.headers?.language ??
-      "en";
-    const props = buildCustomVizProps({
-      locale,
-      getAssetUrl,
-    });
+
+    const props: CreateCustomVisualizationProps<Record<string, unknown>> = {
+      defineSetting(definition) {
+        return definition as unknown as CustomVisualizationSettingDefinition<
+          Record<string, unknown>
+        >;
+      },
+      getAssetUrl(path: string) {
+        return `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
+      },
+      locale:
+        window.MetabaseUserLocalization?.headers?.language ??
+        window.MetabaseSiteLocalization?.headers?.language ??
+        "en",
+    };
+
     const vizDef = factory(props);
+
     if (!vizDef || !vizDef.VisualizationComponent) {
       throw new Error(
         "Factory must return an object with a VisualizationComponent property",
