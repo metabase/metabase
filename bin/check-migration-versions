@@ -47,8 +47,8 @@ elif [[ "$BASE_REF" == "master" ]]; then
         fi
     done
 
-    # Backport labels shift the target version back so migrations land on the correct release branch.
     version=$((CURRENT_VERSION + 1))
+    # Backport labels shift the target version back so migrations land on the correct release branch.
     [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))
     [[ ",$labels," == *",double-backport,"* ]] && version=$((CURRENT_VERSION - 1))
     [[ ",$labels," == *",triple-backport,"* ]] && version=$((CURRENT_VERSION - 2))
