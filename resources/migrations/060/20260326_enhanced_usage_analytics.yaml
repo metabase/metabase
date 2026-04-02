@@ -261,6 +261,40 @@ databaseChangeLog:
                   name: tenant_id
 
   # ============================================================
+  # embedding_route column (separate from embedding_client)
+  # ============================================================
+
+  - changeSet:
+      id: v60.2026-03-26T00:00:21
+      author: bgrabow
+      comment: Add embedding_route column to view_log for route-surface tracking
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_route
+                  type: varchar(64)
+                  remarks: API route surface (e.g. public, guest-embed, metabot, agent-api)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v60.2026-03-26T00:00:22
+      author: bgrabow
+      comment: Add embedding_route column to query_execution for route-surface tracking
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_route
+                  type: varchar(64)
+                  remarks: API route surface (e.g. public, guest-embed, metabot, agent-api)
+                  constraints:
+                    nullable: true
+
+  # ============================================================
   # Analytics view updates - add embedding_client, surface, is_preview
   # ============================================================
 

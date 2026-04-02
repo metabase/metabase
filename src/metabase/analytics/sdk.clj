@@ -38,6 +38,15 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
+(def ^:dynamic *route* "Used to track the API route surface for the current request (e.g. \"public\", \"guest-embed\")." nil)
+
+(defmacro with-route! "Binds [[*route*]] for the duration of `body`."
+  [[value] & body]
+  `(binding [*route* ~value]
+     ~@body))
+
+(defn get-route "Returns [[*route*]]." [] *route*)
+
 (def ^:dynamic *auth-method* "Used to track the authentication method for the current request (e.g. \"password\", \"jwt\", \"api-key\")." nil)
 
 (defmacro with-auth-method! "Binds [[*auth-method*]] for the duration of `body`."
@@ -96,6 +105,7 @@
   [m :- :map]
   (-> m
       (update :embedding_client (fn [client] (or *client* client)))
+      (update :embedding_route (fn [route] (or *route* route)))
       (update :embedding_version (fn [version] (or *version* version)))
       (update :auth_method (fn [method] (or *auth-method* method)))
       (merge (pii-fields))))
@@ -117,7 +127,7 @@
   (or (= client embedding-sdk-client)
       (= client embedding-iframe-client)))
 
-(def ^:private route-client-mapping
+(def ^:private route-surface-mapping
   [["/api/public/" "public"]
    ["/api/embed/" "guest-embed"]
    ;; preview-embed is guest-embed; the "-preview" suffix is appended separately
@@ -126,12 +136,12 @@
    ["/api/metabot/" "metabot"]
    ["/api/agent/" "agent-api"]])
 
-(defn- derived-client
-  [{:keys [uri metabase-client-header]}]
-  (let [route-client (first (keep (fn [[prefix client]]
-                                    (when (str/starts-with? (or uri "") prefix) client))
-                                  route-client-mapping))]
-    (or route-client metabase-client-header)))
+(defn route-surface
+  "Returns the route surface string for a URI, or nil if no route matches."
+  [uri]
+  (first (keep (fn [[prefix surface]]
+                 (when (str/starts-with? (or uri "") prefix) surface))
+               route-surface-mapping)))
 
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
@@ -141,20 +151,22 @@
     (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
           version (get-in request [:headers "x-metabase-client-version"])
           preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
-          sdk-client (derived-client {:uri (:uri request) :metabase-client-header metabase-client-header})]
-      ;; Keep "-preview" suffix so preview requests are distinguishable for auditing
-      ;; (admins can query sensitive data via the embed preview wizard). Usage analytics
-      ;; views (EMB-1503) will de-emphasize preview but still surface it.
-      (binding [*client* (if preview? (str sdk-client "-preview") sdk-client)
+          route (route-surface (:uri request))
+          ;; *client* is the SDK/client identity from the header, with -preview suffix if applicable
+          client (cond-> metabase-client-header
+                   preview? (some-> (str "-preview")))]
+      (binding [*client* client
+                *route*  route
                 *version* version]
         (handler request
                  (fn responder [response]
-                   (when (embedding-context? sdk-client)
-                     (track-sdk-response sdk-client response))
+                   ;; Only track prometheus when NO route match AND header is an embedding context
+                   (when (and (nil? route) (embedding-context? metabase-client-header))
+                     (track-sdk-response metabase-client-header response))
                    (respond response))
                  (fn raiser [response]
-                   (when (embedding-context? sdk-client)
-                     (track-sdk-response sdk-client
+                   (when (and (nil? route) (embedding-context? metabase-client-header))
+                     (track-sdk-response metabase-client-header
                                          (if (:status response)
                                            response
                                            {:status 500})))

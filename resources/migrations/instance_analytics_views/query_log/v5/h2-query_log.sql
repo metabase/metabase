@@ -26,7 +26,12 @@ SELECT id AS entity_id,
        lens_params,
        query,
        embedding_client,
+       embedding_route,
        CASE
+         WHEN COALESCE(embedding_route, embedding_client) = 'public'       THEN 'public-sharing'
+         WHEN COALESCE(embedding_route, embedding_client) = 'guest-embed'  THEN 'guest-embedding'
+         WHEN COALESCE(embedding_route, embedding_client) = 'metabot'      THEN 'metabot'
+         WHEN COALESCE(embedding_route, embedding_client) = 'agent-api'    THEN 'agent-api'
          WHEN embedding_client = 'embedding-sdk-react'         THEN 'sdk'
          WHEN embedding_client = 'embedding-sdk-react-preview' THEN 'sdk-preview'
          WHEN embedding_client = 'embedding-iframe'            THEN 'iframe'
@@ -37,8 +42,6 @@ SELECT id AS entity_id,
          WHEN embedding_client = 'guest-embed-preview'         THEN 'guest-embedding-preview'
          WHEN embedding_client = 'embedding-simple'            THEN 'modular-embedding'
          WHEN embedding_client = 'embedding-simple-preview'    THEN 'modular-embedding-preview'
-         WHEN embedding_client = 'metabot'                     THEN 'metabot'
-         WHEN embedding_client = 'agent-api'                   THEN 'agent-api'
          WHEN embedding_client IS NULL OR embedding_client = '' THEN 'internal'
          ELSE embedding_client
        END AS surface,

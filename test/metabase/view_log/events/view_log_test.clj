@@ -272,7 +272,7 @@
           (testing "GET /api/public/card/:uuid/query"
             (client/client :get 202 (str "public/card/" (:public_uuid card) "/query"))
             (is (partial= {:model "card", :model_id (:id card), :has_access true, :context :question
-                           :embedding_client "public"}
+                           :embedding_route "public"}
                           (latest-view nil (:id card))))))))))
 
 (deftest public-dashboard-card-query-view-log-test
@@ -304,7 +304,7 @@
           (testing "GET /api/embed/card/:token/query"
             (client/client :get 202 (str (embed-test/card-url card) "/query"))
             (is (partial= {:model "card", :model_id (:id card), :has_access true
-                           :embedding_client "guest-embed"}
+                           :embedding_route "guest-embed"}
                           (latest-view nil (:id card))))))))))
 
 (deftest embedded-dashboard-card-query-view-log-test
@@ -330,15 +330,16 @@
             (is (partial= {:model "dashboard", :model_id (:id dash), :has_access true}
                           (latest-view nil (:id dash))))))))))
 
-(deftest server-side-binding-wins-over-client-header-test
+(deftest client-and-route-stored-independently-test
   (mt/with-premium-features #{:audit-app}
-    (testing "Server-side embedding_client binding wins over X-Metabase-Client header"
+    (testing "embedding_client comes from header, embedding_route from URI"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (public-test/with-temp-public-card [card]
           (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
                          {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}})
-          (is (= "public"
-                 (:embedding_client (latest-view nil (:id card))))))))))
+          (let [view (latest-view nil (:id card))]
+            (is (= "embedding-sdk-react" (:embedding_client view)))
+            (is (= "public" (:embedding_route view)))))))))
 
 (defn- latest-qe
   "Returns the most recent QueryExecution for a given card ID."
@@ -416,7 +417,7 @@
                   (is (= "127.0.0.1"      (:ip_address view)))))
               (testing "in query_execution"
                 (let [qe (latest-qe (:id card))]
-                  (is (= "public"          (:embedding_client qe)))
+                  (is (= "public"          (:embedding_route qe)))
                   (is (= "app.example.com" (:embedding_hostname qe)))
                   (is (= "/dashboard/1"    (:embedding_path qe)))
                   (is (= "TestAgent/1.0" (:user_agent qe)))
@@ -460,7 +461,7 @@
                   (is (= "127.0.0.1"        (:ip_address view)))))
               (testing "in query_execution"
                 (let [qe (latest-qe (:id card))]
-                  (is (= "public"           (:embedding_client qe)))
+                  (is (= "public"           (:embedding_route qe)))
                   (is (= "dash.example.com" (:embedding_hostname qe)))
                   (is (= "/analytics"       (:embedding_path qe)))
                   (is (= "DashAgent/2.0" (:user_agent qe)))
@@ -486,15 +487,17 @@
               (is (nil? (:auth_method view)))
               (is (nil? (:auth_method qe))))))))))
 
-(deftest route-client-mapping-test
-  (testing "combinations of routes and header values"
-    (testing "Some routes override the header value"
-      (is (= "public" (#'sdk/derived-client {:uri "/api/public/something" :metabase-client-header "header"})))
-      (is (= "guest-embed" (#'sdk/derived-client {:uri "/api/embed/something" :metabase-client-header "header"})))
-      (is (= "guest-embed" (#'sdk/derived-client {:uri "/api/preview-embed/something" :metabase-client-header "header"})))
-      (is (= "metabot" (#'sdk/derived-client {:uri "/api/metabot/something" :metabase-client-header "header"})))
-      (is (= "agent-api" (#'sdk/derived-client {:uri "/api/agent/something" :metabase-client-header "header"}))))
-    (testing "The rest of the routes use the header value"
-      (is (= "header" (#'sdk/derived-client {:uri "no-mapping" :metabase-client-header "header"}))))))
+(deftest route-surface-test
+  (testing "route-surface returns the correct surface for known prefixes"
+    (are [uri expected]
+         (= expected (sdk/route-surface uri))
+      "/api/public/something"         "public"
+      "/api/embed/something"          "guest-embed"
+      "/api/preview-embed/something"  "guest-embed"
+      "/api/metabot/something"        "metabot"
+      "/api/agent/something"          "agent-api"))
+  (testing "route-surface returns nil for non-matching URIs"
+    (is (nil? (sdk/route-surface "/api/card/1")))
+    (is (nil? (sdk/route-surface nil)))))
 
 ;;; ---------------------------------------- API tests end -----------------------------------------

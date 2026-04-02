@@ -143,7 +143,7 @@
                    "action_id" "action_qualified_id"
                    "transform_id" "transform_qualified_id"
                    "lens_id" "lens_params" "query"
-                   "embedding_client" "embedding_version" "surface" "is_preview"
+                   "embedding_client" "embedding_route" "embedding_version" "surface" "is_preview"
                    "auth_method" "is_sandboxed" "is_impersonated" "is_db_routed" "parameters"
                    "tenant_id" "embedding_hostname" "embedding_path"
                    "user_agent" "ip_address"}
@@ -177,7 +177,7 @@
    "v_view_log" #{"id" "timestamp" "user_id" "entity_type" "entity_id"
                   "entity_qualified_id"
                   "has_access" "context"
-                  "embedding_client" "embedding_version" "surface" "is_preview"
+                  "embedding_client" "embedding_route" "embedding_version" "surface" "is_preview"
                   "auth_method" "tenant_id"
                   "embedding_hostname" "embedding_path" "user_agent" "ip_address"}})
 
