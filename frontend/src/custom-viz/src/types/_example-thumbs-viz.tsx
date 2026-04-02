@@ -1,18 +1,16 @@
-import { createDefineSetting } from "../lib";
-
 import type {
   CreateCustomVisualization,
   CustomStaticVisualizationProps,
   CustomVisualizationProps,
-} from "./viz"; // TODO: change to @metabase/custom-viz once package is published on npm
+} from "./viz";
 
 type ThumbsVizSettings = {
   threshold?: number;
 };
 
-const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = () => {
-  const defineSetting = createDefineSetting<ThumbsVizSettings>();
-
+const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = ({
+  defineSetting,
+}) => {
   return {
     id: "thumbs-viz",
     getName: () => "Thumbs",
@@ -78,6 +76,10 @@ const ThumbsVizComponent = (
 
   if (typeof value !== "number" || typeof threshold !== "number") {
     throw new Error("Value and threshold need to be numbers");
+  }
+
+  if (width === null || height === null) {
+    return null;
   }
 
   const emoji = value >= threshold ? "👍" : "👎";

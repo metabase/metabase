@@ -10,8 +10,8 @@ import {
   type Dataset,
   type VisualizationDisplay,
   isCardDisplayType,
-  isCustomVizDisplay,
 } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { groupVisualizationsBySensibility } from "./sensibility-grouping";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";

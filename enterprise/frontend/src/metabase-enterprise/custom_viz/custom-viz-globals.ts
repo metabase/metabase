@@ -1,3 +1,4 @@
+import type { CreateCustomVisualization } from "custom-viz/src/types/viz";
 import React from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 
@@ -8,7 +9,6 @@ import {
 } from "metabase/lib/measure-text";
 import * as isa from "metabase-lib/v1/types/utils/isa";
 
-import type { CustomVizPluginDefinition } from "./custom-viz-types";
 import { formatValue } from "./custom-viz-utils";
 
 declare global {
@@ -22,9 +22,7 @@ declare global {
       measureTextWidth: typeof measureTextWidth;
       measureTextHeight: typeof measureTextHeight;
     };
-    __customVizPlugin__?: (
-      ...args: unknown[]
-    ) => CustomVizPluginDefinition | null | undefined;
+    __customVizPlugin__?: CreateCustomVisualization<Record<string, unknown>>;
   }
 }
 

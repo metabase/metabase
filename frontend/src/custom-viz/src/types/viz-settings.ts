@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { Column } from "./data";
+import type { Column, Series } from "./data";
+import type { BaseWidgetProps } from "./viz";
 
 export type WidgetName = keyof Widgets;
 
@@ -86,3 +87,62 @@ export type MultiselectProps = {
   placeholder?: string;
   placeholderNoOptions?: string;
 };
+
+type OmitBaseWidgetProps<P> = keyof BaseWidgetProps<
+  unknown,
+  unknown
+> extends keyof P
+  ? Omit<P, keyof BaseWidgetProps<unknown, unknown>>
+  : P;
+
+type PropsFromWidget<W> = W extends WidgetName
+  ? Widgets[W]
+  : W extends (props: infer P) => any
+    ? OmitBaseWidgetProps<P>
+    : never;
+
+export type CreateDefineSetting<
+  CustomVisualizationSettings extends Record<string, unknown>,
+> = () => <
+  W extends WidgetName | ((props: any) => any),
+  Key extends keyof CustomVisualizationSettings,
+>(settingDefinition: {
+  id: Key;
+  section?: string;
+  title?: string;
+  group?: string;
+  index?: number;
+  inline?: boolean;
+
+  persistDefault?: boolean;
+  set?: boolean;
+
+  readDependencies?: string[];
+  writeDependencies?: string[];
+  eraseDependencies?: string[];
+
+  widget: W;
+
+  isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
+  getDefault?: (
+    series: Series,
+    settings: CustomVisualizationSettings,
+  ) => CustomVisualizationSettings[Key];
+  getProps?: PropsFromWidget<W> extends never
+    ? never
+    : (
+        object: Series,
+        vizSettings: CustomVisualizationSettings,
+      ) => PropsFromWidget<W>;
+  getValue?: (
+    series: Series,
+    settings: CustomVisualizationSettings,
+  ) => CustomVisualizationSettings[Key];
+}) => CustomVisualizationSettingDefinition<CustomVisualizationSettings>;
+
+declare const SettingDefinitionSymbol: unique symbol;
+
+export type CustomVisualizationSettingDefinition<_CustomVisualizationSettings> =
+  {
+    readonly [SettingDefinitionSymbol]: never;
+  };

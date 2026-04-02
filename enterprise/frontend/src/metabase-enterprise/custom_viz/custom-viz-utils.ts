@@ -1,7 +1,6 @@
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
 import type {
-  CustomVizDisplayType,
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -14,6 +13,9 @@ export function formatValue(value: unknown, options?: OptionsType): string {
   return String(result ?? "");
 }
 
+/**
+ * Build a URL for a plugin's static asset.
+ */
 export function getPluginAssetUrl(
   pluginId: number,
   assetPath: string | null,
@@ -32,10 +34,5 @@ export function getCustomPluginIdentifier(
       ? pluginOrIdentifier
       : pluginOrIdentifier.identifier;
 
-  return `custom:${identifier}` as VisualizationDisplay;
+  return `custom:${identifier}`;
 }
-
-export const isCustomVizDisplay = (
-  value: unknown,
-): value is CustomVizDisplayType =>
-  typeof value === "string" && value.startsWith("custom:");

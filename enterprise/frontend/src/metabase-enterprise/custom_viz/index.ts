@@ -1,7 +1,7 @@
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { VisualizationDisplay } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import {
   CustomVizDevelopmentPage,
@@ -16,7 +16,6 @@ import {
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
-  isCustomVizDisplay,
 } from "./custom-viz-utils";
 
 // Registry for custom viz plugins in the GraalJS static-viz context.
@@ -28,9 +27,10 @@ function registerCustomVizPlugin(
   assets: any,
 ) {
   const assetMap = assets || {};
+  const defineSetting = <T>(definition: T) => definition;
   const getAssetUrl = (name: string) => assetMap[name] || "";
-  const vizDef = factory({ getAssetUrl });
-  const display = getCustomPluginIdentifier(identifier) as VisualizationDisplay;
+  const vizDef = factory({ defineSetting, getAssetUrl });
+  const display = getCustomPluginIdentifier(identifier);
   customVizRegistry.set(display, vizDef);
 
   // Register in main visualizations Map so getVisualizationRaw() resolves

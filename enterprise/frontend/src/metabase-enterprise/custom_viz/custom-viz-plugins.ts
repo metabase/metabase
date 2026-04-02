@@ -1,5 +1,8 @@
-import type { ComponentType } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  CreateCustomVisualizationProps,
+  CustomVisualizationSettingDefinition,
+} from "custom-viz/src/types";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
@@ -12,13 +15,12 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { ensureVizApi } from "./custom-viz-globals";
-import { buildCustomVizProps } from "./custom-viz-props";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
-  isCustomVizDisplay,
 } from "./custom-viz-utils";
 
 // ---------------------------------------------------------------------------
@@ -203,9 +205,6 @@ export async function loadCustomVizPlugin(
 
   ensureVizApi();
 
-  // eslint-disable-next-line no-console
-  console.log(`[custom-viz] Loading plugin "${plugin.display_name}"…`);
-
   try {
     const bundleUrl = new URL(plugin.bundle_url, window.location.origin);
     if (cacheBustSuffix) {
@@ -241,17 +240,24 @@ export async function loadCustomVizPlugin(
     }
 
     const cacheBust = cacheBustSuffix ? `&t=${Date.now()}` : "";
-    const getAssetUrl = (path: string) =>
-      `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
-    const locale =
-      window.MetabaseUserLocalization?.headers?.language ??
-      window.MetabaseSiteLocalization?.headers?.language ??
-      "en";
-    const props = buildCustomVizProps({
-      locale,
-      getAssetUrl,
-    });
+
+    const props: CreateCustomVisualizationProps<Record<string, unknown>> = {
+      defineSetting(definition) {
+        return definition as unknown as CustomVisualizationSettingDefinition<
+          Record<string, unknown>
+        >;
+      },
+      getAssetUrl(path: string) {
+        return `${getPluginAssetUrl(plugin.id, path) ?? ""}${cacheBust}`;
+      },
+      locale:
+        window.MetabaseUserLocalization?.headers?.language ??
+        window.MetabaseSiteLocalization?.headers?.language ??
+        "en",
+    };
+
     const vizDef = factory(props);
+
     if (!vizDef || !vizDef.VisualizationComponent) {
       throw new Error(
         t`Factory must return an object with a VisualizationComponent property`,
@@ -261,11 +267,23 @@ export async function loadCustomVizPlugin(
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = getCustomPluginIdentifier(plugin);
 
+    const Wrapper = ({
+      onVisualizationClick,
+      onHoverChange,
+      ...rest
+    }: Omit<VisualizationProps, "width" | "height"> & {
+      width: number | null;
+      height: number | null;
+    }) =>
+      React.createElement(vizDef.VisualizationComponent, {
+        ...rest,
+        onClick: onVisualizationClick,
+        onHover: onHoverChange,
+      });
+
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
-      vizDef.VisualizationComponent as ComponentType<
-        VisualizationProps & { width: number | null; height: number | null }
-      >,
+      Wrapper,
     ) as Visualization;
     Object.assign(Component, {
       identifier,
@@ -302,4 +320,4 @@ export async function loadCustomVizPlugin(
   }
 }
 
-export { getCustomPluginIdentifier, getPluginAssetUrl, isCustomVizDisplay };
+export { getCustomPluginIdentifier, getPluginAssetUrl };

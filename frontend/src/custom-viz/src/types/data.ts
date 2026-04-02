@@ -43,7 +43,12 @@ export type Column = {
   /**
    * Metabase identifier.
    */
-  id: ColumnId;
+  id?: ColumnId;
+
+  /**
+   * Source of the column (e.g. "fields", "aggregation", "breakout").
+   */
+  source: string;
 
   /**
    * Name of the column in the database.
@@ -58,7 +63,7 @@ export type Column = {
   /**
    * Description of the column set in Metabase.
    */
-  description: string | null;
+  description?: string | null;
 
   /**
    * Base type of the column in Metabase type system.
