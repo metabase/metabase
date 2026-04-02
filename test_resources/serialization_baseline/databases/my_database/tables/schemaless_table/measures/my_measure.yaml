@@ -3,15 +3,13 @@ creator_id: ann@heart.band
 definition:
   database: My Database
   "lib/type": mbql/query
-  "lib/metadata": null
   stages:
     - "lib/type": mbql.stage/mbql
       aggregation:
       - - sum
-        - "lib/uuid": 865abdef-bb71-490c-9796-fa5b01bf16a2
+        - {}
         - - field
-          - "lib/uuid": c115167e-2961-4ff1-b2e9-8affbff1a20b
-            base-type: type/Text
+          - base-type: type/Text
           - - My Database
             - null
             - Schemaless Table

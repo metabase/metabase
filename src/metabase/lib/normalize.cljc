@@ -97,7 +97,12 @@
                               (throw (ex-info (i18n/tru "Normalization error")
                                               {:schema schema, :x x, :error error})))]
          (thunk))
-       (thunk)))))
+       (try
+         (thunk)
+         (catch #?(:clj Throwable :cljs :default) e
+           (throw (ex-info (str "Uncaught normalization error: " (ex-message e))
+                           {:schema schema}
+                           e))))))))
 
 (mu/defn ->normalized-stage-metadata :- ::lib.schema.metadata/stage
   "Take a sequence of legacy or Lib metadata maps, convert to Lib-style if needed, then normalize them.
