@@ -55,7 +55,7 @@ elif [[ "$BASE_REF" == "master" ]]; then
         done
 
         version=$((CURRENT_VERSION + 1))
-        [[ ",$labels," == *",backport,"* ]] && version=$((CURRENT_VERSION))
+        [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))
         [[ ",$labels," == *",double-backport,"* ]] && version=$((CURRENT_VERSION - 1))
         [[ ",$labels," == *",triple-backport,"* ]] && version=$((CURRENT_VERSION - 2))
 
