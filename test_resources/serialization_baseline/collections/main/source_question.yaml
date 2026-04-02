@@ -9,7 +9,6 @@ parameters: []
 parameter_mappings: []
 dataset_query:
   "lib/type": mbql/query
-  "lib/metadata": null
   database: My Database
   stages:
     - "lib/type": mbql.stage/native

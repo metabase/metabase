@@ -6,7 +6,6 @@ name: Test Transform
 source:
   query:
     "lib/type": mbql/query
-    "lib/metadata": null
     database: My Database
     stages:
       - "lib/type": mbql.stage/mbql
