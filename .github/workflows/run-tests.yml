@@ -15,7 +15,7 @@ permissions:
   contents: read
   actions: read
   checks: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   files-changed:
