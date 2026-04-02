@@ -16,7 +16,8 @@
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [oidc-provider.store :as oidc.store])
+   [oidc-provider.store :as oidc.store]
+   [throttle.core :as throttle])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
@@ -246,6 +247,16 @@
     (or session-err
         {:status 200 :headers {"Content-Type" "application/json"} :body ""})))
 
+;;; -------------------------------------------------- Throttling --------------------------------------------------
+
+;; MCP is auth-gated (session cookie or bearer token), so the risk is lower than the
+;; unauthenticated OAuth endpoints. The threshold is generous to accommodate users running
+;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check counts every
+;; request (not just failures) which is correct here — we want to cap total throughput
+;; regardless of success to prevent resource exhaustion from a compromised token.
+(def ^:private mcp-throttler
+  (throttle/make-throttler :user-id :attempts-threshold 1000 :attempt-ttl-ms (* 60 1000)))
+
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
 (defn- www-authenticate-discovery []
@@ -262,6 +273,7 @@
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
                    (try
+                     (throttle/check mcp-throttler user-id)
                      (let [request (assoc request :token-scopes token-scopes)]
                        (case (:request-method request)
                          :post   (respond (handle-post user-id request))
