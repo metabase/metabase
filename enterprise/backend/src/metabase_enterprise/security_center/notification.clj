@@ -10,11 +10,11 @@
    setting."
   (:require
    [metabase-enterprise.security-center.settings :as settings]
+   [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
-   [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -42,8 +42,10 @@
   []
   (t2/hydrate
    (or (settings/security-center-email-recipients)
-       [{:type                 :notification-recipient/group
-         :permissions_group_id (:id (perms/admin-group))}])
+       (map (fn [email]
+              {:type    :notification-recipient/raw-value
+               :details {:value email}})
+            (distinct (messages/all-admin-recipients))))
    :recipients-detail))
 
 (defn- slack-recipients
