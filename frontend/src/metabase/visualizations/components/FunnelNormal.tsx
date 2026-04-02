@@ -30,7 +30,7 @@ import type {
   HoveredObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { RowValue } from "metabase-types/api";
+import type { RowValue, RowValues } from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
 
 import { computeChange } from "../lib/numeric";
@@ -48,6 +48,27 @@ type FunnelStepInfo = {
   hovered?: HoveredObject;
   clicked?: ClickObject;
 };
+
+export function getSortedRows(
+  rows: RowValues[],
+  rowsForKeys: RowValues[],
+  dimensionIndex: number,
+  funnelRows: { key: string | number; enabled: boolean }[] | undefined,
+) {
+  if (!funnelRows) {
+    return rows;
+  }
+
+  return funnelRows
+    .filter((fr) => fr.enabled)
+    .map((fr) => {
+      const idx = rowsForKeys.findIndex(
+        (row) => formatNullable(row[dimensionIndex]) === fr.key,
+      );
+      return idx !== -1 ? rows[idx] : undefined;
+    })
+    .filter(isNotNull);
+}
 
 export function FunnelNormal({
   className,
@@ -78,17 +99,12 @@ export function FunnelNormal({
   // otherwise content-translated dimension values won't match their keys
   // and the funnel renders empty (metabase#71488).
   const rowsForKeys = getRowsForStableKeys(series.data);
-  const sortedRows = settings["funnel.rows"]
-    ? settings["funnel.rows"]
-        .filter((fr) => fr.enabled)
-        .map((fr) => {
-          const idx = rowsForKeys.findIndex(
-            (row) => formatNullable(row[dimensionIndex]) === fr.key,
-          );
-          return idx !== -1 ? rows[idx] : undefined;
-        })
-        .filter(isNotNull)
-    : rows;
+  const sortedRows = getSortedRows(
+    rows,
+    rowsForKeys,
+    dimensionIndex,
+    settings["funnel.rows"],
+  );
 
   const isNarrow = Boolean(gridSize && gridSize.width < 7);
   const isShort = Boolean(gridSize && gridSize.height <= 5);

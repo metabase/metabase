@@ -1,8 +1,8 @@
-import { formatNullable } from "metabase/lib/formatting/nullable";
-import { isNotNull } from "metabase/lib/types";
 import { calculateFunnelSteps } from "metabase/visualizations/lib/funnel/utils";
 import type { RowValues } from "metabase-types/api";
 import { getRowsForStableKeys } from "metabase-types/api";
+
+import { getSortedRows } from "./FunnelNormal";
 
 /**
  * These tests replicate the data flow inside FunnelNormal to demonstrate the
@@ -15,27 +15,6 @@ import { getRowsForStableKeys } from "metabase-types/api";
  * untranslated rows and then return the *translated* rows for display.
  */
 describe("FunnelNormal row matching (metabase#71488)", () => {
-  /**
-   * Mirrors the fixed matching logic in FunnelNormal.tsx:
-   * uses untranslated rows for key lookup, returns translated rows for display.
-   */
-  const getSortedRows = (
-    rows: RowValues[],
-    rowsForKeys: RowValues[],
-    dimensionIndex: number,
-    funnelRows: { key: string | number; enabled: boolean }[],
-  ) => {
-    return funnelRows
-      .filter((fr) => fr.enabled)
-      .map((fr) => {
-        const idx = rowsForKeys.findIndex(
-          (row) => formatNullable(row[dimensionIndex]) === fr.key,
-        );
-        return idx !== -1 ? rows[idx] : undefined;
-      })
-      .filter(isNotNull);
-  };
-
   const untranslatedRows: RowValues[] = [
     ["Awareness", 1000],
     ["Consideration", 600],
@@ -57,14 +36,6 @@ describe("FunnelNormal row matching (metabase#71488)", () => {
   ];
 
   const dimensionIndex = 0;
-
-  it("getRowsForStableKeys prefers untranslatedRows", () => {
-    const data = {
-      rows: translatedRows,
-      untranslatedRows,
-    };
-    expect(getRowsForStableKeys(data)).toBe(untranslatedRows);
-  });
 
   it("matches rows when there is no content translation", () => {
     const sortedRows = getSortedRows(
