@@ -2975,8 +2975,7 @@
               task
               util
               enterprise/dependencies
-              enterprise/transforms-python
-              task}
+              enterprise/transforms-python}
    :model-imports #{:model/AiUsageLog
                     :model/Card
                     :model/PermissionsGroup
