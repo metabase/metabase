@@ -629,7 +629,7 @@
       (locking #'system
         (when-not system
           (let [sys (make-prometheus-system port "metabase-registry")]
-            (alter-var-root #'system (constantly sys))))))))
+            (alter-var-root #'system (constantly sys)))))))))
 
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running."
