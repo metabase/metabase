@@ -33,26 +33,44 @@
 
 (def ^:private supported-metabot-providers
   "Set of supported LLM provider prefixes for the `llm-metabot-provider` setting."
+  #{"anthropic" "openai" "openrouter" "metabase"})
+
+(def ^:private direct-providers
+  "Providers that can be used directly (not via the metabase/ proxy prefix)."
   #{"anthropic" "openai" "openrouter"})
 
 (defn- validate-metabot-provider!
   "Validate that `value` has the format `provider/model` with a supported provider prefix.
+  For `metabase/` prefix, validates the inner provider too (e.g. `metabase/anthropic/model`).
   Throws an exception with `:status-code 400` on invalid input."
   [value]
   (when-not (string? value)
     (throw (ex-info (tru "Metabot provider must be a string, got: {0}" (pr-str value))
                     {:status-code 400})))
-  (let [[provider model] (str/split value #"/" 2)]
+  (let [[provider rest-value] (str/split value #"/" 2)]
     (when-not (contains? supported-metabot-providers provider)
       (throw (ex-info (tru "Unknown provider {0}. Supported providers: {1}"
                            (pr-str provider) (str/join ", " (sort supported-metabot-providers)))
                       {:status-code 400
                        :provider    provider
                        :supported   supported-metabot-providers})))
-    (when (str/blank? model)
+    (when (str/blank? rest-value)
       (throw (ex-info (tru "Model name is required. Expected format: provider/model, e.g. \"anthropic/claude-haiku-4-5\"")
                       {:status-code 400
-                       :value       value})))))
+                       :value       value})))
+    ;; For metabase/ prefix, validate the inner provider
+    (when (= provider "metabase")
+      (let [[inner-provider inner-model] (str/split rest-value #"/" 2)]
+        (when-not (contains? direct-providers inner-provider)
+          (throw (ex-info (tru "Unknown inner provider {0} in metabase/ prefix. Supported: {1}"
+                               (pr-str inner-provider) (str/join ", " (sort direct-providers)))
+                          {:status-code 400
+                           :provider    inner-provider
+                           :supported   direct-providers})))
+        (when (str/blank? inner-model)
+          (throw (ex-info (tru "Model name is required. Expected format: metabase/provider/model, e.g. \"metabase/anthropic/claude-haiku-4-5\"")
+                          {:status-code 400
+                           :value       value})))))))
 
 (defsetting llm-metabot-provider
   (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
@@ -96,17 +114,38 @@
     "openrouter" (llm.settings/llm-openrouter-api-key)
     nil))
 
-(defn- provider-prefix [provider-and-model]
+(defn- provider-prefix
+  "Extract the top-level provider prefix from a provider-and-model string.
+  For `metabase/anthropic/model` returns `metabase`."
+  [provider-and-model]
   (some-> provider-and-model
           (str/split #"/" 2)
           first))
 
-(defn- llm-provider-configured? [provider-and-model]
-  (boolean (or (some? (llm.settings/llm-proxy-base-url))
-               (some-> provider-and-model
-                       provider-prefix
-                       configured-provider-api-key
-                       token-configured?))))
+(defn- direct-provider-prefix
+  "Extract the direct (non-metabase) provider prefix.
+  For `metabase/anthropic/model` returns `anthropic`.
+  For `anthropic/model` returns `anthropic`."
+  [provider-and-model]
+  (when provider-and-model
+    (let [[first-seg rest-seg] (str/split provider-and-model #"/" 2)]
+      (if (= first-seg "metabase")
+        (first (str/split rest-seg #"/" 2))
+        first-seg))))
+
+(defn- llm-provider-configured?
+  "Check if a provider-and-model string has the necessary configuration.
+  For `metabase/*` providers, checks that the proxy URL is set.
+  For direct providers, checks that a BYOK API key is set (or proxy URL as fallback)."
+  [provider-and-model]
+  (boolean
+   (if (= "metabase" (provider-prefix provider-and-model))
+     (some? (llm.settings/llm-proxy-base-url))
+     (or (some? (llm.settings/llm-proxy-base-url))
+         (some-> provider-and-model
+                 direct-provider-prefix
+                 configured-provider-api-key
+                 token-configured?)))))
 
 (defsetting llm-metabot-internal-tasks-enabled?
   (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")

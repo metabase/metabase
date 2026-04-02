@@ -10,7 +10,9 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
@@ -181,7 +183,8 @@
         messages        (conj (vec history) request-message)
         _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
                                                             :channel-id   channel-id
-                                                            :slack-msg-id req-slack-msg-id)
+                                                            :slack-msg-id req-slack-msg-id
+                                                            :ai-proxy?    (metabot.self/ai-proxy? (metabot.settings/llm-metabot-provider)))
         parts-atom      (atom [])
         dispatch-xf     (comp
                          (u/tee-xf parts-atom)
@@ -221,14 +224,13 @@
                  :context    context}))
     (let [parts     @parts-atom
           lines     (into [] (self.core/aisdk-line-xf) parts)
-          ai-proxy? (:ai-proxy? (u/seek #(= :start (:type %)) parts))
           pk        (metabot.persistence/store-message!
                      conversation-id "slackbot"
                      (metabot.u/aisdk->messages :assistant lines)
                      :channel-id   channel-id
                      :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
                      :user-id      api/*current-user-id*
-                     :ai-proxy?   ai-proxy?)]
+                     :ai-proxy?   (metabot.self/ai-proxy? (metabot.settings/llm-metabot-provider)))]
       (when stored-msg-id
         (reset! stored-msg-id pk)))))
 

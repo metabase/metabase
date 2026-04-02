@@ -2,34 +2,37 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.internal-stats.metabot :as sut]
-   [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.test-util :as mut]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
-(defn- store-user-message!
-  "Store a user message via the real persistence path."
-  [conversation-id user-id message & {:keys [ai-proxy?]}]
-  (binding [api/*current-user-id* user-id]
-    (metabot.persistence/store-message!
-     conversation-id "internal"
-     [{:role "user" :content message}]
-     :ai-proxy? ai-proxy?)))
+;; ---------------------------------------------------------------------------
+;; Helpers
+;; ---------------------------------------------------------------------------
 
-(defn- store-assistant-message!
-  "Store an assistant message with usage via the real persistence path."
-  [conversation-id user-id usage & {:keys [ai-proxy?]}]
-  (binding [api/*current-user-id* user-id]
-    (metabot.persistence/store-message!
-     conversation-id "internal"
-     [{:role    "assistant"
-       :content "Hello!"}
-      {:_type :FINISH_MESSAGE
-       :usage usage}]
-     :ai-proxy? ai-proxy?)))
+(defn- send-message!
+  "Send a message through the real streaming endpoint, returning the HTTP response body.
+   The LLM is mocked to return a simple text response with the given model/usage."
+  [conversation-id message model prompt-tokens completion-tokens]
+  (with-redefs [openrouter/openrouter
+                (fn [_]
+                  (mut/mock-llm-response
+                   [{:type :start :id "msg-1"}
+                    {:type :text  :text "Hello!"}
+                    {:type  :usage
+                     :model model
+                     :usage {:promptTokens prompt-tokens :completionTokens completion-tokens}
+                     :id    "msg-1"}]))]
+    (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                          {:message         message
+                           :context         {}
+                           :conversation_id conversation-id
+                           :history         []
+                           :state           {}})))
 
 (defn- backdate-messages!
   "Update created_at on all messages for a conversation to the given timestamp."
@@ -37,107 +40,102 @@
   (t2/update! :model/MetabotMessage {:conversation_id conversation-id}
               {:created_at created-at}))
 
-(deftest metabot-stats-test
+(defn- cleanup! [& conv-ids]
+  (doseq [cid conv-ids]
+    (t2/delete! :model/MetabotMessage :conversation_id cid)
+    (t2/delete! :model/MetabotConversation :id cid)))
+
+;; ---------------------------------------------------------------------------
+;; Tests
+;; ---------------------------------------------------------------------------
+
+(deftest metabot-stats-e2e-test
   (search.tu/with-index-disabled
-    (let [;; pin the clock so "yesterday" is deterministic
-          clock        (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+    (let [clock        (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
           yesterday    (t/offset-date-time 2026 3 31 10 30 0 0 (t/zone-offset "+00"))
           today        (t/offset-date-time 2026 4 1 9 0 0 0 (t/zone-offset "+00"))
           two-days-ago (t/offset-date-time 2026 3 29 14 0 0 0 (t/zone-offset "+00"))
-          conv-id-1    (str (random-uuid))
-          conv-id-2    (str (random-uuid))
-          conv-id-3    (str (random-uuid))
-          conv-id-4    (str (random-uuid))
-          conv-id-5    (str (random-uuid))]
+          conv-1       (str (random-uuid))
+          conv-2       (str (random-uuid))
+          conv-3       (str (random-uuid))
+          conv-4       (str (random-uuid))
+          conv-5       (str (random-uuid))
+          all-convs    [conv-1 conv-2 conv-3 conv-4 conv-5]
+          ;; OpenRouter returns model names like "anthropic/claude-haiku-4-5" in its API.
+          ;; This is the bare model name that flows from the SSE adapter → extract-usage → DB.
+          model        "anthropic/claude-haiku-4-5"]
       (t/with-clock clock
-        (testing "returns nil when there are no messages yesterday"
-          (mt/with-temp [:model/User u1 {}]
-            (mt/with-model-cleanup [:model/MetabotMessage :model/MetabotConversation]
-              (store-user-message! conv-id-3 (u/the-id u1) "hello")
-              (backdate-messages! conv-id-3 today)
-              (is (nil? (sut/metabot-stats))))))
+        (try
+          ;; -- AI proxy conversations (metabase/ prefix) --
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "metabase/openrouter/anthropic/claude-haiku-4-5"]
+            ;; conv-1: yesterday, one model
+            (send-message! conv-1 "What is 2+2?" model 100 50)
+            (backdate-messages! conv-1 yesterday)
 
-        (testing "returns correct stats for yesterday's messages"
-          (mt/with-temp [:model/User u1 {}
-                         :model/User u2 {}]
-            (mt/with-model-cleanup [:model/MetabotMessage :model/MetabotConversation]
-              (let [u1-id (u/the-id u1)
-                    u2-id (u/the-id u2)]
-                ;; conversation 1: user 1 asks, ai-proxied assistant responds with one model
-                (store-user-message! conv-id-1 u1-id "What is 2+2?" :ai-proxy? true)
-                (store-assistant-message! conv-id-1 u1-id
-                                          {"anthropic/claude-sonnet-4-6"
-                                           {:prompt 100 :completion 50}}
-                                          :ai-proxy? true)
-                (backdate-messages! conv-id-1 yesterday)
+            ;; conv-2: yesterday, same model different usage
+            (send-message! conv-2 "Tell me a joke" model 200 80)
+            (backdate-messages! conv-2 yesterday)
 
-                ;; conversation 2: user 2 asks, ai-proxied assistant responds with two models
-                (store-user-message! conv-id-2 u2-id "Tell me a joke" :ai-proxy? true)
-                (store-assistant-message! conv-id-2 u2-id
-                                          {"anthropic/claude-sonnet-4-6"
-                                           {:prompt 200 :completion 80}
-                                           "anthropic/claude-haiku-4-5"
-                                           {:prompt 50 :completion 20}}
-                                          :ai-proxy? true)
-                (backdate-messages! conv-id-2 yesterday)
+            ;; conv-3: two days ago — out of window
+            (send-message! conv-3 "Old question" model 999 999)
+            (backdate-messages! conv-3 two-days-ago)
 
-                ;; out-of-window: two days ago
-                (store-assistant-message! conv-id-3 u1-id
-                                          {"anthropic/claude-sonnet-4-6"
-                                           {:prompt 999 :completion 999}}
-                                          :ai-proxy? true)
-                (backdate-messages! conv-id-3 two-days-ago)
+            ;; conv-4: today — out of window
+            (send-message! conv-4 "Today's question" model 888 888)
+            (backdate-messages! conv-4 today))
 
-                ;; out-of-window: today
-                (store-assistant-message! conv-id-4 u1-id
-                                          {"anthropic/claude-sonnet-4-6"
-                                           {:prompt 888 :completion 888}}
-                                          :ai-proxy? true)
-                (backdate-messages! conv-id-4 today)
+          ;; -- BYOK conversation (no metabase/ prefix) --
+          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                             "openrouter/anthropic/claude-haiku-4-5"]
+            (send-message! conv-5 "BYOK question" model 777 777)
+            (backdate-messages! conv-5 yesterday))
 
-                ;; excluded: yesterday but NOT ai-proxied (BYOK)
-                (store-user-message! conv-id-5 u1-id "BYOK question")
-                (store-assistant-message! conv-id-5 u1-id
-                                          {"anthropic/claude-sonnet-4-6"
-                                           {:prompt 777 :completion 777}})
-                (backdate-messages! conv-id-5 yesterday)
+          ;; -- Verify stored data --
 
-                (let [stats (sut/metabot-stats)]
-                  (testing ":metabot-tokens sums total_tokens for yesterday only"
-                    (is (= 500 (:metabot-tokens stats))))
+          (testing "ai-proxy messages have ai_proxied = true on ALL rows (user + assistant)"
+            (let [msgs (t2/select :model/MetabotMessage :conversation_id conv-1)]
+              (is (= 2 (count msgs)) "should have user + assistant messages")
+              (is (every? true? (map :ai_proxied msgs)))))
 
-                  (testing ":metabot-usage aggregates by provider:model:in/out"
-                    (is (= {"anthropic:claude-sonnet-4-6:in"  300
-                            "anthropic:claude-sonnet-4-6:out" 130
-                            "anthropic:claude-haiku-4-5:in"   50
-                            "anthropic:claude-haiku-4-5:out"  20}
-                           (:metabot-usage stats))))
+          (testing "BYOK messages have ai_proxied = false on ALL rows"
+            (let [msgs (t2/select :model/MetabotMessage :conversation_id conv-5)]
+              (is (= 2 (count msgs)))
+              (is (every? false? (map :ai_proxied msgs)))))
 
-                  (testing ":metabot-queries counts user messages for yesterday"
-                    (is (= 2 (:metabot-queries stats))))
+          (testing "usage keys are provider/model (metabase/ prefix stripped)"
+            ;; accumulate-usage-xf strips metabase/ prefix → "openrouter/anthropic/claude-haiku-4-5"
+            ;; JSON roundtrip keywordizes → :openrouter/anthropic/claude-haiku-4-5
+            (let [msg (t2/select-one :model/MetabotMessage :conversation_id conv-1 :role :assistant)]
+              (is (contains? (:usage msg) (keyword "openrouter" "anthropic/claude-haiku-4-5"))
+                  "usage key should be provider/model without metabase/ prefix")))
 
-                  (testing ":metabot-users counts distinct users for yesterday"
-                    (is (= 2 (:metabot-users stats))))
+          ;; -- Verify stats aggregation --
 
-                  (testing ":metabot-usage-date is yesterday's date"
-                    (is (= "2026-03-31" (:metabot-usage-date stats))))))))
+          (let [stats (sut/metabot-stats)]
+            (testing ":metabot-tokens sums total_tokens for yesterday's ai-proxied messages only"
+              ;; conv-1: 150, conv-2: 280 → total 430
+              (is (= 430 (:metabot-tokens stats))))
 
-          (testing "returns nil when only non-proxied (BYOK) messages exist yesterday"
-            (mt/with-temp [:model/User u1 {}]
-              (mt/with-model-cleanup [:model/MetabotMessage :model/MetabotConversation]
-                (let [u1-id  (u/the-id u1)
-                      conv-a (str (random-uuid))
-                      conv-b (str (random-uuid))]
-                  (store-user-message! conv-a u1-id "BYOK question 1")
-                  (store-assistant-message! conv-a u1-id
-                                            {"anthropic/claude-sonnet-4-6"
-                                             {:prompt 500 :completion 500}})
-                  (backdate-messages! conv-a yesterday)
+            (testing ":metabot-usage aggregates by model:in/out"
+              (is (= {"openrouter:anthropic/claude-haiku-4-5:in"  300
+                      "openrouter:anthropic/claude-haiku-4-5:out" 130}
+                     (:metabot-usage stats))))
 
-                  (store-user-message! conv-b u1-id "BYOK question 2")
-                  (store-assistant-message! conv-b u1-id
-                                            {"anthropic/claude-haiku-4-5"
-                                             {:prompt 300 :completion 300}})
-                  (backdate-messages! conv-b yesterday)
+            (testing ":metabot-queries counts ai-proxied user messages for yesterday"
+              (is (= 2 (:metabot-queries stats))))
 
-                  (is (nil? (sut/metabot-stats))))))))))))
+            (testing ":metabot-users counts distinct users for yesterday"
+              (is (= 1 (:metabot-users stats))))
+
+            (testing ":metabot-usage-date is yesterday's date"
+              (is (= "2026-03-31" (:metabot-usage-date stats)))))
+
+          ;; -- BYOK-only scenario --
+          (cleanup! conv-1 conv-2 conv-3 conv-4)
+
+          (testing "returns nil when only BYOK (non-proxied) messages exist yesterday"
+            (is (nil? (sut/metabot-stats))))
+
+          (finally
+            (apply cleanup! all-convs)))))))

@@ -7,6 +7,8 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.api :as api]
    [metabase.llm.context :as llm.context]
+   [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -125,14 +127,14 @@
 (deftest generate-sql-error-handling-test
   (mt/with-temp [:model/Database db {:engine :postgres}]
     (testing "403 when LLM not configured"
-      (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+      (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
         (let [response (mt/user-http-request :rasta :post 403 "llm/generate-sql"
                                              {:prompt "test"
                                               :database_id (:id db)})]
           (is (str/includes? (str response) "not configured")))))
 
     (testing "400 when no tables found"
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
+      (with-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")]
         (let [response (mt/user-http-request :rasta :post 400 "llm/generate-sql"
                                              {:prompt "no table mentions here"
                                               :database_id (:id db)})]
@@ -140,7 +142,7 @@
 
 (deftest list-models-unconfigured-test
   (testing "Returns 403 when LLM is not configured"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+    (with-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
       (let [response (mt/user-http-request :rasta :get 403 "llm/list-models")]
         (is (str/includes? (str response) "not configured"))))))
 
@@ -168,54 +170,54 @@
                                               :prompt     1000
                                               :completion 200}
                                 :duration-ms 500}]
-        (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
-          (snowplow-test/with-fake-snowplow-collector
-            (with-redefs [llm.anthropic/chat-completion (constantly mock-chat-response)]
-              (let [response      (mt/user-http-request :rasta :post 200 "llm/generate-sql"
-                                                        {:prompt              "get all users"
-                                                         :database_id         (:id db)
-                                                         :referenced_entities [{:model "table" :id (:id table)}]})
-                    events        (snowplow-test/pop-event-data-and-user-id!)
-                    token-events  (filter token-usage-event? events)
-                    simple-events (filter simple-event? events)]
-                (is (= "SELECT * FROM users" (:sql response)))
-                (testing "token_usage event"
-                  (is (=? [{:data {"model_id"            "claude-sonnet-4-5-20250929"
-                                   "prompt_tokens"       1000
-                                   "completion_tokens"   200
-                                   "total_tokens"        1200
-                                   "estimated_costs_usd" 0.0
-                                   "duration_ms"         500
-                                   "source"              "oss_metabot"
-                                   "tag"                 "oss-sqlgen"}}]
-                          token-events)))
-                (testing "simple_event"
-                  (is (=? [{:data {"event"        "metabot_oss_sqlgen_used"
-                                   "duration_ms"  int?
-                                   "result"       "success"
-                                   "event_detail" "postgres"}}]
-                          simple-events)))))))))))
+        (snowplow-test/with-fake-snowplow-collector
+          (with-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")
+                        llm.anthropic/chat-completion       (constantly mock-chat-response)]
+            (let [response      (mt/user-http-request :rasta :post 200 "llm/generate-sql"
+                                                      {:prompt              "get all users"
+                                                       :database_id         (:id db)
+                                                       :referenced_entities [{:model "table" :id (:id table)}]})
+                  events        (snowplow-test/pop-event-data-and-user-id!)
+                  token-events  (filter token-usage-event? events)
+                  simple-events (filter simple-event? events)]
+              (is (= "SELECT * FROM users" (:sql response)))
+              (testing "token_usage event"
+                (is (=? [{:data {"model_id"            "claude-sonnet-4-5-20250929"
+                                 "prompt_tokens"       1000
+                                 "completion_tokens"   200
+                                 "total_tokens"        1200
+                                 "estimated_costs_usd" 0.0
+                                 "duration_ms"         500
+                                 "source"              "oss_metabot"
+                                 "tag"                 "oss-sqlgen"}}]
+                        token-events)))
+              (testing "simple_event"
+                (is (=? [{:data {"event"        "metabot_oss_sqlgen_used"
+                                 "duration_ms"  int?
+                                 "result"       "success"
+                                 "event_detail" "postgres"}}]
+                        simple-events))))))))))
 
 (deftest generate-sql-snowplow-failure-test
   (testing "failed /generate-sql call tracks simple_event with failure result"
     (mt/with-temp [:model/Database db {:engine :postgres}
                    :model/Table table {:db_id (:id db) :name "users" :schema "public"}
                    :model/Field _ {:table_id (:id table) :name "id" :base_type :type/Integer}]
-      (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
-        (snowplow-test/with-fake-snowplow-collector
-          (with-redefs [llm.anthropic/chat-completion (fn [_] (throw (Exception. "API error")))]
-            (mt/user-http-request :rasta :post 500 "llm/generate-sql"
-                                  {:prompt              "get all users"
-                                   :database_id         (:id db)
-                                   :referenced_entities [{:model "table" :id (:id table)}]})
-            (let [events        (snowplow-test/pop-event-data-and-user-id!)
-                  token-events  (filter token-usage-event? events)
-                  simple-events (filter simple-event? events)]
-              (testing "no token_usage event on failure (chat-completion call failed)"
-                (is (empty? token-events)))
-              (testing "simple_event with failure result"
-                (is (=? [{:data {"event"        "metabot_oss_sqlgen_used"
-                                 "duration_ms"  int?
-                                 "result"       "failure"
-                                 "event_detail" "postgres"}}]
-                        simple-events))))))))))
+      (snowplow-test/with-fake-snowplow-collector
+        (with-redefs [llm.settings/llm-anthropic-api-key (constantly "sk-ant-test")
+                      llm.anthropic/chat-completion       (fn [_] (throw (Exception. "API error")))]
+          (mt/user-http-request :rasta :post 500 "llm/generate-sql"
+                                {:prompt              "get all users"
+                                 :database_id         (:id db)
+                                 :referenced_entities [{:model "table" :id (:id table)}]})
+          (let [events        (snowplow-test/pop-event-data-and-user-id!)
+                token-events  (filter token-usage-event? events)
+                simple-events (filter simple-event? events)]
+            (testing "no token_usage event on failure (chat-completion call failed)"
+              (is (empty? token-events)))
+            (testing "simple_event with failure result"
+              (is (=? [{:data {"event"        "metabot_oss_sqlgen_used"
+                               "duration_ms"  int?
+                               "result"       "failure"
+                               "event_detail" "postgres"}}]
+                      simple-events)))))))))
