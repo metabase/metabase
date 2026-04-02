@@ -88,6 +88,7 @@ if [[ "$errors" -gt 0 ]]; then
   echo "A misplaced migration misrepresents when it was introduced and will break downgrades spanning more than one version." >&2
   echo "" >&2
   echo "To fix: move the file(s) to resources/migrations/${expected_dir}/." >&2
+  echo "" >&2
   echo "If this PR will be backported, ensure the correct backport label is applied" >&2
   echo "(backport, double-backport, or triple-backport) and re-run CI, even if you" >&2
   echo "plan to create the backport PRs manually. Base the label on the oldest" >&2
