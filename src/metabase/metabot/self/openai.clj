@@ -218,21 +218,25 @@
                     temperature (assoc :temperature temperature)
                     max-tokens  (assoc :max_tokens max-tokens))]
     (try
-      (let [api-key (not-empty (llm/llm-openai-api-key))
-            res     (core/request-with-proxy "OpenAI"
-                                             (when api-key
-                                               {:url     (llm/llm-openai-api-base-url)
-                                                :headers {"Authorization" (str "Bearer " api-key)}})
-                                             {:method  :post
-                                              :url     "/v1/responses"
-                                              :as      :stream
-                                              :headers {"Content-Type" "application/json"}
-                                              :body    (json/encode req)})]
-        (core/sse-reducible (:body res)))
+      (let [api-key  (not-empty (llm/llm-openai-api-key))
+            response (core/request-with-proxy "OpenAI"
+                                              (when api-key
+                                                {:url     (llm/llm-openai-api-base-url)
+                                                 :headers {"Authorization" (str "Bearer " api-key)}})
+                                              {:method  :post
+                                               :url     "/v1/responses"
+                                               :as      :stream
+                                               :headers {"Content-Type" "application/json"}
+                                               :body    (json/encode req)})]
+        (-> (core/sse-reducible (:body response))
+            (with-meta (meta response))))
       (catch Exception e
         (core/rethrow-api-error! "openai" openai-errors e)))))
 
 (defn openai
   "Call OpenAI API, return AISDK stream."
   [& args]
-  (eduction (openai->aisdk-chunks-xf) (apply openai-raw args)))
+  (let [raw (apply openai-raw args)]
+    (eduction (comp (openai->aisdk-chunks-xf)
+                    (core/tag-ai-proxied-xf (-> raw meta :ai-proxy?)))
+              raw)))

@@ -219,13 +219,16 @@
                  :state      {}
                  :profile-id :slackbot
                  :context    context}))
-    (let [lines (into [] (self.core/aisdk-line-xf) @parts-atom)
-          pk    (metabot.persistence/store-message!
-                 conversation-id "slackbot"
-                 (metabot.u/aisdk->messages :assistant lines)
-                 :channel-id   channel-id
-                 :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-                 :user-id      api/*current-user-id*)]
+    (let [parts     @parts-atom
+          lines     (into [] (self.core/aisdk-line-xf) parts)
+          ai-proxy? (:ai-proxy? (u/seek #(= :start (:type %)) parts))
+          pk        (metabot.persistence/store-message!
+                     conversation-id "slackbot"
+                     (metabot.u/aisdk->messages :assistant lines)
+                     :channel-id   channel-id
+                     :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
+                     :user-id      api/*current-user-id*
+                     :ai-proxy?   ai-proxy?)]
       (when stored-msg-id
         (reset! stored-msg-id pk)))))
 

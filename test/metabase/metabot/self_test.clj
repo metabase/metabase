@@ -67,6 +67,31 @@
                   (throw e))))
             (is (= expected (:tool_choice @captured)))))))))
 
+;;; tag-ai-proxied-xf tests
+
+(deftest ^:parallel tag-ai-proxied-xf-test
+  (testing "injects :ai-proxy? onto :start chunks only"
+    (let [chunks [{:type :start :messageId "msg-1"}
+                  {:type :text-delta :id "t1" :delta "hi"}
+                  {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]]
+      (is (= [{:type :start :messageId "msg-1" :ai-proxy? true}
+              {:type :text-delta :id "t1" :delta "hi"}
+              {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
+             (into [] (self.core/tag-ai-proxied-xf true) chunks)))
+      (is (= [{:type :start :messageId "msg-1" :ai-proxy? false}
+              {:type :text-delta :id "t1" :delta "hi"}
+              {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
+             (into [] (self.core/tag-ai-proxied-xf false) chunks)))))
+  (testing ":ai-proxy? on :start chunk survives aisdk-xf"
+    (let [chunks [{:type :start :messageId "msg-1" :ai-proxy? true}
+                  {:type :text-start :id "t1"}
+                  {:type :text-delta :id "t1" :delta "hello"}
+                  {:type :text-end :id "t1"}
+                  {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
+          parts  (into [] (self.core/aisdk-xf) chunks)]
+      (is (true? (:ai-proxy? (first parts))))
+      (is (= :start (:type (first parts)))))))
+
 ;;; utils tests
 
 (deftest sse-reducible-test

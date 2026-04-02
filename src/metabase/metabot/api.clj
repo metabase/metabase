@@ -79,6 +79,12 @@
    {}
    parts))
 
+(defn- extract-ai-proxied
+  "Read `:ai-proxy?` from the `:start` part emitted by the provider adapter.
+  Returns `nil` when no `:start` part is present (shouldn't happen in practice)."
+  [parts]
+  (:ai-proxy? (u/seek #(= :start (:type %)) parts)))
+
 (defn- store-native-parts!
   "Store assistant response parts directly to the database.
 
@@ -91,6 +97,7 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
+        ai-proxy?  (extract-ai-proxied parts)
         ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
         ;; :data is like `:navigate_to`
         content    (->> parts
@@ -109,7 +116,8 @@
                    :profile_id      profile-id
                    :total_tokens    (->> (vals usage)
                                          (map #(+ (:prompt %) (:completion %)))
-                                         (reduce + 0))}))))
+                                         (reduce + 0))
+                   :ai_proxied      (boolean ai-proxy?)}))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
