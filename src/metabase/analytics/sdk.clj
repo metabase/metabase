@@ -13,6 +13,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.request.current :as request.current]
+   [metabase.request.user-agent :as request.user-agent]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -83,10 +84,11 @@
   "Pure function that computes GDPR-gated request metadata from individual request values.
   Returns a map with `:embedding_hostname`, `:embedding_path`, `:user_agent`, and `:ip_address`."
   [{:keys [origin referer user-agent ip-address]}]
-  {:embedding_hostname (extract-hostname origin)
-   :embedding_path     (extract-path referer)
-   :user_agent         (some-> user-agent (subs 0 (min (count user-agent) 512)))
-   :ip_address         ip-address})
+  {:embedding_hostname    (extract-hostname origin)
+   :embedding_path        (extract-path referer)
+   :user_agent            (some-> user-agent (subs 0 (min (count user-agent) 512)))
+   :sanitized_user_agent  (request.user-agent/describe-user-agent user-agent)
+   :ip_address            ip-address})
 
 (defn- pii-fields
   "Returns PII fields from the current request when the `analytics-pii-retention-enabled` setting is true."

@@ -138,16 +138,17 @@
 
 (deftest pii-request-info-test
   (testing "returns all fields from request values"
-    (is (= {:embedding_hostname   "app.example.com"
-            :embedding_path       "/dashboard/1"
-            :user_agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            :ip_address           "10.0.0.1"}
+    (is (= {:embedding_hostname      "app.example.com"
+            :embedding_path          "/dashboard/1"
+            :user_agent              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            :sanitized_user_agent    "Browser (Chrome/OS X)"
+            :ip_address              "10.0.0.1"}
            (sdk/pii-request-info {:origin     "https://app.example.com"
                                   :referer    "https://app.example.com/dashboard/1?x=y"
                                   :user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                                   :ip-address "10.0.0.1"}))))
   (testing "handles nil values gracefully"
-    (is (= {:embedding_hostname nil, :embedding_path nil, :user_agent nil, :ip_address nil}
+    (is (= {:embedding_hostname nil, :embedding_path nil, :user_agent nil, :sanitized_user_agent nil, :ip_address nil}
            (sdk/pii-request-info {})))))
 
 (defn- client-from-mw
@@ -257,6 +258,7 @@
             (is (= "/dashboard/1"     (:embedding_path result)))
             (is (= "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                    (:user_agent result)))
+            (is (= "Browser (Chrome/OS X)" (:sanitized_user_agent result)))
             (is (= "10.0.0.1"         (:ip_address result)))))))
     (testing "PII fields nil when setting disabled"
       (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
@@ -265,6 +267,7 @@
             (is (nil? (:embedding_hostname result)))
             (is (nil? (:embedding_path result)))
             (is (nil? (:user_agent result)))
+            (is (nil? (:sanitized_user_agent result)))
             (is (nil? (:ip_address result)))))))
     (testing "PII fields nil when no request bound"
       (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
@@ -272,4 +275,5 @@
           (is (nil? (:embedding_hostname result)))
           (is (nil? (:embedding_path result)))
           (is (nil? (:user_agent result)))
+          (is (nil? (:sanitized_user_agent result)))
           (is (nil? (:ip_address result))))))))

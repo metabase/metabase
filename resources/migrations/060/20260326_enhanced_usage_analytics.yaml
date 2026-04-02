@@ -260,6 +260,36 @@ databaseChangeLog:
               - column:
                   name: tenant_id
 
+  - changeSet:
+      id: v60.2026-03-26T00:00:23
+      author: bcm
+      comment: Add sanitized_user_agent column to view_log for human-readable parsed UA
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: sanitized_user_agent
+                  type: varchar(512)
+                  remarks: Human-friendly parsed User-Agent (e.g. Browser (Chrome/Windows)), PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v60.2026-03-26T00:00:24
+      author: bcm
+      comment: Add sanitized_user_agent column to query_execution for human-readable parsed UA
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: sanitized_user_agent
+                  type: varchar(512)
+                  remarks: Human-friendly parsed User-Agent (e.g. Browser (Chrome/Windows)), PII
+                  constraints:
+                    nullable: true
+
   # ============================================================
   # embedding_route column (separate from embedding_client)
   # ============================================================

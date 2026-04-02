@@ -35,5 +35,6 @@ CREATE OR REPLACE VIEW v_view_log AS
                          embedding_hostname,
                          embedding_path,
                          user_agent,
+                         sanitized_user_agent,
                          ip_address
    FROM view_log)

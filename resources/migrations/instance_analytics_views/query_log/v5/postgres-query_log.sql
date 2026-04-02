@@ -56,6 +56,7 @@ SELECT id AS entity_id,
        embedding_hostname,
        embedding_path,
        user_agent,
+       sanitized_user_agent,
        ip_address
 FROM query_execution
     LEFT JOIN query ON query_execution.hash = query.query_hash;

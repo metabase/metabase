@@ -146,7 +146,7 @@
                    "embedding_client" "embedding_route" "embedding_version" "surface" "is_preview"
                    "auth_method" "is_sandboxed" "is_impersonated" "is_db_routed" "parameters"
                    "tenant_id" "embedding_hostname" "embedding_path"
-                   "user_agent" "ip_address"}
+                   "user_agent" "sanitized_user_agent" "ip_address"}
 
    "v_subscriptions" #{"entity_id" "entity_qualified_id" "created_at" "updated_at"
                        "creator_id" "archived" "dashboard_qualified_id" "schedule_type"
@@ -179,7 +179,7 @@
                   "has_access" "context"
                   "embedding_client" "embedding_route" "embedding_version" "surface" "is_preview"
                   "auth_method" "tenant_id"
-                  "embedding_hostname" "embedding_path" "user_agent" "ip_address"}})
+                  "embedding_hostname" "embedding_path" "user_agent" "sanitized_user_agent" "ip_address"}})
 
 (defn- get-synced-field-names
   "Get the set of field names that Metabase has synced for a given table."

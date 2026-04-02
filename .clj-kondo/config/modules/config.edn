@@ -1804,7 +1804,8 @@
    :api  #{metabase.request.core
            metabase.request.current
            metabase.request.init
-           metabase.request.schema}
+           metabase.request.schema
+           metabase.request.user-agent}
    :uses #{analytics
            api
            config
