@@ -4,6 +4,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:00
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Create dependency_status table for async dependency calculation tracking
       changes:
         - createTable:
@@ -69,6 +71,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:01
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Unique constraint to prevent duplicate dependency_status entries
       changes:
         - addUniqueConstraint:
@@ -84,6 +88,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:02
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Add partial index on dependency_status.stale for efficient polling
       changes:
         - sql:
@@ -104,6 +110,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:03
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Migrate dependency_analysis_version from report_card to dependency_status
       changes:
         - sql:
@@ -117,6 +125,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:04
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Migrate dependency_analysis_version from transform to dependency_status
       changes:
         - sql:
@@ -130,6 +140,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:05
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Migrate dependency_analysis_version from native_query_snippet to dependency_status
       changes:
         - sql:
@@ -143,6 +155,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:06
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Migrate dependency_analysis_version from report_dashboard to dependency_status
       changes:
         - sql:
@@ -156,6 +170,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:07
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Migrate dependency_analysis_version from document to dependency_status
       changes:
         - sql:
@@ -169,6 +185,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:08
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Migrate dependency_analysis_version from sandboxes to dependency_status
       changes:
         - sql:
@@ -182,6 +200,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:09
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Migrate dependency_analysis_version from segment to dependency_status
       changes:
         - sql:
@@ -195,6 +215,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:10
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Migrate dependency_analysis_version from measure to dependency_status
       changes:
         - sql:
@@ -210,6 +232,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:11
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version index from report_card
       changes:
         - dropIndex:
@@ -226,6 +250,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:12
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version index from transform
       changes:
         - dropIndex:
@@ -242,6 +268,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:13
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version index from native_query_snippet
       changes:
         - dropIndex:
@@ -258,6 +286,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:14
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version index from report_dashboard
       changes:
         - dropIndex:
@@ -274,6 +304,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:15
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version index from document
       changes:
         - dropIndex:
@@ -290,6 +322,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:16
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version index from sandboxes
       changes:
         - dropIndex:
@@ -308,6 +342,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:17
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version column from report_card
       changes:
         - dropColumn:
@@ -327,6 +363,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:18
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version column from transform
       changes:
         - dropColumn:
@@ -346,6 +384,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:19
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version column from native_query_snippet
       changes:
         - dropColumn:
@@ -365,6 +405,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:20
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version column from report_dashboard
       changes:
         - dropColumn:
@@ -384,6 +426,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:21
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version column from document
       changes:
         - dropColumn:
@@ -403,6 +447,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:22
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version column from sandboxes
       changes:
         - dropColumn:
@@ -422,6 +468,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:23
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version column from segment
       changes:
         - dropColumn:
@@ -441,6 +489,8 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-02T00:00:24
       author: ericnormand
+      preConditions:
+        - onFail: MARK_RAN
       comment: Drop dependency_analysis_version column from measure
       changes:
         - dropColumn:
