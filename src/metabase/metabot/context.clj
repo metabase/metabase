@@ -87,7 +87,7 @@
     [:or
      ::lib.schema/query
      ::mbql.s/Query]]
-   ;; The chart_configs capture only the query for now. For purposes of 
+   ;; The chart_configs capture only the query for now. For purposes of
    [:chart_configs
     {:optional true}
     [:vector
