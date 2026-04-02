@@ -14,6 +14,8 @@ import type {
   User,
 } from "metabase-types/api";
 
+const ADMIN_GROUP_ID = 2;
+
 export interface NotificationConfig {
   email: {
     sendToAllAdmins: boolean;
@@ -24,11 +26,6 @@ export interface NotificationConfig {
     handler: NotificationHandlerSlack;
   };
 }
-
-const DEFAULT_EMAIL_HANDLER: NotificationHandlerEmail = {
-  channel_type: "channel/email",
-  recipients: [],
-};
 
 const DEFAULT_SLACK_HANDLER: NotificationHandlerSlack = {
   channel_type: "channel/slack",
@@ -52,16 +49,32 @@ function buildSlackHandler(
   };
 }
 
+function isAdminGroupRecipient(r: NotificationRecipient): boolean {
+  return (
+    r.type === "notification-recipient/group" &&
+    r.permissions_group_id === ADMIN_GROUP_ID
+  );
+}
+
 function configFromSettings(
   emailRecipients: NotificationRecipient[] | null,
   slackChannel: string | null,
 ): NotificationConfig {
+  const recipients = emailRecipients ?? [];
+  // null means no setting saved yet — default to sending to all admins
+  const sendToAllAdmins =
+    emailRecipients === null || recipients.some(isAdminGroupRecipient);
+
+  // Filter out the admin group recipient — it's represented by the toggle
+  const extraRecipients = recipients.filter((r) => !isAdminGroupRecipient(r));
+
   return {
     email: {
-      sendToAllAdmins: emailRecipients === null,
-      handler: emailRecipients
-        ? { channel_type: "channel/email", recipients: emailRecipients }
-        : DEFAULT_EMAIL_HANDLER,
+      sendToAllAdmins,
+      handler: {
+        channel_type: "channel/email",
+        recipients: extraRecipients,
+      },
     },
     slack: {
       enabled: slackChannel !== null,
@@ -128,10 +141,15 @@ export function useNotificationConfig() {
   }, []);
 
   const save = useCallback(async () => {
-    const emailRecipients: NotificationRecipient[] | null = config.email
-      .sendToAllAdmins
-      ? null
-      : config.email.handler.recipients;
+    const adminGroupRecipient: NotificationRecipient = {
+      type: "notification-recipient/group",
+      permissions_group_id: ADMIN_GROUP_ID,
+    };
+
+    const emailRecipients: NotificationRecipient[] = [
+      ...(config.email.sendToAllAdmins ? [adminGroupRecipient] : []),
+      ...config.email.handler.recipients,
+    ];
 
     const slackChannel: string | null =
       config.slack.enabled && config.slack.handler.recipients.length > 0

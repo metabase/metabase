@@ -161,26 +161,28 @@ function EmailChannelCard({
           onChange={(e) => toggleSendToAllAdmins(e.currentTarget.checked)}
           data-testid="send-to-admins-toggle"
         />
-        {!config.email.sendToAllAdmins && (
-          <Box>
-            <Text size="sm" fw={500} mb="xs">
-              {t`Recipients`}
-            </Text>
-            <EmailChannelEdit
-              channel={config.email.handler}
-              users={users}
-              invalidRecipientText={(domains) =>
-                t`Only addresses ending in ${domains} are allowed.`
-              }
-              onChange={updateEmailHandler}
-            />
-            {config.email.handler.recipients.length === 0 && (
+        <Box>
+          <Text size="sm" fw={500} mb="xs">
+            {config.email.sendToAllAdmins
+              ? t`Additional recipients`
+              : t`Recipients`}
+          </Text>
+          <EmailChannelEdit
+            channel={config.email.handler}
+            users={users}
+            autoFocus={false}
+            invalidRecipientText={(domains) =>
+              t`Only addresses ending in ${domains} are allowed.`
+            }
+            onChange={updateEmailHandler}
+          />
+          {!config.email.sendToAllAdmins &&
+            config.email.handler.recipients.length === 0 && (
               <Text size="sm" c="error" mt="xs">
                 {t`At least one recipient is required.`}
               </Text>
             )}
-          </Box>
-        )}
+        </Box>
       </Stack>
     </Card>
   );

@@ -99,7 +99,16 @@ describe("NotificationChannelConfigModal", () => {
     expect(toggle).toBeChecked();
   });
 
-  it("shows recipient picker when 'Send to all admins' is unchecked", () => {
+  it("shows recipient picker with 'Additional recipients' label when 'Send to all admins' is checked", () => {
+    setup();
+
+    expect(screen.getByText("Additional recipients")).toBeInTheDocument();
+    expect(
+      screen.queryByText("At least one recipient is required."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows recipient picker with 'Recipients' label and error when 'Send to all admins' is unchecked and no recipients", () => {
     setup({
       config: {
         email: {
@@ -117,14 +126,6 @@ describe("NotificationChannelConfigModal", () => {
     expect(
       screen.getByText("At least one recipient is required."),
     ).toBeInTheDocument();
-  });
-
-  it("does not show recipient error when admins toggle is on", () => {
-    setup();
-
-    expect(
-      screen.queryByText("At least one recipient is required."),
-    ).not.toBeInTheDocument();
   });
 
   it("shows email not configured state with setup link", () => {
