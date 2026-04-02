@@ -7,7 +7,7 @@
   [:enum :critical :high :medium :low])
 
 (mr/def ::match-status
-  [:enum :active :resolved :not_affected :error])
+  [:enum :unknown :active :resolved :not_affected :error])
 
 (mr/def ::version-range
   "A single affected version range with inclusive min and exclusive fixed."

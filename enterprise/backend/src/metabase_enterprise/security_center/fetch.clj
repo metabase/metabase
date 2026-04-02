@@ -10,6 +10,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private ^String hm-url
+  "Base URL for the Harbormaster / MetaStore API."
+  premium-features/token-check-url)
+
 (defn- advisories-url [token base-url]
   (format "%s/api/%s/v2/security-advisories" base-url token))
 
@@ -18,7 +22,7 @@
   []
   (when-let [token (premium-features/premium-embedding-token)]
     (let [site-uuid (premium-features/site-uuid-for-premium-features-token-checks)
-          url       (advisories-url token premium-features/token-check-url)
+          url       (advisories-url token hm-url)
           resp      (http/get url
                               {:query-params       {:site-uuid  site-uuid
                                                     :mb-version (:tag config/mb-version-info)}
@@ -31,8 +35,8 @@
 
 (defn- upsert-advisory!
   "Insert or update a single advisory by :advisory_id.
-   On insert, sets :match_status to :not_affected. On update, merges new data but
-   preserves :match_status, :last_evaluated_at, and acknowledgement fields."
+   On insert, match_status starts as :unknown until the matching engine evaluates it.
+   On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
   [advisory]
   (mdb/update-or-insert! :model/SecurityAdvisory
                          {:advisory_id (:advisory_id advisory)}
@@ -41,7 +45,7 @@
                              (select-keys advisory [:title :severity :description :advisory_url
                                                     :remediation :affected_versions :matching_query
                                                     :published_at])
-                             (assoc advisory :match_status :not_affected)))))
+                             (assoc advisory :match_status :unknown)))))
 
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."

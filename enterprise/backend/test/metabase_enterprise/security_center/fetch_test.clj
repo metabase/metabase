@@ -15,7 +15,7 @@
           :remediation       "Upgrade"
           :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
           :matching_query    nil
-          :match_status      "not_affected"
+          :match_status      "unknown"
           :published_at      #t "2026-03-24T00:00:00Z"}
          overrides))
 
@@ -26,7 +26,7 @@
       (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-001")]
         (is (some? row))
         (is (=? {:advisory_id  "SC-FETCH-001"
-                 :match_status :not_affected
+                 :match_status :unknown
                  :fetched_at   some?}
                 row))))))
 
