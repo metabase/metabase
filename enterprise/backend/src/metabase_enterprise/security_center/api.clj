@@ -68,7 +68,7 @@
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 
-(api.macros/defendpoint :post "/test-notification" :- [:map [:success boolean]]
+(api.macros/defendpoint :post "/test-notification" :- [:map [:success :boolean]]
   "Send a test notification through the configured Security Center channels."
   []
   (notification/send-test-notification!)
