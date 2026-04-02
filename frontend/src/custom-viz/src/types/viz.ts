@@ -124,11 +124,11 @@ export type CustomVisualizationProps<CustomVisualizationSettings> = {
 
   settings: CustomVisualizationSettings;
 
-  onVisualizationClick: (
+  onClick: (
     clickObject: ClickObject<CustomVisualizationSettings> | null,
   ) => void;
 
-  onHoverChange: (hoverObject?: HoveredObject | null) => void;
+  onHover: (hoverObject?: HoverObject | null) => void;
 };
 
 export type ColorGetter = (colorName: string) => string;
@@ -184,7 +184,7 @@ export type HoveredDimension = {
   column: Column;
 };
 
-export type HoveredObject = {
+export type HoverObject = {
   index?: number;
   seriesIndex?: number;
   value?: unknown;

@@ -1,9 +1,15 @@
 import type {
   CreateCustomVisualizationProps,
+  CustomVisualizationProps,
   CustomVisualizationSettingDefinition,
 } from "custom-viz/src/types";
-import type { ComponentType } from "react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  type ComponentType,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import { t } from "ttag";
 
@@ -30,7 +36,9 @@ import type {
 } from "metabase-types/api";
 
 type CustomVizPluginDefinition = {
-  VisualizationComponent: Visualization;
+  VisualizationComponent: ComponentType<
+    CustomVisualizationProps<Record<string, unknown>>
+  >;
   minSize?: Visualization["minSize"];
   defaultSize?: Visualization["defaultSize"];
   checkRenderable?: Visualization["checkRenderable"];
@@ -354,11 +362,23 @@ export async function loadCustomVizPlugin(
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
     const identifier = `custom:${plugin.identifier}` as VisualizationDisplay;
 
+    const Wrapper = ({
+      onVisualizationClick,
+      onHoverChange,
+      ...rest
+    }: Omit<VisualizationProps, "width" | "height"> & {
+      width: number | null;
+      height: number | null;
+    }) =>
+      React.createElement(vizDef.VisualizationComponent, {
+        ...rest,
+        onClick: onVisualizationClick,
+        onHover: onHoverChange,
+      });
+
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
-      vizDef.VisualizationComponent as ComponentType<
-        VisualizationProps & { width: number | null; height: number | null }
-      >,
+      Wrapper,
     ) as Visualization;
     Object.assign(Component, {
       identifier,
