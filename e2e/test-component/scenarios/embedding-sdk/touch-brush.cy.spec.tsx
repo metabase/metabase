@@ -68,6 +68,48 @@ describe("scenarios > embedding-sdk > touch-brush", () => {
       });
     });
 
+    it("should NOT trigger brush on pinch-to-zoom", () => {
+      mountInteractiveQuestion();
+      waitForChart();
+
+      // First finger down
+      cy.findByTestId("chart-container").trigger("pointerdown", 100, 150, {
+        force: true,
+        isPrimary: true,
+        pointerId: 1,
+        button: 0,
+      });
+
+      // Second finger down before long press completes — should cancel brush
+      cy.findByTestId("chart-container").trigger("pointerdown", 200, 150, {
+        force: true,
+        isPrimary: false,
+        pointerId: 2,
+        button: 0,
+      });
+
+      // Wait longer than the long press duration
+      cy.wait(700);
+
+      // Release both fingers
+      cy.findByTestId("chart-container")
+        .trigger("pointerup", 100, 150, {
+          force: true,
+          isPrimary: true,
+          pointerId: 1,
+        })
+        .trigger("pointerup", 200, 150, {
+          force: true,
+          isPrimary: false,
+          pointerId: 2,
+        });
+
+      cy.wait(1000);
+      getSdkRoot().within(() => {
+        cy.findByText("Count by Product ID").should("not.exist");
+      });
+    });
+
     it("should NOT trigger brush on quick horizontal swipe", () => {
       mountInteractiveQuestion();
       waitForChart();
