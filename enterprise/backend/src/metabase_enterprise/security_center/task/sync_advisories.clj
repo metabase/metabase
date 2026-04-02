@@ -20,7 +20,9 @@
   "metabase.task.security-center.sync-advisories.job")
 (def ^:private trigger-key "metabase.task.security-center.sync-advisories.trigger")
 
-(defn- sync-and-evaluate! []
+(defn sync-and-evaluate!
+  "Fetch advisories and re-evaluate matching queries."
+  []
   (when (premium-features/security-center-enabled?)
     (log/info "Syncing security advisories")
     (try

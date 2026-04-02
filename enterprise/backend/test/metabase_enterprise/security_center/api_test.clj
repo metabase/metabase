@@ -3,7 +3,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase-enterprise.security-center.matching :as matching]
+   [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
+   [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -103,20 +106,24 @@
 (deftest sync-endpoint-test
   (testing "POST /api/ee/security-center/sync"
     (mt/with-premium-features #{:admin-security-center}
-      (testing "calling twice only runs sync once"
-        (let [call-count (atom 0)
-              started    (promise)
-              finish     (promise)]
-          (with-redefs [fetch/sync-advisories!
-                        (fn []
-                          (swap! call-count inc)
-                          (deliver started true)
-                          @finish)
-                        matching/evaluate-all-advisories! (constantly nil)]
-            (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
-            @started
-            (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
-            (deliver finish true)
-            (is (= 1 @call-count) "sync should only run once despite two API calls"))))
+      (mt/with-temp-scheduler!
+        (with-redefs [premium-features/security-center-enabled? (constantly true)]
+          (task/init! ::sync-advisories/SyncAdvisories))
+        (testing "calling twice only runs sync once"
+          (let [call-count (atom 0)
+                started    (promise)
+                finish     (promise)]
+            (with-redefs [premium-features/security-center-enabled? (constantly true)
+                          fetch/sync-advisories!
+                          (fn []
+                            (swap! call-count inc)
+                            (deliver started true)
+                            @finish)
+                          matching/evaluate-all-advisories! (constantly nil)]
+              (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
+              @started
+              (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
+              (deliver finish true)
+              (is (= 1 @call-count) "sync should only run once despite two API calls")))))
       (testing "non-superuser gets 403"
         (mt/user-http-request :rasta :post 403 "ee/security-center/sync")))))
