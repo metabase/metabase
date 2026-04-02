@@ -147,12 +147,13 @@
     (fn []
       (testing "acknowledged advisories are excluded from repeat notifications"
         (let [notified (atom [])]
-          (mt/with-temp [:model/SecurityAdvisory _advisory
+          (mt/with-temp [:model/User {user-id :id} {:is_superuser true}
+                         :model/SecurityAdvisory _advisory
                          (advisory-fixture {:advisory_id      "SC-ACK-001"
                                             :severity         "critical"
                                             :match_status     "active"
                                             :last_notified_at nil
-                                            :acknowledged_by  (mt/user->id :crowberto)
+                                            :acknowledged_by  user-id
                                             :acknowledged_at  (mi/now)})]
             (with-redefs [notification/notify-advisory! (fn [a] (swap! notified conj (:advisory_id a)))]
               (task.sync/send-repeat-notifications!)
