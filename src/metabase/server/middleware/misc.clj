@@ -2,6 +2,7 @@
   "Misc Ring middleware."
   (:require
    [clojure.string :as str]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.request.core :as request]
@@ -103,4 +104,13 @@
   [handler]
   (fn [request respond raise]
     (request/with-current-request request
+      (handler request respond raise))))
+
+;;; --------------------------------------------- Bind checkout reason ------------------------------------------------
+
+(defn bind-checkout-reason
+  "Ring middleware that binds `*checkout-reason*` to `:api-request` for the duration of this Ring request."
+  [handler]
+  (fn [request respond raise]
+    (checkout-tracking/with-checkout-reason :api-request
       (handler request respond raise))))

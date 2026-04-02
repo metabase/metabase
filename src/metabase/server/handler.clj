@@ -95,6 +95,7 @@
         #'mw.misc/disable-streaming-buffering        ; Add header to streaming (async) responses so nginx doesn't buffer keepalive bytes
         #'wrap-gzip                                  ; GZIP response if client can handle it
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
+        #'mw.misc/bind-checkout-reason                  ; tag app DB connection checkouts as :api-request
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias

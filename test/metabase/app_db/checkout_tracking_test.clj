@@ -6,8 +6,8 @@
 (set! *warn-on-reflection* true)
 
 (deftest with-checkout-reason-test
-  (testing "Default reason is :api-request"
-    (is (= :api-request checkout-tracking/*checkout-reason*)))
+  (testing "Default reason is :unknown"
+    (is (= :unknown checkout-tracking/*checkout-reason*)))
   (testing "with-checkout-reason binds the reason"
     (checkout-tracking/with-checkout-reason :search-index
       (is (= :search-index checkout-tracking/*checkout-reason*))))

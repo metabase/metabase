@@ -1,5 +1,6 @@
 (ns metabase.task.bootstrap
   (:require
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.classloader.core :as classloader]))
 
 (set! *warn-on-reflection* true)
@@ -23,7 +24,8 @@
     ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
     ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
     ;; Now that would be a useful macro!
-    (.getConnection (app-db)))
+    (checkout-tracking/with-checkout-reason :quartz
+      (.getConnection (app-db))))
   (shutdown [_]))
 
 (when-not *compile-files*
