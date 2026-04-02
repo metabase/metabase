@@ -2,13 +2,12 @@ import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
-import { useListSecurityAdvisoriesQuery } from "metabase/api";
+import {
+  useGetChannelInfoQuery,
+  useListSecurityAdvisoriesQuery,
+} from "metabase/api";
 import { Banner } from "metabase/common/components/Banner";
 import { useSetting } from "metabase/common/hooks";
-import {
-  useHasEmailSetup,
-  useHasSlackSetup,
-} from "metabase/common/hooks/use-notification-channels/use-notification-channels";
 import { getPlan } from "metabase/common/utils/plan";
 import { Anchor, Flex, Text } from "metabase/ui";
 
@@ -32,14 +31,22 @@ function useDismissed() {
 export function SecurityCenterBanner() {
   const tokenFeatures = useSetting("token-features");
   const plan = getPlan(tokenFeatures);
-  const hasEmail = useHasEmailSetup();
-  const hasSlack = useHasSlackSetup();
-  const { data: advisoriesResponse } = useListSecurityAdvisoriesQuery();
+  const { data: channelInfo, isLoading: isChannelInfoLoading } =
+    useGetChannelInfoQuery();
+  const { data: advisoriesResponse, isLoading: isAdvisoriesLoading } =
+    useListSecurityAdvisoriesQuery();
   const { dismissed, dismiss } = useDismissed();
 
   if (plan !== "pro-self-hosted") {
     return null;
   }
+
+  if (isChannelInfoLoading || isAdvisoriesLoading) {
+    return null;
+  }
+
+  const hasEmail = !!channelInfo?.channels?.email?.configured;
+  const hasSlack = !!channelInfo?.channels?.slack?.configured;
 
   if (hasEmail || hasSlack) {
     return null;
