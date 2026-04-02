@@ -22,6 +22,8 @@ function waitForChart() {
     // Wait for ECharts to finish rendering data points.
     echartsContainer().find("path").should("have.length.greaterThan", 0);
   });
+  // Wait for brush event listeners to attach after chart renders.
+  cy.wait(100);
 }
 
 describe("scenarios > embedding-sdk > touch-brush", () => {
