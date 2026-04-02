@@ -9,9 +9,9 @@ Metrics Explorer is a space for ad-hoc analysis of [metrics](../data-modeling/me
 
 ![Metrics explorer](../questions/images/metrics-explorer.png)
 
-Metrics explorer can help you visualize trends and breakdowns of different metrics and measures - including metrics and measures built on different data sources - in one place. For example, you might want to see how the revenue trend compares to changes in customer sentiment for different products.
+The metrics explorer can help you visualize trends and breakdowns of different metrics and measures from one or more data sources. For example, you might want to see how the revenue trend compares to changes in customer sentiment for different products.
 
-Metrics explorer is where you can:
+You can:
 
 - Visualize multiple metrics and measures on one chart
 - Compare metrics and measures along shared dimensions
@@ -42,7 +42,7 @@ You'll see the dimensions of the first metric/measure below the search bar. You 
 
 When two measures/metrics have shared dimensions - usually when they're associated with the same data source, or the underlying data sources have foreign key relationships to another shared data source - Metabase will automatically detect shared dimensions and offer them for comparison.
 
-If your metrics/measures don't have shared dimensions, you'll need to proactively tell Metabase which dimensions you want to select for comparison:
+If your metrics/measures don't have shared dimensions, you'll need to select a dimension for comparison:
 
 1. Click on the **+** under the search bar to select a dimension for the first metric/measure.
 
@@ -56,9 +56,9 @@ When your metrics/measures don't have shared dimensions, Metabase has no way of 
 
 ## Break out by dimensions
 
-You can also break out each metric by additional dimensions in the metrics explorer. For example, you might want to compare overall revenue trend to number of orders for each product category separately.
+You can also break out each metric by additional dimensions. For example, you might want to compare overall revenue to the number of orders for each product category.
 
-To break out a metric or measure by additional dimension:
+To break out a metric or measure by additional dimensions:
 
 1. Right-click on the metric's card in the search bar.
 2. Select **Break out**
