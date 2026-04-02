@@ -26,7 +26,7 @@ export const McpAppsSettings = () => (
   <SettingsSection
     title={t`MCP apps`}
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin UI
-    description={t`Allow MCP app clients to connect to your Metabase instance by enabling CORS for their sandbox domains.`}
+    description={t`Allow MCP clients to connect to your Metabase instance by enabling CORS for their sandbox domains.`}
   >
     <CommonMcpClientsSection />
 
@@ -66,7 +66,7 @@ function CommonMcpClientsSection() {
       <SettingHeader
         id="common-mcp-clients"
         title={t`Supported MCP clients`}
-        description={t`Select which MCP app clients you want to allow. Their sandbox domains will be automatically added to the CORS allowlist.`}
+        description={t`Select which MCP clients you want to allow. Their sandbox domains will be automatically added to the CORS allowlist.`}
       />
       <Stack gap="md" mt="md">
         {mcpClients.map(({ key, label }) => (
