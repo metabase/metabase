@@ -44,7 +44,7 @@
   "Check all unacknowledged active/error advisories and send repeat notifications
    for those that are due based on their severity cadence."
   []
-  (when (premium-features/has-feature? :admin-security-center)
+  (when (premium-features/security-center-enabled?)
     (let [advisories (unacknowledged-active-advisories)]
       (doseq [advisory advisories
               :when (due-for-notification? advisory)]
