@@ -427,6 +427,7 @@
                                    [:= :r.model (h2x/literal "Document")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where [:and
+               (collection/visible-collection-filter-clause :document.collection_id {:cte-name :visible_collection_ids})
                (if (collection/is-trash? collection)
                  [:= :document.archived_directly true]
                  [:and
