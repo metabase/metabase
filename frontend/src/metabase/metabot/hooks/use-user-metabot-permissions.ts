@@ -9,7 +9,10 @@ import { useMetabotEnabledEmbeddingAware } from "./use-metabot-embedding-aware-e
  * Returns all false while loading or on error. */
 export const useUserMetabotPermissions = () => {
   const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
-  const { data, isLoading, isError } = useGetUserMetabotPermissionsQuery();
+  const { data, isLoading, isError } = useGetUserMetabotPermissionsQuery(
+    undefined,
+    { skip: !isMetabotEnabled },
+  );
 
   const perms = data?.permissions;
   const hasAccess = isMetabotEnabled && !isLoading && perms?.metabot === "yes";
