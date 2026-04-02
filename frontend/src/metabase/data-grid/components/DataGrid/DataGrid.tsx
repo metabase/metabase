@@ -38,6 +38,7 @@ export interface DataGridProps<TData>
   extends DataGridInstance<TData>, DataGridStylesProps {
   emptyState?: React.ReactNode;
   showRowsCount?: boolean;
+  striped?: boolean;
   isColumnReorderingDisabled?: boolean;
   theme?: DataGridTheme;
   zoomedRowIndex?: number;
@@ -58,6 +59,7 @@ export const DataGrid = function DataGrid<TData>({
   styles,
   enablePagination,
   showRowsCount,
+  striped = false,
   getPinnedRows,
   getCenterRows,
   getPinnedColumns,
@@ -140,6 +142,7 @@ export const DataGrid = function DataGrid<TData>({
       key={row.virtualItem?.key ?? row.origin.id}
       row={row}
       rowMeasureRef={measureRef}
+      striped={striped}
       pinnedRowsCount={pinnedRows.length}
       columns={columns}
       datasetIndexAttributeName={datasetIndexAttributeName}
