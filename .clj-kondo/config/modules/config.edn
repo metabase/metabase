@@ -1101,8 +1101,7 @@
 
   llm
   {:team "Metabot"
-   :api  #{metabase.llm.anthropic
-           metabase.llm.api
+   :api  #{metabase.llm.api
            metabase.llm.init
            metabase.llm.settings}
    :uses #{analytics
@@ -1181,7 +1180,9 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-              metabase.metabot.init}
+              metabase.metabot.init
+              metabase.metabot.self
+              metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
               slackbot}

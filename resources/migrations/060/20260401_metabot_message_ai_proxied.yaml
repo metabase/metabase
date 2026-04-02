@@ -12,7 +12,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: ai_proxied
-                  type: boolean
+                  type: ${boolean.type}
                   remarks: Whether this message was routed through the Metabase Cloud AI proxy (true) or directly via BYOK keys (false). Null for messages created before this migration.
                   constraints:
                     nullable: true
