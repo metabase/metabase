@@ -254,4 +254,3 @@
   (if-let [dev-url (resolve-dev-bundle plugin-id)]
     (fetch-dev-asset dev-url asset-path)
     (get-asset plugin-id asset-path)))
-
