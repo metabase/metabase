@@ -11,7 +11,7 @@ export const PAGE_SIZE = 50;
 
 const DEFAULT_SORT_COLUMN: ConversationSortColumn = "created_at";
 const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
-const DEFAULT_DATE = "7";
+const DEFAULT_DATE = "past30days~";
 const ALL_USERS_GROUP_ID = 1;
 
 export type UrlState = {

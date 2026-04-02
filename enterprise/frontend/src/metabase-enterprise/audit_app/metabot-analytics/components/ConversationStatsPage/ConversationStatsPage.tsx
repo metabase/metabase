@@ -2,7 +2,17 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useGetDatabaseMetadataQuery } from "metabase/api";
-import { Flex, Select, SimpleGrid, Skeleton, Title } from "metabase/ui";
+import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
+import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
+import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
+import {
+  Button,
+  Flex,
+  Popover,
+  SimpleGrid,
+  Skeleton,
+  Title,
+} from "metabase/ui";
 
 import { DATABASE_ID } from "../../constants";
 
@@ -11,19 +21,34 @@ import { ConversationsByProfileChart } from "./ConversationsByProfileChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
 import { StatCards } from "./StatCards";
 
-function getDateRangeOptions() {
-  return [
-    { value: "7", label: t`Past 7 days` },
-    { value: "14", label: t`Past 14 days` },
-    { value: "30", label: t`Past 30 days` },
-    { value: "60", label: t`Past 60 days` },
-    { value: "90", label: t`Past 90 days` },
-  ];
+const DEFAULT_DATE = "past30days~";
+
+function getDateLabel(value: string | null): string {
+  if (!value) {
+    return t`Date`;
+  }
+  const parsed = deserializeDateParameterValue(value);
+  if (parsed) {
+    return getDateFilterDisplayName(parsed, { withPrefix: false });
+  }
+  return t`Date`;
+}
+
+function getFilterDays(dateValue: string | null): number {
+  if (!dateValue) {
+    return 30;
+  }
+  const parsed = deserializeDateParameterValue(dateValue);
+  if (parsed?.type === "relative" && parsed.value < 0) {
+    return Math.abs(parsed.value);
+  }
+  return 30;
 }
 
 export function ConversationStatsPage() {
-  const [days, setDays] = useState("30");
-  const daysNum = parseInt(days, 10);
+  const [dateValue, setDateValue] = useState(DEFAULT_DATE);
+  const [dateOpened, setDateOpened] = useState(false);
+  const daysNum = getFilterDays(dateValue);
 
   const { isLoading: isLoadingMetadata } = useGetDatabaseMetadataQuery({
     id: DATABASE_ID,
@@ -33,12 +58,26 @@ export function ConversationStatsPage() {
     <>
       <Flex justify="space-between" align="center" mt="lg">
         <Title order={3}>{t`Trends`}</Title>
-        <Select
-          data={getDateRangeOptions()}
-          value={days}
-          onChange={(val) => val && setDays(val)}
-          w={160}
-        />
+        <Popover
+          opened={dateOpened}
+          onChange={setDateOpened}
+          position="bottom-end"
+        >
+          <Popover.Target>
+            <Button variant="default" onClick={() => setDateOpened((o) => !o)}>
+              {getDateLabel(dateValue)}
+            </Button>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <DateAllOptionsWidget
+              value={dateValue}
+              onChange={(val) => {
+                setDateValue(val);
+                setDateOpened(false);
+              }}
+            />
+          </Popover.Dropdown>
+        </Popover>
       </Flex>
 
       <StatCards days={daysNum} />

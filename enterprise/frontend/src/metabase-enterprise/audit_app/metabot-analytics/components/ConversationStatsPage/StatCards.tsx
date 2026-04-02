@@ -123,15 +123,15 @@ export function StatCards({ days }: StatCardsProps) {
         days={days}
       />
       <StatCard
-        label={t`Tokens`}
-        current={stats.currTokens}
-        previous={stats.prevTokens}
-        days={days}
-      />
-      <StatCard
         label={t`Messages`}
         current={stats.currMessages}
         previous={stats.prevMessages}
+        days={days}
+      />
+      <StatCard
+        label={t`Tokens`}
+        current={stats.currTokens}
+        previous={stats.prevTokens}
         days={days}
       />
       <StatCard

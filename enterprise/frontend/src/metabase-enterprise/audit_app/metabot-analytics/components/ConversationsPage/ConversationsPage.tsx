@@ -1,46 +1,29 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { Card, Flex, Select, Text } from "metabase/ui";
+import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
+import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
+import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
+import { Button, Card, Flex, Popover, Select, Text } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";
-import type { ConversationSummary } from "../../types";
 
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";
 
-function getDateOptions() {
-  return [
-    { value: "7", label: t`Past 7 days` },
-    { value: "14", label: t`Past 14 days` },
-    { value: "30", label: t`Past 30 days` },
-    { value: "60", label: t`Past 60 days` },
-    { value: "90", label: t`Past 90 days` },
-  ];
-}
-
-function filterConversations(
-  conversations: ConversationSummary[],
-  filters: { date: string | null; profile: string | null },
-): ConversationSummary[] {
-  return conversations.filter((c) => {
-    if (filters.profile && c.model !== filters.profile) {
-      return false;
-    }
-    if (filters.date) {
-      const days = parseInt(filters.date, 10);
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - days);
-      if (new Date(c.created_at) < cutoff) {
-        return false;
-      }
-    }
-    return true;
-  });
+function getDateLabel(value: string | null): string {
+  if (!value) {
+    return t`Date`;
+  }
+  const parsed = deserializeDateParameterValue(value);
+  if (parsed) {
+    return getDateFilterDisplayName(parsed, { withPrefix: false });
+  }
+  return t`Date`;
 }
 
 export function ConversationsPage({ location }: WithRouterProps) {
@@ -49,6 +32,7 @@ export function ConversationsPage({ location }: WithRouterProps) {
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
 
+  const [dateOpened, setDateOpened] = useState(false);
   const sortingOptions = { sort_column, sort_direction };
 
   const { data: usersData } = useListUsersQuery({});
@@ -105,19 +89,29 @@ export function ConversationsPage({ location }: WithRouterProps) {
       .map((p) => ({ value: p, label: p }));
   }, [conversations]);
 
-  const filtered = filterConversations(conversations, { date, profile });
-
   return (
     <>
-      <Flex gap="md" mt="md" wrap="wrap">
-        <Select
-          placeholder={t`Date`}
-          data={getDateOptions()}
-          value={date}
-          onChange={(val) => patchUrlState({ date: val, page: 0 })}
-          clearable
-          w={150}
-        />
+      <Flex gap="md" mt="md" wrap="wrap" align="center">
+        <Popover
+          opened={dateOpened}
+          onChange={setDateOpened}
+          position="bottom-start"
+        >
+          <Popover.Target>
+            <Button variant="default" onClick={() => setDateOpened((o) => !o)}>
+              {getDateLabel(date)}
+            </Button>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <DateAllOptionsWidget
+              value={date}
+              onChange={(val) => {
+                patchUrlState({ date: val, page: 0 });
+                setDateOpened(false);
+              }}
+            />
+          </Popover.Dropdown>
+        </Popover>
         <Select
           placeholder={t`User`}
           data={userOptions}
@@ -156,14 +150,14 @@ export function ConversationsPage({ location }: WithRouterProps) {
           onNextPage={() => patchUrlState({ page: page + 1 })}
           page={page}
           pageSize={PAGE_SIZE}
-          itemsLength={filtered.length}
+          itemsLength={conversations.length}
           total={total}
         />
       </Flex>
 
       <Card withBorder p={0}>
         <ConversationsTable
-          conversations={filtered}
+          conversations={conversations}
           isLoading={isLoading}
           error={error}
           sortingOptions={sortingOptions}
