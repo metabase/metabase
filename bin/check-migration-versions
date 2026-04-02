@@ -22,13 +22,13 @@ fi
 
 echo "BASE_REF: ${BASE_REF}"
 
-labels="${PR_LABELS:-}"
-
 # Determine the expected version and constraint
 if [[ "$BASE_REF" =~ ^release-x\.([0-9]+)\.x$ ]]; then
-    version="${BASH_REMATCH[1]}"
     constraint="<="
+    version="${BASH_REMATCH[1]}"
 elif [[ "$BASE_REF" == "master" ]]; then
+    labels="${PR_LABELS:-}"
+
     if [[ -z "${CURRENT_VERSION:-}" ]]; then
         echo "ERROR: CURRENT_VERSION is not set." >&2
         exit 1
@@ -47,6 +47,7 @@ elif [[ "$BASE_REF" == "master" ]]; then
         fi
     done
 
+    constraint="="
     version=$((CURRENT_VERSION + 1))
     # Backport labels shift the target version back so migrations land on the correct release branch.
     [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))
@@ -54,7 +55,6 @@ elif [[ "$BASE_REF" == "master" ]]; then
     [[ ",$labels," == *",triple-backport,"* ]] && version=$((CURRENT_VERSION - 2))
 
     [[ $matches -gt 1 ]] && echo "NOTE: Multiple backport labels detected; using the earliest version (v${version})." >&2
-    constraint="="
 else
     echo "Target branch '${BASE_REF}' is not master or a release branch — skipping."
     exit 0
