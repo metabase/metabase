@@ -39,13 +39,6 @@ elif [[ "$BASE_REF" == "master" ]]; then
         fi
         echo "CURRENT_VERSION: ${CURRENT_VERSION}"
 
-        # Backport labels determine which migration directory to target on master.
-        # Master normally targets the next unreleased version (CURRENT_VERSION + 1).
-        # Backport labels shift this back so migrations land on older release branches:
-        #   backport        → CURRENT_VERSION     (cherry-picked to 1 prior release)
-        #   double-backport → CURRENT_VERSION - 1 (cherry-picked to 2 prior releases)
-        #   triple-backport → CURRENT_VERSION - 2 (cherry-picked to 3 prior releases)
-        # If multiple labels are present, the most conservative (oldest) wins naturally.
         matches=0
         for l in backport double-backport triple-backport; do
                 if [[ ",$labels," == *",$l,"* ]]; then
@@ -54,6 +47,7 @@ elif [[ "$BASE_REF" == "master" ]]; then
                 fi
         done
 
+        # Backport labels shift the target version back so migrations land on the correct release branch.
         version=$((CURRENT_VERSION + 1))
         [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))
         [[ ",$labels," == *",double-backport,"* ]] && version=$((CURRENT_VERSION - 1))
