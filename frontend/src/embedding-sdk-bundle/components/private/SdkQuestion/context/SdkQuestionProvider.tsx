@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
 } from "react";
 import { t } from "ttag";
 
@@ -79,7 +80,7 @@ export const SdkQuestionProvider = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
   const navigation = useSdkInternalNavigationOptional();
-
+  const [isFirstRender, setIsFirstRender] = useState(true);
   const { rawToken: tokenFromStore, error: tokenFetchError } =
     useSdkSelector(getSessionTokenState);
 
@@ -90,6 +91,10 @@ export const SdkQuestionProvider = ({
     }
   }, [rawToken, isGuestEmbed, dispatch]);
 
+  useEffect(() => {
+    setIsFirstRender(false);
+  }, []);
+
   const {
     resourceId: questionId,
     token,
@@ -97,7 +102,9 @@ export const SdkQuestionProvider = ({
   } = useExtractResourceIdFromJwtToken({
     isGuestEmbed,
     resourceId: rawQuestionId,
-    token: tokenFromStore ?? rawToken ?? undefined,
+    // Skip stale Redux token on first render (e.g. wizard re-issuing a token when toggling parameters); rawToken prop takes precedence.
+    // From the next render onward, tokenFromStore is used and the value is from a refreshed token.
+    token: (!isFirstRender ? tokenFromStore : null) ?? rawToken ?? undefined,
   });
 
   useSetupContentTranslations({ token });

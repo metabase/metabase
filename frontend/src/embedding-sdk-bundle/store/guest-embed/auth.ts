@@ -78,10 +78,10 @@ export const getOrRefreshGuestSession = createAsyncThunk(
     let forceRefreshForCypress;
     if (typeof window !== "undefined") {
       forceRefreshForCypress =
-        (window as any).FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS === true;
+        window.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS === true;
     }
     if (forceRefreshForCypress) {
-      (window as any).FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = false;
+      window.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = false;
     }
 
     const shouldRefreshToken =
