@@ -1,7 +1,7 @@
 (ns metabase-enterprise.audit-app.analytics-dev-test
   (:require
    [clojure.set :as set]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [metabase-enterprise.audit-app.analytics-dev :as analytics-dev]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.app-db.core :as mdb]
@@ -229,3 +229,54 @@
                           extra-in-sync (set/difference synced-fields expected-fields)]
                       (is (empty? missing-from-sync))
                       (is (empty? extra-in-sync)))))))))))))
+
+(defn- view-log-surface
+  "Insert a view_log row with the given embedding_client and embedding_route, then query
+   the v_view_log SQL view and return the derived [surface is_preview] pair."
+  [card-id embedding-client embedding-route]
+  (let [vl (first (t2/insert-returning-instances!
+                   :model/ViewLog
+                   {:user_id          (mt/user->id :crowberto)
+                    :model            "card"
+                    :model_id         card-id
+                    :embedding_client embedding-client
+                    :embedding_route  embedding-route}))
+        result (first (t2/query ["SELECT surface, is_preview FROM v_view_log WHERE id = ?" (:id vl)]))]
+    [(:surface result) (:is_preview result)]))
+
+(deftest surface-case-mapping-test
+  (testing "v_view_log SQL view correctly maps embedding_client/embedding_route to surface and is_preview"
+    (mt/with-temp [:model/Card card {}]
+      (are [client route expected-surface expected-preview]
+           (= [expected-surface expected-preview]
+              (view-log-surface (:id card) client route))
+        ;; COALESCE(embedding_route, embedding_client) checks - route takes precedence
+        nil                                 "public"      "public-sharing"            false
+        "something"                         "public"      "public-sharing"            false
+        nil                                 "guest-embed" "guest-embedding"           false
+        nil                                 "metabot"     "metabot"                   false
+        nil                                 "agent-api"   "agent-api"                 false
+        ;; SDK variants
+        "embedding-sdk-react"               nil           "sdk"                       false
+        "embedding-sdk-react-preview"       nil           "sdk-preview"               true
+        ;; iframe variants
+        "embedding-iframe"                  nil           "iframe"                    false
+        "embedding-iframe-preview"          nil           "iframe-preview"            true
+        "embedding-iframe-static"           nil           "iframe-static"             false
+        "embedding-iframe-static-preview"   nil           "iframe-static-preview"     true
+        "embedding-iframe-full-app"         nil           "iframe-full-app"           false
+        "embedding-iframe-full-app-preview" nil           "iframe-full-app-preview"   true
+        "embedding-iframe-public"           nil           "iframe-public"             false
+        "embedding-iframe-public-preview"   nil           "iframe-public-preview"     true
+        ;; Legacy client values
+        "public"                            nil           "public-sharing"            false
+        "public-preview"                    nil           "public-sharing-preview"    true
+        "guest-embed"                       nil           "guest-embedding"           false
+        "guest-embed-preview"               nil           "guest-embedding-preview"   true
+        "embedding-simple"                  nil           "modular-embedding"         false
+        "embedding-simple-preview"          nil           "modular-embedding-preview" true
+        ;; NULL / empty -> internal
+        nil                                 nil           "internal"                  false
+        ""                                  nil           "internal"                  false
+        ;; Unknown client falls through to ELSE
+        "unknown-client"                    nil           "unknown-client"            false))))
