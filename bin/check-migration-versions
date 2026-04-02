@@ -40,10 +40,12 @@ elif [[ "$BASE_REF" == "master" ]]; then
   #   double-backport → CURRENT_VERSION - 1 (cherry-picked to 2 prior releases)
   #   triple-backport → CURRENT_VERSION - 2 (cherry-picked to 3 prior releases)
   # If multiple labels are present, the most conservative (oldest) wins naturally.
+  matches=0
   version=$((CURRENT_VERSION + 1))
-  [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))
-  [[ ",$labels," == *",double-backport,"* ]] && version=$((CURRENT_VERSION - 1))
-  [[ ",$labels," == *",triple-backport,"* ]] && version=$((CURRENT_VERSION - 2))
+  [[ ",$labels," == *",backport,"* ]]        && version=$((CURRENT_VERSION))     && ((matches++)) || true
+  [[ ",$labels," == *",double-backport,"* ]] && version=$((CURRENT_VERSION - 1)) && ((matches++)) || true
+  [[ ",$labels," == *",triple-backport,"* ]] && version=$((CURRENT_VERSION - 2)) && ((matches++)) || true
+  [[ $matches -gt 1 ]] && echo "NOTE: Multiple backport labels detected; using most conservative (v${version})." >&2
   constraint="="
 else
   echo "Target branch '${BASE_REF}' is not master or a release branch — skipping."
@@ -87,7 +89,11 @@ if [[ "$errors" -gt 0 ]]; then
   echo "Why: Migration files must be in the directory matching the target release version." >&2
   echo "A misplaced migration misrepresents when it was introduced and will break downgrades spanning more than one version." >&2
   echo "" >&2
-  echo "To fix: move the file(s) to resources/migrations/${expected_dir}/." >&2
+  if [[ "$constraint" == "<=" ]]; then
+    echo "To fix: move the file(s) to resources/migrations/${expected_dir}/ or any earlier version directory." >&2
+  else
+    echo "To fix: move the file(s) to resources/migrations/${expected_dir}/." >&2
+  fi
   echo "" >&2
   echo "If this PR will be backported, ensure the correct backport label is applied" >&2
   echo "(backport, double-backport, or triple-backport) and re-run CI, even if you" >&2
