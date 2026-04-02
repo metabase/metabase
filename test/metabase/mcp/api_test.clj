@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]
+   [metabase.mcp.api :as mcp.api]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
@@ -11,6 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -515,3 +517,29 @@
                      (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted} nil))]
         (is (not (:isError result))
             "Agent API should accept unrestricted scopes")))))
+
+;;; ------------------------------------------------- Throttling ---------------------------------------------------
+
+(deftest mcp-throttle-returns-429-test
+  (testing "MCP endpoint returns 429 with JSON-RPC error when rate-limited"
+    (let [[session-id _] (initialize!)
+          orig           (deref #'mcp.api/mcp-throttler)]
+      (try
+        ;; Replace throttler after initialization so the handshake doesn't consume attempts
+        (alter-var-root #'mcp.api/mcp-throttler (constantly (throttle/make-throttler :user-id :attempts-threshold 1)))
+        (let [;; First request succeeds (consumes the single attempt)
+              first-response (mcp-request (jsonrpc-request "ping")
+                                          {"mcp-session-id" session-id})
+              ;; Second request should be throttled
+              throttled-response (mcp-request (jsonrpc-request "ping")
+                                              {"mcp-session-id" session-id})]
+          (is (= 200 (:status first-response)))
+          (is (= 429 (:status throttled-response)))
+          (is (= -32000 (get-in throttled-response [:body :error :code]))
+              "Throttle response should use JSON-RPC error format")
+          (is (str/starts-with? (get-in throttled-response [:body :error :message]) "Too many attempts!")
+              "Error message should indicate rate limiting")
+          (is (contains? (:headers throttled-response) "Retry-After")
+              "Response should include Retry-After header"))
+        (finally
+          (alter-var-root #'mcp.api/mcp-throttler (constantly orig)))))))

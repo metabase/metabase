@@ -2,10 +2,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.oauth-server.api.oauth :as oauth]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [oidc-provider.util :as oidc-util]
+   [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
    (java.net URLEncoder)
@@ -964,3 +966,26 @@
               "Raw script tags must not appear in the consent page")
           (is (str/includes? body "&lt;script&gt;")
               "Script tags should be HTML-escaped"))))))
+
+;;; ------------------------------------------------ Throttling ---------------------------------------------------
+
+(deftest throttle-response-format-test
+  (testing "throttle-response builds correct 429 response with Retry-After"
+    (let [throttler (throttle/make-throttler :test-key :attempts-threshold 0 :initial-delay-ms 15000)
+          _         (try (throttle/check throttler "user-1") (catch Exception _))
+          response  (try
+                      (throttle/check throttler "user-1")
+                      (catch clojure.lang.ExceptionInfo e
+                        (#'oauth/throttle-response e)))]
+      (is (= 429 (:status response)))
+      (is (contains? (:headers response) "Retry-After"))
+      (is (= "too_many_requests" (get-in response [:body :error])))))
+
+  (testing "throttle-response includes descriptive error_description"
+    (let [throttler (throttle/make-throttler :test-key :attempts-threshold 0 :initial-delay-ms 15000)
+          _         (try (throttle/check throttler "user-2") (catch Exception _))
+          response  (try
+                      (throttle/check throttler "user-2")
+                      (catch clojure.lang.ExceptionInfo e
+                        (#'oauth/throttle-response e)))]
+      (is (str/starts-with? (get-in response [:body :error_description]) "Too many attempts!")))))
