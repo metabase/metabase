@@ -59,7 +59,9 @@
   ;; Is worth considering when adding entries here, whether they shouldn't just be skipped in extraction.
   #{:cache_field_values_schedule
     :metadata_sync_schedule
-    :metabase_version})
+    :metabase_version
+    ;; result_metadata is recomputed during load and may differ between runs
+    :result_metadata})
 
 (defn- strip-base-path [base file]
   (str/replace-first file (str base File/separator) ""))
