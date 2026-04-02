@@ -104,34 +104,31 @@
     (or (-> res :body :error :message)
         (tru "Unhandled error accessing OpenRouter API"))))
 
-(defn- list-models*
-  [auth]
-  (try
-    (let [res (core/request-with-proxy "OpenRouter"
-                                       auth
-                                       {:method  :get
-                                        :url     "/v1/models"
-                                        :as      :json
-                                        :headers {"Content-Type" "application/json"
-                                                  "HTTP-Referer" "https://metabase.com"
-                                                  "X-Title"      "Metabase"}})]
-      {:models (mapv (fn [model]
-                       {:id           (:id model)
-                        :display_name (or (:name model) (:id model))})
-                     (reverse (sort-by :created (get-in res [:body :data]))))})
-    (catch Exception e
-      (core/rethrow-api-error! "openrouter" openrouter-errors e))))
-
 (defn list-models
-  "List available OpenRouter models using the configured API key."
-  ([] (list-models* (when-let [api-key (not-empty (llm/llm-openrouter-api-key))]
-                      {:url     (llm/llm-openrouter-api-base-url)
-                       :headers {"Authorization" (str "Bearer " api-key)}})))
-  ([api-key]
-   (when (str/blank? api-key)
+  "List available OpenRouter models.
+  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  ([] (list-models {}))
+  ([{:keys [api-key ai-proxy?]}]
+   (when (and api-key (str/blank? api-key))
      (throw (core/missing-api-key-ex "OpenRouter")))
-   (list-models* {:url     (llm/llm-openrouter-api-base-url)
-                  :headers {"Authorization" (str "Bearer " api-key)}})))
+   (try
+     (let [auth (core/resolve-auth "OpenRouter"
+                                   (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openrouter-api-key)))]
+                                     {:url     (llm/llm-openrouter-api-base-url)
+                                      :headers {"Authorization" (str "Bearer " k)}})
+                                   ai-proxy?)
+           res  (core/request auth {:method  :get
+                                    :url     "/v1/models"
+                                    :as      :json
+                                    :headers {"Content-Type" "application/json"
+                                              "HTTP-Referer" "https://metabase.com"
+                                              "X-Title"      "Metabase"}})]
+       {:models (mapv (fn [model]
+                        {:id           (:id model)
+                         :display_name (or (:name model) (:id model))})
+                      (reverse (sort-by :created (get-in res [:body :data]))))})
+     (catch Exception e
+       (core/rethrow-api-error! "openrouter" openrouter-errors e)))))
 
 ;;; Streaming response → AISDK v5 chunks
 
@@ -256,7 +253,7 @@
 
   Works with OpenRouter, or any OpenAI-compatible endpoint that supports
   `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.)."
-  [{:keys [model system input tools temperature max-tokens tool_choice schema]
+  [{:keys [model system input tools temperature max-tokens tool_choice schema ai-proxy?]
     :or   {model "anthropic/claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [messages  (cond-> (parts->cc-messages input)
                     system (as-> msgs (into [{:role "system" :content system}] msgs)))
@@ -285,19 +282,20 @@
                       :tool-count (count (or tools []))}
       (try
         (let [api-key  (not-empty (llm/llm-openrouter-api-key))
-              response (core/request-with-proxy "OpenRouter"
-                                                (when api-key
-                                                  {:url     (llm/llm-openrouter-api-base-url)
-                                                   :headers {"Authorization" (str "Bearer " api-key)}})
-                                                {:method  :post
-                                                 :url     "/v1/chat/completions"
-                                                 :as      :stream
-                                                 :headers {"Content-Type" "application/json"
-                                                           "HTTP-Referer" "https://metabase.com"
-                                                           "X-Title"      "Metabase"}
-                                                 :body    (json/encode req)})]
-          (-> (core/sse-reducible (:body response))
-              (with-meta (meta response))))
+              auth     (core/resolve-auth "OpenRouter"
+                                          (when api-key
+                                            {:url     (llm/llm-openrouter-api-base-url)
+                                             :headers {"Authorization" (str "Bearer " api-key)}})
+                                          ai-proxy?)
+              response (core/request auth
+                                     {:method  :post
+                                      :url     "/v1/chat/completions"
+                                      :as      :stream
+                                      :headers {"Content-Type" "application/json"
+                                                "HTTP-Referer" "https://metabase.com"
+                                                "X-Title"      "Metabase"}
+                                      :body    (json/encode req)})]
+          (core/sse-reducible (:body response)))
         (catch Exception e
           (core/rethrow-api-error! "openrouter" openrouter-errors e))))))
 
@@ -305,6 +303,4 @@
   "Call OpenRouter Chat Completions API, return AISDK stream."
   [& args]
   (let [raw (apply openrouter-raw args)]
-    (eduction (comp (openrouter->aisdk-chunks-xf)
-                    (core/tag-ai-proxied-xf (-> raw meta :ai-proxy?)))
-              raw)))
+    (eduction (openrouter->aisdk-chunks-xf) raw)))

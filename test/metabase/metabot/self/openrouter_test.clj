@@ -186,76 +186,31 @@
 
 (deftest openrouter-auth-preferences
   (with-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key      "sk-ant-byok"
-                                       llm.settings/llm-proxy-base-url          "https://proxy.example"
-                                       llm.settings/llm-byok-enabled            :unset]
-      (testing "Default (unset): prefers BYOK over ai proxy"
+    (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-ant-byok"
+                                       llm.settings/llm-proxy-base-url    "https://proxy.example"]
+      (testing "Prefers BYOK over ai proxy"
         (with-redefs [self.core/sse-reducible identity
                       http/request            (fn [req] {:body req})]
           (is (=? {:method  :post
                    :url     "https://openrouter.ai/api/v1/chat/completions"
                    :headers {"Authorization" "Bearer sk-ant-byok"}
-                   :body    string?
-                   :meta    {:ai-proxy? false}}
-                  (-> (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})
-                      metabot.tu/inject-meta)))))
+                   :body    string?}
+                  (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
 
-      (testing "Default (unset): uses ai proxy when BYOK is missing"
+      (testing "Uses ai proxy when BYOK is missing"
         (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
           (with-redefs [self.core/sse-reducible identity
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://proxy.example/v1/chat/completions"
                      :headers {"x-metabase-instance-token" "proxy-token"}
-                     :body    string?
-                     :meta    {:ai-proxy? true}}
-                    (-> (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})
-                        metabot.tu/inject-meta))))))
+                     :body    string?}
+                    (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]}))))))
 
-      (testing "Default (unset): throws an error if nothing is defined"
+      (testing "Throws an error if nothing is defined"
         (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil
                                            llm.settings/llm-proxy-base-url    nil]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"No OpenRouter API key is set"
-               (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
-
-      (testing "byok-enabled=byok: uses BYOK key"
-        (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled :byok]
-          (with-redefs [self.core/sse-reducible identity
-                        http/request            (fn [req] {:body req})]
-            (is (=? {:method  :post
-                     :url     "https://openrouter.ai/api/v1/chat/completions"
-                     :headers {"Authorization" "Bearer sk-ant-byok"}
-                     :body    string?
-                     :meta    {:ai-proxy? false}}
-                    (-> (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})
-                        metabot.tu/inject-meta))))))
-
-      (testing "byok-enabled=byok: throws when no API key even if proxy is configured"
-        (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled      :byok
-                                           llm.settings/llm-openrouter-api-key nil]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"No OpenRouter API key is set"
-               (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
-
-      (testing "byok-enabled=metabase: uses ai proxy even when BYOK key is available"
-        (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled :metabase]
-          (with-redefs [self.core/sse-reducible identity
-                        http/request            (fn [req] {:body req})]
-            (is (=? {:method  :post
-                     :url     "https://proxy.example/v1/chat/completions"
-                     :headers {"x-metabase-instance-token" "proxy-token"}
-                     :body    string?
-                     :meta    {:ai-proxy? true}}
-                    (-> (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})
-                        metabot.tu/inject-meta))))))
-
-      (testing "byok-enabled=metabase: throws when proxy is not configured"
-        (mt/with-temporary-setting-values [llm.settings/llm-byok-enabled   :metabase
-                                           llm.settings/llm-proxy-base-url nil]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"AI proxy is not configured"
                (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]}))))))))

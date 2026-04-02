@@ -27,7 +27,7 @@
                                                                    [:not= :usage nil]]})]
                              (->> (for [usage               usages
                                         [prov-model tokens] usage
-                                        :let [k (str/replace (u/qualified-name prov-model) "/" ":")]]
+                                        :let [k (str/replace-first (u/qualified-name prov-model) "/" ":")]]
                                     {(str k ":in")  (:prompt tokens)
                                      (str k ":out") (:completion tokens)})
                                   (apply merge-with +)))

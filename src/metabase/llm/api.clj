@@ -99,10 +99,12 @@
   (when-not (metabot.settings/llm-metabot-configured?)
     (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))
-  (let [provider (some-> (metabot.settings/llm-metabot-provider)
-                         (str/split #"/" 2)
-                         first)]
-    (metabot.self/list-models provider)))
+  (let [provider-and-model (metabot.settings/llm-metabot-provider)
+        ai-proxy?          (metabot.self/ai-proxy? provider-and-model)
+        provider           (if ai-proxy?
+                             (second (str/split provider-and-model #"/" 3))
+                             (first (str/split provider-and-model #"/" 2)))]
+    (metabot.self/list-models provider {:ai-proxy? ai-proxy?})))
 
 (def ^:private table-with-columns-schema
   "Schema for table metadata with columns returned by /extract-tables."

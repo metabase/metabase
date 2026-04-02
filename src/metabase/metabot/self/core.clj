@@ -45,7 +45,8 @@
     :temperature - Sampling temperature
     :max-tokens  - Maximum tokens in the response
     :schema      - JSON Schema map for structured output; each provider forces a
-                   tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)"
+                   tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy"
   [:map
    [:model       {:optional true} :string]
    [:system      {:optional true} [:maybe :string]]
@@ -54,7 +55,8 @@
    [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature {:optional true} [:maybe number?]]
    [:max-tokens  {:optional true} [:maybe :int]]
-   [:schema      {:optional true} :any]])
+   [:schema      {:optional true} :any]
+   [:ai-proxy?   {:optional true} [:maybe :boolean]]])
 
 (defn mkid
   "Generate a random id"
@@ -135,10 +137,8 @@
 
 (defn- aisdk-chunks->part [[chunk :as chunks]]
   (case (:type chunk)
-    :start                 (cond-> {:type :start
-                                    :id   (:messageId chunk)}
-                             (some? (:ai-proxy? chunk))
-                             (assoc :ai-proxy? (:ai-proxy? chunk)))
+    :start                 {:type :start
+                            :id   (:messageId chunk)}
     :usage                 chunk
     :error                 chunk
     :text-start            {:type :text
@@ -487,19 +487,12 @@
 
          (rf result chunk))))))
 
-(defn missing-api-key-ex
-  "Create a standardized missing-API-key exception for provider adapters."
-  [llm-type]
-  (ex-info (tru "No {0} API key is set" llm-type)
-           {:api-error  true
-            :error-code :api-key-missing}))
-
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
 
   `res->message` receives the decoded response map and must return the message
   to surface to the client.  If the exception already carries `:api-error true`
-  in its ex-data (e.g. a missing-API-key error from `request-with-proxy`) it is
+  in its ex-data (e.g. a missing-API-key error from [[resolve-auth]]) it is
   rethrown as-is so the original message is preserved."
   [provider res->message e]
   (let [data (ex-data e)]
@@ -514,46 +507,32 @@
                                           e)))
       :else             (throw e))))
 
-(defn tag-ai-proxied-xf
-  "Transducer that assocs `:ai-proxy?` onto the `:start` chunk.
-  Provider adapters use this to carry the routing decision from
-  [[request-with-proxy]] through the AISDK chunk stream."
-  [ai-proxy?]
-  (map (fn [chunk]
-         (if (= :start (:type chunk))
-           (assoc chunk :ai-proxy? ai-proxy?)
-           chunk))))
+(defn missing-api-key-ex
+  "Create a standardized missing-API-key exception for provider adapters."
+  [llm-type]
+  (ex-info (tru "No {0} API key is set" llm-type)
+           {:api-error  true
+            :error-code :api-key-missing}))
 
-(defn request-with-proxy
-  "Perform a request directly when provider auth is configured, otherwise via the
-  (Metabase Cloud-only) LLM proxy when configured.
+(defn resolve-auth
+  "Pick the right auth map for an LLM request.
 
-  Returns <http-response> with `:ai-proxy? true` in metadata.
+  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured).
+  - Otherwise prefers the provider's BYOK `auth`, falls back to the proxy."
+  [llm-type auth ai-proxy?]
+  (if ai-proxy?
+    (or (when-let [base (llm/llm-proxy-base-url)]
+          {:url     base
+           :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})
+        (throw (ex-info (tru "AI proxy is not configured")
+                        {:api-error  true
+                         :error-code :proxy-not-configured})))
+    (or auth
+        (throw (missing-api-key-ex llm-type)))))
 
-  Routing is governed by the `llm-byok-enabled` setting:
-    • `:byok`     – only customer API keys; ignores the proxy entirely
-    • `:metabase` – only the AI proxy; ignores BYOK keys
-    • `:unset`    – (default) prefers BYOK when a key is set, falls back to the
-                    proxy, errors if neither is available"
-  [llm-type auth req]
-  (let [byok-mode  (llm/llm-byok-enabled)
-        proxy-auth (when-let [base (llm/llm-proxy-base-url)]
-                     {:url     base
-                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})
-        {:keys [url headers ai-proxy?]}
-        (case byok-mode
-          :byok     (-> (or auth (throw (missing-api-key-ex llm-type)))
-                        (assoc :ai-proxy? false))
-          :metabase (-> (or proxy-auth (throw (ex-info (tru "AI proxy is not configured")
-                                                       {:api-error  true
-                                                        :error-code :proxy-not-configured})))
-                        (assoc :ai-proxy? true))
-          ;; :unset (default): prefer BYOK, fall back to proxy
-          :unset    (cond
-                      auth       (assoc auth :ai-proxy? false)
-                      proxy-auth (assoc proxy-auth :ai-proxy? true)
-                      :else      (throw (missing-api-key-ex llm-type))))]
-    (-> (http/request (-> req
-                          (update :url #(str url %))
-                          (update :headers merge headers)))
-        (with-meta {:ai-proxy? (boolean ai-proxy?)}))))
+(defn request
+  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."
+  [{:keys [url headers]} req]
+  (http/request (-> req
+                    (update :url #(str url %))
+                    (update :headers merge headers))))

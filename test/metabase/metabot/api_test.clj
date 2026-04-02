@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
+   [metabase.api.common :as mb.api]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -296,7 +297,7 @@
                                                (swap! calls inc)
                                                (is (= "anthropic" provider))
                                                (is (= "sk-ant-valid" api-key))
-                                               (case @calls
+                                               (case (long @calls)
                                                  1 (is (nil? (llm.settings/llm-anthropic-api-key))
                                                        "verification should happen before saving the key")
                                                  2 (is (= "sk-ant-valid" (llm.settings/llm-anthropic-api-key))
@@ -497,6 +498,40 @@
     (is (= [{:type :text, :text "solo"}]
            (into [] (#'api/combine-text-parts-xf)
                  [{:type :text, :text "solo"}])))))
+
+(defn- store-and-check!
+  "Helper: call store-native-parts! with the given provider setting, return the stored message."
+  [provider]
+  (binding [mb.api/*current-user-id* (mt/user->id :crowberto)]
+    (let [conv-id (str (random-uuid))]
+      (try
+        (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
+          (#'api/store-native-parts!
+           conv-id "internal"
+           [{:type :start :id "msg-1"}
+            {:type :text :text "Hello"}
+            ;; SSE usage parts carry bare model names (from provider API response)
+            {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 100 :completionTokens 50}}
+            {:type :data :data-type "state" :data {:step 1}}
+            {:type :finish}])
+          (t2/select-one :model/MetabotMessage :conversation_id conv-id))
+        (finally
+          (t2/delete! :model/MetabotMessage :conversation_id conv-id)
+          (t2/delete! :model/MetabotConversation :id conv-id))))))
+
+(deftest store-native-parts-ai-proxy-test
+  (testing "metabase/ provider prefix sets ai_proxied true and stores bare model names"
+    (let [msg (store-and-check! "metabase/anthropic/claude-sonnet-4-6")]
+      (is (true? (:ai_proxied msg)))
+      (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
+             (:usage msg))
+          "usage keys should be bare model names, not metabase/anthropic/...")))
+
+  (testing "BYOK provider (no metabase/ prefix) sets ai_proxied false"
+    (let [msg (store-and-check! "anthropic/claude-sonnet-4-6")]
+      (is (false? (:ai_proxied msg)))
+      (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
+             (:usage msg))))))
 
 (defn- legacy-query
   "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."

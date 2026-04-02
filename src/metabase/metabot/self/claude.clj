@@ -194,35 +194,31 @@
     529 (tru "Anthropic API is overloaded and is asking us to wait")
     (tru "Unhandled error accessing Anthropic API")))
 
-(defn- list-models*
-  [auth]
-  (try
-    (let [res    (core/request-with-proxy "Anthropic"
-                                          auth
-                                          {:method  :get
-                                           :url     "/v1/models"
-                                           :headers {"anthropic-version" "2023-06-01"}})
-          body   (json/decode+kw (:body res))
-          models (reverse (sort-by :created_at (:data body)))]
-      {:models (map #(select-keys % [:id :display_name]) models)})
-    (catch Exception e
-      (core/rethrow-api-error! "anthropic" anthropic-errors e))))
-
 (defn list-models
-  "List available Anthropic models using the configured API key."
-  ([]
-   (list-models* (when-let [api-key (not-empty (llm/llm-anthropic-api-key))]
-                   {:url     (llm/llm-anthropic-api-base-url)
-                    :headers {"x-api-key" api-key}})))
-  ([api-key]
-   (when (str/blank? api-key)
+  "List available Anthropic models.
+  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  ([] (list-models {}))
+  ([{:keys [api-key ai-proxy?]}]
+   (when (and api-key (str/blank? api-key))
      (throw (core/missing-api-key-ex "Anthropic")))
-   (list-models* {:url     (llm/llm-anthropic-api-base-url)
-                  :headers {"x-api-key" api-key}})))
+   (try
+     (let [auth   (core/resolve-auth "Anthropic"
+                                     (when-let [k (or (not-empty api-key) (not-empty (llm/llm-anthropic-api-key)))]
+                                       {:url     (llm/llm-anthropic-api-base-url)
+                                        :headers {"x-api-key" k}})
+                                     ai-proxy?)
+           res    (core/request auth {:method  :get
+                                      :url     "/v1/models"
+                                      :headers {"anthropic-version" "2023-06-01"}})
+           body   (json/decode+kw (:body res))
+           models (reverse (sort-by :created_at (:data body)))]
+       {:models (map #(select-keys % [:id :display_name]) models)})
+     (catch Exception e
+       (core/rethrow-api-error! "anthropic" anthropic-errors e)))))
 
 (mu/defn claude-raw
   "Perform a streaming request to Claude API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
@@ -248,19 +244,19 @@
                       :tool-count (count tools)}
       (try
         (let [api-key  (not-empty (llm/llm-anthropic-api-key))
-              response (core/request-with-proxy "Anthropic"
-                                                (when api-key
-                                                  {:url     (llm/llm-anthropic-api-base-url)
-                                                   :headers {"x-api-key" api-key}})
-                                                {:method  :post
-                                                 :url     "/v1/messages"
-                                                 :as      :stream
-                                                 :headers {"anthropic-version" "2023-06-01"
-                                                           "content-type"      "application/json"}
-                                                 :body    (json/encode req)})]
-          (-> (core/sse-reducible (:body response))
-              ;; `:ai-proxy?` in metadata
-              (with-meta (meta response))))
+              auth     (core/resolve-auth "Anthropic"
+                                          (when api-key
+                                            {:url     (llm/llm-anthropic-api-base-url)
+                                             :headers {"x-api-key" api-key}})
+                                          ai-proxy?)
+              response (core/request auth
+                                     {:method  :post
+                                      :url     "/v1/messages"
+                                      :as      :stream
+                                      :headers {"anthropic-version" "2023-06-01"
+                                                "content-type"      "application/json"}
+                                      :body    (json/encode req)})]
+          (core/sse-reducible (:body response)))
         (catch Exception e
           (core/rethrow-api-error! "anthropic" anthropic-errors e))))))
 
@@ -268,9 +264,7 @@
   "Call Claude API, return AISDK stream"
   [& args]
   (let [raw (apply claude-raw args)]
-    (eduction (comp (claude->aisdk-chunks-xf)
-                    (core/tag-ai-proxied-xf (-> raw meta :ai-proxy?)))
-              raw)))
+    (eduction (claude->aisdk-chunks-xf) raw)))
 
 (comment
   ;; Now just use standard `into` - no core.async needed!

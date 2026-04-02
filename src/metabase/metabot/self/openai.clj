@@ -166,37 +166,33 @@
     500 (tru "OpenAI API is not working but not saying why")
     (tru "Unhandled error accessing OpenAI API")))
 
-(defn- list-models*
-  [auth]
-  (try
-    (let [res (core/request-with-proxy "OpenAI"
-                                       auth
-                                       {:method  :get
-                                        :url     "/v1/models"
-                                        :as      :json
-                                        :headers {"Content-Type" "application/json"}})]
-      {:models (mapv (fn [model]
-                       {:id           (:id model)
-                        :display_name (:id model)})
-                     (reverse (sort-by :created (get-in res [:body :data]))))})
-    (catch Exception e
-      (core/rethrow-api-error! "openai" openai-errors e))))
-
 (defn list-models
-  "List available OpenAI models using the configured API key."
-  ([]
-   (list-models* (when-let [api-key (not-empty (llm/llm-openai-api-key))]
-                   {:url     (llm/llm-openai-api-base-url)
-                    :headers {"Authorization" (str "Bearer " api-key)}})))
-  ([api-key]
-   (when (str/blank? api-key)
+  "List available OpenAI models.
+  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  ([] (list-models {}))
+  ([{:keys [api-key ai-proxy?]}]
+   (when (and api-key (str/blank? api-key))
      (throw (core/missing-api-key-ex "OpenAI")))
-   (list-models* {:url     (llm/llm-openai-api-base-url)
-                  :headers {"Authorization" (str "Bearer " api-key)}})))
+   (try
+     (let [auth (core/resolve-auth "OpenAI"
+                                   (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openai-api-key)))]
+                                     {:url     (llm/llm-openai-api-base-url)
+                                      :headers {"Authorization" (str "Bearer " k)}})
+                                   ai-proxy?)
+           res  (core/request auth {:method  :get
+                                    :url     "/v1/models"
+                                    :as      :json
+                                    :headers {"Content-Type" "application/json"}})]
+       {:models (mapv (fn [model]
+                        {:id           (:id model)
+                         :display_name (:id model)})
+                      (reverse (sort-by :created (get-in res [:body :data]))))})
+     (catch Exception e
+       (core/rethrow-api-error! "openai" openai-errors e)))))
 
 (mu/defn openai-raw
   "Perform a streaming request to OpenAI Responses API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
+  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
     :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
   (let [all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
@@ -219,17 +215,18 @@
                     max-tokens  (assoc :max_tokens max-tokens))]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))
-            response (core/request-with-proxy "OpenAI"
-                                              (when api-key
-                                                {:url     (llm/llm-openai-api-base-url)
-                                                 :headers {"Authorization" (str "Bearer " api-key)}})
-                                              {:method  :post
-                                               :url     "/v1/responses"
-                                               :as      :stream
-                                               :headers {"Content-Type" "application/json"}
-                                               :body    (json/encode req)})]
-        (-> (core/sse-reducible (:body response))
-            (with-meta (meta response))))
+            auth     (core/resolve-auth "OpenAI"
+                                        (when api-key
+                                          {:url     (llm/llm-openai-api-base-url)
+                                           :headers {"Authorization" (str "Bearer " api-key)}})
+                                        ai-proxy?)
+            response (core/request auth
+                                   {:method  :post
+                                    :url     "/v1/responses"
+                                    :as      :stream
+                                    :headers {"Content-Type" "application/json"}
+                                    :body    (json/encode req)})]
+        (core/sse-reducible (:body response)))
       (catch Exception e
         (core/rethrow-api-error! "openai" openai-errors e)))))
 
@@ -237,6 +234,4 @@
   "Call OpenAI API, return AISDK stream."
   [& args]
   (let [raw (apply openai-raw args)]
-    (eduction (comp (openai->aisdk-chunks-xf)
-                    (core/tag-ai-proxied-xf (-> raw meta :ai-proxy?)))
-              raw)))
+    (eduction (openai->aisdk-chunks-xf) raw)))

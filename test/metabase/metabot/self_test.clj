@@ -20,14 +20,21 @@
 
 (deftest ^:parallel parse-provider-model-test
   (testing "parses provider/model format correctly"
-    (is (=? {:provider "anthropic" :model "claude-haiku-4-5"}
+    (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? false}
             (#'self/parse-provider-model "anthropic/claude-haiku-4-5")))
-    (is (=? {:provider "openai" :model "gpt-4.1-mini"}
+    (is (=? {:provider "openai" :model "gpt-4.1-mini" :ai-proxy? false}
             (#'self/parse-provider-model "openai/gpt-4.1-mini")))
-    (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5"}
+    (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5" :ai-proxy? false}
             (#'self/parse-provider-model "openrouter/anthropic/claude-haiku-4-5")))
-    (is (=? {:provider "openrouter" :model "google/gemini-2.5-flash"}
+    (is (=? {:provider "openrouter" :model "google/gemini-2.5-flash" :ai-proxy? false}
             (#'self/parse-provider-model "openrouter/google/gemini-2.5-flash"))))
+  (testing "parses metabase/ prefix (AI proxy)"
+    (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
+            (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
+    (is (=? {:provider "openai" :model "gpt-4.1-mini" :ai-proxy? true}
+            (#'self/parse-provider-model "metabase/openai/gpt-4.1-mini")))
+    (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5" :ai-proxy? true}
+            (#'self/parse-provider-model "metabase/openrouter/anthropic/claude-haiku-4-5"))))
   (testing "throws for invalid formats/models"
     (is (thrown-with-msg? Exception #"Unknown LLM provider: no-slash" (#'self/parse-provider-model "no-slash")))
     (is (thrown-with-msg? Exception #"Unknown LLM provider: " (#'self/parse-provider-model "")))
@@ -67,30 +74,17 @@
                   (throw e))))
             (is (= expected (:tool_choice @captured)))))))))
 
-;;; tag-ai-proxied-xf tests
+;;; ai-proxy? tests
 
-(deftest ^:parallel tag-ai-proxied-xf-test
-  (testing "injects :ai-proxy? onto :start chunks only"
-    (let [chunks [{:type :start :messageId "msg-1"}
-                  {:type :text-delta :id "t1" :delta "hi"}
-                  {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]]
-      (is (= [{:type :start :messageId "msg-1" :ai-proxy? true}
-              {:type :text-delta :id "t1" :delta "hi"}
-              {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
-             (into [] (self.core/tag-ai-proxied-xf true) chunks)))
-      (is (= [{:type :start :messageId "msg-1" :ai-proxy? false}
-              {:type :text-delta :id "t1" :delta "hi"}
-              {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
-             (into [] (self.core/tag-ai-proxied-xf false) chunks)))))
-  (testing ":ai-proxy? on :start chunk survives aisdk-xf"
-    (let [chunks [{:type :start :messageId "msg-1" :ai-proxy? true}
-                  {:type :text-start :id "t1"}
-                  {:type :text-delta :id "t1" :delta "hello"}
-                  {:type :text-end :id "t1"}
-                  {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]
-          parts  (into [] (self.core/aisdk-xf) chunks)]
-      (is (true? (:ai-proxy? (first parts))))
-      (is (= :start (:type (first parts)))))))
+(deftest ^:parallel ai-proxy?-test
+  (testing "returns true for metabase/ prefixed providers"
+    (is (true? (self/ai-proxy? "metabase/anthropic/claude-haiku-4-5")))
+    (is (true? (self/ai-proxy? "metabase/openai/gpt-4.1-mini"))))
+  (testing "returns false for direct providers"
+    (is (false? (self/ai-proxy? "anthropic/claude-haiku-4-5")))
+    (is (false? (self/ai-proxy? "openrouter/anthropic/claude-haiku-4-5"))))
+  (testing "returns false for nil"
+    (is (false? (self/ai-proxy? nil)))))
 
 ;;; utils tests
 

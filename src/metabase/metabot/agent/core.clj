@@ -448,16 +448,21 @@
   Also sets `:model` on the part to `provider-and-model` so downstream consumers
   (e.g. `extract-usage`) key usage by the canonical provider/model string rather
   than the raw model name returned by the API.
+
+  The `metabase/` routing prefix is stripped so usage keys reflect the actual
+  provider/model (e.g. `openrouter/anthropic/claude-haiku-4-5`) regardless of
+  whether the request was routed through the AI proxy.
   Non-usage parts pass through unchanged."
   [usage-atom provider-and-model]
-  (map (fn [{:keys [usage] :as part}]
-         (if (= (:type part) :usage)
-           (let [model (or provider-and-model "unknown")]
+  (let [model (or (some-> provider-and-model (str/replace-first #"^metabase/" ""))
+                  "unknown")]
+    (map (fn [part]
+           (if (= (:type part) :usage)
              (assoc part
                     :model model
-                    :usage (-> (swap! usage-atom update model (partial merge-with +) usage)
-                               (get model))))
-           part))))
+                    :usage (-> (swap! usage-atom update model (partial merge-with +) (:usage part))
+                               (get model)))
+             part)))))
 
 (defn- loop-step
   "Execute one iteration of the agent loop. Returns next loop state.

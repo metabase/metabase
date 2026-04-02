@@ -48,7 +48,8 @@
                                (= (:type %) "state"))
                          messages)
         messages (-> (remove #(or (= % state) (= % finish)) messages)
-                     vec)]
+                     vec)
+        ai-proxy? (metabot.self/ai-proxy? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                               (constantly (cond-> {:user_id    api/*current-user-id*}
                                             state (assoc :state state))))
@@ -64,7 +65,8 @@
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
                                        (filter map?)
                                        (map #(+ (:prompt %) (:completion %)))
-                                       (apply +))})))
+                                       (apply +))
+                 :ai_proxied      (boolean ai-proxy?)})))
 
 (defn- extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
@@ -84,12 +86,6 @@
    {}
    parts))
 
-(defn- extract-ai-proxied
-  "Read `:ai-proxy?` from the `:start` part emitted by the provider adapter.
-  Returns `nil` when no `:start` part is present (shouldn't happen in practice)."
-  [parts]
-  (:ai-proxy? (u/seek #(= :start (:type %)) parts)))
-
 (defn- store-native-parts!
   "Store assistant response parts directly to the database.
 
@@ -102,7 +98,7 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
-        ai-proxy?  (extract-ai-proxied parts)
+        ai-proxy?  (metabot.self/ai-proxy? (metabot.settings/llm-metabot-provider))
         ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
         ;; :data is like `:navigate_to`
         content    (->> parts

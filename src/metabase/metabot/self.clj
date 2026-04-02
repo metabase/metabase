@@ -42,19 +42,30 @@
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
+(defn ai-proxy?
+  "Returns true when the provider-and-model string uses the Metabase AI proxy
+  (i.e. starts with `metabase/`)."
+  [provider-and-model]
+  (boolean (some-> provider-and-model (str/starts-with? "metabase/"))))
+
 (defn- parse-provider-model [s]
-  (let [[prov model] (str/split s #"/" 2)]
-    {:provider  prov
-     :stream-fn (resolve-adapter prov)
-     :model     model}))
+  (let [[first-seg rest-seg] (str/split s #"/" 2)
+        ;; metabase/anthropic/model → provider=anthropic, model=model
+        [prov model] (if (= first-seg "metabase")
+                       (str/split rest-seg #"/" 2)
+                       [first-seg rest-seg])]
+    {:provider   prov
+     :stream-fn  (resolve-adapter prov)
+     :model      model
+     :ai-proxy?  (= first-seg "metabase")}))
 
 (defn list-models
   "List available models for a provider using its configured API key,
   or an override API key when provided."
   ([provider]
    ((resolve-model-lister provider)))
-  ([provider {:keys [api-key]}]
-   ((resolve-model-lister provider) api-key)))
+  ([provider opts]
+   ((resolve-model-lister provider) opts)))
 
 ;;; General LLM calling
 ;; Matches the Python ai-service retry behavior:
@@ -259,11 +270,11 @@
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
   ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
-   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
+   (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
      (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
-                              :tool-choice tool-choice})
+                              :tool-choice tool-choice :ai-proxy? ai-proxy?})
      (let [tracking-opts  (assoc tracking-opts :model provider-and-model)
-           streaming-opts (cond-> {:model model :input parts :tools (vals tools)}
+           streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
                             system-msg        (assoc :system system-msg)
                             (and (seq tools)
                                  tool-choice) (assoc :tool_choice tool-choice))
@@ -303,14 +314,15 @@
 
   Returns the parsed JSON map from the forced tool call."
   [provider-and-model messages json-schema temperature max-tokens tracking-opts]
-  (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
+  (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
         _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
         tracking-opts  (assoc tracking-opts :model provider-and-model)
         streaming-opts {:model       model
                         :input       messages
                         :schema      json-schema
                         :temperature temperature
-                        :max-tokens  max-tokens}]
+                        :max-tokens  max-tokens
+                        :ai-proxy?   ai-proxy?}]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
                       :msg-count (count messages)}
