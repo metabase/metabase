@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.premium-features.settings :as settings]
    [metabase.premium-features.token-check :as token-check]
    [metabase.task.core :as task]
@@ -27,8 +28,9 @@
 (task/defjob ^{:doc "Send metering events for billing purposes"}
   SendMeteringEvents
   [_]
-  (log/debug "Running metering events task")
-  (token-check/send-metering-events!))
+  (checkout-tracking/with-checkout-reason :metering
+    (log/debug "Running metering events task")
+    (token-check/send-metering-events!)))
 
 (def ^:private job-key "metabase.task.send-metering.job")
 (def ^:private trigger-key "metabase.task.send-metering.trigger")
