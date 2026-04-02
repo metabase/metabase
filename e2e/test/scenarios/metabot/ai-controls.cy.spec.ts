@@ -6,7 +6,7 @@ const { H } = cy;
 const TINY_PNG_DATA_URI =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
-describe("AI Controls admin settings", () => {
+describe("AI Controls > Metabot access and customization", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -65,7 +65,45 @@ describe("AI Controls admin settings", () => {
     });
   });
 
-  describe("Customization page", () => {
+  describe("Group access controls", () => {
+    it("should not show the Metabot chat icon for users in a group without Metabot access", () => {
+      // First, get the current permissions so we can update only the All Users group
+      cy.request("GET", "/api/ee/ai-controls/permissions").then((response) => {
+        const currentPermissions: Array<{
+          group_id: number;
+          perm_type: string;
+          perm_value: string;
+        }> = response.body.permissions;
+
+        // Set All Users group's metabot permission to "no"
+        const updatedPermissions = currentPermissions.map((p) => {
+          if (
+            p.group_id === ALL_USERS_GROUP_ID &&
+            p.perm_type === "permission/metabot"
+          ) {
+            return { ...p, perm_value: "no" };
+          }
+          return p;
+        });
+
+        cy.request("PUT", "/api/ee/ai-controls/permissions", {
+          permissions: updatedPermissions,
+        });
+      });
+
+      // Sign in as a normal user (who is only in the All Users group)
+      cy.signInAsNormalUser();
+      cy.visit("/");
+
+      // Wait for the navigation bar to be present
+      cy.findByLabelText("Navigation bar").should("be.visible");
+
+      // The Metabot chat icon should not be present
+      H.appBar().find('[aria-label*="Chat with"]').should("not.exist");
+    });
+  });
+
+  describe("Customization", () => {
     it("should save a custom Metabot name", () => {
       cy.intercept("PUT", "/api/setting/metabot-name").as("saveName");
 
@@ -117,9 +155,9 @@ describe("AI Controls admin settings", () => {
 
       // The illustrations section should now appear
       H.main().findByText("Metabot illustrations").should("be.visible");
-      cy.findByRole("switch", { name: /Show Metabot illustrations/ }).should(
-        "be.visible",
-      );
+      cy.findByRole("switch", { name: /Show Metabot illustrations/ })
+        .parent()
+        .should("be.visible");
 
       // The "Remove custom icon" button should be visible
       cy.findByLabelText("Remove custom icon").should("be.visible");
@@ -142,13 +180,15 @@ describe("AI Controls admin settings", () => {
       H.main().findByText("Metabot illustrations").should("be.visible");
 
       // The switch should be ON
-      cy.findByRole("switch", { name: /Show Metabot illustrations/ }).should(
-        "be.checked",
+      cy.findByRole("switch", { name: "Show Metabot illustrations" }).should(
+        "have.attr",
+        "data-checked",
+        "true",
       );
 
       // Toggle illustrations off
       cy.findByRole("switch", {
-        name: /Show Metabot illustrations/,
+        name: "Show Metabot illustrations",
       }).click({ force: true });
 
       cy.wait("@saveIllustrations")
@@ -171,6 +211,33 @@ describe("AI Controls admin settings", () => {
       cy.findByTestId("metabot-empty-chat-info")
         .findByText(/I can help you/)
         .should("be.visible");
+    });
+
+    it("should show the custom Metabot name in the app bar button tooltip", () => {
+      H.updateSetting("metabot-name", "Aria");
+
+      cy.visit("/");
+      cy.findByLabelText("Navigation bar").should("be.visible");
+
+      // The app bar button tooltip/aria-label should reflect the custom name
+      H.appBar()
+        .findByRole("button", { name: /Chat with Aria/ })
+        .should("be.visible");
+    });
+
+    it("should show a custom Metabot icon in the app bar when metabot-icon is set", () => {
+      H.updateEnterpriseSettings({ "metabot-icon": TINY_PNG_DATA_URI });
+
+      cy.visit("/");
+      cy.findByLabelText("Navigation bar").should("be.visible");
+
+      // The custom icon img should be rendered (alt = metabot name)
+      H.appBar()
+        .findByRole("button", { name: /Chat with/ })
+        .within(() => {
+          // When a custom icon is set, MetabotIcon renders an <img> with alt = metabotName
+          cy.get("img").should("be.visible");
+        });
     });
   });
 
@@ -226,71 +293,6 @@ describe("AI Controls admin settings", () => {
       cy.findByRole("textbox", {
         name: /SQL generation prompt instructions/,
       }).should("contain.value", "Always use uppercase SQL keywords.");
-    });
-  });
-
-  describe("Metabot access controls", () => {
-    it("should not show the Metabot chat icon for users in a group without Metabot access", () => {
-      // First, get the current permissions so we can update only the All Users group
-      cy.request("GET", "/api/ee/ai-controls/permissions").then((response) => {
-        const currentPermissions: Array<{
-          group_id: number;
-          perm_type: string;
-          perm_value: string;
-        }> = response.body.permissions;
-
-        // Set All Users group's metabot permission to "no"
-        const updatedPermissions = currentPermissions.map((p) => {
-          if (
-            p.group_id === ALL_USERS_GROUP_ID &&
-            p.perm_type === "permission/metabot"
-          ) {
-            return { ...p, perm_value: "no" };
-          }
-          return p;
-        });
-
-        cy.request("PUT", "/api/ee/ai-controls/permissions", {
-          permissions: updatedPermissions,
-        });
-      });
-
-      // Sign in as a normal user (who is only in the All Users group)
-      cy.signInAsNormalUser();
-      cy.visit("/");
-
-      // Wait for the navigation bar to be present
-      cy.findByLabelText("Navigation bar").should("be.visible");
-
-      // The Metabot chat icon should not be present
-      H.appBar().find('[aria-label*="Chat with"]').should("not.exist");
-    });
-
-    it("should show the custom Metabot name in the app bar button tooltip", () => {
-      H.updateSetting("metabot-name", "Aria");
-
-      cy.visit("/");
-      cy.findByLabelText("Navigation bar").should("be.visible");
-
-      // The app bar button tooltip/aria-label should reflect the custom name
-      H.appBar()
-        .findByRole("button", { name: /Chat with Aria/ })
-        .should("be.visible");
-    });
-
-    it("should show a custom Metabot icon in the app bar when metabot-icon is set", () => {
-      H.updateEnterpriseSettings({ "metabot-icon": TINY_PNG_DATA_URI });
-
-      cy.visit("/");
-      cy.findByLabelText("Navigation bar").should("be.visible");
-
-      // The custom icon img should be rendered (alt = metabot name)
-      H.appBar()
-        .findByRole("button", { name: /Chat with/ })
-        .within(() => {
-          // When a custom icon is set, MetabotIcon renders an <img> with alt = metabotName
-          cy.get("img").should("be.visible");
-        });
     });
   });
 });
