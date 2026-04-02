@@ -16,7 +16,7 @@ export const EChartsRendererRoot = styled.div`
      scrolling on touch devices. We override with auto so the browser handles
      scroll in all directions. Brush selection is gated behind a long-press
      that calls preventDefault on touchmove to reclaim the gesture (see useBrush). */
-  @media (hover: none) {
+  @media (hover: none) and (pointer: coarse) {
     & svg {
       touch-action: auto !important;
     }

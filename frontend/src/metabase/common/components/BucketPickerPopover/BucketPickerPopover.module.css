@@ -10,7 +10,7 @@
 }
 
 /* No hover on touch devices, so always show the button with readable text */
-@media (hover: none) {
+@media (hover: none) and (pointer: coarse) {
   .triggerButton {
     visibility: visible;
     color: var(--mb-color-brand);
