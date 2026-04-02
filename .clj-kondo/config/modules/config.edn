@@ -1004,8 +1004,7 @@
 
   internal-stats
   {:team "UX West"
-   :api  #{metabase.internal-stats.core
-           metabase.internal-stats.metabot}
+   :api  #{metabase.internal-stats.core}
    :uses #{app-db
            models}
    :model-imports #{:model/Card
@@ -1196,7 +1195,6 @@
               config
               documents
               driver
-              internal-stats
               lib
               lib-be
               llm
@@ -1222,7 +1220,7 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -2966,18 +2964,17 @@
               mcp
               metabot}
    :uses    #{api
-              app-db
               lib-be
               metabot
               models
               premium-features
               settings
               task
-              users
               util
               enterprise/dependencies
               enterprise/transforms-python}
-   :model-imports #{:model/Card
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Transform}}
