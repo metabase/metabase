@@ -121,6 +121,16 @@
               {:type :tool-output :id "call-1" :result {:output "2025-02-13T14:00:00+02:00"}}
               {:type :text :text "It's 2:00 PM in Kyiv."}])))))
 
+(deftest ^:parallel parts->claude-messages-nil-arguments-test
+  (testing "tool call with nil arguments defaults to empty object"
+    (is (=? [{:role    "assistant"
+              :content [{:type  "tool_use"
+                         :id    "call-1"
+                         :name  "todo_read"
+                         :input {}}]}]
+            (claude/parts->claude-messages
+             [{:type :tool-input :id "call-1" :function "todo_read" :arguments nil}])))))
+
 (deftest ^:parallel parts->claude-messages-error-result-test
   (testing "tool error is formatted as error string"
     (is (=? [{:role    "user"
