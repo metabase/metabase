@@ -698,7 +698,7 @@
     (some (fn [[route handler metadata route-path]]
             (when-let [route-params (clout/route-matches route request)]
               (request/set-matched-route!
-               (str (str/upper-case (name request-method)) " " (:matched-route-prefix request) route-path))
+               (str (u/upper-case-en (name request-method)) " " (:matched-route-prefix request) route-path))
               [(-> request
                    (assoc :route-params (decode-route-params route-params))
                    (assoc :route-metadata metadata))
