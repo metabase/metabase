@@ -207,7 +207,7 @@
     all-collections?          :all_collections
     data-model?               :data_model
     settings?                 :settings
-    continue-on-erhrror?        :continue_on_error
+    continue-on-error?        :continue_on_error
     full-stacktrace?          :full_stacktrace
     :as                       _query-params}
    :- [:map
