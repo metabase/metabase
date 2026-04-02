@@ -671,7 +671,8 @@
   []
   (and (has-feature? :admin-security-center)
        (not (is-trial?))
-       (not (premium-features.settings/is-hosted?))))
+       (or config/is-dev?
+           (not (premium-features.settings/is-hosted?)))))
 
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."
