@@ -96,7 +96,7 @@
   (when (sequential? x)
     (if ((some-fn map? nil?) (second x))
       x
-      (into [(first x) {}] (rest x)))))
+      (into [(first x) {:lib/uuid (str (random-uuid))}] (rest x)))))
 
 ;;; TODO: Support options more nicely - these don't allow for overriding the options, but we have a few cases where that
 ;;; is necessary. See for example the inclusion of `string-filter-options` in [[metabase.lib.filter]].

@@ -15,6 +15,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -289,12 +290,17 @@
   ;; I haven't figured out what that is yet
   (field->clause field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
 
+(defn- maybe->pMBQL [driver mbql]
+  (cond-> mbql
+    (isa? driver/hierarchy driver :sql-mbql5) (lib/->pMBQL)))
+
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an appropriate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
   (->> (field->field-filter-clause driver field param-type value)
+       (maybe->pMBQL driver)
        (sql.qp/->honeysql driver)
        (honeysql->replacement-snippet-info driver)
        :replacement-snippet))
@@ -318,7 +324,7 @@
             (update x :replacement-snippet
                     (partial str (field->identifier driver field param-type value) " ")))
           (->honeysql [form]
-            (sql.qp/->honeysql driver form))]
+            (sql.qp/->honeysql driver (maybe->pMBQL driver form)))]
     (cond
       (params.ops/operator? param-type)
       #_{:clj-kondo/ignore [:deprecated-var]}
@@ -362,6 +368,7 @@
   (if (str/blank? alias)
     replacement-snippet-info
     (let [[old-name] (->> (field->clause field nil)
+                          (maybe->pMBQL driver)
                           (sql.qp/->honeysql driver)
                           (sql.qp/format-honeysql driver))]
       (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))
@@ -403,12 +410,11 @@
 
 (defmethod ->replacement-snippet-info [:sql TemporalUnit]
   [driver {:keys [value field alias]}]
-  (let [replacement-snippet-info
-        (honeysql->replacement-snippet-info
-         driver
-         (sql.qp/->honeysql driver
-                            (field->clause field (when (not= value params/no-value)
-                                                   {:temporal-unit (keyword value)}))))]
+  (let [replacement-snippet-info (->> (field->clause field (when (not= value params/no-value)
+                                                             {:temporal-unit (keyword value)}))
+                                      (maybe->pMBQL driver)
+                                      (sql.qp/->honeysql driver)
+                                      (honeysql->replacement-snippet-info driver))]
     (replace-alias driver field alias replacement-snippet-info)))
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
