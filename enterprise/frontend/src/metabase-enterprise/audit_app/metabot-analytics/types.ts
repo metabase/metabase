@@ -9,9 +9,9 @@ export type MetabotSummary = {
 
 export type MetabotUserInfo = {
   id: number;
-  email: string | null;
-  first_name: string | null;
-  last_name: string | null;
+  email?: string;
+  first_name?: string | null;
+  last_name?: string | null;
 };
 
 export type ConversationSummary = {

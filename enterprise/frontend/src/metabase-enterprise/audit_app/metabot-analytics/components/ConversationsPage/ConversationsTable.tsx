@@ -8,10 +8,13 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
+import { getUserName } from "metabase/lib/user";
 import { Badge, Box, Ellipsified, Flex } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api";
 
 import type { ConversationSortColumn, ConversationSummary } from "../../types";
+
+import S from "./ConversationsTable.module.css";
 
 type Props = {
   conversations: ConversationSummary[];
@@ -22,17 +25,6 @@ type Props = {
     options: SortingOptions<ConversationSortColumn>,
   ) => void;
 };
-
-function getUserDisplayName(convo: ConversationSummary): string {
-  if (convo.user) {
-    const { first_name, last_name, email } = convo.user;
-    if (first_name || last_name) {
-      return [first_name, last_name].filter(Boolean).join(" ");
-    }
-    return email ?? t`Unknown`;
-  }
-  return t`Unknown`;
-}
 
 export function ConversationsTable({
   conversations,
@@ -51,7 +43,7 @@ export function ConversationsTable({
   };
 
   return (
-    <table className={cx(AdminS.ContentTable, CS.mt2)}>
+    <table className={cx(AdminS.ContentTable, S.table)}>
       <thead>
         <tr>
           <th>{t`User`}</th>
@@ -71,12 +63,16 @@ export function ConversationsTable({
             sortingOptions={sortingOptions}
             onSortingOptionsChange={onSortingOptionsChange}
           >{t`Tokens`}</SortableColumnHeader>
+          <th>{t`Cost`}</th>
+          <th>{t`Queries`}</th>
+          <th>{t`Searches`}</th>
+          <th>{t`IP`}</th>
         </tr>
       </thead>
       <tbody>
         {showLoadingAndError && (
           <tr>
-            <td colSpan={5}>
+            <td colSpan={9}>
               <LoadingAndErrorWrapper loading={isLoading} error={error} />
             </td>
           </tr>
@@ -86,7 +82,7 @@ export function ConversationsTable({
           <>
             {conversations.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={9}>
                   <Flex c="text-tertiary" justify="center">
                     {t`No conversations found`}
                   </Flex>
@@ -100,7 +96,7 @@ export function ConversationsTable({
                 className={CS.cursorPointer}
                 onClick={() => handleRowClick(convo)}
               >
-                <td className={CS.textBold}>{getUserDisplayName(convo)}</td>
+                <td>{convo.user ? getUserName(convo.user) : t`Unknown`}</td>
                 <td>
                   {convo.model && (
                     <Badge size="sm" variant="light">
@@ -119,6 +115,16 @@ export function ConversationsTable({
                 <Box component="td" ta="right">
                   {convo.total_tokens.toLocaleString()}
                 </Box>
+                <Box component="td" ta="right">
+                  {`$${(convo.total_tokens * 0.0001).toFixed(2)}`}
+                </Box>
+                <Box component="td" ta="right">
+                  0
+                </Box>
+                <Box component="td" ta="right">
+                  0
+                </Box>
+                <td>0.0.0.0</td>
               </tr>
             ))}
           </>

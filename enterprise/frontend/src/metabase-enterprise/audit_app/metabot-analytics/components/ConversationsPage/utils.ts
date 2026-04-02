@@ -7,7 +7,7 @@ import type { SortDirection } from "metabase-types/api";
 
 import type { ConversationSortColumn } from "../../types";
 
-export const PAGE_SIZE = 50;
+export const PAGE_SIZE = 25;
 
 const DEFAULT_SORT_COLUMN: ConversationSortColumn = "created_at";
 const DEFAULT_SORT_DIRECTION: SortDirection = "desc";

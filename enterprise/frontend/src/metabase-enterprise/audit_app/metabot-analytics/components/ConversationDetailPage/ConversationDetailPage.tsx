@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
+import { getUserName } from "metabase/lib/user";
 import {
   Anchor,
   Badge,
@@ -18,17 +19,6 @@ import {
 
 import { useGetMetabotConversationQuery } from "../../api";
 import type { ConversationDetail } from "../../types";
-
-function getUserDisplayName(convo: ConversationDetail): string {
-  if (convo.user) {
-    const { first_name, last_name, email } = convo.user;
-    if (first_name || last_name) {
-      return [first_name, last_name].filter(Boolean).join(" ");
-    }
-    return email ?? t`Unknown`;
-  }
-  return t`Unknown`;
-}
 
 function hasSlackMessages(convo: ConversationDetail): boolean {
   return convo.messages.some(
@@ -72,7 +62,9 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     return null;
   }
 
-  const userName = getUserDisplayName(conversation);
+  const userName = conversation.user
+    ? getUserName(conversation.user) || t`Unknown`
+    : t`Unknown`;
   const isSlack = hasSlackMessages(conversation);
   const totalTokens = conversation.messages.reduce(
     (sum, msg) => sum + (msg.total_tokens ?? 0),

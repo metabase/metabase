@@ -8,7 +8,7 @@ import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { Button, Card, Flex, Popover, Select, Text } from "metabase/ui";
+import { Button, Card, Flex, Popover, Select, Stack, Text } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";
 
@@ -90,8 +90,8 @@ export function ConversationsPage({ location }: WithRouterProps) {
   }, [conversations]);
 
   return (
-    <>
-      <Flex gap="md" mt="md" wrap="wrap" align="center">
+    <Stack>
+      <Flex gap="md" wrap="wrap" align="center">
         <Popover
           opened={dateOpened}
           onChange={setDateOpened}
@@ -113,19 +113,19 @@ export function ConversationsPage({ location }: WithRouterProps) {
           </Popover.Dropdown>
         </Popover>
         <Select
-          placeholder={t`User`}
-          data={userOptions}
-          value={user}
-          onChange={(val) => patchUrlState({ user: val, page: 0 })}
+          placeholder={t`Group`}
+          data={groupOptions}
+          value={group}
+          onChange={(val) => patchUrlState({ group: val, page: 0 })}
           clearable
           searchable
           w={180}
         />
         <Select
-          placeholder={t`Group`}
-          data={groupOptions}
-          value={group}
-          onChange={(val) => patchUrlState({ group: val, page: 0 })}
+          placeholder={t`User`}
+          data={userOptions}
+          value={user}
+          onChange={(val) => patchUrlState({ user: val, page: 0 })}
           clearable
           searchable
           w={180}
@@ -140,20 +140,9 @@ export function ConversationsPage({ location }: WithRouterProps) {
         />
       </Flex>
 
-      <Text size="sm" c="text-tertiary" mt="md">
+      <Text size="sm" c="text-tertiary">
         {t`${total} conversations`}
       </Text>
-
-      <Flex justify="flex-end" mt="sm">
-        <PaginationControls
-          onPreviousPage={() => patchUrlState({ page: page - 1 })}
-          onNextPage={() => patchUrlState({ page: page + 1 })}
-          page={page}
-          pageSize={PAGE_SIZE}
-          itemsLength={conversations.length}
-          total={total}
-        />
-      </Flex>
 
       <Card withBorder p={0}>
         <ConversationsTable
@@ -166,6 +155,17 @@ export function ConversationsPage({ location }: WithRouterProps) {
           }
         />
       </Card>
-    </>
+
+      <Flex justify="flex-end">
+        <PaginationControls
+          onPreviousPage={() => patchUrlState({ page: page - 1 })}
+          onNextPage={() => patchUrlState({ page: page + 1 })}
+          page={page}
+          pageSize={PAGE_SIZE}
+          itemsLength={conversations.length}
+          total={total}
+        />
+      </Flex>
+    </Stack>
   );
 }

@@ -2,9 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useGetDatabaseMetadataQuery } from "metabase/api";
-import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
-import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import {
   Button,
   Flex,
@@ -20,33 +18,10 @@ import { ConversationsByDayChart } from "./ConversationsByDayChart";
 import { ConversationsByProfileChart } from "./ConversationsByProfileChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
 import { StatCards } from "./StatCards";
-
-const DEFAULT_DATE = "past30days~";
-
-function getDateLabel(value: string | null): string {
-  if (!value) {
-    return t`Date`;
-  }
-  const parsed = deserializeDateParameterValue(value);
-  if (parsed) {
-    return getDateFilterDisplayName(parsed, { withPrefix: false });
-  }
-  return t`Date`;
-}
-
-function getFilterDays(dateValue: string | null): number {
-  if (!dateValue) {
-    return 30;
-  }
-  const parsed = deserializeDateParameterValue(dateValue);
-  if (parsed?.type === "relative" && parsed.value < 0) {
-    return Math.abs(parsed.value);
-  }
-  return 30;
-}
+import { getDateLabel, getFilterDays } from "./utils";
 
 export function ConversationStatsPage() {
-  const [dateValue, setDateValue] = useState(DEFAULT_DATE);
+  const [dateValue, setDateValue] = useState("past30days~");
   const [dateOpened, setDateOpened] = useState(false);
   const daysNum = getFilterDays(dateValue);
 
@@ -56,7 +31,7 @@ export function ConversationStatsPage() {
 
   return (
     <>
-      <Flex justify="space-between" align="center" mt="lg">
+      <Flex justify="space-between" align="center">
         <Title order={3}>{t`Trends`}</Title>
         <Popover
           opened={dateOpened}
@@ -86,8 +61,8 @@ export function ConversationStatsPage() {
 
       {isLoadingMetadata ? (
         <>
-          <Skeleton h={350} mt="md" />
-          <SimpleGrid cols={2} mt="md">
+          <Skeleton h={350} />
+          <SimpleGrid cols={2} spacing="lg">
             <Skeleton h={350} />
             <Skeleton h={350} />
           </SimpleGrid>
@@ -95,7 +70,7 @@ export function ConversationStatsPage() {
       ) : (
         <>
           <ConversationsByDayChart days={daysNum} />
-          <SimpleGrid cols={2} mt="md">
+          <SimpleGrid cols={2} spacing="lg">
             <ConversationsByUserChart days={daysNum} />
             <ConversationsByProfileChart days={daysNum} />
           </SimpleGrid>

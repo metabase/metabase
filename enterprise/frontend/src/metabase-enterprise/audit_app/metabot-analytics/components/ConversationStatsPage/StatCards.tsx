@@ -2,30 +2,16 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import { Card, SimpleGrid, Skeleton, Text, Title } from "metabase/ui";
+import {
+  formatChangeWithSign,
+  formatNumber,
+} from "metabase/lib/formatting/numbers";
+import { Card, SimpleGrid, Skeleton, Stack, Text } from "metabase/ui";
 
 import { DATABASE_ID } from "../../constants";
 
-function formatNumber(value: number): string {
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`;
-  }
-  if (value >= 1_000) {
-    return value.toLocaleString();
-  }
-  return String(value);
-}
-
-function formatChange(current: number, previous: number): string | null {
-  if (previous === 0) {
-    return null;
-  }
-  const pct = Math.round(((current - previous) / previous) * 100);
-  const sign = pct >= 0 ? "+" : "";
-  return `${sign}${pct}%`;
-}
-
 type StatCardProps = {
+  loading: boolean;
   label: string;
   current: number;
   previous: number;
@@ -33,32 +19,42 @@ type StatCardProps = {
   days: number;
 };
 
-function StatCard({ label, current, previous, format, days }: StatCardProps) {
-  const formatted = format ? format(current) : formatNumber(current);
-  const change = formatChange(current, previous);
+function StatCard({
+  loading,
+  label,
+  current,
+  previous,
+  format,
+  days,
+}: StatCardProps) {
+  if (loading) {
+    return <Skeleton h={100} />;
+  }
+
+  const formatted = format
+    ? format(current)
+    : formatNumber(current, { compact: true });
+  const change =
+    previous !== 0 ? formatChangeWithSign((current - previous) / previous) : "";
 
   return (
-    <Card withBorder p="md">
-      <Text size="sm" c="text-secondary">
-        {label}
-      </Text>
-      <Title order={2} mt="xs">
-        {formatted}
-      </Title>
-      {change != null && (
-        <Text size="xs" c={change.startsWith("+") ? "success" : "error"} mt={4}>
-          {change} {t`vs prior ${days}d`}
+    <Card withBorder p="lg">
+      <Stack gap="sm">
+        <Text c="text-secondary">{label}</Text>
+        <Text fw="bold" size="1.75rem">
+          {formatted}
         </Text>
-      )}
+        {change && (
+          <Text size="sm" c={current >= previous ? "success" : "error"} mt={4}>
+            {change} {t`vs prior ${days}d`}
+          </Text>
+        )}
+      </Stack>
     </Card>
   );
 }
 
-type StatCardsProps = {
-  days: number;
-};
-
-export function StatCards({ days }: StatCardsProps) {
+export function StatCards({ days }: { days: number }) {
   const datasetQuery = useMemo(
     () => ({
       type: "native" as const,
@@ -67,14 +63,22 @@ export function StatCards({ days }: StatCardsProps) {
           SELECT
             SUM(CASE WHEN c.created_at >= CURRENT_DATE - INTERVAL '${days} days' THEN 1 ELSE 0 END) AS curr_conversations,
             SUM(CASE WHEN c.created_at < CURRENT_DATE - INTERVAL '${days} days' THEN 1 ELSE 0 END) AS prev_conversations,
-            (SELECT COALESCE(SUM(CASE WHEN m.created_at >= CURRENT_DATE - INTERVAL '${days} days' THEN m.total_tokens ELSE 0 END), 0)
-             FROM metabot_message m WHERE m.deleted_at IS NULL AND m.created_at >= CURRENT_DATE - INTERVAL '${days * 2} days') AS curr_tokens,
-            (SELECT COALESCE(SUM(CASE WHEN m.created_at < CURRENT_DATE - INTERVAL '${days} days' THEN m.total_tokens ELSE 0 END), 0)
-             FROM metabot_message m WHERE m.deleted_at IS NULL AND m.created_at >= CURRENT_DATE - INTERVAL '${days * 2} days') AS prev_tokens,
-            (SELECT COUNT(CASE WHEN m.created_at >= CURRENT_DATE - INTERVAL '${days} days' THEN 1 END)
-             FROM metabot_message m WHERE m.deleted_at IS NULL AND m.created_at >= CURRENT_DATE - INTERVAL '${days * 2} days') AS curr_messages,
-            (SELECT COUNT(CASE WHEN m.created_at < CURRENT_DATE - INTERVAL '${days} days' THEN 1 END)
-             FROM metabot_message m WHERE m.deleted_at IS NULL AND m.created_at >= CURRENT_DATE - INTERVAL '${days * 2} days') AS prev_messages
+            (SELECT COALESCE(SUM(m.total_tokens), 0)
+             FROM metabot_message m JOIN metabot_conversation mc ON mc.id = m.conversation_id
+             WHERE m.deleted_at IS NULL AND mc.created_at >= CURRENT_DATE - INTERVAL '${days} days') AS curr_tokens,
+            (SELECT COALESCE(SUM(m.total_tokens), 0)
+             FROM metabot_message m JOIN metabot_conversation mc ON mc.id = m.conversation_id
+             WHERE m.deleted_at IS NULL
+               AND mc.created_at >= CURRENT_DATE - INTERVAL '${days * 2} days'
+               AND mc.created_at < CURRENT_DATE - INTERVAL '${days} days') AS prev_tokens,
+            (SELECT COUNT(*)
+             FROM metabot_message m JOIN metabot_conversation mc ON mc.id = m.conversation_id
+             WHERE m.deleted_at IS NULL AND mc.created_at >= CURRENT_DATE - INTERVAL '${days} days') AS curr_messages,
+            (SELECT COUNT(*)
+             FROM metabot_message m JOIN metabot_conversation mc ON mc.id = m.conversation_id
+             WHERE m.deleted_at IS NULL
+               AND mc.created_at >= CURRENT_DATE - INTERVAL '${days * 2} days'
+               AND mc.created_at < CURRENT_DATE - INTERVAL '${days} days') AS prev_messages
           FROM metabot_conversation c
           WHERE c.created_at >= CURRENT_DATE - INTERVAL '${days * 2} days'
         `,
@@ -87,10 +91,7 @@ export function StatCards({ days }: StatCardsProps) {
   const { data, isFetching } = useGetAdhocQueryQuery(datasetQuery);
 
   const stats = useMemo(() => {
-    if (!data?.data?.rows?.[0]) {
-      return null;
-    }
-    const row = data.data.rows[0];
+    const row = data?.data?.rows?.[0] ?? [0, 0, 0, 0, 0, 0];
     return {
       currConversations: Number(row[0]) || 0,
       prevConversations: Number(row[1]) || 0,
@@ -101,43 +102,34 @@ export function StatCards({ days }: StatCardsProps) {
     };
   }, [data]);
 
-  if (isFetching || !stats) {
-    return (
-      <SimpleGrid cols={4} mt="md">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} h={100} />
-        ))}
-      </SimpleGrid>
-    );
-  }
-
-  const currCost = stats.currTokens * 0.0001;
-  const prevCost = stats.prevTokens * 0.0001;
-
   return (
-    <SimpleGrid cols={4} mt="md">
+    <SimpleGrid cols={4}>
       <StatCard
+        loading={isFetching}
         label={t`Conversations`}
         current={stats.currConversations}
         previous={stats.prevConversations}
         days={days}
       />
       <StatCard
+        loading={isFetching}
         label={t`Messages`}
         current={stats.currMessages}
         previous={stats.prevMessages}
         days={days}
       />
       <StatCard
+        loading={isFetching}
         label={t`Tokens`}
         current={stats.currTokens}
         previous={stats.prevTokens}
         days={days}
       />
       <StatCard
+        loading={isFetching}
         label={t`Cost`}
-        current={currCost}
-        previous={prevCost}
+        current={stats.currTokens * 0.0001}
+        previous={stats.prevTokens * 0.0001}
         format={(v) => `$${v.toFixed(2)}`}
         days={days}
       />
