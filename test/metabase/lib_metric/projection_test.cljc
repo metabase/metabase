@@ -301,16 +301,17 @@
 
 ;;; -------------------------------------------------- projectable-dimensions-for-source --------------------------------------------------
 
-(def ^:private source-metric-metadata
-  {:lib/type :metadata/metric :id 1 :name "Test Metric"})
+(def ^:private source-instance
+  "A source instance expression leaf for testing."
+  [:metric {:lib/uuid uuid-1} 1])
 
 (deftest ^:parallel projectable-dimensions-for-source-test
   (testing "returns dims scoped to source with projection-positions"
     (let [definition (assoc definition-with-provider
-                            :projections [{:type :metric :id 1
+                            :projections [{:type :metric :id 1 :lib/uuid uuid-1
                                            :projection [dim-ref-1]}])
           dims (lib-metric.projection/projectable-dimensions-for-source
-                definition source-metric-metadata)]
+                definition source-instance)]
       (is (seq dims))
       (let [dim-with-pos (some #(when (= uuid-1 (:id %)) %) dims)]
         (is (some? dim-with-pos))
@@ -319,7 +320,7 @@
 (deftest ^:parallel projectable-dimensions-for-source-no-projections-test
   (testing "returns dims without positions when no projections for source"
     (let [dims (lib-metric.projection/projectable-dimensions-for-source
-                definition-with-provider source-metric-metadata)]
+                definition-with-provider source-instance)]
       (is (seq dims))
       (doseq [dim dims]
         (is (nil? (:projection-positions dim)))))))
@@ -328,21 +329,24 @@
 
 (deftest ^:parallel project-for-source-creates-new-typed-projection-test
   (testing "project-for-source creates a new typed-projection entry"
-    (let [result (lib-metric.projection/project-for-source
-                  definition-with-provider dimension-1 source-metric-metadata)
+    (let [dim-ref (lib-metric.dimension/reference dimension-1)
+          result (lib-metric.projection/project-for-source
+                  definition-with-provider dim-ref source-instance)
           typed-proj (first (:projections result))]
       (is (= 1 (count (:projections result))))
       (is (= :metric (:type typed-proj)))
       (is (= 1 (:id typed-proj)))
+      (is (= uuid-1 (:lib/uuid typed-proj)))
       (is (= 1 (count (:projection typed-proj)))))))
 
 (deftest ^:parallel project-for-source-appends-to-existing-test
   (testing "project-for-source appends to existing typed-projection"
     (let [definition (assoc definition-with-provider
-                            :projections [{:type :metric :id 1
+                            :projections [{:type :metric :id 1 :lib/uuid uuid-1
                                            :projection [dim-ref-1]}])
+          dim-ref (lib-metric.dimension/reference dimension-2)
           result (lib-metric.projection/project-for-source
-                  definition dimension-2 source-metric-metadata)
+                  definition dim-ref source-instance)
           dim-refs (get-in result [:projections 0 :projection])]
       (is (= 1 (count (:projections result))))
       (is (= 2 (count dim-refs))))))

@@ -279,5 +279,5 @@
     (testing "definition with typed projections"
       (is (nil? (me/humanize (mr/explain ::lib-metric.schema/metric-definition
                                          (assoc valid-definition
-                                                :projections [{:type :metric :id 1
+                                                :projections [{:type :metric :id 1 :lib/uuid uuid-1
                                                                :projection [[:dimension {} uuid-1]]}]))))))))
