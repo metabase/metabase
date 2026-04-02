@@ -61,19 +61,18 @@
       (get matching-query :default)))
 
 (defn- query-read-only!
-  "Execute a HoneySQL query on a read-only appdb connection.
-   Sets the JDBC connection read-only so the driver rejects write statements.
-   Enforced by Postgres and MySQL; H2 treats it as an advisory hint."
+  "Execute a HoneySQL query on a fresh read-only appdb connection.
+   Gets a connection directly from the datasource so setReadOnly is called
+   before any transaction starts — avoids the JDBC restriction against
+   changing read-only mid-transaction."
   [hsql-query]
-  (t2/with-transaction [^java.sql.Connection conn]
-    (if (.isReadOnly conn)
-      (mdb/query hsql-query)
-      (do
-        (.setReadOnly conn true)
-        (try
-          (mdb/query hsql-query)
-          (finally
-            (.setReadOnly conn false)))))))
+  (with-open [^java.sql.Connection conn (.getConnection (mdb/data-source))]
+    (.setReadOnly conn true)
+    (try
+      (t2/with-connection [_ conn]
+        (mdb/query hsql-query))
+      (finally
+        (.setReadOnly conn false)))))
 
 (mu/defn execute-matching-query! :- QueryResult
   "Execute a matching query against the appdb.
