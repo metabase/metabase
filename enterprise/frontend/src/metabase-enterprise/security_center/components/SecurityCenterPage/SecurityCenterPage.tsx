@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting } from "metabase/common/hooks";
 import {
@@ -33,6 +34,8 @@ const DEFAULT_FILTER: AdvisoryFilter = {
 
 export function SecurityCenterPage() {
   const { data: advisories, acknowledgeAdvisory } = useSecurityAdvisories();
+  const [syncAdvisories, { isLoading: isSyncing }] =
+    useSyncSecurityAdvisoriesMutation();
   const [filter, setFilter] = useState<AdvisoryFilter>(DEFAULT_FILTER);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const notificationConfig = useNotificationConfig();
@@ -47,6 +50,17 @@ export function SecurityCenterPage() {
       <Stack gap="lg" className={S.header}>
         <Group gap="sm" align="center">
           <Title order={1}>{t`Security Center`}</Title>
+          <Tooltip label={t`Check now`}>
+            <ActionIcon
+              mt={5}
+              variant="subtle"
+              onClick={() => syncAdvisories()}
+              data-testid="sync-advisories"
+            >
+              <Icon name="sync" className={isSyncing ? S.syncing : undefined} />
+            </ActionIcon>
+          </Tooltip>
+          <Box style={{ flex: 1 }} />
           <Tooltip label={t`Notification settings`}>
             <ActionIcon
               mt={5}
