@@ -8,6 +8,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -65,6 +67,15 @@
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 
+(defn- +check-not-trial
+  "Middleware that returns 402 if the instance is on a trial subscription."
+  [handler]
+  (fn [request respond raise]
+    (when (premium-features/is-trial?)
+      (throw (ex-info (tru "Security Center is not available on trial subscriptions.")
+                      {:status-code 402 :status "error-premium-feature-not-available"})))
+    (handler request respond raise)))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/security-center` routes."
-  (api.macros/ns-handler *ns* api/+check-superuser +auth))
+  (api.macros/ns-handler *ns* +check-not-trial api/+check-superuser +auth))

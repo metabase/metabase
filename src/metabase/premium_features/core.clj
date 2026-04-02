@@ -24,6 +24,8 @@
   assert-has-feature
   assert-has-any-features
   ee-feature-error
+  is-trial?
+  security-center-enabled?
   has-any-features?
   has-feature?
   log-enabled?

@@ -658,6 +658,19 @@
   (when-not (some has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
 
+(defn is-trial?
+  "True if the current premium token is a trial subscription.
+   Returns false if there is no token or the status cannot be fetched."
+  []
+  (-> (-token-status) :trial boolean))
+
+(defn security-center-enabled?
+  "True if the current instance has Security Center access.
+   Requires both the `:admin-security-center` feature flag AND a non-trial subscription."
+  []
+  (and (has-feature? :admin-security-center)
+       (not (is-trial?))))
+
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."
   []
