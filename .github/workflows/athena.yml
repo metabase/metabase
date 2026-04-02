@@ -18,12 +18,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Babashka
-        uses: turtlequeue/setup-babashka@v1.7.0
+        uses: turtlequeue/setup-babashka@2d4df498c7a578b4f3e906283f9af913590bdec7 # v1.7.0
         with:
           babashka-version: 1.12.197
 
       - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           aws-access-key-id: ${{ secrets.AWS_S3_MAVEN_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_S3_MAVEN_SECRET_ACCESS_KEY }}
