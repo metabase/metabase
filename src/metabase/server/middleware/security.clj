@@ -8,7 +8,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
-   [metabase.mcp.settings :as mcp.settings]
+   [metabase.mcp.core :as mcp]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
 
@@ -263,10 +263,10 @@
 (defn access-control-headers
   "Returns headers for CORS requests. Merges embedding SDK origins and MCP app origins."
   [origin approved-origins]
-  (let [mcp-origins       (mcp.settings/mcp-apps-cors-origins)
+  (let [mcp-origins       (mcp/cors-origins)
         all-origins       (str/trim (str approved-origins " " mcp-origins))
         localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
-        mcp-sandbox?       (mcp.settings/mcp-apps-sandbox-origin? origin)]
+        mcp-sandbox?       (mcp/sandbox-origin? origin)]
     (when (or (seq all-origins) localhost-allowed? mcp-sandbox?)
       (merge
        (when (or (approved-origin? origin all-origins) mcp-sandbox?)
