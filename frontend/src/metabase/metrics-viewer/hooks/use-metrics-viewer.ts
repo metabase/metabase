@@ -240,8 +240,8 @@ export function useMetricsViewer({
     }
     return buildRawSeriesFromDefinitions(
       state.definitions,
-      activeTab?.dimensionMapping ?? {},
-      activeTab?.display ?? "line",
+      activeTab.dimensionMapping,
+      activeTab.display,
       resultsByDefinitionId,
       modifiedDefinitions,
       sourceBreakoutColors,
