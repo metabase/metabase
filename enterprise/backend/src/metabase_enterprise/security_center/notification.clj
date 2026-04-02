@@ -91,6 +91,29 @@
                   :event_topic :event/security-advisory-match}
    :handlers     (build-handlers)})
 
+(def ^:private test-advisory
+  "A synthetic advisory used for test notifications so admins can verify delivery."
+  {:advisory_id      "TEST-0000"
+   :severity         :medium
+   :title            "[TEST] Test Notification"
+   :description      "This is a test notification from the Security Center. If you received this, your notification settings are working correctly. No action is required."
+   :match_status     :active
+   :advisory_url     nil
+   :remediation      "No action required — this is only a test."
+   :affected_versions []})
+
+(defn send-test-notification!
+  "Send a test notification through the configured channels so admins can verify
+   delivery without waiting for a real advisory. Does NOT publish an audit event
+   or update any advisory row."
+  []
+  (let [handlers (build-handlers)]
+    (when (empty? handlers)
+      (throw (ex-info "No notification channels are configured."
+                      {:status-code 400})))
+    (log/info "Sending test security center notification")
+    (notification/send-notification! (build-notification test-advisory) :notification/sync? true)))
+
 (defn notify-advisory!
   "Send notifications for a security advisory and update `last_notified_at`.
    Publishes the system event for audit logging, then sends email (to admins or

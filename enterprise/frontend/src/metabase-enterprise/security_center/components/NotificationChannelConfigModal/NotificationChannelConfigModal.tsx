@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { useSendTestNotificationMutation } from "metabase/api/security-center";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { EmailChannelEdit } from "metabase/notifications/channels/EmailChannelEdit";
 import { SlackChannelFieldNew } from "metabase/notifications/channels/SlackChannelFieldNew";
@@ -46,6 +47,8 @@ export function NotificationChannelConfigModal({
   const isSlackConfigured = useSetting("slack-token-valid?");
   const [sendToast] = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [sendTestNotification] = useSendTestNotificationMutation();
+  const [isSendingTest, setIsSendingTest] = useState(false);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -66,6 +69,25 @@ export function NotificationChannelConfigModal({
       setIsSaving(false);
     }
   }, [save, sendToast, onClose]);
+
+  const handleSendTest = useCallback(async () => {
+    setIsSendingTest(true);
+    try {
+      await sendTestNotification().unwrap();
+      sendToast({
+        message: t`Test notification sent`,
+        toastColor: "success",
+      });
+    } catch {
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: t`Failed to send test notification`,
+      });
+    } finally {
+      setIsSendingTest(false);
+    }
+  }, [sendTestNotification, sendToast]);
 
   const emailHasRecipients =
     config.email.sendToAllAdmins || config.email.handler.recipients.length > 0;
@@ -96,24 +118,34 @@ export function NotificationChannelConfigModal({
           updateSlackHandler={updateSlackHandler}
           toggleSlack={toggleSlack}
         />
-        <Flex justify="flex-end" gap="md" mt="md">
+        <Flex justify="space-between" mt="md">
           <Button
             variant="subtle"
-            onClick={() => {
-              resetConfig();
-              onClose();
-            }}
+            leftSection={<Icon name="mail" />}
+            onClick={handleSendTest}
+            loading={isSendingTest}
           >
-            {t`Cancel`}
+            {t`Send test notification`}
           </Button>
-          <Button
-            variant="filled"
-            onClick={handleSave}
-            loading={isSaving}
-            disabled={!canSave}
-          >
-            {t`Save`}
-          </Button>
+          <Group gap="md">
+            <Button
+              variant="subtle"
+              onClick={() => {
+                resetConfig();
+                onClose();
+              }}
+            >
+              {t`Cancel`}
+            </Button>
+            <Button
+              variant="filled"
+              onClick={handleSave}
+              loading={isSaving}
+              disabled={!canSave}
+            >
+              {t`Save`}
+            </Button>
+          </Group>
         </Flex>
       </Stack>
     </Modal>

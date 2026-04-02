@@ -324,6 +324,37 @@
               (notification/notify-advisory! advisory)
               (is (empty? (filter #(= :channel/slack (:channel_type %)) (:handlers @sent)))))))))))
 
+;;; -------------------------------------------- Test notification ----------------------------------------------------
+
+(deftest send-test-notification-sends-via-pipeline-test
+  (testing "send-test-notification! sends a notification with test advisory data"
+    (let [sent (atom nil)]
+      (with-send-redef (fn [notif & _] (reset! sent notif))
+        (notification/send-test-notification!)
+        (is (= :notification/system-event (:payload_type @sent)))
+        (is (= :event/security-advisory-match (get-in @sent [:payload :event_topic])))
+        (let [obj (get-in @sent [:payload :event_info :object])]
+          (is (= "TEST-0000" (:advisory_id obj)))
+          (is (= :medium (:severity obj)))
+          (is (re-find #"(?i)test" (:title obj)))
+          (is (re-find #"(?i)test" (:description obj))))))))
+
+(deftest send-test-notification-does-not-publish-event-test
+  (testing "send-test-notification! does not publish an audit event"
+    (let [published (atom [])]
+      (with-redefs [events/publish-event!               (fn [topic _] (swap! published conj topic))
+                    channel.settings/email-configured?   (constantly true)
+                    notification.send/send-notification! (constantly nil)]
+        (notification/send-test-notification!)
+        (is (empty? @published))))))
+
+(deftest send-test-notification-throws-when-no-channels-test
+  (testing "send-test-notification! throws when no channels are configured"
+    (with-redefs [channel.settings/email-configured?           (constantly false)
+                  settings/security-center-slack-channel        (constantly nil)]
+      (is (thrown-with-msg? Exception #"No notification channels are configured"
+                            (notification/send-test-notification!))))))
+
 ;;; -------------------------------------------- Notification payload -------------------------------------------------
 
 (deftest notification-payload-structure-test
