@@ -14,7 +14,7 @@
    "chatgpt" ["https://*.web-sandbox.oaiusercontent.com"]
 
     ;; vscode-webview:// handled by mcp-sandbox-origin? in security middleware
-   "vscode"  []})
+   "cursor-vscode"  []})
 
 ;;; ------------------------------------------------ Settings ------------------------------------------------
 

@@ -13,7 +13,7 @@ const getMcpClients = () =>
       label: t`Claude`,
     },
     {
-      key: "vscode",
+      key: "cursor-vscode",
       label: t`Cursor and VS Code`,
     },
     {

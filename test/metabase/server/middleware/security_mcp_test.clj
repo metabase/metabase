@@ -47,7 +47,7 @@
 
 (deftest test-mcp-vscode-webview-origin
   (testing "vscode-webview:// origins should be allowed when vscode is enabled"
-    (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients ["vscode"]]
+    (mt/with-temporary-setting-values [mcp-apps-cors-enabled-clients ["cursor-vscode"]]
       (assert-cors-allowed! "vscode-webview://abc123")))
 
   (testing "vscode-webview:// origins should NOT be allowed when vscode is not enabled"

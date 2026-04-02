@@ -13,7 +13,7 @@
 (defn vscode-webview-enabled?
   "Returns true if vscode/cursor is enabled in common MCP apps."
   []
-  (some #{"vscode"} (mcp.settings/mcp-apps-cors-enabled-clients)))
+  (some #{"cursor-vscode"} (mcp.settings/mcp-apps-cors-enabled-clients)))
 
 (defn sandbox-origin?
   "Returns true if the origin matches an enabled MCP client's non-standard sandbox pattern.
