@@ -63,6 +63,15 @@
           (wrap-reload handler {:dirs ["src" "enterprise/backend/src"]}))))
     (catch Exception _ nil)))
 
+(def wrap-remote-api-proxy-dev-mw
+  "In dev, optionally proxy `/api` calls to a remote backend. Returns nil in prod."
+  (try
+    (when (and config/dev-available? (not *compile-files*))
+      (requiring-resolve 'dev.server.middleware.proxy/wrap-remote-api-proxy))
+    (catch Exception e
+      (log/warn e "Failed to load dev remote API proxy middleware")
+      nil)))
+
 (def ^:private middleware
   "Ring async middleware has the form
 
@@ -101,6 +110,7 @@
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
+        wrap-remote-api-proxy-dev-mw                 ; proxies /api/* to remote backend if MB_REMOTE_API_URL is set (dev only)
         ]
        (remove nil?)))
 
