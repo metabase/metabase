@@ -1729,33 +1729,38 @@
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db!
-    (ts/with-temp-dpc [:model/Collection    {coll1-id :id} {:name "Some Collection"}
-                       :model/Collection    {coll2-id :id} {:name "Other Collection"}
-                       :model/Collection    {coll3-id :id} {:name "Third Collection"}
-                       :model/Dashboard     {dash-id :id}  {:name "A Dashboard" :collection_id coll1-id}
-                       :model/Database      {db-id :id}    {}
-                       :model/Card          {card1-id :id} {:name "Some Card", :database_id db-id}
-                       :model/DashboardCard _              {:card_id card1-id :dashboard_id dash-id}
-                       :model/Card          _              {:name          "Dependent Card"
-                                                            :collection_id coll2-id
-                                                            :dataset_query {:type     :query
-                                                                            :database db-id
-                                                                            :query    {:source-table (str "card__" card1-id)}}}
-                       :model/User          user           {:email "dirk@kirk.ir"}
-                       :model/Collection    pcoll          {:name              "Personal Collection"
-                                                            :personal_owner_id (:id user)}
-                       :model/Card          pcard          {:name          "Personal Card"
-                                                            :collection_id (:id pcoll)}
-                       :model/Card          _              {:name          "External Card"
-                                                            :dataset_query {:database db-id
-                                                                            :type     :query
-                                                                            :query    {:source-table (str "card__" (:id pcard))}}}
-                       :model/Card          _              {:name          "Card with parameters"
-                                                            :collection_id coll3-id
-                                                            :parameters    [{:id                   "abc"
-                                                                             :type                 "category"
-                                                                             :values_source_type   "card"
-                                                                             :values_source_config {:card_id card1-id}}]}]
+    (ts/with-temp-dpc [:model/Collection    {coll1-id :id}              {:name "Some Collection"}
+                       :model/Collection    {coll2-id :id}              {:name "Other Collection"}
+                       :model/Collection    {coll3-id :id}              {:name "Third Collection"}
+                       :model/Collection    {clean-coll-id :id
+                                             clean-coll-eid :entity_id} {:name "Clean Collection"}
+                       :model/Dashboard     {dash-id :id}               {:name "A Dashboard" :collection_id coll1-id}
+                       :model/Database      {db-id :id}                 {}
+                       :model/Card          {card1-id :id}              {:name "Some Card", :database_id db-id}
+                       :model/DashboardCard _                           {:card_id card1-id :dashboard_id dash-id}
+                       :model/Card          _                           {:name          "Dependent Card"
+                                                                         :collection_id coll2-id
+                                                                         :dataset_query {:type     :query
+                                                                                         :database db-id
+                                                                                         :query    {:source-table (str "card__" card1-id)}}}
+                       :model/User          user                        {:email "dirk@kirk.ir"}
+                       :model/Collection    pcoll                       {:name              "Personal Collection"
+                                                                         :personal_owner_id (:id user)}
+                       :model/Card          pcard                       {:name          "Personal Card"
+                                                                         :collection_id (:id pcoll)}
+                       :model/Card          _                           {:name          "External Card"
+                                                                         :dataset_query {:database db-id
+                                                                                         :type     :query
+                                                                                         :query    {:source-table (str "card__" (:id pcard))}}}
+                       :model/Card          _                           {:name          "Card with parameters"
+                                                                         :collection_id coll3-id
+                                                                         :parameters    [{:id                   "abc"
+                                                                                          :type                 "category"
+                                                                                          :values_source_type   "card"
+                                                                                          :values_source_config {:card_id card1-id}}]}
+                       :model/Card          {clean-card-eid :entity_id} {:name          "Clean Card"
+                                                                         :collection_id clean-coll-id
+                                                                         :database_id   db-id}]
       (testing "Complain about card not available for exporting"
         (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
           (extract/extract {:targets       [["Collection" coll1-id]]
@@ -1792,7 +1797,20 @@
             (is (some #(str/starts-with? % "Failed to export Cards")
                       (into #{}
                             (map :message)
-                            (messages))))))))))
+                            (messages)))))))
+      (testing "exporting a clean collection works even when other collections have escape issues"
+        (let [extracted (into [] (extract/extract {:targets       [["Collection" clean-coll-id]]
+                                                   :no-settings   true
+                                                   :no-data-model true
+                                                   :no-transforms true}))]
+          (is (= #{clean-coll-eid} (ids-by-model "Collection" extracted)))
+          (is (= #{clean-card-eid} (ids-by-model "Card" extracted)))))
+      (testing "data-model-only export is not blocked by escape analysis"
+        (let [extracted (into [] (extract/extract {:no-collections true
+                                                   :no-settings    true
+                                                   :no-transforms  true}))]
+          (is (seq (filter #(= "Database" (-> % :serdes/meta last :model)) extracted))
+              "Databases should be exported even when cards reference personal collections"))))))
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db!
