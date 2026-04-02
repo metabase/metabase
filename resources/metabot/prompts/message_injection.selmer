@@ -4,10 +4,9 @@ Current date: {{ current_time }}
 In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
 {% if current_user_info %}
 
-<user>
 Here is some information about the user:
 {{ current_user_info|safe }}
-</user>
+
 {% endif %}
 {% if viewing_context %}
 

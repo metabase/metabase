@@ -111,22 +111,3 @@ export const CreateNewQuestionFooter = ({
     </Group>
   </UnstyledButton>
 );
-
-export const MetabotFooter = ({ isSelected, onClick }: ExtraItemProps) => (
-  <UnstyledButton
-    className={S.menuItemWithBorder}
-    onClick={onClick}
-    role="option"
-    aria-selected={isSelected}
-  >
-    <Group gap="sm" wrap="nowrap" align="center">
-      <Icon name="metabot" size={16} c="inherit" />
-      <Stack gap={2}>
-        <Text size="md" lh="lg" c="inherit">{t`Ask Metabot`}</Text>
-        <Text size="sm" c="text-tertiary" lh="md">
-          {t`It wants to help!`}
-        </Text>
-      </Stack>
-    </Group>
-  </UnstyledButton>
-);

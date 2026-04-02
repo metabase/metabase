@@ -14,7 +14,6 @@ import {
   useAdminSetting,
   useAdminSettings,
 } from "metabase/api/utils";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSetting } from "metabase/common/hooks";
 import {
   Badge,
@@ -31,7 +30,6 @@ import type {
   SettingDefinition,
 } from "metabase-types/api";
 
-import { MetabotNavPane } from "./MetabotNavPane";
 import { MetabotProviderApiKey } from "./MetabotProviderApiKey";
 import {
   API_KEY_SETTING_BY_PROVIDER,
@@ -132,102 +130,97 @@ export function MetabotSetup() {
     (!hasConfiguredSettingValue(selectedApiKeySetting) || !!apiKeyError);
 
   return (
-    <AdminSettingsLayout sidebar={<MetabotNavPane />}>
-      <SettingsSection
-        title={
-          <Flex justify="space-between" align="center">
-            <div>{t`Connect to an AI provider`}</div>
-            {isConnected ? (
-              <Badge bg="success" variant="filled" size="sm">
-                {t`Connected`}
-              </Badge>
-            ) : (
-              <Badge
-                bg="background-tertiary"
-                c="text-tertiary"
-                variant="filled"
-                size="sm"
-              >
-                {t`Not connected`}
-              </Badge>
-            )}
-          </Flex>
-        }
-        description={t`Select your AI provider and configure your API key to get started with Metabot.`}
-      >
-        <Stack gap="md">
-          <Select
-            label={t`Provider`}
-            placeholder={t`Select a provider`}
-            description={t`Choose your preferred AI provider.`}
-            data={providerOptions}
-            value={provider}
-            onChange={handleProviderChange}
-            disabled={isEnvSetting}
-            renderOption={({ option }) => (
-              <Group
-                gap="xs"
-                p="sm"
-                justify="space-between"
-                wrap="nowrap"
-                w="100%"
-              >
-                <Text
-                  lh="1rem"
-                  c={option.disabled ? "text-tertiary" : undefined}
-                >
-                  {option.label}
+    <SettingsSection
+      title={
+        <Flex justify="space-between" align="center">
+          <div>{t`Connect to an AI provider`}</div>
+          {isConnected ? (
+            <Badge bg="success" variant="filled" size="sm">
+              {t`Connected`}
+            </Badge>
+          ) : (
+            <Badge
+              bg="background-tertiary"
+              c="text-tertiary"
+              variant="filled"
+              size="sm"
+            >
+              {t`Not connected`}
+            </Badge>
+          )}
+        </Flex>
+      }
+      description={t`Select your AI provider and configure your API key to get started with Metabot.`}
+    >
+      <Stack gap="md">
+        <Select
+          label={t`Provider`}
+          placeholder={t`Select a provider`}
+          description={t`Choose your preferred AI provider.`}
+          data={providerOptions}
+          value={provider}
+          onChange={handleProviderChange}
+          disabled={isEnvSetting}
+          renderOption={({ option }) => (
+            <Group
+              gap="xs"
+              p="sm"
+              justify="space-between"
+              wrap="nowrap"
+              w="100%"
+            >
+              <Text lh="1rem" c={option.disabled ? "text-tertiary" : undefined}>
+                {option.label}
+              </Text>
+              {!isAvailableProvider(option.value as MetabotProvider) && (
+                <Text c="text-tertiary" lh="1rem" size="sm">
+                  {t`Coming soon`}
                 </Text>
-                {!isAvailableProvider(option.value as MetabotProvider) && (
-                  <Text c="text-tertiary" lh="1rem" size="sm">
-                    {t`Coming soon`}
-                  </Text>
-                )}
-              </Group>
-            )}
+              )}
+            </Group>
+          )}
+        />
+
+        {provider && isApiKeyMetabotProvider(provider) && (
+          <MetabotProviderApiKey provider={provider} error={apiKeyError} />
+        )}
+
+        {!needsApiKey && (
+          <Select
+            label={t`Model`}
+            placeholder={
+              provider
+                ? metabotSettingsQuery.isFetching
+                  ? t`Loading models...`
+                  : t`Select a model`
+                : t`Select a provider first`
+            }
+            description={t`Available models are fetched from the selected provider using its configured API key.`}
+            error={modelError}
+            data={modelOptions}
+            value={model}
+            onChange={handleModelChange}
+            disabled={isEnvSetting || needsApiKey}
+            searchable
+            nothingFoundMessage={t`No models found`}
           />
+        )}
 
-          {provider && isApiKeyMetabotProvider(provider) && (
-            <MetabotProviderApiKey provider={provider} error={apiKeyError} />
-          )}
+        {envSettingName && <SetByEnvVar varName={envSettingName} />}
 
-          {!needsApiKey && (
-            <Select
-              label={t`Model`}
-              placeholder={
-                provider
-                  ? metabotSettingsQuery.isFetching
-                    ? t`Loading models...`
-                    : t`Select a model`
-                  : t`Select a provider first`
-              }
-              description={t`Available models are fetched from the selected provider using its configured API key.`}
-              error={modelError}
-              data={modelOptions}
-              value={model}
-              onChange={handleModelChange}
-              disabled={isEnvSetting || needsApiKey}
-              searchable
-              nothingFoundMessage={t`No models found`}
-            />
-          )}
+        {updateMetabotSettingsResult.isLoading && (
+          <Text size="sm" c="text-secondary">
+            {t`Saving provider settings...`}
+          </Text>
+        )}
 
-          {envSettingName && <SetByEnvVar varName={envSettingName} />}
-
-          {updateMetabotSettingsResult.isLoading && (
-            <Text size="sm" c="text-secondary">
-              {t`Saving provider settings...`}
-            </Text>
-          )}
-
-          {saveError && (
-            <Text size="sm" c="error">
-              {saveError}
-            </Text>
-          )}
-        </Stack>
-      </SettingsSection>
-    </AdminSettingsLayout>
+        {saveError && (
+          <Text size="sm" c="error">
+            {saveError}
+          </Text>
+        )}
+      </Stack>
+    </SettingsSection>
   );
 }
 

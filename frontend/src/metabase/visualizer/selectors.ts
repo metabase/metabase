@@ -239,28 +239,6 @@ export const getVisualizerComputedSettingsForFlatSeries = createSelector(
     series.length > 0 ? getComputedSettingsForSeries(series) : {},
 );
 
-export const getVisualizerPrimaryColumn = createSelector(
-  [
-    getVisualizationType,
-    getVisualizerComputedSettings,
-    getVisualizerDatasetColumns,
-  ],
-  (display, settings, columns) => {
-    if (!display) {
-      return undefined;
-    }
-
-    if (isCartesianChart(display)) {
-      const dimensionName = settings["graph.dimensions"]?.[0];
-      if (dimensionName) {
-        return columns.find((column) => column.name === dimensionName);
-      }
-    }
-
-    return undefined;
-  },
-);
-
 export const getTabularPreviewSeries = createSelector(
   [getVisualizerFlatRawSeries],
   (rawSeries) => {

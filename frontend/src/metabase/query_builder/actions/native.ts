@@ -2,6 +2,7 @@ import { createAction } from "redux-actions";
 
 import { Questions } from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
+import { setUIControls } from "metabase/redux/query-builder";
 import { updateUserSetting } from "metabase/redux/settings";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
@@ -22,7 +23,6 @@ import {
 } from "../selectors";
 
 import { updateQuestion } from "./core/updateQuestion";
-import { setUIControls } from "./ui";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
@@ -43,11 +43,10 @@ export const PUSH_DATA_REFERENCE_STACK =
   "metabase/qb/PUSH_DATA_REFERENCE_STACK";
 export const pushDataReferenceStack = createThunkAction(
   PUSH_DATA_REFERENCE_STACK,
-  (item: { type: string; item: unknown }) =>
-    (dispatch: Dispatch, getState: GetState) => {
-      const stack = getDataReferenceStack(getState());
-      dispatch(setDataReferenceStack(stack.concat([item])));
-    },
+  (item: unknown) => (dispatch: Dispatch, getState: GetState) => {
+    const stack = getDataReferenceStack(getState());
+    dispatch(setDataReferenceStack(stack.concat([item])));
+  },
 );
 
 export const OPEN_DATA_REFERENCE_AT_QUESTION =
@@ -141,14 +140,17 @@ export const insertSnippet =
       return;
     }
     const query = question.legacyNativeQuery() as NativeQuery;
-    const nativeEditorCursorOffset = getNativeEditorCursorOffset(getState());
-    const nativeEditorSelectedText = getNativeEditorSelectedText(getState());
+    const queryText = query.queryText();
+    const nativeEditorCursorOffset =
+      getNativeEditorCursorOffset(getState()) ?? queryText.length;
+    const nativeEditorSelectedText =
+      getNativeEditorSelectedText(getState()) ?? "";
     const selectionStart =
-      nativeEditorCursorOffset - (nativeEditorSelectedText || "").length;
+      nativeEditorCursorOffset - nativeEditorSelectedText.length;
     const newText =
-      query.queryText().slice(0, selectionStart) +
+      queryText.slice(0, selectionStart) +
       `{{snippet: ${name}}}` +
-      query.queryText().slice(nativeEditorCursorOffset);
+      queryText.slice(nativeEditorCursorOffset);
     const datasetQuery = query.setQueryText(newText).datasetQuery();
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };

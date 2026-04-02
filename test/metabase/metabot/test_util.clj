@@ -53,10 +53,14 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn make-sse
-  "Encode a sequence of values as an SSE data stream string."
+  "Encode a sequence of values as an SSE data stream string.
+  Includes `event:` lines like the real Anthropic/OpenAI APIs do."
   ^String [v]
-  (->> (map json/encode v)
-       (map #(str "data: " % "\n\n"))
+  (->> v
+       (map (fn [item]
+              (let [event-type (or (some-> (:type item) name)
+                                   "message")]
+                (str "event: " event-type "\ndata: " (json/encode item) "\n\n"))))
        (str/join)))
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -141,7 +145,13 @@
                     (reduce [_ rf init]
                       (reduce rf init chunks)))))})
 
+(defn no-arg-tool []
+  {:tool-name "no-arg"
+   :doc       "A tool that takes no arguments."
+   :schema    [:=> [:cat [:map {:closed true}]] :any]
+   :fn        (fn [_] {:output "ok"})})
+
 (def TOOLS
   "Tool map for tests — keyed by tool name string."
-  (let [tool-defs (map #(%) [get-time-tool convert-currency-tool mock-llm-tool])]
+  (let [tool-defs (map #(%) [get-time-tool convert-currency-tool mock-llm-tool no-arg-tool])]
     (into {} (map (juxt :tool-name identity)) tool-defs)))
