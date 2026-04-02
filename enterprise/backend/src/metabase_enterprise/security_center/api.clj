@@ -2,6 +2,7 @@
   "API endpoints for Security Center advisories."
   (:require
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
+   [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase-enterprise.security-center.seed]
    [metabase-enterprise.security-center.settings]
@@ -66,6 +67,12 @@
   (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
+
+(api.macros/defendpoint :post "/test-notification" :- [:map [:success boolean]]
+  "Send a test notification through the configured Security Center channels."
+  []
+  (notification/send-test-notification!)
+  {:success true})
 
 (def +check-security-center-enabled
   "Middleware that returns 402 if Security Center is not available on this instance."

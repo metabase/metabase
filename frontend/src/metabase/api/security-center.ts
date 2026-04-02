@@ -63,6 +63,12 @@ export const securityCenterApi = Api.injectEndpoints({
       }),
       invalidatesTags: [listTag("security-advisory")],
     }),
+    sendTestNotification: builder.mutation<{ success: boolean }, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/security-center/test-notification",
+      }),
+    }),
   }),
 });
 
@@ -70,4 +76,5 @@ export const {
   useListSecurityAdvisoriesQuery,
   useAcknowledgeAdvisoryMutation,
   useSyncSecurityAdvisoriesMutation,
+  useSendTestNotificationMutation,
 } = securityCenterApi;
