@@ -242,7 +242,7 @@
                     :embedding_client embedding-client
                     :embedding_route  embedding-route}))
         result (first (t2/query ["SELECT surface, is_preview FROM v_view_log WHERE id = ?" (:id vl)]))]
-    [(:surface result) (:is_preview result)]))
+    [(:surface result) (boolean (:is_preview result))]))
 
 (deftest surface-case-mapping-test
   (testing "v_view_log SQL view correctly maps embedding_client/embedding_route to surface and is_preview"

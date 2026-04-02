@@ -156,7 +156,7 @@
   [username :- TestUserName]
   (let [session-key  (session/generate-session-key)
         user-id      (user->id username)
-        auth-id      (t2/select-one-pk :model/AuthIdentity :user_id user-id)]
+        auth-id      (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "password")]
     (t2/insert! :model/Session (cond-> {:id (session/generate-session-id)
                                         :key_hashed (session/hash-session-key session-key)
                                         :user_id user-id}

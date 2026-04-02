@@ -128,7 +128,18 @@
                   :started_at       true
                   :running_time     true
                   :embedding_client nil
-                  :embedding_version nil}
+                  :embedding_hostname nil
+                  :embedding_path nil
+                  :embedding_route nil
+                  :embedding_version nil
+                  :auth_method      true
+                  :ip_address       nil
+                  :is_db_routed     false
+                  :is_impersonated  false
+                  :parameters       nil
+                  :tenant_id        nil
+                  :user_agent       nil
+                  :sanitized_user_agent nil}
                  (format-response (most-recent-query-execution-for-query query)))))))))
 
 (deftest failure-test
