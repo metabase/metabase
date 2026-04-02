@@ -29,7 +29,7 @@ export type CreateCustomVisualizationProps<
   getAssetUrl: (assetPath: string) => string;
 
   /**
-   * Metabase instance locale (e.g. "de", "ja", "en").
+   * Locale to render visualization with (e.g. "de", "ja", "en").
    */
   locale: string;
 };
