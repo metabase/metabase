@@ -1,7 +1,9 @@
-import { watch, cpSync, existsSync, readFileSync } from "fs";
-import { createServer } from "http";
+/* eslint-disable no-console, import/no-default-export, @typescript-eslint/no-require-imports */
+import { cpSync, existsSync, readFileSync, watch } from "fs";
+import { type ServerResponse, createServer } from "http";
 import { createRequire } from "module";
 import { resolve } from "path";
+
 import { defineConfig } from "vite";
 
 const __require = createRequire(import.meta.url);
@@ -57,7 +59,7 @@ const DEV_PORT = 5174;
  * Metabase's frontend connects to /__sse on the same origin as dev_bundle_url.
  */
 function metabaseDevServer() {
-  const clients = new Set<import("http").ServerResponse>();
+  const clients = new Set<ServerResponse>();
   let landingPageHtml: string | undefined;
   let server: ReturnType<typeof createServer> | null = null;
 

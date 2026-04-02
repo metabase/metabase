@@ -70,9 +70,7 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
-      "frontend/src/custom-viz/src/templates/vite.config.ts",
-      "frontend/src/custom-viz/src/vite-env.d.ts",
-      "frontend/src/custom-viz/vite.config.ts",
+      "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
       "e2e/embedding-sdk-host-apps/**",
@@ -952,7 +950,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/custom-viz/src/templates/index.tsx"],
+    files: ["enterprise/frontend/src/custom-viz/src/templates/index.tsx"],
     rules: {
       "import/no-default-export": "off",
     },

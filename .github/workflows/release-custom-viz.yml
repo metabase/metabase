@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: frontend/src/custom-viz
+        working-directory: enterprise/frontend/src/custom-viz
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
