@@ -46,6 +46,12 @@ on:
         type: boolean
         default: false
 
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+  checks: write
+
 jobs:
   check-version:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -188,8 +194,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
@@ -532,8 +537,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
