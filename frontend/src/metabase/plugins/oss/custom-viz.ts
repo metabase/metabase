@@ -9,9 +9,6 @@ const getDefaultPluginCustomViz = () => ({
   CustomVizFormPage: PluginPlaceholder as ComponentType<any>,
   CustomVizDevelopmentPage: PluginPlaceholder as ComponentType<any>,
 
-  // Chart type section in the sidebar (self-contained; renders nothing in OSS)
-  CustomVizChartTypeSection: PluginPlaceholder as ComponentType<any>,
-
   // Hooks & functions
   useAutoLoadCustomVizPlugin: (_display: string | undefined) => ({
     loading: false,

@@ -26,6 +26,7 @@ function getQueryString({ collectionId }: OptionalParams) {
 }
 
 export const DATA_STUDIO_TABLE_METADATA_TABS = [
+  "details",
   "field",
   "segments",
   "measures",

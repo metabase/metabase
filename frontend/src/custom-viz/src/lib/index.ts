@@ -1,1 +1,1 @@
-export * from "./defineSetting";
+export * from "./createDefineSetting";
