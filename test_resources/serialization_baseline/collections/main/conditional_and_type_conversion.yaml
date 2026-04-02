@@ -16,8 +16,8 @@ dataset_query:
   stages:
   - expressions:
     - - case
-      - default: Budget
-        lib/expression-name: Price Tier
+      - lib/expression-name: Price Tier
+        default: Budget
       - - - - '>'
             - {}
             - - field
@@ -39,8 +39,8 @@ dataset_query:
             - 30
           - Standard
     - - if
-      - default: false
-        lib/expression-name: Is Premium
+      - lib/expression-name: Is Premium
+        default: false
       - - - - '>'
             - {}
             - - field

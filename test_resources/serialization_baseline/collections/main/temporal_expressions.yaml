@@ -70,8 +70,8 @@ dataset_query:
       - lib/expression-name: Parsed Datetime
       - '2024-06-15T10:30:00'
     - - datetime
-      - mode: unix-seconds
-        lib/expression-name: Parsed Unix
+      - lib/expression-name: Parsed Unix
+        mode: unix-seconds
       - - field
         - base-type: type/Integer
         - - Sample Database

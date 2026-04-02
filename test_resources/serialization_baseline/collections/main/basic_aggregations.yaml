@@ -66,8 +66,8 @@ dataset_query:
           - ORDERS
           - PRODUCT_ID
     - - sum
-      - display-name: Total Revenue
-        name: total_revenue
+      - name: total_revenue
+        display-name: Total Revenue
       - - field
         - base-type: type/Float
         - - Sample Database

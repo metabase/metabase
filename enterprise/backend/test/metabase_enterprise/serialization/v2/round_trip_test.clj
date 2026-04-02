@@ -60,7 +60,9 @@
   #{:cache_field_values_schedule
     :metadata_sync_schedule
     :metabase_version
-    ;; result_metadata is recomputed during load and may differ between runs
+    ;; result_metadata is non-deterministic for dashboard/document cards because the Card before-update hook
+    ;; re-computes it without :verified-result-metadata? set. Fixing this properly requires making serdes
+    ;; load set :verified-result-metadata? on Card updates, which is not straightforward.
     :result_metadata})
 
 (defn- strip-base-path [base file]
