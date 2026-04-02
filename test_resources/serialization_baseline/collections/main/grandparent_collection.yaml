@@ -1,8 +1,0 @@
-name: Grandparent Collection
-entity_id: olgKH56lYOjakuobH4zPz
-slug: grandparent_collection
-created_at: '2024-08-28T12:50:13.265991Z'
-serdes/meta:
-- id: olgKH56lYOjakuobH4zPz
-  label: grandparent_collection
-  model: Collection

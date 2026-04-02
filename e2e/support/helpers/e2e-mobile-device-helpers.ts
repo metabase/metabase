@@ -8,6 +8,14 @@ export function enableTouchEmulation() {
     }),
   );
 
+  // Make CSS @media (hover: none) match on emulated touch devices
+  cy.then(() =>
+    Cypress.automation("remote:debugger:protocol", {
+      command: "Emulation.setEmulatedMedia",
+      params: { features: [{ name: "hover", value: "none" }] },
+    }),
+  );
+
   cy.window().its("navigator.maxTouchPoints").should("be.greaterThan", 0);
 }
 
@@ -18,6 +26,57 @@ export function disableTouchEmulation() {
       params: { enabled: false },
     }),
   );
+
+  cy.then(() =>
+    Cypress.automation("remote:debugger:protocol", {
+      command: "Emulation.setEmulatedMedia",
+      params: { features: [] },
+    }),
+  );
+}
+
+export function longPressAndDrag(
+  selector: string,
+  startX: number,
+  startY: number,
+  endX: number,
+  holdMs = LONG_PRESS_MS,
+) {
+  cy.findByTestId(selector).trigger("pointerdown", startX, startY, {
+    force: true,
+    isPrimary: true,
+    button: 0,
+  });
+
+  cy.wait(holdMs);
+
+  cy.findByTestId(selector)
+    .trigger("mousemove", endX, startY)
+    .trigger("mouseup", endX, startY);
+}
+
+export function quickSwipe(
+  selector: string,
+  startX: number,
+  startY: number,
+  endX: number,
+) {
+  cy.findByTestId(selector)
+    .trigger("pointerdown", startX, startY, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .trigger("pointermove", endX, startY, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .trigger("pointerup", endX, startY, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    });
 }
 
 export function longPressAndDrag(
