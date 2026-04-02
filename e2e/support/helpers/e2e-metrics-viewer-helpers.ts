@@ -1,6 +1,11 @@
 export const MetricsViewer = {
   goToViewer: () => cy.visit("/explore"),
-  searchInput: () => cy.findByTestId("metrics-viewer-search-input"),
+  searchInput: () => {
+    // Click the right edge of the container to focus the CodeMirror input
+    // without accidentally hitting a pill (which would trigger the swap-metric flow).
+    cy.findByTestId("metrics-formula-input").click("right");
+    return cy.findByTestId("metrics-viewer-search-input");
+  },
   searchBarPills: () => cy.findAllByTestId("metrics-viewer-search-pill"),
   searchResults: () => cy.findByTestId("metrics-search-results"),
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
@@ -44,4 +49,5 @@ export const MetricsViewer = {
     MetricsViewer.searchBarPills().contains(metricName).rightclick();
     cy.findByText(/Go to metric home page/).click();
   },
+  runButton: () => cy.findByTestId("run-expression-button"),
 };

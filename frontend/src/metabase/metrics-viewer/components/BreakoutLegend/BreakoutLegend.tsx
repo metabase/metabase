@@ -69,6 +69,7 @@ export function BreakoutLegend({
                 <Flex key={item.label} align="center" gap="sm">
                   <Box
                     className={S.dot}
+                    data-testid="breakout-legend-dot"
                     w="0.625rem"
                     h="0.625rem"
                     bdrs="50%"
