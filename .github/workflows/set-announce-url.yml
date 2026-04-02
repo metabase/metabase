@@ -9,6 +9,10 @@ on:
         type: string
         required: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   set-announce-url:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -23,8 +27,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
       - name: Update announcement url
         uses: actions/github-script@v7

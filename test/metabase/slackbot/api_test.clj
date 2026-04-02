@@ -389,16 +389,14 @@
                 (is (=? [{:channel "C123"
                           :thread_ts "1234567890.000001"
                           :text #"(?i).*connect.*slack.*metabase.*"}]
-                        @post-calls)))
-              (testing "DM auth message does not include user mention prefix"
-                (is (not (str/starts-with? (:text (first @post-calls)) "<@")))))))))))
+                        @post-calls))))))))))
 
 (deftest app-mention-unlinked-user-test
-  (testing "POST /events with app_mention from unlinked user sends auth message"
+  (testing "POST /events with app_mention from unlinked user sends ephemeral auth message"
     (tu/with-slackbot-setup
       (doseq [[desc thread-ts expected-thread-ts]
-              [["top-level @mention" nil "1234567890.000002"]
-               ["@mention in thread" "1234567890.000001" "1234567890.000001"]]]
+              [["top-level @mention (no thread)" nil nil]
+               ["@mention in thread"             "1234567890.000001" "1234567890.000001"]]]
         (testing desc
           (let [event-body (cond-> (update tu/base-mention-event :event merge
                                            {:user     "U-UNKNOWN"
@@ -408,18 +406,18 @@
             (tu/with-slackbot-mocks
               {:ai-text "Should not be called"
                :user-id ::tu/no-user}
-              (fn [{:keys [post-calls]}]
+              (fn [{:keys [post-calls ephemeral-calls]}]
                 (is (= "ok" (mt/client :post 200 "metabot/slack/events"
                                        (tu/slack-request-options event-body) event-body)))
-                (u/poll {:thunk #(= 1 (count @post-calls))
+                (u/poll {:thunk #(= 1 (count @ephemeral-calls))
                          :done? true?
                          :timeout-ms 5000})
-                (is (=? {:channel "C123"
-                         :thread_ts expected-thread-ts
-                         :text #"(?i).*connect.*slack.*metabase.*"}
-                        (first @post-calls)))
-                (testing "channel auth message includes user mention prefix"
-                  (is (str/starts-with? (:text (first @post-calls)) "<@U-UNKNOWN>")))))))))))
+                (is (= 0 (count @post-calls)))
+                (is (=? (cond-> {:channel "C123"
+                                 :user    "U-UNKNOWN"
+                                 :text    #"(?i).*connect.*slack.*metabase.*"}
+                          expected-thread-ts (assoc :thread_ts expected-thread-ts))
+                        (first @ephemeral-calls)))))))))))
 
 (deftest slack-id->user-id-test
   (testing "slack-id->user-id only returns active users with sso_source 'slack'"

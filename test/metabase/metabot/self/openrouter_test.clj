@@ -60,6 +60,17 @@
              [{:type :tool-output :id "call-1" :result {:output "Result 1"}}
               {:type :tool-output :id "call-2" :result {:output "Result 2"}}])))))
 
+(deftest ^:parallel parts->cc-messages-nil-arguments-test
+  (testing "tool call with nil arguments defaults to empty object JSON string"
+    (is (=? [{:role       "assistant"
+              :content    nil
+              :tool_calls [{:id       "call-1"
+                            :type     "function"
+                            :function {:name      "todo_read"
+                                       :arguments "{}"}}]}]
+            (openrouter/parts->cc-messages
+             [{:type :tool-input :id "call-1" :function "todo_read" :arguments nil}])))))
+
 (deftest ^:parallel parts->cc-messages-full-conversation-test
   (testing "full conversation with tool round-trip"
     (is (=? [{:role "user"      :content "What time is it in Kyiv?"}

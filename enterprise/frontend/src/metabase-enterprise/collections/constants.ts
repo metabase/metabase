@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import type {
-  BaseEntityId,
   CollectionAuthorityLevelConfig,
   CollectionInstanceAnaltyicsConfig,
-} from "metabase-types/api";
+} from "metabase/collections/types";
+import type { BaseEntityId } from "metabase-types/api";
 
 export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
   type: null,

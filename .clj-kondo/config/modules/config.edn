@@ -216,8 +216,7 @@
 
   analyze
   {:team "Graphy"
-   :api  #{metabase.analyze.core
-           metabase.analyze.query-results}
+   :api  #{metabase.analyze.core}
    :uses #{config
            driver
            lib
@@ -1140,13 +1139,16 @@
 
   mcp
   {:team "Metabot"
-   :api  #{metabase.mcp.api}
+   :api  #{metabase.mcp.api
+           metabase.mcp.core
+           metabase.mcp.init}
    :uses #{agent-api
            api
            config
            oauth-server
            request
            server
+           settings
            system
            util}}
 
@@ -1176,7 +1178,6 @@
               slackbot}
    :uses    #{activity-feed
               analytics
-              analyze
               api
               app-db
               audit-app
@@ -1887,6 +1888,7 @@
            embedding
            initialization-status
            lib-be
+           mcp
            oauth-server
            premium-features
            query-processor
@@ -3300,7 +3302,6 @@
            request
            settings
            sql-tools
-           system
            transforms
            transforms-base
            util
