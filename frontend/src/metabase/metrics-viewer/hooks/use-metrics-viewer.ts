@@ -179,9 +179,6 @@ export function useMetricsViewer({
     loadAndReplaceMeasure,
   } = useViewerState();
 
-  // eslint-disable-next-line no-console
-  console.log("useMetricsViewer", state);
-
   const handleLoadSources = useCallback(
     (request: LoadSourcesRequest) => {
       for (const metricId of request.metricIds) {
