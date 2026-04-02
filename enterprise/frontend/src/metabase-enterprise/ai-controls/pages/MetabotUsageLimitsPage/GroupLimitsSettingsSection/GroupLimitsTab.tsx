@@ -94,7 +94,7 @@ export function GroupLimitsTab({
   } = getLabels(limitPeriod, variant);
 
   return (
-    <Stack gap="xl">
+    <Stack gap="xl" data-testid="group-limits-tab">
       <Text c="text-secondary">{description}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}

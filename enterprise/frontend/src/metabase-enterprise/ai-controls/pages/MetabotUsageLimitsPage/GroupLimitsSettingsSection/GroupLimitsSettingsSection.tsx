@@ -64,6 +64,7 @@ export function GroupLimitsSettingsSection() {
     return (
       <SettingsSection title={t`Group limits`}>
         <GroupLimitsTab
+          data-testid="user-group-limits-tab"
           error={userGroupsError}
           groupLimits={groupLimits ?? []}
           groups={userGroups}

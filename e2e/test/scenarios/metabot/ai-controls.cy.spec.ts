@@ -303,6 +303,13 @@ describe("AI Controls > Metabot access and customization", () => {
 describe("AI controls > AI usage limits", () => {
   const AI_USAGE_LIMITS_URL = "/admin/metabot/1/usage-controls/ai-usage-limits";
 
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+  });
+
   describe("AI Limits settings can be saved properly", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/ee/ai-controls/usage/instance").as(
@@ -344,15 +351,15 @@ describe("AI controls > AI usage limits", () => {
       });
 
       // Type an instance limit value
-      cy.findByPlaceholderText("Unlimited").type("500");
+      cy.findByLabelText(/Total weekly instance limit/).type("500");
       cy.wait("@updateInstanceLimit").then(({ request }) => {
         expect(request.body).to.deep.equal({ max_usage: 500 });
       });
 
       // Type a quota-reached message
-      cy.findByLabelText("Quota-reached message").type(
-        "You have hit the AI usage limit.",
-      );
+      cy.findByLabelText("Quota-reached message")
+        .clear()
+        .type("You have hit the AI usage limit.");
       cy.wait("@saveQuotaMessage").then(({ request }) => {
         expect(request.body).to.deep.equal({
           value: "You have hit the AI usage limit.",
@@ -519,13 +526,13 @@ describe("AI controls > AI usage limits", () => {
       ).should("have.value", "100");
 
       // The section description should explain that users get the highest limit
-      cy.findByRole("heading", { name: "Group limits" })
-        .closest("section, [class*='SettingsSection'], div")
-        .within(() => {
-          cy.contains(
-            /if a user belongs to more than one group.*highest limit/i,
-          ).should("be.visible");
-        });
+      cy.findByTestId("group-limits-tab").within(() => {
+        cy.findByText(
+          /If a user belongs to more than one group, they'll be given the highest limit among all the groups/i,
+        )
+          .scrollIntoView()
+          .should("be.visible");
+      });
     });
 
     it("should not block a user below the effective limit (max across their groups) but block them once it is exceeded", () => {

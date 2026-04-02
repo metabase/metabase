@@ -100,7 +100,7 @@ export function TenantLimitsTab({
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
   return (
-    <Stack gap="xl">
+    <Stack gap="xl" data-testid="tenant-limits-tab">
       <Text c="text-secondary">
         {t`Here you can set total token usage limits for specific tenants. Anything you set here will override the limits set on the instance level.`}
       </Text>
