@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.models.transforms.transform-run :as transform-run]
    [metabase.models.transforms.transform-run-cancelation :as wr.cancelation]
    [metabase.task.core :as task]
@@ -89,14 +90,15 @@
   (log/info "Scheduling the cancelation background task.")
   ;; does not use the Quartz scheduler
   (.scheduleAtFixedRate scheduler
-                        #(try
-                           (log/trace "Checking for canceling items.")
-                           (run! (fn [cancelation]
-                                   (let [id (:run_id cancelation)]
-                                     (try
-                                       (cancel-run! id)
-                                       (catch Throwable t
-                                         (log/error t (str "Error canceling " id))))))
-                                 (wr.cancelation/reducible-canceled-local-runs))
-                           (catch Throwable t
-                             (log/error t "Error while canceling a transform run."))) 0 20 TimeUnit/SECONDS))
+                        #(checkout-tracking/with-checkout-reason :transform-cancel
+                           (try
+                             (log/trace "Checking for canceling items.")
+                             (run! (fn [cancelation]
+                                     (let [id (:run_id cancelation)]
+                                       (try
+                                         (cancel-run! id)
+                                         (catch Throwable t
+                                           (log/error t (str "Error canceling " id))))))
+                                   (wr.cancelation/reducible-canceled-local-runs))
+                             (catch Throwable t
+                               (log/error t "Error while canceling a transform run.")))) 0 20 TimeUnit/SECONDS))

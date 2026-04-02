@@ -16,6 +16,7 @@
    [environ.core :refer [env]]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as analytics]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -443,14 +444,15 @@
                     (do
                       (when (compare-and-set! refresh-in-progress? false true)
                         (future
-                          (try
-                            (do-refresh! token token-hash)
-                            (catch Exception e
-                              (log/error e "Background premium features refresh failed"))
-                            (finally
-                              (reset! refresh-in-progress? false)
-                              (when-let [after *testing-only-call-after-refresh*]
-                                (after))))))
+                          (checkout-tracking/with-checkout-reason :token-check
+                            (try
+                              (do-refresh! token token-hash)
+                              (catch Exception e
+                                (log/error e "Background premium features refresh failed"))
+                              (finally
+                                (reset! refresh-in-progress? false)
+                                (when-let [after *testing-only-call-after-refresh*]
+                                  (after)))))))
                       (:result local-entry))
 
                     ;; Expired (> hard-ttl): synchronous refresh

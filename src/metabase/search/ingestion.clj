@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
@@ -345,7 +346,7 @@
   "Starts the ingestion listener on the queue"
   []
   (when (seq (search.engine/active-engines))
-    (queue/listen! listener-name queue bulk-ingest!
+    (queue/listen! listener-name queue (fn [batch] (checkout-tracking/with-checkout-reason :search-index (bulk-ingest! batch)))
                    {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))
                     :err-handler        (fn [err _]

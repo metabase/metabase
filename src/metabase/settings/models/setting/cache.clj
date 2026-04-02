@@ -4,6 +4,7 @@
   (:require
    [clojure.core :as core]
    [clojure.java.jdbc :as jdbc]
+   [metabase.app-db.checkout-tracking :as checkout-tracking]
    [metabase.app-db.core :as mdb]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -166,7 +167,8 @@
       (when (.tryLock restore-cache-lock)
         (try
           (.set last-update-check (System/nanoTime))
-          (when (cache-out-of-date?)
-            (restore-cache!))
+          (checkout-tracking/with-checkout-reason :settings-cache
+            (when (cache-out-of-date?)
+              (restore-cache!)))
           (finally
             (.unlock restore-cache-lock)))))))
