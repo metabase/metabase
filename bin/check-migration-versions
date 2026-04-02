@@ -48,7 +48,7 @@ elif [[ "$BASE_REF" == "master" ]]; then
   matches=0
   for l in backport double-backport triple-backport; do
     if [[ ",$labels," == *",$l,"* ]]; then
-      ((matches++))
+      matches=$((matches + 1))
     fi
   done
 
