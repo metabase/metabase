@@ -34,6 +34,10 @@ export const MetabotIcon = forwardRef<HTMLImageElement, MetabotIconProps>(
       );
     }
 
-    return <Icon name="metabot" size={size} {...rest} />;
+    return (
+      <Box component="span" display="inline-flex" {...rest}>
+        <Icon name="metabot" size={size} />
+      </Box>
+    );
   },
 );

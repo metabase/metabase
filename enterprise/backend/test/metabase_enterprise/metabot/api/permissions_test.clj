@@ -38,7 +38,7 @@
             (is (= "no" (get by-type "permission/metabot-nql")))
             (is (= "no" (get by-type "permission/metabot-other-tools")))))))))
 
-(deftest ^:parallel update-permissions-test
+(deftest update-permissions-test
   (mt/with-premium-features #{:ai-controls}
     (testing "PUT /api/ee/ai-controls/permissions"
       (testing "requires superuser"
@@ -72,6 +72,18 @@
                 perms    (->> (:permissions response)
                               (filter #(= (:group_id %) group-id)))]
             (is (= all-perm-types (set (map :perm_type perms))))))))))
+
+(deftest ^:parallel user-permissions-with-custom-group-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "GET /api/metabot/permissions/user-permissions"
+      (testing "user in group with custom permissions gets those values"
+        (mt/with-temp [:model/PermissionsGroup           {gid :id} {:name "Test Metabot Perms Group"}
+                       :model/PermissionsGroupMembership _         {:group_id gid :user_id (mt/user->id :rasta)}
+                       :model/MetabotPermissions         _         {:group_id   gid
+                                                                    :perm_type  :permission/metabot-sql-generation
+                                                                    :perm_value :yes}]
+          (let [perms (:permissions (mt/user-http-request :rasta :get 200 "metabot/permissions/user-permissions"))]
+            (is (= "yes" (:metabot-sql-generation perms)))))))))
 
 (deftest ^:parallel admin-endpoints-require-ai-controls-feature-test
   (testing "admin endpoints return 402 without :ai-controls feature"

@@ -51,6 +51,24 @@ export function GeneralLimitsSettingsSection() {
   const { sendErrorToast } = useMetadataToasts();
 
   useEffect(() => {
+    if (savedLimitType != null) {
+      setLimitType(savedLimitType);
+    }
+  }, [savedLimitType]);
+
+  useEffect(() => {
+    if (savedLimitPeriod != null) {
+      setLimitPeriod(savedLimitPeriod);
+    }
+  }, [savedLimitPeriod]);
+
+  useEffect(() => {
+    if (savedQuotaMessage != null) {
+      setQuotaMessage(savedQuotaMessage);
+    }
+  }, [savedQuotaMessage]);
+
+  useEffect(() => {
     if (instanceLimitData) {
       setInstanceLimitInput(
         instanceLimitData.max_usage != null

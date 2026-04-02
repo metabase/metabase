@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
@@ -23,6 +24,7 @@ function setup({
   const onRightClickSelection = jest.fn();
   const onSelectionChange = jest.fn();
 
+  setupUserMetabotPermissionsEndpoint();
   fetchMock.get("path:/api/native-query-snippet", {
     body: snippets,
   });

@@ -230,18 +230,22 @@
      {:current_time "2026-03-25T12:00:00Z"}
      {})))
 
-(deftest custom-instructions-injected-when-set-test
-  (testing "internal/chat template uses metabot-chat-system-prompt"
+(deftest custom-chat-instructions-injected-when-set-test
+  (mt/with-premium-features #{:ai-controls}
     (mt/with-temporary-setting-values [metabot-chat-system-prompt "Always respond in French."]
       (let [rendered (render-template "internal.selmer" all-yes-perms)]
         (is (re-find #"Custom Instructions" rendered))
-        (is (re-find #"Always respond in French" rendered)))))
-  (testing "sql template uses metabot-sql-system-prompt"
+        (is (re-find #"Always respond in French" rendered))))))
+
+(deftest custom-sql-instructions-injected-when-set-test
+  (mt/with-premium-features #{:ai-controls}
     (mt/with-temporary-setting-values [metabot-sql-system-prompt "Always respond in French."]
       (let [rendered (render-template "sql-querying-only.selmer" all-yes-perms)]
         (is (re-find #"Custom Instructions" rendered))
-        (is (re-find #"Always respond in French" rendered)))))
-  (testing "nlq template uses metabot-nlq-system-prompt"
+        (is (re-find #"Always respond in French" rendered))))))
+
+(deftest custom-nlq-instructions-injected-when-set-test
+  (mt/with-premium-features #{:ai-controls}
     (mt/with-temporary-setting-values [metabot-nlq-system-prompt "Always respond in French."]
       (let [rendered (render-template "natural-language-querying-only.selmer" all-yes-perms)]
         (is (re-find #"Custom Instructions" rendered))
