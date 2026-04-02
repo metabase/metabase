@@ -38,7 +38,7 @@ import {
 } from "metabase/ui";
 import type { CustomVizPlugin } from "metabase-types/api";
 
-import { getPluginAssetUrl } from "../custom-viz-plugins";
+import { getPluginAssetUrl } from "../custom-viz-utils";
 
 import S from "./CustomVizPluginsSettingsPage.module.css";
 

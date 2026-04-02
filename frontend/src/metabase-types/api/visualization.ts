@@ -44,7 +44,17 @@ export const isCardDisplayType = (value: unknown): value is CardDisplayType =>
 
 export type CardDisplayType = (typeof cardDisplayTypes)[number];
 
-export type VisualizationDisplay = VirtualCardDisplay | CardDisplayType;
+export type CustomVizDisplayType = `custom:${string}`;
+
+export const isCustomVizDisplay = (
+  value: unknown,
+): value is CustomVizDisplayType =>
+  typeof value === "string" && value.startsWith("custom:");
+
+export type VisualizationDisplay =
+  | VirtualCardDisplay
+  | CardDisplayType
+  | CustomVizDisplayType;
 
 export type TimeseriesDisplayType = Extract<
   CardDisplayType,

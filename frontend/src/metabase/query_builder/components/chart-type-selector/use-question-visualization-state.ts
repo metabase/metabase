@@ -6,9 +6,10 @@ import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import type Question from "metabase-lib/v1/Question";
 import {
   type CardDisplayType,
+  type CustomVizDisplayType,
   type Dataset,
   isCardDisplayType,
-  isVirtualCardDisplayType,
+  isCustomVizDisplay,
 } from "metabase-types/api";
 
 import { groupVisualizationsBySensibility } from "./sensibility-grouping";
@@ -53,16 +54,23 @@ export type GetSensibleVisualizationsProps = {
   result: Dataset | null;
 };
 
+const isSupportedVisualization = (
+  display: string,
+): display is CardDisplayType | CustomVizDisplayType =>
+  isCardDisplayType(display) || isCustomVizDisplay(display);
+
 export const getSensibleVisualizations = ({
   result,
 }: GetSensibleVisualizationsProps) => {
-  const availableVizTypes = Array.from(visualizations.entries())
-    .filter(
-      ([display, config]) =>
-        !config.hidden &&
-        (isCardDisplayType(display) || !isVirtualCardDisplayType(display)),
-    )
-    .map(([vizType]) => vizType as CardDisplayType);
+  const availableVizTypes = Array.from(visualizations.entries()).reduce<
+    (CardDisplayType | CustomVizDisplayType)[]
+  >((types, [vizType, config]) => {
+    if (!config.hidden && isSupportedVisualization(vizType)) {
+      types.push(vizType);
+    }
+
+    return types;
+  }, []);
 
   const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
 

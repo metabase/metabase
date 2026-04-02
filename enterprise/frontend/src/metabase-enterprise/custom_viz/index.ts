@@ -9,12 +9,15 @@ import {
   ManageCustomVisualizationsPage,
 } from "./components/CustomVizPluginsSettingsPage";
 import {
-  getPluginAssetUrl,
-  isCustomVizDisplay,
   loadCustomVizPlugin,
   useAutoLoadCustomVizPlugin,
   useCustomVizPlugins,
 } from "./custom-viz-plugins";
+import {
+  getCustomPluginIdentifier,
+  getPluginAssetUrl,
+  isCustomVizDisplay,
+} from "./custom-viz-utils";
 
 // Registry for custom viz plugins in the GraalJS static-viz context.
 const customVizRegistry: Map<string, any> = new Map();
@@ -27,7 +30,7 @@ function registerCustomVizPlugin(
   const assetMap = assets || {};
   const getAssetUrl = (name: string) => assetMap[name] || "";
   const vizDef = factory({ getAssetUrl });
-  const display = `custom:${identifier}` as VisualizationDisplay;
+  const display = getCustomPluginIdentifier(identifier) as VisualizationDisplay;
   customVizRegistry.set(display, vizDef);
 
   // Register in main visualizations Map so getVisualizationRaw() resolves

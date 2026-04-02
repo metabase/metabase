@@ -11,7 +11,12 @@ import {
   isMetric,
   isState,
 } from "metabase-lib/v1/types/utils/isa";
-import type { CardDisplayType, DatasetData } from "metabase-types/api";
+import {
+  type CardDisplayType,
+  type CustomVizDisplayType,
+  type DatasetData,
+  isCardDisplayType,
+} from "metabase-types/api";
 
 const MAX_RECOMMENDED = 12;
 
@@ -22,14 +27,14 @@ export type VisualizationSensibility =
 
 export type SensibilityGroups = Record<
   VisualizationSensibility,
-  CardDisplayType[]
+  (CardDisplayType | CustomVizDisplayType)[]
 >;
 
 export function groupVisualizationsBySensibility({
   orderedVizTypes,
   data,
 }: {
-  orderedVizTypes: CardDisplayType[];
+  orderedVizTypes: (CardDisplayType | CustomVizDisplayType)[];
   data: DatasetData;
 }): SensibilityGroups {
   const groups: SensibilityGroups = {
@@ -55,7 +60,8 @@ export function groupVisualizationsBySensibility({
   );
   groups.recommended = sensibleRecommendations;
   groups.sensible = groups.sensible.filter(
-    (vizType) => !sensibleRecommendations.includes(vizType),
+    (vizType) =>
+      isCardDisplayType(vizType) && !sensibleRecommendations.includes(vizType),
   );
 
   while (groups.recommended.length > MAX_RECOMMENDED) {
@@ -68,7 +74,8 @@ export function groupVisualizationsBySensibility({
 
 function getRecommendedVisualizations(
   data: DatasetData,
-  sensible: CardDisplayType[],
+  sensible: (CardDisplayType | CustomVizDisplayType)[],
+  // Custom Visualizations are not grouped by sensibility, they will always have their separate group
 ): CardDisplayType[] {
   const { cols, rows } = data;
   const metricCount = cols.filter(isMetric).length;
