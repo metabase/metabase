@@ -14,6 +14,9 @@
   :export?    false
   :doc        false
   :audit      :getter
+  :getter     (fn []
+                (some->> (setting/get-value-of-type :json :security-center-email-recipients)
+                         (mapv #(update % :type keyword))))
   :setter     (fn [new-value]
                 ;; nil is valid (means "all admins"); non-nil must be non-empty
                 (when (and (some? new-value) (empty? new-value))
