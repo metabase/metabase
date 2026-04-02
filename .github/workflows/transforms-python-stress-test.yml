@@ -27,6 +27,8 @@ on:
 permissions:
   id-token: write
   contents: read
+  checks: write
+  actions: read
 
 jobs:
 

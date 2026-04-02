@@ -11,6 +11,8 @@ concurrency:
 permissions:
   id-token: write
   contents: read
+  checks: write
+  actions: read
 
 jobs:
   # Only run if the PR has the minimal-tests label
