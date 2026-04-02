@@ -13,15 +13,13 @@ import { SlackChannelCard } from "./SlackChannelCard/SlackChannelCard";
 type NotificationChannelConfigModalProps = {
   opened: boolean;
   onClose: () => void;
-  resetConfig: () => void;
 };
 
 export function NotificationChannelConfigModal({
   opened,
   onClose,
-  resetConfig,
 }: NotificationChannelConfigModalProps) {
-  const { config, save } = useNotificationConfig();
+  const { config, save, resetConfig } = useNotificationConfig();
 
   const isEmailConfigured = useSetting("email-configured?");
   const isSlackConfigured = useSetting("slack-token-valid?");

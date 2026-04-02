@@ -68,11 +68,7 @@ function setup({
   }));
 
   renderWithProviders(
-    <NotificationChannelConfigModal
-      opened
-      onClose={onClose}
-      resetConfig={resetConfig}
-    />,
+    <NotificationChannelConfigModal opened onClose={onClose} />,
     {
       storeInitialState: { settings: createMockSettingsState(settings) },
     },

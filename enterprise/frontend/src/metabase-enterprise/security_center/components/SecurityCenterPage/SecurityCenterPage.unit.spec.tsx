@@ -23,7 +23,7 @@ function setup(advisories: Advisory[] = []) {
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
-  jest.spyOn(notificationHook, "useNotificationConfig").mockReturnValue({
+  jest.spyOn(notificationHook, "useNotificationConfigState").mockReturnValue({
     config: {
       email: {
         sendToAllAdmins: true,
