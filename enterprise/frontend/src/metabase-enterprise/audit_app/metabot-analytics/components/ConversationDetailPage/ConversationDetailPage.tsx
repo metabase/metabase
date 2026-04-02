@@ -1,0 +1,148 @@
+import type { WithRouterProps } from "react-router";
+import { push } from "react-router-redux";
+import { t } from "ttag";
+
+import { DateTime } from "metabase/common/components/DateTime";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
+import {
+  Anchor,
+  Badge,
+  Card,
+  Flex,
+  Icon,
+  SimpleGrid,
+  Text,
+  Title,
+} from "metabase/ui";
+
+import { useGetMetabotConversationQuery } from "../../api";
+import type { ConversationDetail } from "../../types";
+
+function getUserDisplayName(convo: ConversationDetail): string {
+  if (convo.user) {
+    const { first_name, last_name, email } = convo.user;
+    if (first_name || last_name) {
+      return [first_name, last_name].filter(Boolean).join(" ");
+    }
+    return email ?? t`Unknown`;
+  }
+  return t`Unknown`;
+}
+
+function hasSlackMessages(convo: ConversationDetail): boolean {
+  return convo.messages.some(
+    (msg) => (msg as any).channel_id || (msg as any).slack_msg_id,
+  );
+}
+
+type StatCardProps = {
+  label: string;
+  value: string;
+};
+
+function StatCard({ label, value }: StatCardProps) {
+  return (
+    <Card withBorder p="md">
+      <Text size="sm" c="text-secondary">
+        {label}
+      </Text>
+      <Title order={2} mt="xs">
+        {value}
+      </Title>
+    </Card>
+  );
+}
+
+export function ConversationDetailPage({ params }: WithRouterProps) {
+  const convoId = params.convoId;
+  const dispatch = useDispatch();
+
+  const {
+    data: conversation,
+    isLoading,
+    error,
+  } = useGetMetabotConversationQuery(convoId);
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  if (!conversation) {
+    return null;
+  }
+
+  const userName = getUserDisplayName(conversation);
+  const isSlack = hasSlackMessages(conversation);
+  const totalTokens = conversation.messages.reduce(
+    (sum, msg) => sum + (msg.total_tokens ?? 0),
+    0,
+  );
+  const messageCount = conversation.messages.length;
+  const firstModel = conversation.messages.find(
+    (m) => m.role === "assistant" && m.model,
+  )?.model;
+
+  return (
+    <>
+      <Anchor
+        size="sm"
+        mt="md"
+        onClick={() =>
+          dispatch(push("/admin/metabot/usage-stats/conversations"))
+        }
+        style={{ cursor: "pointer" }}
+      >
+        <Flex align="center" gap={4}>
+          <Icon name="chevronleft" size={12} />
+          {t`Back to conversations`}
+        </Flex>
+      </Anchor>
+
+      <Flex justify="space-between" align="flex-start" mt="md">
+        <div>
+          <Title order={2}>{t`Conversation with ${userName}`}</Title>
+          <Flex gap="sm" mt="xs" align="center">
+            {firstModel && (
+              <Badge size="sm" variant="light">
+                {firstModel}
+              </Badge>
+            )}
+            <Text size="sm" c="text-secondary">
+              <DateTime value={conversation.created_at} unit="day" />
+            </Text>
+          </Flex>
+        </div>
+      </Flex>
+
+      <SimpleGrid cols={4} mt="lg">
+        <StatCard
+          label={t`Total tokens`}
+          value={totalTokens.toLocaleString()}
+        />
+        <StatCard
+          label={t`Cost`}
+          value={`$${(totalTokens * 0.0001).toFixed(2)}`}
+        />
+        <StatCard label={t`Queries run`} value="—" />
+        <StatCard label={t`Messages`} value={String(messageCount)} />
+      </SimpleGrid>
+
+      <Title order={3} mt="xl">{t`Conversation`}</Title>
+      <Card withBorder p="xl" mt="sm">
+        <Flex justify="center" align="center" mih={120} c="text-tertiary">
+          <Text size="lg">
+            {isSlack ? t`TODO: slack conversation` : t`TODO: conversation`}
+          </Text>
+        </Flex>
+      </Card>
+
+      <Title order={3} mt="xl">{t`Queries generated`}</Title>
+      <Card withBorder p="xl" mt="sm">
+        <Flex justify="center" align="center" mih={120} c="text-tertiary">
+          <Text size="lg">{t`TODO: queries`}</Text>
+        </Flex>
+      </Card>
+    </>
+  );
+}
