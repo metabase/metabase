@@ -917,7 +917,7 @@ describe("scenarios > metrics > explorer", () => {
       const colorsBefore: Record<string, string> = {};
 
       H.MetricsViewer.breakoutLegend()
-        .find("[class*=dot]")
+        .findAllByTestId("breakout-legend-dot")
         .each(($dot) => {
           const color = $dot.css("background-color");
           const label = $dot.next().text();
@@ -946,7 +946,7 @@ describe("scenarios > metrics > explorer", () => {
       cy.wait("@dataset");
 
       H.MetricsViewer.breakoutLegend()
-        .find("[class*=dot]")
+        .findAllByTestId("breakout-legend-dot")
         .then(($dots) => {
           expect($dots.length).to.be.lessThan(
             Object.keys(colorsBefore).length,
