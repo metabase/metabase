@@ -168,7 +168,7 @@
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
-(defn- dev-base-url
+(defn dev-base-url
   "Ensure the base URL ends with a slash for proper path joining."
   ^String [^String url]
   (if (str/ends-with? url "/") url (str url "/")))
@@ -185,6 +185,18 @@
       (catch Exception e
         (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
                         {:status-code 502}))))))
+
+(defn fetch-dev-manifest
+  "Fetch and parse the manifest (metabase-plugin.json) from a dev base URL.
+   Returns the parsed manifest map or nil on failure."
+  [^String base-url]
+  (let [url (str (dev-base-url base-url) (manifest/manifest-path))]
+    (try
+      (let [content (slurp (java.net.URI. url))]
+        (manifest/parse-manifest content))
+      (catch Exception e
+        (log/debugf "No manifest at %s: %s" url (ex-message e))
+        nil))))
 
 (defn fetch-dev-asset
   "Fetch a static asset from a dev base URL (appends /assets/<path>).
@@ -242,4 +254,3 @@
   (if-let [dev-url (resolve-dev-bundle plugin-id)]
     (fetch-dev-asset dev-url asset-path)
     (get-asset plugin-id asset-path)))
-
