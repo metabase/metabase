@@ -254,8 +254,10 @@
 ;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check counts every
 ;; request (not just failures) which is correct here — we want to cap total throughput
 ;; regardless of success to prevent resource exhaustion from a compromised token.
+(def ^:private one-minute-ms (* 60 1000))
+
 (def ^:private mcp-throttler
-  (throttle/make-throttler :user-id :attempts-threshold 1000 :attempt-ttl-ms (* 60 1000)))
+  (throttle/make-throttler :user-id :attempts-threshold 1000 :attempt-ttl-ms one-minute-ms))
 
 (defn- check-throttle
   "Returns a 429 JSON-RPC response if rate-limited, nil otherwise."

@@ -112,26 +112,29 @@
 
 ;;; ------------------------------------------------ Throttling ---------------------------------------------------
 
+(def ^:private one-minute-ms (* 60 1000))
+(def ^:private one-hour-ms (* 60 one-minute-ms))
+
 ;; /oauth/token is the highest-risk endpoint: unauthenticated, accepts client credentials,
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
 ;; Per-client_id is tight (one agent per client), per-IP is wider to accommodate many agents
 ;; behind NAT each doing their own token refresh cycle.
 (def ^:private token-throttlers
-  {:client-id  (throttle/make-throttler :client-id :attempts-threshold 10)
-   :ip-address (throttle/make-throttler :ip-address :attempts-threshold 50)})
+  {:client-id  (throttle/make-throttler :client-id :attempts-threshold 10 :attempt-ttl-ms one-hour-ms)
+   :ip-address (throttle/make-throttler :ip-address :attempts-threshold 50 :attempt-ttl-ms one-hour-ms)})
 
 ;; /oauth/register is unauthenticated and creates server-side state (client records).
 ;; Without throttling, an attacker can exhaust storage or generate unlimited client_id/secret pairs.
 ;; Per-IP only since there's no identity at registration time. Threshold allows burst setup of
 ;; several agents without enabling sustained spam.
 (def ^:private registration-throttler
-  (throttle/make-throttler :ip-address :attempts-threshold 10 :attempt-ttl-ms (* 60 1000)))
+  (throttle/make-throttler :ip-address :attempts-threshold 10 :attempt-ttl-ms one-minute-ms))
 
 ;; /oauth/authorize/decision is lower risk (requires authentication + CSRF token),
 ;; but a compromised session could automate consent-granting. A per-user cap limits the blast
 ;; radius while allowing setup of many agents in a single session.
 (def ^:private authorize-decision-throttler
-  (throttle/make-throttler :user-id :attempts-threshold 20))
+  (throttle/make-throttler :user-id :attempts-threshold 20 :attempt-ttl-ms one-hour-ms))
 
 (defn- throttle-response
   "Build a 429 response from a throttle exception, extracting Retry-After when available."
@@ -152,7 +155,9 @@
   `(try
      (throttle/with-throttling ~bindings ~@body)
      (catch ExceptionInfo e#
-       (throttle-response e#))))
+       (if (str/starts-with? (ex-message e#) "Too many attempts!")
+         (throttle-response e#)
+         (throw e#)))))
 
 ;;; ------------------------------------------------ Endpoints ----------------------------------------------------
 
