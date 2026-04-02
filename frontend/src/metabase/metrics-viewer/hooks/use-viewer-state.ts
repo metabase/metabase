@@ -617,11 +617,30 @@ export function useViewerState(): UseViewerStateResult {
           prev.formulaEntities,
           formulaEntities,
         );
-        const tabs = assignDimensionsForUnmappedSlots(
+        let tabs = assignDimensionsForUnmappedSlots(
           reconciledTabs,
           prev.definitions,
           formulaEntities,
         );
+
+        // When tabs are empty (e.g. all metrics were removed then one was
+        // added back), generate default tabs now that formulaEntities includes
+        // the new metric and its definition may already be loaded.
+        if (tabs.length === 0) {
+          const metricSlots = computeMetricSlots(formulaEntities);
+          if (metricSlots.length > 0) {
+            const definitionsBySourceId: Record<
+              MetricSourceId,
+              MetricDefinition | null
+            > = {};
+            for (const [id, entry] of Object.entries(prev.definitions)) {
+              definitionsBySourceId[id as MetricSourceId] =
+                entry.definition ?? null;
+            }
+            tabs = computeDefaultTabs(definitionsBySourceId, metricSlots);
+          }
+        }
+
         return {
           ...prev,
           formulaEntities,

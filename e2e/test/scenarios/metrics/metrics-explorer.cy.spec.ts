@@ -133,7 +133,7 @@ describe("scenarios > metrics > explorer", () => {
    * Add a metric or measure to the explorer via the search panel
    */
   const addMetric = (name: string) => {
-    H.MetricsViewer.searchInput().clear().type(name);
+    H.MetricsViewer.searchInput().type(name);
     H.MetricsViewer.searchResults().findByText(name).click();
   };
 
@@ -165,7 +165,7 @@ describe("scenarios > metrics > explorer", () => {
   /**
    * Intercept and wait for dataset query
    */
-  const intercedptDatasetQuery = () => {
+  const interceptDatasetQuery = () => {
     cy.intercept("POST", "/api/metric/dataset").as("dataset");
   };
 
@@ -258,12 +258,20 @@ describe("scenarios > metrics > explorer", () => {
   // ============================================================================
 
   describe("Entry points", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      cy.intercept("GET", "/api/metric/*").as("getMetric");
+    });
+
     it("should show empty state on first load", () => {
       H.MetricsViewer.goToViewer();
       cy.url().should("include", "/explore");
       cy.findByRole("heading", { name: "Start exploring" }).should("exist");
 
       addMetric("Count of products");
+      cy.wait("@getMetric");
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
 
       cy.log("should persist state in url");
 
@@ -291,6 +299,9 @@ describe("scenarios > metrics > explorer", () => {
       cy.signInAsNormalUser();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
+      cy.wait("@getMetric");
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
 
       H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
       H.popover().should("not.contain", "Edit in Data Studio");
@@ -310,6 +321,9 @@ describe("scenarios > metrics > explorer", () => {
       ]);
       H.MetricsViewer.goToViewer();
       addMetric("Empty Metric");
+      cy.wait("@getMetric");
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
 
       H.MetricsViewer.getMetricVisualization()
         .findByText(/No dice/)
@@ -323,26 +337,29 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Adding metrics and measures", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
+      cy.intercept("GET", "/api/metric/*").as("getMetric");
+      cy.intercept("GET", "/api/measure/*").as("getMeasure");
     });
 
     it("should add multiple metrics", () => {
       H.MetricsViewer.goToViewer();
       addMetric("Count of products");
+      cy.wait("@getMetric");
+      cy.findByTestId("run-expression-button").click();
       cy.wait("@dataset");
+
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(", ");
       addMetric("Count of orders");
+      cy.wait("@getMetric");
+      cy.findByTestId("run-expression-button").click();
       cy.wait("@dataset");
       verifyMetricCount(2);
 
       cy.log("no results");
-      H.MetricsViewer.searchInput().type("xyznonexistent");
-      H.MetricsViewer.searchResults().should(
-        "contain.text",
-        "No results found",
-      );
-
-      cy.log("does not allow duplicates");
-      H.MetricsViewer.searchInput().clear().type("Count of products");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(", xyznonexistent");
       H.MetricsViewer.searchResults().should(
         "contain.text",
         "No results found",
@@ -351,6 +368,7 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Should allow me to add measures");
       H.MetricsViewer.searchInput().clear();
       addMetric("Test Measure");
+      cy.wait("@getMeasure");
     });
 
     it("Should not show me metrics that live in collections I do not have permissions to see", () => {
@@ -391,7 +409,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Breakouts", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
@@ -697,6 +715,69 @@ describe("scenarios > metrics > explorer", () => {
         .children()
         .should("have.length.greaterThan", 1);
     });
+
+    it("should show an expression dimension pill with per-metric accordion", () => {
+      cy.log("Create expression: Count of orders + Count of products");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(
+        ", Count of orders + Count of products",
+      );
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      cy.wait("@getMetric");
+
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
+
+      cy.log(
+        "Dimension pill bar should contain an expression dimension pill with a selected dimension",
+      );
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findByTestId("expression-dimension-pill").should("exist");
+        cy.findByTestId("expression-dimension-pill").should(
+          "not.contain.text",
+          "Select dimensions",
+        );
+      });
+
+      cy.log("Click the expression dimension pill to open the popover");
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .click();
+
+      cy.log(
+        "Popover should show accordion sections for each metric in the expression",
+      );
+      H.popover().within(() => {
+        cy.findAllByTestId("expression-metric-section").should(
+          "have.length",
+          2,
+        );
+        cy.findAllByTestId("expression-metric-header")
+          .eq(0)
+          .should("contain.text", "Count of orders");
+        cy.findAllByTestId("expression-metric-header")
+          .eq(1)
+          .should("contain.text", "Count of products");
+      });
+
+      cy.log(
+        "Expand the second metric section and verify dimension options are shown",
+      );
+      H.popover().findAllByTestId("expression-metric-header").eq(1).click();
+
+      H.popover().within(() => {
+        cy.get("[data-element-id=list-item][aria-selected=false]")
+          .contains(/Created At/)
+          .click();
+      });
+
+      cy.wait("@dataset");
+
+      cy.log("Expression dimension pill should now show 'Multiple dimensions'");
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .should("contain.text", "Multiple dimensions");
+    });
   });
 
   // ============================================================================
@@ -705,9 +786,12 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Tabs", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
+      cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
+      cy.wait("@getMetric");
+      cy.findByTestId("run-expression-button").click();
       cy.wait("@dataset");
     });
 
@@ -749,6 +833,31 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText("State").should("not.exist");
         cy.findByText("Title").should("not.exist");
         cy.findByText("Category").should("not.exist");
+      });
+    });
+
+    it("should auto-assign dimensions for a newly added metric after running the formula", () => {
+      cy.log(
+        "After adding a second metric, all dimension pills should have a selected dimension",
+      );
+
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(", ");
+      addMetric("Count of products");
+      cy.wait("@getMetric");
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
+
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findAllByText("Select a dimension").should("not.exist");
+      });
+
+      cy.log(
+        "Switch to another tab and verify dimensions are assigned there too",
+      );
+      switchToTab("Category");
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findAllByText("Select a dimension").should("not.exist");
       });
     });
 
@@ -890,7 +999,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Automatic split view", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
@@ -939,7 +1048,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Filters", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
@@ -1121,7 +1230,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Drill through", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");

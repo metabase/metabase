@@ -104,6 +104,7 @@ export function ExpressionDimensionPill({
           gap="xs"
           opacity={disabled || isEmpty ? 0.6 : undefined}
           onClick={canOpenPopover ? () => setIsOpen(true) : undefined}
+          data-testid="expression-dimension-pill"
         >
           <SourceColorIndicator colors={item.colors} />
           <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
@@ -244,13 +245,14 @@ function MetricAccordionItem({
   );
 
   return (
-    <Box className={S.accordionItem}>
+    <Box className={S.accordionItem} data-testid="expression-metric-section">
       <UnstyledButton
         className={cx(S.accordionControl, {
           [S.accordionControlExpanded]: showDimensions,
         })}
         onClick={onToggle}
         w="100%"
+        data-testid="expression-metric-header"
       >
         <Flex align="center" gap="sm" px="md">
           <SourceColorIndicator colors={source.colors} size={16} />

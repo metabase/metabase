@@ -555,7 +555,9 @@ describe("expression pill display after committing a formula", () => {
     // Type the expression formula
     const input = screen.getByTestId("metrics-viewer-search-input");
     fireEvent.change(input, {
-      target: { value: "(MetricA + MetricB) / MetricC" },
+      target: {
+        value: `${[metricA, metricB, metricC].map((m) => m.name).join(", ")}, (MetricA + MetricB) / MetricC`,
+      },
     });
 
     // Run button should appear (formula is dirty)
