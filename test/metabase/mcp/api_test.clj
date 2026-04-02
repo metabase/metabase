@@ -522,11 +522,9 @@
 
 (deftest mcp-throttle-returns-429-test
   (testing "MCP endpoint returns 429 with JSON-RPC error when rate-limited"
-    (let [[session-id _] (initialize!)
-          orig           (deref #'mcp.api/mcp-throttler)]
-      (try
-        ;; Replace throttler after initialization so the handshake doesn't consume attempts
-        (alter-var-root #'mcp.api/mcp-throttler (constantly (throttle/make-throttler :user-id :attempts-threshold 1)))
+    (let [[session-id _] (initialize!)]
+      ;; Replace throttler after initialization so the handshake doesn't consume attempts
+      (with-redefs [mcp.api/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)]
         (let [;; First request succeeds (consumes the single attempt)
               first-response (mcp-request (jsonrpc-request "ping")
                                           {"mcp-session-id" session-id})
@@ -540,6 +538,4 @@
           (is (str/starts-with? (get-in throttled-response [:body :error :message]) "Too many attempts!")
               "Error message should indicate rate limiting")
           (is (contains? (:headers throttled-response) "Retry-After")
-              "Response should include Retry-After header"))
-        (finally
-          (alter-var-root #'mcp.api/mcp-throttler (constantly orig)))))))
+              "Response should include Retry-After header"))))))
