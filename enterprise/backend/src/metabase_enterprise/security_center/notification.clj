@@ -10,12 +10,12 @@
    setting."
   (:require
    [metabase-enterprise.security-center.settings :as settings]
-   [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -36,17 +36,30 @@
                   :path           "metabase/channel/email/security_advisory.hbs"
                   :recipient-type "bcc"}})
 
+(defn- admin-emails
+  "Return the email addresses of all active superusers, plus the site admin email if set."
+  []
+  (into (or (t2/select-fn-set :email [:model/User :email]
+                              :is_superuser true
+                              :is_active true)
+            #{})
+        (when-let [admin-email (system/admin-email)]
+          [admin-email])))
+
+(defn- emails->recipients
+  "Wrap a collection of email strings as raw-value notification recipients."
+  [emails]
+  (mapv (fn [email] {:type    :notification-recipient/raw-value
+                     :details {:value email}})
+        emails))
+
 (defn- email-recipients
   "Resolve email recipients from the `security-center-email-recipients` setting.
-   nil → all admins (admin group). Non-nil → the specific email addresses."
+   nil → all active admins. Non-nil → the stored recipient maps (hydrated)."
   []
-  (t2/hydrate
-   (or (settings/security-center-email-recipients)
-       (map (fn [email]
-              {:type    :notification-recipient/raw-value
-               :details {:value email}})
-            (distinct (messages/all-admin-recipients))))
-   :recipients-detail))
+  (if-let [configured (settings/security-center-email-recipients)]
+    (t2/hydrate configured :recipients-detail)
+    (emails->recipients (admin-emails))))
 
 (defn- slack-recipients
   "Resolve Slack recipient from the `security-center-slack-channel` setting.
