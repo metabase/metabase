@@ -143,4 +143,34 @@ describe("getColors", () => {
       Widget: "#000000",
     });
   });
+  it("should return hex values for colors", () => {
+    // getPreferredColor returns hsla values for strings like "active"
+    // make sure getColors is correctly converting them to hex values
+    // because hsla is not supported in static-viz
+    const columns = [
+      createMockColumn({ name: "Category" }),
+      createMockColumn({ name: "Count" }),
+    ];
+    const rawSeries = [
+      {
+        data: createMockDatasetData({
+          rows: [
+            ["active", 1],
+            ["other", 2],
+          ],
+          cols: columns,
+        }),
+      },
+    ] as RawSeries;
+    const settings = {
+      "pie.metric": "Count",
+      "pie.dimension": "Category",
+    };
+    const result = getColors(rawSeries, settings);
+    expect(
+      Object.values(result).every(
+        (color) => color.startsWith("#") && color.length === 7,
+      ),
+    ).toBe(true);
+  });
 });
