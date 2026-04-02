@@ -525,17 +525,14 @@
     (let [[session-id _] (initialize!)]
       ;; Replace throttler after initialization so the handshake doesn't consume attempts
       (with-redefs [mcp.api/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)]
-        (let [;; First request succeeds (consumes the single attempt)
-              first-response (mcp-request (jsonrpc-request "ping")
-                                          {"mcp-session-id" session-id})
-              ;; Second request should be throttled
-              throttled-response (mcp-request (jsonrpc-request "ping")
-                                              {"mcp-session-id" session-id})]
-          (is (= 200 (:status first-response)))
-          (is (= 429 (:status throttled-response)))
-          (is (= -32000 (get-in throttled-response [:body :error :code]))
-              "Throttle response should use JSON-RPC error format")
-          (is (str/starts-with? (get-in throttled-response [:body :error :message]) "Too many attempts!")
-              "Error message should indicate rate limiting")
-          (is (contains? (:headers throttled-response) "Retry-After")
-              "Response should include Retry-After header"))))))
+        ;; First request succeeds (consumes the single attempt)
+        (is (= 200 (:status (mcp-request (jsonrpc-request "ping")
+                                         {"mcp-session-id" session-id}))))
+        ;; Second request should be throttled
+        (is (=? {:status  429
+                 :headers {"Retry-After" string?}
+                 :body    {:jsonrpc "2.0"
+                           :error   {:code    -32000
+                                     :message #(str/starts-with? % "Too many attempts!")}}}
+                (mcp-request (jsonrpc-request "ping")
+                             {"mcp-session-id" session-id})))))))

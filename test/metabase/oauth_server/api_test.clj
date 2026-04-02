@@ -964,4 +964,3 @@
               "Raw script tags must not appear in the consent page")
           (is (str/includes? body "&lt;script&gt;")
               "Script tags should be HTML-escaped"))))))
-

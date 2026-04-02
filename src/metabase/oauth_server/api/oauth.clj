@@ -119,9 +119,10 @@
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
 ;; Per-client_id is tight (one agent per client), per-IP is wider to accommodate many agents
 ;; behind NAT each doing their own token refresh cycle.
-(def ^:private token-throttlers
-  {:client-id  (throttle/make-throttler :client-id :attempts-threshold 10 :attempt-ttl-ms one-hour-ms)
-   :ip-address (throttle/make-throttler :ip-address :attempts-threshold 50 :attempt-ttl-ms one-hour-ms)})
+(def ^:private token-client-throttler
+  (throttle/make-throttler :client-id :attempts-threshold 10 :attempt-ttl-ms one-hour-ms))
+(def ^:private token-ip-throttler
+  (throttle/make-throttler :ip-address :attempts-threshold 50 :attempt-ttl-ms one-hour-ms))
 
 ;; /oauth/register is unauthenticated and creates server-side state (client records).
 ;; Without throttling, an attacker can exhaust storage or generate unlimited client_id/secret pairs.
@@ -317,8 +318,8 @@
         ;; Fall back to IP when client_id isn't in the body (e.g. confidential clients using
         ;; HTTP Basic auth) to avoid pooling unrelated clients into a shared throttle bucket.
         client-id  (or (:client_id body) ip-address)]
-    (with-throttling-429 [(token-throttlers :client-id)  client-id
-                          (token-throttlers :ip-address) ip-address]
+    (with-throttling-429 [token-client-throttler client-id
+                          token-ip-throttler     ip-address]
       (or (when-let [provider (oauth-server/get-provider)]
             (let [authorization-header (get-in request [:headers "authorization"])]
               (try
