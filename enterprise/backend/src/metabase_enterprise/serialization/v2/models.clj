@@ -120,6 +120,7 @@
    "Sandbox"
    "SearchIndexMetadata"
    "Secret"
+   "SecurityAdvisory"
    "SemanticSearchTokenTracking"
    "Session"
    "SupportAccessGrantLog"
