@@ -506,4 +506,101 @@
     (is (nil? (sdk/route-surface "/api/card/1")))
     (is (nil? (sdk/route-surface nil)))))
 
+(defn- sql-false?
+  "Returns true if `v` represents SQL FALSE - handles both boolean false (H2/Postgres) and integer 0 (MySQL/MariaDB)."
+  [v]
+  (or (false? v) (= 0 v)))
+
+(defn- latest-v-view-log
+  "Returns the most recent row from the v_view_log view for a given entity_id."
+  [entity-id]
+  (first (t2/query ["SELECT * FROM v_view_log WHERE entity_id = ? ORDER BY id DESC LIMIT 1" entity-id])))
+
+(defn- latest-v-query-log
+  "Returns the most recent row from the v_query_log view for a given card_id."
+  [card-id]
+  (first (t2/query ["SELECT * FROM v_query_log WHERE card_id = ? ORDER BY entity_id DESC LIMIT 1" card-id])))
+
+(deftest end-to-end-analytics-views-pii-true-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temporary-setting-values [enable-public-sharing          true
+                                       analytics-pii-retention-enabled true]
+      (binding [qp.util/*execute-async?* false]
+        (testing "public card request with SDK header populates all analytics fields on both views"
+          (public-test/with-temp-public-card [card]
+            (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
+                           {:request-options {:headers {"x-metabase-client"         "embedding-sdk-react"
+                                                        "x-metabase-client-version" "1.42.0"
+                                                        "origin"                    "https://app.example.com"
+                                                        "referer"                   "https://app.example.com/dashboard/1"
+                                                        "user-agent"                "TestAgent/1.0"}}})
+            (testing "v_view_log"
+              (let [row (latest-v-view-log (:id card))]
+                (is (= "card"                  (:entity_type row)))
+                (is (= "embedding-sdk-react"   (:embedding_client row)))
+                (is (= "public"                (:embedding_route row)))
+                (is (= "public-sharing"        (:surface row)))
+                (is (sql-false?                (:is_preview row)))
+                (is (= "1.42.0"                (:embedding_version row)))
+                (is (nil?                      (:auth_method row)))
+                (is (= "app.example.com"       (:embedding_hostname row)))
+                (is (= "/dashboard/1"          (:embedding_path row)))
+                (is (= "TestAgent/1.0"         (:user_agent row)))
+                (is (some?                     (:sanitized_user_agent row)))
+                (is (= "127.0.0.1"             (:ip_address row)))))
+            (testing "v_query_log"
+              (let [row (latest-v-query-log (:id card))]
+                (is (= "embedding-sdk-react"   (:embedding_client row)))
+                (is (= "public"                (:embedding_route row)))
+                (is (= "public-sharing"        (:surface row)))
+                (is (sql-false?                (:is_preview row)))
+                (is (= "1.42.0"                (:embedding_version row)))
+                (is (nil?                      (:auth_method row)))
+                (is (= "app.example.com"       (:embedding_hostname row)))
+                (is (= "/dashboard/1"          (:embedding_path row)))
+                (is (= "TestAgent/1.0"         (:user_agent row)))
+                (is (some?                     (:sanitized_user_agent row)))
+                (is (= "127.0.0.1"             (:ip_address row)))))))))))
+
+(deftest end-to-end-analytics-views-pii-false-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temporary-setting-values [enable-public-sharing           true
+                                       analytics-pii-retention-enabled false]
+      (binding [qp.util/*execute-async?* false]
+        (testing "public card request with SDK header populates all analytics fields on both views"
+          (public-test/with-temp-public-card [card]
+            (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
+                           {:request-options {:headers {"x-metabase-client"         "embedding-sdk-react"
+                                                        "x-metabase-client-version" "1.42.0"
+                                                        "origin"                    "https://app.example.com"
+                                                        "referer"                   "https://app.example.com/dashboard/1"
+                                                        "user-agent"                "TestAgent/1.0"}}})
+            (testing "v_view_log"
+              (let [row (latest-v-view-log (:id card))]
+                (is (= "card"                  (:entity_type row)))
+                (is (= "embedding-sdk-react"   (:embedding_client row)))
+                (is (= "public"                (:embedding_route row)))
+                (is (= "public-sharing"        (:surface row)))
+                (is (sql-false?                (:is_preview row)))
+                (is (= "1.42.0"                (:embedding_version row)))
+                (is (nil?                      (:auth_method row)))
+                (is (= nil                     (:embedding_hostname row)))
+                (is (= nil                     (:embedding_path row)))
+                (is (= nil                     (:user_agent row)))
+                (is (= nil                     (:sanitized_user_agent row)))
+                (is (= nil                     (:ip_address row)))))
+            (testing "v_query_log"
+              (let [row (latest-v-query-log (:id card))]
+                (is (= "embedding-sdk-react"   (:embedding_client row)))
+                (is (= "public"                (:embedding_route row)))
+                (is (= "public-sharing"        (:surface row)))
+                (is (sql-false?                (:is_preview row)))
+                (is (= "1.42.0"                (:embedding_version row)))
+                (is (= nil                     (:auth_method row)))
+                (is (= nil                     (:embedding_hostname row)))
+                (is (= nil                     (:embedding_path row)))
+                (is (= nil                     (:user_agent row)))
+                (is (= nil                     (:sanitized_user_agent row)))
+                (is (= nil                     (:ip_address row)))))))))))
+
 ;;; ---------------------------------------- API tests end -----------------------------------------

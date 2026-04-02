@@ -53,7 +53,7 @@
                    (m/dissoc-in [:data :results_metadata])
                    (m/dissoc-in [:data :insights]))]
      (cond
-       (contains? #{:id :started_at :running_time :hash :cache_hash} k)
+       (contains? #{:id :started_at :running_time :hash :cache_hash :auth_method} k)
        [k (boolean v)]
 
        (and (= :data k) (contains? v :native_form))
