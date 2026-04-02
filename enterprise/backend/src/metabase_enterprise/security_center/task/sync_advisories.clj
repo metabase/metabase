@@ -3,7 +3,7 @@
    matching queries against the appdb."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
-   [clojurewerkz.quartzite.schedule.simple :as simple]
+   [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase-enterprise.security-center.matching :as matching]
@@ -36,15 +36,17 @@
 
 (defmethod task/init! ::SyncAdvisories [_]
   (when (premium-features/security-center-enabled?)
-    (let [job     (jobs/build
+    (let [minute  (rand-int 60)
+          ;; Run at a random minute past 0:00, 6:00, 12:00, 18:00 UTC
+          cron-str (format "0 %d 0/6 * * ? *" minute)
+          job     (jobs/build
                    (jobs/of-type SyncAdvisories)
                    (jobs/with-identity (jobs/key job-key)))
           trigger (triggers/build
                    (triggers/with-identity (triggers/key trigger-key))
                    (triggers/start-now)
                    (triggers/with-schedule
-                    (simple/schedule
-                     (simple/with-interval-in-hours 6)
-                     (simple/repeat-forever)
-                     (simple/ignore-misfires))))]
+                    (cron/schedule
+                     (cron/cron-schedule cron-str)
+                     (cron/with-misfire-handling-instruction-do-nothing))))]
       (task/schedule-task! job trigger))))
