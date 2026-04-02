@@ -257,6 +257,18 @@
 (def ^:private mcp-throttler
   (throttle/make-throttler :user-id :attempts-threshold 1000 :attempt-ttl-ms (* 60 1000)))
 
+(defn- check-throttle
+  "Returns a 429 JSON-RPC response if rate-limited, nil otherwise."
+  [user-id]
+  (try
+    (throttle/check mcp-throttler user-id)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (let [message       (ex-message e)
+            retry-seconds (some->> message (re-find #"(\d+) seconds") second)]
+        (cond-> (json-response 429 (jsonrpc-error nil -32000 message))
+          retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))))
+
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
 (defn- www-authenticate-discovery []
@@ -272,25 +284,17 @@
            session-auth    api/*current-user-id*]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
-                   (try
-                     (throttle/check mcp-throttler user-id)
-                     (let [request (assoc request :token-scopes token-scopes)]
-                       (case (:request-method request)
-                         :post   (respond (handle-post user-id request))
-                         :get    (handle-get user-id request respond raise)
-                         :delete (respond (handle-delete user-id request))
-                         (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
-                     (catch clojure.lang.ExceptionInfo e
-                       (if (:errors (ex-data e))
-                         ;; Throttle exceptions must return a JSON-RPC envelope so MCP clients
-                         ;; can parse the error, not a bare HTTP error from generic middleware.
-                         (let [message       (ex-message e)
-                               retry-seconds (some->> message (re-find #"(\d+) seconds") second)]
-                           (respond (cond-> (json-response 429 (jsonrpc-error nil -32000 message))
-                                      retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))
-                         (raise e)))
-                     (catch Throwable e
-                       (raise e)))))]
+                   (if-let [throttle-err (check-throttle user-id)]
+                     (respond throttle-err)
+                     (try
+                       (let [request (assoc request :token-scopes token-scopes)]
+                         (case (:request-method request)
+                           :post   (respond (handle-post user-id request))
+                           :get    (handle-get user-id request respond raise)
+                           :delete (respond (handle-delete user-id request))
+                           (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
+                       (catch Throwable e
+                         (raise e))))))]
          (cond
            (some? origin-error)
            (respond origin-error)
