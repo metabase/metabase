@@ -1244,11 +1244,13 @@
            lib-metric
            models
            parameters
+           permissions
+           premium-features
            query-processor
            request
            server
            util}
-   :model-imports #{:model/Card :model/Field :model/Measure}}
+   :model-imports #{:model/Card :model/Field :model/Measure :model/Table}}
 
   model-persistence
   {:team "Graphy"
