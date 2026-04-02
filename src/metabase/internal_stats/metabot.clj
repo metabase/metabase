@@ -12,13 +12,17 @@
                           (t/minus (t/days 1)))
         tokens        (or (t2/select-one-fn :sum
                                             [:model/MetabotMessage [:%sum.total_tokens :sum]]
-                                            {:where [:= [:cast :created_at :date] [:cast yesterday-utc :date]]})
+                                            {:where [:and
+                                                     :ai_proxied
+                                                     [:= [:cast :created_at :date] [:cast yesterday-utc :date]]
+                                                     [:not= :usage nil]]})
                           0)]
     (when (pos? tokens)
       {:metabot-tokens     (long tokens)
        :metabot-usage      (let [usages (t2/select-fn-vec :usage
                                                           [:model/MetabotMessage :usage]
                                                           {:where [:and
+                                                                   :ai_proxied
                                                                    [:= [:cast :created_at :date] [:cast yesterday-utc :date]]
                                                                    [:not= :usage nil]]})]
                              (->> (for [usage               usages
@@ -32,9 +36,13 @@
                                              ;; there are requests from users and responses from ai-service, in theory
                                              ;; counting requests from users should be good enough
                                              :role "user"
-                                             {:where [:= [:cast :created_at :date] [:cast yesterday-utc :date]]})
+                                             {:where [:and
+                                                      :ai_proxied
+                                                      [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})
        :metabot-users      (:cnt (t2/query-one {:select [[[:count [:distinct :c.user_id]] :cnt]]
                                                 :from   [[:metabot_message :m]]
                                                 :join   [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
-                                                :where  [:= [:cast :m.created_at :date] [:cast yesterday-utc :date]]}))
+                                                :where  [:and
+                                                         :ai_proxied
+                                                         [:= [:cast :m.created_at :date] [:cast yesterday-utc :date]]]}))
        :metabot-usage-date (str (t/local-date yesterday-utc))})))
