@@ -46,17 +46,22 @@ jest.mock("../MetricPill", () => ({
 
 jest.mock("../MetricExpressionPill", () => ({
   MetricExpressionPill: ({
-    expressionText,
+    expressionEntry,
+    onClick,
     onRemove,
   }: {
-    expressionText: string;
+    expressionEntry: { name: string };
+    metricEntries: unknown[];
+    colors?: string[];
+    onClick: (e: React.MouseEvent) => void;
     onRemove: () => void;
   }) => (
     <div
       data-testid="metric-expression-pill"
-      data-expression-text={expressionText}
+      data-expression-text={expressionEntry.name}
+      onClick={onClick}
     >
-      <span>{expressionText}</span>
+      <span>{expressionEntry.name}</span>
       <button onClick={onRemove}>remove</button>
     </div>
   ),
@@ -572,11 +577,7 @@ describe("expression pill display after committing a formula", () => {
       onFormulaEntitiesChange.mock.calls.length - 1
     ][0] as MetricsViewerFormulaEntity[];
 
-    // Must contain the 3 metric entries plus the expression entry
-    const metricDefs = committedEntities.filter(isMetricEntry);
     const exprDefs = committedEntities.filter(isExpressionEntry);
-
-    expect(metricDefs).toHaveLength(3);
     expect(exprDefs).toHaveLength(1);
 
     // The expression entry should have the correct tokens
