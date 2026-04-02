@@ -12,11 +12,15 @@ import {
 
 class PointerEventPolyfill extends MouseEvent {
   readonly pointerType: string;
+  readonly isPrimary: boolean;
+  readonly pointerId: number;
 
   constructor(type: string, init: PointerEventInit = {}) {
     super(type, init);
 
     this.pointerType = init.pointerType ?? "";
+    this.isPrimary = init.isPrimary ?? false;
+    this.pointerId = init.pointerId ?? 0;
   }
 }
 
@@ -50,12 +54,24 @@ const createMockContainerRef = () => {
 const firePointer = (
   element: HTMLElement,
   type: string,
-  { clientX = 0, clientY = 0 }: { clientX?: number; clientY?: number } = {},
+  {
+    clientX = 0,
+    clientY = 0,
+    isPrimary = true,
+    pointerId = 1,
+  }: {
+    clientX?: number;
+    clientY?: number;
+    isPrimary?: boolean;
+    pointerId?: number;
+  } = {},
 ) => {
   element.dispatchEvent(
     new PointerEvent(type, {
       clientX,
       clientY,
+      isPrimary,
+      pointerId,
       bubbles: true,
       cancelable: true,
     }),
@@ -332,6 +348,57 @@ describe("use-brush", () => {
         el.dispatchEvent(touchmove);
 
         expect(touchmove.defaultPrevented).toBe(true);
+      });
+
+      it("cancels long press when a second finger touches (pinch-to-zoom)", () => {
+        const { el, dispatchAction } = setupTouchBrush();
+
+        // First finger down
+        firePointer(el, "pointerdown", {
+          clientX: 100,
+          clientY: 100,
+          isPrimary: true,
+          pointerId: 1,
+        });
+
+        // Second finger down before timer fires
+        firePointer(el, "pointerdown", {
+          clientX: 200,
+          clientY: 100,
+          isPrimary: false,
+          pointerId: 2,
+        });
+
+        // Wait past the long press duration
+        act(() => jest.advanceTimersByTime(500));
+
+        expectBrushNotEnabled(dispatchAction);
+      });
+
+      it("deactivates brush when a second finger touches during active brush", () => {
+        const { el, dispatchAction } = setupTouchBrush();
+
+        // First finger down, wait for long press to activate brush
+        firePointer(el, "pointerdown", {
+          clientX: 100,
+          clientY: 100,
+          isPrimary: true,
+          pointerId: 1,
+        });
+        act(() => jest.advanceTimersByTime(500));
+        expectBrushEnabled(dispatchAction);
+        dispatchAction.mockClear();
+
+        // Second finger down while brush is active
+        firePointer(el, "pointerdown", {
+          clientX: 200,
+          clientY: 100,
+          isPrimary: false,
+          pointerId: 2,
+        });
+        act(() => jest.runAllTimers());
+
+        expectBrushDisabled(dispatchAction);
       });
     });
   });
