@@ -359,6 +359,34 @@
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
 
+(deftest auth-provider-via-left-join-test
+  (testing "session LEFT JOIN on auth_identity returns correct provider for each auth method"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      ;; "password" is excluded - its before-insert hook requires credentials, and it's already
+      ;; tested via auth-method-test in view_log_test.clj. "api-key" is tested above in
+      ;; current-user-info-for-api-key-test (different code path, no auth_identity).
+      (doseq [provider ["jwt" "saml" "google" "ldap" "oidc"
+                        "custom-oidc" "slack-connect" "support-access-grant"]]
+        (testing (str "provider: " provider)
+          (let [ai         (first (t2/insert-returning-instances! :model/AuthIdentity
+                                                                  {:user_id     user-id
+                                                                   :provider    provider
+                                                                   :provider_id (str user-id "-" provider)}))
+                session-key (session/generate-session-key)
+                session-id  (session/generate-session-id)]
+            (try
+              (t2/insert! (t2/table-name :model/Session)
+                          {:id                session-id
+                           :key_hashed        (session/hash-session-key session-key)
+                           :user_id           user-id
+                           :auth_identity_id  (:id ai)
+                           :created_at        :%now})
+              (is (= provider
+                     (:auth-provider (#'mw.session/current-user-info-for-session session-key nil))))
+              (finally
+                (t2/delete! :model/Session :id session-id)
+                (t2/delete! :model/AuthIdentity :id (:id ai))))))))))
+
 ;; create a simple example of our middleware wrapped around a handler that simply returns our bound variables for users
 (defn- user-bound-handler [request]
   ((mw.session/bind-current-user
