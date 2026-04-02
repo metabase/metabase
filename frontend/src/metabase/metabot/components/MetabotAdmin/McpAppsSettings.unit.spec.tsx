@@ -47,18 +47,21 @@ describe("McpAppsSettings", () => {
     expect(await screen.findByText("ChatGPT")).toBeInTheDocument();
   });
 
-  it("can toggle an MCP client on", async () => {
+  it("can toggle all MCP clients on", async () => {
     await setup();
 
-    const claudeSwitch = await screen.findByTestId("mcp-client-claude");
-    await userEvent.click(claudeSwitch);
+    await userEvent.click(await screen.findByLabelText("Claude"));
+    await userEvent.click(await screen.findByLabelText("Cursor and VS Code"));
+    await userEvent.click(await screen.findByLabelText("ChatGPT"));
 
     const puts = await findRequests("PUT");
-    expect(puts).toHaveLength(1);
+    expect(puts).toHaveLength(3);
 
-    const [{ url, body }] = puts;
-    expect(url).toContain("/setting/mcp-apps-cors-enabled-clients");
-    expect(body).toEqual({ value: ["claude"] });
+    expect(puts[0].body).toEqual({ value: ["claude"] });
+    expect(puts[1].body).toEqual({ value: ["claude", "cursor-vscode"] });
+    expect(puts[2].body).toEqual({
+      value: ["claude", "cursor-vscode", "chatgpt"],
+    });
   });
 
   it("can update custom origins on blur", async () => {
