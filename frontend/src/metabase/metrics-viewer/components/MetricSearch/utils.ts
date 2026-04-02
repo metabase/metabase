@@ -751,42 +751,69 @@ export function findInvalidRanges(
       });
     }
 
-    // Consecutive / leading / trailing operators, operator after "(", empty parens
+    // Token predecessor validity
     let prevSignificant: PositionedToken | null = null;
     for (const token of itemTokens) {
-      if (token.type === "operator") {
-        if (prevSignificant === null) {
+      if (token.type === "unknown") {
+        prevSignificant = token;
+        continue;
+      }
+
+      const prevType = prevSignificant?.type ?? null;
+
+      if (
+        token.type === "metric" ||
+        token.type === "constant" ||
+        token.type === "open-paren"
+      ) {
+        if (
+          prevType !== null &&
+          prevType !== "open-paren" &&
+          prevType !== "operator" &&
+          prevType !== "unknown"
+        ) {
           itemInvalid.push({
             from: token.from,
             to: token.to,
-            message: t`Expression cannot start with an operator`,
+            message: t`Missing operator`,
           });
-        } else if (prevSignificant.type === "operator") {
+        }
+      } else if (token.type === "operator") {
+        if (
+          prevType !== "metric" &&
+          prevType !== "constant" &&
+          prevType !== "close-paren" &&
+          prevType !== "unknown"
+        ) {
           itemInvalid.push({
             from: token.from,
             to: token.to,
-            message: t`Two operators in a row without a metric between them`,
+            message: t`Missing operand`,
           });
-        } else if (prevSignificant.type === "open-paren") {
+        }
+      } else if (token.type === "close-paren") {
+        if (
+          prevType !== "metric" &&
+          prevType !== "constant" &&
+          prevType !== "close-paren" &&
+          prevType !== "unknown"
+        ) {
           itemInvalid.push({
-            from: token.from,
+            from:
+              prevType === "open-paren"
+                ? (prevSignificant?.from ?? token.from)
+                : token.from,
             to: token.to,
-            message: t`Operator right after opening parenthesis`,
+            message:
+              prevType === "open-paren"
+                ? t`Empty parentheses`
+                : t`Missing operand before closing parenthesis`,
           });
         }
       }
-      if (
-        token.type === "close-paren" &&
-        prevSignificant?.type === "open-paren"
-      ) {
-        itemInvalid.push({
-          from: prevSignificant.from,
-          to: token.to,
-          message: t`Empty parentheses`,
-        });
-      }
       prevSignificant = token;
     }
+
     if (prevSignificant?.type === "operator") {
       itemInvalid.push({
         from: prevSignificant.from,
@@ -795,7 +822,6 @@ export function findInvalidRanges(
       });
     }
 
-    // Unknown tokens
     for (const token of itemTokens) {
       if (token.type === "unknown") {
         itemInvalid.push({
@@ -806,11 +832,8 @@ export function findInvalidRanges(
       }
     }
 
-    // No operands at all
-    const hasOperand = itemTokens.some(
-      (tok) => tok.type === "metric" || tok.type === "constant",
-    );
-    if (!hasOperand && itemInvalid.length === 0) {
+    const hasMetric = itemTokens.some((tok) => tok.type === "metric");
+    if (!hasMetric && itemInvalid.length === 0) {
       itemInvalid.push({
         from: itemTokens[0].from,
         to: itemTokens[itemTokens.length - 1].to,
