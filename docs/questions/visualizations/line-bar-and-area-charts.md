@@ -87,6 +87,7 @@ Here you set things like:
 
 - [Goal line](#goal-lines)
 - [Stack a bar chart](#stacked-bar-chart)
+- [Stack series](#stack-series)
 - [Whether to show values on data points](#values-on-data-points)
 
 ### Goal lines
@@ -110,6 +111,16 @@ If you have multiple series, you can stack them on bar chart.
 As well as stack them as a percentage:
 
 ![Stacked bar chart 100%](../images/stacked-100.png)
+
+### Stack series
+
+If you have two breakouts in your query, or have more than one metric, you can stack series on top of each other:
+
+![Stacked series](../images/stacked-series.png)
+
+You can mix and match bar, line, and areas in stacked series - select the right visualization type for each series in the **Data** tab:
+
+![Stacked series mixed types](../images/stacked-series-mix.png)
 
 ### Values on data points
 
