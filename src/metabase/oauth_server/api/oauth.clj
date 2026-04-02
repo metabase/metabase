@@ -119,7 +119,6 @@
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
 ;; Per-client_id is tight (one agent per client), per-IP is wider to accommodate many agents
 ;; behind NAT each doing their own token refresh cycle.
-;; attempt-ttl-ms matches the library default (1h); explicit for clarity and to prevent silent drift on upgrade.
 (def ^:private token-throttlers
   {:client-id  (throttle/make-throttler :client-id :attempts-threshold 10 :attempt-ttl-ms one-hour-ms)
    :ip-address (throttle/make-throttler :ip-address :attempts-threshold 50 :attempt-ttl-ms one-hour-ms)})
@@ -134,7 +133,6 @@
 ;; /oauth/authorize/decision is lower risk (requires authentication + CSRF token),
 ;; but a compromised session could automate consent-granting. A per-user cap limits the blast
 ;; radius while allowing setup of many agents in a single session.
-;; attempt-ttl-ms matches the library default (1h); explicit for clarity and to prevent silent drift on upgrade.
 (def ^:private authorize-decision-throttler
   (throttle/make-throttler :user-id :attempts-threshold 20 :attempt-ttl-ms one-hour-ms))
 
