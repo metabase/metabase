@@ -1,14 +1,14 @@
 ## Enhanced usage analytics columns for view_log and query_execution
 
 databaseChangeLog:
-  - logicalFilePath: migrations/060_update_migrations.yaml
+  - logicalFilePath: migrations/061_update_migrations.yaml
 
   # ============================================================
   # view_log columns
   # ============================================================
 
   - changeSet:
-      id: v60.2026-03-26T00:00:00
+      id: v61.2026-03-26T00:00:00
       author: bgrabow
       comment: Add auth_method column to view_log for tracking authentication method
       changes:
@@ -23,7 +23,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:01
+      id: v61.2026-03-26T00:00:01
       author: bgrabow
       comment: Add tenant_id column to view_log for multi-tenant analytics
       changes:
@@ -38,7 +38,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:02
+      id: v61.2026-03-26T00:00:02
       author: bgrabow
       comment: Add embedding_hostname column to view_log for embedding analytics
       changes:
@@ -53,7 +53,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:03
+      id: v61.2026-03-26T00:00:03
       author: bgrabow
       comment: Add embedding_path column to view_log for embedding analytics
       changes:
@@ -68,7 +68,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:04
+      id: v61.2026-03-26T00:00:04
       author: bgrabow
       comment: Add user_agent column to view_log for usage analytics
       changes:
@@ -83,7 +83,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:05
+      id: v61.2026-03-26T00:00:05
       author: bgrabow
       comment: Add ip_address column to view_log for usage analytics
       changes:
@@ -98,7 +98,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:06
+      id: v61.2026-03-26T00:00:06
       author: bgrabow
       comment: Add index on view_log.tenant_id for tenant-scoped analytics queries
       changes:
@@ -114,7 +114,7 @@ databaseChangeLog:
   # ============================================================
 
   - changeSet:
-      id: v60.2026-03-26T00:00:07
+      id: v61.2026-03-26T00:00:07
       author: bgrabow
       comment: Add auth_method column to query_execution for tracking authentication method
       changes:
@@ -129,7 +129,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:08
+      id: v61.2026-03-26T00:00:08
       author: bgrabow
       comment: Add tenant_id column to query_execution for multi-tenant analytics
       changes:
@@ -144,7 +144,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:09
+      id: v61.2026-03-26T00:00:09
       author: bgrabow
       comment: Add is_impersonated column to query_execution for connection impersonation tracking
       changes:
@@ -159,7 +159,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:10
+      id: v61.2026-03-26T00:00:10
       author: bgrabow
       comment: Add is_db_routed column to query_execution for database routing tracking
       changes:
@@ -174,7 +174,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:11
+      id: v61.2026-03-26T00:00:11
       author: bgrabow
       comment: Add parameters column to query_execution for tracking query filter values
       changes:
@@ -189,7 +189,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:12
+      id: v61.2026-03-26T00:00:12
       author: bgrabow
       comment: Add embedding_hostname column to query_execution for embedding analytics
       changes:
@@ -204,7 +204,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:13
+      id: v61.2026-03-26T00:00:13
       author: bgrabow
       comment: Add embedding_path column to query_execution for embedding analytics
       changes:
@@ -219,7 +219,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:14
+      id: v61.2026-03-26T00:00:14
       author: bgrabow
       comment: Add user_agent column to query_execution for embedding analytics
       changes:
@@ -234,7 +234,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:15
+      id: v61.2026-03-26T00:00:15
       author: bgrabow
       comment: Add ip_address column to query_execution for embedding analytics
       changes:
@@ -249,7 +249,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:16
+      id: v61.2026-03-26T00:00:16
       author: bgrabow
       comment: Add index on query_execution.tenant_id for tenant-scoped analytics queries
       changes:
@@ -261,7 +261,7 @@ databaseChangeLog:
                   name: tenant_id
 
   - changeSet:
-      id: v60.2026-03-26T00:00:23
+      id: v61.2026-03-26T00:00:23
       author: bcm
       comment: Add sanitized_user_agent column to view_log for human-readable parsed UA
       changes:
@@ -276,7 +276,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:24
+      id: v61.2026-03-26T00:00:24
       author: bcm
       comment: Add sanitized_user_agent column to query_execution for human-readable parsed UA
       changes:
@@ -295,7 +295,7 @@ databaseChangeLog:
   # ============================================================
 
   - changeSet:
-      id: v60.2026-03-26T00:00:21
+      id: v61.2026-03-26T00:00:21
       author: bgrabow
       comment: Add embedding_route column to view_log for route-surface tracking
       changes:
@@ -310,7 +310,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:22
+      id: v61.2026-03-26T00:00:22
       author: bgrabow
       comment: Add embedding_route column to query_execution for route-surface tracking
       changes:
@@ -329,7 +329,7 @@ databaseChangeLog:
   # ============================================================
 
   - changeSet:
-      id: v60.2026-03-26T00:00:17
+      id: v61.2026-03-26T00:00:17
       author: bcm
       comment: Updated view v_view_log v4 - add embedding_client, surface, is_preview (EMB-1535)
       changes:
@@ -360,7 +360,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:18
+      id: v61.2026-03-26T00:00:18
       author: bcm
       comment: Updated view v_query_log v5 - add embedding_client, surface, is_preview (EMB-1535)
       changes:
@@ -391,7 +391,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:19
+      id: v61.2026-03-26T00:00:19
       author: bcm
       comment: Updated view v_users v5 - add tenant_id (EMB-1506)
       changes:
@@ -422,7 +422,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v60.2026-03-26T00:00:20
+      id: v61.2026-03-26T00:00:20
       author: bcm
       comment: New view v_tenants v1 - expose tenant data (EMB-1506)
       changes:
