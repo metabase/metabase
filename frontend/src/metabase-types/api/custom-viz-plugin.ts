@@ -26,6 +26,8 @@ export interface CustomVizPlugin {
   updated_at: string;
 }
 
+export type CustomVizPluginId = CustomVizPlugin["id"];
+
 export interface CustomVizPluginRuntime {
   id: number;
   identifier: string;
@@ -44,12 +46,11 @@ export interface CreateCustomVizPluginRequest {
 }
 
 export interface CreateDevCustomVizPluginRequest {
-  identifier?: string;
   dev_bundle_url: string;
 }
 
 export interface UpdateCustomVizPluginRequest {
-  id: number;
+  id: CustomVizPluginId;
   enabled?: boolean;
   access_token?: string;
   pinned_version?: string | null;

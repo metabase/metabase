@@ -12,7 +12,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./dev-server-landing.html": "./dist/templates/dev-server-landing.html"
   },
   "publishConfig": {
     "access": "public"

@@ -12,7 +12,6 @@ import { Command } from "commander";
 import { version } from "../package.json";
 
 import {
-  generateDevServerLanding,
   generateGitignore,
   generateIconSvg,
   generateIndexTsx,
@@ -75,10 +74,6 @@ program
         readBinaryTemplate("thumbs-down.png"),
       ),
       writeFile(join(name, ".gitignore"), generateGitignore()),
-      writeFile(
-        join(name, "dev-server-landing.html"),
-        generateDevServerLanding(),
-      ),
     ]);
 
     console.log("Created files:");
@@ -92,7 +87,6 @@ program
     console.log(`  ${name}/public/assets/thumbs-up.png`);
     console.log(`  ${name}/public/assets/thumbs-down.png`);
     console.log(`  ${name}/.gitignore`);
-    console.log(`  ${name}/dev-server-landing.html`);
     console.log();
     console.log("Next steps:");
     console.log(`  cd ${name}`);
@@ -105,7 +99,7 @@ program
       "  1. Register or select your plugin in Metabase Admin → Custom Visualizations",
     );
     console.log(
-      `  2. Set the dev server URL to http://localhost:5174 on the plugin`,
+      `  2. Set the dev server URL to http://localhost:5174`,
     );
     console.log(
       "  3. Changes will hot-reload automatically in your Metabase instance",
@@ -191,12 +185,6 @@ program
 
     await writeFile(join(projectDir, ".gitignore"), generateGitignore());
     updated.push(".gitignore");
-
-    await writeFile(
-      join(projectDir, "dev-server-landing.html"),
-      generateDevServerLanding(),
-    );
-    updated.push("dev-server-landing.html");
 
     // Update package.json: merge devDependencies from template, preserve user additions
     const existingPkgJson = readFileSync(pkgPath, "utf-8");

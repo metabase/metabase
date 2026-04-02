@@ -2,6 +2,7 @@ import type {
   CreateCustomVizPluginRequest,
   CreateDevCustomVizPluginRequest,
   CustomVizPlugin,
+  CustomVizPluginId,
   CustomVizPluginRuntime,
   UpdateCustomVizPluginRequest,
 } from "metabase-types/api";
@@ -55,7 +56,7 @@ export const customVizPluginApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("custom-viz-plugin")]),
     }),
-    deleteCustomVizPlugin: builder.mutation<void, number>({
+    deleteCustomVizPlugin: builder.mutation<void, CustomVizPluginId>({
       query: (id) => ({
         method: "DELETE",
         url: `/api/ee/custom-viz-plugin/${id}`,
@@ -80,7 +81,7 @@ export const customVizPluginApi = Api.injectEndpoints({
     }),
     setCustomVizPluginDevUrl: builder.mutation<
       { dev_bundle_url: string | null },
-      { id: number; dev_bundle_url: string | null }
+      { id: CustomVizPluginId; dev_bundle_url: string | null }
     >({
       query: ({ id, ...body }) => ({
         method: "PUT",
@@ -93,7 +94,7 @@ export const customVizPluginApi = Api.injectEndpoints({
           idTag("custom-viz-plugin", id),
         ]),
     }),
-    refreshCustomVizPlugin: builder.mutation<CustomVizPlugin, number>({
+    refreshCustomVizPlugin: builder.mutation<CustomVizPlugin, CustomVizPluginId>({
       query: (id) => ({
         method: "POST",
         url: `/api/ee/custom-viz-plugin/${id}/refresh`,

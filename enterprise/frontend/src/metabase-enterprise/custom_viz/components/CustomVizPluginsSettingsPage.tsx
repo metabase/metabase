@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -15,7 +15,6 @@ import {
   useSetCustomVizPluginDevUrlMutation,
   useUpdateCustomVizPluginMutation,
 } from "metabase/api";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import {
   Form,
@@ -123,46 +122,26 @@ function PluginListItem({
         <Stack gap={4}>
           <Text fw={700}>{plugin.display_name}</Text>
           <Group gap="xs">
-            {plugin.dev_only ? (
+            <Text
+              component="a"
+              href={plugin.repo_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              size="sm"
+              c="text-tertiary"
+              td="underline"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              {plugin.repo_url}
+            </Text>
+            {plugin.resolved_commit && (
               <>
-                <Text size="sm" c="brand" fw={600}>
-                  {t`Dev mode`}
+                <Text size="sm" c="text-tertiary">
+                  &bull;
                 </Text>
-                {plugin.dev_bundle_url && (
-                  <>
-                    <Text size="sm" c="text-tertiary">
-                      &bull;
-                    </Text>
-                    <Text size="sm" c="text-tertiary">
-                      {plugin.dev_bundle_url}
-                    </Text>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <Text
-                  component="a"
-                  href={plugin.repo_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  size="sm"
-                  c="text-tertiary"
-                  td="underline"
-                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                >
-                  {plugin.repo_url}
+                <Text size="sm" c="text-tertiary">
+                  {t`Commit`}: {plugin.resolved_commit.slice(0, 8)}
                 </Text>
-                {plugin.resolved_commit && (
-                  <>
-                    <Text size="sm" c="text-tertiary">
-                      &bull;
-                    </Text>
-                    <Text size="sm" c="text-tertiary">
-                      {t`Commit`}: {plugin.resolved_commit.slice(0, 8)}
-                    </Text>
-                  </>
-                )}
               </>
             )}
           </Group>
@@ -186,14 +165,12 @@ function PluginListItem({
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
-            {!plugin.dev_only && (
-              <Menu.Item
-                leftSection={<Icon name="refresh" />}
-                onClick={handleRefresh}
-              >
-                {t`Re-fetch`}
-              </Menu.Item>
-            )}
+            <Menu.Item
+              leftSection={<Icon name="refresh" />}
+              onClick={handleRefresh}
+            >
+              {t`Re-fetch`}
+            </Menu.Item>
             <Menu.Item
               leftSection={<Icon name={plugin.enabled ? "stop" : "play"} />}
               onClick={handleToggleEnabled}
@@ -291,7 +268,6 @@ export function ManageCustomVisualizationsPage() {
 }
 
 
-
 export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
   const dispatch = useDispatch();
   const pluginId = params?.id ? parseInt(params.id, 10) : undefined;
@@ -339,13 +315,22 @@ export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
     dispatch(push(BASE_PATH));
   }, [dispatch]);
 
-  if (isEdit && !plugin && plugins) {
-    dispatch(push(BASE_PATH));
-    return null;
-  }
+  const shouldRedirectToList = isEdit && !plugin && !!plugins;
+  const shouldRedirectToDev = isEdit && !!plugin?.dev_only;
 
-  if (isEdit && plugin?.dev_only) {
-    dispatch(push(`${BASE_PATH}/development`));
+  useEffect(() => {
+    if (shouldRedirectToList) {
+      dispatch(push(BASE_PATH));
+    }
+  }, [shouldRedirectToList, dispatch]);
+
+  useEffect(() => {
+    if (shouldRedirectToDev) {
+      dispatch(push(`${BASE_PATH}/development`));
+    }
+  }, [shouldRedirectToDev, dispatch]);
+
+  if (shouldRedirectToList || shouldRedirectToDev) {
     return null;
   }
 
@@ -410,11 +395,10 @@ function AddDevPluginForm() {
   const [createDevPlugin] = useCreateDevCustomVizPluginMutation();
 
   const handleSubmit = useCallback(
-    async (values: { dev_bundle_url: string }) => {
-      await createDevPlugin({
+    (values: { dev_bundle_url: string }) =>
+      createDevPlugin({
         dev_bundle_url: values.dev_bundle_url,
-      }).unwrap();
-    },
+      }).unwrap(),
     [createDevPlugin],
   );
 
@@ -456,21 +440,20 @@ function AddDevPluginForm() {
 function EditDevPluginForm({ plugin }: { plugin: CustomVizPlugin }) {
   const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
   const [deletePlugin] = useDeleteCustomVizPluginMutation();
-  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleSubmit = useCallback(
-    async (values: { dev_bundle_url: string }) => {
-      await setDevUrl({
+    (values: { dev_bundle_url: string }) =>
+      setDevUrl({
         id: plugin.id,
         dev_bundle_url: values.dev_bundle_url || null,
-      }).unwrap();
-    },
+      }).unwrap(),
     [plugin.id, setDevUrl],
   );
 
-  const handleRemove = useCallback(async () => {
-    await deletePlugin(plugin.id).unwrap();
-  }, [plugin.id, deletePlugin]);
+  const handleRemove = useCallback(
+    () => deletePlugin(plugin.id).unwrap(),
+    [plugin.id, deletePlugin],
+  );
 
   return (
     <SettingsSection>
@@ -506,7 +489,7 @@ function EditDevPluginForm({ plugin }: { plugin: CustomVizPlugin }) {
                 <Button
                   variant="subtle"
                   color="error"
-                  onClick={() => setShowConfirm(true)}
+                  onClick={handleRemove}
                 >
                   {t`Remove`}
                 </Button>
@@ -520,14 +503,6 @@ function EditDevPluginForm({ plugin }: { plugin: CustomVizPlugin }) {
           </Form>
         )}
       </FormProvider>
-      <ConfirmModal
-        opened={showConfirm}
-        title={t`Remove dev visualization`}
-        message={t`Are you sure you want to remove this dev visualization? This cannot be undone.`}
-        confirmButtonText={t`Remove`}
-        onConfirm={handleRemove}
-        onClose={() => setShowConfirm(false)}
-      />
     </SettingsSection>
   );
 }

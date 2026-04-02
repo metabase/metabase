@@ -1,7 +1,10 @@
-iimport { watch, cpSync, existsSync, readFileSync } from "fs";
+import { watch, cpSync, existsSync, readFileSync } from "fs";
 import { createServer } from "http";
+import { createRequire } from "module";
 import { resolve } from "path";
 import { defineConfig } from "vite";
+
+const __require = createRequire(import.meta.url);
 
 /**
  * Vite plugin that replaces `react` and `react/jsx-runtime` imports with
@@ -87,10 +90,15 @@ function metabaseDevServer() {
         // Landing page with sync instructions
         if (url === "/") {
           if (!landingPageHtml) {
-            const landingPath = resolve(__dirname, "dev-server-landing.html");
-            landingPageHtml = existsSync(landingPath)
-              ? readFileSync(landingPath, "utf-8")
-              : "<html><body><p>Custom viz dev server running.</p></body></html>";
+            try {
+              const landingPath = __require.resolve(
+                "@metabase/custom-viz/dev-server-landing.html",
+              );
+              landingPageHtml = readFileSync(landingPath, "utf-8");
+            } catch {
+              landingPageHtml =
+                "<html><body><p>Custom viz dev server running.</p></body></html>";
+            }
           }
           res.writeHead(200, { "Content-Type": "text/html" });
           res.end(landingPageHtml);
@@ -153,7 +161,9 @@ function metabaseDevServer() {
         console.log(
           `[custom-viz] Dev server listening on http://localhost:${DEV_PORT}`,
         );
-        console.log(`[custom-viz] Open http://localhost:${DEV_PORT} for setup instructions`);
+        console.log(
+          `[custom-viz] Open http://localhost:${DEV_PORT} for setup instructions`,
+        );
       });
 
       // Watch public/assets/ for changes — copy to dist/assets/ and notify
