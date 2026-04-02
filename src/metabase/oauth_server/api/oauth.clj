@@ -119,6 +119,7 @@
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
 ;; Per-client_id is tight (one agent per client), per-IP is wider to accommodate many agents
 ;; behind NAT each doing their own token refresh cycle.
+;; attempt-ttl-ms matches the library default (1h); explicit for clarity and to prevent silent drift on upgrade.
 (def ^:private token-throttlers
   {:client-id  (throttle/make-throttler :client-id :attempts-threshold 10 :attempt-ttl-ms one-hour-ms)
    :ip-address (throttle/make-throttler :ip-address :attempts-threshold 50 :attempt-ttl-ms one-hour-ms)})
@@ -133,6 +134,7 @@
 ;; /oauth/authorize/decision is lower risk (requires authentication + CSRF token),
 ;; but a compromised session could automate consent-granting. A per-user cap limits the blast
 ;; radius while allowing setup of many agents in a single session.
+;; attempt-ttl-ms matches the library default (1h); explicit for clarity and to prevent silent drift on upgrade.
 (def ^:private authorize-decision-throttler
   (throttle/make-throttler :user-id :attempts-threshold 20 :attempt-ttl-ms one-hour-ms))
 
@@ -147,6 +149,12 @@
                        :error_description message}}
       retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))
 
+(defn- throttle-exception?
+  "True when `e` is a throttle-limit exception thrown by [[metabase.throttle]].
+   Coupled to the library's `\"Too many attempts!\"` message prefix — update here if that changes."
+  [^ExceptionInfo e]
+  (str/starts-with? (ex-message e) "Too many attempts!"))
+
 (defmacro ^:private with-throttling-429
   "Like [[throttle/with-throttling]], but returns HTTP 429 with Retry-After instead of
    throwing an unhandled exception (which the generic middleware would turn into a 500)."
@@ -155,7 +163,7 @@
   `(try
      (throttle/with-throttling ~bindings ~@body)
      (catch ExceptionInfo e#
-       (if (str/starts-with? (ex-message e#) "Too many attempts!")
+       (if (throttle-exception? e#)
          (throttle-response e#)
          (throw e#)))))
 
