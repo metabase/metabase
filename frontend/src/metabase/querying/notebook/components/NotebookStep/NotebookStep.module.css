@@ -30,7 +30,7 @@
   visibility: visible;
 }
 
-@media (hover: none) {
+@media (hover: none) and (pointer: coarse) {
   .StepRoot .StepHeader {
     visibility: visible;
   }

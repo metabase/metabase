@@ -5,13 +5,13 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
 import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import type {
   Collection,
   CollectionId,
   CollectionItemModel,
   CollectionNamespace,
+  DataSegregationStrategy,
   Group,
   Tenant,
   User,

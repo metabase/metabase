@@ -1,7 +1,5 @@
 (ns metabase-enterprise.workspaces.util
   (:require
-   [clojure.string :as str]
-   [metabase.system.core :as system]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -51,29 +49,6 @@
 
 ;;; Naming
 
-;; re-using https://github.com/metabase/metabase/pull/61887/commits/c92e4a9cc451c61a13fef19ed9d6107873b17f07
-;; (original ws isolation code)
-(defn- instance-uuid-slug
-  "Create a slug from the site UUID, taking the first character of each section."
-  [site-uuid-string]
-  (->> (str/split site-uuid-string #"-")
-       (map first)
-       (apply str)))
-
-;; WARNING: Changing this prefix requires backwards compatibility handling for existing workspaces.
-;; The prefix is used to identify isolation namespaces in the database, and existing workspaces
-;; will have namespaces created with the current prefix.
-(def ^:private isolated-prefix "mb__isolation")
-
-(defn isolation-namespace-name
-  "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
-  Uses 'namespace' as the generic term that maps to 'schema' in Postgres, 'database' in ClickHouse, etc."
-  [workspace]
-  (assert (some? (:id workspace)) "Workspace must have an :id")
-  (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
-        clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
-    (format "%s_%s_%s" isolated-prefix instance-slug clean-workspace-id)))
-
 (defn isolated-table-name
   "Generate name for a table mirroring transform target table in the isolated database namespace.
    Returns schema__name when schema is present, or __name when schema is nil (to distinguish from global tables)."
@@ -84,12 +59,6 @@
   (if schema
     (format "%s__%s" schema name)
     (format "__%s" name)))
-
-(defn isolation-user-name
-  "Generate username for workspace isolation."
-  [workspace]
-  (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
-    (format "%s_%s_%s" isolated-prefix instance-slug (:id workspace))))
 
 (def ^:private password-char-sets
   "Character sets for password generation. Cycles through these to ensure representation from each."

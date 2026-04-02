@@ -419,5 +419,7 @@ export const createMockSettings = (
   "sdk-iframe-embed-setup-settings": null,
   "use-tenants": false,
   "encryption-enabled": false,
+  "mcp-apps-cors-enabled-clients": [],
+  "mcp-apps-cors-custom-origins": "",
   ...opts,
 });
