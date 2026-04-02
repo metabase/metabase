@@ -56,10 +56,18 @@ export const securityCenterApi = Api.injectEndpoints({
       }),
       invalidatesTags: [listTag("security-advisory")],
     }),
+    syncSecurityAdvisories: builder.mutation<void, void>({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/security-center/sync",
+      }),
+      invalidatesTags: [listTag("security-advisory")],
+    }),
   }),
 });
 
 export const {
   useListSecurityAdvisoriesQuery,
   useAcknowledgeAdvisoryMutation,
+  useSyncSecurityAdvisoriesMutation,
 } = securityCenterApi;
