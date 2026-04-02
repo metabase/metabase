@@ -4,16 +4,7 @@ import { t } from "ttag";
 import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting } from "metabase/common/hooks";
-import {
-  ActionIcon,
-  Box,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import { useNotificationConfig } from "../../hooks/use-notification-config";
 import { useSecurityAdvisories } from "../../hooks/use-security-advisories";
@@ -45,32 +36,28 @@ export function SecurityCenterPage() {
   const targetVersion = getTargetUpgradeVersion(advisories);
   const filtered = filterAdvisories(advisories, filter);
 
+  const nothingToShow = filtered.length === 0 || advisories.length === 0;
+
   return (
     <Box className={S.root}>
       <Stack gap="lg" className={S.header}>
         <Group gap="sm" align="center">
           <Title order={1}>{t`Security Center`}</Title>
-          <Tooltip label={t`Check now`}>
-            <ActionIcon
-              mt={5}
-              variant="subtle"
-              onClick={() => syncAdvisories()}
-              data-testid="sync-advisories"
-            >
-              <Icon name="sync" className={isSyncing ? S.syncing : undefined} />
-            </ActionIcon>
-          </Tooltip>
           <Box style={{ flex: 1 }} />
-          <Tooltip label={t`Notification settings`}>
-            <ActionIcon
-              mt={5}
-              variant="subtle"
-              onClick={() => setSettingsOpen(true)}
-              data-testid="notification-config-toggle"
-            >
-              <Icon name="gear" />
-            </ActionIcon>
-          </Tooltip>
+          <Button
+            variant="subtle"
+            leftSection={
+              <Icon name="sync" className={isSyncing ? S.syncing : undefined} />
+            }
+            onClick={() => syncAdvisories()}
+            data-testid="sync-advisories"
+          >{t`Check now`}</Button>
+          <Button
+            variant="subtle"
+            leftSection={<Icon name="gear" />}
+            onClick={() => setSettingsOpen(true)}
+            data-testid="notification-config-toggle"
+          >{t`Notification settings`}</Button>
         </Group>
         <Text c="text-secondary" data-testid="current-version">
           {t`Current version`}: {currentVersion}
@@ -83,11 +70,15 @@ export function SecurityCenterPage() {
           filter={filter}
           onChange={setFilter}
         />
-        {filtered.length === 0 ? (
+        {nothingToShow ? (
           <EmptyState
             className={S["empty-state"]}
             icon="shield_outline"
-            message={t`Your instance is up to date — no known security issues affect your configuration.`}
+            message={
+              advisories.length === 0
+                ? t`Your instance is up to date — no known security issues affect your configuration.`
+                : t`Nothing match your filters.`
+            }
           />
         ) : (
           <AdvisoryList

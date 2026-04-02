@@ -3,12 +3,26 @@ import userEvent from "@testing-library/user-event";
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
+import {
+  createMockEmailChannelSpec,
+  createMockSlackChannelSpec,
+} from "metabase-types/api/mocks/security-center";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import type { NotificationConfig } from "../../hooks/use-notification-config";
+import { useNotificationConfig } from "../../hooks/use-notification-config";
 
 import { NotificationChannelConfigModal } from "./NotificationChannelConfigModal";
 
+jest.mock("../../hooks/use-notification-config", () => {
+  return {
+    ...jest.requireActual("../../hooks/use-notification-config"),
+    useNotificationConfig: jest.fn(),
+  };
+});
+
+const mockedUseNotificationConfig =
+  useNotificationConfig as any as jest.MockedFn<typeof useNotificationConfig>;
 const DEFAULT_CONFIG: NotificationConfig = {
   email: {
     sendToAllAdmins: true,
@@ -35,37 +49,13 @@ function setup({
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
 
   const channels = {
-    email: {
-      type: "email" as const,
-      name: "Email",
-      schedules: [],
-      schedule_type: null,
-      allows_recipients: true,
-      configured: emailConfigured,
-      recipients: ["user" as const, "email" as const],
-    },
-    slack: {
-      type: "slack" as const,
-      name: "Slack",
-      schedules: [],
-      schedule_type: null,
-      allows_recipients: false,
-      configured: slackConfigured,
-      fields: [
-        {
-          name: "channel",
-          type: "select",
-          displayName: "Post to",
-          options: ["#general", "#security"],
-          required: true,
-        },
-      ],
-    },
+    email: createMockEmailChannelSpec({ configured: emailConfigured }),
+    slack: createMockSlackChannelSpec({ configured: slackConfigured }),
   };
 
-  const props = {
-    opened: true,
-    onClose,
+  const resetConfig = jest.fn();
+
+  mockedUseNotificationConfig.mockImplementation(() => ({
     config,
     users: [],
     channels,
@@ -74,14 +64,21 @@ function setup({
     updateSlackHandler: jest.fn(),
     toggleSlack: jest.fn(),
     save,
-    resetConfig: jest.fn(),
-  };
+    resetConfig,
+  }));
 
-  renderWithProviders(<NotificationChannelConfigModal {...props} />, {
-    storeInitialState: { settings: createMockSettingsState(settings) },
-  });
+  renderWithProviders(
+    <NotificationChannelConfigModal
+      opened
+      onClose={onClose}
+      resetConfig={resetConfig}
+    />,
+    {
+      storeInitialState: { settings: createMockSettingsState(settings) },
+    },
+  );
 
-  return props;
+  return { onClose };
 }
 
 describe("NotificationChannelConfigModal", () => {

@@ -39,7 +39,7 @@ export function AdvisoryFilterBar({
         onChange={(value) =>
           onChange({
             ...filter,
-            severity: (value as AdvisoryFilter["severity"]) ?? "all",
+            severity: value ?? "all",
           })
         }
         w={180}
@@ -51,7 +51,7 @@ export function AdvisoryFilterBar({
         onChange={(value) =>
           onChange({
             ...filter,
-            status: (value as AdvisoryFilter["status"]) ?? "all",
+            status: value ?? "all",
           })
         }
         w={180}

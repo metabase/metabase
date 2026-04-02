@@ -2,30 +2,15 @@ import userEvent from "@testing-library/user-event";
 
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { Advisory } from "metabase-types/api";
 import { createMockVersion } from "metabase-types/api/mocks";
+import { createAdvisory } from "metabase-types/api/mocks/security-center";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import * as notificationHook from "../../hooks/use-notification-config";
 import * as advisoriesHook from "../../hooks/use-security-advisories";
-import type { Advisory } from "../../types";
 
 import { SecurityCenterPage } from "./SecurityCenterPage";
-
-const makeAdvisory = (overrides: Partial<Advisory>): Advisory => ({
-  advisory_id: "SA-001",
-  title: "Test advisory",
-  description: "Test description",
-  severity: "medium",
-  advisory_url: "https://example.com/advisory",
-  remediation: "Upgrade to latest version",
-  published_at: "2026-01-01T00:00:00Z",
-  match_status: "not_affected",
-  last_evaluated_at: null,
-  acknowledged_by: null,
-  acknowledged_at: null,
-  affected_versions: [{ min: "0.45.0", fixed: "0.59.0" }],
-  ...overrides,
-});
 
 const mockAcknowledge = jest.fn();
 
@@ -89,19 +74,19 @@ describe("SecurityCenterPage", () => {
 
   it("renders advisory cards in the correct order (affected first, then by severity)", () => {
     const advisories = [
-      makeAdvisory({
+      createAdvisory({
         advisory_id: "1",
         title: "Low not affected",
         severity: "low",
         match_status: "not_affected",
       }),
-      makeAdvisory({
+      createAdvisory({
         advisory_id: "2",
         title: "Critical affected",
         severity: "critical",
         match_status: "active",
       }),
-      makeAdvisory({
+      createAdvisory({
         advisory_id: "3",
         title: "High affected",
         severity: "high",
@@ -121,8 +106,8 @@ describe("SecurityCenterPage", () => {
 
   it("shows affected status on cards", () => {
     const advisories = [
-      makeAdvisory({ advisory_id: "1", match_status: "active" }),
-      makeAdvisory({ advisory_id: "2", match_status: "not_affected" }),
+      createAdvisory({ advisory_id: "1", match_status: "active" }),
+      createAdvisory({ advisory_id: "2", match_status: "not_affected" }),
     ];
 
     setup(advisories);
@@ -134,7 +119,7 @@ describe("SecurityCenterPage", () => {
 
   it("renders external links with correct targets", () => {
     const advisories = [
-      makeAdvisory({
+      createAdvisory({
         advisory_id: "1",
         advisory_url: "https://example.com/advisory/1",
       }),
@@ -152,7 +137,7 @@ describe("SecurityCenterPage", () => {
 
   it("calls acknowledgeAdvisory when acknowledge button is clicked", async () => {
     const advisories = [
-      makeAdvisory({ advisory_id: "SA-001", acknowledged_at: null }),
+      createAdvisory({ advisory_id: "SA-001", acknowledged_at: null }),
     ];
 
     setup(advisories);
@@ -163,7 +148,7 @@ describe("SecurityCenterPage", () => {
 
   it("does not show acknowledge button for already acknowledged advisories", async () => {
     const advisories = [
-      makeAdvisory({
+      createAdvisory({
         advisory_id: "SA-001",
         acknowledged_at: "2026-03-01T00:00:00Z",
       }),
@@ -182,12 +167,12 @@ describe("SecurityCenterPage", () => {
 
   it("hides acknowledged advisories by default", () => {
     const advisories = [
-      makeAdvisory({
+      createAdvisory({
         advisory_id: "1",
         title: "Visible",
         acknowledged_at: null,
       }),
-      makeAdvisory({
+      createAdvisory({
         advisory_id: "2",
         title: "Hidden",
         acknowledged_at: "2026-03-01T00:00:00Z",
@@ -209,7 +194,7 @@ describe("SecurityCenterPage", () => {
   describe("upgrade banner", () => {
     it("shows the upgrade banner when there are active advisories", () => {
       const advisories = [
-        makeAdvisory({
+        createAdvisory({
           advisory_id: "1",
           match_status: "active",
           affected_versions: [{ min: "0.58.0", fixed: "0.59.4" }],
@@ -226,7 +211,7 @@ describe("SecurityCenterPage", () => {
 
     it("does not show the upgrade banner when there are no active advisories", () => {
       const advisories = [
-        makeAdvisory({
+        createAdvisory({
           advisory_id: "1",
           match_status: "not_affected",
         }),
@@ -239,12 +224,12 @@ describe("SecurityCenterPage", () => {
 
     it("shows the highest fixed version across multiple active advisories", () => {
       const advisories = [
-        makeAdvisory({
+        createAdvisory({
           advisory_id: "1",
           match_status: "active",
           affected_versions: [{ min: "0.58.0", fixed: "0.59.2" }],
         }),
-        makeAdvisory({
+        createAdvisory({
           advisory_id: "2",
           match_status: "active",
           affected_versions: [{ min: "0.58.0", fixed: "0.59.5" }],
@@ -259,7 +244,7 @@ describe("SecurityCenterPage", () => {
 
     it("includes a link to upgrade instructions", () => {
       const advisories = [
-        makeAdvisory({
+        createAdvisory({
           advisory_id: "1",
           match_status: "active",
           affected_versions: [{ min: "0.58.0", fixed: "0.59.4" }],
