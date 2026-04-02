@@ -59,7 +59,7 @@ describe(
       cy.visit("/admin/embedding/security");
 
       cy.findByTestId("admin-layout-content").within(() => {
-        cy.findByTestId("embedding-app-origins-sdk-setting").should("exist");
+        cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
       });
     });
   },
