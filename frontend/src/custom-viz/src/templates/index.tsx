@@ -1,8 +1,9 @@
-import type {
-  CreateCustomVisualization,
-  CustomStaticVisualizationProps,
-  CustomVisualizationProps,
-} from "@metabase/custom-viz";
+import {
+  type CreateCustomVisualization,
+  type CustomStaticVisualizationProps,
+  type CustomVisualizationProps,
+  defineSetting,
+} from "../";
 
 type Settings = {
   threshold?: number;
@@ -11,65 +12,9 @@ type Settings = {
 const createVisualization: CreateCustomVisualization<Settings> = ({
   getAssetUrl,
 }) => {
-  return {
-    id: "__CUSTOM_VIZ_NAME__",
-    getName: () => "__CUSTOM_VIZ_NAME__",
-    minSize: { width: 1, height: 1 },
-    defaultSize: { width: 2, height: 2 },
-    checkRenderable(series, settings) {
-      if (series.length !== 1) {
-        throw new Error("Only 1 series is supported");
-      }
-
-      const [
-        {
-          data: { cols, rows },
-        },
-      ] = series;
-
-      if (cols.length !== 1) {
-        throw new Error("Query results should only have 1 column");
-      }
-
-      if (rows.length !== 1) {
-        throw new Error("Query results should only have 1 row");
-      }
-
-      if (typeof rows[0][0] !== "number") {
-        throw new Error("Result is not a number");
-      }
-
-      if (typeof settings.threshold !== "number") {
-        throw new Error("Threshold setting is not set");
-      }
-    },
-    settings: {
-      threshold: {
-        id: "1",
-        title: "Threshold",
-        widget: "number",
-        getDefault() {
-          return 0;
-        },
-        getProps() {
-          return {
-            options: {
-              isInteger: false,
-              isNonNegative: false,
-            },
-            placeholder: "Set threshold",
-          };
-        },
-      },
-    },
-    VisualizationComponent: makeVisualizationComponent(getAssetUrl),
-    StaticVisualizationComponent: makeStaticVisualizationComponent(getAssetUrl),
-  };
-};
-
-const makeVisualizationComponent =
-  (_getAssetUrl: (path: string) => string) =>
-  (props: CustomVisualizationProps<Settings>) => {
+  const VisualizationComponent = (
+    props: CustomVisualizationProps<Settings>,
+  ) => {
     const { height, series, settings, width } = props;
     const { threshold } = settings;
     const value = series[0].data.rows[0][0];
@@ -100,9 +45,9 @@ const makeVisualizationComponent =
     );
   };
 
-const makeStaticVisualizationComponent =
-  (getAssetUrl: (path: string) => string) =>
-  (props: CustomStaticVisualizationProps<Settings>) => {
+  const StaticVisualizationComponent = (
+    props: CustomStaticVisualizationProps<Settings>,
+  ) => {
     const width = 540;
     const height = 360;
     const { series, settings } = props;
@@ -135,5 +80,61 @@ const makeStaticVisualizationComponent =
       </div>
     );
   };
+
+  return {
+    id: "__CUSTOM_VIZ_NAME__",
+    getName: () => "__CUSTOM_VIZ_NAME__",
+    minSize: { width: 4, height: 4 },
+    defaultSize: { width: 4, height: 4 },
+    checkRenderable(series, settings) {
+      if (series.length !== 1) {
+        throw new Error("Only 1 series is supported");
+      }
+
+      const [
+        {
+          data: { cols, rows },
+        },
+      ] = series;
+
+      if (cols.length !== 1) {
+        throw new Error("Query results should only have 1 column");
+      }
+
+      if (rows.length !== 1) {
+        throw new Error("Query results should only have 1 row");
+      }
+
+      if (typeof rows[0][0] !== "number") {
+        throw new Error("Result is not a number");
+      }
+
+      if (typeof settings.threshold !== "number") {
+        throw new Error("Threshold setting is not set");
+      }
+    },
+    settings: {
+      threshold: defineSetting({
+        id: "1",
+        title: "Threshold",
+        widget: "number",
+        getDefault() {
+          return 0;
+        },
+        getProps() {
+          return {
+            options: {
+              isInteger: false,
+              isNonNegative: false,
+            },
+            placeholder: "Set threshold",
+          };
+        },
+      }),
+    },
+    VisualizationComponent,
+    StaticVisualizationComponent,
+  };
+};
 
 export default createVisualization;
