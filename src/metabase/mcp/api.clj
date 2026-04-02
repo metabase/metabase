@@ -280,6 +280,15 @@
                          :get    (handle-get user-id request respond raise)
                          :delete (respond (handle-delete user-id request))
                          (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
+                     (catch clojure.lang.ExceptionInfo e
+                       (if (:errors (ex-data e))
+                         ;; Throttle exceptions must return a JSON-RPC envelope so MCP clients
+                         ;; can parse the error, not a bare HTTP error from generic middleware.
+                         (let [message       (ex-message e)
+                               retry-seconds (some->> message (re-find #"(\d+) seconds") second)]
+                           (respond (cond-> (json-response 429 (jsonrpc-error nil -32000 message))
+                                      retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))
+                         (raise e)))
                      (catch Throwable e
                        (raise e)))))]
          (cond
