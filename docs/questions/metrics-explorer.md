@@ -13,22 +13,29 @@ The metrics explorer can help you visualize trends and breakdowns of different m
 
 You can:
 
-- Visualize multiple metrics and measures on one chart
-- Compare metrics and measures along shared dimensions
-- Break out by additional dimensions
-- Filter each metric or measure
+- [Explore metrics and measures along their dimensions](#explore-a-metric-or-a-measure)
+- [Compare multiple metrics and measures](#compare-metrics-and-measures)
+- [Break out by additional dimensions](#break-out-by-dimensions)
+- [Filter each metric or measure](#filter-metrics-and-measures)
 - Zoom into time periods
+
+The metric explorer is intended for ad hoc exploration and analysis. Currently, you can't save the results of your explorations. You can use the [query builder](../questions/query-builder/editor.md) to create saved explorations.
+
+To share your metric explorations with people in your organization, you can copy the link (which will look like `[your-metabase-URL]/explore#abunchofcharacters`). The link encodes your explorations, so other people will be able to see what you see.
 
 ## Explore a metric or a measure
 
 To open a **metric** in the Metrics Explorer:
 
-1. Open the metric.
-2. Click **Explore** in thw top right corner to op
+1. Navigate to the metric's home page.
+
+   To get to the metric's home page, you can click on a metric from its collection, from the [metrics browser](../data-modeling/metrics.md#see-all-metrics), or from search.
+
+2. Click **Explore** in the top right corner to open the metrics explorer
 
 To get back to the metric's page from metrics explorer, right-click the metric card in the search bar and select **Go to metric home page**.
 
-To open a **measure** in the Metrics Explorer, go directly to `[your metabase URL]/explore` and type the measure's name in the search bar. To get back to the measure definition from metrics explorer, right-click the measure card in the search bar and select **Edit in Data Studio**.
+To open a **measure** in the metrics explorer, go directly to `[your metabase URL]/explore` and type the measure's name in the search bar. To get back to the measure definition from metrics explorer, right-click the measure card in the search bar and select **Edit in Data Studio**.
 
 ## Compare metrics and measures
 
@@ -76,7 +83,7 @@ You can add filters to each metric/measure in the metrics explorer. For example,
 To add a filter to a metric or measure:
 
 1. Click the **filter** icon in the top right corner of the metrics explorer.
-2. Select the metric/easure you want to filter.
+2. Select the metric/measure you want to filter.
 3. Select the field to filter and define the filter.
 
 You'll see the filter added below the metric or measure's card in the search bar. To remove the filter, click the **X** on the filter's card.
