@@ -60,7 +60,7 @@ elif [[ "$BASE_REF" == "master" ]]; then
     ((matches++))
   fi
   if [[ $matches -gt 1 ]]; then
-    echo "NOTE: Multiple backport labels detected; using most conservative (v${version})." >&2
+    echo "NOTE: Multiple backport labels detected; using the earliest version (v${version})." >&2
   fi
   constraint="="
 else
