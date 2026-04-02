@@ -27,7 +27,7 @@ An admin can set up Metabase to sync with either:
 
 Here's how to set it up:
 
-1. In the left nav sidebar, click **Add Data** > **Connect Google Sheets**.
+1. In the left nav sidebar, click the **+** next to **Data**, then select **Google Sheets**.
 2. Select **Entire Folder** or **Single sheet**.
 3. Metabase will ask you to share the Google Drive folder or sheet. You can only share a single folder or sheet with Metabase at a time.
 4. In Google Drive, share the folder or sheet with the service account that Metabase provides.
