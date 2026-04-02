@@ -59,7 +59,11 @@
   ;; Is worth considering when adding entries here, whether they shouldn't just be skipped in extraction.
   #{:cache_field_values_schedule
     :metadata_sync_schedule
-    :metabase_version})
+    :metabase_version
+    ;; result_metadata is non-deterministic for dashboard/document cards because the Card before-update hook
+    ;; re-computes it without :verified-result-metadata? set. Fixing this properly requires making serdes
+    ;; load set :verified-result-metadata? on Card updates, which is not straightforward.
+    :result_metadata})
 
 (defn- strip-base-path [base file]
   (str/replace-first file (str base File/separator) ""))
