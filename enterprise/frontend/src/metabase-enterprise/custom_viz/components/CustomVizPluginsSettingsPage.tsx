@@ -267,7 +267,6 @@ export function ManageCustomVisualizationsPage() {
   );
 }
 
-
 export function CustomVizFormPage({ params }: { params?: { id?: string } }) {
   const dispatch = useDispatch();
   const pluginId = params?.id ? parseInt(params.id, 10) : undefined;
@@ -486,11 +485,7 @@ function EditDevPluginForm({ plugin }: { plugin: CustomVizPlugin }) {
               />
               <FormErrorMessage />
               <Group justify="flex-end">
-                <Button
-                  variant="subtle"
-                  color="error"
-                  onClick={handleRemove}
-                >
+                <Button variant="subtle" color="error" onClick={handleRemove}>
                   {t`Remove`}
                 </Button>
                 <FormSubmitButton
@@ -510,10 +505,7 @@ function EditDevPluginForm({ plugin }: { plugin: CustomVizPlugin }) {
 export function CustomVizDevelopmentPage() {
   const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
 
-  const devPlugin = useMemo(
-    () => plugins?.find((p) => p.dev_only),
-    [plugins],
-  );
+  const devPlugin = useMemo(() => plugins?.find((p) => p.dev_only), [plugins]);
 
   return (
     <SettingsPageWrapper

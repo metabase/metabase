@@ -98,9 +98,7 @@ program
     console.log(
       "  1. Register or select your plugin in Metabase Admin → Custom Visualizations",
     );
-    console.log(
-      `  2. Set the dev server URL to http://localhost:5174`,
-    );
+    console.log(`  2. Set the dev server URL to http://localhost:5174`);
     console.log(
       "  3. Changes will hot-reload automatically in your Metabase instance",
     );

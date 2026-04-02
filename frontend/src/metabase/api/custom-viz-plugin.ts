@@ -94,7 +94,10 @@ export const customVizPluginApi = Api.injectEndpoints({
           idTag("custom-viz-plugin", id),
         ]),
     }),
-    refreshCustomVizPlugin: builder.mutation<CustomVizPlugin, CustomVizPluginId>({
+    refreshCustomVizPlugin: builder.mutation<
+      CustomVizPlugin,
+      CustomVizPluginId
+    >({
       query: (id) => ({
         method: "POST",
         url: `/api/ee/custom-viz-plugin/${id}/refresh`,
