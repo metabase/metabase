@@ -117,9 +117,9 @@ describe("AI Controls admin settings", () => {
 
       // The illustrations section should now appear
       H.main().findByText("Metabot illustrations").should("be.visible");
-      cy.findByRole("switch", { name: /Show Metabot illustrations/ }).should(
-        "be.visible",
-      );
+      cy.findByRole("switch", { name: /Show Metabot illustrations/ })
+        .parent()
+        .should("be.visible");
 
       // The "Remove custom icon" button should be visible
       cy.findByLabelText("Remove custom icon").should("be.visible");
@@ -142,13 +142,15 @@ describe("AI Controls admin settings", () => {
       H.main().findByText("Metabot illustrations").should("be.visible");
 
       // The switch should be ON
-      cy.findByRole("switch", { name: /Show Metabot illustrations/ }).should(
-        "be.checked",
+      cy.findByRole("switch", { name: "Show Metabot illustrations" }).should(
+        "have.attr",
+        "data-checked",
+        "true",
       );
 
       // Toggle illustrations off
       cy.findByRole("switch", {
-        name: /Show Metabot illustrations/,
+        name: "Show Metabot illustrations",
       }).click({ force: true });
 
       cy.wait("@saveIllustrations")
