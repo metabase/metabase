@@ -10,6 +10,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test :as qp]
@@ -111,6 +112,53 @@
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from orders" nil]
                  (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)}))))))))
+
+(deftest ^:parallel substitute-field-filter-for-nested-field-test
+  (testing "field filter for a nested field (with parent-id) should include parent field name in identifier (#47003)"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [;; Use high IDs that won't collide with existing test metadata
+            parent-field-id 999901
+            nested-field-id 999902
+          ;; Create a metadata provider that has a parent struct field and a nested child field
+            metadata-provider
+            (lib.tu/merged-mock-metadata-provider
+             meta/metadata-provider
+             {:fields [{:id            parent-field-id
+                        :table-id      (meta/id :venues)
+                        :name          "result"
+                        :display-name  "Result"
+                        :base-type     :type/Dictionary
+                        :database-type "STRUCT"
+                        :parent-id     nil
+                        :nfc-path      nil}
+                       {:id            nested-field-id
+                        :table-id      (meta/id :venues)
+                        :name          "tag_name"
+                        :display-name  "Tag Name"
+                        :base-type     :type/Text
+                        :database-type "CHARACTER VARYING"
+                        :parent-id     parent-field-id
+                        :nfc-path      nil}]})
+            query          ["select * from venues where " (param "tag")]
+            field-metadata (assoc (meta/field-metadata :venues :name)
+                                  :id            nested-field-id
+                                  :name          "tag_name"
+                                  :display-name  "Tag Name"
+                                  :base-type     :type/Text
+                                  :database-type "CHARACTER VARYING"
+                                  :parent-id     parent-field-id
+                                  :nfc-path      nil)
+            field-filter   (params/map->FieldFilter
+                            {:field field-metadata
+                             :value {:type  :string/=
+                                     :value ["banana"]}})
+            [sql _args] (mt/with-metadata-provider metadata-provider
+                          (sql.params.substitute/substitute query {"tag" field-filter}))]
+        (testing "The SQL identifier should include the parent field 'result' before 'tag_name'"
+          ;; Currently this FAILS: the identifier is "PUBLIC"."VENUES"."tag_name" (missing "result")
+          ;; It should be "PUBLIC"."VENUES"."result"."tag_name"
+          (is (str/includes? sql "\"result\".\"tag_name\"")
+              (str "Expected SQL to include parent field in identifier, got: " sql)))))))
 
 (def ^:private substitute-field-filter-test-2-test-cases
   (partition-all

@@ -271,10 +271,11 @@
    driver-api/mbql.schema.field
    [:field
     (:id field)
-    (merge {:base-type                     (:base-type field)
-            driver-api/qp.add.source-table (:table-id field)
-            ::compiling-field-filter?      true}
-           other-opts)]))
+    (cond-> (merge {:base-type                     (:base-type field)
+                    driver-api/qp.add.source-table (:table-id field)
+                    ::compiling-field-filter?      true}
+                   other-opts)
+      (seq (:nfc-path field)) (assoc driver-api/qp.add.nfc-path (:nfc-path field)))]))
 
 (mu/defn- field->field-filter-clause :- driver-api/mbql.schema.field
   [driver     :- :keyword
