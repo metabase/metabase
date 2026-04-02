@@ -131,9 +131,9 @@
                         (->> (lib/visible-columns base-query)
                              (map #(metabot.tools.u/add-table-reference base-query %))))
          default-temporal-breakout (when with-default-temporal-breakout?
-                                    (->> breakouts
-                                         (map #(lib/find-matching-column % visible-cols))
-                                         (m/find-first lib.types.isa/temporal?)))]
+                                     (->> breakouts
+                                          (map #(lib/find-matching-column % visible-cols))
+                                          (m/find-first lib.types.isa/temporal?)))]
      (cond-> {:id id
               :type :metric
               :name (:name card)
