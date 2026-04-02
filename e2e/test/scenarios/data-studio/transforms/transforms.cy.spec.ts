@@ -1384,11 +1384,13 @@ LIMIT
       getTransformsTargetContent()
         .findByText("Edit this table's metadata")
         .click();
+      H.DataModel.TableSection.clickFieldsTab();
       H.DataModel.TableSection.clickField("Name");
       H.DataModel.FieldSection.getNameInput().clear().type("New name").blur();
       cy.wait("@updateField");
 
       cy.log("verify query metadata");
+      cy.go("back");
       cy.go("back");
       cy.go("back");
       getTableLink().click();
