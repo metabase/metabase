@@ -209,18 +209,22 @@
         [op-name lhs (normalize-quarter-filter-value lhs rhs)])
 
       "="
-      (let [[lhs rhs] args
-            rhs'      (normalize-quarter-filter-value lhs rhs)]
-        (if (scalar-sequential? rhs')
-          ["in" lhs (vec rhs')]
-          [op-name lhs rhs']))
+      (if (empty? args)
+        [op-name]
+        (let [[lhs rhs] args
+              rhs'      (normalize-quarter-filter-value lhs rhs)]
+          (if (scalar-sequential? rhs')
+            ["in" lhs (vec rhs')]
+            [op-name lhs rhs'])))
 
       "!="
-      (let [[lhs rhs] args
-            rhs'      (normalize-quarter-filter-value lhs rhs)]
-        (if (scalar-sequential? rhs')
-          ["not-in" lhs (vec rhs')]
-          [op-name lhs rhs']))
+      (if (empty? args)
+        [op-name]
+        (let [[lhs rhs] args
+              rhs'      (normalize-quarter-filter-value lhs rhs)]
+          (if (scalar-sequential? rhs')
+            ["not-in" lhs (vec rhs')]
+            [op-name lhs rhs'])))
 
       "is"
       (let [[lhs rhs] args]

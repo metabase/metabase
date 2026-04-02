@@ -213,12 +213,12 @@
 
   (testing "Returns 404 for non-existent table"
     (is (= "Not found."
-           (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/t999999-0/values"))))
+           (mt/user-http-request :crowberto :get 404 "agent/v1/table/999999/field/999999/values"))))
 
-  (testing "Returns 400 for invalid field-id format"
+  (testing "Returns 404 for non-existent field"
     (let [table-id (mt/id :people)]
-      (is (= "Invalid field_id format: not-a-valid-id"
-             (mt/user-http-request :crowberto :get 400 (format "agent/v1/table/%d/field/not-a-valid-id/values" table-id)))))))
+      (is (= "Field 999999 not found"
+             (mt/user-http-request :crowberto :get 404 (format "agent/v1/table/%d/field/999999/values" table-id)))))))
 
 (deftest search-test
   (binding [search.ingestion/*force-sync* true]
@@ -262,7 +262,7 @@
       (is (= 10 (lib/current-limit decoded)))))
 
   (testing "Returns 404 for non-existent table"
-    (is (= "No table found with table_id 999999"
+    (is (= "Not found."
            (mt/user-http-request :rasta :post 404 "agent/v1/construct-query"
                                  {:table_id 999999})))))
 
@@ -312,12 +312,11 @@
 
     (testing "Returns 404 for non-existent metric"
       (is (= "Not found."
-             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/c999999-0/values"))))
+             (mt/user-http-request :rasta :get 404 "agent/v1/metric/999999/field/999999/values"))))
 
-    (testing "Returns 400 for field-id from wrong entity type"
-      ;; Using a table field-id (t-prefix) when querying a metric should fail
-      (is (re-find #"does not match expected prefix"
-                   (mt/user-http-request :rasta :get 400 (format "agent/v1/metric/%d/field/t123-0/values" (:id metric))))))))
+    (testing "Returns 404 for non-existent field on metric"
+      (is (= "Field 999999 not found"
+             (mt/user-http-request :rasta :get 404 (format "agent/v1/metric/%d/field/999999/values" (:id metric))))))))
 
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"

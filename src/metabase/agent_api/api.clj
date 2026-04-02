@@ -63,9 +63,10 @@
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
 (mr/def ::field
-  "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields."
+  "A field from a table or metric. field_id is the real database field ID (integer) for concrete fields,
+  or a string alias for expression/aggregation columns."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:field_id :string]
+   [:field_id [:or :int :string]]
    [:name :string]
    [:display_name :string]
    [:description {:optional true} [:maybe :string]]
@@ -87,7 +88,7 @@
    [:type [:= :metric]]
    [:name :string]
    [:description {:optional true} [:maybe :string]]
-   [:default_time_dimension_field_id {:optional true} [:maybe :string]]])
+   [:default_time_dimension_field_id {:optional true} [:maybe [:or :int :string]]]])
 
 (mr/def ::segment
   "A predefined filter condition that can be applied to queries via the segment_id in filters."
@@ -143,7 +144,7 @@
    [:type [:= :metric]]
    [:name :string]
    [:description {:optional true} [:maybe :string]]
-   [:default_time_dimension_field_id {:optional true} [:maybe :string]]
+   [:default_time_dimension_field_id {:optional true} [:maybe [:or :int :string]]]
    [:verified {:optional true} [:maybe :boolean]]
    [:queryable_dimensions {:optional true} [:maybe [:sequential ::field]]]
    [:segments {:optional true} [:maybe [:sequential ::segment]]]])
@@ -170,7 +171,7 @@
 (mr/def ::field-values
   "Statistics and sample values for a specific field."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:field_id {:optional true} [:maybe :string]]
+   [:field_id {:optional true} [:maybe [:or :int :string]]]
    [:statistics {:optional true} [:maybe ::statistics]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
@@ -322,7 +323,7 @@
 (mr/def ::existence-filter
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "is-null"         "is-not-null"
                  "string-is-empty" "string-is-not-empty"
@@ -332,7 +333,7 @@
 (mr/def ::temporal-extraction-filter
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "year-equals"        "year-not-equals"
                  "quarter-equals"     "quarter-not-equals"
@@ -347,7 +348,7 @@
 (mr/def ::disjunctive-temporal-extraction-filter
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "year-equals"        "year-not-equals"
                  "quarter-equals"     "quarter-not-equals"
@@ -362,7 +363,7 @@
 (mr/def ::temporal-filter
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:bucket {:optional true} ::bucket]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"       "not-equals"
@@ -374,7 +375,7 @@
 (mr/def ::disjunctive-temporal-filter
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:bucket {:optional true} ::bucket]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"       "not-equals"
@@ -386,7 +387,7 @@
 (mr/def ::string-filter
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"             "not-equals"
                  "string-contains"    "string-not-contains"
@@ -397,7 +398,7 @@
 (mr/def ::disjunctive-string-date-filter
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"             "not-equals"
                  "string-contains"    "string-not-contains"
@@ -408,7 +409,7 @@
 (mr/def ::numeric-filter
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"       "not-equals"
                  "greater-than" "greater-than-or-equal"
@@ -419,7 +420,7 @@
 (mr/def ::disjunctive-numeric-filter
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals" "not-equals"]]
     [:values [:sequential [:or :int :double]]]]
@@ -444,7 +445,7 @@
 (mr/def ::group-by
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:field_granularity {:optional true}
      [:maybe [:enum {:encode/tool-api-request keyword}
               "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
@@ -465,7 +466,7 @@
    Use sort_order to order results by this aggregation ('asc' or 'desc')."
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:bucket {:optional true} ::bucket]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
     [:function [:enum {:encode/tool-api-request keyword}
@@ -487,7 +488,7 @@
 (mr/def ::field
   [:and
    [:map
-    [:field_id :string]
+    [:field_id [:or :int :string]]
     [:bucket {:optional true} ::bucket]]
    [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
@@ -550,6 +551,11 @@
   [:map
    [:query ms/NonBlankString]])
 
+(defn- ->long
+  "Coerce a field_id to long, whether it's already an integer or a string."
+  [x]
+  (if (int? x) x (parse-long x)))
+
 (defn- body->program
   "Convert a construct-query request body into an agent-lib program.
   Maps the legacy table_id/metric_id + filters/aggregations format into the
@@ -562,8 +568,8 @@
                            (if segment_id
                              ["filter" ["segment" segment_id]]
                              (let [field-ref (if bucket
-                                               ["with-temporal-bucket" ["field" (parse-long field_id)] bucket]
-                                               ["field" (parse-long field_id)])]
+                                               ["with-temporal-bucket" ["field" (->long field_id)] bucket]
+                                               ["field" (->long field_id)])]
                                (cond
                                  (seq values) ["filter" [operation field-ref values]]
                                  (some? value) ["filter" [operation field-ref value]]
@@ -575,8 +581,8 @@
               (into (map (fn [{:keys [field_id function measure_id]}]
                            (if measure_id
                              ["aggregate" ["measure" measure_id]]
-                             (if field_id
-                               ["aggregate" [function ["field" (parse-long field_id)]]]
+                             (if (and field_id (not= function "count"))
+                               ["aggregate" [function ["field" (->long field_id)]]]
                                ["aggregate" [function]]))))
                     (:aggregations body))
 
@@ -584,20 +590,20 @@
               (seq (:group_by body))
               (into (map (fn [{:keys [field_id field_granularity]}]
                            (if field_granularity
-                             ["breakout" ["with-temporal-bucket" ["field" (parse-long field_id)] field_granularity]]
-                             ["breakout" ["field" (parse-long field_id)]])))
+                             ["breakout" ["with-temporal-bucket" ["field" (->long field_id)] field_granularity]]
+                             ["breakout" ["field" (->long field_id)]])))
                     (:group_by body))
 
                  ;; fields → with-fields
               (seq (:fields body))
               (conj ["with-fields" (mapv (fn [{:keys [field_id]}]
-                                           ["field" (parse-long field_id)])
+                                           ["field" (->long field_id)])
                                          (:fields body))])
 
                  ;; order_by
               (seq (:order_by body))
               (into (map (fn [{:keys [field direction]}]
-                           (let [field-ref ["field" (parse-long (:field_id field))]]
+                           (let [field-ref ["field" (->long (:field_id field))]]
                              (if (= direction "desc")
                                ["order-by" field-ref "desc"]
                                ["order-by" field-ref]))))
