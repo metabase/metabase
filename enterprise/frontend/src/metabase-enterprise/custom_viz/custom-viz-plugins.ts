@@ -1,5 +1,4 @@
-import type { CustomVisualizationProps } from "custom-viz/src";
-import type { ComponentType } from "react";
+import type { CustomVisualization } from "custom-viz/src";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as jsxRuntime from "react/jsx-runtime";
 import { t } from "ttag";
@@ -29,9 +28,9 @@ import type {
 import { buildCustomVizProps } from "./custom-viz-props";
 
 type CustomVizPluginDefinition = {
-  VisualizationComponent: ComponentType<
-    CustomVisualizationProps<Record<string, unknown>>
-  >;
+  VisualizationComponent: CustomVisualization<
+    Record<string, unknown>
+  >["VisualizationComponent"];
   minSize?: Visualization["minSize"];
   defaultSize?: Visualization["defaultSize"];
   checkRenderable?: Visualization["checkRenderable"];
@@ -352,7 +351,10 @@ export async function loadCustomVizPlugin(
       onVisualizationClick,
       onHoverChange,
       ...rest
-    }: VisualizationProps) =>
+    }: Omit<VisualizationProps, "width" | "height"> & {
+      width: number | null;
+      height: number | null;
+    }) =>
       React.createElement(vizDef.VisualizationComponent, {
         ...rest,
         onClick: onVisualizationClick,
