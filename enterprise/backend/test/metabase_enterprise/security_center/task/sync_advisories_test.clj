@@ -6,7 +6,9 @@
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
 
 (deftest sync-and-evaluate-test
   (testing "skips when disabled"
@@ -29,7 +31,30 @@
                                   fetch/sync-advisories!               #(throw (Exception. "fetch failed"))
                                   matching/evaluate-all-advisories!     #(swap! called conj :evaluate)]
         (#'sync-advisories/sync-and-evaluate!)
-        (is (= [:evaluate] @called))))))
+        (is (= [:evaluate] @called)))))
+  (testing "concurrent calls do not run sync-and-evaluate! in parallel"
+    (let [running    (atom 0)
+          max-conc   (atom 0)
+          entered    (CountDownLatch. 1)
+          finish     (CountDownLatch. 1)
+          call-count (atom 0)]
+      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                  fetch/sync-advisories!
+                                  (fn []
+                                    (swap! call-count inc)
+                                    (swap! max-conc max (swap! running inc))
+                                    (.countDown entered)
+                                    (.await finish 5 TimeUnit/SECONDS)
+                                    (swap! running dec))
+                                  matching/evaluate-all-advisories! (constantly nil)]
+        ;; first call blocks inside fetch
+        (let [f1 (future (#'sync-advisories/sync-and-evaluate!))
+              _  (.await entered 5 TimeUnit/SECONDS)
+              ;; second call while first is still running
+              f2 (future (#'sync-advisories/sync-and-evaluate!))]
+          (.countDown finish)
+          @f1 @f2)
+        (is (= 1 @max-conc) "only one sync-and-evaluate! should run at a time"))))))
 
 (deftest sync-and-evaluate-e2e-test
   (testing "full flow: sync-and-evaluate! runs matching queries and updates match_status"

@@ -1,14 +1,17 @@
 (ns metabase-enterprise.security-center.api
   "API endpoints for Security Center advisories."
   (:require
+   [clojurewerkz.quartzite.jobs :as jobs]
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase-enterprise.security-center.seed]
    [metabase-enterprise.security-center.settings]
+   [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.premium-features.core :as premium-features]
+   [metabase.task.core :as task]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -66,6 +69,13 @@
   (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
+
+(api.macros/defendpoint :post "/sync" :- [:map [:status ms/NonBlankString]]
+  "Trigger an async advisory sync + re-evaluation via Quartz.
+   Returns immediately. DisallowConcurrentExecution prevents overlapping runs."
+  []
+  (task/trigger-now! (jobs/key sync-advisories/job-key))
+  {:status "ok"})
 
 (defn- +check-not-trial
   "Middleware that returns 402 if the instance is on a trial subscription."

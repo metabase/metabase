@@ -15,7 +15,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private job-key "metabase.task.security-center.sync-advisories.job")
+(def job-key
+  "Quartz job key for the sync-advisories task. Public so the API can trigger it on demand."
+  "metabase.task.security-center.sync-advisories.job")
 (def ^:private trigger-key "metabase.task.security-center.sync-advisories.trigger")
 
 (defn- sync-and-evaluate! []
