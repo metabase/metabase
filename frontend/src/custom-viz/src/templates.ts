@@ -20,6 +20,11 @@ function replaceName(template: string, name: string): string {
   return template.split(NAME_PLACEHOLDER).join(name);
 }
 
+function replaceImportPath(template: string): string {
+  // Template uses ../ to import SDK locally for TS-checking purposes.
+  return template.replace("../", "@metabase/custom-viz");
+}
+
 export function generatePackageJson(name: string): string {
   return replaceName(packageJsonTemplate, name)
     .split(VERSION_PLACEHOLDER)
@@ -41,7 +46,7 @@ export function generateTsConfig(): string {
 }
 
 export function generateIndexTsx(name: string): string {
-  return replaceName(indexTsxTemplate, name);
+  return replaceName(replaceImportPath(indexTsxTemplate), name);
 }
 
 export function generateManifest(name: string): string {

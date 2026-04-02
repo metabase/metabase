@@ -17,11 +17,6 @@ export type CreateCustomVisualizationProps = {
   locale: string;
 
   /**
-   * Translates text using ttag function used in Metabase.
-   */
-  translate: (text: string) => string;
-
-  /**
    * Returns a URL for a static asset declared in the plugin manifest.
    * Use this to reference images and other static files from your plugin.
    * @example getAssetUrl("icon.svg")
