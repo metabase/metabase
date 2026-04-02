@@ -408,23 +408,14 @@ databaseChangeLog:
             path: ../instance_analytics_views/users/v5/h2-users.sql
             relativeToChangelogFile: true
       rollback:
-        - sql:
-            dbms: postgresql
-            sql: DROP VIEW IF EXISTS v_users;
         - sqlFile:
             dbms: postgresql
             path: ../instance_analytics_views/users/v3/postgres-users.sql
             relativeToChangelogFile: true
-        - sql:
-            dbms: mysql,mariadb
-            sql: DROP VIEW IF EXISTS v_users;
         - sqlFile:
             dbms: mysql,mariadb
             path: ../instance_analytics_views/users/v4/mysql-users.sql
             relativeToChangelogFile: true
-        - sql:
-            dbms: h2
-            sql: DROP VIEW IF EXISTS v_users;
         - sqlFile:
             dbms: h2
             path: ../instance_analytics_views/users/v3/h2-users.sql
