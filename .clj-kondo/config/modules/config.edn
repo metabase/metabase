@@ -2971,11 +2971,11 @@
               models
               premium-features
               settings
+              task
               users
               util
               enterprise/dependencies
-              enterprise/transforms-python
-              task}
+              enterprise/transforms-python}
    :model-imports #{:model/Card
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
