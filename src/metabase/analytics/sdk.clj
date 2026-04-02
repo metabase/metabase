@@ -39,7 +39,7 @@
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 
-(def ^:dynamic *route* "Used to track the API route surface for the current request (e.g. \"public\", \"guest-embed\")." nil)
+(def ^:dynamic *route* "Used to track the API route for the current request (e.g. \"public\", \"guest-embed\")." nil)
 
 (defmacro with-route! "Binds [[*route*]] for the duration of `body`."
   [[value] & body]

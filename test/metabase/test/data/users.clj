@@ -152,7 +152,7 @@
 ;;; consistently fails for me when using [[metabase.test.http-client/authenticate]] instead of the code below. See #48489 for
 ;;; more info
 (mu/defn ^:private authenticate! :- ms/UUIDString
-  "Create a new `:model/Session` for one of the test users."
+  "Create a new `:model/Session` for one of the test users, linked to their password `:model/AuthIdentity`."
   [username :- TestUserName]
   (let [session-key  (session/generate-session-key)
         user-id      (user->id username)
