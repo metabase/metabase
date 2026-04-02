@@ -21,22 +21,6 @@
 (set! *warn-on-reflection* true)
 
 ;;; ===========================================================================
-;;; Path Parsing - Infer entity type from file path
-;;; ===========================================================================
-
-(defn infer-entity-type
-  "Infer entity type from file path. Returns keyword or nil."
-  [^String path]
-  (cond
-    (re-find #"/databases/[^/]+/[^/]+\.yaml$" path) :database
-    (re-find #"/tables/[^/]+/[^/]+\.yaml$" path) :table
-    (re-find #"/fields/[^/]+\.yaml$" path) :field
-    (re-find #"/cards/[^/]+\.yaml$" path) :card
-    (re-find #"/dashboards/[^/]+\.yaml$" path) :dashboard
-    (re-find #"/collections/[^/]+/[^/]+\.yaml$" path) :collection
-    :else nil))
-
-;;; ===========================================================================
 ;;; YAML Loading
 ;;; ===========================================================================
 
@@ -159,93 +143,6 @@
 ;;; File Walking - Build index of all entities
 ;;; ===========================================================================
 
-(defn walk-yaml-files
-  "Walk export directory and call (f file-path entity-type) for each YAML file.
-   Returns nil, used for side effects."
-  [export-dir f]
-  (doseq [^File file (file-seq (io/file export-dir))
-          :when (.isFile file)
-          :when (str/ends-with? (.getName file) ".yaml")
-          :let [path (.getPath file)
-                entity-type (infer-entity-type path)]
-          :when entity-type]
-    (f path entity-type)))
-
-;;; ---------------------------------------------------------------------------
-;;; Database tree indexing
-;;;
-;;; The serdes database directory has a regular, recursive structure that we
-;;; describe as data and interpret with a single walker.
-;;;
-;;; Layout grammar (each step is a vector):
-;;;
-;;;   [:dir "name" & children]     — descend into literal subdirectory "name"
-;;;   [:each & children]           — iterate subdirs, capture dir-name into ref
-;;;   [:entity :kind]              — <dirname>.yaml here is an entity of :kind
-;;;   [:files :kind]               — each .yaml file here is an entity of :kind
-;;;   [:maybe & children]          — like progn, but ok if directory is missing
-;;;   [:insert val & children]     — push a literal value into the ref (e.g. nil for schema)
-;;;
-;;; The walker accumulates captured names into a `ref` vector as it descends.
-;;; When it hits :entity or :files, it emits {:kind :ref :file} index entries.
-;;; ---------------------------------------------------------------------------
-
-;; The database layout grammar is no longer used — schema directories are
-;; indexed by reading serdes/meta from each YAML file. See index-schema-dir.
-
-(defn- subdirs
-  "Subdirectories of `dir`, or [] if it doesn't exist."
-  [^File dir]
-  (if (.isDirectory dir)
-    (filterv #(.isDirectory ^File %) (.listFiles dir))
-    []))
-
-(defn- walk-layout
-  "Interpret a layout descriptor against `dir`, accumulating captured names in `ref`.
-   Returns a lazy seq of {:kind :ref :file} index entries."
-  [^File dir ref layout]
-  (let [op       (first layout)
-        ;; :dir, :entity, :files, :insert take an arg; :each, :maybe do not
-        has-arg? (#{:dir :entity :files :insert} op)
-        arg      (when has-arg? (second layout))
-        children (if has-arg? (nnext layout) (next layout))]
-    (case op
-      :dir
-      (let [child-dir (io/file dir ^String arg)]
-        (when (.isDirectory child-dir)
-          (mapcat #(walk-layout child-dir ref %) children)))
-
-      :each
-      (for [^File child-dir (subdirs dir)
-            :let [name (.getName child-dir)
-                  ref' (conj ref name)]
-            entry (mapcat #(walk-layout child-dir ref' %) children)]
-        entry)
-
-      :entity
-      (let [name (.getName dir)
-            f    (io/file dir (str name ".yaml"))]
-        (when (.isFile f)
-          [{:kind arg :ref (if (= 1 (count ref)) (first ref) ref) :file (.getPath f)}]))
-
-      :files
-      (for [^File f (.listFiles dir)
-            :when (.isFile f)
-            :let  [fname (.getName f)]
-            :when (str/ends-with? fname ".yaml")
-            :when (not (str/includes? fname "___"))
-            :let  [field-name (str/replace fname ".yaml" "")]]
-        {:kind arg :ref (conj ref field-name) :file (.getPath f)})
-
-      :insert
-      (mapcat #(walk-layout dir (conj ref arg) %) children)
-
-      :maybe
-      (when (.isDirectory dir)
-        (mapcat #(walk-layout dir ref %) children))
-
-      nil)))
-
 (def ^:private model->kind
   "Map serdes model names to index kinds."
   {"Card"               :card
@@ -256,23 +153,6 @@
    "Segment"            :segment
    "NativeQuerySnippet" :snippet
    "Transform"          :transform})
-
-(defn- index-measures-and-segments
-  "Walk a databases directory and index measure/segment YAML files by entity_id.
-   Only scans files under measures/ and segments/ subdirectories to avoid
-   reading every file in the database tree."
-  [databases-dir]
-  (when (.isDirectory (io/file databases-dir))
-    (for [^File file (file-seq (io/file databases-dir))
-          :when (.isFile file)
-          :let  [path (.getPath file)]
-          :when (str/ends-with? (.getName file) ".yaml")
-          :when (or (re-find #"/measures/[^/]+\.yaml$" path)
-                    (re-find #"/segments/[^/]+\.yaml$" path))
-          :let  [entity-id (extract-entity-id path)]
-          :when entity-id
-          :let  [kind (if (re-find #"/measures/" path) :measure :segment)]]
-      {:kind kind :ref entity-id :file path})))
 
 (defn- index-collections-tree
   "Walk the collections/ directory and index all entities by their serdes model.

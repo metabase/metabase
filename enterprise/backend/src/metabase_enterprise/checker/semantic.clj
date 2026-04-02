@@ -677,18 +677,62 @@
 ;;; We validate the database ref and run native SQL validation.
 ;;; ===========================================================================
 
+(defn- check-transform-query
+  "Validate a transform's source query (native or MBQL).
+   Returns a map with :unresolved, :bad-refs, :native-errors, :error keys."
+  [store provider query]
+  (let [!failures (atom [])
+        db-name   (:database query)
+        db-id     (when (string? db-name) (resolve-db-name store !failures db-name))
+        resolver  (make-import-resolver store !failures :sentinel? true)
+        query     (cond-> query db-id (assoc :database db-id))
+        query     (-> query
+                      (update :stages
+                              (fn [stages]
+                                (mapv (fn [stage]
+                                        (-> stage
+                                            (m/update-existing :native keywordize-mbql-operators)
+                                            (cond-> (not (:native stage))
+                                              (keywordize-mbql-operators))))
+                                      (or stages []))))
+                      (as-> q (binding [resolve/*import-resolver* resolver]
+                                (resolve/import-mbql q))))]
+    (try
+      (let [query      (lib/query provider query)
+            is-native? (lib/native-only-query? query)
+            bad-refs   (lib/find-bad-refs query)
+            native-errors (when is-native?
+                            (native/validate-native-sql store provider query db-name))]
+        (cond-> {:unresolved @!failures
+                 :bad-refs   bad-refs}
+          (seq native-errors) (assoc :native-errors native-errors)))
+      (catch Exception e
+        {:unresolved @!failures
+         :error      (.getMessage e)}))))
+
 (defn- check-transform
   "Run transform-specific semantic checks. Validates that the source database
-   exists and the query references are valid."
-  [store data]
-  (let [db-name (or (get-in data [:source :query :database])
-                    (:source_database_id data))
-        failures (transient [])]
+   exists and that the source query (native or MBQL) is valid.
+   Returns a result map with :unresolved, :native-errors, :bad-refs, :error keys."
+  [store provider data]
+  (let [db-name    (or (get-in data [:source :query :database])
+                       (:source_database_id data))
+        unresolved (atom [])]
     ;; Check database ref
     (when (and db-name (not (store/in-index? store :database db-name)))
-      (conj! failures {:type :database :name db-name
-                       :message (str "transform references database " db-name " which is not in the schema")}))
-    (persistent! failures)))
+      (swap! unresolved conj {:type :database :name db-name
+                              :message (str "transform references database " db-name " which is not in the schema")}))
+    ;; Validate the source query (native SQL or MBQL)
+    (if-let [query (get-in data [:source :query])]
+      (let [result (check-transform-query store provider query)
+            sql    (get-in data [:source :query :stages 0 :native])]
+        (swap! unresolved into (:unresolved result))
+        (cond-> {:unresolved @unresolved}
+          (seq (:native-errors result)) (assoc :native-errors (:native-errors result))
+          (seq (:bad-refs result))      (assoc :bad-refs (:bad-refs result))
+          (:error result)               (assoc :error (:error result))
+          sql                           (assoc :sql sql)))
+      {:unresolved @unresolved})))
 
 ;;; ===========================================================================
 ;;; Non-card entity checking — load from files, run common + type-specific checks
@@ -698,21 +742,28 @@
   "Load an entity YAML file from the index and run checks.
    Runs common checks on all entities, plus type-specific checks.
    Returns [entity-id result-map] or nil if all checks pass."
-  [store kind entity-id]
+  [store provider kind entity-id]
   (when-let [file (store/index-file store kind entity-id)]
     (try
-      (let [data     (serdes/load-yaml file)
-            failures (into (check-common store data)
-                           (case kind
-                             :dashboard  (check-dashboard store data)
-                             :document   (check-document store data)
-                             :transform  (check-transform store data)
-                             nil))]
-        (when (seq failures)
-          [entity-id {:name       (or (:name data) entity-id)
-                      :entity-id  entity-id
-                      :kind       kind
-                      :unresolved failures}]))
+      (let [data           (serdes/load-yaml file)
+            common         (check-common store data)
+            type-specific  (case kind
+                             :dashboard  {:unresolved (check-dashboard store data)}
+                             :document   {:unresolved (check-document store data)}
+                             :transform  (check-transform store provider data)
+                             {})
+            all-unresolved (into common (:unresolved type-specific))
+            result         {:name          (or (:name data) entity-id)
+                            :entity-id     entity-id
+                            :kind          kind
+                            :unresolved    all-unresolved
+                            :native-errors (:native-errors type-specific)
+                            :bad-refs      (:bad-refs type-specific)
+                            :error         (:error type-specific)
+                            :sql           (:sql type-specific)}]
+        (when (or (:error result) (seq (:unresolved result))
+                  (seq (:native-errors result)) (seq (:bad-refs result)))
+          [entity-id result]))
       (catch Exception e
         [entity-id {:name       entity-id
                     :entity-id  entity-id
@@ -724,16 +775,16 @@
    and transforms. Cards are checked inline in check-card since their data is
    already loaded via the MetadataSource.
    Returns a map of entity-id → result for entities with failures."
-  [store]
+  [store provider]
   (into {}
         (keep identity)
         (concat
-         (map #(check-entity-from-file store :dashboard %) (store/all-refs store :dashboard))
-         (map #(check-entity-from-file store :collection %) (store/all-refs store :collection))
-         (map #(check-entity-from-file store :document %) (store/all-refs store :document))
-         (map #(check-entity-from-file store :measure %) (store/all-refs store :measure))
-         (map #(check-entity-from-file store :segment %) (store/all-refs store :segment))
-         (map #(check-entity-from-file store :transform %) (store/all-refs store :transform)))))
+         (map #(check-entity-from-file store provider :dashboard %) (store/all-refs store :dashboard))
+         (map #(check-entity-from-file store provider :collection %) (store/all-refs store :collection))
+         (map #(check-entity-from-file store provider :document %) (store/all-refs store :document))
+         (map #(check-entity-from-file store provider :measure %) (store/all-refs store :measure))
+         (map #(check-entity-from-file store provider :segment %) (store/all-refs store :segment))
+         (map #(check-entity-from-file store provider :transform %) (store/all-refs store :transform)))))
 
 ;;; ===========================================================================
 ;;; Card validation
@@ -874,7 +925,7 @@
           card-results (into {}
                              (for [eid card-ids]
                                [eid (check-card store provider eid)]))
-        other-results (check-non-card-entities store)
+        other-results (check-non-card-entities store provider)
           dupe-results  (check-duplicate-entity-ids index)]
       (merge card-results other-results dupe-results))))
 
@@ -911,32 +962,34 @@
 (defn format-result
   "Format a single card result as a human-readable string."
   [[entity-id result]]
-  (let [lines (transient [(str "=== " (:name result) " [" entity-id "] ===")
-                          (str "  Card ID: " (:card-id result))])
+  (let [lines (atom [(str "=== " (:name result) " [" entity-id "] ===")
+                     (str "  Card ID: " (:card-id result))])
         {:keys [tables fields source-cards]} (:refs result)]
     (when (seq tables)
-      (conj! lines (str "  Tables: " (str/join ", " tables))))
+      (swap! lines conj (str "  Tables: " (str/join ", " tables))))
     (when (seq fields)
-      (conj! lines (str "  Fields: " (str/join ", " fields))))
+      (swap! lines conj (str "  Fields: " (str/join ", " fields))))
     (when (seq source-cards)
-      (conj! lines (str "  Source Cards: " (str/join ", " source-cards))))
+      (swap! lines conj (str "  Source Cards: " (str/join ", " source-cards))))
     (when-let [unresolved (:unresolved result)]
-      (conj! lines "  UNRESOLVED REFERENCES:")
-      (doseq [{:keys [type path entity-id name]} unresolved]
-        (conj! lines (str "    - " (clojure.core/name type) ": "
-                          (or (some->> path (str/join ".")) entity-id name)))))
-    (when-let [native-errors (seq (:native-errors result))]
-      (conj! lines "  NATIVE SQL ERRORS:")
-      (doseq [err native-errors]
-        (conj! lines (str "    - " (pr-str err)))))
-    (conj! lines (case (result-status result)
-                   :error        (str "  ERROR: " (:error result))
-                   :unresolved   "  Status: MISSING REFS"
-                   :native-errors "  Status: NATIVE SQL ERRORS"
-                   :issues       (str "  Status: ISSUES FOUND\n"
-                                      (str/join "\n" (map #(str "    - " (pr-str %)) (:bad-refs result))))
-                   :ok           "  Status: OK"))
-    (str/join "\n" (persistent! lines))))
+      (swap! lines conj "  UNRESOLVED REFERENCES:")
+      (doseq [{:keys [type path entity-id name message]} unresolved]
+        (swap! lines conj (str "    - " (clojure.core/name type) ": "
+                               (or (some->> path (str/join ".")) entity-id name message)))))
+    (when (seq (:native-errors result))
+      (swap! lines conj "  NATIVE SQL ERRORS:")
+      (doseq [err (:native-errors result)]
+        (swap! lines conj (str "    - " (pr-str err))))
+      (when-let [sql (:sql result)]
+        (swap! lines conj (str "  SQL: " sql))))
+    (swap! lines conj (case (result-status result)
+                        :error        (str "  ERROR: " (:error result))
+                        :unresolved   "  Status: MISSING REFS"
+                        :native-errors "  Status: NATIVE SQL ERRORS"
+                        :issues       (str "  Status: ISSUES FOUND\n"
+                                           (str/join "\n" (map #(str "    - " (pr-str %)) (:bad-refs result))))
+                        :ok           "  Status: OK"))
+    (str/join "\n" @lines)))
 
 (defn format-error
   "Format a single card error concisely for LLM consumption.
@@ -946,15 +999,17 @@
     (when (not= :ok status)
       (let [lines (atom [(str "card: " (:name result) " (entity_id: " entity-id ")")])]
         (when-let [unresolved (seq (:unresolved result))]
-          (doseq [{:keys [type path entity-id name]} unresolved]
+          (doseq [{:keys [type path entity-id name message]} unresolved]
             (swap! lines conj (str "  unresolved " (clojure.core/name type) ": "
-                                   (or (some->> path (str/join ".")) entity-id name)))))
+                                   (or (some->> path (str/join ".")) entity-id name message)))))
         (when (seq (:bad-refs result))
           (doseq [ref (:bad-refs result)]
             (swap! lines conj (str "  bad ref: " (pr-str ref)))))
         (when (seq (:native-errors result))
           (doseq [err (:native-errors result)]
-            (swap! lines conj (str "  sql error: " (pr-str (dissoc err :source-entity-type :source-entity-id))))))
+            (swap! lines conj (str "  sql error: " (pr-str (dissoc err :source-entity-type :source-entity-id)))))
+          (when-let [sql (:sql result)]
+            (swap! lines conj (str "  sql: " sql))))
         (when (:error result)
           (swap! lines conj (str "  error: " (:error result))))
         (str/join "\n" @lines)))))

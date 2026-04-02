@@ -16,6 +16,8 @@
    CompositeSource delegates db/table/field resolution to one source and card
    resolution to another. Used when --schema-dir and --export are separate.")
 
+(set! *warn-on-reflection* true)
+
 (defprotocol MetadataSource
   "Resolve portable references to entity data."
 

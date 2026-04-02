@@ -127,13 +127,34 @@
               (= norm-col (str/lower-case (str (nth field-path 3))))))
           (store/all-refs store :field))))
 
+(defn- filter-false-positive-errors
+  "Filter out :missing-column errors for columns that DO exist in the store.
+   These are false positives caused by schema-less databases (nil schema)
+   where sql-tools assumes the default schema (e.g., \"public\")."
+  [store db-name errors]
+  (let [filtered (remove (fn [err]
+                           (and (= :missing-column (:type err))
+                                (field-exists-in-store? store db-name (:name err))))
+                         errors)]
+    (when (seq filtered)
+      (set filtered))))
+
+(defn- run-sql-tools-validation
+  "Run sql-tools validation on a SQL string. Returns a set of error maps, or nil."
+  [store provider engine db-name sql]
+  (try
+    (let [native-query (lib/native-query provider sql)
+          errors       (binding [driver/*driver* engine]
+                         (sql-tools/validate-query engine native-query))]
+      (when (seq errors)
+        (filter-false-positive-errors store db-name errors)))
+    (catch Exception _
+      nil)))
+
 (defn validate-native-sql
   "Validate native SQL using sql-tools. Compiles the query to SQL, then uses
    sql-tools/validate-query to check that referenced tables and columns exist
    in the metadata provider.
-
-   Filters out :missing-column false positives caused by schema-less databases
-   where sql-tools can't match tables due to nil vs default-schema mismatch.
 
    Returns a set of error maps, or nil if validation passes or isn't applicable."
   [store provider query db-name]
@@ -143,19 +164,4 @@
           engine  (when (:engine db-data) (keyword (:engine db-data)))
           sql     (when engine (compile-query-to-sql engine query))]
       (when sql
-        (try
-          (let [native-query (lib/native-query provider sql)
-                errors       (binding [driver/*driver* engine]
-                               (sql-tools/validate-query engine native-query))]
-            (when (seq errors)
-              ;; Filter out :missing-column errors for columns that DO exist in the store.
-              ;; These are false positives caused by schema-less databases (nil schema)
-              ;; where sql-tools assumes the default schema (e.g., "public").
-              (let [filtered (remove (fn [err]
-                                       (and (= :missing-column (:type err))
-                                            (field-exists-in-store? store db-name (:name err))))
-                                     errors)]
-                (when (seq filtered)
-                  (set filtered)))))
-          (catch Exception _
-            nil))))))
+        (run-sql-tools-validation store provider engine db-name sql)))))

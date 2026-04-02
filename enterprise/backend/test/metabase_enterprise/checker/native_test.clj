@@ -3,29 +3,9 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.checker.semantic :as checker]
-   [metabase-enterprise.checker.source :as source]))
+   [metabase-enterprise.checker.test-helpers :as helpers]))
 
 (set! *warn-on-reflection* true)
-
-;;; ===========================================================================
-;;; Helpers
-;;; ===========================================================================
-
-(defn- make-memory-source
-  [{:keys [databases tables fields cards]}]
-  (reify
-    source/MetadataSource
-    (resolve-database [_ db-name] (get databases db-name))
-    (resolve-table [_ table-path] (get tables table-path))
-    (resolve-field [_ field-path] (get fields field-path))
-    (resolve-card [_ entity-id] (get cards entity-id))))
-
-(defn- make-memory-index
-  [{:keys [databases tables fields cards]}]
-  {:database (zipmap (keys databases) (repeat :memory))
-   :table    (zipmap (keys tables) (repeat :memory))
-   :field    (zipmap (keys fields) (repeat :memory))
-   :card     (zipmap (keys cards) (repeat :memory))})
 
 ;;; ===========================================================================
 ;;; Integration: native errors surface through check-card
@@ -46,8 +26,8 @@
                                        :dataset_query {:database "Test DB"
                                                        :type "native"
                                                        :native {:query "SELLECT * FROM ORDERS"}}}}}
-          source (make-memory-source entities)
-          index  (make-memory-index entities)
+          source (helpers/make-memory-source entities)
+          index  (helpers/make-memory-index entities)
           results (checker/check-cards source index ["bad-sql"])
           result (get results "bad-sql")]
       (is (some? result))
@@ -75,8 +55,8 @@
                                          :dataset_query {:database "Test DB"
                                                          :type "native"
                                                          :native {:query "SELECT ID, TOTAL FROM ORDERS"}}}}}
-          source (make-memory-source entities)
-          index  (make-memory-index entities)
+          source (helpers/make-memory-source entities)
+          index  (helpers/make-memory-index entities)
           results (checker/check-cards source index ["good-sql"])
           result (get results "good-sql")]
       (is (some? result))
