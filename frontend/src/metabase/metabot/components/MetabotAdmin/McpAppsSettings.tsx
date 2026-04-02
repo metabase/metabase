@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -44,10 +44,6 @@ function CommonMcpClientsSection() {
   const [enabledClients, setEnabledClients] = useState<string[]>(
     savedValue ?? [],
   );
-
-  useEffect(() => {
-    setEnabledClients(savedValue ?? []);
-  }, [savedValue]);
 
   const handleToggle = useCallback(
     (clientKey: string, checked: boolean) => {
@@ -95,10 +91,6 @@ function CustomMcpOriginsSection() {
   );
 
   const [localValue, setLocalValue] = useState(savedValue ?? "");
-
-  useEffect(() => {
-    setLocalValue(savedValue ?? "");
-  }, [savedValue]);
 
   const handleBlur = useCallback(() => {
     if (localValue !== savedValue) {
