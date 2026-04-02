@@ -1,0 +1,90 @@
+collection_id: cOlDoCuMeNtS0ExAmPlx2
+content_type: application/json+vnd.prose-mirror
+created_at: '2025-01-15T10:00:00Z'
+creator_id: internal@metabase.com
+document:
+  content:
+  - attrs:
+      level: 1
+    content:
+    - text: Product Analysis Report
+      type: text
+    type: heading
+  - content:
+    - text: This document provides an overview of product performance metrics. The embedded query below shows aggregated stats by category.
+      type: text
+    type: paragraph
+  - attrs:
+      id:
+      - id: cRdCaTbReAkDoWn0ExMp1
+        model: Card
+      name: Category Breakdown
+    type: cardEmbed
+  - content:
+    - text: 'As shown above, the '
+      type: text
+    - marks:
+      - type: bold
+      text: Widget
+      type: text
+    - text: ' category dominates in total revenue.'
+      type: text
+    type: paragraph
+  - attrs:
+      level: 2
+    content:
+    - text: Key Findings
+      type: text
+    type: heading
+  - content:
+    - content:
+      - content:
+        - text: Revenue increased 15% quarter over quarter
+          type: text
+        type: paragraph
+      type: listItem
+    - content:
+      - content:
+        - text: Widget category remains the top performer
+          type: text
+        type: paragraph
+      type: listItem
+    - content:
+      - content:
+        - text: Average order value is trending upward
+          type: text
+        type: paragraph
+      type: listItem
+    type: bulletList
+  - attrs:
+      level: 2
+    content:
+    - text: Next Steps
+      type: text
+    type: heading
+  - content:
+    - text: 'See the '
+      type: text
+    - marks:
+      - attrs:
+          href: /dashboard/Q_jD-f-9clKLFZ2TfUG2h
+        type: link
+      text: Product Dashboard
+      type: text
+    type: paragraph
+  - content:
+    - content:
+      - marks:
+        - type: italic
+        text: 'Note: All figures reflect the trailing 12-month period.'
+        type: text
+      type: paragraph
+    type: blockquote
+  type: doc
+entity_id: dOc1PrOdAnAlYsIsRpTx2
+name: Product Analysis Report
+updated_at: '2026-04-02T02:59:02.778668Z'
+serdes/meta:
+- id: dOc1PrOdAnAlYsIsRpTx2
+  label: product_analysis_report
+  model: Document

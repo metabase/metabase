@@ -1382,7 +1382,7 @@ const MATH = defineClauses(
         {
           name: t`column`,
           type: "number",
-          description: t`The column or number to return the natural logarithm value of.`,
+          description: t`The column or number to return the base 10 logarithm value of.`,
           example: dimension(t`Value`),
         },
       ],

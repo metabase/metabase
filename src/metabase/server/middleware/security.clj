@@ -260,9 +260,9 @@
 
 (defn access-control-headers
   "Returns headers for CORS requests"
-  [origin enabled? approved-origins]
+  [origin approved-origins]
   (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))]
-    (when (or enabled? localhost-allowed?)
+    (when (or (seq approved-origins) localhost-allowed?)
       (merge
        (when (approved-origin? origin approved-origins)
          {"Access-Control-Allow-Origin" origin
@@ -281,11 +281,7 @@
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (access-control-headers origin
-                           (or
-                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
-                            (setting/get-value-of-type :boolean :enable-embedding-simple))
-                           (embedding.settings/embedding-app-origins-sdk))
+   (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
