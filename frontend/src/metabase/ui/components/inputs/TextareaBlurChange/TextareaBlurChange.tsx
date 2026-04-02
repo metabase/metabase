@@ -36,8 +36,12 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
 }: TextareaBlurChangeProps<T>) {
   const [internalValue, setInternalValue] = useState<T["value"]>("");
   const ref = useRef<HTMLTextAreaElement>(null);
+  const blurChangeFiredRef = useRef(false);
 
-  useLayoutEffect(() => setInternalValue(value), [value]);
+  useLayoutEffect(() => {
+    setInternalValue(value);
+    blurChangeFiredRef.current = false;
+  }, [value]);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -56,6 +60,7 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
       onBlur?.(event);
 
       if (onBlurChange && String(value ?? "") !== event.target.value) {
+        blurChangeFiredRef.current = true;
         onBlurChange(event);
         setInternalValue(normalize(event.target.value) ?? undefined);
       }
@@ -74,6 +79,10 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
   );
 
   useUnmountLayout(() => {
+    if (blurChangeFiredRef.current) {
+      return;
+    }
+
     const lastPropsValue = String(value ?? "");
     const currentValue = ref.current?.value || "";
 
