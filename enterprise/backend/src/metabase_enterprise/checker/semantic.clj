@@ -911,13 +911,14 @@
                                (str/join ", " files))
               }]))))
 
-(defn check-cards
-  "Check card queries and collection_id refs across all entity types.
+(defn check-entities
+  "Check all entities: cards, dashboards, collections, documents, transforms, etc.
    Returns map of entity-id → result.
 
-   `index` is a file index: `{kind {ref file-path}}` (see store/make-store).
-   Card query validation uses the source and provider.
-   Dashboard/collection collection_id validation loads YAML from files in the index."
+   `source`   — a MetadataSource for resolving entities
+   `index`    — a file index: `{kind {ref file-path}}` (see store/make-store)
+   `card-ids` — seq of card entity-ids to check (cards need special handling
+                via MetadataProvider; other entity types are checked from files)"
   [source index card-ids]
   (binding [mu.fn/*enforce* false]
     (let [store    (store/make-store source index)
@@ -1045,11 +1046,11 @@
   ([export-dir schema-dir]
    (let [{:keys [source index export-source]} (make-source-and-index export-dir schema-dir)
          card-ids (serdes/all-card-ids export-source)]
-     {:results (check-cards source index card-ids)
+     {:results (check-entities source index card-ids)
       :source  source}))
   ([export-dir schema-dir entity-ids]
    (let [{:keys [source index]} (make-source-and-index export-dir schema-dir)]
-     {:results (check-cards source index entity-ids)
+     {:results (check-entities source index entity-ids)
       :source  source})))
 
 (defn setup

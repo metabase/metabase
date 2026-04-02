@@ -32,10 +32,10 @@
   (serdes-format/make-source (fixtures-path)))
 
 (defn- check-all [source]
-  (checker/check-cards source (serdes-format/source-index source) (serdes-format/all-card-ids source)))
+  (checker/check-entities source (serdes-format/source-index source) (serdes-format/all-card-ids source)))
 
 (defn- check-specific [source card-ids]
-  (checker/check-cards source (serdes-format/source-index source) card-ids))
+  (checker/check-entities source (serdes-format/source-index source) card-ids))
 
 ;;; ===========================================================================
 ;;; Tests Using Real YAML Files
@@ -181,7 +181,7 @@
                                                          :query {:source-table ["Test Database" "public" "orders"]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["test-card"])
+          results (checker/check-entities source index ["test-card"])
           result (get results "test-card")]
       (is (some? result) "Card should be found")
       (is (= "Test Card" (:name result)) "Card name should match")
@@ -201,7 +201,7 @@
                                                          :query {:source-table ["Nonexistent Database" "public" "orders"]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["test-card"])
+          results (checker/check-entities source index ["test-card"])
           result (get results "test-card")]
       (is (some? result) "Card should be found")
       (is (= "Test Card" (:name result)) "Card name should match")
@@ -308,7 +308,7 @@
                                                                              {:base-type :type/Text}]]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["bad-field"])
+          results (checker/check-entities source index ["bad-field"])
           result (get results "bad-field")]
       (is (some? result))
       ;; Should NOT have an :error (query should build successfully with sentinel)
@@ -335,7 +335,7 @@
                                                                          :condition [:= 1 1]}]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["bad-join"])
+          results (checker/check-entities source index ["bad-join"])
           result (get results "bad-join")]
       (is (some? result))
       ;; Should NOT have an :error (query should build with sentinel)
@@ -363,7 +363,7 @@
           source (helpers/make-memory-source entities)
           index (assoc (helpers/make-memory-index entities)
                        :measure {"mSrAvgProdPrice00008x" :memory})
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)) (str "Should not error: " (:error result)))
       (is (empty? (filter #(= :measure (:type %)) (or (:unresolved result) [])))
@@ -382,7 +382,7 @@
                                                               :aggregation [["measure" "xXxNoExIsT0MeAsUrExx1"]]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (some #(= :measure (:type %)) (or (:unresolved result) []))
           "Should have unresolved measure ref"))))
@@ -401,7 +401,7 @@
           source (helpers/make-memory-source entities)
           index (assoc (helpers/make-memory-index entities)
                        :segment {"aB3kLmN9pQrStUvWxYz1a" :memory})
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)) (str "Should not error: " (:error result)))
       (is (empty? (filter #(= :segment (:type %)) (or (:unresolved result) [])))
@@ -420,7 +420,7 @@
                                                               :filter ["segment" "xXxNoExIsT0SeGmEnTx12"]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (some #(= :segment (:type %)) (or (:unresolved result) []))
           "Should have unresolved segment ref"))))
@@ -444,7 +444,7 @@
           ;; Index includes the collection
           index (assoc (helpers/make-memory-index entities)
                        :collection {"coll-1" :memory})
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)))
       (is (empty? (:unresolved result)) "Valid collection_id should not produce unresolved refs"))))
@@ -462,7 +462,7 @@
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (seq (:unresolved result)) "Missing collection should be flagged")
       (is (some #(= :collection (:type %)) (:unresolved result))
@@ -486,7 +486,7 @@
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (seq (:unresolved result)) "collection_id pointing to a card should be flagged")
       (is (some #(and (= :collection (:type %))
@@ -507,7 +507,7 @@
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)))
       (is (empty? (:unresolved result)) "nil collection_id should be fine"))))
@@ -529,7 +529,7 @@
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (seq (:unresolved result)) "Missing dashboard_id should be flagged")
       (is (some #(= :dashboard (:type %)) (:unresolved result))
@@ -549,7 +549,7 @@
           source (helpers/make-memory-source entities)
           index (assoc (helpers/make-memory-index entities)
                        :dashboard {"dash-1" :memory})
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)))
       (is (empty? (:unresolved result)) "Valid dashboard_id should not produce unresolved refs"))))
@@ -567,7 +567,7 @@
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)))
       (is (empty? (:unresolved result)) "nil dashboard_id should be fine"))))
@@ -590,7 +590,7 @@
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
           source (helpers/make-memory-source entities)
           index (helpers/make-memory-index entities)
-          results (checker/check-cards source index ["card-1"])
+          results (checker/check-entities source index ["card-1"])
           result (get results "card-1")]
       (is (seq (:unresolved result)) "dashboard_id pointing to a card should be flagged")
       (is (some #(and (= :dashboard (:type %))
@@ -611,7 +611,7 @@
           (let [source (helpers/make-memory-source {:databases {} :tables {} :fields {} :cards {}})
                 index {:dashboard {"dash-1" (.getPath dash-file)}
                        :collection {}}
-                results (checker/check-cards source index [])]
+                results (checker/check-entities source index [])]
             ;; The dashboard should appear in results with an unresolved collection ref
             (is (contains? results "dash-1") "Dashboard should be in results")
             (let [result (get results "dash-1")]
@@ -632,7 +632,7 @@
           (let [source (helpers/make-memory-source {:databases {} :tables {} :fields {} :cards {}})
                 index {:dashboard {"dash-1" (.getPath dash-file)}
                        :collection {"coll-1" :memory}}
-                results (checker/check-cards source index [])]
+                results (checker/check-entities source index [])]
             ;; Valid dashboard should not appear (no errors)
             (is (not (contains? results "dash-1")) "Dashboard with valid collection_id should not be in results")))
         (finally
@@ -661,7 +661,7 @@
                              :collection {}
                              :card {}}
                             extra-index)
-              results (checker/check-cards source index [])]
+              results (checker/check-entities source index [])]
           (f results)))
       (finally
         (doseq [fl (reverse (file-seq dir))]
@@ -811,7 +811,7 @@
                               :collection {}
                               :card {}}
                              (dissoc extra-index :_databases :_tables :_fields))
-              results (checker/check-cards source index [])]
+              results (checker/check-entities source index [])]
           (f results)))
       (finally
         (doseq [fl (reverse (file-seq dir))]
