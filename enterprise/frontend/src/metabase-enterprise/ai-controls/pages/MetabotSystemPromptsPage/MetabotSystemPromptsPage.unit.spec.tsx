@@ -60,7 +60,10 @@ describe("MetabotSystemPromptsPage", () => {
       const textarea = await screen.findByRole("textbox", {
         name: "Metabot chat prompt instructions",
       });
-      expect(textarea).toHaveValue("Be concise and helpful");
+
+      await waitFor(() => {
+        expect(textarea).toHaveValue("Be concise and helpful");
+      });
     });
 
     it("updates the textarea value when user types", async () => {
@@ -102,7 +105,9 @@ describe("MetabotSystemPromptsPage", () => {
       const textarea = await screen.findByRole("textbox", {
         name: "Natural language query prompt instructions",
       });
-      expect(textarea).toHaveValue("Prefer bar charts");
+      await waitFor(() => {
+        expect(textarea).toHaveValue("Prefer bar charts");
+      });
     });
   });
 
@@ -128,7 +133,9 @@ describe("MetabotSystemPromptsPage", () => {
       const textarea = await screen.findByRole("textbox", {
         name: "SQL generation prompt instructions",
       });
-      expect(textarea).toHaveValue("Use uppercase SQL keywords");
+      await waitFor(() => {
+        expect(textarea).toHaveValue("Use uppercase SQL keywords");
+      });
     });
   });
 });

@@ -8,20 +8,9 @@
   (:require
    [metabase.api-scope.core :as api-scope]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [potemkin :as p]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
-
-;; Re-export generic scope API so existing consumers can keep requiring metabot.scope
-#_{:clj-kondo/ignore [:aliased-namespace-symbol]}
-(p/import-vars
- [metabase.api-scope.core
-  registered-scope?
-  all-scopes
-  scope-description
-  unrestricted
-  scope-matches?])
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Scope declarations

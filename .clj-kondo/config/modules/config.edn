@@ -291,9 +291,9 @@
    :uses :any}
 
   api-scope
-  {:team  "Metabot"
-   :api   #{metabase.api-scope.core
-             metabase.api-scope.init}}
+  {:team "Metabot"
+   :api  #{metabase.api-scope.core
+           metabase.api-scope.init}}
 
   app-db
   {:team "UX West"

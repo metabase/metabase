@@ -5,9 +5,6 @@
    [metabase-enterprise.metabot.api.usage]
    [metabase.api.util.handlers :as handlers]))
 
-(comment metabase-enterprise.metabot.api.permissions/keep-me)
-(comment metabase-enterprise.metabot.api.usage/keep-me)
-
 (def ^{:arglists '([request respond raise])} routes
   "Ring routes for enterprise metabot API endpoints."
   (handlers/route-map-handler

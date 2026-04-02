@@ -7,36 +7,36 @@
 
 (deftest ^:parallel scope-matches?-test
   (testing "exact match"
-    (is (scope/scope-matches? #{"agent:sql:create"} "agent:sql:create"))
-    (is (not (scope/scope-matches? #{"agent:sql:edit"} "agent:sql:create"))))
+    (is (api-scope/scope-matches? #{"agent:sql:create"} "agent:sql:create"))
+    (is (not (api-scope/scope-matches? #{"agent:sql:edit"} "agent:sql:create"))))
 
   (testing "unrestricted wildcard"
-    (is (scope/scope-matches? #{"*"} "agent:sql:create"))
-    (is (scope/scope-matches? scope/unrestricted "agent:anything:here")))
+    (is (api-scope/scope-matches? #{"*"} "agent:sql:create"))
+    (is (api-scope/scope-matches? api-scope/unrestricted "agent:anything:here")))
 
   (testing "hierarchical wildcard"
-    (is (scope/scope-matches? #{"agent:sql:*"} "agent:sql:create"))
-    (is (scope/scope-matches? #{"agent:sql:*"} "agent:sql:edit"))
-    (is (not (scope/scope-matches? #{"agent:sql:*"} "agent:notebook:create"))))
+    (is (api-scope/scope-matches? #{"agent:sql:*"} "agent:sql:create"))
+    (is (api-scope/scope-matches? #{"agent:sql:*"} "agent:sql:edit"))
+    (is (not (api-scope/scope-matches? #{"agent:sql:*"} "agent:notebook:create"))))
 
   (testing "mid-level wildcard"
-    (is (scope/scope-matches? #{"agent:*"} "agent:sql:create"))
-    (is (scope/scope-matches? #{"agent:*"} "agent:viz:edit"))
-    (is (not (scope/scope-matches? #{"other:*"} "agent:sql:create"))))
+    (is (api-scope/scope-matches? #{"agent:*"} "agent:sql:create"))
+    (is (api-scope/scope-matches? #{"agent:*"} "agent:viz:edit"))
+    (is (not (api-scope/scope-matches? #{"other:*"} "agent:sql:create"))))
 
   (testing "empty scope set grants nothing"
-    (is (not (scope/scope-matches? #{} "agent:sql:create")))
-    (is (not (scope/scope-matches? #{} "agent:search"))))
+    (is (not (api-scope/scope-matches? #{} "agent:sql:create")))
+    (is (not (api-scope/scope-matches? #{} "agent:search"))))
 
   (testing "multiple granted scopes"
-    (is (scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:sql:create"))
-    (is (scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:viz:edit"))
-    (is (not (scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:notebook:create"))))
+    (is (api-scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:sql:create"))
+    (is (api-scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:viz:edit"))
+    (is (not (api-scope/scope-matches? #{"agent:sql:create" "agent:viz:edit"} "agent:notebook:create"))))
 
   (testing "malformed scope strings do not match"
-    (is (not (scope/scope-matches? #{""} "agent:sql:create")))
-    (is (not (scope/scope-matches? #{":"} "agent:sql:create")))
-    (is (not (scope/scope-matches? #{"agent:sql:create"} "")))))
+    (is (not (api-scope/scope-matches? #{""} "agent:sql:create")))
+    (is (not (api-scope/scope-matches? #{":"} "agent:sql:create")))
+    (is (not (api-scope/scope-matches? #{"agent:sql:create"} "")))))
 
 (deftest ^:parallel current-user-scope-default-test
   (testing "*current-user-scope* defaults to empty set (no permissions)"
@@ -92,32 +92,32 @@
 
 (deftest ^:parallel registered-scope?-test
   (testing "registered scopes return true"
-    (is (scope/registered-scope? "agent:sql:create"))
-    (is (scope/registered-scope? "agent:search"))
-    (is (scope/registered-scope? "agent:viz:edit")))
+    (is (api-scope/registered-scope? "agent:sql:create"))
+    (is (api-scope/registered-scope? "agent:search"))
+    (is (api-scope/registered-scope? "agent:viz:edit")))
   (testing "unregistered scopes return false"
-    (is (not (scope/registered-scope? "agent:nonexistent:scope")))
-    (is (not (scope/registered-scope? "agent:sql:*")))
-    (is (not (scope/registered-scope? "")))))
+    (is (not (api-scope/registered-scope? "agent:nonexistent:scope")))
+    (is (not (api-scope/registered-scope? "agent:sql:*")))
+    (is (not (api-scope/registered-scope? "")))))
 
 (deftest ^:parallel all-scopes-test
   (testing "all-scopes returns a non-empty collection of maps"
-    (let [scopes (scope/all-scopes)]
+    (let [scopes (api-scope/all-scopes)]
       (is (pos? (count scopes)))
       (is (every? #(contains? % :scope) scopes))
       (is (every? #(contains? % :description) scopes))
       (is (every? #(string? (:scope %)) scopes))))
   (testing "all-scopes includes known scopes"
-    (let [scope-strings (set (map :scope (scope/all-scopes)))]
+    (let [scope-strings (set (map :scope (api-scope/all-scopes)))]
       (is (contains? scope-strings "agent:sql:create"))
       (is (contains? scope-strings "agent:search"))
       (is (contains? scope-strings "agent:viz:read")))))
 
 (deftest ^:parallel scope-description-test
   (testing "returns description for registered scope"
-    (is (some? (scope/scope-description "agent:sql:create"))))
+    (is (some? (api-scope/scope-description "agent:sql:create"))))
   (testing "returns nil for unregistered scope"
-    (is (nil? (scope/scope-description "agent:nonexistent:scope")))))
+    (is (nil? (api-scope/scope-description "agent:nonexistent:scope")))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parse-scopes

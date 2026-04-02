@@ -9,6 +9,7 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
+   [metabase.api-scope.core :as api-scope]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
@@ -37,7 +38,7 @@
                      :metadata   (meta tool-var)
                      :errors     (me/humanize (mu/explain tool-var-schema tool-var))})))
   (when-let [required-scope (:scope (meta tool-var))]
-    (when-not (scope/registered-scope? required-scope)
+    (when-not (api-scope/registered-scope? required-scope)
       (throw (ex-info (str "Tool has unregistered scope: " required-scope)
                       {:tool-var tool-var
                        :scope    required-scope}))))
@@ -228,7 +229,7 @@
   (filter (fn [tool-var]
             (let [required-scope (:scope (meta tool-var))]
               (or (nil? required-scope)
-                  (scope/scope-matches? scope/*current-user-scope* required-scope))))
+                  (api-scope/scope-matches? scope/*current-user-scope* required-scope))))
           tool-vars))
 
 (defn- ee-feature-available?

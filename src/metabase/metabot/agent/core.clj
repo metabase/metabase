@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.metabot.agent.analytics :as agent-analytics]
@@ -586,7 +587,7 @@
                                  scope/all-yes-permissions
                                  (scope/resolve-user-permissions api/*current-user-id*)))
         scopes             (if api/*is-superuser?*
-                             scope/unrestricted
+                             api-scope/unrestricted
                              (scope/user-metabot-perms->scopes perms))]
     (check-metabot-access! profile-id perms)
     (reify clojure.lang.IReduceInit

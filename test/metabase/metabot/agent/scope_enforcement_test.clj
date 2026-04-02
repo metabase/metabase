@@ -1,6 +1,7 @@
 (ns metabase.metabot.agent.scope-enforcement-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.api-scope.core :as api-scope]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]))
 
@@ -13,19 +14,19 @@
                             {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
 
     (testing "with unrestricted scope, all tools pass"
-      (binding [scope/*current-user-scope* scope/unrestricted]
-        (is (scope/scope-matches? scope/*current-user-scope* "agent:sql:create"))
-        (is (scope/scope-matches? scope/*current-user-scope* "agent:search"))))
+      (binding [scope/*current-user-scope* api-scope/unrestricted]
+        (is (api-scope/scope-matches? scope/*current-user-scope* "agent:sql:create"))
+        (is (api-scope/scope-matches? scope/*current-user-scope* "agent:search"))))
 
     (testing "with empty scope, no scoped tools pass"
       (binding [scope/*current-user-scope* #{}]
-        (is (not (scope/scope-matches? scope/*current-user-scope* "agent:sql:create")))
-        (is (not (scope/scope-matches? scope/*current-user-scope* "agent:search")))))
+        (is (not (api-scope/scope-matches? scope/*current-user-scope* "agent:sql:create")))
+        (is (not (api-scope/scope-matches? scope/*current-user-scope* "agent:search")))))
 
     (testing "with wildcard scope, matching tools pass"
       (binding [scope/*current-user-scope* #{"agent:sql:*"}]
-        (is (scope/scope-matches? scope/*current-user-scope* "agent:sql:create"))
-        (is (not (scope/scope-matches? scope/*current-user-scope* "agent:search")))))
+        (is (api-scope/scope-matches? scope/*current-user-scope* "agent:sql:create"))
+        (is (not (api-scope/scope-matches? scope/*current-user-scope* "agent:search")))))
 
     (testing "tools without scope always pass"
       (binding [scope/*current-user-scope* #{}]
@@ -46,7 +47,7 @@
         wrapped-fn  (get-in wrapped ["test_tool" :fn])]
 
     (testing "tool executes when scope is satisfied"
-      (binding [scope/*current-user-scope* scope/unrestricted]
+      (binding [scope/*current-user-scope* api-scope/unrestricted]
         (is (= {:output "success"} (wrapped-fn {})))))
 
     (testing "tool executes with matching wildcard scope"
@@ -82,10 +83,10 @@
     (testing "tool without :scope always executes regardless of current scope"
       (binding [scope/*current-user-scope* #{}]
         (is (= {:output "no-scope-tool"} (wrapped-fn {}))))
-      (binding [scope/*current-user-scope* scope/unrestricted]
+      (binding [scope/*current-user-scope* api-scope/unrestricted]
         (is (= {:output "no-scope-tool"} (wrapped-fn {})))))))
 
 (deftest ^:parallel default-scope-is-empty-test
   (testing "*current-user-scope* defaults to empty set — denies all scoped tools"
     (is (= #{} scope/*current-user-scope*))
-    (is (not (scope/scope-matches? scope/*current-user-scope* "agent:sql:create")))))
+    (is (not (api-scope/scope-matches? scope/*current-user-scope* "agent:sql:create")))))

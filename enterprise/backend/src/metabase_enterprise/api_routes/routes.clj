@@ -47,8 +47,8 @@
 (comment metabase-enterprise.advanced-config.api.logs/keep-me)
 
 (def ^:private required-feature->message
-  {:ai-controls                (deferred-tru "AI Controls")
-   :advanced-permissions       (deferred-tru "Advanced Permissions")
+  {:advanced-permissions       (deferred-tru "Advanced Permissions")
+   :ai-controls                (deferred-tru "AI Controls")
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")

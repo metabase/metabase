@@ -399,14 +399,12 @@
                                       [:model/MetabotConversation :created_at]]
                 (mt/user-http-request :rasta :post 403 "metabot/agent-streaming"
                                       base-request))))
-
           (testing "Regular metabot works when metabot-enabled is true"
             (mt/with-temporary-setting-values [metabot-enabled? true]
               (mt/with-model-cleanup [:model/MetabotMessage
                                       [:model/MetabotConversation :created_at]]
                 (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                       (assoc base-request :conversation_id (str (random-uuid)))))))
-
           (testing "Embedded metabot is blocked when embedded-metabot-enabled? is false"
             (mt/with-temporary-setting-values [embedded-metabot-enabled? false]
               (mt/with-model-cleanup [:model/MetabotMessage
@@ -415,7 +413,6 @@
                                       (assoc base-request
                                              :metabot_id metabot.config/embedded-metabot-id
                                              :conversation_id (str (random-uuid)))))))
-
           (testing "Embedded metabot works when embedded-metabot-enabled? is true"
             (mt/with-temporary-setting-values [embedded-metabot-enabled? true]
               (mt/with-model-cleanup [:model/MetabotMessage
@@ -424,7 +421,6 @@
                                       (assoc base-request
                                              :metabot_id metabot.config/embedded-metabot-id
                                              :conversation_id (str (random-uuid)))))))
-
           (testing "Regular metabot still works when only embedded is disabled"
             (mt/with-temporary-setting-values [metabot-enabled?          true
                                                embedded-metabot-enabled? false]
@@ -432,7 +428,6 @@
                                       [:model/MetabotConversation :created_at]]
                 (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                       (assoc base-request :conversation_id (str (random-uuid)))))))
-
           (testing "Embedded metabot still works when only regular is disabled"
             (mt/with-temporary-setting-values [metabot-enabled?          false
                                                embedded-metabot-enabled? true]

@@ -27,11 +27,19 @@
                                  (permissions-for-group id (get by-group id [])))
                                groups))}))
 
+(def ^:private perm-type-enum
+  "Malli enum of valid perm_type keywords."
+  (into [:enum] scope/perm-types))
+
+(def ^:private perm-value-enum
+  "Malli enum of valid perm_value keywords."
+  (into [:enum] (distinct (mapcat (comp :values val) scope/metabot-permissions))))
+
 (def ^:private permissions-response-schema
   [:map [:permissions [:sequential [:map
                                     [:group_id  pos-int?]
-                                    [:perm_type :keyword]
-                                    [:perm_value :keyword]]]]])
+                                    [:perm_type perm-type-enum]
+                                    [:perm_value perm-value-enum]]]]])
 
 (api.macros/defendpoint :get "/" :- permissions-response-schema
   "List all metabot permissions for all groups, filling in defaults for missing entries."
