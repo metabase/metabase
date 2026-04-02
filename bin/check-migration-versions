@@ -9,14 +9,14 @@ if [[ -z "${BASE_REF:-}" ]]; then
   exit 1
 fi
 
-if ! [[ "$BASE_REF" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+if ! [[ "$BASE_REF" =~ ^[a-zA-Z0-9][a-zA-Z0-9._/-]*$ ]]; then
   echo "ERROR: Invalid BASE_REF: '${BASE_REF}'" >&2
   exit 1
 fi
 
 # Ensure origin/${BASE_REF} is reachable
 if ! git rev-parse "origin/${BASE_REF}" >/dev/null 2>&1; then
-  git fetch origin "$BASE_REF" --depth=1 || { echo "ERROR: Could not resolve origin/${BASE_REF}" >&2; exit 1; }
+  git fetch --depth=1 origin -- "$BASE_REF" || { echo "ERROR: Could not resolve origin/${BASE_REF}" >&2; exit 1; }
 fi
 
 echo "BASE_REF: ${BASE_REF}"
