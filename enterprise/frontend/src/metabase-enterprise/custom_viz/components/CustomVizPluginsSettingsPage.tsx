@@ -36,7 +36,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { CustomVizPlugin } from "metabase-types/api";
+import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 
 import { getPluginAssetUrl } from "../custom-viz-plugins";
 
@@ -84,7 +84,7 @@ function PluginListItem({
   onDelete,
 }: {
   plugin: CustomVizPlugin;
-  onDelete: (id: number) => void;
+  onDelete: (id: CustomVizPluginId) => void;
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
@@ -201,7 +201,7 @@ export function ManageCustomVisualizationsPage() {
   );
 
   const handleDelete = useCallback(
-    async (id: number) => {
+    async (id: CustomVizPluginId) => {
       await deletePlugin(id).unwrap();
     },
     [deletePlugin],
