@@ -23,9 +23,10 @@
   *matched-route*)
 
 (defn set-matched-route!
-  "Set the matched route template for the current request. Only works within a [[with-current-request]] binding frame."
+  "Set the matched route template for the current request. No-ops outside a [[with-current-request]] binding frame."
   [route]
-  (set! *matched-route* route))
+  (when (thread-bound? #'*matched-route*)
+    (set! *matched-route* route)))
 
 (defn do-with-current-request
   "Impl for [[with-current-request]]."

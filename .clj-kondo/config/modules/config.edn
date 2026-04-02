@@ -295,6 +295,7 @@
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
            metabase.app-db.core
            metabase.app-db.init
+           metabase.app-db.pool-metrics
            metabase.app-db.setup}
    :uses #{analytics
            auth-provider
@@ -1145,6 +1146,7 @@
    :api  #{metabase.mcp.api}
    :uses #{agent-api
            api
+           app-db
            config
            oauth-server
            request

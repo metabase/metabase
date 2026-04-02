@@ -52,6 +52,27 @@
                  (respond response))
                raise))))
 
+;;; ------------------------------------------------ Public helper ------------------------------------------------------
+
+(defn do-with-pool-metrics
+  "Bind [[*pending-checkouts*]] for the duration of `thunk` and flush accumulated metrics
+  with `endpoint-label` when done.  Use this for non-HTTP code paths (e.g. MCP tool dispatch)
+  that still want DB checkout metrics."
+  [endpoint-label thunk]
+  (let [pending (atom {:count 0 :duration-secs 0.0})]
+    (binding [*pending-checkouts* pending]
+      (try
+        (thunk)
+        (finally
+          (flush-pending! @pending endpoint-label))))))
+
+(defmacro with-pool-metrics
+  "Bind [[*pending-checkouts*]] for the duration of `body` and flush accumulated metrics
+  with `endpoint-label` when done.  Use this for non-HTTP code paths (e.g. MCP tool dispatch)
+  that still want DB checkout metrics."
+  [endpoint-label & body]
+  `(do-with-pool-metrics ~endpoint-label (^:once fn* [] ~@body)))
+
 ;;; --------------------------------------------------- Install --------------------------------------------------------
 
 (defn install!

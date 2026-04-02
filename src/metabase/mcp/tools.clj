@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as scope]
+   [metabase.app-db.pool-metrics :as pool-metrics]
    [metabase.config.core :as config]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
@@ -114,18 +115,19 @@
    For GET/DELETE requests, `params` is sent as parsed query params.
    Materializes StreamingResponse bodies in-process before delivering."
   [result method path token-scopes params]
-  (agent-api/routes
-   (cond-> {:request-method   method
-            :uri              path
-            :metabase-user-id api/*current-user-id*
-            :token-scopes     token-scopes}
-     (and (seq params) (= :post method))    (assoc :body params)
-     (and (seq params) (not= :post method)) (assoc :query-params params))
-   (fn [{resp-body :body :as response}]
-     (deliver result (if (instance? StreamingResponse resp-body)
-                       (capture-streaming-response resp-body)
-                       response)))
-   (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}}))))
+  (pool-metrics/with-pool-metrics "mcp"
+    (agent-api/routes
+     (cond-> {:request-method   method
+              :uri              path
+              :metabase-user-id api/*current-user-id*
+              :token-scopes     token-scopes}
+       (and (seq params) (= :post method))    (assoc :body params)
+       (and (seq params) (not= :post method)) (assoc :query-params params))
+     (fn [{resp-body :body :as response}]
+       (deliver result (if (instance? StreamingResponse resp-body)
+                         (capture-streaming-response resp-body)
+                         response)))
+     (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}})))))
 
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
