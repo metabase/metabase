@@ -70,13 +70,13 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-03-26T00:00:04
       author: bgrabow
-      comment: Add sanitized_user_agent column to view_log for usage analytics
+      comment: Add user_agent column to view_log for usage analytics
       changes:
         - addColumn:
             tableName: view_log
             columns:
               - column:
-                  name: sanitized_user_agent
+                  name: user_agent
                   type: varchar(512)
                   remarks: User-Agent header, PII
                   constraints:
@@ -221,13 +221,13 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-03-26T00:00:14
       author: bgrabow
-      comment: Add sanitized_user_agent column to query_execution for embedding analytics
+      comment: Add user_agent column to query_execution for embedding analytics
       changes:
         - addColumn:
             tableName: query_execution
             columns:
               - column:
-                  name: sanitized_user_agent
+                  name: user_agent
                   type: varchar(512)
                   remarks: User-Agent header, PII
                   constraints:

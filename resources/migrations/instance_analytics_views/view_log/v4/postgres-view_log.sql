@@ -31,6 +31,6 @@ CREATE OR REPLACE VIEW v_view_log AS
                          tenant_id,
                          embedding_hostname,
                          embedding_path,
-                         sanitized_user_agent,
+                         user_agent,
                          ip_address
    FROM view_log)
