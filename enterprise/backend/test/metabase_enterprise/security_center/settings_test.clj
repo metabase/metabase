@@ -15,10 +15,9 @@
         (is (= [{:type "notification-recipient/user" :user_id (mt/user->id :crowberto) :details nil}]
                (mt/user-http-request :crowberto :get 200 "setting/security-center-email-recipients"))))
 
-      (testing "superuser can set to null (all admins)"
-        (mt/user-http-request :crowberto :put 204 "setting/security-center-email-recipients"
-                              {:value nil})
-        (mt/user-http-request :crowberto :get 204 "setting/security-center-email-recipients"))
+      (testing "rejects null"
+        (mt/user-http-request :crowberto :put 400 "setting/security-center-email-recipients"
+                              {:value nil}))
 
       (testing "rejects empty list"
         (mt/user-http-request :crowberto :put 400 "setting/security-center-email-recipients"

@@ -250,23 +250,42 @@
 
 ;;; -------------------------------------------- Recipient resolution -------------------------------------------------
 
-(deftest email-recipients-default-to-admins-test
-  (testing "when security-center-email-recipients is nil, email goes to admin group"
-    (let [sent (atom nil)]
-      (mt/with-temp [:model/User _ {:is_superuser true}
-                     :model/SecurityAdvisory advisory
-                     (advisory-fixture {:advisory_id  "SC-RECIP-001"
+(deftest admin-email-included-when-set-test
+  (testing "site admin email is appended as a raw-value recipient"
+    (let [sent         (atom nil)
+          custom-recip [{:type :notification-recipient/external-email :details {:email "security@example.com"}}]]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-ADMIN-001"
                                         :severity     "critical"
                                         :match_status "active"})]
-        (mt/with-temporary-setting-values [security-center-email-recipients nil]
-          (with-send-redef (fn [notif & _] (reset! sent notif))
-            (notification/notify-advisory! advisory)
-            (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))]
-              (is (some? email-handler))
-              ;; admin emails resolved as raw-value recipients
-              (is (seq (:recipients email-handler)))
-              (is (every? #(= :notification-recipient/raw-value (:type %))
-                          (:recipients email-handler))))))))))
+        (mt/with-temporary-setting-values [admin-email "boss@example.com"]
+          (with-redefs [settings/security-center-email-recipients (constantly custom-recip)]
+            (with-send-redef (fn [notif & _] (reset! sent notif))
+              (notification/notify-advisory! advisory)
+              (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))
+                    recipients    (:recipients email-handler)]
+                (is (= 2 (count recipients)))
+                ;; configured recipient
+                (is (= :notification-recipient/external-email (:type (first recipients))))
+                ;; admin email appended
+                (is (= {:type :notification-recipient/raw-value :details {:value "boss@example.com"}}
+                       (last recipients))))))))))
+
+  (testing "no admin email appended when admin-email setting is nil"
+    (let [sent         (atom nil)
+          custom-recip [{:type :notification-recipient/external-email :details {:email "security@example.com"}}]]
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     (advisory-fixture {:advisory_id  "SC-ADMIN-002"
+                                        :severity     "high"
+                                        :match_status "active"})]
+        (mt/with-temporary-setting-values [admin-email nil]
+          (with-redefs [settings/security-center-email-recipients (constantly custom-recip)]
+            (with-send-redef (fn [notif & _] (reset! sent notif))
+              (notification/notify-advisory! advisory)
+              (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))
+                    recipients    (:recipients email-handler)]
+                (is (= 1 (count recipients)))
+                (is (= :notification-recipient/external-email (:type (first recipients))))))))))))
 
 (deftest email-recipients-custom-list-test
   (testing "when security-center-email-recipients is set, those specific recipients are used"
@@ -276,12 +295,14 @@
                      (advisory-fixture {:advisory_id  "SC-RECIP-002"
                                         :severity     "high"
                                         :match_status "active"})]
-        (with-redefs [settings/security-center-email-recipients (constantly custom-recip)]
-          (with-send-redef (fn [notif & _] (reset! sent notif))
-            (notification/notify-advisory! advisory)
-            (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))]
-              (is (= :notification-recipient/external-email
-                     (:type (first (:recipients email-handler))))))))))))
+        (mt/with-temporary-setting-values [admin-email nil]
+          (with-redefs [settings/security-center-email-recipients (constantly custom-recip)]
+            (with-send-redef (fn [notif & _] (reset! sent notif))
+              (notification/notify-advisory! advisory)
+              (let [email-handler (first (filter #(= :channel/email (:channel_type %)) (:handlers @sent)))]
+                (is (= 1 (count (:recipients email-handler))))
+                (is (= :notification-recipient/external-email
+                       (:type (first (:recipients email-handler)))))))))))))
 
 (deftest slack-handler-included-when-configured-test
   (testing "Slack handler is added when channel is set and slack token is valid"

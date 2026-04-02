@@ -5,7 +5,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting security-center-email-recipients
-  (deferred-tru "List of email recipients for Security Center notifications. Null means all instance admin emails.")
+  (deferred-tru "List of email recipients for Security Center notifications.")
   :type       :json
   :default    nil
   :encryption :no
@@ -18,8 +18,7 @@
                 (some->> (setting/get-value-of-type :json :security-center-email-recipients)
                          (mapv #(update % :type keyword))))
   :setter     (fn [new-value]
-                ;; nil is valid (means "all admins"); non-nil must be non-empty
-                (when (and (some? new-value) (empty? new-value))
+                (when (or (nil? new-value) (empty? new-value))
                   (throw (ex-info (str (deferred-tru "At least one email recipient is required."))
                                   {:status-code 400})))
                 (setting/set-value-of-type! :json :security-center-email-recipients new-value)))
