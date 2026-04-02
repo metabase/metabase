@@ -1,12 +1,12 @@
 import { Stack } from "metabase/ui";
+import type { Advisory, AdvisoryId } from "metabase-types/api";
 
-import type { Advisory } from "../../types";
 import { sortAdvisories } from "../../utils";
 import { AdvisoryCard } from "../AdvisoryCard/AdvisoryCard";
 
 interface AdvisoryListProps {
   advisories: Advisory[];
-  onAcknowledge?: (advisoryId: string) => void;
+  onAcknowledge?: (advisoryId: AdvisoryId) => void;
   className?: string;
 }
 

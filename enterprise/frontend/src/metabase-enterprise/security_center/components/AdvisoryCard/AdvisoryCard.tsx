@@ -11,8 +11,12 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import type {
+  Advisory,
+  AdvisoryId,
+  AdvisorySeverity,
+} from "metabase-types/api";
 
-import type { Advisory, AdvisorySeverity } from "../../types";
 import { isAcknowledged, isAffected } from "../../utils";
 
 import S from "./AdvisoryCard.module.css";
@@ -32,7 +36,7 @@ function formatVersionRange(advisory: Advisory): string {
 
 interface AdvisoryCardProps {
   advisory: Advisory;
-  onAcknowledge?: (advisoryId: string) => void;
+  onAcknowledge?: (advisoryId: AdvisoryId) => void;
 }
 
 export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
@@ -82,11 +86,11 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
         <Group gap="lg">
           {advisory.affected_versions.length > 0 && (
             <Text size="sm" c="text-secondary">
-              {t`Affected versions`}: {formatVersionRange(advisory)}
+              {t`Affected versions: ${formatVersionRange(advisory)}`}
             </Text>
           )}
           <Text size="sm" c="text-secondary">
-            {t`Remediation`}: {advisory.remediation}
+            {t`Remediation: ${advisory.remediation}`}
           </Text>
         </Group>
 

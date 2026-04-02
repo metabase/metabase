@@ -1,4 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   useGetChannelInfoQuery,
@@ -83,11 +89,44 @@ function configFromSettings(
   };
 }
 
+type NotificationConfigValue = {
+  config: NotificationConfig;
+  users: User[];
+  channels: ChannelApiResponse["channels"] | undefined;
+  updateEmailHandler: (handler: NotificationHandlerEmail) => void;
+  toggleSendToAllAdmins: (sendToAllAdmins: boolean) => void;
+  updateSlackHandler: (handler: NotificationHandlerSlack) => void;
+  toggleSlack: (enabled: boolean) => void;
+  save: () => Promise<void>;
+  resetConfig: () => void;
+};
+
+const NotificationConfigContext = createContext<NotificationConfigValue | null>(
+  null,
+);
+
+export const NotificationConfigProvider = NotificationConfigContext.Provider;
+
 /**
  * Hook for notification channel configuration.
- * Reads from and writes to Metabase settings via the generic settings API.
+ * When used inside a NotificationConfigProvider, returns the shared context.
+ * When used as the root (in the modal), creates and owns the state.
  */
-export function useNotificationConfig() {
+export function useNotificationConfig(): NotificationConfigValue {
+  const ctx = useContext(NotificationConfigContext);
+  if (ctx) {
+    return ctx;
+  }
+  throw new Error(
+    "useNotificationConfig must be used inside a NotificationConfigProvider",
+  );
+}
+
+/**
+ * Creates the notification config state. Should be called once in the modal
+ * and provided to children via NotificationConfigProvider.
+ */
+export function useNotificationConfigState(): NotificationConfigValue {
   const savedEmailRecipients = useSetting("security-center-email-recipients");
   const savedSlackChannel = useSetting("security-center-slack-channel");
 

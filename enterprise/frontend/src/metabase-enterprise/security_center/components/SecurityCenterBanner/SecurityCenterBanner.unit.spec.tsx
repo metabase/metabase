@@ -4,33 +4,17 @@ import { Route } from "react-router";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import type { Advisory } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createAdvisory } from "metabase-types/api/mocks/security-center";
 import { createMockState } from "metabase-types/store/mocks";
-
-import type { Advisory } from "../../types";
 
 import { SecurityCenterBanner } from "./SecurityCenterBanner";
 
 const DISMISSED_KEY = "security-center-banner-dismissed";
-
-const makeAdvisory = (overrides: Partial<Advisory> = {}): Advisory => ({
-  advisory_id: "SA-001",
-  title: "Test advisory",
-  description: "desc",
-  severity: "medium",
-  advisory_url: null,
-  remediation: "Upgrade",
-  published_at: "2026-01-01T00:00:00Z",
-  match_status: "not_affected",
-  last_evaluated_at: null,
-  acknowledged_by: null,
-  acknowledged_at: null,
-  affected_versions: [{ min: "0.45.0", fixed: "0.59.0" }],
-  ...overrides,
-});
 
 interface SetupOpts {
   isProSelfHosted?: boolean;
@@ -112,7 +96,7 @@ describe("SecurityCenterBanner", () => {
 
   it("renders error banner with active advisories", async () => {
     setup({
-      advisories: [makeAdvisory({ match_status: "active" })],
+      advisories: [createAdvisory({ match_status: "active" })],
     });
 
     expect(
@@ -129,7 +113,7 @@ describe("SecurityCenterBanner", () => {
 
   it("is not dismissible when there are active advisories", async () => {
     setup({
-      advisories: [makeAdvisory({ match_status: "active" })],
+      advisories: [createAdvisory({ match_status: "active" })],
     });
 
     // Wait for the error banner text to confirm advisory data has loaded
@@ -150,7 +134,7 @@ describe("SecurityCenterBanner", () => {
     localStorage.setItem(DISMISSED_KEY, "true");
 
     setup({
-      advisories: [makeAdvisory({ match_status: "active" })],
+      advisories: [createAdvisory({ match_status: "active" })],
     });
 
     expect(
