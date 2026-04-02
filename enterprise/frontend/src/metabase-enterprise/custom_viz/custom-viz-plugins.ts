@@ -31,7 +31,6 @@ type CustomVizPluginDefinition = {
   VisualizationComponent: Visualization;
   minSize?: Visualization["minSize"];
   defaultSize?: Visualization["defaultSize"];
-  isSensible?: Visualization["isSensible"];
   checkRenderable?: Visualization["checkRenderable"];
   settings?: Visualization["settings"];
 };
@@ -364,14 +363,12 @@ export async function loadCustomVizPlugin(
         VisualizationProps & { width: number | null; height: number | null }
       >,
     ) as Visualization;
-
     Object.assign(Component, {
       identifier,
       getUiName: () => plugin.display_name,
       iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
       minSize: vizDef.minSize,
       defaultSize: vizDef.defaultSize,
-      isSensible: vizDef.isSensible,
       checkRenderable: vizDef.checkRenderable,
       settings: vizDef.settings,
       hidden: false,

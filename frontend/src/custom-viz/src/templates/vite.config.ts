@@ -1,6 +1,6 @@
-import { resolve } from "path";
+iimport { watch, cpSync, existsSync, readFileSync } from "fs";
 import { createServer } from "http";
-import { watch, cpSync, existsSync, readFileSync } from "fs";
+import { resolve } from "path";
 import { defineConfig } from "vite";
 
 /**

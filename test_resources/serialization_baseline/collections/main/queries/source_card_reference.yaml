@@ -1,0 +1,222 @@
+name: Source Card Reference
+entity_id: gt4OaWYAuDWRHn5Irnd4h
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - filters:
+    - - '>'
+      - {}
+      - - field
+        - base-type: type/Integer
+          lib/uuid: d32f8053-f5b8-4e94-8768-32eb7b5a576f
+        - count
+      - 100
+    order-by:
+    - - desc
+      - {}
+      - - field
+        - base-type: type/Integer
+          lib/uuid: c7c318b1-34bb-488a-bc9a-8e8ccd476336
+        - count
+    source-card: h5F2EjHsRd73Dqqh8sAtd
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: 'Created At: Month'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  inherited_temporal_unit: month
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  unit: month
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 5
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/previous-stage
+  lib/source-column-alias: CREATED_AT
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - count
+  - base-type: type/Integer
+  name: count
+  semantic_type: type/Quantity
+  source: fields
+  lib/breakout?: false
+  lib/card-id: 5
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/previous-stage
+  lib/source-column-alias: count
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Sum of Total
+  effective_type: type/Float
+  field_ref:
+  - field
+  - sum
+  - base-type: type/Float
+  name: sum
+  source: fields
+  lib/breakout?: false
+  lib/card-id: 5
+  lib/deduplicated-name: sum
+  lib/desired-column-alias: sum
+  lib/original-name: sum
+  lib/source: source/previous-stage
+  lib/source-column-alias: sum
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Average of Total
+  effective_type: type/Float
+  field_ref:
+  - field
+  - avg
+  - base-type: type/Float
+  name: avg
+  source: fields
+  lib/breakout?: false
+  lib/card-id: 5
+  lib/deduplicated-name: avg
+  lib/desired-column-alias: avg
+  lib/original-name: avg
+  lib/source: source/previous-stage
+  lib/source-column-alias: avg
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Min of Total
+  effective_type: type/Float
+  field_ref:
+  - field
+  - min
+  - base-type: type/Float
+  name: min
+  source: fields
+  lib/breakout?: false
+  lib/card-id: 5
+  lib/deduplicated-name: min
+  lib/desired-column-alias: min
+  lib/original-name: min
+  lib/source: source/previous-stage
+  lib/source-column-alias: min
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Max of Total
+  effective_type: type/Float
+  field_ref:
+  - field
+  - max
+  - base-type: type/Float
+  name: max
+  source: fields
+  lib/breakout?: false
+  lib/card-id: 5
+  lib/deduplicated-name: max
+  lib/desired-column-alias: max
+  lib/original-name: max
+  lib/source: source/previous-stage
+  lib/source-column-alias: max
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Count of Product ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - count_2
+  - base-type: type/Integer
+  name: count_2
+  semantic_type: type/Quantity
+  source: fields
+  lib/breakout?: false
+  lib/card-id: 5
+  lib/deduplicated-name: count_2
+  lib/desired-column-alias: count_2
+  lib/original-name: count
+  lib/source: source/previous-stage
+  lib/source-column-alias: count_2
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Distinct values of Product ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - count_3
+  - base-type: type/Integer
+  name: count_3
+  semantic_type: type/Quantity
+  source: fields
+  lib/breakout?: false
+  lib/card-id: 5
+  lib/deduplicated-name: count_3
+  lib/desired-column-alias: count_3
+  lib/original-name: count
+  lib/source: source/previous-stage
+  lib/source-column-alias: count_3
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Total Revenue
+  effective_type: type/Float
+  field_ref:
+  - field
+  - total_revenue
+  - base-type: type/Float
+  name: total_revenue
+  source: fields
+  lib/breakout?: false
+  lib/card-id: 5
+  lib/deduplicated-name: total_revenue
+  lib/desired-column-alias: total_revenue
+  lib/original-name: total_revenue
+  lib/source: source/previous-stage
+  lib/source-column-alias: total_revenue
+  qp/implicit-field?: true
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: gt4OaWYAuDWRHn5Irnd4h
+  label: source_card_reference
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+source_card_id: h5F2EjHsRd73Dqqh8sAtd
+type: question

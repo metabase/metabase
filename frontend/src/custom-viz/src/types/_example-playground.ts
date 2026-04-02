@@ -1,4 +1,4 @@
-import { defineSetting } from "../lib";
+import { createDefineSetting } from "../lib";
 
 import type {
   CreateCustomVisualization,
@@ -12,39 +12,40 @@ type MyVizSettings = {
   threshold?: number;
 };
 
-type CustomWidgetProps = {
-  options: boolean[];
-};
-
 export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
   getAssetUrl: _getAssetUrl,
 }) => {
+  const defineSetting = createDefineSetting<MyVizSettings>();
+
   return {
     id: "my-custom-viz",
     getName: () => "My custom viz",
-    isSensible() {
-      return true;
-    },
     checkRenderable() {},
     settings: {
       apiKey: defineSetting({
-        id: "api-key-setting",
+        id: "apiKey",
         widget: "input",
         getProps() {
           return {};
         },
+        getDefault() {
+          return "FFCCDD";
+        },
       }),
       custom: defineSetting({
-        id: "2",
+        id: "custom",
         widget: CustomWidget,
         getProps() {
           return {
             options: [],
           };
         },
+        getDefault() {
+          return true;
+        },
       }),
       threshold: defineSetting({
-        id: "1",
+        id: "threshold",
         widget: "number",
         getProps(_series, _settings) {
           return {};
@@ -64,6 +65,10 @@ const MyStaticVizComponent = (
   _props: CustomStaticVisualizationProps<MyVizSettings>,
 ) => {
   return null;
+};
+
+type CustomWidgetProps = {
+  options: boolean[];
 };
 
 const CustomWidget = (_props: CustomWidgetProps) => {

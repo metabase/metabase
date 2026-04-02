@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import type { Column, DatasetData, RowValue, Series } from "./data";
+import type { Column, RowValue, Series } from "./data";
 import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 
 /**
@@ -15,11 +15,6 @@ export type CreateCustomVisualizationProps = {
    * Current user's locale (e.g., "de", "ja", "en").
    */
   locale: string;
-
-  /**
-   * Translates text using ttag function used in Metabase.
-   */
-  translate: (text: string) => string;
 
   /**
    * Returns a URL for a static asset declared in the plugin manifest.
@@ -74,12 +69,6 @@ export type CustomVisualization<CustomVisualizationSettings> = {
     keyof CustomVisualizationSettings,
     CustomVisualizationSettingDefinition<CustomVisualizationSettings>
   >;
-
-  /**
-   * This function should return true if the data shape makes sense for this visualization.
-   * TODO: should it get series: Series instead?
-   */
-  isSensible: (data: DatasetData) => boolean;
 
   /**
    * This function should throw if the visualization cannot be rendered with given data and settings.

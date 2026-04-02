@@ -1,4 +1,4 @@
-import { defineSetting } from "../lib";
+import { createDefineSetting } from "../lib";
 
 import type {
   CreateCustomVisualization,
@@ -10,19 +10,14 @@ type ThumbsVizSettings = {
   threshold?: number;
 };
 
-const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = ({
-  translate: _translate,
-}) => {
+const createThumbsViz: CreateCustomVisualization<ThumbsVizSettings> = () => {
+  const defineSetting = createDefineSetting<ThumbsVizSettings>();
+
   return {
     id: "thumbs-viz",
     getName: () => "Thumbs",
     minSize: { width: 1, height: 1 },
     defaultSize: { width: 2, height: 2 },
-    isSensible({ cols, rows }) {
-      return (
-        cols.length === 1 && rows.length === 1 && typeof rows[0][0] === "number"
-      );
-    },
     checkRenderable(series, settings) {
       if (series.length !== 1) {
         throw new Error("Only 1 series is supported");
