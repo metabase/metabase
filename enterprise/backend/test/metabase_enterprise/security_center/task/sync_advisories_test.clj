@@ -58,19 +58,21 @@
 
 (deftest sync-and-evaluate-e2e-test
   (testing "full flow: sync-and-evaluate! runs matching queries and updates match_status"
-    (mt/with-temp [:model/SecurityAdvisory advisory
-                   {:advisory_id       "SC-E2E-001"
-                    :severity          "critical"
-                    :title             "E2E test advisory"
-                    :description       "Tests the full sync-and-evaluate flow"
-                    :remediation       "Upgrade"
-                    :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
-                    :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
-                    :match_status      "not_affected"
-                    :published_at      #t "2026-03-24T00:00:00Z"}]
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
-                                  fetch/sync-advisories!                    (constantly nil)]
-        (#'sync-advisories/sync-and-evaluate!)
-        (let [updated (t2/select-one :model/SecurityAdvisory (:id advisory))]
-          (is (= :active (:match_status updated)))
-          (is (some? (:last_evaluated_at updated))))))))
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/SecurityAdvisory advisory
+                     {:advisory_id       "SC-E2E-001"
+                      :severity          "critical"
+                      :title             "E2E test advisory"
+                      :description       "Tests the full sync-and-evaluate flow"
+                      :remediation       "Upgrade"
+                      :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
+                      :matching_query    {:default {:select [[1 :one]]}}
+                      ;; query returns rows unconditionally — tests the full evaluate flow
+                      :match_status      "not_affected"
+                      :published_at      #t "2026-03-24T00:00:00Z"}]
+        (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
+                                    fetch/sync-advisories!                    (constantly nil)]
+          (#'sync-advisories/sync-and-evaluate!)
+          (let [updated (t2/select-one :model/SecurityAdvisory (:id advisory))]
+            (is (= :active (:match_status updated)))
+            (is (some? (:last_evaluated_at updated)))))))))
