@@ -17,10 +17,10 @@
 
 (defn evaluate-args
   "Evaluate and normalize helper arguments in the current query context."
-  [evaluate-node current-query node-path op raw-args]
+  [eval-node-fn current-query node-path op raw-args]
   (->> raw-args
        (map-indexed (fn [idx arg]
-                      (evaluate-node current-query (conj node-path (inc idx)) arg)))
+                      (eval-node-fn current-query (conj node-path (inc idx)) arg)))
        vec
        (eval.args/normalize-helper-args node-path op)))
 

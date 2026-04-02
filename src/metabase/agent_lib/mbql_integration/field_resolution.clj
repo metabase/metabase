@@ -266,7 +266,7 @@
 (defn- try-strategies
   "Try resolution strategies in priority order, returning the first match."
   [strategies]
-  (some (fn [{:keys [resolve]}] (resolve)) strategies))
+  (some (fn [{:keys [resolve-fn]}] (resolve-fn)) strategies))
 
 (defn resolve-field-in-query
   "Resolve a metadata field against what the current query stage actually
@@ -287,26 +287,26 @@
          prev-stage (delay (previous-stage-candidates candidates raw-field))]
      (or (try-strategies
           [{:name :multi-hop-chained-lineage
-            :resolve #(common/unique-query-candidate (filterv multi-hop-lineage-candidate? @chained))}
+            :resolve-fn #(common/unique-query-candidate (filterv multi-hop-lineage-candidate? @chained))}
            {:name :exact-id+table-with-lineage
-            :resolve #(common/unique-query-candidate (lined (by-id+tbl)))}
+            :resolve-fn #(common/unique-query-candidate (lined (by-id+tbl)))}
            {:name :exact-id-with-lineage
-            :resolve #(common/unique-query-candidate (lined (by-id)))}
+            :resolve-fn #(common/unique-query-candidate (lined (by-id)))}
            {:name :previous-stage-lineage-or-aggregation
-            :resolve #(common/unique-query-candidate
-                       (->> (concat (previous-stage-lineage-matches raw-field @prev-stage)
-                                    (previous-stage-aggregation-matches query raw-field @prev-stage))
-                            common/dedupe-candidate-columns vec))}
+            :resolve-fn #(common/unique-query-candidate
+                          (->> (concat (previous-stage-lineage-matches raw-field @prev-stage)
+                                       (previous-stage-aggregation-matches query raw-field @prev-stage))
+                               common/dedupe-candidate-columns vec))}
            {:name :previous-stage-name
-            :resolve #(common/unique-query-candidate (previous-stage-name-matches raw-field @prev-stage))}
+            :resolve-fn #(common/unique-query-candidate (previous-stage-name-matches raw-field @prev-stage))}
            {:name :chained-related-fields
-            :resolve #(common/unique-query-candidate @chained)}
+            :resolve-fn #(common/unique-query-candidate @chained)}
            {:name :lib-find-matching-column
-            :resolve #(when query (lib/find-matching-column query -1 raw-field candidates))}
+            :resolve-fn #(when query (lib/find-matching-column query -1 raw-field candidates))}
            {:name :exact-id+table
-            :resolve #(common/unique-query-candidate (by-id+tbl))}
+            :resolve-fn #(common/unique-query-candidate (by-id+tbl))}
            {:name :exact-id
-            :resolve #(common/unique-query-candidate (by-id))}])
+            :resolve-fn #(common/unique-query-candidate (by-id))}])
          (throw (ex-info (str "Field " (pr-str (:name raw-field))
                               " (id " (pr-str (:id raw-field))
                               ") is not available in the current query stage.")
