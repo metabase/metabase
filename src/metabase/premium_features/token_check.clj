@@ -666,10 +666,12 @@
 
 (defn security-center-enabled?
   "True if the current instance has Security Center access.
-   Requires both the `:admin-security-center` feature flag AND a non-trial subscription."
+   Requires the `:admin-security-center` feature flag, a non-trial subscription,
+   and a self-hosted instance."
   []
   (and (has-feature? :admin-security-center)
-       (not (is-trial?))))
+       (not (is-trial?))
+       (not (settings/is-hosted?))))
 
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."
