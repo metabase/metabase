@@ -814,6 +814,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       >
         <DataGrid
           {...tableProps}
+          striped={settings["table.striped"]}
           styles={dataGridStyles}
           showRowsCount={isDashboard}
           rowsTruncated={data.rows_truncated}
