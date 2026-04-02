@@ -4,7 +4,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.test :as mt]))
 
-(deftest resolve-user-permissions-ee-test
+(deftest resolve-user-permissions-default-test
   (mt/with-premium-features #{:ai-controls}
     (testing "user with no stored permissions inherits from all-internal-users migration defaults"
       (mt/with-temp [:model/User {user-id :id} {}
@@ -14,8 +14,10 @@
         (let [perms (scope/resolve-user-permissions user-id)]
           ;; all-internal-users magic group has yes from migration
           (is (= :yes (:permission/metabot-sql-generation perms)))
-          (is (= :yes (:permission/metabot-nql perms))))))
+          (is (= :yes (:permission/metabot-nql perms))))))))
 
+(deftest resolve-user-permissions-stored-test
+  (mt/with-premium-features #{:ai-controls}
     (testing "user in group with stored permissions gets those values"
       (mt/with-temp [:model/User {user-id :id} {}
                      :model/PermissionsGroup {group-id :id} {:name "SQL Group"}
@@ -27,8 +29,10 @@
         (let [perms (scope/resolve-user-permissions user-id)]
           (is (= :yes (:permission/metabot-sql-generation perms)))
           ;; all-internal-users magic group has :yes for nql from migration
-          (is (= :yes (:permission/metabot-nql perms))))))
+          (is (= :yes (:permission/metabot-nql perms))))))))
 
+(deftest resolve-user-permissions-most-permissive-test
+  (mt/with-premium-features #{:ai-controls}
     (testing "most permissive wins across multiple groups"
       (mt/with-temp [:model/User {user-id :id} {}
                      :model/PermissionsGroup {group-a :id} {:name "Group A"}

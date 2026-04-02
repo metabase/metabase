@@ -6,6 +6,7 @@
   `:capabilities`, `:prompt`, `:decode`, and `:system-instructions`. The var itself
   is a function that takes the tool arguments and returns a result map."
   (:require
+   [metabase.api-scope.core :as api-scope]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.analyze-chart :as tools.analyze-chart]
    [metabase.metabot.tools.autogen-dashboard :as tools.autogen-dashboard]
@@ -104,7 +105,7 @@
   Returns a denial message if the scope is not satisfied."
   [f tool-name required-scope]
   (fn [args]
-    (if (scope/scope-matches? scope/*current-user-scope* required-scope)
+    (if (api-scope/scope-matches? scope/*current-user-scope* required-scope)
       (f args)
       (do (log/warnf "Scope check failed for tool %s — required: %s, granted: %s"
                      tool-name required-scope scope/*current-user-scope*)

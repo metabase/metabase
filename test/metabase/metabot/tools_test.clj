@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.api-scope.core :as api-scope]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
@@ -51,7 +52,7 @@
 (defn- tools-for-profile
   "Get tools for a profile with unrestricted scope."
   [profile-id]
-  (binding [scope/*current-user-scope* scope/unrestricted]
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
     (profiles/get-tools-for-profile profile-id #{})))
 
 (deftest ^:parallel get-tools-for-embedding-next-profile-test

@@ -12,6 +12,7 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.api-scope.core :as api-scope]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
@@ -586,7 +587,7 @@
                                  scope/all-yes-permissions
                                  (scope/resolve-user-permissions api/*current-user-id*)))
         scopes             (if api/*is-superuser?*
-                             scope/unrestricted
+                             api-scope/unrestricted
                              (scope/user-metabot-perms->scopes perms))]
     (check-metabot-access! profile-id perms)
     (reify clojure.lang.IReduceInit
