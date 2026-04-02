@@ -43,7 +43,7 @@
           (mt/user-http-request :crowberto :put 204 "setting/security-center-slack-channel"
                                 {:value "#security"})
           (is (= "#security"
-                  (mt/user-http-request :crowberto :get 200 "setting/security-center-slack-channel")))))
+                 (mt/user-http-request :crowberto :get 200 "setting/security-center-slack-channel")))))
 
       (testing "superuser can set to null (disable Slack)"
         (mt/user-http-request :crowberto :put 204 "setting/security-center-slack-channel"
