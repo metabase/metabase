@@ -635,6 +635,52 @@ export const fetchDashboardCardData =
     const isEditing = editingDashboard != null;
 
     if (canUseBatchEndpoint(dashboardType, isEditing)) {
+      // Filter out cards with valid cached results (unless reload/clearCache)
+      const { dashcardData } = getState().dashboard;
+
+      // Compute savedParameters same as per-card code (lines 259-267)
+      const savedParameterIds = new Set(
+        editingDashboard?.parameters?.map((parameter) => parameter.id),
+      );
+      const savedParameters =
+        editingDashboard != null
+          ? dashboard.parameters?.filter((parameter) =>
+              savedParameterIds.has(parameter.id),
+            )
+          : dashboard.parameters;
+
+      const cardsNeedingFetch =
+        // Only `reload` forces re-fetch; `clearCache` only affects UI loading state
+        // (matches per-card behavior at line 278)
+        reload
+          ? nonVirtualDashcardsToFetch
+          : nonVirtualDashcardsToFetch.filter(({ card, dashcard }) => {
+              const lastResult = getIn(dashcardData, [
+                dashcard.id,
+                (card as Card).id,
+              ]);
+              if (!lastResult) {
+                return true; // No cache, need to fetch
+              }
+              // Apply parameters to get the query that would be executed
+              // (matches per-card code at lines 270-275)
+              const datasetQuery = applyParameters(
+                card as Card,
+                savedParameters,
+                parameterValues,
+                dashcard?.parameter_mappings ?? undefined,
+              );
+              return !equals(
+                getDatasetQueryParams(lastResult.json_query),
+                getDatasetQueryParams(datasetQuery),
+              );
+            });
+
+      if (cardsNeedingFetch.length === 0) {
+        dispatch(loadingComplete());
+        return;
+      }
+
       // Build parameters: dashboard-level params with current values
       const batchParameters = (dashboard.parameters ?? [])
         .filter((p) => parameterValues[p.id] != null)
@@ -645,7 +691,7 @@ export const fetchDashboardCardData =
         }));
 
       // Build cards array: unique (dashcard_id, card_id) pairs
-      const cards = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => ({
+      const cards = cardsNeedingFetch.map(({ card, dashcard }) => ({
         dashcard_id: dashcard.id,
         card_id: (card as Card).id,
       }));
@@ -654,7 +700,7 @@ export const fetchDashboardCardData =
       batchFetchAbortController = abortController;
 
       let completedCount = 0;
-      const totalCount = nonVirtualDashcardsToFetch.length;
+      const totalCount = cardsNeedingFetch.length;
 
       const requestConfig = getBatchRequestConfig(
         dashboard.id,
