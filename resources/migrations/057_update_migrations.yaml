@@ -2851,6 +2851,18 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v57.2026-04-01T00:00:01
+      author: bronsa
+      comment: Add index on security_advisory.acknowledged_by FK
+      changes:
+        - createIndex:
+            tableName: security_advisory
+            indexName: idx_security_advisory_acknowledged_by
+            columns:
+              - column:
+                  name: acknowledged_by
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
