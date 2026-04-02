@@ -1,8 +1,8 @@
 (ns metabase.metabot.tools-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.agent.profiles :as profiles]
    [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]

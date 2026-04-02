@@ -1,8 +1,8 @@
 (ns metabase.metabot.agent.profiles-test
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.agent.profiles :as profiles]
    [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.transforms :as tools.transforms]
    [metabase.premium-features.core :as premium-features]
