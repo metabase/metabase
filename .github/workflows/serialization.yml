@@ -36,4 +36,4 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Validate serialization baseline schema
-        run: bunx @metabase/representations@1.1.1 validate-schema --folder test_resources/serialization_baseline
+        run: bunx @metabase/representations validate-schema --folder test_resources/serialization_baseline
