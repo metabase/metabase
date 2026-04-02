@@ -582,14 +582,17 @@
               ["./bin/mage -johnswanson-dev-env up --no-backend" "Start containers only, no backend process"]
               ["./bin/mage -johnswanson-dev-env add mongo" "Add MongoDB warehouse to running env"]
               ["./bin/mage -johnswanson-dev-env logs" "Show last 100 lines from all log sources"]
+              ["./bin/mage -johnswanson-dev-env logs backend" "Show last 100 lines of backend logs"]
+              ["./bin/mage -johnswanson-dev-env logs -f" "Stream all logs (new lines only, interleaved)"]
               ["./bin/mage -johnswanson-dev-env logs backend -f" "Stream backend logs"]
+              ["./bin/mage -johnswanson-dev-env open" "Open backend in default browser"]
               ["./bin/mage -johnswanson-dev-env stop" "Stop processes and containers (preserves data)"]
               ["./bin/mage -johnswanson-dev-env down" "Tear down everything (removes containers and config)"]]
    :requires [[mage.johnswanson.dev-env :as jds-dev-env]]
    :custom-help? true
    :arg-schema [:or
                 [:tuple]
-                [:tuple [:enum "up" "stop" "down" "status" "list"]]
+                [:tuple [:enum "up" "stop" "down" "open" "status" "list"]]
                 [:cat [:= "add"] [:* :string]]
                 [:cat [:= "logs"] [:* :string]]]
    :options [["-h" "--help" "Show help for a command"]
@@ -602,10 +605,11 @@
              [nil "--no-backend" "Skip backend process (containers + config only)"]
              [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
              [nil "--fresh" "Force-recreate containers from scratch"]
-             ["-f" "--follow" "Stream logs in real time (for logs subcommand)"]
-             [nil "--tail N" "Number of lines to show (default 100, for logs subcommand)" :default 100 :parse-fn Integer/parseInt]
+             ["-f" "--follow" "Stream new log lines in real time (logs subcommand)"]
+             [nil "--tail N" "Lines to show in dump mode, default 100 (logs subcommand)" :default 100 :parse-fn Integer/parseInt]
              [nil "--stop" "With list: select envs to stop"]
-             [nil "--down" "With list: select envs to tear down"]]
+             [nil "--down" "With list: select envs to tear down"]
+             ["-a" "--all" "With list: show all worktrees, not just active ones"]]
    :task (task! (jds-dev-env/dev-env! parsed))}
 
   -bgrabow-ci-test-repl

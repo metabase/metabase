@@ -392,27 +392,40 @@
   (let [{:keys [exit]} (shell/sh* {:quiet? true} "kill" "-0" (str pid))]
     (zero? exit)))
 
+(defn- human-duration
+  "Human-readable elapsed time from a millis timestamp, e.g. \"About 2 hours\"."
+  [started-at-ms]
+  (when started-at-ms
+    (let [secs (quot (- (System/currentTimeMillis) started-at-ms) 1000)]
+      (cond
+        (< secs 60)    "Less than a minute"
+        (< secs 120)   "About a minute"
+        (< secs 3600)  (str "About " (quot secs 60) " minutes")
+        (< secs 7200)  "About an hour"
+        (< secs 86400) (str "About " (quot secs 3600) " hours")
+        :else          (str "About " (quot secs 86400) " days")))))
+
+(defn- process-status
+  "Compute a status string for a process given its PID and started-at timestamp."
+  [pid started-at]
+  (cond
+    (nil? pid)       ""
+    (pid-alive? pid) (if-let [dur (human-duration started-at)]
+                       (str "Up " dur)
+                       "Up")
+    :else            "Stopped"))
+
 (defn- build-status-rows
   "Build unified status table rows from config, state, and live docker status."
   [slot {:keys [app-db with]} container-statuses state]
-  (let [backend-pid  (get-in state [:backend :pid])
-        frontend-pid (get-in state [:frontend :pid])]
-    (cond-> [{:service "Backend"     :port (str (port-for :jetty slot))
-              :pid (or backend-pid "")
-              :status (cond (nil? backend-pid)          ""
-                            (pid-alive? backend-pid)    "running"
-                            :else                       "stopped")
-              :log (if backend-pid (str "tail -f " (get-in state [:backend :log-file])) "")}
-             {:service "Frontend"    :port (str (port-for :frontend-dev slot))
-              :pid (or frontend-pid "")
-              :status (cond (nil? frontend-pid)         ""
-                            (pid-alive? frontend-pid)   "running"
-                            :else                       "stopped")
-              :log (if frontend-pid (str "tail -f " (get-in state [:frontend :log-file])) "")}
-             {:service "nREPL"       :port (str (port-for :nrepl slot))
-              :pid "" :status "" :log ""}
-             {:service "Socket REPL" :port (str (port-for :socket-repl slot))
-              :pid "" :status "" :log ""}]
+  (let [be-status (process-status (get-in state [:backend :pid])
+                                  (get-in state [:backend :started-at]))
+        fe-status (process-status (get-in state [:frontend :pid])
+                                  (get-in state [:frontend :started-at]))]
+    (cond-> [{:service "Backend"     :port (str (port-for :jetty slot))        :status be-status}
+             {:service "Frontend"    :port (str (port-for :frontend-dev slot)) :status fe-status}
+             {:service "nREPL"       :port (str (port-for :nrepl slot))        :status be-status}
+             {:service "Socket REPL" :port (str (port-for :socket-repl slot))  :status be-status}]
 
       ;; App DB container
       (not= app-db :h2)
@@ -421,8 +434,7 @@
                   ports  (:internal-ports spec)]
               {:service (service-display-name app-db "app")
                :port    (service-port-str ports slot)
-               :status  (get container-statuses cname "")
-               :pid "" :log ""}))
+               :status  (get container-statuses cname "")}))
 
       ;; Warehouse services
       true
@@ -433,8 +445,7 @@
                      ports  (or (:wh-ports spec) (:internal-ports spec))]
                  [{:service (service-display-name svc "wh")
                    :port    (service-port-str ports slot)
-                   :status  (get container-statuses cname "")
-                   :pid "" :log ""}]))
+                   :status  (get container-statuses cname "")}]))
              with)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -523,8 +534,9 @@
                                      :err       log
                                      :extra-env env-map}
                           cmd)]
-    {:pid      (.pid (:proc proc))
-     :log-file log-file}))
+    {:pid        (.pid (:proc proc))
+     :log-file   log-file
+     :started-at (System/currentTimeMillis)}))
 
 (defn- start-frontend!
   "Launch frontend dev server in background. Returns PID."
@@ -536,8 +548,9 @@
                              :err       log
                              :extra-env env-map}
                             "bun" "run" "build-hot")]
-    {:pid      (.pid (:proc proc))
-     :log-file log-file}))
+    {:pid        (.pid (:proc proc))
+     :log-file   log-file
+     :started-at (System/currentTimeMillis)}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Config reuse
@@ -571,6 +584,7 @@
   (println (c/cyan "  logs   ") "Show logs (backend, frontend, docker services)")
   (println (c/cyan "  stop   ") "Stop processes + containers (preserves data)")
   (println (c/cyan "  down   ") "Tear down everything (removes containers and config)")
+  (println (c/cyan "  open   ") "Open backend in browser")
   (println (c/cyan "  status ") "Show current status")
   (println (c/cyan "  list   ") "List dev envs across all worktrees")
   (println)
@@ -629,19 +643,25 @@
     "logs"
     (do (println (c/bold "logs") "- Show logs for backend, frontend, or docker services")
         (println)
-        (println "Without arguments, shows the last 100 lines from all log sources.")
-        (println "Use -f to stream logs in real time with [source] prefixes.")
+        (println "Without -f, dumps the last N lines from each source sequentially.")
+        (println "With -f, streams only new lines in real time with color-coded [source] prefixes.")
         (println)
         (println (c/bold "Usage:"))
-        (println (str "  " command-prefix " logs              Show last 100 lines from all sources"))
-        (println (str "  " command-prefix " logs -f           Stream all logs (interleaved)"))
-        (println (str "  " command-prefix " logs backend      Show last 100 lines of backend"))
-        (println (str "  " command-prefix " logs backend -f   Stream backend logs"))
-        (println (str "  " command-prefix " logs postgres     Show last 100 lines of postgres"))
+        (println (str "  " command-prefix " logs              Dump last 100 lines from all sources"))
+        (println (str "  " command-prefix " logs -f           Stream new lines from all sources"))
+        (println (str "  " command-prefix " logs backend      Dump last 100 lines of backend"))
+        (println (str "  " command-prefix " logs backend -f   Stream new backend lines"))
+        (println (str "  " command-prefix " logs --tail 50    Dump last 50 lines from all sources"))
         (println)
         (println (c/bold "Options:"))
-        (println "  -f, --follow      Stream logs in real time")
-        (println "  --tail N          Number of lines to show (default 100)"))
+        (println "  -f, --follow      Stream new log lines in real time")
+        (println "  --tail N          Lines to show in dump mode (default 100)"))
+
+    "open"
+    (do (println (c/bold "open") "- Open backend in browser")
+        (println)
+        (println "Opens http://localhost:<port> in the default browser.")
+        (println "Uses `open` on macOS and `xdg-open` on Linux."))
 
     "list"
     (do (println (c/bold "list") "- List dev envs across all worktrees")
@@ -736,31 +756,55 @@
     :stopped (c/red "stopped")
     ""))
 
+(defn- env-ports-summary
+  "Build a concise ports string from a worktree env's state."
+  [{:keys [slot state]}]
+  (when-let [config (:config state)]
+    (let [port-list (cond-> [(str (port-for :jetty slot))
+                             (str (port-for :nrepl slot))]
+                      (not= (:app-db config) :h2)
+                      (into (let [spec (get service-specs (:app-db config))]
+                              (mapv #(str (port-for (first %) slot))
+                                    (:internal-ports spec))))
+                      true
+                      (into (mapcat (fn [svc]
+                                      (let [spec (get service-specs svc)
+                                            ports (or (:wh-ports spec) (:internal-ports spec))]
+                                        (mapv #(str (port-for (first %) slot)) ports)))
+                                    (:with config))))]
+      (str/join ", " port-list))))
+
 (defn- list-all!
   "List dev envs across all git worktrees. Optionally stop or tear down selected envs."
   [opts]
-  (let [paths (all-worktree-paths)
-        envs  (->> paths
-                   (keep worktree-env-info)
-                   (sort-by :name))]
+  (let [paths    (all-worktree-paths)
+        all-envs (->> paths
+                      (keep worktree-env-info)
+                      (sort-by :name))
+        active?  (fn [{:keys [backend frontend containers]}]
+                   (or (= backend :running) (= frontend :running) (seq containers)))
+        envs     (if (:all opts) all-envs (filter active? all-envs))]
     (if (empty? envs)
-      (println (c/yellow "No dev environments found across any worktree."))
+      (if (:all opts)
+        (println (c/yellow "No dev environments found across any worktree."))
+        (println (c/yellow "No active environments. Use --all to list all worktrees.")))
       (do
         (println)
-        (println (c/bold "Dev environments across all worktrees:"))
+        (println (c/bold (if (:all opts)
+                           "Dev environments across all worktrees:"
+                           "Active dev environments:")))
         (println)
-        (t/table (mapv (fn [{:keys [name slot backend frontend containers]}]
+        (t/table (mapv (fn [{:keys [name slot backend frontend containers] :as env}]
                          {:worktree   name
                           :slot       (or slot "")
-                          :backend    (status-label backend)
-                          :frontend   (status-label frontend)
-                          :containers (count containers)})
+                          :backend    (if backend (clojure.core/name backend) "")
+                          :frontend   (if frontend (clojure.core/name frontend) "")
+                          :containers (count containers)
+                          :ports      (or (env-ports-summary env) "")})
                        envs)
                  :style :unicode)
         (when (or (:stop opts) (:down opts))
-          (let [active   (filter (fn [{:keys [backend frontend containers]}]
-                                   (or (= backend :running) (= frontend :running) (seq containers)))
-                                 envs)
+          (let [active   (filter active? envs)
                 action   (if (:down opts) "down" "stop")]
             (if (empty? active)
               (println (c/yellow "\nNo active environments to " action "."))
@@ -868,9 +912,10 @@
     ;; Write mise.local.toml
     (generate-mise-local! slot full-config)
     ;; Save config to state file
-    (write-state-file! {:slot       slot
-                        :config     full-config
-                        :containers (collect-container-names config)})
+    (write-state-file! (merge (read-state-file)
+                              {:slot       slot
+                               :config     full-config
+                               :containers (collect-container-names config)}))
     ;; Start processes
     (start-processes! opts slot full-config)
     (print-status!)))
@@ -1060,15 +1105,15 @@
           (println "Available:" (str/join ", " (distinct (map :name all-sources)))))
         (u/exit 1))
       (if follow?
-        ;; Stream mode: spawn processes, prefix lines, wait for ctrl-c
+        ;; Stream mode: only new lines (--tail 0) to avoid misordered history
         (let [procs (into []
                           (keep (fn [{:keys [type target name color]}]
                                   (let [proc (case type
                                                :file   (when (.exists (java.io.File. ^String target))
                                                          (p/process {:out :pipe :err :pipe}
-                                                                    "tail" "-f" "-n" tail-n target))
+                                                                    "tail" "-f" "-n" "0" target))
                                                :docker (p/process {:out :pipe :err :pipe}
-                                                                  "docker" "logs" "-f" "--tail" tail-n target))]
+                                                                  "docker" "logs" "-f" "--tail" "0" target))]
                                     (when proc
                                       {:proc proc :name name :color color}))))
                           sources)]
@@ -1103,6 +1148,28 @@
                       (println (c/yellow "Log file not found: " target)))
             :docker (p/shell {:out :inherit :err :inherit} "docker" "logs" "--tail" tail-n target)))))))
 
+(defn- open-url!
+  "Open a URL in the default browser. macOS: open, Linux: xdg-open."
+  [url]
+  (let [os-name (System/getProperty "os.name")
+        cmd     (cond
+                  (str/includes? os-name "Mac")   "open"
+                  (str/includes? os-name "Linux") "xdg-open"
+                  :else                           nil)]
+    (if cmd
+      (p/shell cmd url)
+      (println (c/yellow "Could not detect browser command. Visit:") url))))
+
+(defn- open!
+  "Open the backend URL in the default browser."
+  []
+  (let [state (read-state-file)]
+    (if-not (and state (:slot state))
+      (println (c/yellow "No dev environment configured yet. Run `up` first."))
+      (let [url (str "http://localhost:" (port-for :jetty (:slot state)))]
+        (println (c/green "Opening") url)
+        (open-url! url)))))
+
 (defn dev-env!
   "Top-level dispatcher for dev-env command."
   [{:keys [options arguments]}]
@@ -1114,6 +1181,7 @@
       "logs"   (logs! options (rest arguments))
       "stop"   (stop!)
       "down"   (tear-down!)
+      "open"   (open!)
       "status" (print-status!)
       "list"   (list-all! options)
       (print-status!))))
