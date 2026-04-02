@@ -107,7 +107,9 @@
   :setter     #'-non-table-chart-generated!)
 
 (defsetting analytics-pii-retention-enabled
-  (deferred-tru "Controls whether usage analytics collects personally identifiable information (hostname, path, user agent, IP address).")
+  (deferred-tru (str "Controls whether usage analytics collects personally identifiable information "
+                     "(hostname, path, user agent, IP address). "
+                     "Disabling this setting stops future collection but does not delete previously collected data."))
   :type       :boolean
   :default    false
   :visibility :admin
