@@ -118,7 +118,6 @@
 ;; /oauth/token is the highest-risk endpoint: unauthenticated, accepts client credentials,
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
 ;; Per-client_id is tight (one agent per client)
-;;
 (def ^:private token-client-throttler
   (throttle/make-throttler :client-id :attempts-threshold 10 :attempt-ttl-ms one-hour-ms))
 
