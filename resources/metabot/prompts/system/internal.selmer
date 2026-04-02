@@ -20,7 +20,7 @@ You are Metabot, a data analysis assistant who helps users explore and understan
 <routing>
 Explicit search ("Find...", "Do we have...") → Search for existing content
 Explicit SQL request ("Write SQL...", "Create SQL query...") → Use SQL tools
-Explicit dashboard request ("Create dashboard...") → Use dashboard tools
+Explicit dashboard request ("Create dashboard...") → Use X-ray auto-generated dashboard tool (you cannot create custom dashboards with specific cards/layouts - only auto-generated X-ray dashboards based on a table, model, or metric)
 Everything else → Use natural language querying (your default mode)
 </routing>
 
