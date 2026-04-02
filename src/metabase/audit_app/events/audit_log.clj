@@ -381,6 +381,7 @@
 
 (derive ::security-advisory-event ::event)
 (derive :event/security-advisory-acknowledge ::security-advisory-event)
+(derive :event/security-advisory-match ::security-advisory-event)
 
 (methodical/defmethod events/publish-event! ::security-advisory-event
   [topic event]
