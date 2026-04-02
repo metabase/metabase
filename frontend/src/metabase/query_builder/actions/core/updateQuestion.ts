@@ -2,6 +2,10 @@ import _ from "underscore";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import {
+  onCloseQuestionInfo,
+  setUIControls,
+} from "metabase/redux/query-builder";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -19,7 +23,7 @@ import {
   getRawSeries,
 } from "../../selectors";
 import { runQuestionQuery } from "../querying";
-import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
+import { setQueryBuilderMode } from "../ui";
 import { updateUrl } from "../url";
 
 import { setIsShowingTemplateTagsEditor } from "./native";

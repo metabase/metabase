@@ -350,13 +350,7 @@
   [{query :dataset_query, :as card} :- ::queries.schema/card]
   (merge
    card
-   ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
-   ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
-   ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
-   ;; what's actually in their query -- we need to fix [[metabase.test.generate]], but I'm not sure how to do that
-   (when (and (seq query)
-              (map? query)
-              (not mi/*deserializing?*))
+   (when (and (seq query) (map? query))
      (merge
       ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
       {:source_card_id (source-card-id query)}
@@ -1287,6 +1281,23 @@
                                    (serdes/field->path (:fk_target_field_id m))))))
         (disj nil))))
 
+(defmethod serdes/storage-path "Card" [card ctx]
+  (let [base (serdes/storage-default-collection-path card ctx)]
+    (cond
+      (:dashboard_id card)
+      (let [dash-segment (get (:dashboards ctx) (:dashboard_id card))]
+        (if dash-segment
+          (into (vec (butlast base)) [dash-segment (last base)])
+          base))
+
+      (:document_id card)
+      (let [doc-segment (get (:documents ctx) (:document_id card))]
+        (if doc-segment
+          (into (vec (butlast base)) [doc-segment (last base)])
+          base))
+
+      :else base)))
+
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
@@ -1320,7 +1331,11 @@
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
-    :result_metadata        {:export export-result-metadata :import import-result-metadata}}})
+    :result_metadata        {:export export-result-metadata :import import-result-metadata}}
+   :defaults {:archived            false
+              :archived_directly   false
+              :collection_preview  true
+              :enable_embedding    false}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
@@ -1330,7 +1345,7 @@
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
-    [[{:model "Database" :id database_id}]]
+    (when database_id [[{:model "Database" :id database_id}]])
     (when table_id #{(serdes/table->path table_id)})
     (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})

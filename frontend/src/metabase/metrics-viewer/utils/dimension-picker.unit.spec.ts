@@ -37,49 +37,61 @@ const ORDERS_SOURCE_ID: MetricSourceId = `metric:${ORDERS_METRIC.id}`;
 
 const REVENUE_DIMENSIONS = [
   {
-    dimensionId: "dim-amount",
-    label: "Amount",
     icon: "int",
-    tabType: "numeric",
-    sourceIds: [REVENUE_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "numeric",
+      label: "Amount",
+      dimensionMapping: { [REVENUE_SOURCE_ID]: "dim-amount" },
+    },
   },
   {
-    dimensionId: "dim-category",
-    label: "Category",
     icon: "string",
-    tabType: "category",
-    sourceIds: [REVENUE_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "category",
+      label: "Category",
+      dimensionMapping: { [REVENUE_SOURCE_ID]: "dim-category" },
+    },
   },
   {
-    dimensionId: "dim-created-at",
-    label: "Created At",
     icon: "calendar",
-    tabType: "time",
-    sourceIds: [REVENUE_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "time",
+      label: "Created At",
+      dimensionMapping: { [REVENUE_SOURCE_ID]: "dim-created-at" },
+    },
   },
   {
-    dimensionId: "dim-active",
-    label: "Is Active",
     icon: "io",
-    tabType: "boolean",
-    sourceIds: [REVENUE_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "boolean",
+      label: "Is Active",
+      dimensionMapping: { [REVENUE_SOURCE_ID]: "dim-active" },
+    },
   },
 ];
 
 const ORDERS_DIMENSIONS = [
   {
-    dimensionId: "dim-created-at",
-    label: "Created At",
     icon: "calendar",
-    tabType: "time",
-    sourceIds: [ORDERS_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "time",
+      label: "Created At",
+      dimensionMapping: { [ORDERS_SOURCE_ID]: "dim-created-at" },
+    },
   },
   {
-    dimensionId: "dim-status",
-    label: "Status",
     icon: "string",
-    tabType: "category",
-    sourceIds: [ORDERS_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "category",
+      label: "Status",
+      dimensionMapping: { [ORDERS_SOURCE_ID]: "dim-status" },
+    },
   },
 ];
 
@@ -139,8 +151,10 @@ describe("getAvailableDimensionsForPicker", () => {
     });
   });
 
-  it("filters out dimensions whose id matches existingTabIds", () => {
-    const allIds = REVENUE_DIMENSIONS.map((dimension) => dimension.dimensionId);
+  it("filters out dimensions whose id matches existingTabDimensionIds", () => {
+    const allIds = REVENUE_DIMENSIONS.flatMap((dimension) =>
+      Object.values(dimension.tabInfo.dimensionMapping),
+    );
 
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },

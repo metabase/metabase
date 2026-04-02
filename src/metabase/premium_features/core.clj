@@ -58,7 +58,6 @@
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
   enable-embedding-simple-feature?
-  enable-metabot-v3?
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
@@ -74,7 +73,6 @@
   enable-sso-ldap?
   enable-sso-oidc?
   enable-sso-saml?
-  enable-sso-slack?
   enable-support-users?
   enable-basic-transforms?
   enable-python-transforms?

@@ -11,6 +11,7 @@
   - `edit-sql-query`,
   - `replace-sql-query`."
   (:require
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
    [metabase.util.i18n :refer [tru]]
@@ -36,17 +37,29 @@
    [:validation-result ::metabot.tools.sql.validation/validation-result]
    [:action-result {:optional true} ::action-result]])
 
+(defn- maybe-normalize-query
+  [query]
+  (try
+    (lib-be/normalize-query query)
+    (catch Exception _
+      nil)))
+
 (defn update-query-sql
-  "Update a dataset_query map with new SQL content."
+  "Update a dataset_query map with new SQL content.
+  Handles both legacy MBQL (`{:type :native, :native {:query ...}}`) and
+  pMBQL (`{:stages [{:lib/type :mbql.stage/native, :native ...}]}`) formats,
+  including the JSON-serialized pMBQL variant where enum values are strings."
   [query new-sql]
-  (cond
-    (and (lib/native-only-query? query)
-         (string? (not-empty new-sql)))
-    (lib/with-native-query query new-sql)
+  (let [normalized (maybe-normalize-query query)]
+    (cond
+      (and normalized
+           (lib/native-only-query? normalized)
+           (string? (not-empty new-sql)))
+      (lib/with-native-query normalized new-sql)
 
-    (:native query)
-    (assoc-in query [:native :query] new-sql)
+      (:native query)
+      (assoc-in query [:native :query] new-sql)
 
-    :else
-    (throw (ex-info (tru "Unsupported query format")
-                    {:agent-error? true}))))
+      :else
+      (throw (ex-info (tru "Unsupported query format")
+                      {:agent-error? true})))))

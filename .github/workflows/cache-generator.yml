@@ -39,6 +39,7 @@ concurrency:
 
 jobs:
   get-cache-keys:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - uses: actions/checkout@v4

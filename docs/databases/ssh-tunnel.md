@@ -87,6 +87,10 @@ ssh -Nf -L input-port:internal-server-name:port-on-server username@bastion-host.
 
 This allows you to use the full array of features included in SSH. If you find yourself doing this often, please let us know so we can see about making your process more convenient through Metabase.
 
+## Reverse tunnelling
+
+If inbound connections aren't allowed to the infrastructure that hosts the database, then reverse SSH tunneling should be used. Reverse tunnelling works by making a connection from within the database server or a server that lives next to it inside a private network, to an intermediate server that Metabase will connect to. 
+
 ## Further reading
 
 - [Adding and managing databases](./connecting.md).

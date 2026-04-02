@@ -150,10 +150,11 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     frame.within(() => {
-      cy.findByTestId("sdk-error-container", { timeout: 10_000 }).should(
-        "contain",
-        /Failed to authenticate using an existing Metabase user session./,
-      );
+      cy.findByTestId("sdk-error-container")
+        .findByText(
+          "Failed to authenticate using an existing Metabase user session.",
+        )
+        .should("be.visible");
 
       cy.findByRole("link", { name: "Read more." })
         .should("have.attr", "href")

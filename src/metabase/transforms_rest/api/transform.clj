@@ -91,6 +91,7 @@
    [:last_run {:optional true} [:maybe TransformLastRunResponse]]
    [:tag_ids {:optional true} [:sequential pos-int?]]
    [:table {:optional true} [:maybe :map]]
+   [:target_table_id {:optional true} [:maybe pos-int?]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
    [:owner {:optional true} [:maybe OwnerResponse]]

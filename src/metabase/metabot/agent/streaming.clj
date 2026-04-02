@@ -166,9 +166,10 @@
 
   Parameters:
   - initial-queries: Initial map of query-id to query data
-  - initial-charts: Initial map of chart-id to chart data"
-  [initial-queries initial-charts]
+  - initial-charts: Initial map of chart-id to chart data
+  - link-registry-atom: Atom of {resolved-url original-metabase-uri}"
+  [initial-queries initial-charts link-registry-atom]
   (comp
    expand-data-parts-xf
    expand-reactions-xf
-   (markdown-link-buffer/resolve-xf initial-queries initial-charts)))
+   (markdown-link-buffer/resolve-xf initial-queries initial-charts link-registry-atom)))

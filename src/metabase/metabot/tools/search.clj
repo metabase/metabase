@@ -1,17 +1,25 @@
 (ns metabase.metabot.tools.search
+  "Search tool wrappers for Metabot v3."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.metabot.config :as metabot.config]
-   [metabase.metabot.reactions]
+   [metabase.metabot.tmpl :as te]
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.shared.instructions :as instructions]
+   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private metabot-search-models
   #{"table" "dataset" "card" "dashboard" "metric" "database" "transform"})
@@ -244,15 +252,98 @@
          enrich-with-database-engines
          remove-unreadable-transforms)))
 
-(defn search-tool
-  "Handler for the /search and /search_v2 tool endpoints.
-  Wraps [[search]] with error handling and response formatting."
-  [args]
-  (try
-    (let [results (search args)]
-      {:structured_output {:result-type :search
-                           :data        results
-                           :total_count (count results)}})
-    (catch Exception e
-      (log/error e "Error in search")
-      {:output (str "Search failed: " (or (ex-message e) "Unknown error"))})))
+(defn- format-search-output
+  "Format search results as an LLM-ready string."
+  [results]
+  (let [results-xml (llm-rep/search-results->xml results)]
+    (te/lines
+     "<result>"
+     results-xml
+     ""
+     (str "Total results: " (count results))
+     "</result>"
+     "<instructions>"
+     instructions/search-result-instructions "</instructions>")))
+
+(defn- invalid-entity-types
+  [entity-types allowed]
+  (when (seq entity-types)
+    (seq (remove allowed entity-types))))
+
+(defn- do-search
+  [label allowed-types search-opts {:keys [semantic_queries keyword_queries entity_types] :as _args}]
+  (if-let [invalid (invalid-entity-types entity_types allowed-types)]
+    {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
+                  ". Allowed types: " (str/join ", " (sort allowed-types)) ".")}
+    (try
+      (let [results (search (merge {:semantic-queries semantic_queries
+                                    :term-queries    keyword_queries
+                                    :entity-types    entity_types
+                                    :metabot-id      shared/*metabot-id*
+                                    :limit           10}
+                                   search-opts))]
+        {:output (format-search-output results)
+         :structured-output {:result-type :search
+                             :data results
+                             :total_count (count results)}})
+      (catch Exception e
+        (log/error e (str "Error in " label))
+        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
+
+(def ^:private search-schema
+  [:map {:closed true}
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
+   [:entity_types {:optional true}
+    [:maybe [:sequential [:enum "table" "model" "metric" "dashboard" "question"]]]]])
+
+(mu/defn ^{:tool-name "search"}
+  search-tool
+  "Search for tables, models, metrics, dashboards, and saved questions."
+  [args :- search-schema]
+  (do-search "search" #{"table" "model" "metric" "dashboard" "question"} {} args))
+
+(def ^:private sql-search-schema
+  [:map {:closed true}
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
+   [:database_id :int]
+   [:entity_types {:optional true}
+    [:maybe [:sequential [:enum "table" "model"]]]]])
+
+(mu/defn ^{:tool-name "search"
+           :prompt    "sql_search.md"}
+  sql-search-tool
+  "Search for SQL-queryable data sources (tables and models) within a database."
+  [{:keys [database_id] :as args} :- sql-search-schema]
+  (do-search "SQL search" #{"table" "model"} {:database-id database_id} args))
+
+(def ^:private nlq-search-schema
+  [:map {:closed true}
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
+   [:entity_types {:optional true}
+    [:maybe [:sequential [:enum "model" "metric" "table"]]]]])
+
+(mu/defn ^{:tool-name "search"
+           :prompt    "nql_search.md"}
+  nlq-search-tool
+  "Search for NLQ-queryable data sources (models, metrics, tables)."
+  [args :- nlq-search-schema]
+  (do-search "NLQ search" #{"model" "metric" "table"} {:profile-id "nlq"} args))
+
+(def ^:private transform-search-schema
+  [:map {:closed true}
+   [:semantic_queries {:optional true :feature :semantic-search} [:sequential :string]]
+   [:keyword_queries {:optional true} [:sequential :string]]
+   [:search_native_query {:optional true} [:maybe :boolean]]
+   [:entity_types {:optional true}
+    [:maybe [:sequential [:enum "table" "model" "transform"]]]]])
+
+(mu/defn ^{:tool-name "search"
+           :prompt    "transform_search"}
+  transform-search-tool
+  "Search for transforms, tables, and models."
+  [{:keys [search_native_query] :as args} :- transform-search-schema]
+  (do-search "transform search" #{"table" "model" "transform"}
+             {:search-native-query search_native_query} args))

@@ -49,8 +49,8 @@
                                               (reset! captured (json/decode+kw (:body opts)))
                                               (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
         (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
-                                           llm-openrouter-api-key "test-key"
-                                           llm-openai-api-key     "test-key"]
+                                           llm-openrouter-api-key "sk-or-v1-test-key"
+                                           llm-openai-api-key     "sk-test-key"]
           (doseq [[model expected] [["anthropic/test-model"  {:type "any"}]
                                     ["openrouter/test-model" "required"]
                                     ["openai/test-model"     "required"]]]
@@ -235,13 +235,23 @@
                    {:type :tool-input :id "call-err" :function "get-time" :arguments {:tz "Invalid/Timezone"}}])
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= (count chunks) (dec (count result))))
-      (let [tool-result (last result)]
-        (is (=? {:type       :tool-output-available
-                 :toolCallId "call-err"
-                 :toolName   "get-time"
-                 :error      {:message string?
-                              :type    string?}}
-                tool-result)))))
+      (is (=? {:type       :tool-output-available
+               :toolCallId "call-err"
+               :toolName   "get-time"
+               :error      {:message string?
+                            :type    string?}}
+              (last result)))))
+
+  (testing "tool-executor-xf handles nil arguments for no-arg tools"
+    (let [chunks (test-util/parts->aisdk-chunks
+                  [{:type :start :id "msg-nil"}
+                   {:type :tool-input :id "call-nil" :function "no-arg" :arguments nil}])
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
+      (is (=? {:type       :tool-output-available
+               :toolCallId "call-nil"
+               :toolName   "no-arg"
+               :result     {:output "ok"}}
+              (last result)))))
 
   (testing "tool-executor-xf ignores unknown tool names"
     (let [chunks (test-util/parts->aisdk-chunks
@@ -733,24 +743,28 @@
         (mt/with-current-user rasta-id
           (snowplow-test/with-fake-snowplow-collector
             (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
-            (is (=? [{:user-id (str rasta-id)
-                      :data    {"model_id"            "openrouter/test-model"
-                                "total_tokens"         120
-                                "prompt_tokens"        100
-                                "completion_tokens"    20
-                                "estimated_costs_usd"  0.0
-                                "duration_ms"          nat-int?
-                                "source"               "test-source"
-                                "tag"                  "test-tag"
-                                "session_id"           "00000000-0000-0000-0000-000000000002"}}
-                     {:user-id (str rasta-id)
-                      :data    {"event"         "agent_used_tool"
-                                "source"        "test-source"
-                                "result"        "success"
-                                "duration_ms"   nat-int?
-                                "session_id"    "00000000-0000-0000-0000-000000000002"
-                                "event_details" {"tool_name" "get-time"}}}]
-                    (snowplow-test/pop-event-data-and-user-id!)))))))))
+            (let [events       (snowplow-test/pop-event-data-and-user-id!)
+                  token-events (filter #(contains? (:data %) "total_tokens") events)
+                  tool-events  (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
+              (is (=? [{:user-id (str rasta-id)
+                        :data    {"model_id"            "openrouter/test-model"
+                                  "total_tokens"         120
+                                  "prompt_tokens"        100
+                                  "completion_tokens"    20
+                                  "estimated_costs_usd"  0.0
+                                  "duration_ms"          nat-int?
+                                  "source"               "test-source"
+                                  "tag"                  "test-tag"
+                                  "session_id"           "00000000-0000-0000-0000-000000000002"}}]
+                      token-events))
+              (is (=? [{:user-id (str rasta-id)
+                        :data    {"event"         "agent_used_tool"
+                                  "source"        "test-source"
+                                  "result"        "success"
+                                  "duration_ms"   nat-int?
+                                  "session_id"    "00000000-0000-0000-0000-000000000002"
+                                  "event_details" {"tool_name" "get-time"}}}]
+                      tool-events)))))))))
 
 (deftest call-llm-structured-snowplow-test
   (testing "fires :snowplow/token_usage event for call-llm-structured"
@@ -770,14 +784,16 @@
                                       0.3
                                       1024
                                       snowplow-tracking-opts)
-            (is (=? [{:user-id (str rasta-id)
-                      :data    {"model_id"            "openrouter/test-model"
-                                "total_tokens"         60
-                                "prompt_tokens"        50
-                                "completion_tokens"    10
-                                "estimated_costs_usd"  0.0
-                                "duration_ms"          nat-int?
-                                "source"               "test-source"
-                                "tag"                  "test-tag"
-                                "session_id"           "00000000-0000-0000-0000-000000000002"}}]
-                    (snowplow-test/pop-event-data-and-user-id!)))))))))
+            (let [events       (snowplow-test/pop-event-data-and-user-id!)
+                  token-events (filter #(contains? (:data %) "total_tokens") events)]
+              (is (=? [{:user-id (str rasta-id)
+                        :data    {"model_id"            "openrouter/test-model"
+                                  "total_tokens"         60
+                                  "prompt_tokens"        50
+                                  "completion_tokens"    10
+                                  "estimated_costs_usd"  0.0
+                                  "duration_ms"          nat-int?
+                                  "source"               "test-source"
+                                  "tag"                  "test-tag"
+                                  "session_id"           "00000000-0000-0000-0000-000000000002"}}]
+                      token-events)))))))))

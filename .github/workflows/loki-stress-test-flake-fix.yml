@@ -88,22 +88,30 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          STORY_FILES: ${{ needs.detect-changed-stories.outputs.story_files }}
+          BURN_IN: ${{ inputs.burn_in || 50 }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_ACTOR: ${{ github.event.pull_request.user.login }}
+          ACTOR: ${{ github.actor }}
         run: |
           echo '## Loki Stress Test' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo '**Branch:** `${{ github.head_ref || github.ref_name }}`' >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
           echo '**Story files:**' >> $GITHUB_STEP_SUMMARY
-          echo '${{ needs.detect-changed-stories.outputs.story_files }}' | tr ',' '\n' | while read -r file; do
+          echo "${STORY_FILES}" | tr ',' '\n' | while read -r file; do
             echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
           done
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo '**Burn-in:** ${{ inputs.burn_in || 50 }} runs' >> $GITHUB_STEP_SUMMARY
+          echo "**Burn-in:** ${BURN_IN} runs" >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo 'Triggered by PR #${{ github.event.pull_request.number }} from @${{ github.event.pull_request.user.login }}' >> $GITHUB_STEP_SUMMARY
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            echo "Triggered by PR #${PR_NUMBER} from @${PR_ACTOR}" >> $GITHUB_STEP_SUMMARY
           else
-            echo 'Triggered manually by @${{ github.actor }}' >> $GITHUB_STEP_SUMMARY
+            echo "Triggered manually by @${ACTOR}" >> $GITHUB_STEP_SUMMARY
           fi
 
   stress-test-loki:

@@ -1,7 +1,5 @@
 (ns metabase.metabot.native-generation-integration-test
-  "Integration tests for native example question generation path.
-
-  Tests the full regenerate endpoint flow with `use-native-agent=true`."
+  "Integration tests for native example question generation path."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -9,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.example-question-generator :as native-generator]
-   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -40,39 +37,36 @@
           model-data  {:description "Test model"
                        :dataset_query (lib/->legacy-MBQL model-source-query)
                        :type :model}]
-      (mt/with-premium-features #{:metabot-v3}
-        (mt/with-temp [:model/Collection {coll-id :id}   {}
-                       :model/Collection {child-id :id}  {:location (collection/location-path coll-id)}
-                       :model/Card _ (assoc model-data  :name "NativeModel1"  :collection_id coll-id)
-                       :model/Card _ (assoc metric-data :name "NativeMetric1" :collection_id child-id)
-                       :model/Metabot {metabot-id :id} {:name "native-test-bot" :collection_id coll-id}]
+      (mt/with-temp [:model/Collection {coll-id :id}   {}
+                     :model/Collection {child-id :id}  {:location (collection/location-path coll-id)}
+                     :model/Card _ (assoc model-data  :name "NativeModel1"  :collection_id coll-id)
+                     :model/Card _ (assoc metric-data :name "NativeMetric1" :collection_id child-id)
+                     :model/Metabot {metabot-id :id} {:name "native-test-bot" :collection_id coll-id}]
 
-          (let [prompts-by-name {"NativeModel1"  ["native q1" "native q2" "native q3" "native q4" "native q5"]
-                                 "NativeMetric1" ["native m1" "native m2" "native m3" "native m4" "native m5"]}
-                native-mock (make-native-prompt-generator prompts-by-name)]
+        (let [prompts-by-name {"NativeModel1"  ["native q1" "native q2" "native q3" "native q4" "native q5"]
+                               "NativeMetric1" ["native m1" "native m2" "native m3" "native m4" "native m5"]}
+              native-mock (make-native-prompt-generator prompts-by-name)]
 
-            (testing "regenerate endpoint works with native path (use-native-agent=true)"
-              (with-redefs [metabot.settings/use-native-agent        (constantly true)
-                            native-generator/generate-example-questions  native-mock]
+          (testing "regenerate endpoint works with native path"
+            (with-redefs [native-generator/generate-example-questions native-mock]
+              (mt/user-http-request :crowberto :post 204
+                                    (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
+
+            (let [prompts (t2/select [:model/MetabotPrompt :prompt :model [:card.name :model_name]]
+                                     :metabot_id metabot-id
+                                     {:join     [[:report_card :card] [:= :card.id :card_id]]
+                                      :order-by [:metabot_prompt.id]})]
+              (is (= 10 (count prompts)))
+              (is (= (set (mapcat val prompts-by-name))
+                     (set (map :prompt prompts))))
+              (is (= #{:model :metric}
+                     (set (map :model prompts))))))
+
+          (testing "native path prompts are replaced on re-regenerate"
+            (let [old-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
+              (with-redefs [native-generator/generate-example-questions native-mock]
                 (mt/user-http-request :crowberto :post 204
                                       (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
-
-              (let [prompts (t2/select [:model/MetabotPrompt :prompt :model [:card.name :model_name]]
-                                       :metabot_id metabot-id
-                                       {:join     [[:report_card :card] [:= :card.id :card_id]]
-                                        :order-by [:metabot_prompt.id]})]
-                (is (= 10 (count prompts)))
-                (is (= (set (mapcat val prompts-by-name))
-                       (set (map :prompt prompts))))
-                (is (= #{:model :metric}
-                       (set (map :model prompts))))))
-
-            (testing "native path prompts are replaced on re-regenerate"
-              (let [old-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
-                (with-redefs [metabot.settings/use-native-agent        (constantly true)
-                              native-generator/generate-example-questions  native-mock]
-                  (mt/user-http-request :crowberto :post 204
-                                        (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))
-                (let [new-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
-                  (is (= 10 (count new-ids)))
-                  (is (empty? (set/intersection old-ids new-ids))))))))))))
+              (let [new-ids (t2/select-pks-set :model/MetabotPrompt :metabot_id metabot-id)]
+                (is (= 10 (count new-ids)))
+                (is (empty? (set/intersection old-ids new-ids)))))))))))

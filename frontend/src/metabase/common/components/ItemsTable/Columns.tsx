@@ -5,7 +5,6 @@ import type { ActionMenuProps } from "metabase/collections/components/ActionMenu
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import { CheckBox } from "metabase/common/components/CheckBox";
 import { DateTime } from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { Markdown } from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
@@ -15,7 +14,7 @@ import { modelToUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Ellipsified, Tooltip } from "metabase/ui";
 import type {
   CollectionItem,
   ListCollectionItemsSortColumn,
