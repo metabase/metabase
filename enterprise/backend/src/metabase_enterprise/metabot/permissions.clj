@@ -14,7 +14,7 @@
   :feature :ai-controls
   [user-id]
   (if-not user-id
-    scope/perm-type-defaults
+    scope/all-yes-permissions
     (let [stored  (t2/select :model/MetabotPermissions
                              {:where [:in :group_id
                                       {:select [:group_id]
