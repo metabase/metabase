@@ -1,8 +1,11 @@
 import { t } from "ttag";
 
+import type { MetricDefinition } from "metabase-lib/metric";
+import * as LibMetric from "metabase-lib/metric";
 import { MATH_OPERATORS, isMathOperator } from "metabase-types/api";
 
 import type {
+  ExpressionDefinitionEntry,
   ExpressionSubToken,
   MetricDefinitionEntry,
   MetricSourceId,
@@ -268,6 +271,87 @@ function groupTokensBySegment(
   }
   segments.push(current);
   return segments;
+}
+
+type MetricPositionedToken = PositionedToken & { type: "metric" };
+
+type MetricSubToken = Extract<ExpressionSubToken, { type: "metric" }>;
+
+export type MetricTokenVisit =
+  | {
+      kind: "standalone";
+      positioned: MetricPositionedToken;
+      entity: MetricDefinitionEntry;
+    }
+  | {
+      kind: "expression";
+      positioned: MetricPositionedToken;
+      entity: ExpressionDefinitionEntry;
+      exprToken: MetricSubToken;
+      exprTokenIndex: number;
+    };
+
+/**
+ * Parses text into segments aligned with entities, then calls `visitor`
+ * for each metric token with its positioned counterpart and parent entity.
+ */
+export function traverseMetricTokens(
+  text: string,
+  metricEntries: MetricDefinitionEntry[],
+  entities: MetricsViewerFormulaEntity[],
+  visitor: (visit: MetricTokenVisit) => void,
+): void {
+  const allTokens = parseFullTextWithPositions(text, metricEntries);
+  const separators = findSeparatorCommaPositions(text, allTokens);
+  const segments = groupTokensBySegment(allTokens, separators);
+
+  let entityIndex = 0;
+  for (const segmentTokens of segments) {
+    if (segmentTokens.length === 0) {
+      continue;
+    }
+
+    const entity = entities[entityIndex++];
+    if (!entity) {
+      continue;
+    }
+
+    const metricTokens = segmentTokens.filter(
+      (token): token is MetricPositionedToken => token.type === "metric",
+    );
+
+    if (isMetricEntry(entity)) {
+      const positioned = metricTokens[0];
+      if (!positioned) {
+        continue;
+      }
+      visitor({ kind: "standalone", positioned, entity });
+      continue;
+    }
+
+    if (!isExpressionEntry(entity)) {
+      continue;
+    }
+
+    let metricIdx = 0;
+    for (let tokenIndex = 0; tokenIndex < entity.tokens.length; tokenIndex++) {
+      const exprToken = entity.tokens[tokenIndex];
+      if (exprToken.type !== "metric") {
+        continue;
+      }
+      const positioned = metricTokens[metricIdx++];
+      if (!positioned) {
+        continue;
+      }
+      visitor({
+        kind: "expression",
+        positioned,
+        entity,
+        exprToken,
+        exprTokenIndex: tokenIndex,
+      });
+    }
+  }
 }
 
 /** Strip position info from a positioned token, dropping unknown tokens. */
@@ -843,40 +927,93 @@ export function filterSearchResults<T extends SearchResultLike>(
   });
 }
 
-/**
- * Preserves per-instance breakout definitions from old formula entities
- * onto newly parsed entities. Matches by sourceId and occurrence order:
- * the Nth occurrence of a given sourceId in the new array is matched to
- * the Nth occurrence in the old array.
- */
-export function reconcileBreakoutState(
+export type MetricIdentityEntry = {
+  sourceId: MetricSourceId;
+  from: number;
+  to: number;
+  definition: MetricDefinition | null;
+};
+
+export function stripDefinitionProjections(
+  definition: MetricDefinition,
+): MetricDefinition {
+  const projections = LibMetric.projections(definition);
+  if (projections.length === 0) {
+    return definition;
+  }
+  return projections.reduce(
+    (def, projection) => LibMetric.removeClause(def, projection),
+    definition,
+  );
+}
+
+const getPositionKey = (from: number, to: number) => `${from}:${to}`;
+
+export function applyTrackedDefinitions(
   newEntities: MetricsViewerFormulaEntity[],
-  oldEntities: MetricsViewerFormulaEntity[],
+  trackedIdentities: MetricIdentityEntry[],
+  text: string,
+  metricEntries: MetricDefinitionEntry[],
 ): MetricsViewerFormulaEntity[] {
-  const oldBySourceId = new Map<MetricSourceId, MetricDefinitionEntry[]>();
-  for (const e of oldEntities) {
-    if (isMetricEntry(e)) {
-      const queue = oldBySourceId.get(e.id) ?? [];
-      queue.push(e);
-      oldBySourceId.set(e.id, queue);
-    }
+  const identityByPosition = new Map<string, MetricDefinition | null>();
+  for (const identity of trackedIdentities) {
+    identityByPosition.set(
+      getPositionKey(identity.from, identity.to),
+      identity.definition,
+    );
   }
 
-  const consumed = new Map<MetricSourceId, number>();
-  return newEntities.map((entry) => {
-    if (!isMetricEntry(entry)) {
-      return entry;
+  const metricOverrides = new Map<
+    MetricsViewerFormulaEntity,
+    MetricDefinition | null
+  >();
+  const exprTokenOverrides = new Map<
+    MetricsViewerFormulaEntity,
+    Map<number, MetricDefinition | undefined>
+  >();
+
+  traverseMetricTokens(text, metricEntries, newEntities, (visit) => {
+    const key = getPositionKey(visit.positioned.from, visit.positioned.to);
+    if (!identityByPosition.has(key)) {
+      return;
     }
-    const queue = oldBySourceId.get(entry.id);
-    if (!queue) {
-      return entry;
+    const tracked = identityByPosition.get(key);
+
+    if (visit.kind === "standalone") {
+      metricOverrides.set(visit.entity, tracked ?? null);
+      return;
     }
-    const idx = consumed.get(entry.id) ?? 0;
-    consumed.set(entry.id, idx + 1);
-    const oldEntry = queue[idx];
-    if (oldEntry?.definition) {
-      return { ...entry, definition: oldEntry.definition };
+
+    let tokenMap = exprTokenOverrides.get(visit.entity);
+    if (!tokenMap) {
+      tokenMap = new Map();
+      exprTokenOverrides.set(visit.entity, tokenMap);
     }
-    return entry;
+    // remove any existing breakouts - not supported in math expressions
+    const definition =
+      tracked != null ? stripDefinitionProjections(tracked) : undefined;
+    tokenMap.set(visit.exprTokenIndex, definition);
+  });
+
+  return newEntities.map((entity) => {
+    if (metricOverrides.has(entity)) {
+      return { ...entity, definition: metricOverrides.get(entity) ?? null };
+    }
+
+    const tokenMap = exprTokenOverrides.get(entity);
+    if (tokenMap && isExpressionEntry(entity)) {
+      const newTokens = entity.tokens.map((token, index) => {
+        if (!tokenMap.has(index)) {
+          return token;
+        }
+        return { ...token, definition: tokenMap.get(index) };
+      });
+      const hasChanges = newTokens.some(
+        (token, index) => token !== entity.tokens[index],
+      );
+      return hasChanges ? { ...entity, tokens: newTokens } : entity;
+    }
+
+    return entity;
   });
 }
