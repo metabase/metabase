@@ -129,10 +129,10 @@
     (fn [{:keys [expression filters]}]
       (let [expr-uuids (set (collect-expression-uuids expression))]
         (every? #(contains? expr-uuids (:lib/uuid %)) (or filters []))))]
-   [:fn {:error/message "Projection type/id pairs must correspond to expression leaves"}
+   [:fn {:error/message "Projection :lib/uuid values must reference UUIDs from expression"}
     (fn [{:keys [expression projections]}]
-      (let [leaves (set (collect-expression-leaves expression))]
-        (every? #(contains? leaves [(:type %) (:id %)]) (or projections []))))]])
+      (let [expr-uuids (set (collect-expression-uuids expression))]
+        (every? #(contains? expr-uuids (:lib/uuid %)) (or projections []))))]])
 
 (mr/def ::DatasetRequest
   "Schema for POST /dataset request body."
