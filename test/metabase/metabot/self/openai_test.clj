@@ -130,7 +130,7 @@
             (openai/parts->openai-input
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
 
-(deftest openai-auth-preferences
+(deftest openai-auth-preferences-test
   (with-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
     (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-ant-byok"
                                        llm.settings/llm-proxy-base-url "https://proxy.example"]

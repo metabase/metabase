@@ -163,7 +163,7 @@
               {:type :text :text "Hello"}
               {:type :text :text ""}])))))
 
-(deftest claude-auth-preferences
+(deftest claude-auth-preferences-test
   (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
     (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
                                        llm.settings/llm-proxy-base-url    "https://proxy.example"]

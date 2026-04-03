@@ -184,7 +184,7 @@
               (remove #(= (:type %) :text) res)))
       (is (< 10 (count (filter #(= (:type %) :text) res)))))))
 
-(deftest openrouter-auth-preferences
+(deftest openrouter-auth-preferences-test
   (with-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
     (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-byok"
                                        llm.settings/llm-proxy-base-url    "https://proxy.example"]
