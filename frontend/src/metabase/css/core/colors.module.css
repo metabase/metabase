@@ -40,17 +40,8 @@
 
 /* error */
 
-.textError,
-.textErrorHover {
+.textError {
   color: var(--mb-color-error);
-}
-
-.bgErrorHover:hover {
-  background-color: var(--mb-color-error);
-}
-
-.bgErrorInput {
-  background-color: var(--mb-color-background-primary);
 }
 
 .textSlate {
@@ -96,7 +87,6 @@
   background-color: var(--mb-color-background-secondary);
 }
 
-.bgMedium,
 .bgMediumHover:hover {
   background-color: var(--mb-color-background-tertiary);
 }
@@ -109,10 +99,6 @@
 
 .bgWhite {
   background-color: var(--mb-color-background-primary);
-}
-
-.bgLightBlue {
-  background-color: var(--mb-color-background-secondary);
 }
 
 .textTooltipSecondary {

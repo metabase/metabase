@@ -1,11 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { updateSetting } from "metabase/admin/settings/settings";
 import { useGetVersionInfoQuery } from "metabase/api";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { updateSetting } from "metabase/redux/settings";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";

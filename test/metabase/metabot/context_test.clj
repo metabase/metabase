@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.context :as context]
@@ -257,12 +258,9 @@
 (deftest enhance-context-mbql-viewing-context-rendering-test
   (testing "MBQL adhoc query viewing context includes table name for LLM"
     (mt/with-test-user :rasta
-      (let [table-id (mt/id :orders)
+      (let [mp (mt/metadata-provider)
             raw      {:user_is_viewing [{:type  "adhoc"
-                                         :query {:database    (mt/id)
-                                                 :lib/type    "mbql/query"
-                                                 :stages      [{:lib/type     "mbql.stage/mbql"
-                                                                :source-table table-id}]}}]
+                                         :query (lib/query  mp (lib.metadata/table mp (mt/id :orders)))}]
                       :current_time_with_timezone "2025-01-15T12:00:00+02:00"}
             enriched (context/create-context raw)
             uc-vars  (user-context/enrich-context-for-template enriched)

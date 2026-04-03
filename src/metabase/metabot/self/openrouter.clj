@@ -63,7 +63,7 @@
                                             :type     "function"
                                             :function {:name      (:function part)
                                                        :arguments (let [args (:arguments part)]
-                                                                    (if (string? args) args (json/encode args)))}}]}
+                                                                    (if (string? args) args (json/encode (or args {}))))}}]}
                 :tool-output {:role         "tool"
                               :tool_call_id (:id part)
                               :content      (or (get-in part [:result :output])

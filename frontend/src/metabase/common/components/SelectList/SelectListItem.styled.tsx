@@ -43,11 +43,13 @@ export const BaseItemRoot = styled.li<{
     margin-bottom: 0;
   }
 
-  ${(props) => props.isSelected && activeItemCss}
-
-  &:hover {
-    ${activeItemCss}
+  @media (hover: hover) {
+    &:hover {
+      ${activeItemCss}
+    }
   }
+
+  ${(props) => props.isSelected && activeItemCss}
 `;
 
 const getGridTemplateColumns = (hasLeftIcon: boolean, hasRightIcon: boolean) =>

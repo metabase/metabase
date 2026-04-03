@@ -1,5 +1,5 @@
 import { Api } from "metabase/api";
-import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
+import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { listTag } from "./tags";
 

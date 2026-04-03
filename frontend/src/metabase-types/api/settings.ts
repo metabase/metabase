@@ -265,7 +265,6 @@ const tokenStatusFeatures = [
   "embedding-hub",
   "hosting",
   "metabase-store-managed",
-  "metabot-v3",
   "no-upsell",
   "official-collections",
   "query-reference-validation",
@@ -350,7 +349,6 @@ export const tokenFeatures = [
   "ai_sql_fixer",
   "ai_sql_generation",
   "ai_entity_analysis",
-  "metabot_v3",
   "database_routing",
   "development_mode",
   "etl_connections",
@@ -779,6 +777,8 @@ export interface EnterpriseSettings extends Settings {
   "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
+  "mcp-apps-cors-enabled-clients": string[] | null;
+  "mcp-apps-cors-custom-origins": string | null;
   /**
    * @deprecated
    */

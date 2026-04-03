@@ -134,7 +134,6 @@ export const createMockTokenFeatures = (
   ai_entity_analysis: false,
   ai_sql_fixer: false,
   ai_sql_generation: false,
-  metabot_v3: false,
   database_routing: false,
   development_mode: false,
   table_data_editing: false,
@@ -413,5 +412,7 @@ export const createMockSettings = (
   "sdk-iframe-embed-setup-settings": null,
   "use-tenants": false,
   "encryption-enabled": false,
+  "mcp-apps-cors-enabled-clients": [],
+  "mcp-apps-cors-custom-origins": "",
   ...opts,
 });
