@@ -228,11 +228,19 @@ export function MetricsViewerTabContent({
       if (!slot) {
         continue;
       }
-      // For standalone slots, use the entity-index-keyed modified def
-      const modDef =
-        slot.tokenPosition === undefined
-          ? modifiedDefinitionsByIndex.get(slot.entityIndex)
-          : undefined;
+
+      let modDef: MetricDefinition | undefined;
+      if (slot.tokenPosition === undefined) {
+        // Standalone metric slot
+        modDef = modifiedDefinitionsByIndex.get(slot.entityIndex);
+      } else {
+        // Expression token slot — look up from the expression item
+        const exprItem = expressionItems.find(
+          (item) => item.entry === formulaEntities[slot.entityIndex],
+        );
+        modDef = exprItem?.modifiedDefinitions[slot.tokenPosition];
+      }
+
       if (!modDef) {
         continue;
       }
@@ -243,7 +251,13 @@ export function MetricsViewerTabContent({
       }
     }
     return null;
-  }, [tab.dimensionMapping, modifiedDefinitionsByIndex, metricSlots]);
+  }, [
+    tab.dimensionMapping,
+    modifiedDefinitionsByIndex,
+    metricSlots,
+    expressionItems,
+    formulaEntities,
+  ]);
 
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
@@ -253,10 +267,17 @@ export function MetricsViewerTabContent({
       if (!slot) {
         continue;
       }
-      const modDef =
-        slot.tokenPosition === undefined
-          ? modifiedDefinitionsByIndex.get(slot.entityIndex)
-          : undefined;
+
+      let modDef: MetricDefinition | undefined;
+      if (slot.tokenPosition === undefined) {
+        modDef = modifiedDefinitionsByIndex.get(slot.entityIndex);
+      } else {
+        const exprItem = expressionItems.find(
+          (item) => item.entry === formulaEntities[slot.entityIndex],
+        );
+        modDef = exprItem?.modifiedDefinitions[slot.tokenPosition];
+      }
+
       if (!modDef) {
         continue;
       }
@@ -266,7 +287,13 @@ export function MetricsViewerTabContent({
       }
     }
     return filterDimensions;
-  }, [tab.dimensionMapping, modifiedDefinitionsByIndex, metricSlots]);
+  }, [
+    tab.dimensionMapping,
+    modifiedDefinitionsByIndex,
+    metricSlots,
+    expressionItems,
+    formulaEntities,
+  ]);
 
   const updateProjectionConfig = useCallback(
     (updates: Partial<MetricsViewerTabProjectionConfig>) => {
