@@ -267,7 +267,7 @@
    [:advisory_url      {:optional true} [:maybe ms/NonBlankString]]
    [:remediation       ms/NonBlankString]
    [:affected_versions [:sequential [:map [:min :string] [:fixed :string]]]]
-   [:matching_query    {:optional true} [:maybe [:map-of :keyword :map]]]
+   [:matching_query    {:optional true} [:maybe [:map-of :keyword :string]]]
    [:match_status      [:enum "unknown" "active" "resolved" "not_affected" "error"]]
    [:published_at      :any]
    [:updated_at        :any]])
