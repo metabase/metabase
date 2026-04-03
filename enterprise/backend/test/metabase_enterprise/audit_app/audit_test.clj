@@ -19,7 +19,11 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.nio.charset StandardCharsets)
+   (java.nio.file Files)
+   (java.util.jar JarEntry JarOutputStream)))
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
@@ -173,6 +177,25 @@
     (is (not (#'ee-audit/should-load-audit? false 3 5))))
   (testing "load-analytics-content is false + checksums do not match  => do not load"
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
+
+(deftest views-checksum-works-for-jar-resources-test
+  (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar" (make-array java.nio.file.attribute.FileAttribute 0))
+        resource "migrations/instance_analytics_views"
+        jar-url  (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]
+    (try
+      (with-open [out (-> jar-path Files/newOutputStream io/output-stream JarOutputStream.)]
+        (doseq [[path contents] [[(str resource "/users/v1/postgres-users.sql") "select 1;"]
+                                 [(str resource "/dashboards/v1/postgres-dashboards.sql") "select 2;"]]]
+          (.putNextEntry out (JarEntry. path))
+          (.write out (.getBytes ^String contents StandardCharsets/UTF_8))
+          (.closeEntry out)))
+      (with-redefs [io/resource (fn [path]
+                                  (when (= path resource)
+                                    jar-url))]
+        (is (integer? (#'ee-audit/views-checksum)))
+        (is (pos-int? (#'ee-audit/views-checksum)))))
+      (finally
+        (Files/deleteIfExists jar-path)))))
 
 (deftest adjust-audit-db-to-source-test
   (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"

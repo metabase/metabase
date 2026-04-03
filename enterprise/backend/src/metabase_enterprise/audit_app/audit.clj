@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.nio.file Path)
+   (java.nio.file Files LinkOption OpenOption Path)
    (java.util.jar JarEntry JarFile)))
 
 (set! *warn-on-reflection* true)
@@ -307,13 +307,18 @@
 (defn- views-checksum
   "Hash the instance_analytics_views SQL files to detect when views have been added or modified."
   []
-  (when-let [views-dir (io/resource "migrations/instance_analytics_views")]
-    (->> (io/file views-dir)
-         file-seq
-         (remove fs/directory?)
-         (filter #(str/ends-with? (.getName ^java.io.File %) ".sql"))
-         (pmap #(hash (slurp %)))
-         (reduce + 0))))
+  (when (io/resource "migrations/instance_analytics_views")
+    (u.files/with-open-path-to-resource [views-dir "migrations/instance_analytics_views"]
+      (with-open [paths (Files/walk views-dir)]
+        (->> (iterator-seq (.iterator paths))
+             (filter #(Files/isRegularFile ^Path % (u/varargs LinkOption)))
+             (filter #(str/ends-with? (str (.getFileName ^Path %)) ".sql"))
+             ;; Keep the checksum stable across filesystems with different directory iteration order.
+             (sort-by str)
+             (pmap (fn [^Path path]
+                     (with-open [in (Files/newInputStream path (u/varargs OpenOption))]
+                       (hash (slurp in)))))
+             (reduce + 0))))))
 
 (defn- maybe-sync-audit-views!
   "Sync the audit DB schema if the analytics views have changed since the last sync.
