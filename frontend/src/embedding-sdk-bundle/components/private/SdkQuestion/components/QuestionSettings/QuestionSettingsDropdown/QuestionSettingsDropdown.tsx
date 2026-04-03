@@ -30,7 +30,17 @@ export const QuestionSettingsDropdown = ({
   height,
   ...popoverProps
 }: QuestionSettingsDropdownProps = {}) => (
-  <Popover position="bottom-end" {...popoverProps}>
+  <Popover
+    position="bottom-end"
+    // Mantine's default clickOutsideEvents is ["mousedown", "touchstart"].
+    // On touch devices, tapping inside a child TippyPopover (which renders
+    // in a separate portal outside this Popover's DOM tree) fires a
+    // touchstart that Mantine's useClickOutside sees as "outside",
+    // incorrectly closing this dropdown. Using only "mousedown" prevents
+    // this while still allowing the dropdown to close on outside taps.
+    clickOutsideEvents={["mousedown"]}
+    {...popoverProps}
+  >
     <Popover.Target>
       <ToolbarButton
         isHighlighted={false}
