@@ -42,12 +42,12 @@ program
       console.error(
         `Error: "${rawName}" is not a valid project name. Use letters, numbers, hyphens, and dots.`,
       );
-      process.exit(1);
+      return process.exit(1);
     }
 
     if (existsSync(name)) {
       console.error(`Error: Directory "${name}" already exists.`);
-      process.exit(1);
+      return process.exit(1);
     }
 
     console.log(`Scaffolding custom visualization: ${name}\n`);
@@ -117,7 +117,7 @@ program
       console.error(
         "Error: No package.json found. Run this command from the root of a custom visualization project.",
       );
-      process.exit(1);
+      return process.exit(1);
     }
 
     let pkg: {
@@ -128,7 +128,7 @@ program
       pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
     } catch {
       console.error("Error: Could not parse package.json.");
-      process.exit(1);
+      return process.exit(1);
     }
 
     const currentVersion = pkg.devDependencies?.["@metabase/custom-viz"];
@@ -136,7 +136,7 @@ program
       console.error(
         "Error: @metabase/custom-viz not found in devDependencies. Is this a custom visualization project?",
       );
-      process.exit(1);
+      return process.exit(1);
     }
 
     if (currentVersion === version) {

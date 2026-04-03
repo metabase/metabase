@@ -483,6 +483,7 @@
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
     "embedding-sdk:generate-package-support-files": "tsx enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts",
     "embedding-sdk:test-unit": "bun run test-unit enterprise/frontend/src/embedding-sdk-package/ enterprise/frontend/src/embedding-sdk-bundle/ enterprise/frontend/src/embedding-sdk-shared/",
+    "custom-viz:test-unit": "bun run test-unit enterprise/frontend/src/custom-viz/",
     "embedding-sdk:dts:generate": "bun run embedding-sdk:clean:tsbuildinfo && bun run tsc --project tsconfig.sdk.json || true && bun run embedding-sdk:dts:fixup",
     "embedding-sdk:dts:fixup": "node ./bin/embedding-sdk/fixup-types-after-compilation.js",
     "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js",

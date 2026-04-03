@@ -129,6 +129,27 @@ const config = {
     },
     {
       ...baseConfig,
+      displayName: "custom-viz",
+      testMatch: [
+        "<rootDir>/enterprise/frontend/src/custom-viz/**/*.unit.spec.{js,jsx,ts,tsx}",
+      ],
+      // Vite ?raw imports: strip the ?raw suffix so Jest resolves the real file,
+      // then use rawTextTransform for non-JS asset types (svg, gitignore).
+      moduleNameMapper: {
+        ...baseConfig.moduleNameMapper,
+        "(.+)\\?raw$": "$1",
+      },
+      transform: {
+        // Keep the default babel-jest transform for JS/TS files
+        "\\.[jt]sx?$": "babel-jest",
+        // Non-JS assets imported as raw text (via stripped ?raw suffix)
+        "\\.svg$": "<rootDir>/frontend/test/__mocks__/rawTextTransform.js",
+        "\\.gitignore$":
+          "<rootDir>/frontend/test/__mocks__/rawTextTransform.js",
+      },
+    },
+    {
+      ...baseConfig,
       displayName: "core",
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
@@ -136,6 +157,7 @@ const config = {
         "<rootDir>/frontend/src/embedding-sdk-shared",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
+        "<rootDir>/enterprise/frontend/src/custom-viz",
         "<rootDir>/frontend/lint/tests",
       ],
     },
