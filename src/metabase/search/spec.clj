@@ -84,6 +84,7 @@
    :view-count              :int
    :non-temporal-dim-ids    :text
    :has-temporal-dim        :boolean
+   :temporal-info           nil
    :display-type            :text
    :is-published            :boolean
    :source-type             :text})
@@ -108,8 +109,7 @@
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
          :updated-at
-         :non-temporal-dim-ids
-         :has-temporal-dim
+         :temporal-info
          :is-published
          :source-type])
        distinct
