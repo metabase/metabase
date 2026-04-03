@@ -68,7 +68,7 @@ function useCustomVizDevReload(
       return;
     }
 
-    const identifier = display!.slice("custom:".length);
+    const identifier = display.slice("custom:".length);
     const plugin = plugins.find((p) => p.identifier === identifier);
     if (!plugin?.dev_bundle_url) {
       return;
@@ -155,7 +155,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       return;
     }
 
-    const identifier = display!.slice("custom:".length);
+    const identifier = display.slice("custom:".length);
     const plugin = plugins.find((p) => p.identifier === identifier);
     if (!plugin) {
       return;
