@@ -5,9 +5,9 @@
 
    Rather than going through the seeded event→notification pipeline, this
    namespace constructs notifications directly so it can resolve recipients
-   dynamically from the `security-center-email-recipients` setting (nil = all
-   admins, non-nil = specific email list) and the `security-center-slack-channel`
-   setting."
+   dynamically from the `security-center-email-recipients` setting and the
+   `security-center-slack-channel` setting. The site admin email is always
+   included as a recipient when set."
   (:require
    [metabase-enterprise.security-center.settings :as settings]
    [metabase.channel.settings :as channel.settings]
@@ -36,30 +36,17 @@
                   :path           "metabase/channel/email/security_advisory.hbs"
                   :recipient-type "bcc"}})
 
-(defn- admin-emails
-  "Return the email addresses of all active superusers, plus the site admin email if set."
-  []
-  (into (or (t2/select-fn-set :email [:model/User :email]
-                              :is_superuser true
-                              :is_active true)
-            #{})
-        (when-let [admin-email (system/admin-email)]
-          [admin-email])))
-
-(defn- emails->recipients
-  "Wrap a collection of email strings as raw-value notification recipients."
-  [emails]
-  (mapv (fn [email] {:type    :notification-recipient/raw-value
-                     :details {:value email}})
-        emails))
-
 (defn- email-recipients
-  "Resolve email recipients from the `security-center-email-recipients` setting.
-   nil → all active admins. Non-nil → the stored recipient maps (hydrated)."
+  "Resolve email recipients: configured recipients from the setting,
+   plus the site admin email (if set) as a raw-value recipient."
   []
-  (if-let [configured (settings/security-center-email-recipients)]
-    (t2/hydrate configured :recipients-detail)
-    (emails->recipients (admin-emails))))
+  (let [configured (or (some-> (settings/security-center-email-recipients)
+                               (t2/hydrate :recipients-detail))
+                       [])]
+    (if-let [admin-email (system/admin-email)]
+      (conj configured {:type    :notification-recipient/raw-value
+                        :details {:value admin-email}})
+      configured)))
 
 (defn- slack-recipients
   "Resolve Slack recipient from the `security-center-slack-channel` setting.
