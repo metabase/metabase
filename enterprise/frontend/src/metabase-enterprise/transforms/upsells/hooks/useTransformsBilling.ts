@@ -24,9 +24,6 @@ export function useTransformsBilling() {
     isLoading: billingInfoLoading,
   } = useGetBillingInfoQuery();
 
-  const billingPeriodMonths =
-    billingInfo?.data?.billing_period_months ?? undefined;
-
   const hadTransforms =
     billingInfo?.data?.previous_add_ons?.some(
       ({ product_type, self_service }) =>
@@ -45,11 +42,8 @@ export function useTransformsBilling() {
   );
 
   const advancedTransformsAddOn = addOns?.find(
-    ({ active, billing_period_months, product_type, self_service }) =>
-      active &&
-      self_service &&
-      billing_period_months === billingPeriodMonths &&
-      product_type === "transforms-advanced-metered",
+    ({ active, product_type, self_service }) =>
+      active && self_service && product_type === "transforms-advanced-metered",
   );
 
   return {
