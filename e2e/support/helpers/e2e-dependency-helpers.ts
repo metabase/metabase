@@ -1,5 +1,8 @@
 import type {
+  DependencyGraph as DependencyGraphData,
+  DependencyId,
   DependencyNode,
+  DependencyType,
   ListBreakingGraphNodesResponse,
   ListUnreferencedGraphNodesResponse,
 } from "metabase-types/api";
@@ -44,6 +47,34 @@ export const DependencyDiagnostics = {
 
 const WAIT_TIMEOUT = 30000;
 const WAIT_INTERVAL = 100;
+
+export function waitForGraphDependencies(
+  id: DependencyId,
+  type: DependencyType,
+  filter: (graph: DependencyGraphData) => boolean,
+  timeout = WAIT_TIMEOUT,
+): Cypress.Chainable {
+  return cy
+    .request<DependencyGraphData>(
+      "GET",
+      `/api/ee/dependencies/graph?id=${id}&type=${type}`,
+    )
+    .then((response) => {
+      if (filter(response.body)) {
+        return cy.wrap(response);
+      } else if (timeout > 0) {
+        cy.wait(WAIT_INTERVAL);
+        return waitForGraphDependencies(
+          id,
+          type,
+          filter,
+          timeout - WAIT_INTERVAL,
+        );
+      } else {
+        throw new Error("Dependency graph retry timeout");
+      }
+    });
+}
 
 export function waitForUnreferencedEntities(
   filter: (nodes: DependencyNode[]) => boolean,
