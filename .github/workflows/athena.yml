@@ -35,9 +35,8 @@ jobs:
           VERSION: ${{ github.event.inputs.version }}
 
       - name: Verify deployment
+        env:
+          VERSION: ${{ github.event.inputs.version }}
         run: |
           aws s3 ls s3://metabase-maven-downloads/com/metabase/athena-jdbc/"${VERSION}"/
           echo "Athena JDBC driver version ${VERSION} has been deployed"
-
-        env:
-          VERSION: ${{ github.event.inputs.version }}
