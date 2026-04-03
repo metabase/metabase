@@ -414,7 +414,7 @@
                 asset-names (custom-viz-plugin/asset-paths manifest)
                 assets     (into {}
                                  (keep (fn [asset-name]
-                                         (when-let [bytes (custom-viz-plugin/get-asset (:id plugin) asset-name)]
+                                         (when-let [bytes (custom-viz-plugin/resolve-asset (:id plugin) asset-name)]
                                            [asset-name (asset->data-uri asset-name bytes)])))
                                  asset-names)]
             [{:identifier identifier :source content :assets assets}]))))))

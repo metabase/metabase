@@ -23,6 +23,12 @@
   [plugin-id asset-path]
   (cache/get-asset plugin-id asset-path))
 
+(defenterprise resolve-asset
+  "Enterprise implementation: resolve a static asset, respecting dev bundle URL."
+  :feature :custom-viz
+  [plugin-id asset-path]
+  (cache/resolve-asset plugin-id asset-path))
+
 (defenterprise parse-manifest
   "Enterprise implementation: parse a manifest JSON string."
   :feature :custom-viz

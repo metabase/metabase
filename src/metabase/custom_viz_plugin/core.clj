@@ -25,6 +25,13 @@
   [_plugin-id _asset-path]
   nil)
 
+(defenterprise resolve-asset
+  "Resolve a static asset for a plugin, respecting dev bundle URL if set.
+   Returns a byte array or nil. OSS: always returns nil."
+  metabase-enterprise.custom-viz-plugin.core
+  [_plugin-id _asset-path]
+  nil)
+
 (defenterprise parse-manifest
   "Parse a manifest JSON string. Returns the parsed map or nil.
    OSS: always returns nil."

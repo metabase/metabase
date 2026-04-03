@@ -1,7 +1,10 @@
-import { cpSync, existsSync, watch } from "fs";
+import { watch, cpSync, existsSync, readFileSync } from "fs";
 import { createServer } from "http";
+import { createRequire } from "module";
 import { resolve } from "path";
 import { defineConfig } from "vite";
+
+const __require = createRequire(import.meta.url);
 
 /**
  * Vite plugin that replaces `react` and `react/jsx-runtime` imports with
@@ -55,6 +58,7 @@ const DEV_PORT = 5174;
  */
 function metabaseDevServer() {
   const clients = new Set<import("http").ServerResponse>();
+  let landingPageHtml: string | undefined;
   let server: ReturnType<typeof createServer> | null = null;
 
   return {
@@ -80,6 +84,24 @@ function metabaseDevServer() {
           });
           clients.add(res);
           req.on("close", () => clients.delete(res));
+          return;
+        }
+
+        // Landing page with sync instructions
+        if (url === "/") {
+          if (!landingPageHtml) {
+            try {
+              const landingPath = __require.resolve(
+                "@metabase/custom-viz/dev-server-landing.html",
+              );
+              landingPageHtml = readFileSync(landingPath, "utf-8");
+            } catch {
+              landingPageHtml =
+                "<html><body><p>Custom viz dev server running.</p></body></html>";
+            }
+          }
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(landingPageHtml);
           return;
         }
 
@@ -139,6 +161,9 @@ function metabaseDevServer() {
         console.log(
           `[custom-viz] Dev server listening on http://localhost:${DEV_PORT}`,
         );
+        console.log(
+          `[custom-viz] Open http://localhost:${DEV_PORT} for setup instructions`,
+        );
       });
 
       // Watch public/assets/ for changes — copy to dist/assets/ and notify
@@ -163,6 +188,12 @@ function metabaseDevServer() {
     },
 
     closeBundle() {
+      // Copy metabase-plugin.json to dist/ so it's served as a static file
+      const manifestSrc = resolve(__dirname, "metabase-plugin.json");
+      if (existsSync(manifestSrc)) {
+        cpSync(manifestSrc, resolve(__dirname, "dist/metabase-plugin.json"));
+      }
+
       for (const client of clients) {
         client.write("data: reload\n\n");
       }

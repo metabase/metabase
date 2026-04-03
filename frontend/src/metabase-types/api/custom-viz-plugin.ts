@@ -21,6 +21,7 @@ export interface CustomVizPlugin {
   pinned_version: string | null;
   resolved_commit: string | null;
   dev_bundle_url?: string | null;
+  dev_only: boolean;
   manifest?: CustomVizPluginManifest | null;
   metabase_version?: string | null;
   created_at: string;
@@ -42,6 +43,10 @@ export interface CreateCustomVizPluginRequest {
   repo_url: string;
   access_token?: string;
   pinned_version?: string | null;
+}
+
+export interface CreateDevCustomVizPluginRequest {
+  dev_bundle_url: string;
 }
 
 export interface UpdateCustomVizPluginRequest {

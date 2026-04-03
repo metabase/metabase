@@ -1,15 +1,21 @@
 (ns metabase-enterprise.custom-viz-plugin.api
   "/api/ee/custom-viz-plugin endpoints."
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.server.streaming-response :as sr]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io BufferedReader InputStream InputStreamReader OutputStream)
+   (java.net HttpURLConnection URI)))
 
 (set! *warn-on-reflection* true)
 
@@ -30,6 +36,7 @@
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
+   [:dev_only        :boolean]
    [:manifest        {:optional true} [:maybe :any]]
    [:metabase_version {:optional true} [:maybe :string]]
    [:created_at      :any]
@@ -47,6 +54,11 @@
    [:manifest        {:optional true} [:maybe :any]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
+
+(defn- dev-only-plugin?
+  "Returns true if the plugin was created via the dev-only flow (no git repo)."
+  [plugin]
+  (str/starts-with? (:repo_url plugin) "dev://local/"))
 
 (defn- parse-repo-name
   "Extract the repository name from a git URL.
@@ -79,7 +91,8 @@
       strip-token
       (update :status name)
       (update :manifest parse-manifest-json)
-      (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))))
+      (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))
+      (assoc :dev_only (dev-only-plugin? plugin))))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
@@ -107,6 +120,9 @@
                                                       [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [identifier (parse-repo-name repo_url)
+        _          (api/check-400
+                    (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
+                    (format "A custom visualization with identifier \"%s\" already exists." identifier))
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                           :repo_url        repo_url
                                                           :access_token    access_token
@@ -119,6 +135,43 @@
     (cache/fetch-and-update! plugin)
     ;; re-read to get updated status
     (plugin->response (t2/select-one :model/CustomVizPlugin :id (:id plugin)))))
+
+(api.macros/defendpoint :post "/dev" :- CustomVizPluginResponse
+  "Register a dev-only custom visualization plugin from a local dev server.
+   No git repository is required — the bundle is served from the dev server URL."
+  [_route-params
+   _query-params
+   {:keys [identifier dev_bundle_url]} :- [:map
+                                           [:identifier     {:optional true} [:maybe ms/NonBlankString]]
+                                           [:dev_bundle_url ms/NonBlankString]]]
+  (api/check-superuser)
+  (let [manifest     (cache/fetch-dev-manifest dev_bundle_url)
+        identifier   (or identifier
+                         (:name manifest)
+                         (throw (ex-info (if manifest
+                                           "metabase-plugin.json is missing a \"name\" field."
+                                           "Could not fetch metabase-plugin.json from the dev server.")
+                                         {:status-code 400})))
+        _            (api/check-400
+                      (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
+                      (format "A custom visualization with identifier \"%s\" already exists." identifier))
+        sentinel-url (str "dev://local/" identifier)
+        manifest-str (when manifest (json/encode manifest))
+        display-name (or (:name manifest) identifier)
+        icon         (:icon manifest)
+        version-str  (get-in manifest [:metabase :version])
+        plugin       (first (t2/insert-returning-instances! :model/CustomVizPlugin
+                                                            :repo_url        sentinel-url
+                                                            :display_name    display-name
+                                                            :identifier      identifier
+                                                            :status          :active
+                                                            :enabled         true
+                                                            :dev_bundle_url  dev_bundle_url
+                                                            :icon            icon
+                                                            :manifest        manifest-str
+                                                            :metabase_version version-str))]
+    (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
+    (plugin->response plugin)))
 
 (api.macros/defendpoint :get "/" :- [:sequential CustomVizPluginResponse]
   "List all registered custom visualization plugins."
@@ -263,12 +316,59 @@
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
 
+(api.macros/defendpoint :get "/:id/dev-sse" :- :any
+  "Proxy Server-Sent Events from the plugin's dev server.
+   Connects to `{dev_bundle_url}/__sse` and forwards events to the browser.
+   This avoids the need for a CSP exception for the dev server origin."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (let [dev-url (cache/resolve-dev-bundle id)]
+    (when-not dev-url
+      (throw (ex-info "No dev server URL configured" {:status-code 404})))
+    (let [sse-url (str (cache/dev-base-url dev-url) "__sse")]
+      (sr/streaming-response {:content-type "text/event-stream"
+                              :status       200
+                              :headers      {"Cache-Control"      "no-cache"
+                                             "Connection"         "keep-alive"
+                                             "X-Accel-Buffering"  "no"}}
+                             [^OutputStream os canceled-chan]
+        (let [uri  (URI. sse-url)
+              conn ^HttpURLConnection (.openConnection (.toURL uri))]
+          (.setRequestMethod conn "GET")
+          (.setRequestProperty conn "Accept" "text/event-stream")
+          (.setConnectTimeout conn 5000)
+          (.setReadTimeout conn 0)
+          (try
+            (with-open [^InputStream is (.getInputStream conn)
+                        rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
+              (loop []
+                (when-not (a/poll! canceled-chan)
+                  (when-let [line (.readLine rdr)]
+                    (.write os (.getBytes (str line "\n") "UTF-8"))
+                    (.flush os)
+                    (recur)))))
+            (catch Exception e
+              (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e)))
+            (finally
+              (.disconnect conn))))))))
+
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
-  "Re-fetch the bundle from the git repository."
+  "Re-fetch the bundle from the git repository.
+   For dev-only plugins, re-fetches the manifest from the dev server instead."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
-    (cache/fetch-and-update! plugin {:force? true})
+    (if (dev-only-plugin? plugin)
+      ;; dev-only: re-fetch manifest from dev server
+      (when-let [dev-url (cache/resolve-dev-bundle id)]
+        (when-let [manifest (cache/fetch-dev-manifest dev-url)]
+          (let [manifest-str (json/encode manifest)
+                version-str  (get-in manifest [:metabase :version])]
+            (t2/update! :model/CustomVizPlugin id
+                        {:display_name     (or (:name manifest) (:identifier plugin))
+                         :icon             (:icon manifest)
+                         :manifest         manifest-str
+                         :metabase_version version-str}))))
+      (cache/fetch-and-update! plugin {:force? true}))
     (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))
 
 (def routes

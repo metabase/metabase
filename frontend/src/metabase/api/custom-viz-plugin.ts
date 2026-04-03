@@ -1,5 +1,6 @@
 import type {
   CreateCustomVizPluginRequest,
+  CreateDevCustomVizPluginRequest,
   CustomVizPlugin,
   CustomVizPluginId,
   CustomVizPluginRuntime,
@@ -38,6 +39,18 @@ export const customVizPluginApi = Api.injectEndpoints({
       query: (body) => ({
         method: "POST",
         url: "/api/ee/custom-viz-plugin",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("custom-viz-plugin")]),
+    }),
+    createDevCustomVizPlugin: builder.mutation<
+      CustomVizPlugin,
+      CreateDevCustomVizPluginRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/custom-viz-plugin/dev",
         body,
       }),
       invalidatesTags: (_, error) =>
@@ -102,6 +115,7 @@ export const {
   useListCustomVizPluginsQuery,
   useListAllCustomVizPluginsQuery,
   useCreateCustomVizPluginMutation,
+  useCreateDevCustomVizPluginMutation,
   useDeleteCustomVizPluginMutation,
   useUpdateCustomVizPluginMutation,
   useRefreshCustomVizPluginMutation,
