@@ -178,6 +178,9 @@ function getVizSettingsBySourceId(
 /**
  * Resolve viz settings from entity-index-keyed modified definitions.
  * Used by the individual metric series path.
+ *
+ * `dimensionMapping` is keyed by slot index (not entity index), so we use
+ * `metricSlots` to find the correct slot for each standalone metric entity.
  */
 function getVizSettingsByEntityIndex(
   display: MetricsViewerDisplayType,
@@ -188,6 +191,7 @@ function getVizSettingsByEntityIndex(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   modifiedDefinitions: Map<number, MetricDefinition>,
   dimensionMapping: Record<number, DimensionId | null>,
+  metricSlots?: MetricSlot[],
 ): VisualizationSettings | null {
   const displayConfig = DISPLAY_TYPE_REGISTRY[display];
 
@@ -202,7 +206,10 @@ function getVizSettingsByEntityIndex(
         return null;
       }
 
-      const dimensionId = dimensionMapping[entityIndex];
+      const slot = metricSlots
+        ? findStandaloneSlot(metricSlots, entityIndex)
+        : undefined;
+      const dimensionId = dimensionMapping[slot?.slotIndex ?? entityIndex];
 
       if (displayConfig.dimensionRequired) {
         if (!dimensionId) {
@@ -467,6 +474,7 @@ export function buildRawSeriesFromDefinitions(
     definitions,
     modifiedDefinitions,
     dimensionMapping,
+    metricSlots,
   );
 
   if (!vizSettings) {
