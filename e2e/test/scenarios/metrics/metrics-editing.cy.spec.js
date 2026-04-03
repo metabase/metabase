@@ -229,13 +229,14 @@ describe("scenarios > metrics > editing", () => {
 
     it("should be able to change the query definition of a metric based on a model", () => {
       cy.intercept("PUT", "/api/card/*").as("updateCard");
+      cy.intercept("GET", "/api/card/*").as("getCard");
       H.createQuestion(ORDERS_SCALAR_MODEL_METRIC).then(({ body: card }) =>
         cy.visit(`/metric/${card.id}/query`),
       );
       H.MetricPage.queryEditor().should("be.visible");
       addBreakout({ tableName: "Product", columnName: "Created At" });
       H.MetricPage.saveButton().click();
-      cy.wait("@updateCard");
+      cy.wait(["@updateCard", "@getCard", "@getCard"]);
       H.MetricPage.aboutTab().click();
       verifyLineAreaBarChart({
         xAxis: "Product → Created At: Month",
