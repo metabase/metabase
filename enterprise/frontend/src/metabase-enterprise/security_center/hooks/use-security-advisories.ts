@@ -6,10 +6,15 @@ import {
 } from "metabase/api";
 import type { Advisory } from "metabase-types/api";
 
-export function useSecurityAdvisories() {
+const POLLING_INTERVAL = 2000;
+
+export function useSecurityAdvisories(isPolling = false) {
   const { data: response, isLoading } = useListSecurityAdvisoriesQuery(
     undefined,
-    { refetchOnMountOrArgChange: true },
+    {
+      refetchOnMountOrArgChange: true,
+      pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+    },
   );
   const [acknowledgeAdvisory] = useAcknowledgeAdvisoryMutation();
 
