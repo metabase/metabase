@@ -26,7 +26,7 @@
           first
           vals
           first
-          t/offset-date-time
+          t/instant
           t/format))
 
 (defn- fetch-advisories-from-store
