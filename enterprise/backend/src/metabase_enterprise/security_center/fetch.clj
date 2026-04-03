@@ -19,13 +19,15 @@
   (format "%s/api/%s/v2/security-advisories" base-url token))
 
 (defn- latest-updated-at
-  "Return the maximum `updated_at` across all advisories, or nil if none exist."
+  "Return the maximum `updated_at` across all advisories as an ISO-8601 string, or nil if none exist."
   []
   (some-> (mdb/query {:select [[:max :updated_at]]
                       :from   [:security_advisory]})
           first
           vals
-          first))
+          first
+          t/offset-date-time
+          t/format))
 
 (defn- fetch-advisories-from-store
   "GET advisories from the MetaStore. Returns a seq of advisory maps or nil on failure.

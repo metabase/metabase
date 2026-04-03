@@ -80,7 +80,7 @@
               (task.sync/send-repeat-notifications!)
               (is (empty? @notified))))))
 
-      (testing "high severity: weekly cadence"
+      (testing "high severity: 3-day cadence"
         (let [notified (atom [])]
           (mt/with-temp [:model/SecurityAdvisory _advisory
                          (advisory-fixture {:advisory_id      "SC-REPEAT-003"
