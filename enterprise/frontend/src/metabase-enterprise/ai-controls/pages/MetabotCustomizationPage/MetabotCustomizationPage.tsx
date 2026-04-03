@@ -1,5 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -14,16 +14,9 @@ import { MetabotIconField } from "./MetabotIconField";
 const SAVE_DEBOUNCE_MS = 500;
 
 export function MetabotCustomizationPage() {
-  const { value: metabotName, updateSetting: updateName } =
+  const { value: initialInputValue, updateSetting: updateName } =
     useAdminSetting("metabot-name");
-
-  const [nameInput, setNameInput] = useState<string>(metabotName ?? "");
-
-  useEffect(() => {
-    if (metabotName != null) {
-      setNameInput(metabotName);
-    }
-  }, [metabotName]);
+  const [nameInput, setNameInput] = useState<string>(initialInputValue ?? "");
 
   const debouncedSaveName = useDebouncedCallback((value: string) => {
     updateName({ key: "metabot-name", value, toast: false });

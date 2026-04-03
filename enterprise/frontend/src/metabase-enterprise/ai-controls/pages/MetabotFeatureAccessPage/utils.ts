@@ -30,24 +30,26 @@ export const useMetabotGroupPermissions = () => {
   const { sendErrorToast } = useMetadataToasts();
 
   useEffect(() => {
+    if (groupPermissions.length) {
+      // Already initialized
+      return;
+    }
+
     const { permissions } = permissionsQueryData || {};
     if (permissions?.length) {
       setGroupPermissions(permissions);
     }
-  }, [permissionsQueryData]);
+  }, [permissionsQueryData, groupPermissions]);
 
-  const debouncedUpdatePermissions = useDebouncedCallback(
-    async (updatedPermissions: MetabotGroupPermission[]) => {
-      try {
-        await updateMetabotPermissions({
-          permissions: updatedPermissions,
-        }).unwrap();
-      } catch {
-        sendErrorToast(t`Failed to save Metabot permissions`);
-      }
-    },
-    PERMISSIONS_SAVE_DEBOUNCE,
-  );
+  const debouncedUpdatePermissions = useDebouncedCallback(async () => {
+    try {
+      await updateMetabotPermissions({
+        permissions: groupPermissions,
+      }).unwrap();
+    } catch {
+      sendErrorToast(t`Failed to save Metabot permissions`);
+    }
+  }, PERMISSIONS_SAVE_DEBOUNCE);
 
   const onPermissionChange = (
     groupId: number,
@@ -55,7 +57,7 @@ export const useMetabotGroupPermissions = () => {
     value: "yes" | "no",
   ) => {
     setGroupPermissions((prevPermissions) => {
-      const updatedPermissions = prevPermissions.map((permission) => {
+      return prevPermissions.map((permission) => {
         if (permission.group_id === groupId && permission.perm_type === tool) {
           return {
             ...permission,
@@ -65,11 +67,8 @@ export const useMetabotGroupPermissions = () => {
 
         return permission;
       });
-
-      debouncedUpdatePermissions(updatedPermissions);
-
-      return updatedPermissions;
     });
+    debouncedUpdatePermissions();
   };
 
   return {
