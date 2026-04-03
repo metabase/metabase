@@ -439,12 +439,26 @@ describe("AI controls > AI usage limits", () => {
   describe("Group limits handling", () => {
     const quotaMessage =
       "You have reached your AI usage limit for this period. Please try again later, Batman.";
+    const MOCK_LLM_PORT = 6123;
+    const MOCK_LLM_RESPONSE = "Hello from mock LLM!";
     let groupAId: number;
     let groupBId: number;
 
     beforeEach(() => {
+      // Start a mock server that impersonates the Anthropic Messages API
+      // so requests flow through the full backend (including quota checks)
+      // without needing a real LLM key.
+      cy.task("startMockLlmServer", {
+        port: MOCK_LLM_PORT,
+        responseText: MOCK_LLM_RESPONSE,
+      });
+
       H.updateSetting("metabot-enabled?", true);
       H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+      H.updateSetting(
+        "llm-anthropic-api-base-url",
+        `http://localhost:${MOCK_LLM_PORT}`,
+      );
 
       cy.request("PUT", "/api/setting/metabot-limit-unit", {
         value: "conversations",
@@ -456,6 +470,25 @@ describe("AI controls > AI usage limits", () => {
       // Set instance limit high so it doesn't interfere
       cy.request("PUT", "/api/ee/ai-controls/usage/instance", {
         max_usage: 1000,
+      });
+
+      // limit-for-user returns NULL (unlimited) when any of the user's groups
+      // has no metabot_group_limit row, and returns the MAX across all groups.
+      // Set a low limit (1) on every pre-existing group the normal user
+      // belongs to so the effective limit equals Group B's 100.
+      // Note: the membership API is keyed by user_id, with each entry
+      // containing a group_id property.
+      cy.request("GET", "/api/permissions/membership").then(({ body }) => {
+        const memberships = body[String(NORMAL_USER_ID)] as
+          | Array<{ group_id: number }>
+          | undefined;
+        if (memberships) {
+          for (const m of memberships) {
+            cy.request("PUT", `/api/ee/ai-controls/usage/group/${m.group_id}`, {
+              max_usage: 1,
+            });
+          }
+        }
       });
 
       // Create group A (low limit: 5) and group B (high limit: 100);
@@ -496,6 +529,11 @@ describe("AI controls > AI usage limits", () => {
     });
 
     afterEach(() => {
+      cy.task("stopMockLlmServer");
+
+      // Sign back in as admin for cleanup (tests may end signed in as normal user)
+      cy.signInAsAdmin();
+
       // Clean up seeded usage rows and groups
       cy.request("DELETE", "/api/testing/metabot/seed-ai-usage", {
         user_id: NORMAL_USER_ID,
@@ -535,11 +573,10 @@ describe("AI controls > AI usage limits", () => {
       });
     });
 
-    it("should not block a user below the effective limit (max across their groups) but block them once it is exceeded", () => {
+    it("should respect the effective user limit (max across their groups)", () => {
       // Normal user is in group A (limit 5) and group B (limit 100).
-      // Effective limit = max(5, 100) = 100.
-
-      cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
+      // Effective limit = max(1, 1, 1, 5, 100) = 100.
+      // (pre-existing groups are set to 1 in beforeEach)
 
       // Seed 10 usage rows — below the effective limit of 100
       cy.request("POST", "/api/testing/metabot/seed-ai-usage", {
@@ -547,13 +584,6 @@ describe("AI controls > AI usage limits", () => {
         count: 10,
       });
 
-      // Mock a successful LLM response; the backend will only reach this if
-      // the limit check passes (i.e. usage 10 < effective limit 100)
-      H.mockMetabotResponse({
-        statusCode: 200,
-        body: '0:"Hello! How can I help you?"\nd:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}',
-      });
-
       cy.signInAsNormalUser();
       cy.visit("/");
       cy.wait("@xrayCandidates");
@@ -561,14 +591,15 @@ describe("AI controls > AI usage limits", () => {
       H.openMetabotViaSearchButton();
       H.sendMetabotMessage("hello");
 
-      // With usage (10) < effective limit (100) the user should NOT be blocked
-      H.lastChatMessage().should("have.text", "Hello! How can I help you?");
+      // With usage (10) < effective limit (100) the backend passes the quota
+      // check, calls the mock LLM, and streams its response to the frontend.
+      H.lastChatMessage().should("contain.text", MOCK_LLM_RESPONSE);
 
-      // Now seed enough additional rows to exceed the effective limit (100 total)
+      // Seed additional rows so total usage (101) exceeds effective group limit (100)
       cy.signInAsAdmin();
       cy.request("POST", "/api/testing/metabot/seed-ai-usage", {
         user_id: NORMAL_USER_ID,
-        count: 90,
+        count: 91,
       });
 
       cy.signInAsNormalUser();
@@ -578,7 +609,8 @@ describe("AI controls > AI usage limits", () => {
       H.openMetabotViaSearchButton();
       H.sendMetabotMessage("hello");
 
-      // With usage (100) >= effective limit (100) the user SHOULD be blocked
+      // With usage (101) > effective group limit (100) the backend short-circuits
+      // before calling the LLM and returns the quota-reached message.
       H.lastChatMessage().should("have.text", quotaMessage);
     });
   });
