@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ImgHTMLAttributes } from "react";
 
 import type { IconData } from "metabase/lib/icon";
 import { Icon, type IconProps } from "metabase/ui";
@@ -10,7 +10,8 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   color?: ColorName | "inherit";
   size?: string | number;
   style?: CSSProperties;
-};
+  alt?: string;
+} & Omit<ImgHTMLAttributes<HTMLImageElement>, keyof IconProps>;
 
 /**
  * Renders either a custom visualization icon (via iconUrl) or a standard
@@ -23,17 +24,17 @@ export function EntityIcon({
   size = "1rem",
   color,
   style,
+  alt = "",
   ...rest
 }: EntityIconProps) {
   if (iconUrl) {
     return (
       <img
+        {...(rest as ImgHTMLAttributes<HTMLImageElement>)}
+        aria-hidden={alt ? undefined : "true"}
         src={iconUrl}
-        alt=""
-        width={size}
-        height={size}
-        style={style}
-        aria-hidden="true"
+        alt={alt}
+        style={{ ...style, width: size, height: size }}
       />
     );
   }
