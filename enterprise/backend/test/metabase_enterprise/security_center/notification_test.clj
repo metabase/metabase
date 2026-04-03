@@ -25,7 +25,8 @@
           :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
           :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
           :match_status      "not_affected"
-          :published_at      #t "2026-03-24T00:00:00Z"}
+          :published_at      #t "2026-03-24T00:00:00Z"
+          :updated_at        #t "2026-03-24T00:00:00Z"}
          overrides))
 
 (defmacro ^:private with-send-redef

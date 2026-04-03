@@ -23,7 +23,8 @@
     :remediation       "Upgrade to fix."
     :affected_versions [{"min" "1.50.0" "fixed" "1.58.0"}]
     :match_status      "active"
-    :published_at      #t "2026-03-24T00:00:00Z"}
+    :published_at      #t "2026-03-24T00:00:00Z"
+    :updated_at        #t "2026-03-24T00:00:00Z"}
    {:advisory_id       "SC-TEST-002"
     :severity          "high"
     :title             "Test High Advisory"
@@ -31,7 +32,8 @@
     :remediation       "Upgrade to fix."
     :affected_versions [{"min" "1.54.0" "fixed" "1.58.8"}]
     :match_status      "resolved"
-    :published_at      #t "2026-03-20T00:00:00Z"}
+    :published_at      #t "2026-03-20T00:00:00Z"
+    :updated_at        #t "2026-03-20T00:00:00Z"}
    {:advisory_id       "SC-TEST-003"
     :severity          "medium"
     :title             "Test Medium Advisory"
@@ -39,7 +41,8 @@
     :remediation       "Upgrade to fix."
     :affected_versions [{"min" "1.50.0" "fixed" "1.58.7"}]
     :match_status      "not_affected"
-    :published_at      #t "2026-03-15T00:00:00Z"}])
+    :published_at      #t "2026-03-15T00:00:00Z"
+    :updated_at        #t "2026-03-15T00:00:00Z"}])
 
 (defmacro with-test-advisories!
   "Create temporary SecurityAdvisories from [[test-advisories]] and execute `body`."

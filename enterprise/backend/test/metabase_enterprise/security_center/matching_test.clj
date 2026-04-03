@@ -141,7 +141,8 @@
                     :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
                     :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                     :match_status      "not_affected"
-                    :published_at      #t "2026-03-24T00:00:00Z"}]
+                    :published_at      #t "2026-03-24T00:00:00Z"
+                    :updated_at        #t "2026-03-24T00:00:00Z"}]
       (matching/evaluate-advisory! advisory)
       (is (=? {:match_status     :active
                :last_evaluated_at some?}
@@ -157,7 +158,8 @@
                     :matching_query    {:default {:select [1] :from [:core_user]
                                                   :where [:= :email "nonexistent@example.com"] :limit 1}}
                     :match_status      "active"
-                    :published_at      #t "2026-03-24T00:00:00Z"}]
+                    :published_at      #t "2026-03-24T00:00:00Z"
+                    :updated_at        #t "2026-03-24T00:00:00Z"}]
       (matching/evaluate-advisory! advisory)
       (is (=? {:match_status :not_affected}
               (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
@@ -171,7 +173,8 @@
                     :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
                     :matching_query    nil
                     :match_status      "not_affected"
-                    :published_at      #t "2026-03-24T00:00:00Z"}]
+                    :published_at      #t "2026-03-24T00:00:00Z"
+                    :updated_at        #t "2026-03-24T00:00:00Z"}]
       (matching/evaluate-advisory! advisory)
       (is (=? {:match_status :active}
               (t2/select-one :model/SecurityAdvisory :id (:id advisory))))))
@@ -185,7 +188,8 @@
                     :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
                     :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
                     :match_status      "not_affected"
-                    :published_at      #t "2026-03-24T00:00:00Z"}]
+                    :published_at      #t "2026-03-24T00:00:00Z"
+                    :updated_at        #t "2026-03-24T00:00:00Z"}]
       (matching/evaluate-advisory! advisory)
       (is (=? {:match_status      :error
                :last_evaluated_at some?}

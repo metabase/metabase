@@ -46,7 +46,8 @@
                       :matching_query    {:default {:select [[1 :one]]}}
                       ;; query returns rows unconditionally — tests the full evaluate flow
                       :match_status      "not_affected"
-                      :published_at      #t "2026-03-24T00:00:00Z"}]
+                      :published_at      #t "2026-03-24T00:00:00Z"
+                      :updated_at        #t "2026-03-24T00:00:00Z"}]
         (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                     fetch/sync-advisories!                    (constantly nil)]
           (#'sync-advisories/sync-and-evaluate!)

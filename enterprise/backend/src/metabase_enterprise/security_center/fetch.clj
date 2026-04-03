@@ -18,18 +18,31 @@
 (defn- advisories-url [token base-url]
   (format "%s/api/%s/v2/security-advisories" base-url token))
 
+(defn- latest-updated-at
+  "Return the maximum `updated_at` across all advisories, or nil if none exist."
+  []
+  (some-> (mdb/query {:select [[:max :updated_at]]
+                      :from   [:security_advisory]})
+          first
+          vals
+          first))
+
 (defn- fetch-advisories-from-store
-  "GET advisories from the MetaStore. Returns a seq of advisory maps or nil on failure."
+  "GET advisories from the MetaStore. Returns a seq of advisory maps or nil on failure.
+   Sends the latest `updated_at` as a `since` cursor so only changed advisories are returned."
   []
   (when-let [token (premium-features/premium-embedding-token)]
-    (let [site-uuid (premium-features/site-uuid-for-premium-features-token-checks)
-          url       (advisories-url token hm-url)
-          resp      (http/get url
-                              {:query-params       {:site-uuid  site-uuid
-                                                    :mb-version (:tag config/mb-version-info)}
-                               :throw-exceptions   false
-                               :socket-timeout     5000
-                               :connection-timeout 2000})]
+    (let [site-uuid    (premium-features/site-uuid-for-premium-features-token-checks)
+          url          (advisories-url token hm-url)
+          since        (latest-updated-at)
+          query-params (cond-> {:site-uuid  site-uuid
+                                :mb-version (:tag config/mb-version-info)}
+                         since (assoc :since (str since)))
+          resp         (http/get url
+                                 {:query-params       query-params
+                                  :throw-exceptions   false
+                                  :socket-timeout     5000
+                                  :connection-timeout 2000})]
       (if (http/success? resp)
         (:advisories (json/decode+kw (:body resp)))
         (log/warnf "Advisory fetch failed with status %s" (:status resp))))))
@@ -41,14 +54,16 @@
   [advisory]
   (let [advisory (cond-> advisory
                    (string? (:published_at advisory))
-                   (update :published_at t/offset-date-time))]
+                   (update :published_at t/offset-date-time)
+                   (string? (:updated_at advisory))
+                   (update :updated_at t/offset-date-time))]
     (mdb/update-or-insert! :model/SecurityAdvisory
                            {:advisory_id (:advisory_id advisory)}
                            (fn [existing]
                              (if existing
                                (select-keys advisory [:title :severity :description :advisory_url
                                                       :remediation :affected_versions :matching_query
-                                                      :published_at])
+                                                      :published_at :updated_at])
                                (assoc advisory :match_status :unknown))))))
 
 (defn sync-advisories!
