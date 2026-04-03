@@ -30,7 +30,11 @@ export const QuestionSettingsDropdown = ({
   height,
   ...popoverProps
 }: QuestionSettingsDropdownProps = {}) => (
-  <Popover position="bottom-end" {...popoverProps}>
+  <Popover
+    position="bottom-end"
+    clickOutsideEvents={["mousedown"]}
+    {...popoverProps}
+  >
     <Popover.Target>
       <ToolbarButton
         isHighlighted={false}
