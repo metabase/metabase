@@ -114,7 +114,13 @@ As well as stack them as a percentage:
 
 ### Stack series
 
-If you have two breakouts in your query, or have more than one metric, you can stack series on top of each other:
+To stack series, one chart on top of the other, your query must include **either**:
+
+**Multiple breakouts**: at least two entries in the grouping block in the query builder or `GROUP BY` clause in SQL.
+
+OR
+
+**Multiple metrics**: at least two entries in the summarize block, or two aggregation functions in the `SELECT` statement.
 
 ![Stacked series](../images/stacked-series.png)
 
