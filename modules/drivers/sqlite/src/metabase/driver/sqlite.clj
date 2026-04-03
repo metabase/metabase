@@ -141,9 +141,9 @@
             :schema nil
             :table  table
             :select true
-            :insert false
-            :update false
-            :delete false})
+            :insert true
+            :update true
+            :delete true})
          rows)))
 
 (defn- ->date [& args]

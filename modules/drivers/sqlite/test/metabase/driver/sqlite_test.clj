@@ -25,14 +25,14 @@
 (deftest current-user-table-privileges-test
   (testing "SQLite table privileges normalization"
     (mt/test-driver :sqlite
-      (is (= {"people"     {:role nil, :schema nil, :table "people", :select true, :insert false, :update false, :delete false}
-              "reviews"    {:role nil, :schema nil, :table "reviews", :select true, :insert false, :update false, :delete false}
-              "checkins"   {:role nil, :schema nil, :table "checkins", :select true, :insert false, :update false, :delete false}
-              "users"      {:role nil, :schema nil, :table "users", :select true, :insert false, :update false, :delete false}
-              "orders"     {:role nil, :schema nil, :table "orders", :select true, :insert false, :update false, :delete false}
-              "venues"     {:role nil, :schema nil, :table "venues", :select true, :insert false, :update false, :delete false}
-              "categories" {:role nil, :schema nil, :table "categories", :select true, :insert false, :update false, :delete false}
-              "products"   {:role nil, :schema nil, :table "products", :select true, :insert false, :update false, :delete false}}
+      (is (= {"people"     {:role nil, :schema nil, :table "people", :select true, :insert true, :update true, :delete true}
+              "reviews"    {:role nil, :schema nil, :table "reviews", :select true, :insert true, :update true, :delete true}
+              "checkins"   {:role nil, :schema nil, :table "checkins", :select true, :insert true, :update true, :delete true}
+              "users"      {:role nil, :schema nil, :table "users", :select true, :insert true, :update true, :delete true}
+              "orders"     {:role nil, :schema nil, :table "orders", :select true, :insert true, :update true, :delete true}
+              "venues"     {:role nil, :schema nil, :table "venues", :select true, :insert true, :update true, :delete true}
+              "categories" {:role nil, :schema nil, :table "categories", :select true, :insert true, :update true, :delete true}
+              "products"   {:role nil, :schema nil, :table "products", :select true, :insert true, :update true, :delete true}}
              (into {}
                    (map (fn [m] [(:table m) m])
                         (sql-jdbc.sync/current-user-table-privileges
@@ -136,7 +136,7 @@
   {:name        table-name
    :schema      nil
    :description nil
-   :is_writable false})
+   :is_writable true})
 
 (deftest timestamp-test-db
   (let [driver :sqlite]
