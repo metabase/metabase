@@ -230,6 +230,16 @@
                       (is (empty? missing-from-sync))
                       (is (empty? extra-in-sync)))))))))))))
 
+(defn- ->bool
+  "Coerce a value to boolean. MySQL JDBC returns Integer 1/0 for TRUE/FALSE
+   in CASE expressions, and byte arrays for bit literals."
+  [v]
+  (cond
+    (instance? Boolean v) v
+    (number? v)           (pos? (long v))
+    (bytes? v)            (pos? (first v))
+    :else                 (boolean v)))
+
 (defn- view-log-surface
   "Insert a view_log row with the given embedding_client and embedding_route, then query
    the v_view_log SQL view and return the derived [surface is_preview] pair."
@@ -242,7 +252,7 @@
                     :embedding_client embedding-client
                     :embedding_route  embedding-route}))
         result (first (t2/query ["SELECT surface, is_preview FROM v_view_log WHERE id = ?" (:id vl)]))]
-    [(:surface result) (boolean (:is_preview result))]))
+    [(:surface result) (->bool (:is_preview result))]))
 
 (deftest surface-case-mapping-test
   (testing "v_view_log SQL view correctly maps embedding_client/embedding_route to surface and is_preview"

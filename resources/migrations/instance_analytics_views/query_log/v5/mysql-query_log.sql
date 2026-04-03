@@ -53,7 +53,7 @@ SELECT id AS entity_id,
          WHEN embedding_client IS NULL OR embedding_client = '' THEN 'internal'
          ELSE embedding_client
        END AS surface,
-       CASE WHEN embedding_client LIKE '%-preview' THEN b'1' ELSE b'0' END AS is_preview,
+       CASE WHEN embedding_client LIKE '%-preview' THEN TRUE ELSE FALSE END AS is_preview,
        embedding_version,
        auth_method,
        is_sandboxed,

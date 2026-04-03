@@ -368,10 +368,12 @@
       (doseq [provider ["jwt" "saml" "google" "ldap" "oidc"
                         "custom-oidc" "slack-connect" "support-access-grant"]]
         (testing (str "provider: " provider)
-          (let [ai         (first (t2/insert-returning-instances! :model/AuthIdentity
+          (let [ai         (first (t2/insert-returning-instances! (t2/table-name :model/AuthIdentity)
                                                                   {:user_id     user-id
                                                                    :provider    provider
-                                                                   :provider_id (str user-id "-" provider)}))
+                                                                   :provider_id (str user-id "-" provider)
+                                                                   :created_at  :%now
+                                                                   :updated_at  :%now}))
                 session-key (session/generate-session-key)
                 session-id  (session/generate-session-id)]
             (try

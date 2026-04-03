@@ -506,6 +506,16 @@
     (is (nil? (sdk/route-surface "/api/card/1")))
     (is (nil? (sdk/route-surface nil)))))
 
+(defn- ->bool
+  "Coerce a value to boolean. MySQL JDBC returns Integer 1/0 for TRUE/FALSE
+   in CASE expressions, and byte arrays for bit literals."
+  [v]
+  (cond
+    (instance? Boolean v) v
+    (number? v)           (pos? (long v))
+    (bytes? v)            (pos? (first v))
+    :else                 (boolean v)))
+
 (defn- latest-v-view-log
   "Returns the most recent row from the v_view_log view for a given entity_id."
   [entity-id]
@@ -535,7 +545,7 @@
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
                 (is (= "public-sharing"        (:surface row)))
-                (is (false?                    (:is_preview row)))
+                (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (nil?                      (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
@@ -548,7 +558,7 @@
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
                 (is (= "public-sharing"        (:surface row)))
-                (is (false?                    (:is_preview row)))
+                (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (nil?                      (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
@@ -576,7 +586,7 @@
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
                 (is (= "public-sharing"        (:surface row)))
-                (is (false?                    (:is_preview row)))
+                (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (nil?                      (:auth_method row)))
                 (is (= nil                     (:embedding_hostname row)))
@@ -589,7 +599,7 @@
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
                 (is (= "public-sharing"        (:surface row)))
-                (is (false?                    (:is_preview row)))
+                (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (= nil                     (:auth_method row)))
                 (is (= nil                     (:embedding_hostname row)))

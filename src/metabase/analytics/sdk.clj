@@ -142,8 +142,8 @@
           ;; *client* is the SDK/client identity from the header, with -preview suffix if applicable
           client (cond-> metabase-client-header
                    preview? (some-> (str "-preview")))]
-      (binding [*client* client
-                *route*  route
+      (binding [*client*  client
+                *route*   route
                 *version* version]
         (handler request
                  (fn responder [response]

@@ -19,7 +19,7 @@
    [java-time.api :as t]
    [malli.error :as me]
    [medley.core :as m]
-   [metabase.analytics.sdk :as sdk]
+   [metabase.analytics.core :as analytics]
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
@@ -280,7 +280,7 @@
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
-    (sdk/with-auth-method! [(:auth-method request)]
+    (analytics/with-auth-method! [(:auth-method request)]
       (with-current-user-for-request request
         (handler request respond raise)))))
 
