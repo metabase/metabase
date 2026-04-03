@@ -2056,3 +2056,104 @@
               (is (some? dashboard))
               (is (= 1 (count dashcards)))
               (is (= 1 (count series))))))))))
+
+(deftest channel-roundtrip-test
+  (testing "a channel is serialized and deserialized correctly"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "extraction succeeds"
+          (ts/with-db source-db
+            (ts/create! :model/Channel :name "Test Email Channel"
+                        :type :channel/email
+                        :details {:host "smtp.example.com" :port 587}
+                        :description "A test email channel")
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
+                        (and (= model "Channel") (= id "Test Email Channel")))
+                      @serialized))))
+
+        (testing "loading into an empty database succeeds"
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [channels (t2/select :model/Channel :name "Test Email Channel")]
+              (is (= 1 (count channels)))
+              (is (= "Test Email Channel" (:name (first channels))))
+              (is (= :channel/email (:type (first channels))))
+              (is (= "A test email channel" (:description (first channels)))))))
+
+        (testing "loading again does not duplicate"
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (is (= 1 (t2/count :model/Channel :name "Test Email Channel")))))))))
+
+(deftest metabot-roundtrip-test
+  (testing "a metabot is serialized and deserialized correctly"
+    (let [serialized (atom nil)
+          metabot-eid (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "extraction succeeds"
+          (ts/with-db source-db
+            (let [mb (ts/create! :model/Metabot :name "Test Bot"
+                                 :description "A test metabot"
+                                 :use_verified_content false)]
+              (reset! metabot-eid (:entity_id mb)))
+            (reset! serialized (into [] (serdes.extract/extract {:include-metabot true})))
+            (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
+                        (and (= model "Metabot") (= id @metabot-eid)))
+                      @serialized))))
+
+        (testing "loading into an empty database succeeds"
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (let [metabots (t2/select :model/Metabot :entity_id @metabot-eid)]
+              (is (= 1 (count metabots)))
+              (is (= "Test Bot" (:name (first metabots))))
+              (is (= "A test metabot" (:description (first metabots)))))))
+
+        (testing "loading again does not duplicate"
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+            (is (= 1 (t2/count :model/Metabot :entity_id @metabot-eid)))))))))
+
+(deftest channel-minimal-required-properties-test
+  (testing "Channel deserialized with only: name, type, details"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (ts/create! :model/Channel :name "Minimal Channel"
+                      :type :channel/email
+                      :details {:host "smtp.example.com" :port 587}
+                      :description "Some description")
+          (reset! serialized (into [] (serdes.extract/extract {}))))
+
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Channel" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :name :type :details])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [channel (t2/select-one :model/Channel :name "Minimal Channel")]
+              (is (some? channel))
+              (is (= :channel/email (:type channel))))))))))
+
+(deftest metabot-minimal-required-properties-test
+  (testing "Metabot deserialized with only: entity_id, name"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (ts/create! :model/Metabot :name "Minimal Bot"
+                      :description "Some description"
+                      :use_verified_content false)
+          (reset! serialized (into [] (serdes.extract/extract {:include-metabot true}))))
+
+        (let [minimal (mapv (fn [entity]
+                              (if (= "Metabot" (-> entity :serdes/meta last :model))
+                                (select-keys entity [:serdes/meta :entity_id :name])
+                                entity))
+                            @serialized)]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory minimal))
+            (let [metabot (t2/select-one :model/Metabot :name "Minimal Bot")]
+              (is (some? metabot))
+              (is (= "Minimal Bot" (:name metabot))))))))))

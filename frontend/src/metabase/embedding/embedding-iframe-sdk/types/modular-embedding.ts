@@ -104,7 +104,8 @@ export interface MetabaseQuestionAttributes {
   /**
    * The ID of the question to embed. Can be a regular ID or an
    * [entity ID](https://www.metabase.com/docs/latest/installation-and-operation/serialization#entity-ids-work-with-embedding).
-   * Use `"new"` to embed the query builder. Only for SSO embeds — guest embeds use `token`.
+   * Use `"new"` to embed the query builder, or `"new-native"` to embed the SQL editor.
+   * Only for SSO embeds — guest embeds use `token`.
    */
   "question-id": number | string;
 

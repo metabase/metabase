@@ -1139,13 +1139,16 @@
 
   mcp
   {:team "Metabot"
-   :api  #{metabase.mcp.api}
+   :api  #{metabase.mcp.api
+           metabase.mcp.core
+           metabase.mcp.init}
    :uses #{agent-api
            api
            config
            oauth-server
            request
            server
+           settings
            system
            util}}
 
@@ -1233,11 +1236,13 @@
            lib-metric
            models
            parameters
+           permissions
+           premium-features
            query-processor
            request
            server
            util}
-   :model-imports #{:model/Card :model/Field :model/Measure}}
+   :model-imports #{:model/Card :model/Field :model/Measure :model/Table}}
 
   model-persistence
   {:team "Graphy"
@@ -1885,6 +1890,7 @@
            embedding
            initialization-status
            lib-be
+           mcp
            oauth-server
            premium-features
            query-processor
@@ -2815,7 +2821,8 @@
            warehouse-schema
            warehouses}
    :model-exports #{:model/DatabaseRouter}
-   :model-imports #{:model/Database}}
+   :model-imports #{:model/Database
+                    :model/Transform}}
 
   enterprise/dependencies
   {:team "Graphy"
@@ -2942,7 +2949,6 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
-
   enterprise/metabot
   {:team    "Metabot"
    :api     #{}
@@ -2959,7 +2965,6 @@
               enterprise/dependencies
               enterprise/transforms-python}
    :model-imports #{:model/Card :model/Transform}}
-
 
   enterprise/permission-debug
   {:team "UX West"
@@ -3302,7 +3307,6 @@
            request
            settings
            sql-tools
-           system
            transforms
            transforms-base
            util
