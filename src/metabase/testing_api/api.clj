@@ -266,8 +266,7 @@
    {:keys [advisories]} :- [:map
                             [:advisories [:sequential :map]]]]
   (t2/delete! :model/SecurityAdvisory)
-  (t2/insert! :model/SecurityAdvisory advisories)
-  {:inserted (count advisories)})
+  (t2/insert-returning-instances! :model/SecurityAdvisory advisories))
 
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
   "Creates a native query from a test query spec."
