@@ -73,10 +73,19 @@ Metabase will export its artifacts to a directory of YAML files. The export incl
 
   - actions
   - collections
-    - cards
-    - dashboards
-    - timelines
+    - main
+      - my_collection
+        - some_question.yaml
+        - sub_collection
+          - ...
+      - my_collection.yaml
+    - snippets
+    - transforms
   - databases
+
+  Under `collections`, content is organized by namespace: `main` contains most collections, while `snippets` contains [native query snippet](../questions/native-editor/writing-sql.md#snippets) collections and `transforms` contains transform collections. Inside each namespace, the folder tree mirrors the collection hierarchy in Metabase. Each collection has a YAML file and a folder containing its child entities (questions, dashboards, subcollections, etc.).
+
+  File and folder names are slugified versions of entity names (lowercase, with special characters replaced by underscores).
 
   When serializing through the API, the export directory [will be a compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
 
@@ -146,7 +155,7 @@ See [export parameters in CLI commands](#export-options) or [export parameters i
 
 ### Example of a serialized question
 
-Questions can be found in the `cards` directory of a collection directory. Here's an example card YAML file for a question written with SQL that uses a field filter and has an area chart visualization.
+Questions are stored as YAML files inside their parent collection folder. Here's an example YAML file for a question written with SQL that uses a field filter and has an area chart visualization.
 
 To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
 
@@ -157,19 +166,10 @@ entity_id: r6vC_vLmo9zG6_r9sAuYG
 created_at: "2024-05-08T19:10:24.348808Z"
 creator_id: admin@metabase.local
 display: area
-archived: false
 collection_id: onou5H28Wvy3kWnjxxdKQ
-collection_preview: true
-collection_position: null
 query_type: native
-dataset: false
-cache_ttl: null
 database_id: Sample Database
-table_id: null
-enable_embedding: false
-embedding_params: null
-made_public_by_id: null
-public_uuid: null
+type: question
 parameters:
   - default:
       - Gizmo
@@ -253,10 +253,10 @@ serdes/meta:
   - id: r6vC_vLmo9zG6_r9sAuYG
     label: products_created_by_week
     model: Card
-initially_published_at: null
 metabase_version: v1.49.7 (f0ff786)
-type: question
 ```
+
+Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Fields with `null` values are also omitted. This keeps exported files compact and easier to review in version control.
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
@@ -281,13 +281,22 @@ serdes/meta:
   - id: r6vC_vLmo9zG6_r9sAuYG
 ```
 
-To disambiguate entities that share the same name, Metabase includes Entity IDs in the file and directory names for exported entities.
+Metabase uses slugified entity names for file and directory names in exports. Names are lowercased, and special characters are replaced with underscores. Names are also truncated for filesystem compatibility.
 
 ```
-r6vC_vLmo9zG6_r9sAuYG_products_by_week.yaml
-IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml
-KUEGiWvoBFEc5oGQCEnPg_converted_customers.yaml
+products_by_week.yaml
+accounts_model.yaml
+converted_customers.yaml
 ```
+
+If two entities in the same folder share the same slugified name, Metabase appends a numeric suffix to disambiguate:
+
+```
+products_by_week.yaml
+products_by_week_2.yaml
+```
+
+Entity IDs don't appear in file or directory names, but they're still present inside each YAML file (in the `entity_id` and `serdes/meta` fields).
 
 For example, in the [Example of a serialized question](#example-of-a-serialized-question) above, you can see the field `collection_id`:
 
@@ -295,7 +304,7 @@ For example, in the [Example of a serialized question](#example-of-a-serialized-
 collection_id: onou5H28Wvy3kWnjxxdKQ
 ```
 
-This ID refers to the collection where the question was saved. In a real export, you'd be able to find a YAML file for this collection whose name starts with its ID: `onou5H28Wvy3kWnjxxdKQ`.
+This ID refers to the collection where the question was saved. In a real export, you'd find this collection as a folder in the export tree (named by its slugified name), with a matching `entity_id` inside its YAML file.
 
 ### Entity IDs work with embedding
 
@@ -343,7 +352,7 @@ It refers to the `CATEGORY` field in the `PRODUCTS` table in the `PUBLIC` schema
 
 During import, Metabase will read the provided YAML files and create items according to the YAML specs. [Example of a serialized question](#example-of-a-serialized-question) how Metabase records information it needs to reconstruct an item.
 
-Metabase will not delete items from target instance during import, but it will overwrite items that already exist.
+Metabase will not delete items from target instance during import, but it will overwrite items that already exist. Overwriting replaces the entire item — there's no field-level merge with local changes. If someone customizes a dashboard directly on the target instance, importing an older export of that dashboard will replace those customizations.
 
 Metabase relies on [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite, and what are the relationships between items. When importing into an instance that already has some content in it, keep in mind:
 
@@ -365,6 +374,8 @@ Metabase relies on [Entity IDs](#metabase-uses-entity-ids-to-identify-and-refere
 
 Currently, serialization only works if source and target Metabase have the same major version.
 If you are using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
+
+Metabase will log a warning if the export version doesn't match the target version, but it won't block the import. To avoid subtle issues, make sure your source and target instances are running the same version.
 
 ### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
 
@@ -430,7 +441,7 @@ export path & options
 
 #### `--collection`
 
-By default, Metabase will include all collections (except for personal collections) in the export. To include personal collections, you must explicitly add them with the `--collection` flag.
+By default, Metabase will include all collections (except for personal collections) in the export. To include personal collections, you must explicitly add them with the `--collection` flag. There's no option to include all personal collections at once — you must specify each personal collection's numeric ID individually.
 
 The `--collection` flag (alias `-c`) lets you specify by ID one or more collections to include in the export. You can find the collection ID in the collection's URL, e.g., for a collection at: `your-metabase.com/collection/42-terraforming-progress`, the ID would be `42`.
 
@@ -642,39 +653,39 @@ tar -xvf  metabase_data.tgz
 
    substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
 
-    > We use `POST`, not `GET`, for the `/export` endpoint.
+   > We use `POST`, not `GET`, for the `/export` endpoint.
 
-    This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
+   This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
 
 2. Unzip the compressed file:
 
-    ```sh
-    tar -xvf metabase_data.tgz
-    ```
+   ```sh
+   tar -xvf metabase_data.tgz
+   ```
 
-    The extracted directory will be called something like `metabase-yyyy-MM-dd_HH-mm`, with the date and time of the export.
+   The extracted directory will be called something like `metabase-yyyy-MM-dd_HH-mm`, with the date and time of the export.
 
 ### Step 3: Import
 
 1. Compress the directory containing serialized Metabase application data.
 
-    Let's say you have your YAML files with Metabase application data in a directory called `metabase_data`. Before importing those files to your target Metabase, you'll need to compress those files.
+   Let's say you have your YAML files with Metabase application data in a directory called `metabase_data`. Before importing those files to your target Metabase, you'll need to compress those files.
 
-    ```sh
-    tar -czf metabase_data.tgz metabase_data
-    ```
+   ```sh
+   tar -czf metabase_data.tgz metabase_data
+   ```
 
 2. POST to `/api/ee/serialization/import`.
 
-    From the directory where you've stored your GZIP-compressed file, run:
+   From the directory where you've stored your GZIP-compressed file, run:
 
-    ```sh
-    curl -X POST \
-      -H 'X-API-Key: YOUR_API_KEY' \
-      -F 'file=@metabase_data.tgz' \
-      'https://your-metabase-url/api/ee/serialization/import' \
-      -o -
-    ```
+   ```sh
+   curl -X POST \
+     -H 'X-API-Key: YOUR_API_KEY' \
+     -F 'file=@metabase_data.tgz' \
+     'https://your-metabase-url/api/ee/serialization/import' \
+     -o -
+   ```
 
    substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with your Metabase instance URL.
    The `-o -` option will output logs in the terminal.
@@ -768,10 +779,10 @@ If you're upgrading from Metabase version 46.X or older, here's what you need to
 
 A few other changes to call out:
 
-- The exported YAML files have a slightly different structure:
-  - Metabase will prefix each file with a 24-character Entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
-    You can run a Metabase command to [drop Entity IDs](./commands.md#drop-entity-ids).
-  - The file tree is slightly different.
+- The exported YAML files have a different structure:
+  - File and directory names now use slugified human-readable names (like `accounts_model.yaml`) instead of Entity ID prefixes. Entity IDs are still present inside each YAML file. You can run a Metabase command to [drop Entity IDs](./commands.md#drop-entity-ids) from older exports.
+  - Fields with default values (like `archived: false`) and null-valued fields are omitted from the YAML output, keeping files compact.
+  - The file tree organizes collections by namespace (`main/`, `snippets/`, `transforms/`), and entities are stored inside their parent collection folder.
 - To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
 
 If you've written scripts to automate serialization, you'll need to:
