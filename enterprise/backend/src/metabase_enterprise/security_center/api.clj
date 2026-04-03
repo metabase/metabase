@@ -6,6 +6,7 @@
    [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase-enterprise.security-center.seed]
    [metabase-enterprise.security-center.settings]
+   [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as routes.common :refer [+auth]]
@@ -67,6 +68,20 @@
   (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
+
+(def ^:private syncing? (atom false))
+
+(api.macros/defendpoint :post "/sync" :- [:map [:status ms/NonBlankString]]
+  "Trigger an async advisory sync + re-evaluation.
+   Returns immediately. No-ops if a sync is already in progress."
+  []
+  (when (compare-and-set! syncing? false true)
+    (future
+      (try
+        (sync-advisories/sync-and-evaluate!)
+        (finally
+          (reset! syncing? false)))))
+  {:status "ok"})
 
 (api.macros/defendpoint :post "/test-notification" :- [:map [:success :boolean]]
   "Send a test notification through the configured Security Center channels."
