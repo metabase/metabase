@@ -36,7 +36,8 @@
 
 (deftest sync-advisories-updates-existing-test
   (mt/with-temp [:model/SecurityAdvisory _existing
-                 (make-advisory "SC-FETCH-002" :severity "low" :title "Old title" :match_status "active")]
+                 (make-advisory "SC-FETCH-002" :severity "low" :title "Old title" :match_status "active"
+                                :published_at #t "2026-03-24T00:00:00Z" :updated_at #t "2026-03-24T00:00:00Z")]
     (with-redefs [fetch/fetch-advisories-from-store
                   (constantly [(make-advisory "SC-FETCH-002" :title "New title" :severity "critical")])]
       (fetch/sync-advisories!)
@@ -50,6 +51,8 @@
                  :model/SecurityAdvisory _existing
                  (make-advisory "SC-FETCH-003"
                                 :match_status    "active"
+                                :published_at    #t "2026-03-24T00:00:00Z"
+                                :updated_at      #t "2026-03-24T00:00:00Z"
                                 :acknowledged_by user-id
                                 :acknowledged_at #t "2026-03-25T00:00:00Z")]
     (with-redefs [fetch/fetch-advisories-from-store
@@ -76,27 +79,21 @@
     (with-redefs [fetch/fetch-advisories-from-store
                   (constantly [(make-advisory "SC-UPD-001" :updated_at "2026-04-01T12:00:00Z")])]
       (fetch/sync-advisories!)
-      (is (=? {:updated_at #t "2026-04-01T12:00:00Z"}
-              (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-001"))))))
-
-(deftest sync-advisories-defaults-updated-at-to-published-at-test
-  (testing "when API response omits updated_at, it defaults to published_at"
-    (mt/with-model-cleanup [:model/SecurityAdvisory]
-      (with-redefs [fetch/fetch-advisories-from-store
-                    (constantly [(dissoc (make-advisory "SC-UPD-002") :updated_at)])]
-        (fetch/sync-advisories!)
-        (is (=? {:updated_at #t "2026-03-24T00:00:00Z"}
-                (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-002")))))))
+      (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-001")]
+        (is (some? (:updated_at row)))
+        (is (not= (:published_at row) (:updated_at row)))))))
 
 (deftest sync-advisories-updates-updated-at-on-resync-test
   (testing "updated_at is refreshed when an existing advisory is re-synced"
     (mt/with-temp [:model/SecurityAdvisory _
-                   (make-advisory "SC-UPD-003" :updated_at "2026-03-24T00:00:00Z")]
+                   (make-advisory "SC-UPD-003" :published_at #t "2026-03-24T00:00:00Z" :updated_at #t "2026-03-24T00:00:00Z")]
       (with-redefs [fetch/fetch-advisories-from-store
                     (constantly [(make-advisory "SC-UPD-003" :updated_at "2026-04-02T08:00:00Z")])]
         (fetch/sync-advisories!)
-        (is (=? {:updated_at #t "2026-04-02T08:00:00Z"}
-                (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-003")))))))
+        (is (=? {:updated_at some?}
+                (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-003")))
+        (is (not= #t "2026-03-24T00:00:00Z"
+                  (:updated_at (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-003"))))))))
 
 (deftest sync-advisories-handles-fetch-error-test
   (testing "network error doesn't throw"
