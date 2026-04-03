@@ -68,14 +68,14 @@
       (is (not (contains? scopes "agent:viz:*"))))))
 
 (deftest resolve-user-permissions-nil-test
-  (testing "nil user-id returns defaults"
-    (let [perms (scope/resolve-user-permissions nil)]
-      (is (= (:permission/metabot-sql-generation scope/perm-type-defaults)
-             (:permission/metabot-sql-generation perms)))
-      (is (= (:permission/metabot-nlq scope/perm-type-defaults)
-             (:permission/metabot-nlq perms)))
-      (is (= (:permission/metabot-other-tools scope/perm-type-defaults)
-             (:permission/metabot-other-tools perms))))))
+  (testing "nil user-id returns all-yes in OSS"
+    (mt/with-premium-features #{}
+      (let [perms (scope/resolve-user-permissions nil)]
+        (is (= scope/all-yes-permissions perms)))))
+  (testing "nil user-id returns all-yes in EE with ai-controls"
+    (mt/with-premium-features #{:ai-controls}
+      (let [perms (scope/resolve-user-permissions nil)]
+        (is (= scope/all-yes-permissions perms))))))
 
 (deftest resolve-user-permissions-oss-returns-all-yes-test
   (mt/with-premium-features #{}
