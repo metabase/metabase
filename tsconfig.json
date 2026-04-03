@@ -32,7 +32,7 @@
   ],
   "exclude": [
     "node_modules",
-    "frontend/src/custom-viz",
+    "enterprise/frontend/src/custom-viz",
     // The following files will load `frontend/src/metabase/app` which will conflict with
     // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
     "frontend/src/metabase/app-main.js",
