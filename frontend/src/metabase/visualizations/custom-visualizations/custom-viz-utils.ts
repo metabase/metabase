@@ -37,3 +37,5 @@ export function getCustomPluginIdentifier(
 
   return `custom:${identifier}`;
 }
+
+export const defineSetting = <T>(definition: T) => definition;

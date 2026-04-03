@@ -10,6 +10,10 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import visualizations, { registerVisualization } from "metabase/visualizations";
+import {
+  getCustomPluginIdentifier,
+  getPluginAssetUrl,
+} from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import type {
   Visualization,
   VisualizationProps,
@@ -18,10 +22,6 @@ import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { ensureVizApi } from "./custom-viz-globals";
-import {
-  getCustomPluginIdentifier,
-  getPluginAssetUrl,
-} from "./custom-viz-utils";
 
 // ---------------------------------------------------------------------------
 // Plugin loading & registration

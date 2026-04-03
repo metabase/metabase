@@ -1,4 +1,8 @@
-import type { VisualizationDisplay } from "metabase-types/api";
+import type {
+  CustomVizDisplayType,
+  VisualizationDisplay,
+} from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 const CHART_ANALYSIS_ENABLED = {
   // enabled
@@ -30,7 +34,7 @@ const CHART_ANALYSIS_ENABLED = {
   text: false,
   list: false,
 } as const satisfies {
-  [display in Exclude<VisualizationDisplay, `custom:${string}`>]: boolean;
+  [display in Exclude<VisualizationDisplay, CustomVizDisplayType>]: boolean;
 };
 
 type EnabledChartTypes = {
@@ -62,5 +66,7 @@ export const CHART_ANALYSIS_RENDER_FORMATS = {
 } as const satisfies { [display in EnabledChartTypes]: "png" | "svg" | "none" };
 
 export const canAnalyzeQuestion = (display: VisualizationDisplay) => {
-  return (CHART_ANALYSIS_ENABLED as Record<string, boolean>)[display] ?? false;
+  return isCustomVizDisplay(display)
+    ? false
+    : (CHART_ANALYSIS_ENABLED[display] ?? false);
 };

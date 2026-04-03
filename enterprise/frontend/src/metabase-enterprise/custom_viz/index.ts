@@ -1,5 +1,10 @@
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import visualizations, { registerVisualization } from "metabase/visualizations";
+import {
+  defineSetting,
+  getCustomPluginIdentifier,
+  getPluginAssetUrl,
+} from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
@@ -13,10 +18,6 @@ import {
   useAutoLoadCustomVizPlugin,
   useCustomVizPlugins,
 } from "./custom-viz-plugins";
-import {
-  getCustomPluginIdentifier,
-  getPluginAssetUrl,
-} from "./custom-viz-utils";
 
 // Registry for custom viz plugins in the GraalJS static-viz context.
 const customVizRegistry: Map<string, any> = new Map();
@@ -27,7 +28,6 @@ function registerCustomVizPlugin(
   assets: any,
 ) {
   const assetMap = assets || {};
-  const defineSetting = <T>(definition: T) => definition;
   const getAssetUrl = (name: string) => assetMap[name] || "";
   const vizDef = factory({ defineSetting, getAssetUrl });
   const display = getCustomPluginIdentifier(identifier);
