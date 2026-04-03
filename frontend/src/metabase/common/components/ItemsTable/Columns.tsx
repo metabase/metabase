@@ -10,6 +10,7 @@ import { Markdown } from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { isTouchDevice } from "metabase/lib/browser";
 import { modelToUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -184,6 +185,13 @@ export const Columns = {
                     {tc(item.description)}
                   </Markdown>
                 }
+                onClick={(event) => {
+                  // On mobile devices we allow clicking on the icon to show the description
+                  if (isTouchDevice()) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                  }
+                }}
               />
             )}
           </ItemLinkComponent>

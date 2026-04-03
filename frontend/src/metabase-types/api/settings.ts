@@ -773,6 +773,8 @@ export interface EnterpriseSettings extends Settings {
   "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
+  "mcp-apps-cors-enabled-clients": string[] | null;
+  "mcp-apps-cors-custom-origins": string | null;
   /**
    * @deprecated
    */
