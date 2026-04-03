@@ -1,6 +1,7 @@
 import { compareVersions } from "metabase/lib/utils";
+import type { Advisory, AdvisorySeverity } from "metabase-types/api";
 
-import type { Advisory, AdvisoryFilter, AdvisorySeverity } from "./types";
+import type { AdvisoryFilter } from "./types";
 
 const SEVERITY_ORDER: Record<AdvisorySeverity, number> = {
   critical: 0,

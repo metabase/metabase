@@ -32,7 +32,6 @@ export function SecurityCenterNavItem({
               w={8}
               h={8}
               miw={8}
-              mt={3}
               bg="error"
               style={{ borderRadius: "50%", flexShrink: 0 }}
               data-testid="security-center-badge"

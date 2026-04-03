@@ -11,6 +11,7 @@ type SecurityCenterPlugin = {
   SecurityCenterPage: ComponentType;
   SecurityCenterBanner: ComponentType;
   SecurityCenterNavItem: ComponentType<SecurityCenterNavItemProps>;
+  SecurityCenterMobileNavItem: ComponentType<SecurityCenterNavItemProps>;
 };
 
 const getDefaultPlugin = (): SecurityCenterPlugin => ({
@@ -18,6 +19,7 @@ const getDefaultPlugin = (): SecurityCenterPlugin => ({
   SecurityCenterPage: PluginPlaceholder,
   SecurityCenterBanner: PluginPlaceholder,
   SecurityCenterNavItem: PluginPlaceholder,
+  SecurityCenterMobileNavItem: PluginPlaceholder,
 });
 
 export const PLUGIN_SECURITY_CENTER = getDefaultPlugin();

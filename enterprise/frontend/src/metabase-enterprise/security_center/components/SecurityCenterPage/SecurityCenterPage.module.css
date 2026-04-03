@@ -42,7 +42,7 @@
   min-height: 0;
   display: flex;
 
-  .filter-bar {
+  .filterBar {
     flex: 0;
   }
 
@@ -51,7 +51,7 @@
     overflow: auto;
   }
 
-  .empty-state {
+  .emptyState {
     flex: 1;
     display: flex;
     flex-direction: column;

@@ -2,6 +2,7 @@
   "API endpoints for Security Center advisories."
   (:require
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
+   [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase-enterprise.security-center.seed]
    [metabase-enterprise.security-center.settings]
@@ -72,16 +73,21 @@
 
 (api.macros/defendpoint :post "/sync" :- [:map [:status ms/NonBlankString]]
   "Trigger an async advisory sync + re-evaluation.
-   Returns immediately. Returns 409 if a sync is already in progress."
+   Returns immediately. No-ops if a sync is already in progress."
   []
-  (when-not (compare-and-set! syncing? false true)
-    (throw (ex-info (tru "Advisory sync is already in progress.") {:status-code 409})))
-  (future
-    (try
-      (sync-advisories/sync-and-evaluate!)
-      (finally
-        (reset! syncing? false))))
+  (when (compare-and-set! syncing? false true)
+    (future
+      (try
+        (sync-advisories/sync-and-evaluate!)
+        (finally
+          (reset! syncing? false)))))
   {:status "ok"})
+
+(api.macros/defendpoint :post "/test-notification" :- [:map [:success :boolean]]
+  "Send a test notification through the configured Security Center channels."
+  []
+  (notification/send-test-notification!)
+  {:success true})
 
 (def +check-security-center-enabled
   "Middleware that returns 402 if Security Center is not available on this instance."

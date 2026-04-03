@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase-enterprise.security-center.matching :as matching]
+   [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
@@ -130,3 +131,23 @@
               (is (= 1 @call-count) "sync should only run once despite two API calls")))))
       (testing "non-superuser gets 403"
         (mt/user-http-request :rasta :post 403 "ee/security-center/sync")))))
+
+(deftest test-notification-test
+  (testing "POST /api/ee/security-center/test-notification"
+    (testing "requires premium feature"
+      (mt/with-premium-features #{}
+        (mt/assert-has-premium-feature-error
+         "Security Center"
+         (mt/user-http-request :crowberto :post 402 "ee/security-center/test-notification"))))
+    (mt/with-premium-features #{:admin-security-center}
+      (testing "non-superuser gets 403"
+        (mt/user-http-request :rasta :post 403 "ee/security-center/test-notification"))
+      (testing "superuser can send test notification"
+        (with-redefs [notification/send-test-notification! (constantly nil)]
+          (is (= {:success true}
+                 (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification")))))
+      (testing "returns 400 when no channels are configured"
+        (with-redefs [notification/send-test-notification!
+                      (fn [] (throw (ex-info "No notification channels are configured."
+                                             {:status-code 400})))]
+          (mt/user-http-request :crowberto :post 400 "ee/security-center/test-notification"))))))
