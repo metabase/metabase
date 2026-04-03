@@ -191,9 +191,9 @@
                         entries)
         ;; Build the index (first file wins) and collect duplicates
         index   (reduce-kv (fn [idx [kind ref] files]
-                              (assoc-in idx [kind ref] (first files)))
-                            {}
-                            by-key)
+                             (assoc-in idx [kind ref] (first files)))
+                           {}
+                           by-key)
         dupes   (into []
                       (keep (fn [[[kind ref] files]]
                               (when (> (count files) 1)

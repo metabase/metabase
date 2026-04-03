@@ -27,14 +27,14 @@
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ;; sql-tools.init registers multimethod implementations needed by deps.native-validation
-   [metabase.sql-tools.init]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.query-processor.interface :as qp.i]
+   ;; sql-tools.init registers multimethod implementations needed by deps.native-validation
+   [metabase.sql-tools.init]
    [metabase.util.malli.fn :as mu.fn]))
 
 (set! *warn-on-reflection* true)
@@ -345,7 +345,6 @@
 ;;; ===========================================================================
 ;;; MetadataProvider — serves lib/query from the store
 ;;; ===========================================================================
-
 
 (deftype SourceMetadataProvider [store]
   lib.metadata.protocols/MetadataProvider
@@ -974,8 +973,7 @@
               :entity-id  ref
               :kind       kind
               :error      (str "entity_id " ref " appears in " (count files) " files: "
-                               (str/join ", " files))
-              }]))))
+                               (str/join ", " files))}]))))
 
 (defn check-entities
   "Check all entities: cards, dashboards, collections, documents, transforms, etc.
@@ -1189,5 +1187,4 @@
 
   ;; Full check:
   (def r (check "/path/to/export" "/path/to/schemas"))
-  (summarize-results (:results r))
-  )
+  (summarize-results (:results r)))
