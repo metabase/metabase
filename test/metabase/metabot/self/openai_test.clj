@@ -169,4 +169,3 @@
                  clojure.lang.ExceptionInfo
                  #"No OpenAI API key is set"
                  (openai/openai-raw {:input [{:role :user :content "hi"}]})))))))))
-
