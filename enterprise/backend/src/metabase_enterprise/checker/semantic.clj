@@ -979,7 +979,8 @@
 
 (defn check-entities
   "Check all entities: cards, dashboards, collections, documents, transforms, etc.
-   Returns map of entity-id → result.
+   Returns `{entity-id result-map}`. See the Results processing section for the
+   result-map shape.
 
    `source`   — a MetadataSource for resolving entities
    `index`    — a file index: `{kind {ref file-path}}` (see store/make-store)
@@ -990,28 +991,57 @@
             ;; Skip QP middleware that requires the app DB (impersonation, permissions)
             ;; since the checker runs without a database connection.
             qp.i/*skip-middleware-because-app-db-access* true]
-    (let [store    (store/make-store source index)
-          provider (make-provider store)
-          card-results (into {}
-                             (for [eid card-ids]
-                               [eid (check-card store provider eid)]))
-        other-results (check-non-card-entities store provider)
+    (let [store         (store/make-store source index)
+          provider      (make-provider store)
+          card-results  (into {}
+                              (for [eid card-ids]
+                                [eid (check-card store provider eid)]))
+          other-results (check-non-card-entities store provider)
           dupe-results  (check-duplicate-entity-ids index)]
       (merge card-results other-results dupe-results))))
 
 ;;; ===========================================================================
 ;;; Results processing — pure functions on result data
+;;;
+;;; Result map shape (per entity):
+;;;
+;;;   :name           string   — entity name
+;;;   :entity-id      string   — portable entity ID
+;;;   :card-id        int?     — synthetic integer ID (cards only)
+;;;   :kind           keyword? — :dashboard, :transform, etc. (non-card entities)
+;;;   :error          string?  — fatal error message (e.g. unknown database)
+;;;   :unresolved     [map]    — unresolved reference failures
+;;;                              each {:type kw, :path vec?, :entity-id str?,
+;;;                                    :name str?, :message str?}
+;;;   :bad-refs       [map]    — query issues from deps.analysis
+;;;                              (e.g. {:type :validation-exception-error, :message str})
+;;;   :native-errors  #{map}   — native SQL errors from deps.analysis
+;;;                              (e.g. {:type :missing-column, :name str,
+;;;                                     :source-entity-type kw?, :source-entity-id str?})
+;;;   :refs           map?     — extracted references for display (cards only)
+;;;                              {:tables [str], :fields [str], :source-cards [str]}
+;;;   :sql            string?  — source SQL (transforms with native queries)
+;;;
+;;; Summary map shape (from summarize-results):
+;;;
+;;;   :total          int — total entities checked
+;;;   :ok             int — entities with no issues
+;;;   :errors         int — entities with fatal errors
+;;;   :unresolved     int — entities with unresolved references
+;;;   :native-errors  int — entities with native SQL errors
+;;;   :issues         int — entities with bad refs / query issues
 ;;; ===========================================================================
 
 (defn result-status
-  "Compute the status of a single card result."
+  "Compute the status of a single entity result.
+   Returns :error, :unresolved, :native-errors, :issues, or :ok (checked in priority order)."
   [result]
   (cond
-    (:error result)              :error
-    (seq (:unresolved result))   :unresolved
+    (:error result)               :error
+    (seq (:unresolved result))    :unresolved
     (seq (:native-errors result)) :native-errors
-    (seq (:bad-refs result))     :issues
-    :else                        :ok))
+    (seq (:bad-refs result))      :issues
+    :else                         :ok))
 
 (defn summarize-results
   "Summarize check results into counts by status."
@@ -1111,7 +1141,9 @@
    `schema-dir`  — directory containing serdes-exported database schemas
    `entity-ids`  — optional seq of card entity-ids to check (defaults to all cards)
 
-   Returns a map with :results and :source."
+   Returns `{:results results-map, :source MetadataSource}` where results-map
+   is `{entity-id result-map}`. See the Results processing section above for
+   the result-map and summary-map shapes."
   ([export-dir schema-dir]
    (let [{:keys [source index export-source]} (make-source-and-index export-dir schema-dir)
          card-ids (serdes/all-card-ids export-source)]
