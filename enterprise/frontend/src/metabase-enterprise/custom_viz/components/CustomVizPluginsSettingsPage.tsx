@@ -35,6 +35,7 @@ import {
   Menu,
   Stack,
   Text,
+  useMantineTheme,
 } from "metabase/ui";
 import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
@@ -44,7 +45,11 @@ import S from "./CustomVizPluginsSettingsPage.module.css";
 const BASE_PATH = "/admin/settings/custom-visualizations";
 
 function PluginIconPreview({ plugin }: { plugin: CustomVizPlugin }) {
-  const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
+  const theme = useMantineTheme();
+  const isDarkMode = theme.other.colorScheme === "dark";
+  const iconUrl =
+    (isDarkMode && getPluginAssetUrl(plugin.id, plugin.icon_dark)) ||
+    getPluginAssetUrl(plugin.id, plugin.icon);
   const dimmed = !plugin.enabled;
   return (
     <Flex

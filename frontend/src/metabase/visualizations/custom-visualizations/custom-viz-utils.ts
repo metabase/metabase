@@ -19,7 +19,7 @@ export function formatValue(value: unknown, options?: OptionsType): string {
  */
 export function getPluginAssetUrl(
   pluginId: CustomVizPluginId,
-  assetPath: string | null,
+  assetPath: string | null | undefined,
 ): string | undefined {
   if (!assetPath) {
     return undefined;

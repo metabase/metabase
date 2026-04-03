@@ -1,6 +1,13 @@
 import cx from "classnames";
 
-import { ActionIcon, Center, Icon, Stack, Text } from "metabase/ui";
+import {
+  ActionIcon,
+  Center,
+  Icon,
+  Stack,
+  Text,
+  useMantineTheme,
+} from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { VisualizationDisplay } from "metabase-types/api";
 
@@ -21,8 +28,11 @@ export const ChartTypeOption = ({
 }: ChartTypeOptionProps) => {
   const visualization = visualizations.get(visualizationType);
   const isSelected = selectedVisualization === visualizationType;
+  const theme = useMantineTheme();
+  const isDarkMode = theme.other.colorScheme === "dark";
 
-  const iconUrl = visualization?.iconUrl;
+  const iconUrl =
+    (isDarkMode && visualization?.iconDarkUrl) || visualization?.iconUrl;
   const displayName = visualization?.getUiName() ?? visualizationType;
   const iconName = visualization?.iconName;
 

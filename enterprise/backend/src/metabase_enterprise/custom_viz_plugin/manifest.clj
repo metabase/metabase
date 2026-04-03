@@ -104,7 +104,11 @@
    Returns literal paths and glob patterns; use [[expand-globs]] to resolve globs
    against available files."
   [manifest]
-  (let [declared  (get manifest :assets [])
-        icon-name (when-let [icon (:icon manifest)]
-                    (when (image-file? icon) icon))]
-    (distinct (concat declared (when icon-name [icon-name])))))
+  (let [declared       (get manifest :assets [])
+        icon-name      (when-let [icon (:icon manifest)]
+                         (when (image-file? icon) icon))
+        icon-dark-name (when-let [icon (:iconDark manifest)]
+                         (when (image-file? icon) icon))]
+    (distinct (concat declared
+                      (when icon-name [icon-name])
+                      (when icon-dark-name [icon-dark-name])))))
