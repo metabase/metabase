@@ -196,16 +196,15 @@
 (defn- llm-provider-configured?
   "Check if a provider-and-model string has the necessary configuration.
   For `metabase/*` providers, checks that the proxy URL is set.
-  For direct providers, checks that a BYOK API key is set (or proxy URL as fallback)."
+  For direct providers, checks that a BYOK API key is set."
   [provider-and-model]
   (boolean
    (if (= "metabase" (provider-prefix provider-and-model))
      (some? (llm.settings/llm-proxy-base-url))
-     (or (some? (llm.settings/llm-proxy-base-url))
-         (some-> provider-and-model
-                 direct-provider-prefix
-                 configured-provider-api-key
-                 token-configured?)))))
+     (some-> provider-and-model
+             direct-provider-prefix
+             configured-provider-api-key
+             token-configured?))))
 
 (defsetting llm-metabot-internal-tasks-enabled?
   (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")

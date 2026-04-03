@@ -76,6 +76,40 @@
       (is (string? (metabot.settings/llm-metabot-provider)))
       (is (string? (metabot.settings/llm-metabot-provider-lite))))))
 
+(deftest metabot-configured-with-metabase-provider-and-proxy-url-test
+  (testing "returns true when metabase-proxied provider and proxy URL is set"
+    (mt/with-premium-features #{:metabase-ai-provider}
+      (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4"
+                                         llm-proxy-base-url   "https://proxy.example.com"]
+        (is (true? (metabot.settings/llm-metabot-configured?)))))))
+
+(deftest metabot-configured-with-metabase-provider-no-proxy-url-test
+  (testing "returns false when metabase-proxied provider and no proxy URL"
+    (mt/with-premium-features #{:metabase-ai-provider}
+      (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4"
+                                         llm-proxy-base-url   nil]
+        (is (false? (metabot.settings/llm-metabot-configured?)))))))
+
+(deftest metabot-configured-with-direct-provider-and-api-key-test
+  (testing "returns true when direct provider has API key set"
+    (mt/with-temporary-setting-values [llm-metabot-provider  "anthropic/claude-sonnet-4"
+                                       llm-anthropic-api-key "sk-ant-test"]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-with-direct-provider-no-api-key-test
+  (testing "returns false when direct provider has no API key"
+    (mt/with-temporary-setting-values [llm-metabot-provider  "anthropic/claude-sonnet-4"
+                                       llm-anthropic-api-key nil]
+      (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-proxy-url-not-fallback-for-direct-provider-test
+  (testing "proxy URL alone does not make a direct provider configured"
+    (mt/with-premium-features #{:metabase-ai-provider}
+      (mt/with-temporary-setting-values [llm-metabot-provider  "anthropic/claude-sonnet-4"
+                                         llm-anthropic-api-key nil
+                                         llm-proxy-base-url    "https://proxy.example.com"]
+        (is (false? (metabot.settings/llm-metabot-configured?)))))))
+
 (deftest internal-tasks-disabled-by-default-test
   (testing "returns false when the setting is not explicitly enabled"
     (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? nil
