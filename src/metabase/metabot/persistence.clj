@@ -1,6 +1,7 @@
 (ns metabase.metabot.persistence
   "Persistence for Metabot conversations and messages."
   (:require
+   [cheshire.core :as json]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.util :as u]
@@ -43,3 +44,66 @@
   [msg-id slack-msg-id]
   (when (and msg-id slack-msg-id)
     (t2/update! :model/MetabotMessage msg-id {:slack_msg_id slack-msg-id})))
+
+;;; ---------------------------------------- Chat message conversion ----------------------------------------
+
+(defn- convert-content-block
+  "Convert a single raw content block from `:data` into a frontend `MetabotChatMessage` map.
+   Returns nil for blocks that should be skipped (tool-output, unknown types)."
+  [_role block]
+  (let [block-type (:type block)
+        block-role (:role block)]
+    (cond
+      ;; User text: {:role "user" :content "..."}
+      (= "user" block-role)
+      {:id (str (random-uuid)) :role "user" :type "text" :message (:content block)}
+
+      ;; Assistant text (standard): {:type "text" :text "..."}
+      (= "text" block-type)
+      {:id (or (:id block) (str (random-uuid))) :role "agent" :type "text" :message (:text block)}
+
+      ;; Assistant text (slack format): {:role "assistant" :_type "TEXT" :content "..."}
+      (and (= "assistant" block-role) (= "TEXT" (:_type block)))
+      {:id (str (random-uuid)) :role "agent" :type "text" :message (:content block)}
+
+      ;; Tool input: {:type "tool-input" :id "..." :function "..." :arguments {...}}
+      (= "tool-input" block-type)
+      {:id     (:id block)
+       :role   "agent"
+       :type   "tool_call"
+       :name   (:function block)
+       :args   (when-let [a (:arguments block)] (json/generate-string a))
+       :status "ended"}
+
+      ;; Tool output — skip here, merged via merge-tool-results
+      ;; Data parts — skip for now
+      :else nil)))
+
+(defn- merge-tool-results
+  "Merge tool-output blocks into their matching tool_call chat messages."
+  [chat-messages blocks]
+  (let [result-map (->> blocks
+                        (filter #(= "tool-output" (:type %)))
+                        (into {} (map (fn [o]
+                                        [(:id o)
+                                         {:result   (when-let [r (:result o)] (json/generate-string r))
+                                          :is_error (boolean (:error o))}]))))]
+    (mapv (fn [msg]
+            (if-let [r (and (= "tool_call" (:type msg)) (get result-map (:id msg)))]
+              (merge msg r)
+              msg))
+          chat-messages)))
+
+(defn message->chat-messages
+  "Convert a single `MetabotMessage` model instance into a seq of `MetabotChatMessage` maps.
+   Each message's `:data` (vector of content blocks) is flattened into typed chat messages."
+  [message]
+  (let [blocks    (or (:data message) [])
+        role      (name (:role message))
+        chat-msgs (into [] (keep #(convert-content-block role %)) blocks)]
+    (merge-tool-results chat-msgs blocks)))
+
+(defn messages->chat-messages
+  "Convert a seq of `MetabotMessage` model instances into a flat `MetabotChatMessage` vector."
+  [messages]
+  (into [] (mapcat message->chat-messages) messages))

@@ -1,3 +1,5 @@
+import type { MetabotChatMessage } from "metabase/metabot/state";
+
 export type MetabotUserInfo = {
   id: number;
   email?: string;
@@ -56,4 +58,5 @@ export type ConversationDetail = {
   state: unknown;
   user: MetabotUserInfo | null;
   messages: MessageDetail[];
+  chat_messages: MetabotChatMessage[];
 };

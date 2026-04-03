@@ -6,6 +6,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { getUserName } from "metabase/lib/user";
+import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import {
   Anchor,
   Badge,
@@ -18,13 +19,6 @@ import {
 } from "metabase/ui";
 
 import { useGetMetabotConversationQuery } from "../../api";
-import type { ConversationDetail } from "../../types";
-
-function hasSlackMessages(convo: ConversationDetail): boolean {
-  return convo.messages.some(
-    (msg) => (msg as any).channel_id || (msg as any).slack_msg_id,
-  );
-}
 
 type StatCardProps = {
   label: string;
@@ -65,7 +59,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const userName = conversation.user
     ? getUserName(conversation.user) || t`Unknown`
     : t`Unknown`;
-  const isSlack = hasSlackMessages(conversation);
   const totalTokens = conversation.messages.reduce(
     (sum, msg) => sum + (msg.total_tokens ?? 0),
     0,
@@ -122,11 +115,11 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 
       <Title order={3} mt="xl">{t`Conversation`}</Title>
       <Card withBorder p="xl" mt="sm">
-        <Flex justify="center" align="center" mih={120} c="text-tertiary">
-          <Text size="lg">
-            {isSlack ? t`TODO: slack conversation` : t`TODO: conversation`}
-          </Text>
-        </Flex>
+        <Messages
+          messages={conversation.chat_messages ?? []}
+          errorMessages={[]}
+          isDoingScience={false}
+        />
       </Card>
 
       <Title order={3} mt="xl">{t`Queries generated`}</Title>

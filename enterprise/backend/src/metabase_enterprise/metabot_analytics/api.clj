@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.persistence :as metabot-persistence]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -54,7 +55,8 @@
    [:summary [:maybe :string]]
    [:state [:maybe :any]]
    [:user [:maybe UserInfo]]
-   [:messages [:sequential MessageDetail]]])
+   [:messages [:sequential MessageDetail]]
+   [:chat_messages [:sequential :map]]])
 
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
@@ -133,15 +135,13 @@
      :limit  limit
      :offset offset}))
 
-(api.macros/defendpoint :get "/conversations/:id"
-  :- ConversationDetail
-  "Return full details for a specific conversation including all messages."
-  [{:keys [id]} :- [:map [:id ms/UUIDString]]]
-  (api/check-superuser)
-  (let [conversation (t2/select-one :model/MetabotConversation :id id)]
+(defn- fetch-conversation-detail
+  "Fetch a conversation with all its messages, user info, and frontend-ready chat messages."
+  [conversation-id]
+  (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-404 conversation)
     (let [messages   (t2/select :model/MetabotMessage
-                                :conversation_id id
+                                :conversation_id conversation-id
                                 {:where    [:= :deleted_at nil]
                                  :order-by [[:created_at :asc]]})
           users      (batch-load-users #{(:user_id conversation)})
@@ -159,7 +159,15 @@
                                  :model        (:profile_id m)
                                  :total_tokens (:total_tokens m)
                                  :data         (:data m)})
-                              messages)})))
+                              messages)
+       :chat_messages   (metabot-persistence/messages->chat-messages messages)})))
+
+(api.macros/defendpoint :get "/conversations/:id"
+  :- ConversationDetail
+  "Return full details for a specific conversation including all messages."
+  [{:keys [id]} :- [:map [:id ms/UUIDString]]]
+  (api/check-superuser)
+  (fetch-conversation-detail id))
 
 ;;; -------------------------------------------------- Routes --------------------------------------------------
 
