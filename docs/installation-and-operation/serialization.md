@@ -29,7 +29,7 @@ There are two ways to run these `export` and `import` commands:
 ## Serialization use cases
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
-- **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable.
+- **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable. For a built-in Git workflow with push/pull from the Metabase UI, see [Remote Sync](./remote-sync.md).
 - **Duplicating assets to other Metabase instances**. Export the "template" data from a source Metabase and import them to one or more target instances.
 
 Check out our guides for:
@@ -52,7 +52,7 @@ Metabase will only export the following entities:
 - Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Saved questions
-- Transforms (including jobs)
+- Transforms (including tags and jobs)
 - Documents (without comments)
 - Actions
 - Models
@@ -64,6 +64,9 @@ Metabase will only export the following entities:
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines
+- Channels (email and HTTP notification channels)
+- Metabots
+- Python libraries (shared Python modules used by transforms)
 - Database connection strings (only if specified through [export options](#customize-what-gets-exported))
 
 All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported.
@@ -74,6 +77,7 @@ Metabase will export its artifacts to a directory of YAML files. The export incl
   An example export could include the following directories, depending on what you exported and the contents of your Metabase:
 
   - actions
+  - channels
   - collections
     - main
       - my_collection
@@ -84,16 +88,21 @@ Metabase will export its artifacts to a directory of YAML files. The export incl
     - snippets
     - transforms
   - databases
+  - metabots
+  - python_libraries
+  - transforms
 
   Under `collections`, content is organized by namespace: `main` contains most collections, while `snippets` contains [native query snippet](../questions/native-editor/writing-sql.md#snippets) collections and `transforms` contains transform collections. Inside each namespace, the folder tree mirrors the collection hierarchy in Metabase. Each collection has a YAML file and a folder containing its child entities (questions, dashboards, subcollections, etc.).
 
+  The top-level `transforms` directory (separate from `collections/transforms`) contains transform tags and transform jobs. Other top-level directories include `channels` for notification channels, `metabots` for AI assistant configurations, and `python_libraries` for shared Python modules used by transforms.
+
   File and folder names are slugified versions of entity names (lowercase, with special characters replaced by underscores).
 
-  When serializing through the API, the export directory [will be a compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
+  When serializing through the API, the export directory [will be compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
 
 - A `settings.yaml` file that includes some [Metabase-wide settings](#general-metabase-settings-that-are-exported)
 
-Database connection details are not included by default, so you but you can [configure your export](#customize-what-gets-exported) to include them.
+Database connection details are not included by default, but you can [configure your export](#customize-what-gets-exported) to include them.
 
 ### General Metabase settings that are exported
 
@@ -258,7 +267,7 @@ serdes/meta:
 metabase_version: v1.49.7 (f0ff786)
 ```
 
-Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Fields with `null` values are also omitted. This keeps exported files compact and easier to review in version control.
+Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Top-level fields with `null` values are also omitted. This keeps exported files compact and easier to review in version control.
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
@@ -795,6 +804,7 @@ If you've written scripts to automate serialization, you'll need to:
 
 ## Further reading
 
+- [Remote Sync](./remote-sync.md)
 - [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/serialization)
 - [Database routing](../permissions/database-routing.md)
 - [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)
