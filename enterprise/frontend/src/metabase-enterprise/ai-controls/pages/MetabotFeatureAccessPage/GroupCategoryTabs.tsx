@@ -2,7 +2,8 @@ import { t } from "ttag";
 
 import { Button, Group } from "metabase/ui";
 
-type GroupTab = "user-groups" | "tenant-groups";
+import type { GroupTab } from "./utils";
+
 type TabOption = {
   tab: GroupTab;
   label: string;

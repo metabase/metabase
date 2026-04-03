@@ -53,7 +53,7 @@ export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
           {groups.map((group) => (
             <GroupPermissionRow
               group={group}
-              groupPermissions={permissionsByGroup[group.id] || []}
+              initialPermissions={permissionsByGroup[group.id] || []}
               key={group.id}
               onPermissionChange={onPermissionChange}
             />

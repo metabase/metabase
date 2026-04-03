@@ -331,7 +331,7 @@ export type MetabotGroupPermission = {
 
 export type MetabotPermissionsResponse = {
   permissions: MetabotGroupPermission[];
-} & PaginationResponse;
+};
 
 export type UpdateMetabotPermissionsRequest = {
   permissions: MetabotGroupPermission[];

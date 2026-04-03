@@ -4,7 +4,6 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text, Textarea } from "metabase/ui";
@@ -29,18 +28,16 @@ function SystemPromptPage({
   return (
     <SettingsPageWrapper title={title} mt="sm">
       <SettingsSection>
-        <LoadingAndErrorWrapper loading={false}>
-          <Text c="text-secondary" size="md" mb="lg">
-            {description}
-          </Text>
-          <Textarea
-            aria-label={title}
-            className={S.textareaWrapper}
-            onChange={onInputChange}
-            placeholder={getPlaceholder()}
-            value={inputText}
-          />
-        </LoadingAndErrorWrapper>
+        <Text c="text-secondary" size="md" mb="lg">
+          {description}
+        </Text>
+        <Textarea
+          aria-label={title}
+          className={S.textareaWrapper}
+          onChange={onInputChange}
+          placeholder={getPlaceholder()}
+          value={inputText}
+        />
       </SettingsSection>
     </SettingsPageWrapper>
   );
