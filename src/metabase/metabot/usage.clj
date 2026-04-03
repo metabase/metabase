@@ -21,7 +21,7 @@
    [:profile-id        {:optional true} [:maybe :keyword]]
    [:request-id        {:optional true} [:maybe :string]]])
 
-(defenterprise-schema log-ai-usage!
+(defenterprise-schema log-ai-usage! :- :any
   "Record an LLM API call in the ai_usage_log table.
   In OSS, this is a no-op."
   metabase-enterprise.metabot.usage
