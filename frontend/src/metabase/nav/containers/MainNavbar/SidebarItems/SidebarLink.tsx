@@ -2,7 +2,9 @@ import type { MouseEvent, ReactNode } from "react";
 import { isValidElement, useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
+import type { IconData } from "metabase/lib/icon";
 import type { IconName, IconProps } from "metabase/ui";
 
 import {
@@ -19,7 +21,7 @@ import {
 interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon?: IconName | IconProps;
+  icon?: IconName | IconProps | IconData;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: ReactNode;
@@ -31,7 +33,9 @@ type ContentProps = {
   children: ReactNode;
 };
 
-function isIconPropsObject(icon: string | IconProps): icon is IconProps {
+function isIconPropsObject(
+  icon: string | IconProps | IconData,
+): icon is IconProps | IconData {
   return _.isObject(icon);
 }
 
@@ -62,9 +66,18 @@ function SidebarLink({
       return icon;
     }
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+    const iconUrl =
+      "iconUrl" in iconProps ? (iconProps.iconUrl as string) : undefined;
+    if (iconUrl) {
+      return (
+        <TreeNode.IconContainer transparent={false}>
+          <EntityIcon name={iconProps.name} iconUrl={iconUrl} size={16} />
+        </TreeNode.IconContainer>
+      );
+    }
     return (
       <TreeNode.IconContainer transparent={false}>
-        <SidebarIcon {...iconProps} isSelected={isSelected} />
+        <SidebarIcon {...(iconProps as IconProps)} isSelected={isSelected} />
       </TreeNode.IconContainer>
     );
   }, [icon, isSelected]);

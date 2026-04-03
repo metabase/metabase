@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import type { IconName } from "metabase/ui";
 import { Group, Tooltip } from "metabase/ui";
 
@@ -23,6 +24,7 @@ export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
 
 export interface StaticSkeletonIconProps {
   name: IconName;
+  iconUrl?: string;
 }
 
 const StaticSkeleton = ({
@@ -40,7 +42,15 @@ const StaticSkeleton = ({
       {icon && (
         <Tooltip label={tooltip} disabled={!tooltip}>
           <SkeletonIconContainer>
-            <SkeletonIcon {...icon} />
+            {icon.iconUrl ? (
+              <EntityIcon
+                name={icon.name}
+                iconUrl={icon.iconUrl}
+                size={24}
+              />
+            ) : (
+              <SkeletonIcon {...icon} />
+            )}
             {tooltip && (
               <SkeletonTooltipIconContainer>
                 <SkeletonTooltipIcon name="eye_crossed_out" />

@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
@@ -25,7 +26,6 @@ import {
   Ellipsified,
   FixedSizeIcon,
   Flex,
-  Icon,
   Repeat,
   Skeleton,
 } from "metabase/ui";
@@ -224,7 +224,12 @@ function NameCell({ model }: { model?: ModelResult }) {
         }}
         onClick={preventDefault}
       >
-        <Icon size={16} {...icon} c="icon-brand" style={{ flexShrink: 0 }} />
+        <EntityIcon
+          size={16}
+          {...icon}
+          color="icon-brand"
+          style={{ flexShrink: 0 }}
+        />
         {
           <EntityItem.Name
             name={model?.name || ""}

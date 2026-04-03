@@ -67,12 +67,13 @@ export const modelIconMap: Record<IconModel, IconName> = {
 export type IconData = {
   name: IconName;
   color?: ColorName;
+  iconUrl?: string;
 };
 
 /** get an Icon for any entity object, doesn't depend on the entity system */
 export const getIconBase = (item: ObjectWithModel): IconData => {
   if (item.model === "card" && item.display) {
-    return { name: getIconForVisualizationType(item.display) };
+    return getIconForVisualizationType(item.display);
   }
 
   if (item.model === "collection" && item.id === PERSONAL_COLLECTIONS.id) {
