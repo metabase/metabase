@@ -5,9 +5,8 @@ import visualizations from "metabase/visualizations";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import type Question from "metabase-lib/v1/Question";
 import {
-  type CardDisplayType,
-  type CustomVizDisplayType,
   type Dataset,
+  type QueryVisualizationDisplayType,
   type VisualizationDisplay,
   isCardDisplayType,
 } from "metabase-types/api";
@@ -57,14 +56,14 @@ export type GetSensibleVisualizationsProps = {
 
 const isSupportedVisualization = (
   display: string,
-): display is CardDisplayType | CustomVizDisplayType =>
+): display is QueryVisualizationDisplayType =>
   isCardDisplayType(display) || isCustomVizDisplay(display);
 
 export const getSensibleVisualizations = ({
   result,
 }: GetSensibleVisualizationsProps) => {
   const availableVizTypes = Array.from(visualizations.entries()).reduce<
-    (CardDisplayType | CustomVizDisplayType)[]
+    QueryVisualizationDisplayType[]
   >((types, [vizType, config]) => {
     if (!config.hidden && isSupportedVisualization(vizType)) {
       types.push(vizType);

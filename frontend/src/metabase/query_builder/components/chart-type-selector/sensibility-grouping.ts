@@ -13,8 +13,8 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import {
   type CardDisplayType,
-  type CustomVizDisplayType,
   type DatasetData,
+  type QueryVisualizationDisplayType,
   isCardDisplayType,
 } from "metabase-types/api";
 
@@ -27,14 +27,14 @@ export type VisualizationSensibility =
 
 export type SensibilityGroups = Record<
   VisualizationSensibility,
-  (CardDisplayType | CustomVizDisplayType)[]
+  QueryVisualizationDisplayType[]
 >;
 
 export function groupVisualizationsBySensibility({
   orderedVizTypes,
   data,
 }: {
-  orderedVizTypes: (CardDisplayType | CustomVizDisplayType)[];
+  orderedVizTypes: QueryVisualizationDisplayType[];
   data: DatasetData;
 }): SensibilityGroups {
   const groups: SensibilityGroups = {
@@ -74,9 +74,9 @@ export function groupVisualizationsBySensibility({
 
 function getRecommendedVisualizations(
   data: DatasetData,
-  sensible: (CardDisplayType | CustomVizDisplayType)[],
+  sensible: QueryVisualizationDisplayType[],
   // Custom Visualizations are not grouped by sensibility, they will always have their separate group
-): CardDisplayType[] {
+): QueryVisualizationDisplayType[] {
   const { cols, rows } = data;
   const metricCount = cols.filter(isMetric).length;
   const dimensionCount = cols.filter(isDimension).length;

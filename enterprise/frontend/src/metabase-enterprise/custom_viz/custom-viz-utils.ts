@@ -1,6 +1,7 @@
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
 import type {
+  CustomVizPluginId,
   CustomVizPluginRuntime,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -17,7 +18,7 @@ export function formatValue(value: unknown, options?: OptionsType): string {
  * Build a URL for a plugin's static asset.
  */
 export function getPluginAssetUrl(
-  pluginId: number,
+  pluginId: CustomVizPluginId,
   assetPath: string | null,
 ): string | undefined {
   if (!assetPath) {

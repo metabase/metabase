@@ -46,10 +46,13 @@ export type CardDisplayType = (typeof cardDisplayTypes)[number];
 
 export type CustomVizDisplayType = `custom:${string}`;
 
-export type VisualizationDisplay =
-  | VirtualCardDisplay
+export type QueryVisualizationDisplayType =
   | CardDisplayType
   | CustomVizDisplayType;
+
+export type VisualizationDisplay =
+  | VirtualCardDisplay
+  | QueryVisualizationDisplayType;
 
 export type TimeseriesDisplayType = Extract<
   CardDisplayType,
