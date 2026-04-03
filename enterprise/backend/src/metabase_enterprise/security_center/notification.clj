@@ -79,20 +79,18 @@
                   :event_topic :event/security-advisory-match}
    :handlers     (build-handlers)})
 
-(defn- configured-channels
-  "Return a set of channel keywords currently configured for notification delivery."
-  []
-  (cond-> #{}
-    (channel.settings/email-configured?) (conj :email)
-    (seq (slack-recipients))             (conj :slack)))
+(def ^:private channel-type->name
+  "Map channel_type keywords to short names for Snowplow tracking."
+  {:channel/email "email"
+   :channel/slack "slack"})
 
 (defn- track-notification-sent!
-  "Track a Snowplow event for each configured notification channel."
-  [triggered-from result]
-  (doseq [channel (configured-channels)]
+  "Track a Snowplow event for each channel in the notification's handlers."
+  [notification triggered-from result]
+  (doseq [{:keys [channel_type]} (:handlers notification)]
     (snowplow/track-event! :snowplow/simple_event
                            {:event          "security_advisory_notification_sent"
-                            :event_detail   (name channel)
+                            :event_detail   (channel-type->name channel_type)
                             :triggered_from triggered-from
                             :result         result})))
 
@@ -117,12 +115,13 @@
       (throw (ex-info "No notification channels are configured."
                       {:status-code 400})))
     (log/info "Sending test security center notification")
-    (try
-      (notification/send-notification! (build-notification test-advisory) :notification/sync? true)
-      (track-notification-sent! "test" "success")
-      (catch Exception e
-        (track-notification-sent! "test" "failure")
-        (throw e)))))
+    (let [notif (build-notification test-advisory)]
+      (try
+        (notification/send-notification! notif :notification/sync? true)
+        (track-notification-sent! notif "test" "success")
+        (catch Exception e
+          (track-notification-sent! notif "test" "failure")
+          (throw e))))))
 
 (defn notify-advisory!
   "Send notifications for a security advisory and update `last_notified_at`.
@@ -139,11 +138,12 @@
                           (advisory-event-info advisory))
    ;; Send email + Slack via notification pipeline
    ;; sync, so failure doesn't set last_notified_at
-   (try
-     (notification/send-notification! (build-notification advisory) :notification/sync? true)
-     (track-notification-sent! triggered-from "success")
-     (catch Exception e
-       (track-notification-sent! triggered-from "failure")
-       (throw e)))
+   (let [notif (build-notification advisory)]
+     (try
+       (notification/send-notification! notif :notification/sync? true)
+       (track-notification-sent! notif triggered-from "success")
+       (catch Exception e
+         (track-notification-sent! notif triggered-from "failure")
+         (throw e))))
    (t2/update! :model/SecurityAdvisory (:id advisory)
                {:last_notified_at (mi/now)})))
