@@ -3,6 +3,7 @@ import { merge } from "icepick";
 import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
+import { isTouchDevice } from "metabase/lib/browser";
 import type { DeepPartial } from "metabase/lib/types";
 import type { MantineThemeOverride } from "metabase/ui";
 
@@ -175,7 +176,9 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
         // portal outside the Popover's DOM tree) fires a touchstart that
         // Mantine's useClickOutside sees as "outside", incorrectly closing
         // the parent popover.
-        clickOutsideEvents: ["mousedown"],
+        ...(isTouchDevice() && {
+          clickOutsideEvents: ["mousedown"],
+        }),
       }, // satisfies Partial<PopoverProps>,
     },
     Tooltip: {
