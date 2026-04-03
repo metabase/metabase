@@ -146,6 +146,7 @@ export const createMockTokenFeatures = (
   tenants: false,
   workspaces: false,
   writable_connection: false,
+  ai_controls: false,
   ...opts,
 });
 
@@ -367,6 +368,12 @@ export const createMockSettings = (
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
   "metabot-enabled?": true,
+  "metabot-name": "Metabot",
+  "metabot-icon": "metabot",
+  "metabot-show-illustrations": true,
+  "metabot-chat-system-prompt": null,
+  "metabot-nlq-system-prompt": null,
+  "metabot-sql-system-prompt": null,
   "embedded-metabot-enabled?": true,
   "show-metabase-links": true,
   "show-metabot": true,
