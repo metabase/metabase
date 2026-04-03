@@ -1169,7 +1169,7 @@
                 created-dim (find-dimension-by-name hydrated "CREATED_AT")]
             (is (some? created-dim) "CREATED_AT dimension should exist")
             (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                             :projections [{:type :metric :id (:id metric)
+                                             :projections [{:type :metric :id (:id metric) :lib/uuid "a"
                                                             :projection [[:dimension {:temporal-unit :month} (:id created-dim)]]}]})]
               (is (= "completed" (:status response)))
               (is (pos? (:row_count response))))))))))
@@ -1189,7 +1189,7 @@
             (is (some? category-dim)))
           (testing "projecting by CATEGORY succeeds despite explicit :fields on join"
             (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                             :projections [{:type :metric :id (:id metric)
+                                             :projections [{:type :metric :id (:id metric) :lib/uuid "a"
                                                             :projection [[:dimension {} (:id category-dim)]]}]})]
               (is (= "completed" (:status response)))
               (is (= 4 (:row_count response))
