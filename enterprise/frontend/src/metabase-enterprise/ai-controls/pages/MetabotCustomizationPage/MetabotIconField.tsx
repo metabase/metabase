@@ -44,7 +44,7 @@ export function MetabotIconField() {
     }
     if (file.size > IMAGE_SIZE_LIMIT) {
       setIconError(
-        t`The image you chose is larger than 2MB. Please choose another one.`,
+        t`The image you chose is larger than 1MB. Please choose another one.`,
       );
       return;
     }

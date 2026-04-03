@@ -8,13 +8,11 @@ import { useSetting } from "metabase/common/hooks";
 
 import { AiFeatureAccessTable } from "./AiFeatureAccessTable";
 import { GroupCategoryTabs } from "./GroupCategoryTabs";
-import { useMetabotGroupPermissions } from "./utils";
-
-type TabValue = "user-groups" | "tenant-groups";
+import { type GroupTab, useMetabotGroupPermissions } from "./utils";
 
 export function MetabotFeatureAccessPage() {
   const isUsingTenants = useSetting("use-tenants");
-  const [activeTab, setActiveTab] = useState<TabValue>("user-groups");
+  const [activeTab, setActiveTab] = useState<GroupTab>("user-groups");
 
   const {
     data: userGroups,
@@ -53,7 +51,7 @@ export function MetabotFeatureAccessPage() {
         <GroupCategoryTabs setActiveTab={setActiveTab} activeTab={activeTab} />
       )}
 
-      <LoadingAndErrorWrapper loading={isLoading} error={error || null}>
+      <LoadingAndErrorWrapper loading={isLoading} error={error}>
         {activeGroups && (
           <AiFeatureAccessTable
             groups={activeGroups}

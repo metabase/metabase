@@ -7,7 +7,7 @@ import { MetabotAdminLayout } from "./MetabotAdminLayout";
 import { MetabotConfig } from "./MetabotConfig";
 import { MetabotSetup } from "./MetabotSetup";
 
-export function getAdminRoutes() {
+export function getMetabotAdminRoutes() {
   return [
     <Route key="layout" component={MetabotAdminLayout}>
       <IndexRoute key="index" component={MetabotConfig} />

@@ -9,6 +9,8 @@ import {
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
 
+export type GroupTab = "user-groups" | "tenant-groups";
+
 export const getAIToolItems = (): Array<{ key: AIToolKey; label: string }> => {
   return [
     { key: AIToolKey.Metabot, label: t`AI features` },
