@@ -8,6 +8,7 @@ databaseChangeLog:
   - changeSet:
       id: v61.2026-04-01T10:00:00
       author: noahmoss
+      runOnChange: true
       comment: Create v_metabot_conversations view for AI analytics
       changes:
         - sqlFile:
@@ -28,6 +29,7 @@ databaseChangeLog:
   - changeSet:
       id: v61.2026-04-01T10:00:01
       author: noahmoss
+      runOnChange: true
       comment: Create v_metabot_messages view for AI analytics
       changes:
         - sqlFile:
@@ -48,6 +50,7 @@ databaseChangeLog:
   - changeSet:
       id: v61.2026-04-01T10:00:02
       author: noahmoss
+      runOnChange: true
       comment: Create v_metabot_usage view for AI analytics
       changes:
         - sqlFile:
