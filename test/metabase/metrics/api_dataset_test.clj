@@ -1133,6 +1133,68 @@
             (is (= 49 (:row_count response))
                 "should have 49 months of order data")))))))
 
+(defn- create-orders-products-join-sum-price-query
+  "Create a pMBQL query joining Orders with Products, aggregating SUM(Products.PRICE).
+   This exercises the case where the aggregation references a column from the joined table,
+   which requires the join's fields to be visible across the two-stage query boundary."
+  ([]
+   (create-orders-products-join-sum-price-query nil))
+  ([join-fields]
+   (let [mp                (mt/metadata-provider)
+         orders-table      (lib.metadata/table mp (mt/id :orders))
+         products-table    (lib.metadata/table mp (mt/id :products))
+         orders-product-id (lib.metadata/field mp (mt/id :orders :product_id))
+         products-id       (lib.metadata/field mp (mt/id :products :id))
+         products-price    (lib.metadata/field mp (mt/id :products :price))]
+     (-> (lib/query mp orders-table)
+         (lib/join (cond-> (lib/join-clause products-table
+                                            [(lib/= orders-product-id
+                                                    (lib/with-join-alias products-id "Products"))])
+                     join-fields (lib/with-join-fields join-fields)))
+         (lib/aggregate (lib/sum (lib/with-join-alias products-price "Products")))))))
+
+(deftest dataset-metric-with-join-aggregation-on-joined-column-test
+  (testing "POST /api/metric/dataset with aggregation on a joined table column"
+    (let [query (create-orders-products-join-sum-price-query)]
+      (mt/with-temp [:model/Card metric {:name          "Sum of Product Prices"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (testing "basic execution without projection"
+          (let [response (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]})]
+            (is (= "completed" (:status response)))
+            (is (= 1 (:row_count response)))
+            (is (pos? (first-result response)))))
+        (testing "with temporal projection on base table column"
+          (let [hydrated    (hydrate-metric (:id metric))
+                created-dim (find-dimension-by-name hydrated "CREATED_AT")]
+            (is (some? created-dim) "CREATED_AT dimension should exist")
+            (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                                             :projections [{:type :metric :id (:id metric)
+                                                            :projection [[:dimension {:temporal-unit :month} (:id created-dim)]]}]})]
+              (is (= "completed" (:status response)))
+              (is (pos? (:row_count response))))))))))
+
+(deftest dataset-metric-with-join-explicit-fields-projection-test
+  (testing "POST /api/metric/dataset with join that has explicit :fields"
+    (let [mp             (mt/metadata-provider)
+          products-price (lib.metadata/field mp (mt/id :products :price))
+          query          (create-orders-products-join-sum-price-query
+                          [(lib/with-join-alias products-price "Products")])]
+      (mt/with-temp [:model/Card metric {:name          "Sum Price (explicit fields)"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (let [hydrated     (hydrate-metric (:id metric))
+              category-dim (find-dimension-by-name hydrated "CATEGORY")]
+          (testing "CATEGORY dimension is advertised even though join only selects PRICE"
+            (is (some? category-dim)))
+          (testing "projecting by CATEGORY succeeds despite explicit :fields on join"
+            (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                                             :projections [{:type :metric :id (:id metric)
+                                                            :projection [[:dimension {} (:id category-dim)]]}]})]
+              (is (= "completed" (:status response)))
+              (is (= 4 (:row_count response))
+                  "should have 4 rows, one per product category"))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Category 11: Source-Card (Model) Metrics                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
