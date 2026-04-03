@@ -205,7 +205,8 @@
                   :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
                   :matching_query    {:default {:select [1] :from [:core_user] :limit 1}}
                   :match_status      "not_affected"
-                  :published_at      #t "2026-03-24T00:00:00Z"}
+                  :published_at      #t "2026-03-24T00:00:00Z"
+                  :updated_at        #t "2026-03-24T00:00:00Z"}
                  :model/SecurityAdvisory _not-affected
                  {:advisory_id       "SC-EVAL-002"
                   :severity          "medium"
@@ -216,7 +217,8 @@
                   :matching_query    {:default {:select [1] :from [:core_user]
                                                 :where [:= :email "nonexistent@example.com"] :limit 1}}
                   :match_status      "not_affected"
-                  :published_at      #t "2026-03-24T00:00:00Z"}
+                  :published_at      #t "2026-03-24T00:00:00Z"
+                  :updated_at        #t "2026-03-24T00:00:00Z"}
                  :model/SecurityAdvisory _erroring
                  {:advisory_id       "SC-EVAL-003"
                   :severity          "low"
@@ -226,7 +228,8 @@
                   :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
                   :matching_query    {:default {:select [1] :from [:nonexistent_table] :limit 1}}
                   :match_status      "not_affected"
-                  :published_at      #t "2026-03-24T00:00:00Z"}]
+                  :published_at      #t "2026-03-24T00:00:00Z"
+                  :updated_at        #t "2026-03-24T00:00:00Z"}]
     (matching/evaluate-all-advisories!)
     (let [fetch (fn [id] (t2/select-one :model/SecurityAdvisory :advisory_id id))]
       (testing "each advisory gets the correct status and timestamp"
