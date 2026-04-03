@@ -11,6 +11,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
@@ -129,7 +130,7 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
+                         :legacy_input (json/encode (dissoc m :pinned :view_count :last_viewed_at :native_query :dataset_query))
                          :searchable_text (searchable-text m)
                          :embeddable_text (embeddable-text m)))]
     (merge fn-results sql-results)))
@@ -182,8 +183,12 @@
 
 (defn- spec-index-reducible [search-model & [where-clause]]
   (->> (spec-index-query-where search-model where-clause)
-       t2/reducible-query
-       (eduction (map #(assoc % :model search-model)))))
+       mdb/streaming-reducible-query
+       (eduction (cond-> (map #(assoc % :model search-model))
+                   ;; It's possible to get redundant entries from the indexed-entities table.
+                   ;; We deduplicate only that model to avoid an unbounded set over all documents.
+                   (= "indexed-entity" search-model)
+                   (comp (m/distinct-by (juxt :id :model)))))))
 
 (defn- search-items-reducible []
   (let [models search.spec/search-models
@@ -200,9 +205,6 @@
        (eduction
         (comp
          (map t2.realize/realize)
-         ;; It's possible to get redundant entries from the indexed-entities table.
-         ;; We remove duplicates to avoid creating invalid insert statements.
-         (m/distinct-by (juxt :id :model))
          (map ->document)))))
 
 (defn searchable-documents
@@ -287,13 +289,15 @@
                              (reduce u/rconcat [])
                              query->documents)
               passed-documents (map extract-model-and-id updates)
-              indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
+              ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
+              ;; The eduction will replay the streaming query when passed to update!.
+              indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
               ;; TODO: The list of documents to delete is not completely accurate.
               ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
               ;; This will not work for cases like indexed-entries with compound PKs,
               ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
               ;; Long-term, we should find a better approach to knowing what to purge.
-              to-delete (remove (set indexed-documents) passed-documents)]
+              to-delete (remove indexed-pairs passed-documents)]
 
           (update! documents to-delete))
         {}))))

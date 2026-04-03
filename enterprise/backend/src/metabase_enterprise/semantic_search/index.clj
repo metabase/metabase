@@ -170,7 +170,8 @@
    :model_created_at    (some-> created_at to-instant)
    :model_updated_at    (some-> updated_at to-instant)
    :last_viewed_at      (some-> last_viewed_at to-instant)
-   :legacy_input        [:cast (json/encode legacy_input) :jsonb]
+   ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
+   :legacy_input        [:cast (if (string? legacy_input) legacy_input (json/encode legacy_input)) :jsonb]
    :metadata            [:cast (json/encode (dissoc doc :embedding)) :jsonb]
    :embedding           [:raw (format-embedding embedding)]
    :text_search_vector  (if (:name doc)
