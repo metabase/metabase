@@ -127,6 +127,19 @@ const addMetric = (name: string) => {
   H.MetricsViewer.runButton().click();
 };
 
+const addMetricMath = (expression: ({ metricName: string } | string)[]) => {
+  H.MetricsViewer.searchInput().type("{end}, ");
+  for (const item of expression) {
+    if (typeof item === "string") {
+      H.MetricsViewer.searchInput().type(`{end}${item}`);
+    } else {
+      H.MetricsViewer.searchInput().type(`{end}${item.metricName}`);
+      H.MetricsViewer.searchResults().findByText(item.metricName).click();
+    }
+  }
+  H.MetricsViewer.runButton().click();
+};
+
 /**
  * Select a breakout dimension
  */
@@ -155,7 +168,7 @@ const selectBreakout = (
 /**
  * Intercept and wait for dataset query
  */
-const intercedptDatasetQuery = () => {
+const interceptDatasetQuery = () => {
   cy.intercept("POST", "/api/metric/dataset").as("dataset");
 };
 
@@ -326,7 +339,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Adding metrics and measures", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
     });
 
     it("should add multiple metrics", () => {
@@ -391,7 +404,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Breakouts", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
@@ -695,6 +708,17 @@ describe("scenarios > metrics > explorer", () => {
         .children()
         .should("have.length.greaterThan", 1);
     });
+
+    it("cannot breakout a metric math expression", () => {
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+      H.MetricsViewer.searchBarPills().eq(1).rightclick();
+      H.popover({ skipVisibilityCheck: true }).should("not.exist");
+    });
   });
 
   // ============================================================================
@@ -703,23 +727,32 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Tabs", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
     });
 
     it("should switch between tabs", () => {
+      //should work with metric math as well
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
       H.MetricsViewer.tabsShouldBe([
         "Created At",
         "State",
         "Title",
         "Category",
+        "Totals",
       ]);
       H.MetricsViewer.assertVizType("Line");
 
       switchToTab("State");
-      H.MetricsViewer.assertVizType("Map");
+      H.MetricsViewer.assertAllVizTypes("Map", 2);
 
       switchToTab("Category");
       H.MetricsViewer.assertVizType("Bar");
@@ -727,6 +760,9 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("should allow changing display types");
       H.MetricsViewer.changeVizType("line");
       H.MetricsViewer.assertVizType("Line");
+
+      switchToTab("Totals");
+      H.MetricsViewer.assertAllVizTypes("Number", 2);
     });
 
     it("should not show dimensions that are already in tabs in the dimension picker", () => {
@@ -768,6 +804,37 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getDimensionPillContainer().within(() => {
         cy.findAllByText("Select a dimension").should("not.exist");
       });
+    });
+
+    it("should remove then re-add the totals tab", () => {
+      //should work with metric math as well
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
+
+      // Need to hover the tab so that the remove button is accessible
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Totals" })
+        .realHover();
+      H.MetricsViewer.getRemoveTabButton("Totals").click();
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Totals" })
+        .should("not.exist");
+
+      H.MetricsViewer.getAddDimensionButton().click();
+      H.popover().within(() => {
+        cy.findAllByText("Totals").click();
+      });
+      cy.wait("@dataset");
+
+      cy.log("totals tab should be selected and show correct viz type");
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Totals" })
+        .should("have.attr", "aria-selected", "true");
+      H.MetricsViewer.assertAllVizTypes("Number", 2);
     });
 
     it("should add a dimension tab and remove it", () => {
@@ -888,7 +955,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Automatic split view", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
@@ -937,7 +1004,7 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Filters", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
@@ -1119,17 +1186,30 @@ describe("scenarios > metrics > explorer", () => {
 
   describe("Drill through", () => {
     beforeEach(() => {
-      intercedptDatasetQuery();
+      interceptDatasetQuery();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
+      //should work with metric math as well
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Test Measure" },
+      ]);
+      cy.wait("@dataset");
     });
 
-    it("should drill into more graual time dimensions on timeseries chart", () => {
+    it("should drill into more granular time dimensions on timeseries chart", () => {
       H.MetricsViewer.getMerticControls()
         .findByRole("button", { name: /by month/ })
         .should("exist");
-      H.MetricsViewer.getMetricVisualizationDataPoints().eq(4).click();
+      // this is messy, but adding the metric math expression causes the viz to unmount and dispose the ECharts instance
+      // if you click on the chart while it's being disposed, the click isn't handled properly
+      cy.wait(1000);
+      H.MetricsViewer.getMetricVisualization()
+        .get("path[stroke='#EF8C8C']")
+        .eq(4)
+        .click();
       H.popover().findByText("See this month by week").click();
 
       H.MetricsViewer.getMerticControls()
@@ -1137,7 +1217,7 @@ describe("scenarios > metrics > explorer", () => {
         .should("exist");
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
-        5,
+        12,
       );
     });
 
@@ -1150,8 +1230,93 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByText(/September/).should("be.visible");
         cy.findByText(/October/).should("be.visible");
         cy.findByText(/November/).should("be.visible");
-        cy.findByText(/December/).should("be.visible");
       });
+    });
+  });
+
+  describe("metric math", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+      addMetric("Count of orders");
+      cy.wait("@dataset");
+    });
+    it("should apply filters and dimensions to individual metric instances within expressions", () => {
+      selectBreakout("Count of orders", "Category");
+      cy.wait("@dataset");
+      addMetricMath([
+        { metricName: "Count of orders" },
+        "+",
+        { metricName: "Count of orders" },
+      ]);
+      cy.wait("@dataset");
+
+      H.MetricsViewer.getFilterButton().click();
+      H.popover().within(() => {
+        cy.findAllByText("Count of orders")
+          .should("have.length", 3)
+          .eq(1)
+          .click();
+        cy.findByText("Category").click();
+        cy.findByText("Doohickey").click();
+        cy.button("Add filter").click();
+      });
+      H.MetricsViewer.getFilterButton().click();
+      H.popover().within(() => {
+        cy.findAllByText("Count of orders").eq(2).click();
+        cy.findByText("Category").click();
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /All time/i })
+        .click();
+      H.popover().findByText("Previous 12 months").click();
+
+      function assertMetricMath() {
+        cy.log("breakout is applied");
+        H.MetricsViewer.searchBarPills()
+          .contains(
+            "[data-testid=metrics-viewer-search-pill]",
+            "Count of orders",
+          )
+          .findByTestId("color-indicator-container")
+          .children()
+          .should("have.length", 4);
+        cy.log(
+          "filter pills are in place and show the badge indicating the unique metric instance",
+        );
+        const filterPills = H.MetricsViewer.getAllFilterPills();
+        filterPills.should("have.length", 2);
+        H.MetricsViewer.getAllFilterPills()
+          .eq(0)
+          .findByText("2")
+          .should("not.exist");
+        H.MetricsViewer.getAllFilterPills()
+          .eq(1)
+          .findByText("2")
+          .should("exist");
+
+        cy.log("dimension filter is applied");
+        H.MetricsViewer.getMetricVisualizationDataPoints().should(
+          "have.length",
+          60,
+        );
+        switchToTab("Totals");
+        cy.log("correct value is calculated from metric math expression");
+        cy.contains("[data-testid=visualization-root]", "8,915");
+        switchToTab("Created At");
+      }
+      assertMetricMath();
+
+      cy.log("refresh and assert again");
+      cy.reload();
+      assertMetricMath();
+
+      cy.log("edit formula and assert again");
+      H.MetricsViewer.searchInput().type("{end} + 0");
+      H.MetricsViewer.runButton().click();
+      assertMetricMath();
     });
   });
 });

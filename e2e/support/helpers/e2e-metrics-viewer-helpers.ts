@@ -34,6 +34,15 @@ export const MetricsViewer = {
       "data-viz-ui-name",
       displayType,
     ),
+  assertAllVizTypes: (displayType: string, expectedLength?: number) => {
+    const subject = MetricsViewer.getAllMetricVisualizations();
+    if (expectedLength !== undefined) {
+      subject.should("have.length", expectedLength);
+    }
+    subject.each(($el) => {
+      cy.wrap($el).should("have.attr", "data-viz-ui-name", displayType);
+    });
+  },
   getMerticControls: () => cy.findByTestId("metrics-viewer-controls"),
   changeVizType: (display: string) =>
     MetricsViewer.getMerticControls()
