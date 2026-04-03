@@ -39,11 +39,8 @@ export function useTransformsBilling() {
     ) ?? false;
 
   const basicTransformsAddOn = addOns?.find(
-    ({ active, billing_period_months, product_type, self_service }) =>
-      active &&
-      self_service &&
-      billing_period_months === billingPeriodMonths &&
-      product_type === "transforms-basic-metered",
+    ({ active, product_type, self_service }) =>
+      active && self_service && product_type === "transforms-basic-metered",
   );
 
   const advancedTransformsAddOn = addOns?.find(
