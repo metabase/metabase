@@ -5,7 +5,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.app-db.core :as app-db]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -58,36 +57,7 @@
    [:user [:maybe UserInfo]]
    [:messages [:sequential MessageDetail]]])
 
-(def ^:private UsageDataPoint
-  "Schema for daily usage data point."
-  [:map
-   [:usage_date :any]
-   [:model [:maybe :string]]
-   [:conversation_count :int]
-   [:unique_users :int]
-   [:user_messages :int]
-   [:assistant_messages :int]
-   [:total_tokens :int]
-   [:estimated_cost :double]])
-
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
-
-(defn- days-ago-sql
-  "Return database-specific SQL for N days ago. Different databases have different
-   syntax for date arithmetic."
-  [n]
-  [:raw (case (app-db/db-type)
-          :postgres (format "CURRENT_TIMESTAMP - INTERVAL '%d days'" n)
-          :h2       (format "DATEADD('DAY', -%d, CURRENT_TIMESTAMP)" n)
-          :mysql    (format "CURRENT_TIMESTAMP - INTERVAL %d DAY" n))])
-
-(defn- cast-to-date-sql
-  "Return database-specific SQL for casting a column to date."
-  [column]
-  (case (app-db/db-type)
-    :postgres [:raw (format "CAST(%s AS DATE)" (name column))]
-    :h2       [:raw (format "CAST(%s AS DATE)" (name column))]
-    :mysql    [:raw (format "DATE(%s)" (name column))]))
 
 (defn- batch-load-users
   "Fetch user info for multiple user IDs in a single query.
@@ -106,46 +76,6 @@
     (mapv #(assoc % :user (get users-by-id (:user_id %))) conversations)))
 
 ;;; -------------------------------------------------- Endpoints --------------------------------------------------
-
-(api.macros/defendpoint :get "/summary"
-  :- [:map
-      [:total_conversations :int]
-      [:total_messages :int]
-      [:total_tokens :int]
-      [:total_cost :double]
-      [:unique_users :int]
-      [:conversations_last_30_days :int]
-      [:tokens_last_30_days :int]
-      [:cost_last_30_days :double]]
-  "Return summary statistics for AI/Metabot usage."
-  []
-  (api/check-superuser)
-  (let [thirty-days-ago (days-ago-sql 30)
-        cost-totals     (t2/query-one {:select [[[:coalesce [:sum :estimated_cost_usd] 0] :total]
-                                                [[:coalesce
-                                                  [:sum [:case [:>= :created_at thirty-days-ago] :estimated_cost_usd]]
-                                                  0] :last_30]]
-                                       :from   [:ai_usage_log]})]
-    {:total_conversations        (or (t2/count :model/MetabotConversation) 0)
-     :total_messages             (or (t2/count :model/MetabotMessage {:where [:= :deleted_at nil]}) 0)
-     :total_tokens               (or (t2/select-one-fn :sum
-                                                       [:model/MetabotMessage [:%sum.total_tokens :sum]]
-                                                       {:where [:= :deleted_at nil]})
-                                     0)
-     :total_cost                 (or (:total cost-totals) 0.0)
-     :unique_users               (or (:count (t2/query-one {:select [[[:count [:distinct :user_id]] :count]]
-                                                            :from   [:metabot_conversation]}))
-                                     0)
-     :conversations_last_30_days (or (t2/count :model/MetabotConversation
-                                               {:where [:>= :created_at thirty-days-ago]})
-                                     0)
-     :tokens_last_30_days        (or (t2/select-one-fn :sum
-                                                       [:model/MetabotMessage [:%sum.total_tokens :sum]]
-                                                       {:where [:and
-                                                                [:= :deleted_at nil]
-                                                                [:>= :created_at thirty-days-ago]]})
-                                     0)
-     :cost_last_30_days          (or (:last_30 cost-totals) 0.0)}))
 
 (api.macros/defendpoint :get "/conversations"
   :- [:map
@@ -233,44 +163,6 @@
                                  :total_tokens (:total_tokens m)
                                  :data         (:data m)})
                               messages)})))
-
-(api.macros/defendpoint :get "/usage"
-  :- [:sequential UsageDataPoint]
-  "Return daily AI usage data for charting. Defaults to last 30 days."
-  [_route-params
-   {:keys [days]}
-   :- [:map
-       [:days {:optional true :default 30} ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [days        (or days 30)
-        days-ago    (days-ago-sql days)
-        date-col    (cast-to-date-sql :m.created_at)
-        ;; Cost query from ai_usage_log, grouped by same dimensions, then joined
-        cost-query  {:select    [[(cast-to-date-sql :created_at) :cost_date]
-                                 [:profile_id :cost_profile]
-                                 [[:coalesce [:sum :estimated_cost_usd] 0] :estimated_cost]]
-                     :from      [:ai_usage_log]
-                     :where     [:>= :created_at days-ago]
-                     :group-by  [(cast-to-date-sql :created_at) :profile_id]}
-        usage-query {:select    [[date-col :usage_date]
-                                 [:m.profile_id :model]
-                                 [[:count [:distinct :c.id]] :conversation_count]
-                                 [[:count [:distinct :c.user_id]] :unique_users]
-                                 [[:count [:case [:= :m.role "user"] 1]] :user_messages]
-                                 [[:count [:case [:= :m.role "assistant"] 1]] :assistant_messages]
-                                 [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
-                                 [[:coalesce :costs.estimated_cost 0] :estimated_cost]]
-                     :from      [[:metabot_message :m]]
-                     :join      [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
-                     :left-join [[cost-query :costs] [:and
-                                                      [:= :costs.cost_date date-col]
-                                                      [:= :costs.cost_profile :m.profile_id]]]
-                     :where     [:and
-                                 [:= :m.deleted_at nil]
-                                 [:>= :m.created_at days-ago]]
-                     :group-by  [date-col :m.profile_id :costs.estimated_cost]
-                     :order-by  [[date-col :asc]]}]
-    (t2/query usage-query)))
 
 ;;; -------------------------------------------------- Routes --------------------------------------------------
 

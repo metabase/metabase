@@ -1,9 +1,10 @@
+import type { DateFilterValue } from "metabase/querying/common/types";
+import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import type { ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
 /**
- * Find a column by name from a column-fetching function.
- * Handles case-insensitive matching for H2 vs Postgres column naming.
+ * Case-insensitive column lookup — handles H2 uppercasing vs Postgres lowercase.
  */
 export function findColumn(
   query: Query,
@@ -19,22 +20,46 @@ export function findColumn(
 }
 
 /**
- * Add a "last N days" relative date filter on created_at to a query.
+ * Apply a DatePickerValue filter to a date column on the query.
+ * Uses the same filter clause generation as Metabase's standard date picker.
  */
-export function addDateFilter(query: Query, days: number): Query {
-  const createdAtCol = findColumn(query, "created_at", Lib.filterableColumns);
-  if (!createdAtCol) {
+export function applyDateFilter(
+  query: Query,
+  dateFilter: DateFilterValue,
+  columnName = "created_at",
+): Query {
+  const dateCol = findColumn(query, columnName, Lib.filterableColumns);
+  if (!dateCol) {
     return query;
   }
 
-  const dateFilter = Lib.relativeDateFilterClause({
-    column: createdAtCol,
-    value: -days,
-    unit: "day",
-    offsetValue: null,
-    offsetUnit: null,
-    options: { includeCurrent: true },
-  });
+  const clause = getDateFilterClause(dateCol, dateFilter);
+  return Lib.filter(query, 0, clause);
+}
 
-  return Lib.filter(query, 0, dateFilter);
+/**
+ * Add a sum aggregation for the given column name.
+ */
+export function addSumAggregation(query: Query, columnName: string): Query {
+  const operators = Lib.availableAggregationOperators(query, 0);
+  const sumOp = operators.find((op) => {
+    const info = Lib.displayInfo(query, 0, op);
+    return info.shortName === "sum";
+  });
+  if (!sumOp) {
+    return query;
+  }
+
+  const columns = Lib.aggregationOperatorColumns(sumOp);
+  const lowerName = columnName.toLowerCase();
+  const col = columns.find((c) => {
+    const info = Lib.displayInfo(query, 0, c);
+    return info.name?.toLowerCase() === lowerName;
+  });
+  if (!col) {
+    return query;
+  }
+
+  const clause = Lib.aggregationClause(sumOp, col);
+  return Lib.aggregate(query, 0, clause);
 }

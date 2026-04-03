@@ -1,12 +1,3 @@
-export type MetabotSummary = {
-  total_conversations: number;
-  total_messages: number;
-  total_tokens: number;
-  unique_users: number;
-  conversations_last_30_days: number;
-  tokens_last_30_days: number;
-};
-
 export type MetabotUserInfo = {
   id: number;
   email?: string;
@@ -65,14 +56,4 @@ export type ConversationDetail = {
   state: unknown;
   user: MetabotUserInfo | null;
   messages: MessageDetail[];
-};
-
-export type UsageDataPoint = {
-  usage_date: string;
-  model: string | null;
-  conversation_count: number;
-  unique_users: number;
-  user_messages: number;
-  assistant_messages: number;
-  total_tokens: number;
 };

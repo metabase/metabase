@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { Card, Skeleton, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
+import type { VisualizationDisplay } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { VIEW_CONVERSATIONS } from "../../constants";
@@ -15,9 +15,17 @@ import { applyDateFilter, findColumn } from "./query-utils";
 
 type Props = {
   dateFilter: DateFilterValue;
+  breakoutColumn: string;
+  title: string;
+  display?: VisualizationDisplay;
 };
 
-export function ConversationsByDayChart({ dateFilter }: Props) {
+export function BreakoutChart({
+  dateFilter,
+  breakoutColumn,
+  title,
+  display = "row",
+}: Props) {
   const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
 
   const query = useMemo(() => {
@@ -29,21 +37,18 @@ export function ConversationsByDayChart({ dateFilter }: Props) {
     q = applyDateFilter(q, dateFilter);
     q = Lib.aggregateByCount(q, 0);
 
-    const createdAtCol = findColumn(q, "created_at", Lib.breakoutableColumns);
-    if (createdAtCol) {
-      const buckets = Lib.availableTemporalBuckets(q, 0, createdAtCol);
-      const dayBucket = buckets.find((bucket) => {
-        const info = Lib.displayInfo(q, 0, bucket);
-        return info.shortName === "day";
-      });
-      const bucketed = dayBucket
-        ? Lib.withTemporalBucket(createdAtCol, dayBucket)
-        : createdAtCol;
-      q = Lib.breakout(q, 0, bucketed);
+    const col = findColumn(q, breakoutColumn, Lib.breakoutableColumns);
+    if (col) {
+      q = Lib.breakout(q, 0, col);
+    }
+
+    const countCol = findColumn(q, "count", Lib.orderableColumns);
+    if (countCol) {
+      q = Lib.orderBy(q, 0, countCol, "desc");
     }
 
     return q;
-  }, [provider, table, dateFilter]);
+  }, [provider, table, dateFilter, breakoutColumn]);
 
   const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
 
@@ -59,9 +64,8 @@ export function ConversationsByDayChart({ dateFilter }: Props) {
       {
         card: createMockCard({
           dataset_query: jsQuery as any,
-          display: "bar",
+          display,
           visualization_settings: {
-            "graph.x_axis.scale": "timeseries",
             "graph.x_axis.title_text": "",
             "graph.y_axis.title_text": "",
           },
@@ -69,7 +73,7 @@ export function ConversationsByDayChart({ dateFilter }: Props) {
         data: data.data,
       },
     ];
-  }, [data, jsQuery]);
+  }, [data, jsQuery, display]);
 
   if (isFetching || !rawSeries) {
     return <Skeleton h={300} />;
@@ -77,7 +81,9 @@ export function ConversationsByDayChart({ dateFilter }: Props) {
 
   return (
     <Card withBorder p="md" h={350}>
-      <Text fw="bold" mb="sm">{t`Conversations by day`}</Text>
+      <Text fw="bold" mb="sm">
+        {title}
+      </Text>
       <Visualization rawSeries={rawSeries} isDashboard />
     </Card>
   );

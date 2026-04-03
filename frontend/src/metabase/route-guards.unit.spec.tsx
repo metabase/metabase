@@ -72,6 +72,12 @@ describe("route-guards", () => {
       expect(isBackendOnlyPath("/oauth/token")).toBe(true);
     });
 
+    it("should return true for /auth/sso/ paths", () => {
+      expect(isBackendOnlyPath("/auth/sso/slack-connect")).toBe(true);
+      expect(isBackendOnlyPath("/auth/sso/slack-connect/callback")).toBe(true);
+      expect(isBackendOnlyPath("/auth/sso/my-provider")).toBe(true);
+    });
+
     it("should return false for frontend paths", () => {
       expect(isBackendOnlyPath("/")).toBe(false);
       expect(isBackendOnlyPath("/auth/login")).toBe(false);

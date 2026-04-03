@@ -304,6 +304,33 @@
       :else
       ::no-op)))
 
+(defn- views-checksum
+  "Hash the instance_analytics_views SQL files to detect when views have been added or modified."
+  []
+  (when-let [views-dir (io/resource "migrations/instance_analytics_views")]
+    (->> (io/file views-dir)
+         file-seq
+         (remove fs/directory?)
+         (filter #(str/ends-with? (.getName ^java.io.File %) ".sql"))
+         (pmap #(hash (slurp %)))
+         (reduce + 0))))
+
+(defn- maybe-sync-audit-views!
+  "Sync the audit DB schema if the analytics views have changed since the last sync.
+   This ensures new views from migrations are discoverable without waiting for the
+   periodic sync schedule."
+  [audit-db]
+  (let [current (views-checksum)
+        last    (audit-app.settings/last-analytics-views-checksum)]
+    (when (and current (not= current last))
+      (log/info "Analytics views changed, syncing Audit DB schema")
+      (let [sync-future (future
+                          (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
+                          (log/info "Audit DB views sync complete."))]
+        (when config/is-test?
+          @sync-future))
+      (audit-app.settings/last-analytics-views-checksum! current))))
+
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit
   content if it is available."
@@ -315,4 +342,5 @@
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db
         (fn []
-          (maybe-load-analytics-content! audit-db)))))))
+          (maybe-load-analytics-content! audit-db))))
+      (maybe-sync-audit-views! audit-db))))

@@ -1,7 +1,7 @@
-// Hardcoded IDs for the application database and metabot tables.
-// These correspond to Metabase's internal metadata IDs for the synced app DB.
-export const DATABASE_ID = 2;
-export const METABOT_CONVERSATION_TABLE_ID = 177;
-export const METABOT_MESSAGE_TABLE_ID = 148;
-export const METABOT_PROMPT_TABLE_ID = 184;
-export const METABOT_TABLE_ID = 135;
+// The internal/audit database has a fixed ID across all Metabase instances.
+export const AUDIT_DB_ID = 13371337;
+
+// View names in the audit database for metabot analytics.
+export const VIEW_CONVERSATIONS = "v_metabot_conversations";
+export const VIEW_MESSAGES = "v_metabot_messages";
+export const VIEW_USAGE = "v_metabot_usage";

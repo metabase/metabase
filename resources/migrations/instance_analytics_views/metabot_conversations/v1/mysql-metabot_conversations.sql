@@ -7,6 +7,7 @@ SELECT
     c.user_id,
     CONCAT('user_', c.user_id)                                        AS user_qualified_id,
     c.summary,
+    COALESCE(CONCAT(u.first_name, ' ', u.last_name), u.email)        AS user_display_name,
     COUNT(m.id)                                                       AS message_count,
     COUNT(CASE WHEN m.role = 'user' THEN 1 END)                       AS user_message_count,
     COUNT(CASE WHEN m.role = 'assistant' THEN 1 END)                  AS assistant_message_count,
@@ -22,7 +23,9 @@ SELECT
      ORDER BY mm.created_at
      LIMIT 1)                                                         AS model
 FROM metabot_conversation c
+LEFT JOIN core_user u
+    ON u.id = c.user_id
 LEFT JOIN metabot_message m
     ON m.conversation_id = c.id
    AND m.deleted_at IS NULL
-GROUP BY c.id, c.created_at, c.user_id, c.summary;
+GROUP BY c.id, c.created_at, c.user_id, c.summary, u.first_name, u.last_name, u.email;
