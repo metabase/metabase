@@ -190,6 +190,7 @@ export type ListTransformsRequest = {
   last_run_start_time?: string;
   last_run_statuses?: TransformRunStatus[];
   tag_ids?: TransformTagId[];
+  database_id?: DatabaseId;
 };
 
 export type ListTransformJobsRequest = {

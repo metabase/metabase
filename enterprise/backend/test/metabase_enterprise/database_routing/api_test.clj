@@ -129,7 +129,19 @@
                  :model/Database {db-id :id} {:router_database_id router-db-id}]
     (is (= "Cannot make a destination database a router database"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"})))))
+                                 {:user_attribute "db_name"}))))
+  (mt/with-premium-features #{:database-routing :transforms}
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Transform _ {:name   "Test Transform"
+                                       :source {:type  "query"
+                                                :query {:database db-id
+                                                        :type     :native
+                                                        :native   {:query "SELECT 1"}}}
+                                       :target {:database db-id
+                                                :table    "test_table"}}]
+      (is (= "Cannot enable database routing for a database with transforms"
+             (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                   {:user_attribute "db_name"}))))))
 
 (deftest can-delete-router-databases
   (mt/with-temp [:model/Database {db-id :id} {}
