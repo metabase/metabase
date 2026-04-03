@@ -9,7 +9,6 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import { ActionButton } from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
@@ -163,8 +162,10 @@ export const CreateOrEditQuestionAlertModal = ({
     useGetChannelInfoQuery();
   const { data: hookChannels } = useListChannelsQuery();
 
-  const [createNotification] = useCreateNotificationMutation();
-  const [updateNotification] = useUpdateNotificationMutation();
+  const [createNotification, { isLoading: isCreating }] =
+    useCreateNotificationMutation();
+  const [updateNotification, { isLoading: isUpdating }] =
+    useUpdateNotificationMutation();
   const [sendUnsavedNotification, { isLoading }] =
     useSendUnsavedNotificationMutation();
 
@@ -233,8 +234,7 @@ export const CreateOrEditQuestionAlertModal = ({
           }),
         );
 
-        // need to throw to show error in ActionButton
-        throw result.error;
+        return;
       }
 
       dispatch(
@@ -430,15 +430,16 @@ export const CreateOrEditQuestionAlertModal = ({
         >
           {isLoading ? t`Sending…` : t`Send now`}
         </Button>
-        <Flex gap="md">
+        <Flex align="center" gap="sm">
           <Button onClick={onClose}>{t`Cancel`}</Button>
-          <ActionButton
-            primary
-            disabled={!isValid}
-            actionFn={onCreateOrEditAlert}
+          <Button
+            variant="filled"
+            disabled={!isValid || isCreating || isUpdating}
+            loading={isCreating || isUpdating}
+            onClick={onCreateOrEditAlert}
           >
             {isEditMode && hasChanges ? t`Save changes` : t`Done`}
-          </ActionButton>
+          </Button>
         </Flex>
       </Flex>
     </Modal>
