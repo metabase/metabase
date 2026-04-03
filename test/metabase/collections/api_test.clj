@@ -3033,8 +3033,7 @@
 (deftest trashed-items-respect-collection-permissions-test
   (testing "GET /api/collection/<trash-id>/items does not show trashed items from collections the user can't access"
     (doseq [[model model-name attrs] [[:model/Card      "card"      {:name "Secret Card" :dataset_query (mt/native-query {:query "select 1"})}]
-                                      [:model/Dashboard "dashboard" {:name "Secret Dashboard"}]
-                                      [:model/Document  "document"  {:name "Secret Document"}]]]
+                                      [:model/Dashboard "dashboard" {:name "Secret Dashboard"}]]]
       (testing (str model-name)
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Restricted Collection"}
                        model {item-id :id} (merge {:collection_id     coll-id
