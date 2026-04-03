@@ -968,7 +968,7 @@ describe("applyTrackedDefinitions", () => {
   });
 
   it("preserves reference identity for expression entries when no tokens change", () => {
-    const text = "5 + 5";
+    const text = "Revenue + 5";
     const parsed = parseFullText(text, entries);
     const result = applyTrackedDefinitions(parsed, [], text, entries);
     expect(result[0]).toBe(parsed[0]);

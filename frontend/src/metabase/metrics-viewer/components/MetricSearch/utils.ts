@@ -977,10 +977,10 @@ export function applyTrackedDefinitions(
     if (!identityByPosition.has(key)) {
       return;
     }
-    const tracked = identityByPosition.get(key)!;
+    const tracked = identityByPosition.get(key);
 
     if (visit.kind === "standalone") {
-      metricOverrides.set(visit.entity, tracked);
+      metricOverrides.set(visit.entity, tracked ?? null);
       return;
     }
 
@@ -989,6 +989,7 @@ export function applyTrackedDefinitions(
       tokenMap = new Map();
       exprTokenOverrides.set(visit.entity, tokenMap);
     }
+    // remove any existing breakouts - not supported in math expressions
     const definition =
       tracked != null ? stripDefinitionProjections(tracked) : undefined;
     tokenMap.set(visit.exprTokenIndex, definition);
@@ -996,7 +997,7 @@ export function applyTrackedDefinitions(
 
   return newEntities.map((entity) => {
     if (metricOverrides.has(entity)) {
-      return { ...entity, definition: metricOverrides.get(entity)! };
+      return { ...entity, definition: metricOverrides.get(entity) ?? null };
     }
 
     const tokenMap = exprTokenOverrides.get(entity);
