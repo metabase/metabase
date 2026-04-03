@@ -41,7 +41,7 @@
   "Columns of Field or Table that classifiers are allowed to be set."
   [model]
   (case model
-    :model/Field #{:semantic_type :preview_display :has_field_values}
+    :model/Field #{:semantic_type :preview_display :has_field_values :visibility_type}
     :model/Table #{:entity_type}))
 
 (def ^:private FieldOrTableInstance

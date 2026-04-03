@@ -137,7 +137,8 @@
     ;; Some DBs such as MSSQL can return columns with blank name
     [:name      :string]
     [:base_type :keyword]
-    [:semantic_type {:optional true} [:maybe :keyword]]]
+    [:semantic_type {:optional true} [:maybe :keyword]]
+    [:visibility_type {:optional true} [:maybe [:or :keyword :string]]]]
    ::analyze.schema/qp-results-cased-map])
 
 (mu/defn infer-semantic-type-by-name :- [:maybe :keyword]
@@ -158,6 +159,29 @@
                 (sync-util/name-for-logging field-or-column)
                 inferred-semantic-type)
     (assoc field-or-column :semantic_type inferred-semantic-type)))
+
+(def ^:private password-or-token-pattern
+  #"(?i)password|token|secret|salt")
+
+(mu/defn infer-visibility-type-by-name :- [:maybe :keyword]
+  "Classifier that infers the visibility type of a `field` based on its name."
+  [field-or-column :- FieldOrColumn]
+  (when (and (not= (:visibility_type field-or-column) :sensitive)
+             (not= (:visibility_type field-or-column) "sensitive")
+             (not (str/blank? (:name field-or-column))))
+    (let [field-name (u/lower-case-en (:name field-or-column))]
+      (when (re-find password-or-token-pattern field-name)
+        :sensitive))))
+
+(mu/defn infer-and-assoc-visibility-type-by-name :- [:maybe FieldOrColumn]
+  "Returns `field-or-column` with `:visibility_type` set to `:sensitive` if its name contains sensitive words"
+  [field-or-column :- FieldOrColumn
+   _fingerprint    :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
+  (when-let [inferred-visibility-type (infer-visibility-type-by-name field-or-column)]
+    (log/debugf "Based on the name of %s, we're giving it a visibility type of %s."
+                (sync-util/name-for-logging field-or-column)
+                inferred-visibility-type)
+    (assoc field-or-column :visibility_type inferred-visibility-type)))
 
 (defn- prefix-or-postfix
   [s]
