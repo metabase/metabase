@@ -194,6 +194,9 @@ function useTouchBrush({
 
         if (activeRef.current) {
           activeRef.current = false;
+          // Defer so ECharts finishes processing the current pointer event
+          // before we yank brush mode away. Without this, ECharts can get
+          // stuck with brush enabled after both fingers are released.
           setTimeout(disableBrush, 0);
         }
 

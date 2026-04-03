@@ -400,6 +400,55 @@ describe("use-brush", () => {
 
         expectBrushDisabled(dispatchAction);
       });
+
+      it("does not freeze brush mode after second finger tap during active brush", () => {
+        const { el, dispatchAction } = setupTouchBrush();
+
+        // Long press activates brush
+        firePointer(el, "pointerdown", {
+          clientX: 100,
+          clientY: 100,
+          isPrimary: true,
+          pointerId: 1,
+        });
+        act(() => jest.advanceTimersByTime(500));
+        expectBrushEnabled(dispatchAction);
+        dispatchAction.mockClear();
+
+        // Second finger tap while brush is active
+        firePointer(el, "pointerdown", {
+          clientX: 200,
+          clientY: 100,
+          isPrimary: false,
+          pointerId: 2,
+        });
+
+        // disableBrush must be deferred — calling it synchronously during
+        // the pointer event causes ECharts to get stuck with brush enabled.
+        expect(dispatchAction).not.toHaveBeenCalled();
+
+        act(() => jest.runAllTimers());
+        expectBrushDisabled(dispatchAction);
+        dispatchAction.mockClear();
+
+        // Both fingers released
+        firePointer(el, "pointerup", { isPrimary: false, pointerId: 2 });
+        firePointer(el, "pointerup", { isPrimary: true, pointerId: 1 });
+        act(() => jest.runAllTimers());
+
+        // Brush should not be re-enabled — no stuck brush mode
+        expectBrushNotEnabled(dispatchAction);
+
+        // A new long press should work normally
+        firePointer(el, "pointerdown", {
+          clientX: 100,
+          clientY: 100,
+          isPrimary: true,
+          pointerId: 1,
+        });
+        act(() => jest.advanceTimersByTime(500));
+        expectBrushEnabled(dispatchAction);
+      });
     });
   });
 });
