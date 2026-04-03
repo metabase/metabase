@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics.sdk :as sdk]
+   [metabase.config.core :as config]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.events.core :as events]
@@ -45,15 +46,16 @@
           (is (nil? (:tenant_id (latest-view (u/id user) (u/id card))))))))))
 
 (deftest card-read-tenant-id-test
-  (mt/with-premium-features #{:audit-app :tenants}
-    (mt/with-temp [:model/Tenant tenant {:name "Test Tenant" :slug "test-tenant"}
-                   :model/User   user   {:tenant_id (:id tenant)}
-                   :model/Card   card   {:creator_id (u/id user)}]
-      (testing "tenant_id is populated from current user's tenant"
-        (mt/with-current-user (u/id user)
-          (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/id user) :context :question})
-          (is (= (:id tenant)
-                 (:tenant_id (latest-view (u/id user) (u/id card))))))))))
+  (when config/ee-available?
+    (mt/with-premium-features #{:audit-app :tenants}
+      (mt/with-temp [:model/Tenant tenant {:name "Test Tenant" :slug "test-tenant"}
+                     :model/User   user   {:tenant_id (:id tenant)}
+                     :model/Card   card   {:creator_id (u/id user)}]
+        (testing "tenant_id is populated from current user's tenant"
+          (mt/with-current-user (u/id user)
+            (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/id user) :context :question})
+            (is (= (:id tenant)
+                   (:tenant_id (latest-view (u/id user) (u/id card)))))))))))
 
 (deftest card-read-oss-no-view-logging-test
   (mt/with-premium-features #{}
@@ -349,16 +351,17 @@
                  {:order-by [[:id :desc]]}))
 
 (deftest query-execution-tenant-id-test
-  (testing "tenant_id on query_execution comes from *current-user*"
-    (mt/with-temp [:model/Tenant tenant {:name "QE Tenant" :slug "qe-tenant"}
-                   :model/User   user   {:tenant_id (:id tenant)}]
-      (mt/with-current-user (u/id user)
-        (let [query (assoc (mt/mbql-query venues {:limit 1})
-                           :info {:executed-by (u/id user)
-                                  :query-hash  (qp.util/query-hash (mt/mbql-query venues {:limit 1}))
-                                  :context     :question})
-              ei    (#'process-userland-query/query-execution-info query)]
-          (is (= (:id tenant) (:tenant_id ei)))))))
+  (when config/ee-available?
+    (testing "tenant_id on query_execution comes from *current-user*"
+      (mt/with-temp [:model/Tenant tenant {:name "QE Tenant" :slug "qe-tenant"}
+                     :model/User   user   {:tenant_id (:id tenant)}]
+        (mt/with-current-user (u/id user)
+          (let [query (assoc (mt/mbql-query venues {:limit 1})
+                             :info {:executed-by (u/id user)
+                                    :query-hash  (qp.util/query-hash (mt/mbql-query venues {:limit 1}))
+                                    :context     :question})
+                ei    (#'process-userland-query/query-execution-info query)]
+            (is (= (:id tenant) (:tenant_id ei))))))))
   (testing "tenant_id nil when user has no tenant"
     (mt/with-temp [:model/User user {}]
       (mt/with-current-user (u/id user)
