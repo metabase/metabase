@@ -129,6 +129,13 @@
                     :analyzed_entity_type :card
                     :analyzed_entity_id [:in card-ids]))
 
+(defn- finding-stale?
+  "Returns the stale value for a specific entity's analysis finding, or nil if no finding exists."
+  [entity-type entity-id]
+  (t2/select-one-fn :stale :model/AnalysisFinding
+                    :analyzed_entity_type entity-type
+                    :analyzed_entity_id entity-id))
+
 (deftest ^:sequential analyze-batch-picks-up-missing-analyses-test
   (testing "analyze-batch! picks up entities with no pre-existing AnalysisFinding"
     (backfill-all-entity-analyses!)
@@ -230,3 +237,52 @@
               (is (= {gp-id false, p-id false, c-id false}
                      (stale-map [gp-id p-id c-id]))
                   "after check-entities!, all should be re-analyzed (not stale) — wave propagation worked"))))))))
+
+(deftest ^:sequential wave-propagation-through-non-analyzable-entity-test
+  (testing "Wave propagation skips non-analyzable intermediaries (e.g., tables) and reaches cards beyond them"
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          products-id (mt/id :products)]
+      (mt/with-premium-features #{:dependencies}
+        (lib-be/with-metadata-provider-cache
+          (mt/with-model-cleanup [:model/AnalysisFinding]
+            ;; Chain: transform → (depends on) table ← (depends on) card
+            ;; Table is not analyzable, but card should still be reached by the wave
+            (mt/with-temp [:model/Transform {transform-id :id :as transform}
+                           {:source {:type :query :query (lib/query mp products)}
+                            :name "test_wave_transform"
+                            :target {:schema "public" :name "wave_test_table" :type :table}}
+                           :model/Card {card-id :id :as card}
+                           {:dataset_query (lib/query mp products)}
+                           ;; table depends on transform (downstream of transform)
+                           :model/Dependency _ {:from_entity_type :table :from_entity_id products-id
+                                                :to_entity_type :transform :to_entity_id transform-id}
+                           ;; card depends on the same table
+                           :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
+                                                :to_entity_type :table :to_entity_id products-id}]
+              ;; Analyze the transform and card (tables aren't analyzable)
+              (deps.findings/upsert-analysis! transform)
+              (deps.findings/upsert-analysis! card)
+              (is (false? (finding-stale? :card card-id))
+                  "card should start as not stale")
+              ;; Mark only immediate dependents of transform stale
+              ;; The immediate dependent is the table, which is NOT analyzable
+              ;; The card is two hops away: transform → table → card
+              (let [before-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
+                                                     :analyzed_entity_type :card
+                                                     :analyzed_entity_id card-id)]
+                (deps.findings/mark-immediate-dependents-stale! :transform transform-id)
+                (is (false? (finding-stale? :card card-id))
+                    "card should NOT be stale yet — it's two hops away and table is not analyzable")
+                ;; Run entity-check — wave should propagate through the table to reach the card
+                ;; This loop drains all stale entities including any waves
+                (#'task.entity-check/check-entities!)
+                ;; The card should have been re-analyzed (its version should be current).
+                ;; If the wave didn't reach it, the analysis_version will be unchanged.
+                (let [after-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
+                                                      :analyzed_entity_type :card
+                                                      :analyzed_entity_id card-id)]
+                  (is (not= before-version after-version)
+                      "card should have been re-analyzed — wave should propagate through non-analyzable table"))))))))))
+
