@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { Api } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
+import { useDispatch } from "metabase/lib/redux";
 import { AddDataModal } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 
@@ -15,6 +18,7 @@ import type {
   EmbeddingHubStepId,
 } from "../types/embedding-checklist";
 
+import { EmbeddingHubIframeModal } from "./EmbeddingHubIframeModal";
 import { EmbeddingHubXrayPickerModal } from "./EmbeddingHubXrayPickerModal";
 import {
   type StepperCardClickAction,
@@ -23,13 +27,25 @@ import {
 } from "./StepperWithCards/StepperWithCards";
 
 export const EmbeddingHub = () => {
+  const dispatch = useDispatch();
   const embeddingSteps = useGetEmbeddingHubSteps();
   const { data: completedSteps } = useCompletedEmbeddingHubSteps();
 
   const [openedModal, setOpenedModal] =
     useState<EmbeddingHubModalToTrigger | null>(null);
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
 
   const closeModal = () => setOpenedModal(null);
+
+  const handleIframeNavigate = useCallback((url: string) => {
+    closeModal();
+    setIframeSrc(url);
+  }, []);
+
+  const handleIframeClose = useCallback(() => {
+    setIframeSrc(null);
+    dispatch(Api.util.invalidateTags([listTag("embedding-hub-checklist")]));
+  }, [dispatch]);
 
   const lockedSteps: Partial<Record<EmbeddingHubStepId, boolean>> = useMemo(
     () => ({
@@ -110,6 +126,7 @@ export const EmbeddingHub = () => {
         initialTab={
           openedModal?.type === "add-data" ? openedModal?.initialTab : undefined
         }
+        onNavigate={handleIframeNavigate}
       />
       <CreateDashboardModal
         opened={openedModal?.type === "new-dashboard"}
@@ -118,7 +135,9 @@ export const EmbeddingHub = () => {
       <EmbeddingHubXrayPickerModal
         opened={openedModal?.type === "xray-dashboard"}
         onClose={closeModal}
+        onTableSelect={handleIframeNavigate}
       />
+      <EmbeddingHubIframeModal src={iframeSrc} onClose={handleIframeClose} />
       {openedModal?.type === "user-strategy" && (
         <PLUGIN_TENANTS.EditUserStrategyModal onClose={closeModal} />
       )}

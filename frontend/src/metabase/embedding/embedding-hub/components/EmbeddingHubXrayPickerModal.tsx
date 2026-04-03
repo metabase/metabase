@@ -1,23 +1,22 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
-import { useDispatch } from "metabase/lib/redux";
 import type { TableId } from "metabase-types/api";
 
 interface EmbeddingHubXrayPickerModalProps {
   opened: boolean;
   onClose: () => void;
+  onTableSelect?: (url: string) => void;
 }
 
 export const EmbeddingHubXrayPickerModal = ({
   opened,
   onClose,
+  onTableSelect,
 }: EmbeddingHubXrayPickerModalProps) => {
-  const dispatch = useDispatch();
-
   function handleTableSelect(tableId: TableId) {
-    dispatch(push(`/auto/dashboard/table/${tableId}`));
+    onTableSelect?.(`/auto/dashboard/table/${tableId}`);
+    onClose();
   }
 
   if (!opened) {

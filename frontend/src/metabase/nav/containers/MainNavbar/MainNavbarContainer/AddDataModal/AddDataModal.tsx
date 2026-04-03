@@ -24,6 +24,7 @@ interface AddDataModalProps {
   onClose: () => void;
 
   initialTab?: AddDataTab;
+  onNavigate?: (url: string) => void;
 }
 
 interface Tabs {
@@ -37,6 +38,7 @@ export const AddDataModal = ({
   opened,
   onClose,
   initialTab,
+  onNavigate,
 }: AddDataModalProps) => {
   const { areUploadsEnabled, canUploadToDatabase, canManageUploads, isAdmin } =
     useAddDataPermissions();
@@ -152,7 +154,7 @@ export const AddDataModal = ({
               />
             </Tabs.Panel>
             <Tabs.Panel value="db" className={S.panel}>
-              <DatabasesPanel canSeeContent={isAdmin} />
+              <DatabasesPanel canSeeContent={isAdmin} onNavigate={onNavigate} />
             </Tabs.Panel>
             <Tabs.Panel value="gsheets" className={S.panel}>
               <PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel

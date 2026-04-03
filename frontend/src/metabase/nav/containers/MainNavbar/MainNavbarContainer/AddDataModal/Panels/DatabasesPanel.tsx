@@ -9,14 +9,21 @@ import { DatabasePanelEmptyState } from "./AddDataModalEmptyStates";
 
 export const DatabasesPanel = ({
   canSeeContent,
+  onNavigate,
 }: {
   canSeeContent: boolean;
+  onNavigate?: (url: string) => void;
 }) => {
   const dispatch = useDispatch();
 
   const handleDatabaseSelect = (key: string) => {
     trackDatabaseSelect(key);
-    dispatch(push(`/admin/databases/create?engine=${key}`));
+    const url = `/admin/databases/create?engine=${key}`;
+    if (onNavigate) {
+      onNavigate(url);
+    } else {
+      dispatch(push(url));
+    }
   };
 
   return canSeeContent ? (

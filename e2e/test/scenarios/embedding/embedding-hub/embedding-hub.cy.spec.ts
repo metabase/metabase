@@ -27,7 +27,7 @@ describe("scenarios - embedding hub", () => {
         .should("exist");
     });
 
-    it('"Create a dashboard" card should work correctly', () => {
+    it('"Create a dashboard" card should open x-ray dashboard in iframe modal', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Create a dashboard' card");
@@ -43,11 +43,25 @@ describe("scenarios - embedding hub", () => {
         H.pickEntity({ path: ["Databases", "Sample Database", "Accounts"] });
       });
 
-      cy.log("Should navigate to auto dashboard creation");
-      cy.url().should("include", "/auto/dashboard/table/");
+      cy.log("Should stay on setup guide and open iframe modal");
+      cy.url().should("include", "/admin/embedding/setup-guide");
+
+      cy.log("Iframe modal should contain the x-ray dashboard");
+      H.modal().within(() => {
+        cy.get("iframe")
+          .should("exist")
+          .and("have.attr", "src")
+          .and("include", "/auto/dashboard/table/");
+      });
+
+      cy.log("Close the iframe modal");
+      H.modal().findByLabelText("Close").click();
+
+      cy.log("Should still be on the setup guide");
+      cy.url().should("include", "/admin/embedding/setup-guide");
     });
 
-    it('"Connect a database" card should work correctly', () => {
+    it('"Connect a database" card should open database setup in iframe modal', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Connect a database' card");
@@ -59,6 +73,27 @@ describe("scenarios - embedding hub", () => {
       cy.findByRole("dialog").within(() => {
         cy.findByRole("heading", { name: "Add data" }).should("be.visible");
       });
+
+      cy.log("Select a database engine to trigger iframe modal");
+      cy.findByRole("dialog").findByText("PostgreSQL").click();
+
+      cy.log("Should stay on setup guide and open iframe modal");
+      cy.url().should("include", "/admin/embedding/setup-guide");
+
+      cy.log("Add data modal should close");
+      cy.findByRole("heading", { name: "Add data" }).should("not.exist");
+
+      cy.log("Iframe modal should contain the database creation page");
+      cy.get("iframe")
+        .should("exist")
+        .and("have.attr", "src")
+        .and("include", "/admin/databases/create");
+
+      cy.log("Close the iframe modal");
+      H.modal().findByLabelText("Close").click();
+
+      cy.log("Should still be on the setup guide");
+      cy.url().should("include", "/admin/embedding/setup-guide");
     });
 
     it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {
@@ -363,26 +398,17 @@ describe("scenarios - embedding hub", () => {
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
-      cy.log("create an x-ray dashboard via the embedding setup guide");
-      cy.visit("/admin/embedding/setup-guide");
-
-      cy.findByTestId("admin-layout-content")
-        .findByText("Create a dashboard")
-        .click();
-
-      cy.log("select Orders table from the modal");
-      H.modal().within(() => {
-        H.pickEntity({
-          path: ["Databases", "Sample Database", "Orders"],
+      cy.log(
+        "create a dashboard in the 'Automatically Generated Dashboards' collection (simulates saving an x-ray)",
+      );
+      cy.request("POST", "/api/collection", {
+        name: "Automatically Generated Dashboards",
+      }).then(({ body: collection }) => {
+        H.createDashboard({
+          name: "A look at Orders",
+          collection_id: collection.id,
         });
       });
-
-      cy.log("wait for x-ray dashboard to generate and save it");
-      H.main()
-        .findByText("A look at", { exact: false, timeout: 30_000 })
-        .should("be.visible");
-      cy.button("Save this").click();
-      H.undoToast().should("contain", "Your dashboard was saved");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
