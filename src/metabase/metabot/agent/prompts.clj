@@ -226,7 +226,7 @@
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
             has-sql?             (= :yes (:permission/metabot-sql-generation perms))
-            has-nql?             (= :yes (:permission/metabot-nql perms))
+            has-nlq?             (= :yes (:permission/metabot-nlq perms))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
                                   :current_time             current-time
                                   :current_user_info        current-user-info
@@ -237,8 +237,8 @@
                                   :viewing_context          viewing-context
                                   :recent_views             recent-views
                                   :has_sql_generation       has-sql?
-                                  :has_nql                  has-nql?
-                                  :has_query_tools          (or has-sql? has-nql?)
+                                  :has_nlq                  has-nlq?
+                                  :has_query_tools          (or has-sql? has-nlq?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
                                   :custom_instructions      (not-empty
                                                              (case template-name

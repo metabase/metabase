@@ -116,9 +116,9 @@ describe("useUserMetabotPermissions", () => {
     expect(perms.canUseOtherTools).toBe(true);
   });
 
-  it("returns canUseNlq=false when nql is no", async () => {
+  it("returns canUseNlq=false when nlq is no", async () => {
     setup({
-      apiResponse: createMockUserMetabotPermissions({ "metabot-nql": "no" }),
+      apiResponse: createMockUserMetabotPermissions({ "metabot-nlq": "no" }),
     });
     const perms = await getPerms();
     expect(perms.canUseMetabot).toBe(true);

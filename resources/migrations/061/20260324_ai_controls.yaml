@@ -84,7 +84,7 @@ databaseChangeLog:
               CROSS JOIN (
                 SELECT 'permission/metabot' AS perm_type, 'yes' AS perm_value
                 UNION ALL SELECT 'permission/metabot-sql-generation', 'yes'
-                UNION ALL SELECT 'permission/metabot-nql', 'yes'
+                UNION ALL SELECT 'permission/metabot-nlq', 'yes'
                 UNION ALL SELECT 'permission/metabot-other-tools', 'yes'
               ) AS d
               WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')

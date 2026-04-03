@@ -318,7 +318,7 @@ export type MetabotSlackSettings =
 
 export enum AIToolKey {
   Metabot = "permission/metabot",
-  ChatAndNLQ = "permission/metabot-nql",
+  ChatAndNLQ = "permission/metabot-nlq",
   SQLGeneration = "permission/metabot-sql-generation",
   OtherTools = "permission/metabot-other-tools",
 }
@@ -340,7 +340,7 @@ export type UpdateMetabotPermissionsRequest = {
 export type UserMetabotPermissions = {
   metabot: "yes" | "no";
   "metabot-sql-generation": "yes" | "no";
-  "metabot-nql": "yes" | "no";
+  "metabot-nlq": "yes" | "no";
   "metabot-other-tools": "yes" | "no";
 };
 

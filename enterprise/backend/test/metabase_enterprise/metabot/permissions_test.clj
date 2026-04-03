@@ -14,7 +14,7 @@
         (let [perms (scope/resolve-user-permissions user-id)]
           ;; all-internal-users magic group has yes from migration
           (is (= :yes (:permission/metabot-sql-generation perms)))
-          (is (= :yes (:permission/metabot-nql perms))))))))
+          (is (= :yes (:permission/metabot-nlq perms))))))))
 
 (deftest resolve-user-permissions-stored-test
   (mt/with-premium-features #{:ai-controls}
@@ -29,7 +29,7 @@
         (let [perms (scope/resolve-user-permissions user-id)]
           (is (= :yes (:permission/metabot-sql-generation perms)))
           ;; all-internal-users magic group has :yes for nql from migration
-          (is (= :yes (:permission/metabot-nql perms))))))))
+          (is (= :yes (:permission/metabot-nlq perms))))))))
 
 (deftest resolve-user-permissions-most-permissive-test
   (mt/with-premium-features #{:ai-controls}
@@ -46,13 +46,13 @@
                                                   :perm_type  :permission/metabot-sql-generation
                                                   :perm_value :yes}
                      :model/MetabotPermissions _ {:group_id   group-a
-                                                  :perm_type  :permission/metabot-nql
+                                                  :perm_type  :permission/metabot-nlq
                                                   :perm_value :no}
                      :model/MetabotPermissions _ {:group_id   group-b
-                                                  :perm_type  :permission/metabot-nql
+                                                  :perm_type  :permission/metabot-nlq
                                                   :perm_value :yes}]
         (let [perms (scope/resolve-user-permissions user-id)]
           (is (= :yes (:permission/metabot-sql-generation perms))
               ":yes wins over :no for sql-generation")
-          (is (= :yes (:permission/metabot-nql perms))
+          (is (= :yes (:permission/metabot-nlq perms))
               ":yes wins over :no for nql"))))))

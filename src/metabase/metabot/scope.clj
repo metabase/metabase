@@ -104,7 +104,7 @@
   "Metabot permission definitions. Values are ordered from most permissive to least permissive."
   {:permission/metabot                  {:values [:yes :no]}
    :permission/metabot-sql-generation   {:values [:yes :no]}
-   :permission/metabot-nql              {:values [:yes :no]}
+   :permission/metabot-nlq              {:values [:yes :no]}
    :permission/metabot-other-tools      {:values [:yes :no]}})
 
 (def perm-types
@@ -115,7 +115,7 @@
   "Default values for each metabot permission type."
   {:permission/metabot                  :no
    :permission/metabot-sql-generation   :no
-   :permission/metabot-nql              :no
+   :permission/metabot-nlq              :no
    :permission/metabot-other-tools      :no})
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@
 
 (def ^:dynamic *current-user-metabot-permissions*
   "Map of metabot permission type to value for the current user.
-  e.g. `{:permission/metabot-sql-generation :yes, :permission/metabot-nql :no, ...}`.
+  e.g. `{:permission/metabot-sql-generation :yes, :permission/metabot-nlq :no, ...}`.
   Bind in the request path alongside `*current-user-scope*`. When nil,
   consumers should fall back to `perm-type-defaults`."
   nil)
@@ -143,7 +143,7 @@
   "Map from metabot permission type to the wildcard scope strings granted when
   that permission is `:yes`."
   {:permission/metabot-sql-generation #{"agent:sql:*" "agent:transforms:*" "agent:snippets:*"}
-   :permission/metabot-nql            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*"}
+   :permission/metabot-nlq            #{"agent:notebook:*" "agent:query:*" "agent:table:*" "agent:metric:*"}
    :permission/metabot-other-tools    #{"agent:viz:*" "agent:dashboard:*" "agent:document:*" "agent:alert:*"}})
 
 (def always-granted-scopes
@@ -154,7 +154,7 @@
   "Permissions map granting all permissions. Used for superuser context."
   {:permission/metabot                :yes
    :permission/metabot-sql-generation :yes
-   :permission/metabot-nql            :yes
+   :permission/metabot-nlq            :yes
    :permission/metabot-other-tools    :yes})
 
 ;;; ──────────────────────────────────────────────────────────────────
@@ -178,7 +178,7 @@
   OSS implementation returns defaults for all users."
   metabase-enterprise.metabot.permissions
   [_user-id]
-  perm-type-defaults)
+  all-yes-permissions)
 
 (defn user-metabot-perms->scopes
   "Convert a resolved metabot permissions map into a set of scope strings.
