@@ -179,21 +179,22 @@
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
 
 (deftest views-checksum-works-for-jar-resources-test
-  (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar" (make-array java.nio.file.attribute.FileAttribute 0))
-        resource "migrations/instance_analytics_views"
-        jar-url  (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]
+  (let [jar-path  (Files/createTempFile "instance-analytics-views" ".jar" (make-array java.nio.file.attribute.FileAttribute 0))
+        resource  "migrations/instance_analytics_views"
+        contents  ["select 1;" "select 2;"]
+        expected  (reduce + 0 (map hash contents))
+        jar-url   (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]
     (try
       (with-open [out (-> jar-path Files/newOutputStream io/output-stream JarOutputStream.)]
-        (doseq [[path contents] [[(str resource "/users/v1/postgres-users.sql") "select 1;"]
-                                 [(str resource "/dashboards/v1/postgres-dashboards.sql") "select 2;"]]]
+        (doseq [[path sql] [[(str resource "/users/v1/postgres-users.sql") (first contents)]
+                            [(str resource "/dashboards/v1/postgres-dashboards.sql") (second contents)]]]
           (.putNextEntry out (JarEntry. path))
-          (.write out (.getBytes ^String contents StandardCharsets/UTF_8))
+          (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
           (.closeEntry out)))
       (with-redefs [io/resource (fn [path]
                                   (when (= path resource)
                                     jar-url))]
-        (is (integer? (#'ee-audit/views-checksum)))
-        (is (pos-int? (#'ee-audit/views-checksum)))))
+        (is (= expected (#'ee-audit/views-checksum)))))
       (finally
         (Files/deleteIfExists jar-path)))))
 
