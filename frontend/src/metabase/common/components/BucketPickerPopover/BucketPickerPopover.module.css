@@ -1,32 +1,26 @@
 .triggerButton {
   border-radius: 0;
   visibility: hidden;
-  color: var(--mb-color-text-tertiary-inverse);
+  color: var(
+    --select-list-item-text-color,
+    var(--mb-color-text-tertiary-inverse)
+  );
   border-left: 2px solid var(--mb-color-border-subtle);
 }
 
 *:hover > .triggerButton {
   visibility: visible;
-  color: var(--mb-color-text-primary-inverse);
 }
 
 /* No hover on touch devices, so always show the button with readable text */
 @media (hover: none) and (pointer: coarse) {
   .triggerButton {
     visibility: visible;
-    color: var(--mb-color-brand);
-  }
-
-  :global([aria-selected="true"]) .triggerButton {
-    color: var(--mb-color-text-primary-inverse);
+    color: var(--select-list-item-text-color, var(--mb-color-brand));
   }
 
   .chevronIcon {
-    color: var(--mb-color-brand);
-  }
-
-  :global([aria-selected="true"]) .chevronIcon {
-    color: var(--mb-color-text-primary-inverse);
+    color: var(--select-list-item-text-color, var(--mb-color-brand));
   }
 }
 
@@ -36,7 +30,10 @@
 }
 
 .chevronIcon {
-  color: var(--mb-color-text-primary-inverse);
+  color: var(
+    --select-list-item-text-color,
+    var(--mb-color-text-primary-inverse)
+  );
   flex: 0 0 auto;
 }
 
