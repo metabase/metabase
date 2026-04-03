@@ -1,7 +1,7 @@
 import type { Advisory } from "metabase-types/api";
 
 import type { AdvisoryFilter } from "./types";
-import { filterAdvisories, sortAdvisories } from "./utils";
+import { filterAdvisories, isAffected, sortAdvisories } from "./utils";
 
 const makeAdvisory = (overrides: Partial<Advisory>): Advisory => ({
   advisory_id: "SA-001",
@@ -24,6 +24,23 @@ const ALL_PASS_FILTER: AdvisoryFilter = {
   status: "all",
   showAcknowledged: true,
 };
+
+describe("isAffected", () => {
+  it("should return true for active advisories", () => {
+    expect(isAffected(makeAdvisory({ match_status: "active" }))).toBe(true);
+  });
+
+  it("should return true for error advisories (fail-open)", () => {
+    expect(isAffected(makeAdvisory({ match_status: "error" }))).toBe(true);
+  });
+
+  it.each(["not_affected", "resolved"] as const)(
+    "should return false for %s advisories",
+    (status) => {
+      expect(isAffected(makeAdvisory({ match_status: status }))).toBe(false);
+    },
+  );
+});
 
 describe("sortAdvisories", () => {
   it("should place affected items before non-affected items", () => {

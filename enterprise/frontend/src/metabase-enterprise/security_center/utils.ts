@@ -11,7 +11,9 @@ const SEVERITY_ORDER: Record<AdvisorySeverity, number> = {
 };
 
 export function isAffected(advisory: Advisory): boolean {
-  return advisory.match_status === "active";
+  return (
+    advisory.match_status === "active" || advisory.match_status === "error"
+  );
 }
 
 export function isAcknowledged(advisory: Advisory): boolean {
