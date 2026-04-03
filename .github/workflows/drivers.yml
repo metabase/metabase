@@ -73,7 +73,7 @@ jobs:
           # branch context, labels, and file changes to decide what runs.
           MAGE_ARGS=(
             --git-ref="${BASE_REF}"
-            --is-master-or-release="${REF_NAME}"
+            --is-master-or-release="${IS_MASTER_OR_RELEASE}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
           )
@@ -89,7 +89,7 @@ jobs:
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> $GITHUB_OUTPUT
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
-          REF_NAME: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}
+          IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}
         shell: bash
 
   be-tests-athena-ee:
