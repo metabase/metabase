@@ -71,7 +71,8 @@
     (log/info "Not starting dependency entity check job because the batch size is not positive")))
 
 (defn trigger-entity-check-job!
-  "Trigger the DependencyEntityCheck job to run immediately.
-  Use this when entities have been marked stale and need re-analysis."
+  "Trigger the DependencyEntityCheck job to run after a brief delay.
+  The 1-second delay ensures the calling transaction has committed before
+  the job checks for stale entities."
   []
-  (schedule-next-run! 0))
+  (schedule-next-run! 1))

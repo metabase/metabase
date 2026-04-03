@@ -76,17 +76,31 @@
   (into [:enum] dependable-entities))
 
 (defn- mark-supported-dependents-stale!
-  "Given a map of {entity-type [entity-ids]}, mark all supported types as stale.
+  "Given a map of {entity-type [entity-ids]}, mark all supported (analyzable) types as stale.
+  For non-analyzable entities (e.g., tables), looks through to their dependents so the wave
+  can reach analyzable entities beyond them.
   Returns true if any supported dependents were found."
   [dependents]
-  (let [supported-dependents (into {}
-                                   (filter (fn [[dep-type dep-ids]]
-                                             (and (analyzable-entities dep-type)
-                                                  (seq dep-ids))))
-                                   dependents)]
-    (doseq [[dep-type dep-ids] supported-dependents]
+  (let [{analyzable true non-analyzable false}
+        (group-by (fn [[dep-type _]] (boolean (analyzable-entities dep-type)))
+                  (filter (fn [[_ dep-ids]] (seq dep-ids)) dependents))
+        ;; For non-analyzable entities, find their direct dependents
+        pass-through-dependents
+        (when (seq non-analyzable)
+          (let [key-seq (for [[dep-type dep-ids] non-analyzable
+                              id dep-ids]
+                          [dep-type id])
+                deps-map (models.dependency/direct-dependents key-seq)]
+            (models.dependency/group-nodes (into #{} cat (vals deps-map)))))
+        ;; Merge the analyzable dependents with the pass-through dependents
+        all-supported (merge-with into
+                                  (into {} analyzable)
+                                  (into {}
+                                        (filter (fn [[dep-type _]] (analyzable-entities dep-type)))
+                                        pass-through-dependents))]
+    (doseq [[dep-type dep-ids] all-supported]
       (deps.analysis-finding/mark-stale! dep-type dep-ids))
-    (boolean (seq supported-dependents))))
+    (boolean (seq all-supported))))
 
 (mu/defn mark-dependents-stale! :- :boolean
   "Mark all transitive dependents of an entity as stale for re-analysis.

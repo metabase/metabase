@@ -170,10 +170,11 @@
      :scheduler        scheduler})))
 
 (defn trigger-backfill-job!
-  "Trigger the BackfillDependencies job to run immediately.
-  Use this when entities have been marked stale and need dependency recalculation."
+  "Trigger the BackfillDependencies job to run after a brief delay.
+  The 1-second delay ensures the calling transaction has committed before
+  the job checks for stale entities."
   []
-  (schedule-next-run! 0))
+  (schedule-next-run! 1))
 
 (defmethod task/init! ::DependencyBackfill [_]
   (if (pos? (deps.settings/dependency-backfill-batch-size))

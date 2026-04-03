@@ -269,20 +269,12 @@
               ;; Mark only immediate dependents of transform stale
               ;; The immediate dependent is the table, which is NOT analyzable
               ;; The card is two hops away: transform → table → card
-              (let [before-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
-                                                     :analyzed_entity_type :card
-                                                     :analyzed_entity_id card-id)]
-                (deps.findings/mark-immediate-dependents-stale! :transform transform-id)
-                (is (false? (finding-stale? :card card-id))
-                    "card should NOT be stale yet — it's two hops away and table is not analyzable")
-                ;; Run entity-check — wave should propagate through the table to reach the card
-                ;; This loop drains all stale entities including any waves
-                (#'task.entity-check/check-entities!)
-                ;; The card should have been re-analyzed (its version should be current).
-                ;; If the wave didn't reach it, the analysis_version will be unchanged.
-                (let [after-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
-                                                      :analyzed_entity_type :card
-                                                      :analyzed_entity_id card-id)]
-                  (is (not= before-version after-version)
-                      "card should have been re-analyzed — wave should propagate through non-analyzable table"))))))))))
+              (deps.findings/mark-immediate-dependents-stale! :transform transform-id)
+              ;; The look-through should have reached the card through the non-analyzable table
+              (is (true? (finding-stale? :card card-id))
+                  "card should be stale — look-through reached it via non-analyzable table")
+              ;; Run entity-check to drain stale entities
+              (#'task.entity-check/check-entities!)
+              (is (false? (finding-stale? :card card-id))
+                  "card should be re-analyzed after entity-check"))))))))
 
