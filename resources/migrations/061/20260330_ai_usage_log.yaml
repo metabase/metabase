@@ -159,18 +159,6 @@ databaseChangeLog:
                   type: varchar(36)
                   remarks: 'UUID for correlating with Snowplow events'
 
-  - changeSet:
-      id: v61.ai-usage-log-cost
-      author: noahmoss
-      comment: Add estimated_cost_usd column to ai_usage_log
-      changes:
-        - addColumn:
-            tableName: ai_usage_log
-            columns:
-              - column:
-                  name: estimated_cost_usd
-                  type: double
-                  remarks: 'Estimated cost in USD for this LLM call, computed at request time'
 
   - changeSet:
       id: v61.8g8esw

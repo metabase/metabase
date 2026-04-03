@@ -59,7 +59,6 @@ function useSumQuery(
     q = addSumAggregation(q, "user_messages");
     q = addSumAggregation(q, "assistant_messages");
     q = addSumAggregation(q, "total_tokens");
-    q = addSumAggregation(q, "estimated_cost");
 
     return q;
   }, [provider, table, dateFilter]);
@@ -68,7 +67,7 @@ function useSumQuery(
 function extractRow(data: any): number[] {
   const row = data?.data?.rows?.[0];
   if (!row) {
-    return [0, 0, 0, 0, 0];
+    return [0, 0, 0, 0];
   }
   return row.map((v: any) => Number(v) || 0);
 }
@@ -84,13 +83,13 @@ export function StatCards({ dateFilter }: { dateFilter: DateFilterValue }) {
   );
 
   const stats = useMemo(() => {
-    const [conversations, userMsg, asstMsg, tokens, cost] = extractRow(data);
+    const [conversations, userMsg, asstMsg, tokens] = extractRow(data);
 
     return {
       conversations,
       messages: userMsg + asstMsg,
       tokens,
-      cost,
+      cost: 0,
     };
   }, [data]);
 

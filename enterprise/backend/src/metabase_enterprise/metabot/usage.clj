@@ -19,8 +19,7 @@
   "Record an LLM API call in the ai_usage_log table."
   :feature :none
   [{:keys [source model prompt-tokens completion-tokens
-           user-id tenant-id conversation-id profile-id request-id
-           estimated-cost-usd]}]
+           user-id tenant-id conversation-id profile-id request-id]}]
   (when-not (= "user-intent-classification" source)
     (try
       (let [total-tokens (+ prompt-tokens completion-tokens)]
@@ -34,8 +33,7 @@
                      :tenant_id          (or tenant-id (some-> api/*current-user* deref :tenant_id))
                      :conversation_id    conversation-id
                      :profile_id         (some-> profile-id name)
-                     :request_id         request-id
-                     :estimated_cost_usd estimated-cost-usd}))
+                     :request_id         request-id}))
       (catch Exception e
         (log/warn e "Failed to log LLM usage to ai_usage_log")))))
 

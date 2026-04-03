@@ -31,7 +31,6 @@
    [:user_message_count :int]
    [:assistant_message_count :int]
    [:total_tokens :int]
-   [:estimated_cost :double]
    [:last_message_at [:maybe :any]]
    [:model [:maybe :string]]
    [:user [:maybe UserInfo]]])
@@ -107,8 +106,6 @@
                                   [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
                                   [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
                                   [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
-                                  [[:raw "(SELECT COALESCE(SUM(a.estimated_cost_usd), 0) FROM ai_usage_log a
-                                           WHERE a.conversation_id = CAST(c.id AS VARCHAR))"] :estimated_cost]
                                   [[:max :m.created_at] :last_message_at]
                                   ;; Subquery for model (first assistant message's profile_id)
                                   [[:raw "(SELECT mm.profile_id FROM metabot_message mm

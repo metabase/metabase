@@ -163,11 +163,7 @@
              (let [usage      (:usage part)
                    model      (or model (:model part) "unknown")
                    prompt     (:promptTokens usage 0)
-                   completion (:completionTokens usage 0)
-                   ;; ai-service includes per-model cost in the usage dict; sum across all models.
-                   ;; Self-hosted adapters don't include costs, so this will be 0.0.
-                   cost       (transduce (keep (fn [[_ v]] (when (map? v) (:costs v))))
-                                         + 0.0 usage)]
+                   completion (:completionTokens usage 0)]
                (analytics/track-token-usage!
                 ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
                 {:prometheus          true
@@ -177,7 +173,7 @@
                  :prompt-tokens       prompt
                  :completion-tokens   completion
                  :total-tokens        (+ prompt completion)
-                 :estimated-costs-usd cost
+                 :estimated-costs-usd 0.0
                  :duration-ms         (long (u/since-ms start-ms))
                  :user-id             api/*current-user-id*
                  :request-id          (some-> request-id analytics/uuid->ai-service-hex-uuid)
@@ -191,8 +187,7 @@
                  :completion-tokens  completion
                  :conversation-id    session-id
                  :profile-id         profile-id
-                 :request-id         request-id
-                 :estimated-cost-usd cost})))
+                 :request-id         request-id})))
            part))))
 
 (defn- report-tool-usage-xf

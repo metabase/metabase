@@ -243,8 +243,7 @@
                {:source             "oss-sql-gen"
                 :model              (:model usage)
                 :prompt-tokens      (:prompt usage)
-                :completion-tokens  (:completion usage)
-                :estimated-cost-usd 0.0})
+                :completion-tokens  (:completion usage)})
               (track-sqlgen-event!
                {:duration-ms (u/since-ms start-timer)
                 :result "success"
