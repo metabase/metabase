@@ -41,7 +41,7 @@ export function createMockSlackChannelSpec(
   };
 }
 
-export function createAdvisory(overrides: Partial<Advisory> = {}) {
+export function createAdvisory(overrides: Partial<Advisory> = {}): Advisory {
   return {
     advisory_id: "SA-001",
     title: "Test advisory",
