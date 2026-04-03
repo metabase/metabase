@@ -36,6 +36,11 @@
 ;;; Usage: java -jar metabase.jar --mode checker [checker-specific args...]
 ;;; ===========================================================================
 
+#_{:clj-kondo/ignore [:discouraged-var]}
+(def output!
+  "Alias for println so can suppress warning in one place"
+  println)
+
 (defn- run-standalone-mode
   "Run a standalone mode if --mode is present. Returns true if handled, false if no --mode.
    Errors if --mode is specified but not recognized.
@@ -44,13 +49,13 @@
   (if (nil? mode)
     false
     (let [startup (case mode
-                    "checker" 'metabase-enterprise.checker.cli/-main
+                    "checker" 'metabase-enterprise.checker.cli/entrypoint
                     nil)]
       (if startup
         ((requiring-resolve startup) args)
         (do (binding [*out* *err*]
-              (println (str "Unknown mode: " mode))
-              (println "Available modes: checker"))
+              (output! (str "Unknown mode: " mode))
+              (output! "Available modes: checker"))
             (System/exit 1))))))
 
 (defn -main

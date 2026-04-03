@@ -11,12 +11,17 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:discouraged-var]}
+(def output!
+  "Alias for println so can suppress warning in one place"
+  println)
+
 (defn- fail!
   "Print error message to stderr and exit with code 1."
   [& messages]
   (binding [*out* *err*]
     (doseq [msg messages]
-      (println msg)))
+      (output! msg)))
   (flush)
   (System/exit 1))
 
@@ -48,32 +53,34 @@
       (doseq [entry (sort-by (comp :name second) failures)
               :let [error-str (checker/format-error entry)]
               :when error-str]
-        (println error-str))
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (output! error-str))
       ;; Normal mode: full output
       (do
         ;; Write to output file if specified
         (when output
           (spit output (pr-str results))
-          (println "Results written to:" output))
+          (output! "Results written to:" output))
         ;; Print summary
-        (println "Semantic Check Results")
-        (println "=====================")
-        (println "Total entities:" (:total summary))
-        (println "  OK:" (:ok summary))
-        (println "  Errors:" (:errors summary))
-        (println "  Unresolved refs:" (:unresolved summary))
-        (println "  Native SQL errors:" (:native-errors summary))
-        (println "  Issues:" (:issues summary))
+        (output! "Semantic Check Results")
+        (output! "=====================")
+        (output! "Total entities:"      (:total summary))
+        (output! "  OK:"                (:ok summary))
+        (output! "  Errors:"            (:errors summary))
+        (output! "  Unresolved refs:"   (:unresolved summary))
+        (output! "  Native SQL errors:" (:native-errors summary))
+        (output! "  Issues:"            (:issues summary))
         ;; Print failures
         (when (seq failures)
-          (println "\nFailures:")
-          (println "---------")
+          (output! "\nFailures:")
+          (output! "---------")
           (doseq [entry (sort-by (comp :name second) failures)]
-            (println)
-            (println (checker/format-result entry))))))
+            (output!)
+            (output! (checker/format-result entry))))))
     ;; Exit with appropriate code
     (flush)
-    (System/exit (if (zero? (+ (:errors summary) (:unresolved summary) (:native-errors summary) (:issues summary)))
+    (System/exit (if (zero? (+ (:errors summary) (:unresolved summary)
+                               (:native-errors summary) (:issues summary)))
                    0
                    1))))
 
@@ -91,14 +98,16 @@
        "Options:\n"
        summary))
 
-(defn -main
-  "Main entrypoint for checker mode. Receives raw args."
+(defn entrypoint
+  "Main entrypoint for checker mode. Receives raw args. Intended to enter from
+  metabase.core.bootstrap/run-standalone-mode so that it can skip loading everything that
+  metabase.core.core/entrypoint loads. This entrypoint owns the process and will call S"
   [args]
   (let [{:keys [options errors summary]} (cli/parse-opts args cli-spec)
         {:keys [export help]} options]
     (cond
       help
-      (do (println (usage summary))
+      (do (output! (usage summary))
           (System/exit 0))
 
       errors
