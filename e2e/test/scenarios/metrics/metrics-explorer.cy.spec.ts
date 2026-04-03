@@ -406,7 +406,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
-      cy.wait("@getMetric");
       cy.wait("@dataset");
     });
 
@@ -768,6 +767,85 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getDimensionPillContainer()
         .findByTestId("expression-dimension-pill")
         .should("contain.text", "Multiple dimensions");
+    });
+
+    it("should preserve non-default expression dimensions after page reload", () => {
+      cy.log(
+        "Create expression with only expression entity: Count of orders + Count of products",
+      );
+      H.MetricsViewer.searchInput().clear();
+      H.MetricsViewer.searchInput().type("Count of orders + Count of products");
+      H.MetricsViewer.searchResults().findByText("Count of products").click();
+      cy.wait("@getMetric");
+
+      cy.findByTestId("run-expression-button").click();
+      cy.wait("@dataset");
+
+      cy.log(
+        "Open the expression dimension pill and pick a non-default dimension for the second metric",
+      );
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .click();
+
+      // Expand the second metric accordion section
+      H.popover().findAllByTestId("expression-metric-header").eq(1).click();
+
+      // Pick a non-default dimension (e.g. "Created At" for Products)
+      H.popover().within(() => {
+        cy.get("[data-element-id=list-item][aria-selected=false]")
+          .contains(/Created At/)
+          .click();
+      });
+
+      cy.wait("@dataset");
+
+      cy.log("Verify the pill shows 'Multiple dimensions' (non-default state)");
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .should("contain.text", "Multiple dimensions");
+
+      cy.log(
+        "Remember the selected dimension index for the first metric before reload",
+      );
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .click();
+
+      H.popover()
+        .find("[data-element-id=list-item]")
+        .then(($items) => {
+          const selectedIndex = $items
+            .toArray()
+            .findIndex((el) => el.getAttribute("aria-selected") === "true");
+          expect(selectedIndex).to.be.gte(0);
+          cy.wrap(selectedIndex).as("firstMetricDimensionIndex");
+        });
+
+      // Close the popover
+      cy.realPress("Escape");
+
+      cy.log("Reload the page and verify the dimension choice persists");
+      cy.reload();
+      cy.wait("@getMetric");
+      cy.wait("@dataset");
+
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByTestId("expression-dimension-pill")
+        .should("contain.text", "Multiple dimensions")
+        .click();
+
+      cy.log(
+        "Verify the first metric still has the same selected dimension after reload",
+      );
+
+      cy.get<number>("@firstMetricDimensionIndex").then((expectedIndex) => {
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
+        H.popover()
+          .find("[data-element-id=list-item]")
+          .eq(expectedIndex)
+          .should("have.attr", "aria-selected", "true");
+      });
     });
   });
 

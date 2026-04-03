@@ -605,11 +605,17 @@ export function useViewerState(): UseViewerStateResult {
   const setFormulaEntities = useCallback(
     (formulaEntities: MetricsViewerFormulaEntity[]) =>
       setState((prev) => {
-        const reconciledTabs = reconcileDimensionMappings(
-          prev.tabs,
-          prev.formulaEntities,
-          formulaEntities,
-        );
+        // Skip reconciliation when prev.formulaEntities is empty (initial URL
+        // restore).  The tabs already carry the correct dimensionMapping from
+        // initialize(); reconciling against an empty old list would wipe it.
+        const reconciledTabs =
+          prev.formulaEntities.length === 0
+            ? prev.tabs
+            : reconcileDimensionMappings(
+                prev.tabs,
+                prev.formulaEntities,
+                formulaEntities,
+              );
         let tabs = assignDimensionsForUnmappedSlots(
           reconciledTabs,
           prev.definitions,
