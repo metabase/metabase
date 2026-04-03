@@ -27,19 +27,25 @@ import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 import {
+  applyTrackedDefinitions,
   buildFullText,
   cleanupParens,
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
-  reconcileBreakoutState,
   removeUnmatchedParens,
   validateExpression,
 } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
 import { errorHighlight, setErrorDecoration } from "./errorHighlight";
-import { metricTokenHighlight, setMetricEntries } from "./metricTokenHighlight";
+import {
+  buildMetricIdentities,
+  metricTokenHighlight,
+  readMetricIdentities,
+  setMetricEntries,
+  setMetricIdentities,
+} from "./metricTokenHighlight";
 import { operatorHighlight } from "./operatorHighlight";
 
 // Metrics in the expression input can be used multiple times, so nothing is filtered out
@@ -183,9 +189,17 @@ export function MetricSearchInput({
       const view = editorRef.current?.view;
       if (view) {
         const endPos = view.state.doc.length;
+        const identities = buildMetricIdentities(
+          fullText,
+          metricEntriesRef.current,
+          formulaEntitiesRef.current,
+        );
         view.dispatch({
           selection: EditorSelection.cursor(endPos),
-          effects: setMetricEntries.of(metricEntriesRef.current),
+          effects: [
+            setMetricEntries.of(metricEntriesRef.current),
+            setMetricIdentities.of(identities),
+          ],
           annotations: isolateHistory.of("full"),
         });
         const coords = view.coordsAtPos(endPos);
@@ -198,15 +212,19 @@ export function MetricSearchInput({
 
   /** Commits the current text: parses formula entities, removes unreferenced metrics, and collapses. */
   const commitAndCollapse = useCallback(() => {
-    const parsedEntities = parseFullText(
-      editTextRef.current,
-      metricEntriesRef.current,
-    );
+    const newText = editTextRef.current;
+    const parsedEntities = parseFullText(newText, metricEntriesRef.current);
 
-    // Preserve per-instance breakout definitions from old formula entities
-    const reconciledEntities = reconcileBreakoutState(
+    // Read tracked identities from the CodeMirror StateField —
+    // positions are already mapped through all edits automatically.
+    const view = editorRef.current?.view;
+    const trackedIdentities = view ? readMetricIdentities(view) : [];
+
+    const reconciledEntities = applyTrackedDefinitions(
       parsedEntities,
-      formulaEntitiesRef.current,
+      trackedIdentities,
+      newText,
+      metricEntriesRef.current,
     );
 
     // Find which metric sourceIds are referenced in the parsed entities
@@ -322,10 +340,14 @@ export function MetricSearchInput({
 
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
-      const cursorPos =
-        editorRef.current?.view?.state.selection.main.head ?? editText.length;
+      const view = editorRef.current?.view;
+      if (!view) {
+        return;
+      }
+      const docText = view.state.doc.toString();
+      const cursorPos = view.state.selection.main.head;
       const { start, end } = getWordAtCursor(
-        editText,
+        docText,
         cursorPos,
         metricEntriesRef.current,
       );
@@ -333,43 +355,46 @@ export function MetricSearchInput({
       const metricName = metric.name ?? "";
 
       // Check if we need to auto-insert a separator before this metric.
-      const textBeforeWord = editText.slice(0, start).trimEnd();
+      const textBeforeWord = docText.slice(0, start).trimEnd();
       const lastChar = textBeforeWord[textBeforeWord.length - 1];
       const NO_COMMA_CHARS = new Set(["+", "-", "*", "/", "(", ","]);
       const needsComma =
         textBeforeWord.length > 0 && !NO_COMMA_CHARS.has(lastChar);
 
-      let newText: string;
+      // Dispatch through the view (not setEditText) — the value-prop sync
+      // in @uiw/react-codemirror does a full doc replacement that destroys
+      // all RangeSet-tracked identities.
+      let insertText: string;
+      let replaceFrom: number;
       let newCursorPos: number;
       if (needsComma) {
-        newText = textBeforeWord + ", " + metricName + editText.slice(end);
-        newCursorPos = textBeforeWord.length + 2 + metricName.length;
+        insertText = ", " + metricName;
+        replaceFrom = textBeforeWord.length;
+        newCursorPos = replaceFrom + insertText.length;
       } else {
-        newText = editText.slice(0, start) + metricName + editText.slice(end);
+        insertText = metricName;
+        replaceFrom = start;
         newCursorPos = start + metricName.length;
       }
 
-      setEditText(newText);
-      setIsExpressionDirty(true);
+      view.dispatch({
+        changes: { from: replaceFrom, to: end, insert: insertText },
+        selection: EditorSelection.cursor(newCursorPos),
+      });
 
+      setIsExpressionDirty(true);
       onAddMetric(metric);
 
       setCurrentWord("");
       setIsOpen(false);
       dropdownHasSelectionRef.current = false;
 
-      // Reposition cursor right after the inserted metric name
+      // Return focus to the editor after dropdown closes
       setTimeout(() => {
-        const view = editorRef.current?.view;
-        if (view) {
-          view.dispatch({
-            selection: EditorSelection.cursor(newCursorPos),
-          });
-          view.focus();
-        }
+        editorRef.current?.view?.focus();
       }, 0);
     },
-    [editText, onAddMetric],
+    [onAddMetric],
   );
 
   // Remove one formula entity by index

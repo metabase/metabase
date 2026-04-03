@@ -1,17 +1,30 @@
+import * as LibMetric from "metabase-lib/metric";
+
 import type {
+  ExpressionDefinitionEntry,
   ExpressionSubToken,
   MetricDefinitionEntry,
   MetricSourceId,
+  MetricsViewerFormulaEntity,
 } from "../../types/viewer-state";
-
+import { isExpressionEntry } from "../../types/viewer-state";
 import {
+  GEO_METRIC,
+  REVENUE_METRIC,
+  createMetricMetadata,
+  setupDefinition,
+  setupDefinitionWithBreakout,
+} from "../../utils/__tests__/test-helpers";
+
+import type { MetricIdentityEntry } from "./utils";
+import {
+  applyTrackedDefinitions,
   buildExpressionText,
   cleanupParens,
   filterSearchResults,
   findInvalidRanges,
   getWordAtCursor,
   parseFullText,
-  reconcileBreakoutState,
 } from "./utils";
 
 jest.mock("../../utils/definition-builder", () => ({
@@ -831,112 +844,209 @@ describe("getWordAtCursor — comma handling with metric entries", () => {
   });
 });
 
-describe("reconcileBreakoutState", () => {
-  const breakoutDef = {
-    "display-name": "MetricA",
-    breakout: true,
-  } as unknown as MetricDefinitionEntry["definition"];
+function sourceId(id: number): MetricSourceId {
+  return `metric:${id}`;
+}
 
-  function metricEntry(
-    sourceId: MetricSourceId,
-    definition: MetricDefinitionEntry["definition"] = null,
-  ): MetricDefinitionEntry {
-    return { id: sourceId, type: "metric", definition };
+function getExprTokenDefinitions(
+  entities: MetricsViewerFormulaEntity[],
+  entityIndex: number,
+): (LibMetric.MetricDefinition | undefined)[] {
+  const entity = entities[entityIndex];
+  if (!isExpressionEntry(entity)) {
+    return [];
   }
+  return entity.tokens
+    .filter((token) => token.type === "metric")
+    .map((token) =>
+      token.type === "metric" ? (token.definition ?? undefined) : undefined,
+    );
+}
 
-  it("preserves breakout definition from old entities onto matching new entities", () => {
-    const oldEntities = [
-      metricEntry("metric:1" as MetricSourceId, breakoutDef),
-    ];
-    const newEntities = [metricEntry("metric:1" as MetricSourceId)];
+const mockDef = (name: string) =>
+  ({ "display-name": name }) as unknown as MetricDefinitionEntry["definition"];
 
-    const result = reconcileBreakoutState(newEntities, oldEntities);
+const metricEntryWithDef = (
+  id: MetricSourceId,
+  name: string,
+): MetricDefinitionEntry => ({
+  id,
+  type: "metric",
+  definition: mockDef(name),
+});
+
+function identity(
+  metricSourceId: MetricSourceId,
+  from: number,
+  to: number,
+  definition: MetricDefinitionEntry["definition"] = null,
+): MetricIdentityEntry {
+  return { sourceId: metricSourceId, from, to, definition };
+}
+
+describe("applyTrackedDefinitions", () => {
+  const entries = [
+    metricEntryWithDef(sourceId(1), "Revenue"),
+    metricEntryWithDef(sourceId(2), "Geo Revenue"),
+  ];
+  const metadata = createMetricMetadata([REVENUE_METRIC, GEO_METRIC]);
+  const revenueDef = setupDefinition(metadata, REVENUE_METRIC.id);
+  const revenueBreakoutDef = setupDefinitionWithBreakout(
+    metadata,
+    REVENUE_METRIC.id,
+    0,
+  );
+  const geoBreakoutDef = setupDefinitionWithBreakout(
+    metadata,
+    GEO_METRIC.id,
+    0,
+  );
+
+  it("returns empty array for empty inputs", () => {
+    expect(applyTrackedDefinitions([], [], "", entries)).toEqual([]);
+  });
+
+  it("applies tracked definition to a standalone metric by position", () => {
+    const text = "Revenue";
+    const parsed = parseFullText(text, entries);
+    const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
     expect(result).toHaveLength(1);
-    expect(result[0]).toHaveProperty("definition", breakoutDef);
+    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+      revenueBreakoutDef,
+    );
   });
 
-  it("does not add breakout to entities that had no breakout before", () => {
-    const oldEntities = [metricEntry("metric:1" as MetricSourceId, null)];
-    const newEntities = [metricEntry("metric:1" as MetricSourceId)];
-
-    const result = reconcileBreakoutState(newEntities, oldEntities);
-    expect(result[0]).toHaveProperty("definition", null);
+  it("preserves null definition when tracked identity has null", () => {
+    const text = "Revenue";
+    const parsed = parseFullText(text, entries);
+    const tracked = [identity(sourceId(1), 0, 7, null)];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    expect((result[0] as MetricDefinitionEntry).definition).toBeNull();
   });
 
-  it("matches by occurrence order for duplicate sourceIds", () => {
-    const oldEntities = [
-      metricEntry("metric:1" as MetricSourceId, breakoutDef),
-      metricEntry("metric:1" as MetricSourceId, null),
-    ];
-    const newEntities = [
-      metricEntry("metric:1" as MetricSourceId),
-      metricEntry("metric:1" as MetricSourceId),
-    ];
-
-    const result = reconcileBreakoutState(newEntities, oldEntities);
-    expect(result[0]).toHaveProperty("definition", breakoutDef);
-    expect(result[1]).toHaveProperty("definition", null);
+  it("leaves entity unchanged when no tracked identity matches its position", () => {
+    const text = "Revenue";
+    const parsed = parseFullText(text, entries);
+    const result = applyTrackedDefinitions(parsed, [], text, entries);
+    expect(result).toEqual(parsed);
   });
 
-  it("leaves extra new entities without breakout when old has fewer instances", () => {
-    const oldEntities = [
-      metricEntry("metric:1" as MetricSourceId, breakoutDef),
+  it("matches definitions by exact position for comma-separated metrics", () => {
+    const text = "Revenue, Geo Revenue";
+    const parsed = parseFullText(text, entries);
+    const tracked = [
+      identity(sourceId(1), 0, 7, revenueBreakoutDef),
+      identity(sourceId(2), 9, 20, geoBreakoutDef),
     ];
-    const newEntities = [
-      metricEntry("metric:1" as MetricSourceId),
-      metricEntry("metric:1" as MetricSourceId),
-    ];
-
-    const result = reconcileBreakoutState(newEntities, oldEntities);
-    expect(result[0]).toHaveProperty("definition", breakoutDef);
-    expect(result[1]).toHaveProperty("definition", null);
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+      revenueBreakoutDef,
+    );
+    expect((result[1] as MetricDefinitionEntry).definition).toBe(
+      geoBreakoutDef,
+    );
   });
 
-  it("ignores removed entities from old when new has fewer instances", () => {
-    const oldEntities = [
-      metricEntry("metric:1" as MetricSourceId, breakoutDef),
-      metricEntry("metric:1" as MetricSourceId, breakoutDef),
-    ];
-    const newEntities = [metricEntry("metric:1" as MetricSourceId)];
-
-    const result = reconcileBreakoutState(newEntities, oldEntities);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toHaveProperty("definition", breakoutDef);
+  it("strips breakout projections from expression token definitions", () => {
+    const text = "Revenue + 5";
+    const parsed = parseFullText(text, entries);
+    const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    const [tokenDef] = getExprTokenDefinitions(result, 0);
+    expect(tokenDef).toBeDefined();
+    expect(LibMetric.projections(tokenDef!)).toEqual([]);
   });
 
-  it("passes through expression entries unchanged", () => {
-    const exprEntry = {
-      id: "expression:MetricA + 5" as const,
-      type: "expression" as const,
-      name: "MetricA + 5",
-      tokens: [] as ExpressionSubToken[],
-    };
-    const oldEntities = [
-      metricEntry("metric:1" as MetricSourceId, breakoutDef),
-      exprEntry,
-    ];
-    const newEntities = [
-      metricEntry("metric:1" as MetricSourceId),
-      { ...exprEntry },
-    ];
-
-    const result = reconcileBreakoutState(newEntities, oldEntities);
-    expect(result[0]).toHaveProperty("definition", breakoutDef);
-    expect(result[1]).toHaveProperty("type", "expression");
-    expect(result[1]).not.toHaveProperty("definition");
+  it("preserves non-breakout definitions on expression tokens", () => {
+    const text = "Revenue + 5";
+    const parsed = parseFullText(text, entries);
+    const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    const [tokenDef] = getExprTokenDefinitions(result, 0);
+    expect(tokenDef).toBe(revenueDef);
   });
 
-  it("handles new entities with no matching old entities", () => {
-    const oldEntities = [
-      metricEntry("metric:1" as MetricSourceId, breakoutDef),
-    ];
-    const newEntities = [
-      metricEntry("metric:1" as MetricSourceId),
-      metricEntry("metric:2" as MetricSourceId),
-    ];
+  it("preserves reference identity for expression entries when no tokens change", () => {
+    const text = "5 + 5";
+    const parsed = parseFullText(text, entries);
+    const result = applyTrackedDefinitions(parsed, [], text, entries);
+    expect(result[0]).toBe(parsed[0]);
+  });
 
-    const result = reconcileBreakoutState(newEntities, oldEntities);
-    expect(result[0]).toHaveProperty("definition", breakoutDef);
-    expect(result[1]).toHaveProperty("definition", null);
+  it("does not touch non-metric tokens inside expressions", () => {
+    const text = "Revenue + 5";
+    const parsed = parseFullText(text, entries);
+    const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    const resultExpr = result[0] as ExpressionDefinitionEntry;
+    const parsedExpr = parsed[0] as ExpressionDefinitionEntry;
+    expect(resultExpr.tokens[1]).toBe(parsedExpr.tokens[1]);
+    expect(resultExpr.tokens[2]).toBe(parsedExpr.tokens[2]);
+  });
+
+  it("applies definition only to standalone metric, not expression token at different position", () => {
+    const text = "Revenue, Revenue + 5";
+    const parsed = parseFullText(text, entries);
+    // Only the standalone Revenue (0-7) has a tracked identity
+    const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+      revenueBreakoutDef,
+    );
+    const [tokenDef] = getExprTokenDefinitions(result, 1);
+    expect(tokenDef).toBeUndefined();
+  });
+
+  it("does not carry definition to a token at a non-matching position", () => {
+    // Tracked identity at [100,107] — token was deleted (TrackDel).
+    // New Revenue at [0,7] is a fresh instance, gets no override.
+    const text = "Revenue";
+    const parsed = parseFullText(text, entries);
+    const tracked = [identity(sourceId(1), 100, 107, revenueDef)];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    expect((result[0] as MetricDefinitionEntry).definition).not.toBe(
+      revenueDef,
+    );
+  });
+
+  it("newly added duplicate of same metric gets no definition from the tracked one", () => {
+    const text = "Revenue, Revenue";
+    const parsed = parseFullText(text, entries);
+    // Only one tracked identity at position [0,7]
+    const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    // First Revenue at [0,7] — exact position match
+    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+      revenueBreakoutDef,
+    );
+    // Second Revenue at [9,16] — no match, independent new instance
+    expect((result[1] as MetricDefinitionEntry).definition).not.toBe(
+      revenueBreakoutDef,
+    );
+  });
+
+  it("preserves definition when token survives edit (position tracked by RangeSet)", () => {
+    // "Revenue + 5" — Revenue token at [0,7] survived the edit
+    const text = "Revenue + 5";
+    const parsed = parseFullText(text, entries);
+    const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    const [tokenDef] = getExprTokenDefinitions(result, 0);
+    expect(tokenDef).toBe(revenueDef);
+  });
+
+  it("two instances of same metric at different positions keep independent definitions", () => {
+    const text = "Revenue, Revenue";
+    const parsed = parseFullText(text, entries);
+    const tracked = [
+      identity(sourceId(1), 0, 7, revenueBreakoutDef),
+      identity(sourceId(1), 9, 16, revenueDef),
+    ];
+    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+      revenueBreakoutDef,
+    );
+    expect((result[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
   });
 });
