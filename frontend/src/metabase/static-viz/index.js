@@ -24,7 +24,7 @@ import {
   shouldSplitVisualizerSeries,
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
-import * as isa from "metabase-lib/v1/types/utils/isa";
+import { customVizColumnTypes } from "metabase-lib/v1/types/utils/custom-viz-column-types";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
@@ -33,7 +33,7 @@ import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 window.__METABASE_VIZ_API__ = {
   React,
   jsxRuntime,
-  columnTypes: isa,
+  columnTypes: customVizColumnTypes,
   formatValue: (value, options) => {
     const result = internalFormatValue(value, { ...options, jsx: false });
     return String(result ?? "");

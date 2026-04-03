@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { Space, Stack, type StackProps, Text } from "metabase/ui";
-import type { CardDisplayType } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
 
@@ -29,8 +29,8 @@ export const ChartTypeSettings = ({
   ...stackProps
 }: ChartTypeSettingsProps) => {
   const collapsibleGroups = useMemo(() => {
-    const builtIn: CardDisplayType[] = [];
-    const custom: CardDisplayType[] = [];
+    const builtIn: VisualizationDisplay[] = [];
+    const custom: VisualizationDisplay[] = [];
     const groups: ChartTypeGroup[] = [
       { label: t`More charts`, testId: "more-charts-toggle", items: builtIn },
       {

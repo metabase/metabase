@@ -7,8 +7,10 @@ export interface CustomVizPluginManifest {
   assets?: string[];
 }
 
+export type CustomVizPluginId = number;
+
 export interface CustomVizPlugin {
-  id: number;
+  id: CustomVizPluginId;
   repo_url: string;
   display_name: string;
   identifier: string;
@@ -26,10 +28,8 @@ export interface CustomVizPlugin {
   updated_at: string;
 }
 
-export type CustomVizPluginId = CustomVizPlugin["id"];
-
 export interface CustomVizPluginRuntime {
-  id: number;
+  id: CustomVizPluginId;
   identifier: string;
   display_name: string;
   icon: string | null;

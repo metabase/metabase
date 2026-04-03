@@ -33,12 +33,12 @@
     "commander": "^13.1.0"
   },
   "devDependencies": {
-    "@types/node": "^22.13.10",
+    "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
-    "np": "^10.2.0",
-    "prettier": "^3.5.3",
+    "np": "^11.0.2",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3",
-    "vite": "^8.0.0",
+    "vite": "^8.0.3",
     "vite-plugin-dts": "^4.5.4"
   }
 }

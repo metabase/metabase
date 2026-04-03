@@ -1,112 +1,27 @@
 import type {
   CreateCustomVisualizationProps,
-  CustomVisualizationProps,
   CustomVisualizationSettingDefinition,
 } from "custom-viz/src/types";
-import React, {
-  type ComponentType,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import * as jsxRuntime from "react/jsx-runtime";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { formatValue as internalFormatValue } from "metabase/lib/formatting/value";
-import {
-  measureText,
-  measureTextHeight,
-  measureTextWidth,
-} from "metabase/lib/measure-text";
 import visualizations, { registerVisualization } from "metabase/visualizations";
+import {
+  getCustomPluginIdentifier,
+  getPluginAssetUrl,
+} from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import type {
   Visualization,
   VisualizationProps,
 } from "metabase/visualizations/types/visualization";
-import * as isa from "metabase-lib/v1/types/utils/isa";
-import type {
-  CustomVizPluginRuntime,
-  VisualizationDisplay,
-} from "metabase-types/api";
+import type { CustomVizPluginRuntime } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-type CustomVizPluginDefinition = {
-  VisualizationComponent: ComponentType<
-    CustomVisualizationProps<Record<string, unknown>>
-  >;
-  minSize?: Visualization["minSize"];
-  defaultSize?: Visualization["defaultSize"];
-  checkRenderable?: Visualization["checkRenderable"];
-  settings?: Visualization["settings"];
-};
-
-// ---------------------------------------------------------------------------
-// Global API exposed to plugin bundles via window.__METABASE_VIZ_API__
-// Plugins reference React from here instead of bundling their own copy.
-// ---------------------------------------------------------------------------
-
-declare global {
-  interface Window {
-    __METABASE_VIZ_API__?: {
-      React: typeof React;
-      jsxRuntime: typeof jsxRuntime;
-      columnTypes: typeof isa;
-      formatValue: (
-        value: unknown,
-        options?: Record<string, unknown>,
-      ) => string;
-      measureText: typeof measureText;
-      measureTextWidth: typeof measureTextWidth;
-      measureTextHeight: typeof measureTextHeight;
-    };
-    // Set by custom viz IIFE bundles during loading, read and cleared by loadCustomVizPlugin
-    __customVizPlugin__?: (
-      ...args: unknown[]
-    ) => CustomVizPluginDefinition | null | undefined;
-  }
-}
-
-function formatValue(
-  value: unknown,
-  options?: Record<string, unknown>,
-): string {
-  const result = internalFormatValue(value, {
-    ...(options as OptionsType),
-    jsx: false,
-  });
-  return String(result ?? "");
-}
-
-function ensureVizApi() {
-  window.__METABASE_VIZ_API__ = {
-    ...window.__METABASE_VIZ_API__,
-    React,
-    jsxRuntime,
-    columnTypes: isa,
-    formatValue,
-    measureText,
-    measureTextWidth,
-    measureTextHeight,
-  };
-}
-
-/**
- * Build a URL for a plugin's static asset.
- */
-export function getPluginAssetUrl(
-  pluginId: number,
-  assetPath: string | null,
-): string | undefined {
-  if (!assetPath) {
-    return undefined;
-  }
-  return `/api/ee/custom-viz-plugin/${pluginId}/asset?path=${encodeURIComponent(assetPath)}`;
-}
+import { ensureVizApi } from "./custom-viz-globals";
 
 // ---------------------------------------------------------------------------
 // Plugin loading & registration
@@ -119,10 +34,6 @@ const loadedPlugins = new Map<
   number,
   { identifier: string; commit: string | null; etag: string | null }
 >();
-
-export function isCustomVizDisplay(display: string | undefined): boolean {
-  return display != null && display.startsWith("custom:");
-}
 
 /**
  * Hook that fetches the list of active custom visualization plugins.
@@ -215,8 +126,8 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
 
   const load = useCallback(
     async (pluginToLoad: CustomVizPluginRuntime) => {
-      const ident = `custom:${pluginToLoad.identifier}`;
-      if (loadingRef.current === ident) {
+      const identifier = getCustomPluginIdentifier(pluginToLoad);
+      if (loadingRef.current === identifier) {
         return;
       }
       const existing = loadedPlugins.get(pluginToLoad.id);
@@ -227,7 +138,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       ) {
         return;
       }
-      loadingRef.current = ident;
+      loadingRef.current = identifier;
       setLoading(true);
       try {
         await loadCustomVizPlugin(pluginToLoad, undefined, onInfo);
@@ -249,10 +160,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     if (!plugin) {
       return;
     }
-    const existing = loadedPlugins.get(plugin.id);
-    if (!existing || existing.commit !== plugin.resolved_commit) {
-      load(plugin);
-    }
+    load(plugin);
   }, [display, plugins, load]);
 
   useCustomVizDevReload(display, plugins, setLoading, onInfo);
@@ -277,7 +185,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
   }
 
   const matchedPlugin = needsCustomViz
-    ? plugins?.find((p) => `custom:${p.identifier}` === display)
+    ? plugins?.find((p) => getCustomPluginIdentifier(p) === display)
     : undefined;
   const isReady =
     matchedPlugin != null &&
@@ -309,9 +217,6 @@ export async function loadCustomVizPlugin(
 
   ensureVizApi();
 
-  // eslint-disable-next-line no-console
-  console.log(`[custom-viz] Loading plugin "${plugin.display_name}"…`);
-
   try {
     const bundleUrl = new URL(plugin.bundle_url, window.location.origin);
     if (cacheBustSuffix) {
@@ -342,7 +247,7 @@ export async function loadCustomVizPlugin(
 
     if (typeof factory !== "function") {
       throw new Error(
-        "Plugin bundle must have a default export that is a factory function",
+        t`Plugin bundle must have a default export that is a factory function`,
       );
     }
 
@@ -367,12 +272,12 @@ export async function loadCustomVizPlugin(
 
     if (!vizDef || !vizDef.VisualizationComponent) {
       throw new Error(
-        "Factory must return an object with a VisualizationComponent property",
+        t`Factory must return an object with a VisualizationComponent property`,
       );
     }
 
     // Build a Metabase-compatible identifier, prefixed to avoid collisions
-    const identifier = `custom:${plugin.identifier}` as VisualizationDisplay;
+    const identifier = getCustomPluginIdentifier(plugin);
 
     const Wrapper = ({
       onVisualizationClick,
@@ -420,17 +325,11 @@ export async function loadCustomVizPlugin(
       etag: null,
     });
 
-    // eslint-disable-next-line no-console
-    console.log(
-      `[custom-viz] Registered "${plugin.display_name}" as "${identifier}"`,
-    );
-
     return identifier;
   } catch (error) {
-    console.error(
-      `[custom-viz] Failed to load plugin "${plugin.display_name}":`,
-      error,
-    );
+    console.error(t`Failed to load plugin "${plugin.display_name}":`, error);
     return null;
   }
 }
+
+export { getCustomPluginIdentifier, getPluginAssetUrl };

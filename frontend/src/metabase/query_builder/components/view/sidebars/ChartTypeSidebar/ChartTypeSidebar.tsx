@@ -22,7 +22,7 @@ import {
 } from "metabase/redux/query-builder";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 export type ChartTypeSidebarProps = Pick<
   UseQuestionVisualizationStateProps,
@@ -93,7 +93,7 @@ export const ChartTypeSidebar = ({
       onUpdateQuestion,
     });
 
-  const handleSelectVisualization = (display: CardDisplayType) => {
+  const handleSelectVisualization = (display: VisualizationDisplay) => {
     updateQuestionVisualization(display);
   };
 

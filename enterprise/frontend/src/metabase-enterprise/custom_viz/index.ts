@@ -1,7 +1,12 @@
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import visualizations, { registerVisualization } from "metabase/visualizations";
+import {
+  defineSetting,
+  getCustomPluginIdentifier,
+  getPluginAssetUrl,
+} from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type { VisualizationDisplay } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import {
   CustomVizDevelopmentPage,
@@ -9,8 +14,6 @@ import {
   ManageCustomVisualizationsPage,
 } from "./components/CustomVizPluginsSettingsPage";
 import {
-  getPluginAssetUrl,
-  isCustomVizDisplay,
   loadCustomVizPlugin,
   useAutoLoadCustomVizPlugin,
   useCustomVizPlugins,
@@ -25,10 +28,9 @@ function registerCustomVizPlugin(
   assets: any,
 ) {
   const assetMap = assets || {};
-  const defineSetting = <T>(definition: T) => definition;
   const getAssetUrl = (name: string) => assetMap[name] || "";
   const vizDef = factory({ defineSetting, getAssetUrl });
-  const display = `custom:${identifier}` as VisualizationDisplay;
+  const display = getCustomPluginIdentifier(identifier);
   customVizRegistry.set(display, vizDef);
 
   // Register in main visualizations Map so getVisualizationRaw() resolves
