@@ -4,10 +4,10 @@ import { isNotNull } from "metabase/lib/types";
 import { getSensibleVisualizations } from "metabase/query_builder/components/chart-type-selector/use-question-visualization-state";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import type { CardDisplayType, Dataset } from "metabase-types/api";
+import type { Dataset, VisualizationDisplay } from "metabase-types/api";
 
 export interface VisualizationItem {
-  value: CardDisplayType;
+  value: VisualizationDisplay;
   label: string;
   iconName: IconName | null;
 }
@@ -16,7 +16,7 @@ export interface VisualizationItem {
  * Converts a visualization type to a visualization item with label and icon
  */
 export function getVisualizationItem(
-  visualizationType: CardDisplayType,
+  visualizationType: VisualizationDisplay,
 ): VisualizationItem | null {
   const visualization = visualizations.get(visualizationType);
   if (!visualization) {
@@ -36,7 +36,7 @@ export function getVisualizationItem(
  */
 export function useVisualizationOptions(
   dataset: Dataset | null | undefined,
-  currentDisplay?: CardDisplayType,
+  currentDisplay?: VisualizationDisplay,
 ) {
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(() => {
     return getSensibleVisualizations({ result: dataset ?? null });

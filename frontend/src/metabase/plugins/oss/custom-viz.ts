@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { CustomVizPluginRuntime } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards";
 
 const getDefaultPluginCustomViz = () => ({
   // Admin settings pages
@@ -24,8 +25,7 @@ const getDefaultPluginCustomViz = () => ({
     undefined as string | undefined,
 
   // Must be functional in OSS — pure string check used by getSensibleVisualizations
-  isCustomVizDisplay: (display: string | undefined): boolean =>
-    display != null && display.startsWith("custom:"),
+  isCustomVizDisplay,
 
   // Static viz rendering (GraalJS context)
   customVizRegistry: new Map<string, any>(),

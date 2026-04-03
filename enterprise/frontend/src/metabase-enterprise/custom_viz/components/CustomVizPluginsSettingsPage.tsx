@@ -36,9 +36,8 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
-
-import { getPluginAssetUrl } from "../custom-viz-plugins";
 
 import S from "./CustomVizPluginsSettingsPage.module.css";
 
