@@ -2863,6 +2863,27 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v57.2026-04-03T00:00:00
+      author: bronsa
+      comment: Add updated_at column to security_advisory for incremental sync cursor
+      changes:
+        - addColumn:
+            tableName: security_advisory
+            columns:
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the advisory was last updated upstream (used as sync cursor)
+                  constraints:
+                    nullable: true
+        - sql:
+            sql: UPDATE security_advisory SET updated_at = published_at WHERE updated_at IS NULL
+        - addNotNullConstraint:
+            tableName: security_advisory
+            columnName: updated_at
+            columnDataType: ${timestamp_type}
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
