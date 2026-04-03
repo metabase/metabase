@@ -49,14 +49,14 @@ To change the width of a column, you can click and drag the edges of the column'
 
 ## Freeze columns or rows
 
-You can freeze a number of columns and/or rows, so that they'd stay on the screen while you scroll. This is useful when viewing wide tables: you can make sure that the information identifying a row (e.g. account name) is always on the screen.
+You can freeze a number of columns and/or rows, so that they'd stay on the screen while you scroll. Sticky columns are especially useful when viewing wide tables, as you can keep the column that identifies the row (like `account_name`) on the screen as you scroll across the columns.
 
 To freeze rows or columns when viewing a table:
 
-1. Click **the gear** icon in the bottom left to open visualization settings;
-2. Switch to the **Display** tab;
-3. Toggle on **Freeze rows** and/or **Freeze columns**;
-4. Enter the number of columns or rows you want to freeze. You can [rearrange columns](#rearranging-adding-and-hiding-columns) to make sure that the columns you want to freeze appear first.
+1. Click the **gear** icon in the bottom left to open visualization settings.
+2. Switch to the **Display** tab.
+3. Toggle on **Freeze rows** and/or **Freeze columns**.
+4. Enter the number of columns or rows you want to freeze. You can [rearrange columns](#rearranging-adding-and-hiding-columns) to make sure the columns you want to freeze appear first.
 
 ![Freeze columns](../images/freeze-columns.png)
 
