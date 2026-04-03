@@ -10,6 +10,7 @@
    included as a recipient when set."
   (:require
    [metabase-enterprise.security-center.settings :as settings]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.channel.settings :as channel.settings]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -78,6 +79,23 @@
                   :event_topic :event/security-advisory-match}
    :handlers     (build-handlers)})
 
+(defn- configured-channels
+  "Return a set of channel keywords currently configured for notification delivery."
+  []
+  (cond-> #{}
+    (channel.settings/email-configured?) (conj :email)
+    (seq (slack-recipients))             (conj :slack)))
+
+(defn- track-notification-sent!
+  "Track a Snowplow event for each configured notification channel."
+  [triggered-from result]
+  (doseq [channel (configured-channels)]
+    (snowplow/track-event! :snowplow/simple_event
+                           {:event          "security_advisory_notification_sent"
+                            :event_detail   (name channel)
+                            :triggered_from triggered-from
+                            :result         result})))
+
 (def ^:private test-advisory
   "A synthetic advisory used for test notifications so admins can verify delivery."
   {:advisory_id      "TEST-0000"
@@ -99,21 +117,33 @@
       (throw (ex-info "No notification channels are configured."
                       {:status-code 400})))
     (log/info "Sending test security center notification")
-    (notification/send-notification! (build-notification test-advisory) :notification/sync? true)))
+    (try
+      (notification/send-notification! (build-notification test-advisory) :notification/sync? true)
+      (track-notification-sent! "test" "success")
+      (catch Exception e
+        (track-notification-sent! "test" "failure")
+        (throw e)))))
 
 (defn notify-advisory!
   "Send notifications for a security advisory and update `last_notified_at`.
    Publishes the system event for audit logging, then sends email (to admins or
    configured recipients) and Slack (to configured channel) via the notification
    pipeline."
-  [advisory]
-  (log/infof "Sending notification for advisory %s (severity=%s, status=%s)"
-             (:advisory_id advisory) (name (:severity advisory)) (name (:match_status advisory)))
-  ;; Publish event for audit log
-  (events/publish-event! :event/security-advisory-match
-                         (advisory-event-info advisory))
-  ;; Send email + Slack via notification pipeline
-  ;; sync, so failure doesn't set last_notified_at
-  (notification/send-notification! (build-notification advisory) :notification/sync? true)
-  (t2/update! :model/SecurityAdvisory (:id advisory)
-              {:last_notified_at (mi/now)}))
+  ([advisory]
+   (notify-advisory! advisory "scheduled"))
+  ([advisory triggered-from]
+   (log/infof "Sending notification for advisory %s (severity=%s, status=%s)"
+              (:advisory_id advisory) (name (:severity advisory)) (name (:match_status advisory)))
+   ;; Publish event for audit log
+   (events/publish-event! :event/security-advisory-match
+                          (advisory-event-info advisory))
+   ;; Send email + Slack via notification pipeline
+   ;; sync, so failure doesn't set last_notified_at
+   (try
+     (notification/send-notification! (build-notification advisory) :notification/sync? true)
+     (track-notification-sent! triggered-from "success")
+     (catch Exception e
+       (track-notification-sent! triggered-from "failure")
+       (throw e)))
+   (t2/update! :model/SecurityAdvisory (:id advisory)
+               {:last_notified_at (mi/now)})))

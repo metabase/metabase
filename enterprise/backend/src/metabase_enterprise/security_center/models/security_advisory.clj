@@ -1,5 +1,6 @@
 (ns metabase-enterprise.security-center.models.security-advisory
   (:require
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -49,5 +50,8 @@
     (events/publish-event! :event/security-advisory-acknowledge
                            {:object  advisory
                             :user-id user-id})
+    (snowplow/track-event! :snowplow/simple_event
+                           {:event        "security_advisory_acknowledged"
+                            :event_detail (name (:severity advisory))})
     (-> (t2/select-one :model/SecurityAdvisory :id (:id advisory))
         (t2/hydrate :acknowledged_by))))
