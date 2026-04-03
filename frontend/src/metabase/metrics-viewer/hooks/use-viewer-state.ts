@@ -567,20 +567,12 @@ export function useViewerState(): UseViewerStateResult {
             if (tab.id !== tabId) {
               return tab;
             }
-            const previousDimId = tab.dimensionMapping[slotIndex];
-            const dimensionChanged = previousDimId !== dimId;
             return {
               ...tab,
               dimensionMapping: {
                 ...tab.dimensionMapping,
                 [slotIndex]: dimId,
               },
-              projectionConfig: dimensionChanged
-                ? {
-                    ...tab.projectionConfig,
-                    dimensionFilter: undefined,
-                  }
-                : tab.projectionConfig,
             };
           }),
         };
@@ -599,10 +591,6 @@ export function useViewerState(): UseViewerStateResult {
           return {
             ...tab,
             dimensionMapping: { ...tab.dimensionMapping, [slotIndex]: null },
-            projectionConfig: {
-              ...tab.projectionConfig,
-              dimensionFilter: undefined,
-            },
           };
         }),
       })),

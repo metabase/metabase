@@ -23,9 +23,6 @@ export type MetricsViewerPageProps = {
 export function MetricsViewerPage(props: MetricsViewerPageProps) {
   const useMetricsViewerResult = useMetricsViewer(props);
 
-  // eslint-disable-next-line no-console
-  console.log("useMetricsViewer", useMetricsViewerResult);
-
   const {
     definitions,
     formulaEntities,

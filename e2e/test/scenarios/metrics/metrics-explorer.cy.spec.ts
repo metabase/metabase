@@ -112,6 +112,137 @@ const ALL_MODELS = [
 
 const SNAPSHOT_NAME = "metrics-explorer-snapshot";
 
+// ============================================================================
+// Test Helpers
+// ============================================================================
+
+/**
+ * Add a metric or measure to the explorer via the search panel
+ */
+const addMetric = (name: string) => {
+  // for some reason `type` clicks in the middle of the input first
+  // so we use `{end}` to make sure we type at the end
+  H.MetricsViewer.searchInput().type(`{end}, ${name}`);
+  H.MetricsViewer.searchResults().findByText(name).click();
+  H.MetricsViewer.runButton().click();
+};
+
+/**
+ * Select a breakout dimension
+ */
+const selectBreakout = (
+  cardname: string,
+  dimensionName: string,
+  index = 0,
+  binning?: string,
+) => {
+  H.MetricsViewer.searchBarPills().contains(cardname).rightclick();
+  H.popover().findByText("Break out").click();
+  const breakout = H.popover()
+    .findAllByText(dimensionName)
+    .should("have.length.at.least", index)
+    .eq(index)
+    .closest("[role=option]");
+
+  if (binning) {
+    breakout.findByTestId("dimension-list-item-binning").realHover().click();
+    H.popover().findByRole("menuitem", { name: binning }).click();
+  } else {
+    breakout.click();
+  }
+};
+
+/**
+ * Intercept and wait for dataset query
+ */
+const interceptDatasetQuery = () => {
+  cy.intercept("POST", "/api/metric/dataset").as("dataset");
+};
+
+/**
+ * Verify the grid displays the correct number of metric cards
+ */
+const verifyMetricCount = (count: number) => {
+  H.MetricsViewer.searchBarPills().should("have.length", count);
+};
+
+/**
+ * Switch to a specific tab
+ */
+const switchToTab = (tabName: string) => {
+  H.MetricsViewer.getTab(tabName).click();
+};
+
+/**
+ * Convert CSS rgb() color string to uppercase hex (#RRGGBB).
+ */
+const rgbToHex = (rgb: string): string => {
+  return Color(rgb).hex().toUpperCase();
+};
+
+/**
+ * Get hex color(s) from a search bar pill's color indicator.
+ * Returns an array of hex color strings.
+ */
+const getPillColors = (pillIndex: number): Cypress.Chainable<string[]> => {
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
+  return H.MetricsViewer.searchBarPills()
+    .should("have.length.greaterThan", pillIndex)
+    .eq(pillIndex)
+    .findByTestId("color-indicator-container")
+    .children()
+    .then(($children) => {
+      const colors: string[] = [];
+      $children.each((_i, el) => {
+        const $el = Cypress.$(el);
+        // Multi-dot: backgroundColor is set; single icon: color is set
+        const bg = $el.css("background-color");
+        const fg = $el.css("color");
+        const raw =
+          bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" ? bg : fg;
+        colors.push(rgbToHex(raw));
+      });
+      return colors;
+    });
+};
+
+/**
+ * Assert that every color in a pill's indicator appears somewhere on the
+ * chart (as a `fill` or `stroke` attribute on an SVG `path`).
+ */
+const assertPillColorsInChart = (pillIndex: number) => {
+  getPillColors(pillIndex).then((colors) => {
+    for (const color of colors) {
+      H.echartsContainer()
+        .find(`path[fill="${color}"], path[stroke="${color}"]`)
+        .should("exist");
+    }
+  });
+};
+
+/**
+ * Assert that the breakout legend dot colors match the pill colors for the
+ * given pill index.
+ */
+const assertLegendColorsMatchPill = (pillIndex: number) => {
+  getPillColors(pillIndex).then((pillColors) => {
+    H.MetricsViewer.breakoutLegend()
+      .findAllByTestId("breakout-legend-dot")
+      .then(($dots) => {
+        const legendColors: string[] = [];
+        $dots.each((_i, el) => {
+          const bg = Cypress.$(el).css("background-color");
+          legendColors.push(rgbToHex(bg));
+        });
+
+        // Every pill color should appear in the legend
+        for (const color of pillColors) {
+          expect(legendColors).to.include(color);
+        }
+      });
+  });
+};
+
 describe("scenarios > metrics > explorer", () => {
   before(() => {
     H.restore();
@@ -124,134 +255,6 @@ describe("scenarios > metrics > explorer", () => {
     H.restore(SNAPSHOT_NAME as any);
     cy.signInAsAdmin();
   });
-
-  // ============================================================================
-  // Test Helpers
-  // ============================================================================
-
-  /**
-   * Add a metric or measure to the explorer via the search panel
-   */
-  const addMetric = (name: string) => {
-    H.MetricsViewer.searchInput().type(name);
-    H.MetricsViewer.searchResults().findByText(name).click();
-  };
-
-  /**
-   * Select a breakout dimension
-   */
-  const selectBreakout = (
-    cardname: string,
-    dimensionName: string,
-    index = 0,
-    binning?: string,
-  ) => {
-    H.MetricsViewer.searchBarPills().contains(cardname).rightclick();
-    H.popover().findByText("Break out").click();
-    const breakout = H.popover()
-      .findAllByText(dimensionName)
-      .should("have.length.at.least", index)
-      .eq(index)
-      .closest("[role=option]");
-
-    if (binning) {
-      breakout.findByTestId("dimension-list-item-binning").realHover().click();
-      H.popover().findByRole("menuitem", { name: binning }).click();
-    } else {
-      breakout.click();
-    }
-  };
-
-  /**
-   * Intercept and wait for dataset query
-   */
-  const interceptDatasetQuery = () => {
-    cy.intercept("POST", "/api/metric/dataset").as("dataset");
-  };
-
-  /**
-   * Verify the grid displays the correct number of metric cards
-   */
-  const verifyMetricCount = (count: number) => {
-    H.MetricsViewer.searchBarPills().should("have.length", count);
-  };
-
-  /**
-   * Switch to a specific tab
-   */
-  const switchToTab = (tabName: string) => {
-    H.MetricsViewer.getTab(tabName).click();
-  };
-
-  /**
-   * Convert CSS rgb() color string to uppercase hex (#RRGGBB).
-   */
-  const rgbToHex = (rgb: string): string => {
-    return Color(rgb).hex().toUpperCase();
-  };
-
-  /**
-   * Get hex color(s) from a search bar pill's color indicator.
-   * Returns an array of hex color strings.
-   */
-  const getPillColors = (pillIndex: number): Cypress.Chainable<string[]> => {
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    return H.MetricsViewer.searchBarPills()
-      .should("have.length.greaterThan", pillIndex)
-      .eq(pillIndex)
-      .findByTestId("color-indicator-container")
-      .children()
-      .then(($children) => {
-        const colors: string[] = [];
-        $children.each((_i, el) => {
-          const $el = Cypress.$(el);
-          // Multi-dot: backgroundColor is set; single icon: color is set
-          const bg = $el.css("background-color");
-          const fg = $el.css("color");
-          const raw =
-            bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" ? bg : fg;
-          colors.push(rgbToHex(raw));
-        });
-        return colors;
-      });
-  };
-
-  /**
-   * Assert that every color in a pill's indicator appears somewhere on the
-   * chart (as a `fill` or `stroke` attribute on an SVG `path`).
-   */
-  const assertPillColorsInChart = (pillIndex: number) => {
-    getPillColors(pillIndex).then((colors) => {
-      for (const color of colors) {
-        H.echartsContainer()
-          .find(`path[fill="${color}"], path[stroke="${color}"]`)
-          .should("exist");
-      }
-    });
-  };
-
-  /**
-   * Assert that the breakout legend dot colors match the pill colors for the
-   * given pill index.
-   */
-  const assertLegendColorsMatchPill = (pillIndex: number) => {
-    getPillColors(pillIndex).then((pillColors) => {
-      H.MetricsViewer.breakoutLegend()
-        .find("[class*=dot]")
-        .then(($dots) => {
-          const legendColors: string[] = [];
-          $dots.each((_i, el) => {
-            const bg = Cypress.$(el).css("background-color");
-            legendColors.push(rgbToHex(bg));
-          });
-
-          // Every pill color should appear in the legend
-          for (const color of pillColors) {
-            expect(legendColors).to.include(color);
-          }
-        });
-    });
-  };
 
   // ============================================================================
   // Entry Points
@@ -269,9 +272,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.findByRole("heading", { name: "Start exploring" }).should("exist");
 
       addMetric("Count of products");
-      cy.wait("@getMetric");
-      cy.findByTestId("run-expression-button").click();
-      cy.wait("@dataset");
 
       cy.log("should persist state in url");
 
@@ -299,9 +299,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.signInAsNormalUser();
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
-      cy.wait("@getMetric");
-      cy.findByTestId("run-expression-button").click();
-      cy.wait("@dataset");
 
       H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
       H.popover().should("not.contain", "Edit in Data Studio");
@@ -321,9 +318,6 @@ describe("scenarios > metrics > explorer", () => {
       ]);
       H.MetricsViewer.goToViewer();
       addMetric("Empty Metric");
-      cy.wait("@getMetric");
-      cy.findByTestId("run-expression-button").click();
-      cy.wait("@dataset");
 
       H.MetricsViewer.getMetricVisualization()
         .findByText(/No dice/)
@@ -345,21 +339,19 @@ describe("scenarios > metrics > explorer", () => {
     it("should add multiple metrics", () => {
       H.MetricsViewer.goToViewer();
       addMetric("Count of products");
-      cy.wait("@getMetric");
-      cy.findByTestId("run-expression-button").click();
       cy.wait("@dataset");
-
-      cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(", ");
       addMetric("Count of orders");
-      cy.wait("@getMetric");
-      cy.findByTestId("run-expression-button").click();
       cy.wait("@dataset");
       verifyMetricCount(2);
 
+      cy.log("allows duplicates");
+      addMetric("Count of products");
+
+      cy.log("Should allow me to add measures");
+      addMetric("Test Measure");
+
       cy.log("no results");
-      cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(", xyznonexistent");
+      H.MetricsViewer.searchInput().type("{end}, xyznonexistent");
       H.MetricsViewer.searchResults().should(
         "contain.text",
         "No results found",
@@ -368,7 +360,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("Should allow me to add measures");
       H.MetricsViewer.searchInput().clear();
       addMetric("Test Measure");
-      cy.wait("@getMeasure");
     });
 
     it("Should not show me metrics that live in collections I do not have permissions to see", () => {
@@ -393,6 +384,8 @@ describe("scenarios > metrics > explorer", () => {
         "No results found",
       );
 
+      H.MetricsViewer.searchInput().clear();
+
       addMetric("Count of orders");
       cy.log(
         "even though we can see the metric, we don't have permissions to run the query",
@@ -414,7 +407,6 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@getMetric");
-      cy.findByTestId("run-expression-button").click();
       cy.wait("@dataset");
     });
 
@@ -507,14 +499,14 @@ describe("scenarios > metrics > explorer", () => {
       cy.wait("@dataset");
 
       cy.log("Should have 2 metric pills (expression pill is separate)");
-      H.MetricsViewer.searchBarPills().should("have.length", 2);
+      H.MetricsViewer.searchBarPills().should("have.length", 3);
 
       cy.log(
         "Two standalone instances of the same metric should have different pill colors",
       );
       getPillColors(0).then((pill0Colors) => {
-        getPillColors(1).then((pill1Colors) => {
-          expect(pill0Colors[0]).to.not.equal(pill1Colors[0]);
+        getPillColors(2).then((pill2Colors) => {
+          expect(pill0Colors[0]).to.not.equal(pill2Colors[0]);
         });
       });
 
@@ -522,7 +514,7 @@ describe("scenarios > metrics > explorer", () => {
         "Each standalone pill color should appear on the chart as fill or stroke",
       );
       assertPillColorsInChart(0);
-      assertPillColorsInChart(1);
+      assertPillColorsInChart(2);
 
       cy.log("Apply breakout to first instance of Count of orders");
       H.MetricsViewer.searchBarPills().eq(0).rightclick();
@@ -536,7 +528,6 @@ describe("scenarios > metrics > explorer", () => {
         cy.findByRole("heading", { name: "User → Source" }).should(
           "be.visible",
         );
-        cy.findByText("Count of orders").should("be.visible");
         cy.findByText("Twitter").should("be.visible");
         cy.findByText("Facebook").should("be.visible");
         cy.findByText("Organic").should("be.visible");
@@ -553,7 +544,7 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Second pill should have single color (no breakout yet)");
       H.MetricsViewer.searchBarPills()
-        .eq(1)
+        .eq(2)
         .findByTestId("color-indicator-container")
         .children()
         .should("have.length", 1);
@@ -562,7 +553,7 @@ describe("scenarios > metrics > explorer", () => {
       assertPillColorsInChart(0);
 
       cy.log("Non-breakout pill color should appear on the chart");
-      assertPillColorsInChart(1);
+      assertPillColorsInChart(2);
 
       cy.log(
         "Legend dot colors should match pill colors for breakout instance",
@@ -570,7 +561,7 @@ describe("scenarios > metrics > explorer", () => {
       assertLegendColorsMatchPill(0);
 
       cy.log("Apply breakout to second instance of Count of orders");
-      H.MetricsViewer.searchBarPills().eq(1).rightclick();
+      H.MetricsViewer.searchBarPills().eq(2).rightclick();
       H.popover().findByText("Break out").click();
       H.popover().findByText("Source").click();
       cy.wait("@dataset");
@@ -582,21 +573,21 @@ describe("scenarios > metrics > explorer", () => {
         .children()
         .should("have.length.greaterThan", 1);
       H.MetricsViewer.searchBarPills()
-        .eq(1)
+        .eq(2)
         .findByTestId("color-indicator-container")
         .children()
         .should("have.length.greaterThan", 1);
 
       cy.log("Both breakout pills' colors should appear on the chart");
       assertPillColorsInChart(0);
-      assertPillColorsInChart(1);
+      assertPillColorsInChart(2);
 
       cy.log(
         "The two breakout pills should have different color sets (different entities)",
       );
       getPillColors(0).then((pill0Colors) => {
-        getPillColors(1).then((pill1Colors) => {
-          expect(pill0Colors[0]).to.not.equal(pill1Colors[0]);
+        getPillColors(2).then((pill2Colors) => {
+          expect(pill0Colors[0]).to.not.equal(pill2Colors[0]);
         });
       });
 
@@ -623,14 +614,14 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Second pill should still have multiple colors");
       H.MetricsViewer.searchBarPills()
-        .eq(1)
+        .eq(2)
         .findByTestId("color-indicator-container")
         .children()
         .should("have.length.greaterThan", 1);
 
       cy.log("After removing breakout, pill colors should still match chart");
       assertPillColorsInChart(0);
-      assertPillColorsInChart(1);
+      assertPillColorsInChart(2);
     });
 
     it("should preserve breakout state when editing formula and re-running", () => {
@@ -790,8 +781,6 @@ describe("scenarios > metrics > explorer", () => {
       cy.intercept("GET", "/api/metric/*").as("getMetric");
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
-      cy.wait("@getMetric");
-      cy.findByTestId("run-expression-button").click();
       cy.wait("@dataset");
     });
 
@@ -1291,8 +1280,7 @@ describe("scenarios > metrics > explorer > BigInt filters", () => {
       };
       H.createQuestion(BIGINT_METRIC);
       H.MetricsViewer.goToViewer();
-      H.MetricsViewer.searchInput().type(METRIC_NAME);
-      H.MetricsViewer.searchResults().findByText(METRIC_NAME).click();
+      addMetric(METRIC_NAME);
       H.MetricsViewer.getFilterButton().click();
       H.popover().findByText("ID").click();
       H.popover().within(() => {

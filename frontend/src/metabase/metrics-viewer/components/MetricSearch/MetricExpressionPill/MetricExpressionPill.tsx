@@ -45,6 +45,7 @@ export function MetricExpressionPill({
         "aria-label": t`Remove expression`,
       }}
       onClick={onClick}
+      data-testid="metrics-viewer-search-pill"
     >
       <Flex align="center" gap="xs">
         <SourceColorIndicator colors={colors} />

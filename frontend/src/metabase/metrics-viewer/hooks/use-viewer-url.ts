@@ -152,9 +152,6 @@ export function useViewerUrl(
     if (restoredFormulaEntities.length > 0) {
       setFormulaEntities(restoredFormulaEntities);
     }
-
-    // eslint-disable-next-line no-console
-    console.log("serializedState", serializedState);
   }, [location, dispatch, initialize, onLoadSources, setFormulaEntities]);
 
   // sync state to URL

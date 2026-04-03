@@ -15,40 +15,6 @@
   color: var(--mb-color-text-tertiary);
 }
 
-.parenToken {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--mb-color-text-medium);
-  line-height: 1;
-  user-select: none;
-}
-
-.operatorText {
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--mb-color-text-medium);
-  user-select: none;
-  white-space: nowrap;
-}
-
-.operatorTextPending {
-  opacity: 0.5;
-}
-
-.metricTokenText {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--mb-color-text-primary);
-  white-space: nowrap;
-}
-
-.separatorText {
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--mb-color-text-medium);
-  user-select: none;
-}
-
 .cmOperator {
   color: var(--mb-color-syntax-parameters);
 }

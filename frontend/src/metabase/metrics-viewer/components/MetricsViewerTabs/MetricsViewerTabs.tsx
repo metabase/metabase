@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
-import { Icon, Skeleton, Tabs } from "metabase/ui";
+import { ActionIcon, Icon, Skeleton, Tabs } from "metabase/ui";
 
 import type {
   MetricSourceId,
@@ -80,22 +80,18 @@ export function MetricsViewerTabs({
             ) : (
               tab.label
             )}
-            <span
+            <ActionIcon
               className={S.closeButton}
-              role="button"
-              tabIndex={0}
+              size="xs"
+              variant="subtle"
+              ml="xs"
               aria-label={
                 tab.label != null ? t`Remove ${tab.label} tab` : undefined
               }
               onClick={(e) => handleRemoveTab(e, tab.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  handleRemoveTab(e as unknown as React.MouseEvent, tab.id);
-                }
-              }}
             >
               <Icon name="close" size={10} />
-            </span>
+            </ActionIcon>
           </Tabs.Tab>
         ))}
         {hasAvailableDimensions && (
