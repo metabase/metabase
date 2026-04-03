@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { type Ref, forwardRef, useEffect, useMemo } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
@@ -53,19 +54,25 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
 
   const [setRef, buttonRef] = useMergedRef<HTMLButtonElement>(ref);
 
+  const wasOpened = usePrevious(isOpened);
+
   useEffect(() => {
     // On mobile devices for SDK/EAJS we scroll to opened dropdown,
     // as depending on a consumer site CSS the anchor button of the opened dropdown
-    // may be horizontally out of the screen
+    // may be horizontally out of the screen.
+    // Only scroll on auto-open (true from mount), not user click.
+    // If the user clicked the button, they can already see it.
+    const isAutoOpened = isOpened && wasOpened === undefined;
     const isMobileEmbeddingSdk = isEmbeddingSdk() && isTouchDevice();
-    if (isOpened && buttonRef.current && isMobileEmbeddingSdk) {
+
+    if (isAutoOpened && buttonRef.current && isMobileEmbeddingSdk) {
       buttonRef.current.scrollIntoView({
         behavior: "smooth",
         inline: "start",
         block: "nearest",
       });
     }
-  }, [isOpened, buttonRef]);
+  }, [isOpened, wasOpened, buttonRef]);
 
   return (
     <button
