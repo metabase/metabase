@@ -144,7 +144,7 @@ jobs:
           previous-step-outcome: ${{ steps.run-java-tests.outcome }}
 
       - name: Publish Test Report (JUnit)
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@3eeb9fc888e82e8be2fb356bbeec2750231672bc # v1
         if: failure()
         with:
           path: "target/junit/**/*_test.xml"

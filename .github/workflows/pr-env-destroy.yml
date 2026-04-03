@@ -28,7 +28,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
       - name: Tailscale
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@4e4c49acaa9818630ce0bd7a564372c17e33fb4d # v2
         with:
           oauth-client-id: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.PR_ENV_TAILSCALE_OAUTH_SECRET }}
@@ -44,7 +44,7 @@ jobs:
           echo "::add-mask::${IDTOKEN}"
           echo "idToken=${IDTOKEN}" >>$GITHUB_OUTPUT
       - name: Setup Kube Context
-        uses: azure/k8s-set-context@v2
+        uses: azure/k8s-set-context@0b53301dcc7ddd3f6d35f97fb67228ac4e5ab2fd # v2
         with:
           method: kubeconfig
           kubeconfig: |
@@ -73,7 +73,7 @@ jobs:
           kubectl delete ns hosting-pr${{ env.PR_NUMBER }}
       - name: Setup Helm
         if: ${{ inputs.self_hosting }}
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
           version: 'latest'
       - name: Destroy PR Review ENV (self-hosting)
