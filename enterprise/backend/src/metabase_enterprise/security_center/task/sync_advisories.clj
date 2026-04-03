@@ -63,7 +63,9 @@
 
 ;;; ----------------------------------------- Sync + evaluate + notify -----------------------------------------------
 
-(defn sync-and-evaluate! []
+(defn sync-and-evaluate!
+  "Fetch advisories, re-evaluate all, and send repeat notifications."
+  []
   (when (premium-features/security-center-enabled?)
     (log/info "Syncing security advisories")
     (try

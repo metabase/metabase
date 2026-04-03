@@ -6,9 +6,7 @@
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent CountDownLatch TimeUnit)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
