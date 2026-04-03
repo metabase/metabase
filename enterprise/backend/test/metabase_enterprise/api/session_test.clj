@@ -8,7 +8,8 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest properties-token-features-test
-  (mt/with-premium-features #{:advanced-permissions
+  (mt/with-premium-features #{:admin-security-center
+                              :advanced-permissions
                               :attached-dwh
                               :audit-app
                               :cache-granular-controls
@@ -54,7 +55,8 @@
                               :cloud-custom-smtp
                               :workspaces
                               :writable-connection}
-    (is (= {:advanced_permissions           true
+    (is (= {:admin_security_center          true
+            :advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
             :cache_granular_controls        true

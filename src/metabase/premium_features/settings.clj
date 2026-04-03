@@ -292,6 +292,10 @@
   "Should we enable the Library?"
   :library)
 
+(define-premium-feature enable-admin-security-center?
+  "Should we enable the Security Center in the Admin UI?"
+  :admin-security-center)
+
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
   "Should the multi-tenant feature be enabled?"
   :tenants)
@@ -305,7 +309,8 @@
   :writable-connection)
 
 (defn- -token-features []
-  {:advanced_permissions           (enable-advanced-permissions?)
+  {:admin_security_center          (enable-admin-security-center?)
+   :advanced_permissions           (enable-advanced-permissions?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)
