@@ -194,7 +194,7 @@
       (with-redefs [io/resource (fn [path]
                                   (when (= path resource)
                                     jar-url))]
-        (is (= expected (#'ee-audit/views-checksum)))))
+        (is (= expected (#'ee-audit/views-checksum))))
       (finally
         (Files/deleteIfExists jar-path)))))
 
