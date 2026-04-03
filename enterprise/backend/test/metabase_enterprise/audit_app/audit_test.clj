@@ -22,7 +22,7 @@
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)
-   (java.nio.file Files)
+   (java.nio.file Files OpenOption)
    (java.util.jar JarEntry JarOutputStream)))
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
@@ -185,7 +185,10 @@
         expected  (reduce + 0 (map hash contents))
         jar-url   (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]
     (try
-      (with-open [out (-> jar-path Files/newOutputStream io/output-stream JarOutputStream.)]
+      (with-open [out (-> jar-path
+                          (Files/newOutputStream (into-array OpenOption []))
+                          io/output-stream
+                          JarOutputStream.)]
         (doseq [[path sql] [[(str resource "/users/v1/postgres-users.sql") (first contents)]
                             [(str resource "/dashboards/v1/postgres-dashboards.sql") (second contents)]]]
           (.putNextEntry out (JarEntry. path))
