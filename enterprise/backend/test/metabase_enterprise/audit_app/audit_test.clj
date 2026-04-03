@@ -25,6 +25,8 @@
    (java.nio.file Files OpenOption)
    (java.util.jar JarEntry JarOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
 (defn do-with-audit-db-restoration! [thunk]
