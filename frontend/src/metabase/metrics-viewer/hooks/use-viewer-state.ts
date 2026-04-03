@@ -119,7 +119,7 @@ function addDefinitionToTabs(
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      dimensionsBySource: activeMappings,
+      dimensionBySlotIndex: activeMappings,
     };
 
     // Build slot index → sourceId lookup for tab matching
@@ -218,7 +218,7 @@ function assignDimensionsForUnmappedSlots(
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      dimensionsBySource: activeMappings,
+      dimensionBySlotIndex: activeMappings,
     };
 
     let newMappings: Record<number, string> | null = null;

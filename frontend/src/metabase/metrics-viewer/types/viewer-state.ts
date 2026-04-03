@@ -27,7 +27,7 @@ export interface StoredMetricsViewerTab {
   id: string;
   type: MetricsViewerTabType;
   label: string;
-  dimensionsBySource: Record<number, DimensionId>;
+  dimensionBySlotIndex: Record<number, DimensionId>;
 }
 
 // ── Expression sub-tokens ──

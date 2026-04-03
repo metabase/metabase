@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
+import { objectFromEntries } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import type {
   DimensionMetadata,
@@ -49,8 +49,7 @@ import {
 import {
   type TabInfo,
   createTabFromTabInfo,
-  getDimensionsByType,
-  resolveCommonTabLabel,
+  recomputeTabLabels,
 } from "../utils/tabs";
 
 import { useDefinitionQueries } from "./use-definition-queries";
@@ -58,7 +57,7 @@ import { useViewerState } from "./use-viewer-state";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
 export interface UseMetricsViewerResult {
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>; // TODO: most likely we don't need this anymore - it was needed only to understand which metric names should be identified as metrics when we parse formula bar text. This could be just local state for MetricSearchInput
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
   tabs: MetricsViewerTabState[];
   activeTab: MetricsViewerTabState | null;
@@ -180,9 +179,6 @@ export function useMetricsViewer({
     loadAndReplaceMeasure,
   } = useViewerState();
 
-  // eslint-disable-next-line no-console
-  console.log("useMetricsViewer", state);
-
   const handleLoadSources = useCallback(
     (request: LoadSourcesRequest) => {
       for (const metricId of request.metricIds) {
@@ -226,7 +222,6 @@ export function useMetricsViewer({
     expressionItems,
   } = useDefinitionQueries(state.definitions, state.formulaEntities, activeTab);
 
-  // TODO: most likely we should refactor this to be based on "formulaEntities"
   const definitionValues = useMemo(
     () => Object.values(state.definitions),
     [state.definitions],
@@ -313,40 +308,10 @@ export function useMetricsViewer({
     [state.tabs],
   );
 
-  const effectiveTabs = useMemo(() => {
-    // Build slot-index-keyed dimension lookup from metricSlots
-    const dimsBySlotIndex = new Map<
-      number,
-      Map<string, { displayName: string }>
-    >();
-    for (const slot of metricSlots) {
-      const entry = state.definitions[slot.sourceId];
-      if (!entry?.definition) {
-        continue;
-      }
-      dimsBySlotIndex.set(
-        slot.slotIndex,
-        getDimensionsByType(entry.definition),
-      );
-    }
-
-    return state.tabs.map((tab) => {
-      const names: string[] = [];
-      for (const [key, dimensionId] of getObjectEntries(tab.dimensionMapping)) {
-        if (dimensionId == null) {
-          continue;
-        }
-        const slotIndex = Number(key);
-        const slotDimensions = dimsBySlotIndex.get(slotIndex);
-        const dimensionInfo = slotDimensions?.get(dimensionId);
-        if (dimensionInfo) {
-          names.push(dimensionInfo.displayName);
-        }
-      }
-      const label = resolveCommonTabLabel(names);
-      return label != null && label !== tab.label ? { ...tab, label } : tab;
-    });
-  }, [state.tabs, metricSlots, state.definitions]);
+  const effectiveTabs = useMemo(
+    () => recomputeTabLabels(state.tabs, state.definitions, metricSlots),
+    [state.tabs, metricSlots, state.definitions],
+  );
 
   const availableDimensions = useMemo(
     () =>
