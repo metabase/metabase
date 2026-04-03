@@ -46,12 +46,19 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
-    [:fields {:optional true} [:vector :keyword]]]])
+    [:fields {:optional true} [:vector :keyword]]
+    [:provides {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
   "Attributes populate by clojure functions"
   [attr-def]
   (and (map? attr-def) (:fn attr-def)))
+
+(defn function-attr-provides
+  "Returns the attr keys that a function attr provides when it returns a map.
+  Used to determine which filters a function attr satisfies."
+  [attr-def]
+  (:provides attr-def []))
 
 (defn collect-fn-attr-req-fields
   "Return set of required appdb fields declared in a spec's function attrs"

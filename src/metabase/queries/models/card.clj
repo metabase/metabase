@@ -1436,8 +1436,9 @@
                   :created-at           true
                   :updated-at           true
                   :display-type         :this.display
-                  :temporal-info        {:fn extract-temporal-info
-                                         :fields [:dataset_query :query_type]}}
+                  :temporal-info        {:fn       extract-temporal-info
+                                         :fields   [:dataset_query :query_type]
+                                         :provides [:has-temporal-dim :non-temporal-dim-ids]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
