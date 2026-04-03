@@ -63,7 +63,7 @@
 
 ;;; ----------------------------------------- Sync + evaluate + notify -----------------------------------------------
 
-(defn- sync-and-evaluate! []
+(defn sync-and-evaluate! []
   (when (premium-features/security-center-enabled?)
     (log/info "Syncing security advisories")
     (try
