@@ -22,18 +22,7 @@ import type {
   SourceColorMap,
 } from "../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
-import {
-  applyProjection,
-  buildBinnedBreakoutDefinition,
-  getDefinitionName,
-} from "../utils/definition-builder";
-import { buildDimensionFilterClause } from "../utils/dimension-filters";
-import {
-  findBinningStrategy,
-  findDimensionById,
-  findFilterDimensionById,
-  findTemporalBucket,
-} from "../utils/dimension-lookup";
+import { getDefinitionName } from "../utils/definition-builder";
 import type {
   AvailableDimensionsResult,
   SourceDisplayInfo,
@@ -41,11 +30,7 @@ import type {
 import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
 import { computeMetricSlots } from "../utils/metric-slots";
 import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
-import {
-  createMeasureSourceId,
-  createMetricSourceId,
-  createSourceId,
-} from "../utils/source-ids";
+import { createSourceId } from "../utils/source-ids";
 import {
   type TabInfo,
   createTabFromTabInfo,
@@ -97,66 +82,6 @@ export interface UseMetricsViewerResult {
   setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void;
 }
 
-function buildUrlRestoreTransform(
-  sourceId: MetricSourceId,
-  request: LoadSourcesRequest,
-): ((definition: MetricDefinition) => MetricDefinition) | undefined {
-  const breakoutInfo = request.breakoutBySourceId?.[sourceId];
-  const filters = request.filtersBySourceId?.[sourceId];
-
-  if (!breakoutInfo && (!filters || filters.length === 0)) {
-    return undefined;
-  }
-
-  return (definition: MetricDefinition): MetricDefinition => {
-    let result = definition;
-
-    if (breakoutInfo) {
-      const dimension = findDimensionById(result, breakoutInfo.dimensionId);
-      if (dimension) {
-        const dimensionRef = LibMetric.dimensionReference(dimension);
-
-        let modifiedRef: LibMetric.ProjectionClause | null = null;
-        if (breakoutInfo.temporalUnit) {
-          const bucket = findTemporalBucket(
-            result,
-            dimension,
-            breakoutInfo.temporalUnit,
-          );
-          if (bucket) {
-            modifiedRef = LibMetric.withTemporalBucket(dimensionRef, bucket);
-          }
-        } else if (breakoutInfo.binning) {
-          const strategy = findBinningStrategy(
-            result,
-            dimension,
-            breakoutInfo.binning,
-          );
-          if (strategy) {
-            modifiedRef = LibMetric.withBinning(dimensionRef, strategy);
-          }
-        }
-
-        result = modifiedRef
-          ? applyProjection(result, modifiedRef)
-          : buildBinnedBreakoutDefinition(result, dimensionRef);
-      }
-    }
-
-    if (filters) {
-      for (const filter of filters) {
-        const dimension = findFilterDimensionById(result, filter.dimensionId);
-        if (dimension) {
-          const clause = buildDimensionFilterClause(dimension, filter.value);
-          result = LibMetric.filter(result, clause);
-        }
-      }
-    }
-
-    return result;
-  };
-}
-
 export function useMetricsViewer({
   location,
 }: MetricsViewerPageProps): UseMetricsViewerResult {
@@ -182,15 +107,10 @@ export function useMetricsViewer({
   const handleLoadSources = useCallback(
     (request: LoadSourcesRequest) => {
       for (const metricId of request.metricIds) {
-        const sourceId = createMetricSourceId(metricId);
-        loadAndAddMetric(metricId, buildUrlRestoreTransform(sourceId, request));
+        loadAndAddMetric(metricId);
       }
       for (const measureId of request.measureIds) {
-        const sourceId = createMeasureSourceId(measureId);
-        loadAndAddMeasure(
-          measureId,
-          buildUrlRestoreTransform(sourceId, request),
-        );
+        loadAndAddMeasure(measureId);
       }
     },
     [loadAndAddMetric, loadAndAddMeasure],

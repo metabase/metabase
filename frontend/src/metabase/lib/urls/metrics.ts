@@ -38,8 +38,7 @@ export function exploreMetricDimension({
   label,
 }: ExploreMetricDimensionOptions): string {
   const state: SerializedMetricsViewerPageState = {
-    sources: [{ type: "metric", id: metricId, index: 0 }],
-    expressions: [],
+    formulaEntities: [{ type: "metric", id: metricId }],
     tabs: [
       {
         id: dimensionId,
