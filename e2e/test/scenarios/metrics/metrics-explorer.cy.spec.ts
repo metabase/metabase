@@ -936,10 +936,7 @@ describe("scenarios > metrics > explorer", () => {
       );
 
       cy.findByTestId("metrics-formula-input").click();
-      H.MetricsViewer.searchInput().type(", ");
       addMetric("Count of products");
-      cy.wait("@getMetric");
-      cy.findByTestId("run-expression-button").click();
       cy.wait("@dataset");
 
       H.MetricsViewer.getDimensionPillContainer().within(() => {
