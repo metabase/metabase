@@ -2986,6 +2986,7 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.metabot-analytics.api}
    :uses #{api
+           metabot
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotMessage :model/User}}
 

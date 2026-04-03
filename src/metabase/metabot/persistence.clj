@@ -1,10 +1,10 @@
 (ns metabase.metabot.persistence
   "Persistence for Metabot conversations and messages."
   (:require
-   [cheshire.core :as json]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn store-message!
@@ -72,7 +72,7 @@
        :role   "agent"
        :type   "tool_call"
        :name   (:function block)
-       :args   (when-let [a (:arguments block)] (json/generate-string a))
+       :args   (when-let [a (:arguments block)] (json/encode a))
        :status "ended"}
 
       ;; Tool output — skip here, merged via merge-tool-results
@@ -86,7 +86,7 @@
                         (filter #(= "tool-output" (:type %)))
                         (into {} (map (fn [o]
                                         [(:id o)
-                                         {:result   (when-let [r (:result o)] (json/generate-string r))
+                                         {:result   (when-let [r (:result o)] (json/encode r))
                                           :is_error (boolean (:error o))}]))))]
     (mapv (fn [msg]
             (if-let [r (and (= "tool_call" (:type msg)) (get result-map (:id msg)))]
