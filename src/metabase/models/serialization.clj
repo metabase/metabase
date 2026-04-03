@@ -1494,7 +1494,9 @@
             {:id (case model
                    "table"    (*export-table-fk* id)
                    "database" (*export-database-fk* id)
-                   (*export-fk* id (link-card-model->toucan-model model)))}))))
+                   (if-let [model (link-card-model->toucan-model model)]
+                     (*export-fk* id model)
+                     id))}))))
 
 (defn- json-export-mbql
   "Converts IDs to fully qualified names inside a JSON string.
@@ -1518,9 +1520,11 @@
   [{:keys [linkType type] :as click-behavior}]
   (fk-elide
    (cond-> click-behavior
-     (= type "link") (-> (u/update-some :targetId (fn [id]
-                                                    (when-let [model (link-card-model->toucan-model linkType)]
-                                                      (*export-fk* id model))))
+     (= type "link") (-> (u/update-some :targetId
+                                        (fn [id]
+                                          (if-let [model (link-card-model->toucan-model linkType)]
+                                            (*export-fk* id model)
+                                            id)))
                          (u/update-some :tabId *export-fk* :model/DashboardTab)))))
 
 (defn- import-viz-click-behavior-link
@@ -1657,7 +1661,9 @@
             {:id (case model
                    "table"    (*import-table-fk* id)
                    "database" (*import-database-fk* id)
-                   (*import-fk* id (link-card-model->toucan-model model)))}))))
+                   (if-let [model (link-card-model->toucan-model model)]
+                     (*import-fk* id model)
+                     id))}))))
 
 (defn- import-visualizations [entity]
   (lib.util.match/replace-lite entity
