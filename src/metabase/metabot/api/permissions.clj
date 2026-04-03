@@ -18,7 +18,7 @@
     [:map
      [:metabot [:enum :yes :no]]
      [:metabot-sql-generation [:enum :yes :no]]
-     [:metabot-nql [:enum :yes :no]]
+     [:metabot-nlq [:enum :yes :no]]
      [:metabot-other-tools [:enum :yes :no]]]]])
 
 (api.macros/defendpoint :get "/user-permissions" :- user-permissions-response-schema

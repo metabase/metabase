@@ -1,13 +1,14 @@
 (ns metabase.metabot.scope-resolution-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.metabot.scope :as scope]))
+   [metabase.metabot.scope :as scope]
+   [metabase.test :as mt]))
 
 (deftest user-metabot-perms-sql-generation-scopes-test
   (testing "sql-generation :yes grants sql, transforms, snippets scopes"
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :yes
-                   :permission/metabot-nql            :no
+                   :permission/metabot-nlq            :no
                    :permission/metabot-other-tools    :no})]
       (is (contains? scopes "agent:sql:*"))
       (is (contains? scopes "agent:transforms:*"))
@@ -19,7 +20,7 @@
   (testing "nql :yes grants notebook, query, table, metric scopes"
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :no
-                   :permission/metabot-nql            :yes
+                   :permission/metabot-nlq            :yes
                    :permission/metabot-other-tools    :no})]
       (is (contains? scopes "agent:notebook:*"))
       (is (contains? scopes "agent:query:*"))
@@ -31,7 +32,7 @@
   (testing "other-tools :yes grants viz, dashboard, document, alert scopes"
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :no
-                   :permission/metabot-nql            :no
+                   :permission/metabot-nlq            :no
                    :permission/metabot-other-tools    :yes})]
       (is (contains? scopes "agent:viz:*"))
       (is (contains? scopes "agent:dashboard:*"))
@@ -43,7 +44,7 @@
   (testing "always-granted scopes present regardless of permissions"
     (let [scopes (scope/user-metabot-perms->scopes
                   {:permission/metabot-sql-generation :no
-                   :permission/metabot-nql            :no
+                   :permission/metabot-nlq            :no
                    :permission/metabot-other-tools    :no})]
       (is (contains? scopes "agent:search"))
       (is (contains? scopes "agent:resource:*"))
@@ -71,12 +72,13 @@
     (let [perms (scope/resolve-user-permissions nil)]
       (is (= (:permission/metabot-sql-generation scope/perm-type-defaults)
              (:permission/metabot-sql-generation perms)))
-      (is (= (:permission/metabot-nql scope/perm-type-defaults)
-             (:permission/metabot-nql perms)))
+      (is (= (:permission/metabot-nlq scope/perm-type-defaults)
+             (:permission/metabot-nlq perms)))
       (is (= (:permission/metabot-other-tools scope/perm-type-defaults)
              (:permission/metabot-other-tools perms))))))
 
-(deftest resolve-user-permissions-oss-returns-defaults-test
-  (testing "OSS always returns defaults regardless of user-id"
-    (let [perms (scope/resolve-user-permissions 1)]
-      (is (= scope/perm-type-defaults perms)))))
+(deftest resolve-user-permissions-oss-returns-all-yes-test
+  (mt/with-premium-features #{}
+    (testing "OSS always returns all-yes regardless of user-id"
+      (let [perms (scope/resolve-user-permissions 1)]
+        (is (= scope/all-yes-permissions perms))))))

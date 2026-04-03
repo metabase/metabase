@@ -329,7 +329,7 @@
     [:maybe [:sequential [:enum "model" "metric" "table"]]]]])
 
 (mu/defn ^{:tool-name "search"
-           :prompt    "nql_search.md"
+           :prompt    "nlq_search.md"
            :scope     scope/agent-search}
   nlq-search-tool
   "Search for NLQ-queryable data sources (models, metrics, tables)."

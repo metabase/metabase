@@ -841,8 +841,8 @@
         (is (check! :sql {:permission/metabot :yes :permission/metabot-sql-generation :yes})))
       (testing "nlq profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
-                              (check! :nlq {:permission/metabot :yes :permission/metabot-nql :no})))
-        (is (check! :nlq {:permission/metabot :yes :permission/metabot-nql :yes})))
+                              (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :no})))
+        (is (check! :nlq {:permission/metabot :yes :permission/metabot-nlq :yes})))
       (testing "transforms_codegen profile"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :transforms_codegen {:permission/metabot :yes :permission/metabot-sql-generation :no})))

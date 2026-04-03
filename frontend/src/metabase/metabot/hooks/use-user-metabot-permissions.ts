@@ -24,7 +24,7 @@ export const useUserMetabotPermissions = () => {
       canUseMetabot: hasAccess,
       canUseSqlGeneration:
         hasAccess && perms?.["metabot-sql-generation"] === "yes",
-      canUseNlq: hasAccess && perms?.["metabot-nql"] === "yes",
+      canUseNlq: hasAccess && perms?.["metabot-nlq"] === "yes",
       canUseOtherTools: hasAccess && perms?.["metabot-other-tools"] === "yes",
     }),
     [isLoading, isError, hasAccess, perms],
