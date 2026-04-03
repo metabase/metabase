@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -14,10 +15,13 @@ import { SecurityCenterPage } from "./SecurityCenterPage";
 
 const mockAcknowledge = jest.fn();
 
-function setup(advisories: Advisory[] = []) {
+function setup(
+  advisories: Advisory[] = [],
+  { lastCheckedAt = null }: { lastCheckedAt?: string | null } = {},
+) {
   jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
     data: advisories,
-    lastCheckedAt: null,
+    lastCheckedAt,
     isLoading: false,
     acknowledgeAdvisory: mockAcknowledge,
   });
@@ -265,6 +269,31 @@ describe("SecurityCenterPage", () => {
       setup([]);
 
       expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("sync polling", () => {
+    it("disables the sync button while syncing", async () => {
+      fetchMock.post("path:/api/ee/security-center/sync", 200);
+      setup();
+
+      await userEvent.click(screen.getByTestId("sync-advisories"));
+
+      expect(screen.getByTestId("sync-advisories")).toBeDisabled();
+    });
+
+    it("passes isPolling to useSecurityAdvisories after sync is triggered", async () => {
+      fetchMock.post("path:/api/ee/security-center/sync", 200);
+      const spy = jest.spyOn(advisoriesHook, "useSecurityAdvisories");
+      setup();
+
+      // Before sync, the hook should be called without polling
+      expect(spy).toHaveBeenCalledWith(false);
+
+      await userEvent.click(screen.getByTestId("sync-advisories"));
+
+      // After sync, the hook should be called with polling enabled
+      expect(spy).toHaveBeenCalledWith(true);
     });
   });
 });

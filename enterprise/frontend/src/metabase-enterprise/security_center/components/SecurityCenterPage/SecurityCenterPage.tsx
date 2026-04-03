@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting, useToast } from "metabase/common/hooks";
 import { Box, Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import {
@@ -26,14 +26,74 @@ const DEFAULT_FILTER: AdvisoryFilter = {
   showAcknowledged: false,
 };
 
+const MAX_POLL_COUNT = 30;
+
 export function SecurityCenterPage() {
-  const { data: advisories, acknowledgeAdvisory } = useSecurityAdvisories();
+  const [isPolling, setIsPolling] = useState(false);
+  const {
+    data: advisories,
+    lastCheckedAt,
+    acknowledgeAdvisory,
+  } = useSecurityAdvisories(isPolling);
   const [syncAdvisories, { isLoading: isSyncing }] =
     useSyncSecurityAdvisoriesMutation();
   const [filter, setFilter] = useState<AdvisoryFilter>(DEFAULT_FILTER);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
+  const [sendToast] = useToast();
+
+  const lastCheckedAtBeforeSync = useRef<string | null>(null);
+  const pollCountRef = useRef(0);
+
+  const handleSync = useCallback(async () => {
+    lastCheckedAtBeforeSync.current = lastCheckedAt;
+    pollCountRef.current = 0;
+
+    try {
+      await syncAdvisories().unwrap();
+      sendToast({
+        icon: "sync",
+        message: t`Checking for security advisories…`,
+      });
+      setIsPolling(true);
+    } catch {
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`Failed to check for security advisories`,
+      });
+    }
+  }, [lastCheckedAt, syncAdvisories, sendToast]);
+
+  useEffect(() => {
+    if (!isPolling) {
+      return;
+    }
+
+    pollCountRef.current += 1;
+
+    const syncCompleted =
+      lastCheckedAt !== null &&
+      lastCheckedAt !== lastCheckedAtBeforeSync.current;
+
+    if (syncCompleted) {
+      setIsPolling(false);
+      sendToast({
+        icon: "check_filled",
+        message: t`Security advisories are up to date`,
+      });
+    } else if (pollCountRef.current >= MAX_POLL_COUNT) {
+      setIsPolling(false);
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`Security advisory check is taking longer than expected. Results will appear when ready.`,
+      });
+    }
+  }, [isPolling, lastCheckedAt, sendToast]);
+
+  const isSyncInProgress = isSyncing || isPolling;
 
   const currentVersion = version?.tag ?? "";
   const targetVersion = getTargetUpgradeVersion(advisories);
@@ -53,10 +113,11 @@ export function SecurityCenterPage() {
               leftSection={
                 <Icon
                   name="sync"
-                  className={isSyncing ? S.syncing : undefined}
+                  className={isSyncInProgress ? S.syncing : undefined}
                 />
               }
-              onClick={() => syncAdvisories()}
+              onClick={handleSync}
+              disabled={isSyncInProgress}
               data-testid="sync-advisories"
             >{t`Check now`}</Button>
             <Button
