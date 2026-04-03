@@ -1,30 +1,16 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
-import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
-import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
-import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { Button, Card, Flex, Popover, Select, Stack, Text } from "metabase/ui";
+import { Card, Flex, Stack, Text } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";
+import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";
-
-function getDateLabel(value: string | null): string {
-  if (!value) {
-    return t`Date`;
-  }
-  const parsed = deserializeDateParameterValue(value);
-  if (parsed) {
-    return getDateFilterDisplayName(parsed, { withPrefix: false });
-  }
-  return t`Date`;
-}
 
 export function ConversationsPage({ location }: WithRouterProps) {
   const [
@@ -32,32 +18,8 @@ export function ConversationsPage({ location }: WithRouterProps) {
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
 
-  const [dateOpened, setDateOpened] = useState(false);
   const sortingOptions = { sort_column, sort_direction };
-
-  const { data: usersData } = useListUsersQuery({});
-  const { data: groupsData } = useListPermissionsGroupsQuery(undefined);
-
-  const userOptions = useMemo(
-    () =>
-      (usersData?.data ?? []).map((u) => ({
-        value: String(u.id),
-        label:
-          [u.first_name, u.last_name].filter(Boolean).join(" ") ||
-          u.email ||
-          String(u.id),
-      })),
-    [usersData],
-  );
-
-  const groupOptions = useMemo(
-    () =>
-      (groupsData ?? []).map((g) => ({
-        value: String(g.id),
-        label: g.name,
-      })),
-    [groupsData],
-  );
+  const { userOptions, groupOptions } = useFilterOptions();
 
   const {
     data: conversationsData,
@@ -91,54 +53,19 @@ export function ConversationsPage({ location }: WithRouterProps) {
 
   return (
     <Stack>
-      <Flex gap="md" wrap="wrap" align="center">
-        <Popover
-          opened={dateOpened}
-          onChange={setDateOpened}
-          position="bottom-start"
-        >
-          <Popover.Target>
-            <Button variant="default" onClick={() => setDateOpened((o) => !o)}>
-              {getDateLabel(date)}
-            </Button>
-          </Popover.Target>
-          <Popover.Dropdown>
-            <DateAllOptionsWidget
-              value={date}
-              onChange={(val) => {
-                patchUrlState({ date: val, page: 0 });
-                setDateOpened(false);
-              }}
-            />
-          </Popover.Dropdown>
-        </Popover>
-        <Select
-          placeholder={t`Group`}
-          data={groupOptions}
-          value={group}
-          onChange={(val) => patchUrlState({ group: val, page: 0 })}
-          clearable
-          searchable
-          w={180}
-        />
-        <Select
-          placeholder={t`User`}
-          data={userOptions}
-          value={user}
-          onChange={(val) => patchUrlState({ user: val, page: 0 })}
-          clearable
-          searchable
-          w={180}
-        />
-        <Select
-          placeholder={t`Profile`}
-          data={profileOptions}
-          value={profile}
-          onChange={(val) => patchUrlState({ profile: val, page: 0 })}
-          clearable
-          w={150}
-        />
-      </Flex>
+      <ConversationFilters
+        date={date}
+        onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
+        user={user}
+        onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
+        group={group}
+        onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
+        profile={profile}
+        onProfileChange={(val) => patchUrlState({ profile: val, page: 0 })}
+        userOptions={userOptions}
+        groupOptions={groupOptions}
+        profileOptions={profileOptions}
+      />
 
       <Text size="sm" c="text-tertiary">
         {t`${total} conversations`}

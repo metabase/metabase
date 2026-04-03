@@ -6,13 +6,12 @@ import {
 import type { SortDirection } from "metabase-types/api";
 
 import type { ConversationSortColumn } from "../../types";
+import { DEFAULT_DATE, DEFAULT_GROUP } from "../ConversationFilters";
 
 export const PAGE_SIZE = 25;
 
 const DEFAULT_SORT_COLUMN: ConversationSortColumn = "created_at";
 const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
-const DEFAULT_DATE = "past30days~";
-const ALL_USERS_GROUP_ID = 1;
 
 export type UrlState = {
   page: number;
@@ -31,7 +30,7 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
     sort_direction: parseSortDirection(query.sort_direction),
     date: parseString(query.date) ?? DEFAULT_DATE,
     user: parseString(query.user),
-    group: parseString(query.group) ?? String(ALL_USERS_GROUP_ID),
+    group: parseString(query.group) ?? DEFAULT_GROUP,
     profile: parseString(query.profile),
   }),
   serialize: ({
@@ -49,8 +48,7 @@ export const urlStateConfig: UrlStateConfig<UrlState> = {
       sort_direction === DEFAULT_SORT_DIRECTION ? undefined : sort_direction,
     date: date === DEFAULT_DATE ? undefined : (date ?? undefined),
     user: user ?? undefined,
-    group:
-      group === String(ALL_USERS_GROUP_ID) ? undefined : (group ?? undefined),
+    group: group === DEFAULT_GROUP ? undefined : (group ?? undefined),
     profile: profile ?? undefined,
   }),
 };

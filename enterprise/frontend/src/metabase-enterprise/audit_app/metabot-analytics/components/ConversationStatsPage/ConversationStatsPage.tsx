@@ -3,24 +3,21 @@ import { t } from "ttag";
 
 import { useGetDatabaseMetadataQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
-import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
-import {
-  Button,
-  Flex,
-  Popover,
-  SimpleGrid,
-  Skeleton,
-  Title,
-} from "metabase/ui";
+import { SimpleGrid, Skeleton, Title } from "metabase/ui";
 
 import { AUDIT_DB_ID } from "../../constants";
+import {
+  ConversationFilters,
+  DEFAULT_DATE,
+  DEFAULT_GROUP,
+  useFilterOptions,
+} from "../ConversationFilters";
 
 import { ConversationsByDayChart } from "./ConversationsByDayChart";
 import { ConversationsByProfileChart } from "./ConversationsByProfileChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
 import { StatCards } from "./StatCards";
-import { getDateLabel } from "./utils";
 
 const DEFAULT_DATE_FILTER: DateFilterValue = {
   type: "relative",
@@ -30,8 +27,10 @@ const DEFAULT_DATE_FILTER: DateFilterValue = {
 };
 
 export function ConversationStatsPage() {
-  const [dateValue, setDateValue] = useState("past30days~");
-  const [dateOpened, setDateOpened] = useState(false);
+  const [dateValue, setDateValue] = useState(DEFAULT_DATE);
+  const [user, setUser] = useState<string | null>(null);
+  const [group, setGroup] = useState<string | null>(DEFAULT_GROUP);
+  const [profile, setProfile] = useState<string | null>(null);
 
   const dateFilter: DateFilterValue = useMemo(() => {
     if (!dateValue) {
@@ -44,35 +43,28 @@ export function ConversationStatsPage() {
     return DEFAULT_DATE_FILTER;
   }, [dateValue]);
 
+  const { userOptions, groupOptions } = useFilterOptions();
   const { isLoading: isLoadingMetadata } = useGetDatabaseMetadataQuery({
     id: AUDIT_DB_ID,
   });
 
   return (
     <>
-      <Flex justify="space-between" align="center">
-        <Title order={3}>{t`Trends`}</Title>
-        <Popover
-          opened={dateOpened}
-          onChange={setDateOpened}
-          position="bottom-end"
-        >
-          <Popover.Target>
-            <Button variant="default" onClick={() => setDateOpened((o) => !o)}>
-              {getDateLabel(dateValue)}
-            </Button>
-          </Popover.Target>
-          <Popover.Dropdown>
-            <DateAllOptionsWidget
-              value={dateValue}
-              onChange={(val) => {
-                setDateValue(val);
-                setDateOpened(false);
-              }}
-            />
-          </Popover.Dropdown>
-        </Popover>
-      </Flex>
+      <ConversationFilters
+        date={dateValue}
+        onDateChange={setDateValue}
+        user={user}
+        onUserChange={setUser}
+        group={group}
+        onGroupChange={setGroup}
+        profile={profile}
+        onProfileChange={setProfile}
+        userOptions={userOptions}
+        groupOptions={groupOptions}
+        profileOptions={[]}
+      />
+
+      <Title order={3}>{t`Trends`}</Title>
 
       <StatCards dateFilter={dateFilter} />
 
