@@ -6,6 +6,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   disableTouchEmulation,
   enableTouchEmulation,
+  fireTouchStart,
 } from "e2e/support/helpers/e2e-mobile-device-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -35,24 +36,14 @@ describe("scenarios > embedding-sdk > touch-question-settings-dropdown", () => {
     getSdkRoot().within(() => {
       cy.findByTestId("settings-count").click();
 
-      // Dispatch a native touchstart on the child popover.
-      // Mantine's useClickOutside listens for touchstart on document —
-      // since the Tippy portal is outside Mantine's DOM tree, this should
-      // trigger the outside-click handler and close the parent popover.
-      cy.findByTestId("series-settings").then(($el) => {
-        const el = $el[0];
-        const touch = new Touch({ identifier: 0, target: el });
-        el.dispatchEvent(
-          new TouchEvent("touchstart", {
-            bubbles: true,
-            cancelable: true,
-            touches: [touch],
-          }),
-        );
-      });
-
-      // The child popover and parent dropdown should still be open
+      // Tap inside the child popover — should NOT close the parent dropdown
+      fireTouchStart("series-settings");
       cy.findByTestId("series-settings").should("exist");
+      cy.findByTestId("chartsettings-sidebar").should("be.visible");
+
+      // Click inside the parent dropdown — should close the child popover
+      cy.findByTestId("chartsettings-sidebar").realTouch({ x: 1, y: 1 });
+      cy.findByTestId("series-settings").should("not.exist");
     });
   });
 });

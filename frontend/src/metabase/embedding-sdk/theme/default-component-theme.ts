@@ -170,6 +170,12 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
         portalProps: {
           target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
         },
+        // Mantine's default is ["mousedown", "touchstart"]. On touch devices,
+        // tapping inside a child TippyPopover (which renders in a separate
+        // portal outside the Popover's DOM tree) fires a touchstart that
+        // Mantine's useClickOutside sees as "outside", incorrectly closing
+        // the parent popover.
+        clickOutsideEvents: ["mousedown"],
       }, // satisfies Partial<PopoverProps>,
     },
     Tooltip: {
