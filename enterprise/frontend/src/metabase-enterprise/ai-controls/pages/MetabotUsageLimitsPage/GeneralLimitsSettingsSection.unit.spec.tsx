@@ -62,9 +62,11 @@ describe("GeneralLimitsSettingsSection", () => {
     setup({ limitType: "tokens" });
     await screen.findByText("How do you want to limit AI usage?");
 
-    expect(
-      screen.getByText(/instance limit \(millions of tokens\)/),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Total monthly instance limit \(millions of tokens\)/),
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows conversation-based label for instance limit when limit type is conversations", async () => {

@@ -30,37 +30,55 @@ type PeriodOption = SegmentedControlItem<MetabotLimitPeriod>;
 
 export function GeneralLimitsSettingsSection() {
   // Settings
-  const { value: savedLimitType, updateSetting: updateLimitTypeSetting } =
+  const { value: initialLimitType, updateSetting: updateLimitTypeSetting } =
     useAdminSetting("metabot-limit-unit");
-  const { value: savedLimitPeriod, updateSetting: updateLimitPeriodSetting } =
+  const { value: initialLimitPeriod, updateSetting: updateLimitPeriodSetting } =
     useAdminSetting("metabot-limit-reset-rate");
-  const { value: savedQuotaMessage, updateSetting: updateQuotaMessageSetting } =
-    useAdminSetting("metabot-quota-reached-message");
+  const {
+    value: initialQuotaMessage,
+    updateSetting: updateQuotaMessageSetting,
+  } = useAdminSetting("metabot-quota-reached-message");
 
   // Instance limit
   const { data: instanceLimitData } = useGetAIControlsInstanceLimitQuery();
   const [updateInstanceLimit] = useUpdateAIControlsInstanceLimitMutation();
+  const initialInstanceLimit = instanceLimitData
+    ? String(instanceLimitData.max_usage)
+    : undefined;
 
   // Local state
-  const [limitType, setLimitType] = useState<MetabotLimitType>(
-    savedLimitType ?? "tokens",
-  );
-  const [limitPeriod, setLimitPeriod] = useState<MetabotLimitPeriod>(
-    savedLimitPeriod ?? "monthly",
-  );
-  const [instanceLimitInput, setInstanceLimitInput] = useState("");
-  const [quotaMessage, setQuotaMessage] = useState(savedQuotaMessage ?? "");
+  const [instanceLimitInput, setInstanceLimitInput] = useState<string>();
+  const [limitType, setLimitType] = useState<MetabotLimitType>();
+  const [limitPeriod, setLimitPeriod] = useState<MetabotLimitPeriod>();
+  const [quotaMessage, setQuotaMessage] = useState<string>();
   const { sendErrorToast } = useMetadataToasts();
 
   useEffect(() => {
-    if (instanceLimitData) {
-      setInstanceLimitInput(
-        instanceLimitData.max_usage != null
-          ? String(instanceLimitData.max_usage)
-          : "",
-      );
+    if (limitType === undefined && initialLimitType !== undefined) {
+      setLimitType(initialLimitType ?? "tokens");
     }
-  }, [instanceLimitData]);
+  }, [initialLimitType, limitType]);
+
+  useEffect(() => {
+    if (limitPeriod === undefined && initialLimitPeriod !== undefined) {
+      setLimitPeriod(initialLimitPeriod ?? "monthly");
+    }
+  }, [initialLimitPeriod, limitPeriod]);
+
+  useEffect(() => {
+    if (quotaMessage === undefined && initialQuotaMessage !== undefined) {
+      setQuotaMessage(initialQuotaMessage ?? "");
+    }
+  }, [initialQuotaMessage, quotaMessage]);
+
+  useEffect(() => {
+    if (
+      instanceLimitInput === undefined &&
+      initialInstanceLimit !== undefined
+    ) {
+      setInstanceLimitInput(initialInstanceLimit ?? "");
+    }
+  }, [initialInstanceLimit, instanceLimitInput]);
 
   // Debounced save functions
   const debouncedSaveInstanceLimit = useDebouncedCallback(
@@ -182,7 +200,7 @@ export function GeneralLimitsSettingsSection() {
           }}
           type="number"
           min={1}
-          value={instanceLimitInput}
+          value={instanceLimitInput || ""}
           onChange={handleInstanceLimitChange}
         />
         <TextInput
@@ -194,7 +212,7 @@ export function GeneralLimitsSettingsSection() {
             input: S.QuotaMessageInput,
             description: S.InputDescription,
           }}
-          value={quotaMessage}
+          value={quotaMessage || ""}
           onChange={handleQuotaMessageChange}
         />
       </Stack>
