@@ -225,7 +225,7 @@ function NameCell({ model }: { model?: ModelResult }) {
         onClick={preventDefault}
       >
         <EntityIcon
-          size={16}
+          size="1rem"
           {...icon}
           color="icon-brand"
           style={{ flexShrink: 0 }}

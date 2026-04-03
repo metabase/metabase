@@ -46,7 +46,7 @@ const StaticSkeleton = ({
               <EntityIcon
                 name={icon.name}
                 iconUrl={icon.iconUrl}
-                size={24}
+                size="1.5rem"
               />
             ) : (
               <SkeletonIcon {...icon} />

@@ -8,7 +8,7 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   name?: IconData["name"];
   iconUrl?: string;
   color?: ColorName | "inherit";
-  size?: number;
+  size?: string | number;
   style?: CSSProperties;
 };
 
@@ -20,7 +20,7 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
 export function EntityIcon({
   iconUrl,
   name = "unknown",
-  size = 16,
+  size = "1rem",
   color,
   style,
   ...rest

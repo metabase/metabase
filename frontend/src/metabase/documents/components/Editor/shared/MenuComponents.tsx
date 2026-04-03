@@ -58,7 +58,7 @@ export const MenuItemComponent = ({
         <EntityIcon
           name={item.icon}
           iconUrl={item.iconUrl}
-          size={16}
+          size="1rem"
           color={item.iconColor || "inherit"}
         />
       )}

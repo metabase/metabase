@@ -131,7 +131,7 @@ function PinnedItemCard({
             {iconData.iconUrl ? (
               <EntityIcon
                 {...iconData}
-                size={24}
+                size="1.5rem"
                 style={{ color: "var(--mb-color-brand)" }}
               />
             ) : (

@@ -71,7 +71,7 @@ function SidebarLink({
     if (iconUrl) {
       return (
         <TreeNode.IconContainer transparent={false}>
-          <EntityIcon name={iconProps.name} iconUrl={iconUrl} size={16} />
+          <EntityIcon name={iconProps.name} iconUrl={iconUrl} size="1rem" />
         </TreeNode.IconContainer>
       );
     }

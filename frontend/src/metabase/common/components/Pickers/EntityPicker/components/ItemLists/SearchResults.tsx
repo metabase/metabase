@@ -100,7 +100,7 @@ export const SearchResults = ({
               leftSection={
                 <EntityIcon
                   {...getEntityPickerIcon(item, { isSelected })}
-                  size={16}
+                  size="1rem"
                 />
               }
               onClick={(e: React.MouseEvent) => {
