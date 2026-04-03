@@ -106,11 +106,7 @@ export function StatCards({ dateFilter }: { dateFilter: DateFilterValue }) {
         label={t`Messages`}
         value={stats.messages}
       />
-      <StatCard
-        loading={isFetching}
-        label={t`Tokens`}
-        value={stats.tokens}
-      />
+      <StatCard loading={isFetching} label={t`Tokens`} value={stats.tokens} />
       <StatCard
         loading={isFetching}
         label={t`Cost`}
