@@ -33,7 +33,7 @@ jobs:
         id: issue
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            ISSUE_NUMBER="${INPUT_ISSUE_NUMBER}"
+            ISSUE_NUMBER="${DISPATCH_ISSUE_NUMBER}"
           else
             ISSUE_NUMBER="${{ github.event.issue.number }}"
           fi
@@ -41,7 +41,7 @@ jobs:
           echo "Issue: https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
 
         env:
-          INPUT_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          DISPATCH_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-backend
       - uses: ./.github/actions/prepare-frontend

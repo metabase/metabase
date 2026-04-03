@@ -49,8 +49,8 @@ jobs:
         run: |
           for ((i=1; i<=BURN_IN; i++)); do
             bun run jest --runInBand --ci --silent --no-cache \
-              --testPathPatterns '${{ github.event.inputs.spec }}' \
-              --testNamePattern '${{ github.event.inputs.grep }}'
+              --testPathPatterns "${SPEC}" \
+              --testNamePattern "${GREP}"
             if [[ "$?" != 0 ]]; then
               echo "Failed after $i attempts" && break;
             fi
@@ -58,3 +58,5 @@ jobs:
 
         env:
           BURN_IN: ${{ github.event.inputs.burn_in }}
+          SPEC: ${{ github.event.inputs.spec }}
+          GREP: ${{ github.event.inputs.grep }}
