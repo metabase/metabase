@@ -1,5 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -16,10 +16,18 @@ const SAVE_DEBOUNCE_MS = 500;
 export function MetabotCustomizationPage() {
   const { value: initialInputValue, updateSetting: updateName } =
     useAdminSetting("metabot-name");
-  const [nameInput, setNameInput] = useState<string>(initialInputValue ?? "");
+  const [nameInput, setNameInput] = useState<string>();
+
+  useEffect(() => {
+    if (nameInput === undefined && initialInputValue !== undefined) {
+      setNameInput(initialInputValue ?? "");
+    }
+  }, [initialInputValue, nameInput]);
 
   const debouncedSaveName = useDebouncedCallback((value: string) => {
-    updateName({ key: "metabot-name", value, toast: false });
+    if (value) {
+      updateName({ key: "metabot-name", value, toast: false });
+    }
   }, SAVE_DEBOUNCE_MS);
 
   return (
@@ -37,6 +45,7 @@ export function MetabotCustomizationPage() {
             setNameInput(e.currentTarget.value);
             debouncedSaveName(e.currentTarget.value);
           }}
+          error={nameInput ? undefined : t`Metabot's name is required`}
         />
         <MetabotIconField />
       </SettingsSection>
