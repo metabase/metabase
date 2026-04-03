@@ -257,6 +257,19 @@
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-query query-spec)))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/security-advisories"
+  "Nuke all existing security advisories and insert the provided ones.
+   Expects a JSON body with an `advisories` key containing an array of advisory objects."
+  [_route-params
+   _query-params
+   {:keys [advisories]} :- [:map
+                            [:advisories [:sequential :map]]]]
+  (t2/delete! :model/SecurityAdvisory)
+  (doseq [advisory advisories]
+    (t2/insert! :model/SecurityAdvisory advisory))
+  {:inserted (count advisories)})
+
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
   "Creates a native query from a test query spec."
   [_route-params
