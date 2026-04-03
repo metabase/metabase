@@ -7,6 +7,7 @@
 
 *:hover > .triggerButton {
   visibility: visible;
+  color: var(--mb-color-text-primary-inverse);
 }
 
 /* No hover on touch devices, so always show the button with readable text */
@@ -16,8 +17,16 @@
     color: var(--mb-color-brand);
   }
 
+  :global([aria-selected="true"]) .triggerButton {
+    color: var(--mb-color-text-primary-inverse);
+  }
+
   .chevronIcon {
     color: var(--mb-color-brand);
+  }
+
+  :global([aria-selected="true"]) .chevronIcon {
+    color: var(--mb-color-text-primary-inverse);
   }
 }
 
