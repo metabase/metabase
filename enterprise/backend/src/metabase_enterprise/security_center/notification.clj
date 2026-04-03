@@ -142,8 +142,8 @@
      (try
        (notification/send-notification! notif :notification/sync? true)
        (track-notification-sent! notif triggered-from "success")
+       (t2/update! :model/SecurityAdvisory (:id advisory)
+                   {:last_notified_at (mi/now)})
        (catch Exception e
          (track-notification-sent! notif triggered-from "failure")
-         (throw e))))
-   (t2/update! :model/SecurityAdvisory (:id advisory)
-               {:last_notified_at (mi/now)})))
+         (throw e))))))
