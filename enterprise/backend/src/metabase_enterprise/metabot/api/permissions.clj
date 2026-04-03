@@ -1,31 +1,12 @@
 (ns metabase-enterprise.metabot.api.permissions
   "`/api/ee/ai-controls/permissions` routes for managing metabot permissions per group."
   (:require
+   [metabase-enterprise.metabot.models.metabot-permissions :as metabot-perms]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.scope :as scope]
    [toucan2.core :as t2]))
-
-(defn- permissions-for-group
-  "Returns the full set of permissions for a group, filling in defaults for any missing perm types."
-  [group-id stored-perms]
-  (let [stored-by-type (into {} (map (juxt :perm_type identity)) stored-perms)]
-    (for [[perm-type default-value] (sort-by key scope/perm-type-defaults)]
-      (or (get stored-by-type perm-type)
-          {:group_id   group-id
-           :perm_type  perm-type
-           :perm_value default-value}))))
-
-(defn- all-permissions
-  "Returns all metabot permissions for all groups, filling in defaults for missing entries."
-  []
-  (let [groups     (t2/select :model/PermissionsGroup {:order-by [[:id :asc]]})
-        stored     (t2/select :model/MetabotPermissions {:order-by [[:group_id :asc] [:perm_type :asc]]})
-        by-group   (group-by :group_id stored)]
-    {:permissions (vec (mapcat (fn [{:keys [id]}]
-                                 (permissions-for-group id (get by-group id [])))
-                               groups))}))
 
 (def ^:private perm-type-enum
   "Malli enum of valid perm_type keywords."
@@ -45,7 +26,7 @@
   "List all metabot permissions for all groups, filling in defaults for missing entries."
   []
   (api/check-superuser)
-  (all-permissions))
+  (metabot-perms/all-permissions))
 
 (def ^:private valid-perm-types
   "Set of valid perm_type strings for the PUT request body."
@@ -90,7 +71,7 @@
           (t2/insert! :model/MetabotPermissions {:group_id   group_id
                                                  :perm_type  perm-type-kw
                                                  :perm_value perm-value-kw})))))
-  (all-permissions))
+  (metabot-perms/all-permissions))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/ai-controls/permissions` routes."
