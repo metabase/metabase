@@ -277,4 +277,3 @@
               (#'task.entity-check/check-entities!)
               (is (false? (finding-stale? :card card-id))
                   "card should be re-analyzed after entity-check"))))))))
-
