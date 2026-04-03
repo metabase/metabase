@@ -143,15 +143,23 @@
                    :body    string?}
                   (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
 
-      (testing "Uses ai proxy when BYOK is missing"
+      (testing "Uses ai proxy when explicitly requested"
         (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
           (with-redefs [self.core/sse-reducible identity
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
-                     :url     "https://proxy.example/v1/responses"
+                     :url     "https://proxy.example/openai/v1/responses"
                      :headers {"x-metabase-instance-token" "proxy-token"}
                      :body    string?}
-                    (openai/openai-raw {:input [{:role :user :content "hi"}]}))))))
+                    (openai/openai-raw {:input [{:role :user :content "hi"}]
+                                        :ai-proxy? true}))))))
+
+      (testing "Does not fall back to ai proxy when BYOK is missing"
+        (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No OpenAI API key is set"
+               (openai/openai-raw {:input [{:role :user :content "hi"}]})))))
 
       (testing "Throws an error if nothing is defined"
         (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil

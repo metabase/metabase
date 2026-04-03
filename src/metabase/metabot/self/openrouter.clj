@@ -112,7 +112,7 @@
    (when (and api-key (str/blank? api-key))
      (throw (core/missing-api-key-ex "OpenRouter")))
    (try
-     (let [auth (core/resolve-auth "OpenRouter"
+     (let [auth (core/resolve-auth "openrouter" "OpenRouter"
                                    (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openrouter-api-key)))]
                                      {:url     (llm/llm-openrouter-api-base-url)
                                       :headers {"Authorization" (str "Bearer " k)}})
@@ -282,7 +282,7 @@
                       :tool-count (count (or tools []))}
       (try
         (let [api-key  (not-empty (llm/llm-openrouter-api-key))
-              auth     (core/resolve-auth "OpenRouter"
+              auth     (core/resolve-auth "openrouter" "OpenRouter"
                                           (when api-key
                                             {:url     (llm/llm-openrouter-api-base-url)
                                              :headers {"Authorization" (str "Bearer " api-key)}})

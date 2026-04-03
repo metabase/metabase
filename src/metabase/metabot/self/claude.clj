@@ -202,7 +202,7 @@
    (when (and api-key (str/blank? api-key))
      (throw (core/missing-api-key-ex "Anthropic")))
    (try
-     (let [auth   (core/resolve-auth "Anthropic"
+     (let [auth   (core/resolve-auth "anthropic" "Anthropic"
                                      (when-let [k (or (not-empty api-key) (not-empty (llm/llm-anthropic-api-key)))]
                                        {:url     (llm/llm-anthropic-api-base-url)
                                         :headers {"x-api-key" k}})
@@ -244,7 +244,7 @@
                       :tool-count (count tools)}
       (try
         (let [api-key  (not-empty (llm/llm-anthropic-api-key))
-              auth     (core/resolve-auth "Anthropic"
+              auth     (core/resolve-auth "anthropic" "Anthropic"
                                           (when api-key
                                             {:url     (llm/llm-anthropic-api-base-url)
                                              :headers {"x-api-key" api-key}})

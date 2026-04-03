@@ -174,7 +174,7 @@
    (when (and api-key (str/blank? api-key))
      (throw (core/missing-api-key-ex "OpenAI")))
    (try
-     (let [auth (core/resolve-auth "OpenAI"
+     (let [auth (core/resolve-auth "openai" "OpenAI"
                                    (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openai-api-key)))]
                                      {:url     (llm/llm-openai-api-base-url)
                                       :headers {"Authorization" (str "Bearer " k)}})
@@ -215,7 +215,7 @@
                     max-tokens  (assoc :max_tokens max-tokens))]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))
-            auth     (core/resolve-auth "OpenAI"
+            auth     (core/resolve-auth "openai" "OpenAI"
                                         (when api-key
                                           {:url     (llm/llm-openai-api-base-url)
                                            :headers {"Authorization" (str "Bearer " api-key)}})
