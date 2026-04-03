@@ -266,8 +266,7 @@
    {:keys [advisories]} :- [:map
                             [:advisories [:sequential :map]]]]
   (t2/delete! :model/SecurityAdvisory)
-  (doseq [advisory advisories]
-    (t2/insert! :model/SecurityAdvisory advisory))
+  (t2/insert! :model/SecurityAdvisory advisories)
   {:inserted (count advisories)})
 
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
