@@ -5,7 +5,7 @@ import {
   setupMetabotGroupPermissionsEndpoint,
   setupUpdateMetabotGroupPermissionsEndpoint,
 } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
 import { createMockMetabotGroupPermissions } from "metabase-types/api/mocks/metabot";
@@ -122,8 +122,12 @@ describe("MetabotFeatureAccessPage", () => {
     await screen.findByTestId("ai-feature-access-table");
 
     const allUsersRow = getPermissionRow("All Users");
-    const metabotSwitch = within(allUsersRow).getByRole("switch");
-    expect(metabotSwitch).toBeChecked();
+
+    // Wait for permissions to propagate through the async state pipeline
+    await waitFor(() => {
+      const metabotSwitch = within(allUsersRow).getByRole("switch");
+      expect(metabotSwitch).toBeChecked();
+    });
 
     const sqlCheckbox = within(allUsersRow).getByRole("checkbox", {
       name: /SQL generation/,
@@ -172,6 +176,11 @@ describe("MetabotFeatureAccessPage", () => {
 
     const allUsersRow = getPermissionRow("All Users");
     const metabotSwitch = within(allUsersRow).getByRole("switch");
+
+    // Wait for permissions to load so the switch reflects the initial "yes" state
+    await waitFor(() => {
+      expect(metabotSwitch).toBeChecked();
+    });
 
     await userEvent.click(metabotSwitch);
 
