@@ -169,6 +169,11 @@ CLAUDE.local.md
 /logs
 /.clojure-mcp
 
+# Nix artifacts
+/.pgdata/
+/.pgsocket/
+/result
+
 # Python dependencies (pip-installed, not committed)
 /resources/python-sources/sqlglot/
 /resources/python-sources/sqlglot-*.dist-info/
