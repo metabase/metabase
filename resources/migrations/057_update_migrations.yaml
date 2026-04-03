@@ -2877,8 +2877,21 @@ databaseChangeLog:
                   remarks: When the advisory was last updated upstream (used as sync cursor)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v57.2026-04-03T00:00:01
+      author: bronsa
+      comment: Backfill updated_at from published_at for existing security advisories
+      changes:
         - sql:
             sql: UPDATE security_advisory SET updated_at = published_at WHERE updated_at IS NULL
+      rollback:
+
+  - changeSet:
+      id: v57.2026-04-03T00:00:02
+      author: bronsa
+      comment: Make updated_at non-nullable on security_advisory
+      changes:
         - addNotNullConstraint:
             tableName: security_advisory
             columnName: updated_at
