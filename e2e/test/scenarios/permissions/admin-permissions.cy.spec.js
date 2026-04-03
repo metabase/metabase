@@ -338,7 +338,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           "readonly",
         ];
 
-        cy.findAllByRole("menuitem").should("have.length", filteredGroups.length);
+        cy.findAllByRole("menuitem").should(
+          "have.length",
+          filteredGroups.length,
+        );
         H.assertSidebarItems(filteredGroups);
       });
 
