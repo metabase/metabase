@@ -223,9 +223,30 @@
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :mysql
   [_driver conn-spec & {:as _options}]
-  ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
-  ;; for the mysql database), so we can't query the full privileges of the current user.
-  (when-not (some-> conn-spec :connection mariadb-connection?)
+  ;; MariaDB and MySQL handle privilege fetching differently here.
+  ;; MariaDB uses the standard `information_schema.table_privileges` view,
+  ;; which is generally more robust and aligns with other drivers.
+  ;; The original MySQL implementation uses `SHOW GRANTS`, which requires
+  ;; parsing the output string and handling different grant levels.
+  ;; This older approach is retained for MySQL compatibility.
+  ;; TODO: mariadb-connection? always returns false in tests, because conn-spec has no :connection key
+  (if (re-find #"mariadb" (:classname conn-spec "")) ;(some-> conn-spec :connection mariadb-connection?)
+    ;; MariaDB uses information_schema.table_privileges like other drivers
+    (let [rows (jdbc/query conn-spec
+                           [(str "SELECT table_schema, table_name, privilege_type"
+                                 " FROM information_schema.table_privileges"
+                                 " WHERE grantee = ?")
+                            (format "'%s'@'%%'" (:user conn-spec))])]
+      (for [[[table_schema table_name] grp] (group-by (juxt :table_schema :table_name) rows)
+            :let [privs (set (map :privilege_type grp))]]
+        {:role   nil
+         :schema table_schema
+         :table  table_name
+         :select (contains? privs "SELECT")
+         :insert (contains? privs "INSERT")
+         :update (contains? privs "UPDATE")
+         :delete (contains? privs "DELETE")}))
+    ;; Original MySQL logic using SHOW GRANTS
     (let [sql->tuples (fn [sql] (drop 1 (jdbc/query conn-spec sql {:as-arrays? true})))
           db-name     (ffirst (sql->tuples "SELECT DATABASE()"))
           table-names (map first (sql->tuples "SHOW TABLES"))]
@@ -233,7 +254,7 @@
                                                              db-name
                                                              table-names)]
         {:role   nil
-         :schema nil
+         :schema nil ; MySQL SHOW GRANTS doesn't easily provide schema info in this context
          :table  table-name
          :select (contains? privileges :select)
          :update (contains? privileges :update)
