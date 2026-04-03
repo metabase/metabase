@@ -1,10 +1,13 @@
 import cx from "classnames";
-import { type Ref, forwardRef, useMemo } from "react";
+import { type Ref, forwardRef, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { useMergedRef } from "metabase/hooks/use-merged-ref";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { isTouchDevice } from "metabase/lib/browser";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -48,6 +51,22 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
   const isLiteral =
     expression != null && Lib.isJoinConditionLHSorRHSLiteral(expression);
 
+  const [setRef, buttonRef] = useMergedRef<HTMLButtonElement>(ref);
+
+  useEffect(() => {
+    // On mobile devices for SDK/EAJS we scroll to opened dropdown,
+    // as depending on a consumer site CSS the anchor button of the opened dropdown
+    // may be horizontally out of the screen
+    const isMobileEmbeddingSdk = isEmbeddingSdk() && isTouchDevice();
+    if (isOpened && buttonRef.current && isMobileEmbeddingSdk) {
+      buttonRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "start",
+        block: "nearest",
+      });
+    }
+  }, [isOpened, buttonRef]);
+
   return (
     <button
       className={cx(S.joinCellItem, {
@@ -56,7 +75,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
         [S.noColumnStyle]: isEmpty,
         [S.isOpen]: isOpened,
       })}
-      ref={ref}
+      ref={setRef}
       disabled={isReadOnly}
       onClick={onClick}
       aria-label={isLhsPicker ? t`Left column` : t`Right column`}
