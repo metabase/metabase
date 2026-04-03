@@ -1518,7 +1518,9 @@
   [{:keys [linkType type] :as click-behavior}]
   (fk-elide
    (cond-> click-behavior
-     (= type "link") (-> (update :targetId *export-fk* (link-card-model->toucan-model linkType))
+     (= type "link") (-> (u/update-some :targetId (fn [id]
+                                                    (when-let [model (link-card-model->toucan-model linkType)]
+                                                      (*export-fk* id model))))
                          (u/update-some :tabId *export-fk* :model/DashboardTab)))))
 
 (defn- import-viz-click-behavior-link
