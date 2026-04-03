@@ -4,7 +4,6 @@
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.schema :as security-center.schema]
-   [metabase-enterprise.security-center.seed]
    [metabase-enterprise.security-center.settings]
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.api.common :as api]
