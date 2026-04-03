@@ -17,6 +17,8 @@ To help you out in situations like this, Metabase has a serialization feature wh
 
 **Import** will read those exported YAML files and create or update items in the target Metabase based on the contents serialized in those YAML files.
 
+The [Metabase Representation Format](https://github.com/metabase/representations) repository contains the full specification for the YAML format used by serialization, including JSON schemas for each entity type, complete examples, and an [NPM validation package](https://www.npmjs.com/package/@metabase/representations) you can use to validate exported files.
+
 There are two ways to run these `export` and `import` commands:
 
 - [Using CLI commands](#serialization-with-cli-commands)
