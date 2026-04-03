@@ -27,9 +27,12 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- comparable-metadata :- [:sequential :map]
-  "Smooth out any unimportant differences in metadata so we can do an easy equality check."
-  [metadata :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
+(defn- comparable-metadata
+  "Smooth out any unimportant differences in metadata so we can do an easy equality check.
+   When `strip-computed-fingerprints?` is true, fingerprints are stripped from columns that have no
+   backing Field (`:id` is nil), such as aggregation columns. This prevents spurious result_metadata
+   UPDATEs when parameterized queries produce different fingerprints for computed columns."
+  [metadata & {:keys [strip-computed-fingerprints?]}]
   (letfn [(remove-underscore-nil-keys
             ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
             ;; dash. Remove the nil value
@@ -49,6 +52,8 @@
               (keyword? m) (u/qualified-name m)
               (map? m) (-> (update-vals m standardize-metadata)
                            (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
+                           (cond-> (and strip-computed-fingerprints? (nil? (:id m)))
+                             (dissoc :fingerprint))
                            (remove-underscore-nil-keys))
               (sequential? m) (mapv standardize-metadata m)
               (set? m) (into #{} (map standardize-metadata) m)
@@ -61,10 +66,11 @@
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
-    (let [actual-metadata (or (when-let [pivot-metadata (get-in query [:info :pivot/result-metadata])]
-                                (when (sequential? pivot-metadata)
-                                  pivot-metadata))
-                              metadata)]
+    (let [actual-metadata    (or (when-let [pivot-metadata (get-in query [:info :pivot/result-metadata])]
+                                   (when (sequential? pivot-metadata)
+                                     pivot-metadata))
+                                 metadata)
+          parameterized?     (boolean (seq (:user-parameters query)))]
       (when (and actual-metadata
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
@@ -73,12 +79,16 @@
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
-                 ;; Only update changed metadata
-                 (not= (comparable-metadata actual-metadata)
+                 ;; Only update changed metadata. When the query is parameterized, strip fingerprints
+                 ;; from computed columns (no backing Field) before comparing, because those fingerprints
+                 ;; are derived from the filtered result rows and vary by parameter value.
+                 (not= (comparable-metadata actual-metadata
+                                            :strip-computed-fingerprints? parameterized?)
                        (comparable-metadata
                         ;; existing usage -- don't use going forward
                         #_{:clj-kondo/ignore [:deprecated-var]}
-                        (qp.store/miscellaneous-value [::card-stored-metadata]))))
+                        (qp.store/miscellaneous-value [::card-stored-metadata])
+                        :strip-computed-fingerprints? parameterized?)))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
         (t2/update! :model/Card card-id {:result_metadata actual-metadata
