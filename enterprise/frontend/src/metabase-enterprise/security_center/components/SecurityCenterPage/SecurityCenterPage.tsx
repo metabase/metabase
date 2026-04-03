@@ -103,7 +103,7 @@ export function SecurityCenterPage() {
 
   return (
     <NotificationConfigProvider value={notificationConfig}>
-      <Box className={S.root}>
+      <Box className={S.root} data-testid="security-center-page">
         <Stack gap="lg" className={S.header}>
           <Group gap="sm" align="center">
             <Title order={1}>{t`Security Center`}</Title>
