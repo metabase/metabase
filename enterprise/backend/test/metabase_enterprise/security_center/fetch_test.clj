@@ -19,7 +19,7 @@
           :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
           :matching_query    nil
           :match_status      "unknown"
-          :published_at      #t "2026-03-24T00:00:00Z"}
+          :published_at      "2026-03-24T00:00:00Z"}
          overrides))
 
 (deftest sync-advisories-inserts-new-test

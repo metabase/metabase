@@ -31,7 +31,11 @@ const DEFAULT_CONFIG: NotificationConfig = {
 function setup({
   isConfigured = true,
   config = DEFAULT_CONFIG,
-  slackEnabled = config.slack.enabled,
+  slackEnabled,
+}: {
+  isConfigured?: boolean;
+  config?: NotificationConfig;
+  slackEnabled?: boolean;
 } = {}) {
   const channels = {
     email: createMockEmailChannelSpec(),
@@ -44,7 +48,7 @@ function setup({
   mockedUseNotificationConfig.mockReturnValue({
     config: {
       ...config,
-      slack: { ...config.slack, enabled: slackEnabled },
+      slack: { ...config.slack, enabled: slackEnabled ?? config.slack.enabled },
     },
     users: [],
     channels,

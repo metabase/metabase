@@ -2,6 +2,7 @@
   "Fetch security advisories from the MetaStore and upsert into the appdb."
   (:require
    [clj-http.client :as http]
+   [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
@@ -38,14 +39,17 @@
    On insert, match_status starts as :unknown until the matching engine evaluates it.
    On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
   [advisory]
-  (mdb/update-or-insert! :model/SecurityAdvisory
-                         {:advisory_id (:advisory_id advisory)}
-                         (fn [existing]
-                           (if existing
-                             (select-keys advisory [:title :severity :description :advisory_url
-                                                    :remediation :affected_versions :matching_query
-                                                    :published_at])
-                             (assoc advisory :match_status :unknown)))))
+  (let [advisory (cond-> advisory
+                   (string? (:published_at advisory))
+                   (update :published_at t/offset-date-time))]
+    (mdb/update-or-insert! :model/SecurityAdvisory
+                           {:advisory_id (:advisory_id advisory)}
+                           (fn [existing]
+                             (if existing
+                               (select-keys advisory [:title :severity :description :advisory_url
+                                                      :remediation :affected_versions :matching_query
+                                                      :published_at])
+                               (assoc advisory :match_status :unknown))))))
 
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."
