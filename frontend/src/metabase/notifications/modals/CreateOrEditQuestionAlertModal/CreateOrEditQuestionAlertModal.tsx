@@ -9,7 +9,6 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import { ActionButton } from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getResponseErrorMessage } from "metabase/lib/errors";
@@ -165,8 +164,10 @@ export const CreateOrEditQuestionAlertModal = ({
     useGetChannelInfoQuery();
   const { data: hookChannels } = useListChannelsQuery();
 
-  const [createNotification] = useCreateNotificationMutation();
-  const [updateNotification] = useUpdateNotificationMutation();
+  const [createNotification, { isLoading: isCreating }] =
+    useCreateNotificationMutation();
+  const [updateNotification, { isLoading: isUpdating }] =
+    useUpdateNotificationMutation();
   const [sendUnsavedNotification, { isLoading }] =
     useSendUnsavedNotificationMutation();
 
@@ -236,8 +237,7 @@ export const CreateOrEditQuestionAlertModal = ({
           }),
         );
 
-        // need to throw to show error in ActionButton
-        throw result.error;
+        return;
       }
 
       dispatch(
@@ -419,6 +419,7 @@ export const CreateOrEditQuestionAlertModal = ({
       </Stack>
       <Flex
         justify="space-between"
+        align="center"
         px="2.5rem"
         pt="lg"
         className={CS.borderTop}
@@ -431,16 +432,17 @@ export const CreateOrEditQuestionAlertModal = ({
         >
           {isLoading ? t`Sending…` : t`Send now`}
         </Button>
-        <div>
-          <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
-          <ActionButton
-            primary
-            disabled={!isValid}
-            actionFn={onCreateOrEditAlert}
+        <Flex align="center" gap="sm">
+          <Button onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            variant="filled"
+            disabled={!isValid || isCreating || isUpdating}
+            loading={isCreating || isUpdating}
+            onClick={onCreateOrEditAlert}
           >
             {isEditMode && hasChanges ? t`Save changes` : t`Done`}
-          </ActionButton>
-        </div>
+          </Button>
+        </Flex>
       </Flex>
     </Modal>
   );
