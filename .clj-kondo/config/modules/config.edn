@@ -2086,7 +2086,10 @@
            settings
            util
            warehouse-schema
-           warehouses-rest}}
+           warehouses-rest}
+   :model-exports #{:model/DatabaseRouter}
+   :model-imports #{:model/Database
+                    :model/Transform}}
 
   enterprise/dependencies
   {:team "Graphy"
@@ -2235,7 +2238,8 @@
               util
               warehouses-rest
               enterprise/dependencies
-              enterprise/transforms-python}}
+              enterprise/transforms-python}
+   :model-imports #{:model/Card :model/Transform}}
 
   enterprise/permission-debug
   {:team "UX West"

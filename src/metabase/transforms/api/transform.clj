@@ -184,10 +184,12 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last-run-start-time last-run-statuses tag-ids]}]
+  [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
   (let [enabled-types (transforms.util/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (t2/select :model/Transform {:where    [:in :source_type enabled-types]
+    (let [transforms (t2/select :model/Transform {:where    (into [:and [:in :source_type enabled-types]]
+                                                                  (when database-id
+                                                                    [[:= :source_database_id database-id]]))
                                                   :order-by [[:id :asc]]})]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner)
            (into []
