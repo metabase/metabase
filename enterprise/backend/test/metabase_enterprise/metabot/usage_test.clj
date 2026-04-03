@@ -286,14 +286,14 @@
           (finally
             (cleanup-test-usage! user-id)))))))
 
-;;; ------------------------------------------ Conversations limit type ------------------------------------------
+;;; ------------------------------------------ Messages limit type ------------------------------------------
 
-(deftest conversations-limit-type-counts-rows-test
+(deftest messages-limit-type-counts-rows-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (mt/with-temporary-setting-values [metabot-limit-unit "conversations"
+    (mt/with-temporary-setting-values [metabot-limit-unit "messages"
                                        metabot-quota-reached-message "test limit reached"]
-      (testing "Instance limit with :conversations type counts rows, not tokens"
+      (testing "Instance limit with :messages type counts rows, not tokens"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 2}]
           (let [user-id (mt/user->id :rasta)]
             ;; Insert 3 rows each with 1 token — row count (3) exceeds limit (2)
@@ -305,11 +305,11 @@
               (finally
                 (cleanup-test-usage! user-id)))))))))
 
-(deftest conversations-under-limit-returns-nil-test
+(deftest messages-under-limit-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
-    (mt/with-temporary-setting-values [metabot-limit-unit "conversations"]
-      (testing "Instance limit with :conversations type: under limit returns nil"
+    (mt/with-temporary-setting-values [metabot-limit-unit "messages"]
+      (testing "Instance limit with :messages type: under limit returns nil"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
           (let [user-id (mt/user->id :rasta)]
             (insert-usage! user-id 1)

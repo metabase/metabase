@@ -68,10 +68,10 @@ describe("GroupLimitsTab", () => {
     expect(screen.getByText(/Max tokens per user/)).toBeInTheDocument();
   });
 
-  it("shows conversation-based column header when limitType is conversations", () => {
-    setup({ limitType: "conversations" });
+  it("shows message-based column header when limitType is messages", () => {
+    setup({ limitType: "messages" });
 
-    expect(screen.getByText(/Max conversations per user/)).toBeInTheDocument();
+    expect(screen.getByText(/Max messages per user/)).toBeInTheDocument();
   });
 
   it("shows 'Group' column header for regular-groups variant", () => {

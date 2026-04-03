@@ -349,7 +349,7 @@ export type UserMetabotPermissionsResponse = {
 };
 
 export type MetabotLimitPeriod = "daily" | "weekly" | "monthly";
-export type MetabotLimitType = "tokens" | "conversations";
+export type MetabotLimitType = "tokens" | "messages";
 
 /* Metabot v3 - Usage Limits */
 

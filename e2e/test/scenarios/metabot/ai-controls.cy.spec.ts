@@ -336,12 +336,12 @@ describe("AI controls > AI usage limits", () => {
       cy.visit(AI_USAGE_LIMITS_URL);
       cy.wait("@getInstanceLimit");
 
-      // Change limit type to conversations
-      cy.findByRole("radio", { name: "By conversation count" }).click({
+      // Change limit type to messages
+      cy.findByRole("radio", { name: "By message count" }).click({
         force: true,
       });
       cy.wait("@saveLimitUnit").then(({ request }) => {
-        expect(request.body).to.deep.equal({ value: "conversations" });
+        expect(request.body).to.deep.equal({ value: "messages" });
       });
 
       // Change reset period to weekly
@@ -392,10 +392,10 @@ describe("AI controls > AI usage limits", () => {
       H.updateSetting("metabot-enabled?", true);
       H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
 
-      // Set conversations as the limit type (easier to trigger with 0)
+      // Set messages as the limit type (easier to trigger with 0)
       // (These settings are added in PR #71699, so we call the API directly)
       cy.request("PUT", "/api/setting/metabot-limit-unit", {
-        value: "conversations",
+        value: "messages",
       });
 
       // Set a custom quota-reached message
@@ -461,7 +461,7 @@ describe("AI controls > AI usage limits", () => {
       );
 
       cy.request("PUT", "/api/setting/metabot-limit-unit", {
-        value: "conversations",
+        value: "messages",
       });
       cy.request("PUT", "/api/setting/metabot-quota-reached-message", {
         value: quotaMessage,
@@ -556,11 +556,11 @@ describe("AI controls > AI usage limits", () => {
 
       // Both groups should appear in the group limits table with correct values
       cy.findByLabelText(
-        "Max conversations per user for AI Limit Group A (low)",
+        "Max messages per user for AI Limit Group A (low)",
       ).should("have.value", "5");
 
       cy.findByLabelText(
-        "Max conversations per user for AI Limit Group B (high)",
+        "Max messages per user for AI Limit Group B (high)",
       ).should("have.value", "100");
 
       // The section description should explain that users get the highest limit
