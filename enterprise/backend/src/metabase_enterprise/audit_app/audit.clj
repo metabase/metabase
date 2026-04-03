@@ -309,7 +309,7 @@
   []
   (when (io/resource "migrations/instance_analytics_views")
     (u.files/with-open-path-to-resource [views-dir "migrations/instance_analytics_views"]
-      (with-open [paths (Files/walk views-dir)]
+      (with-open [paths (Files/walk views-dir (into-array java.nio.file.FileVisitOption []))]
         (->> (iterator-seq (.iterator paths))
              (filter #(Files/isRegularFile ^Path % (u/varargs LinkOption)))
              (filter #(str/ends-with? (str (.getFileName ^Path %)) ".sql"))
