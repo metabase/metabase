@@ -39,10 +39,9 @@
         (get (yaml/parse-string content) (keyword field-name))))
     (catch Exception _ nil)))
 
-(defn extract-name [file-path]
-  (quick-extract file-path "name" #"(?m)^name:\s*(.+)$"))
-
-(defn extract-entity-id [file-path]
+(defn extract-entity-id
+  "Extract the entity id from a yaml file without parsing it. Looking for a top level entity_id at start of line."
+  [file-path]
   (quick-extract file-path "entity_id" #"(?m)^entity_id:\s*(\S+)"))
 
 (defn extract-model
@@ -111,7 +110,7 @@
    Also registers database names found in any entity's metadata path.
    Returns a vector of {:kind :ref :file} index entries."
   [schema-dir]
-  (let [databases-seen (volatile! {})  ; db-name → first file-path
+  (let [databases-seen (volatile! {})   ; db-name → first file-path
         entries (into []
                       (keep (fn [^java.io.File file]
                               (when (and (.isFile file)
@@ -126,18 +125,18 @@
                                         (when-not (contains? @databases-seen db-name)
                                           (vswap! databases-seen assoc db-name path))))
                                     (serdes-meta->index-entry meta-path path))))))
-                      (file-seq (io/file schema-dir)))]
-    ;; Add database entries inferred from children, but only for databases
-    ;; that don't already have their own YAML file in the primary entries
-    (let [primary-dbs (into #{}
-                            (keep (fn [{:keys [kind ref]}]
-                                    (when (= kind :database) ref)))
-                            entries)]
-      (into entries
-            (keep (fn [[db-name file-path]]
-                    (when-not (contains? primary-dbs db-name)
-                      {:kind :database :ref db-name :file file-path})))
-            @databases-seen))))
+                      (file-seq (io/file schema-dir)))
+        ;; Add database entries inferred from children, but only for databases that don't already have their own YAML
+        ;; file in the primary entries
+        primary-dbs (into #{}
+                          (keep (fn [{:keys [kind ref]}]
+                                  (when (= kind :database) ref)))
+                          entries)]
+    (into entries
+          (keep (fn [[db-name file-path]]
+                  (when-not (contains? primary-dbs db-name)
+                    {:kind :database :ref db-name :file file-path})))
+          @databases-seen)))
 
 ;;; ===========================================================================
 ;;; File Walking - Build index of all entities

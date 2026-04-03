@@ -2731,7 +2731,10 @@
    :api  #{}
    :uses #{lib
            models
-           util}}
+           query-processor
+           sql-tools
+           util
+           enterprise/dependencies}}
 
   enterprise/cloud-add-ons
   {:team "Cloud"

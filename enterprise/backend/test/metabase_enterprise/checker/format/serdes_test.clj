@@ -47,11 +47,6 @@
 ;;; YAML extraction tests (pure, no files needed)
 ;;; ===========================================================================
 
-(deftest extract-name-from-fixture-test
-  (testing "extract-name reads the name field from a YAML file"
-    (let [db-file (io/file (fixtures-path) "databases" "Test Database" "Test Database.yaml")]
-      (is (= "Test Database" (serdes/extract-name (.getPath db-file)))))))
-
 (deftest extract-entity-id-from-fixture-test
   (testing "extract-entity-id reads entity_id from a card YAML"
     (let [card-file (io/file (fixtures-path) "collections" "cards" "simple-orders_simple_orders.yaml")]
@@ -61,13 +56,6 @@
   (testing "extract-model reads the serdes model from a card YAML"
     (let [card-file (io/file (fixtures-path) "collections" "cards" "simple-orders_simple_orders.yaml")]
       (is (= "Card" (serdes/extract-model (.getPath card-file)))))))
-
-(deftest extract-name-from-temp-file-test
-  (testing "extract-name with various formats"
-    (with-temp-dir
-      (fn [dir]
-        (let [f (write-yaml! dir "test.yaml" {:name "My Entity" :entity_id "abc"})]
-          (is (= "My Entity" (serdes/extract-name f))))))))
 
 (deftest extract-entity-id-from-temp-file-test
   (testing "extract-entity-id with various formats"

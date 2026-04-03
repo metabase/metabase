@@ -19,14 +19,12 @@
    6. Unresolved refs get sentinel IDs so queries can still be constructed
       and bad refs can be reported with context."
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.checker.format.serdes :as serdes]
    [metabase-enterprise.checker.source :as source]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -255,9 +253,7 @@
    Pipeline:
    1. keywordize-mbql-operators — turn string operators/args into keywords
    2. resolve/import-mbql — resolve portable refs (path vectors) to integer IDs
-   3. mbql.normalize/normalize — normalize the fully-resolved query
-      (handles remaining string→keyword for temporal units, filter types, etc.)
-   4. Sentinel IDs assigned for unresolved refs so queries can still be constructed"
+   3. Sentinel IDs assigned for unresolved refs so queries can still be constructed"
   [store !failures query]
   (when query
     (try
@@ -1112,14 +1108,6 @@
           (swap! lines conj (str "  error: " (:error result))))
         (str/join "\n" @lines)))))
 
-(defn write-results!
-  "Write results to a file in human-readable format."
-  [results output-file]
-  (with-open [w (io/writer output-file)]
-    (doseq [entry (sort-by (comp :name second) results)]
-      (.write w (str (format-result entry) "\n\n"))))
-  (println "Results written to:" output-file))
-
 (defn- make-source-and-index
   "Build a composite source (db schemas from `schema-dir`, cards from `export-dir`)
    and a merged file index."
@@ -1169,11 +1157,12 @@
 
 (defn check-one
   "Check a single card by entity-id using a pre-built context from [[setup]].
-   Returns the result map. With :verbose true, also prints formatted output."
+   Returns the result map. With :verbose true, also prints formatted output. Not "
   [{:keys [store provider]} entity-id & {:keys [verbose]}]
   (binding [mu.fn/*enforce* false]
     (let [result (check-card store provider entity-id)]
       (when verbose
+        #_{:clj-kondo/ignore [:discouraged-var]}
         (println (format-result [entity-id result])))
       result)))
 
