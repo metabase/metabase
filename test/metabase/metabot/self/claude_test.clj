@@ -164,82 +164,84 @@
               {:type :text :text ""}])))))
 
 (deftest claude-auth-preferences-test
-  (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
-                                       llm.settings/llm-proxy-base-url    "https://proxy.example"]
-      (testing "Prefers BYOK over ai proxy"
-        (with-redefs [self.core/sse-reducible identity
-                      http/request            (fn [req] {:body req})]
-          (is (=? {:method  :post
-                   :url     "https://api.anthropic.com/v1/messages"
-                   :headers {"x-api-key" "sk-ant-byok"}
-                   :body    string?}
-                  (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
-
-      (testing "Uses ai proxy when explicitly requested"
-        (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+  (mt/with-premium-features #{:metabase-ai-provider}
+    (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
+      (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
+                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
+        (testing "Prefers BYOK over ai proxy"
           (with-redefs [self.core/sse-reducible identity
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
-                     :url     "https://proxy.example/anthropic/v1/messages"
-                     :headers {"x-metabase-instance-token" "proxy-token"}
+                     :url     "https://api.anthropic.com/v1/messages"
+                     :headers {"x-api-key" "sk-ant-byok"}
                      :body    string?}
-                    (claude/claude-raw {:input [{:role :user :content "hi"}]
-                                        :ai-proxy? true}))))))
+                    (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
 
-      (testing "Does not fall back to ai proxy when BYOK is missing"
-        (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"No Anthropic API key is set"
-               (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
+        (testing "Uses ai proxy when explicitly requested"
+          (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+            (with-redefs [self.core/sse-reducible identity
+                          http/request            (fn [req] {:body req})]
+              (is (=? {:method  :post
+                       :url     "https://proxy.example/anthropic/v1/messages"
+                       :headers {"x-metabase-instance-token" "proxy-token"}
+                       :body    string?}
+                      (claude/claude-raw {:input [{:role :user :content "hi"}]
+                                          :ai-proxy? true}))))))
 
-      (testing "Throws an error if nothing is defined"
-        (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil
-                                           llm.settings/llm-proxy-base-url    nil]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"No Anthropic API key is set"
-               (claude/claude-raw {:input [{:role :user :content "hi"}]}))))))))
+        (testing "Does not fall back to ai proxy when BYOK is missing"
+          (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No Anthropic API key is set"
+                 (claude/claude-raw {:input [{:role :user :content "hi"}]})))))
+
+        (testing "Throws an error if nothing is defined"
+          (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil
+                                             llm.settings/llm-proxy-base-url    nil]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No Anthropic API key is set"
+                 (claude/claude-raw {:input [{:role :user :content "hi"}]})))))))))
 
 (deftest claude-list-models-auth-preferences-test
-  (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
-                                       llm.settings/llm-proxy-base-url    "https://proxy.example"]
-      (testing "Prefers BYOK over ai proxy"
-        (with-redefs [http/request (fn [req]
-                                     (is (=? {:method  :get
-                                              :url     "https://api.anthropic.com/v1/models"
-                                              :headers {"anthropic-version" "2023-06-01"
-                                                        "x-api-key"        "sk-ant-byok"}}
-                                             req))
-                                     {:body "{\"data\":[]}"})]
-          (is (= {:models []}
-                 (claude/list-models {})))))
-
-      (testing "Uses ai proxy when explicitly requested"
-        (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+  (mt/with-premium-features #{:metabase-ai-provider}
+    (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
+      (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
+                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
+        (testing "Prefers BYOK over ai proxy"
           (with-redefs [http/request (fn [req]
                                        (is (=? {:method  :get
-                                                :url     "https://proxy.example/anthropic/v1/models"
-                                                :headers {"anthropic-version"         "2023-06-01"
-                                                          "x-metabase-instance-token" "proxy-token"}}
+                                                :url     "https://api.anthropic.com/v1/models"
+                                                :headers {"anthropic-version" "2023-06-01"
+                                                          "x-api-key"        "sk-ant-byok"}}
                                                req))
                                        {:body "{\"data\":[]}"})]
             (is (= {:models []}
-                   (claude/list-models {:ai-proxy? true}))))))
+                   (claude/list-models {})))))
 
-      (testing "Does not fall back to ai proxy when BYOK is missing"
-        (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"No Anthropic API key is set"
-               (claude/list-models {})))))
+        (testing "Uses ai proxy when explicitly requested"
+          (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+            (with-redefs [http/request (fn [req]
+                                         (is (=? {:method  :get
+                                                  :url     "https://proxy.example/anthropic/v1/models"
+                                                  :headers {"anthropic-version"         "2023-06-01"
+                                                            "x-metabase-instance-token" "proxy-token"}}
+                                                 req))
+                                         {:body "{\"data\":[]}"})]
+              (is (= {:models []}
+                     (claude/list-models {:ai-proxy? true}))))))
 
-      (testing "Throws an error if nothing is defined"
-        (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil
-                                           llm.settings/llm-proxy-base-url    nil]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"No Anthropic API key is set"
-               (claude/list-models {}))))))))
+        (testing "Does not fall back to ai proxy when BYOK is missing"
+          (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No Anthropic API key is set"
+                 (claude/list-models {})))))
+
+        (testing "Throws an error if nothing is defined"
+          (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil
+                                             llm.settings/llm-proxy-base-url    nil]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No Anthropic API key is set"
+                 (claude/list-models {})))))))))
