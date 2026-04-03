@@ -119,7 +119,7 @@ jobs:
           sudo apt-get install -y postgresql-client
       - name: Create app database if not exists
         run: |
-          export PGPASSWORD='${{ secrets.PR_ENV_DB_PASSWORD }}'
+          export PGPASSWORD="${PR_ENV_DB_PASSWORD}"
           export PGUSER="${PR_ENV_DB_USER}"
           export PGHOST="${PR_ENV_DB_HOST}"
           export PGDATABASE="${PR_ENV_DB_NAME}"
@@ -127,6 +127,7 @@ jobs:
           | grep -q 1 \
           || psql -c "CREATE DATABASE hosting_pr${{ github.event.number }}"
         env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
           PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
           PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
           PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}

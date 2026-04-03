@@ -89,7 +89,7 @@ jobs:
           sudo apt-get install -y postgresql-client
       - name: Drop app database if exists
         run: |
-          PGPASSWORD='${{ secrets.PR_ENV_DB_PASSWORD }}' \
+          PGPASSWORD="${PR_ENV_DB_PASSWORD}" \
           psql \
           -h "${PR_ENV_DB_HOST}" \
           -U "${PR_ENV_DB_USER}" \
@@ -97,6 +97,7 @@ jobs:
           -c "DROP DATABASE IF EXISTS hosting_pr${{ env.PR_NUMBER }};"
 
         env:
+          PR_ENV_DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
           PR_ENV_DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
           PR_ENV_DB_USER: ${{ secrets.PR_ENV_DB_USER }}
           PR_ENV_DB_NAME: ${{ secrets.PR_ENV_DB_NAME }}
