@@ -110,13 +110,18 @@
       false)))
 
 (defn- execute-all-function-attrs
-  "Execute all function attributes for a given spec and return computed values"
+  "Execute all function attributes for a given spec and return computed values.
+  If a function returns a map, its entries are merged directly into the result —
+  this allows a single function to populate multiple document keys (e.g. :temporal-info
+  returns both :has_temporal_dim and :non_temporal_dim_ids in one call)."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
-       (let [snake-key (keyword (u/->snake_case_en (name attr-key)))]
-         (assoc acc snake-key (execute-function-attr attr-key attr-def record)))
+       (let [result (execute-function-attr attr-key attr-def record)]
+         (if (map? result)
+           (merge acc result)
+           (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
        acc))
    {}
    (:attrs spec)))
