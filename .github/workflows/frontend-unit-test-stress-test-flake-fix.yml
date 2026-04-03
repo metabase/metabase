@@ -47,7 +47,7 @@ jobs:
         run: bun run build:cljs
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
         run: |
-          for i in {1..${INPUT_BURN_IN}}; do
+          for ((i=1; i<=BURN_IN; i++)); do
             bun run jest --runInBand --ci --silent --no-cache \
               --testPathPatterns '${{ github.event.inputs.spec }}' \
               --testNamePattern '${{ github.event.inputs.grep }}'
@@ -57,4 +57,4 @@ jobs:
           done
 
         env:
-          INPUT_BURN_IN: ${{ github.event.inputs.burn_in }}
+          BURN_IN: ${{ github.event.inputs.burn_in }}
