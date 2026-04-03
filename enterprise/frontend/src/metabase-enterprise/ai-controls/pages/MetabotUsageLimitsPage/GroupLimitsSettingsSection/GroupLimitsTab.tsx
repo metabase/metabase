@@ -15,8 +15,13 @@ import type {
   MetabotLimitType,
 } from "metabase-types/api";
 
+import {
+  MAX_LIMIT_INPUT,
+  SAVE_DEBOUNCE_MS,
+  getLimitPeriodLabel,
+} from "../utils";
+
 import S from "./GroupLimitsSettingsSection.module.css";
-import { SAVE_DEBOUNCE_MS, getLimitPeriodLabel } from "./utils";
 
 type GroupLimitsTabProps = {
   error: unknown;
@@ -78,9 +83,15 @@ export function GroupLimitsTab({
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
   const handleChange = (groupId: number, value: string) => {
+    let sanitizedValue = value;
+
+    if (sanitizedValue !== "") {
+      sanitizedValue = Math.min(Number(value), MAX_LIMIT_INPUT).toString();
+    }
+
     setLocalLimitsMap((prev) => ({
       ...prev,
-      [groupId]: value ? Number(value) : null,
+      [groupId]: sanitizedValue ? Number(sanitizedValue) : null,
     }));
     debouncedSaveGroupLimits();
   };

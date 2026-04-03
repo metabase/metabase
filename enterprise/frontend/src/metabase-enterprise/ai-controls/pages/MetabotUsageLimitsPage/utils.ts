@@ -3,6 +3,7 @@ import { c, t } from "ttag";
 import type { MetabotLimitPeriod } from "metabase-types/api";
 
 export const SAVE_DEBOUNCE_MS = 500;
+export const MAX_LIMIT_INPUT = 999999999;
 
 export const getLimitPeriodLabel = (limitPeriod: MetabotLimitPeriod) => {
   const nounMap: Record<MetabotLimitPeriod, string> = {

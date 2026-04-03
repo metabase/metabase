@@ -19,12 +19,14 @@ import {
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import S from "./GeneralLimitsSettingsSection.module.css";
-import { getLimitPeriodLabel } from "./GroupLimitsSettingsSection/utils";
+import {
+  MAX_LIMIT_INPUT,
+  SAVE_DEBOUNCE_MS,
+  getLimitPeriodLabel,
+} from "./utils";
 
 type LimitTypeOption = SegmentedControlItem<MetabotLimitType>;
 type PeriodOption = SegmentedControlItem<MetabotLimitPeriod>;
-
-const SAVE_DEBOUNCE_MS = 500;
 
 export function GeneralLimitsSettingsSection() {
   // Settings
@@ -118,7 +120,12 @@ export function GeneralLimitsSettingsSection() {
   };
 
   const handleInstanceLimitChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    let value = e.target.value;
+
+    if (value !== "") {
+      value = Math.min(Number(value), MAX_LIMIT_INPUT).toString();
+    }
+
     setInstanceLimitInput(value);
     debouncedSaveInstanceLimit(value);
   };

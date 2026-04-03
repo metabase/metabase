@@ -14,8 +14,13 @@ import type {
   Tenant,
 } from "metabase-types/api";
 
+import {
+  MAX_LIMIT_INPUT,
+  SAVE_DEBOUNCE_MS,
+  getLimitPeriodLabel,
+} from "../utils";
+
 import S from "./GroupLimitsSettingsSection.module.css";
-import { SAVE_DEBOUNCE_MS, getLimitPeriodLabel } from "./utils";
 
 type SpecificTenantsTabProps = {
   error: unknown;
@@ -73,9 +78,15 @@ export function TenantLimitsTab({
   }, SAVE_DEBOUNCE_MS);
 
   const handleChange = (tenantId: number, value: string) => {
+    let sanitizedValue = value;
+
+    if (sanitizedValue !== "") {
+      sanitizedValue = Math.min(Number(value), MAX_LIMIT_INPUT).toString();
+    }
+
     setLocalLimitsMap((prev) => ({
       ...prev,
-      [tenantId]: value ? Number(value) : null,
+      [tenantId]: sanitizedValue ? Number(sanitizedValue) : null,
     }));
     debouncedSaveTenantLimits();
   };
