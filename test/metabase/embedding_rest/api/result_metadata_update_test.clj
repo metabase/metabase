@@ -97,7 +97,13 @@
             ;; Second run with different parameter
             result-2    (run-with-parameters! 50)
             meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
-        (testing "result_metadata on the Card should NOT change"
+        (testing "the Card's stored result_metadata has fingerprints (written on first run)"
+          (let [stored-agg-fps (->> meta-before
+                                    (filter #(nil? (:id %)))
+                                    (mapv :fingerprint))]
+            (is (every? some? stored-agg-fps)
+                "aggregation columns in stored result_metadata should have fingerprints")))
+        (testing "result_metadata on the Card should NOT change between different parameters"
           (is (= meta-before meta-after)
               "result_metadata should not thrash for parameterized queries with aggregation columns"))
         (testing "but the query results still contain parameter-specific fingerprints"
