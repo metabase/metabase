@@ -64,14 +64,14 @@
 (deftest parameterized-aggregation-queries-do-not-thrash-result-metadata-test
   (testing "When parameters are applied via :parameters (as in embed dashcard queries), the fix prevents
             result_metadata thrashing on aggregation columns by stripping computed fingerprints from the comparison."
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders
-                                                      {:aggregation [[:count] [:sum $total]]
-                                                       :breakout    [$product_id]})
+    (mt/with-temp [:model/Card card {:dataset_query   (mt/mbql-query orders
+                                                        {:aggregation [[:count] [:sum $total]]
+                                                         :breakout    [$product_id]})
                                      :result_metadata nil}]
-      (let [card-id (:id card)
+      (let [card-id     (:id card)
             run-with-parameters!
             (fn [product-id]
-              (binding [api/*current-user-id* (mt/user->id :rasta)
+              (binding [api/*current-user-id*              (mt/user->id :rasta)
                         api/*current-user-permissions-set* (delay #{"/"})]
                 (let [card (t2/select-one :model/Card :id card-id)]
                   (qp.store/with-metadata-provider (:database_id card)
@@ -79,29 +79,32 @@
                     (let [query (-> (mt/mbql-query orders
                                       {:aggregation [[:count] [:sum $total]]
                                        :breakout    [$product_id]})
-                                   ;; Parameters applied via :parameters, as the embed dashcard path does
                                     (assoc :parameters [{:type   :id
                                                          :target [:dimension (mt/$ids orders $product_id)]
                                                          :value  [product-id]}])
                                     (assoc :info {:executed-by (mt/user->id :rasta)
                                                   :context     :question
                                                   :card-id     card-id}))]
-                      (qp/process-query (qp/userland-query query))))))
-              (t2/select-one-fn :result_metadata :model/Card :id card-id))]
-        ;; First run establishes baseline metadata
-        (run-with-parameters! 1)
-        ;; Second run with different parameter — should NOT thrash because the fix strips
-        ;; computed fingerprints from the comparison
-        (let [meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)]
-          (run-with-parameters! 50)
-          (let [meta-after (t2/select-one-fn :result_metadata :model/Card :id card-id)]
-            (testing "result_metadata should NOT change when only aggregation fingerprints differ"
-              (is (= meta-before meta-after)
-                  "result_metadata should not thrash for parameterized queries with aggregation columns"))))
-        ;; Third run with original parameter — still should not change
-        (let [meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)]
-          (run-with-parameters! 1)
-          (let [meta-after (t2/select-one-fn :result_metadata :model/Card :id card-id)]
-            (testing "result_metadata remains stable across parameter changes"
-              (is (= meta-before meta-after)
-                  "result_metadata should remain stable"))))))))
+                      (qp/process-query (qp/userland-query query)))))))
+            result-fingerprints
+            (fn [result]
+              (->> (get-in result [:data :results_metadata :columns])
+                   (filter #(nil? (:id %)))
+                   (mapv (juxt :name :fingerprint))))
+            ;; First run establishes baseline metadata
+            result-1    (run-with-parameters! 1)
+            meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
+            ;; Second run with different parameter
+            result-2    (run-with-parameters! 50)
+            meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+        (testing "result_metadata on the Card should NOT change"
+          (is (= meta-before meta-after)
+              "result_metadata should not thrash for parameterized queries with aggregation columns"))
+        (testing "but the query results still contain parameter-specific fingerprints"
+          (is (some? (result-fingerprints result-1))
+              "first result should have fingerprints")
+          (is (some? (result-fingerprints result-2))
+              "second result should have fingerprints")
+          (is (not= (result-fingerprints result-1)
+                    (result-fingerprints result-2))
+              "result fingerprints should differ between parameters — they're computed per-query, just not written back"))))))
