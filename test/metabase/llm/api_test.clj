@@ -8,6 +8,7 @@
    [metabase.llm.api :as api]
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]))
 
@@ -145,6 +146,38 @@
     (with-redefs [metabot.settings/llm-metabot-configured? (constantly false)]
       (let [response (mt/user-http-request :rasta :get 403 "llm/list-models")]
         (is (str/includes? (str response) "not configured"))))))
+
+(deftest list-models-resolves-direct-provider-test
+  (testing "resolves provider from provider-and-model and passes ai-proxy? = false"
+    (let [captured (atom nil)]
+      (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                    metabot.settings/llm-metabot-provider    (constantly "anthropic/claude-sonnet-4")
+                    metabot.self/list-models                 (fn [provider opts]
+                                                               (reset! captured {:provider provider :opts opts})
+                                                               {:models [{:id "claude-sonnet-4" :display_name "Claude Sonnet 4"}]})]
+        (let [response (mt/user-http-request :rasta :get 200 "llm/list-models")]
+          (is (=? {:models [{:id "claude-sonnet-4"
+                             :display_name "Claude Sonnet 4"}]}
+                  response))
+          (is (=? {:provider "anthropic"
+                   :opts     {:ai-proxy? false}}
+                  @captured)))))))
+
+(deftest list-models-resolves-metabase-prefixed-provider-test
+  (testing "resolves inner provider from metabase/ prefix and passes ai-proxy? = true"
+    (let [captured (atom nil)]
+      (with-redefs [metabot.settings/llm-metabot-configured? (constantly true)
+                    metabot.settings/llm-metabot-provider    (constantly "metabase/openrouter/anthropic/claude-haiku-4-5")
+                    metabot.self/list-models                 (fn [provider opts]
+                                                               (reset! captured {:provider provider :opts opts})
+                                                               {:models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}]})]
+        (let [response (mt/user-http-request :rasta :get 200 "llm/list-models")]
+          (is (=? {:models [{:id "anthropic/claude-haiku-4-5"
+                             :display_name "Claude Haiku 4.5"}]}
+                  response))
+          (is (=? {:provider "openrouter"
+                   :opts     {:ai-proxy? true}}
+                  @captured)))))))
 
 ;;; ------------------------------------------- Snowplow Tests -------------------------------------------
 
