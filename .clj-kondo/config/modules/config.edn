@@ -1180,6 +1180,7 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
+              metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
               metabase.metabot.settings}

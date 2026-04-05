@@ -13,6 +13,7 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
@@ -454,7 +455,7 @@
   whether the request was routed through the AI proxy.
   Non-usage parts pass through unchanged."
   [usage-atom provider-and-model]
-  (let [model (or (some-> provider-and-model (str/replace-first #"^metabase/" ""))
+  (let [model (or (some-> provider-and-model provider-util/strip-metabase-prefix)
                   "unknown")]
     (map (fn [part]
            (if (= (:type part) :usage)

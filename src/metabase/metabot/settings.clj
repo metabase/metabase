@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.provider-util :as provider-util]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
@@ -93,7 +94,7 @@
 
 (def ^:private supported-metabot-providers
   "Set of supported LLM provider prefixes for the `llm-metabot-provider` setting."
-  #{"anthropic" "openai" "openrouter" "metabase"})
+  #{"anthropic" "openai" "openrouter" provider-util/metabase-provider-prefix})
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
@@ -107,20 +108,21 @@
   (when-not (string? value)
     (throw (ex-info (tru "Metabot provider must be a string, got: {0}" (pr-str value))
                     {:status-code 400})))
-  (let [[provider rest-value] (str/split value #"/" 2)]
-    (when-not (contains? supported-metabot-providers provider)
+  (let [outer-provider (provider-util/provider-and-model->outer-provider value)]
+    (when-not (contains? supported-metabot-providers outer-provider)
       (throw (ex-info (tru "Unknown provider {0}. Supported providers: {1}"
-                           (pr-str provider) (str/join ", " (sort supported-metabot-providers)))
+                           (pr-str outer-provider) (str/join ", " (sort supported-metabot-providers)))
                       {:status-code 400
-                       :provider    provider
+                       :provider    outer-provider
                        :supported   supported-metabot-providers})))
-    (when (str/blank? rest-value)
+    (when (str/blank? (provider-util/provider-and-model->model value))
       (throw (ex-info (tru "Model name is required. Expected format: provider/model, e.g. \"anthropic/claude-haiku-4-5\"")
                       {:status-code 400
                        :value       value})))
     ;; For metabase/ prefix, validate the inner provider
-    (when (= provider "metabase")
-      (let [[inner-provider inner-model] (str/split rest-value #"/" 2)]
+    (when (= outer-provider provider-util/metabase-provider-prefix)
+      (let [inner-provider (provider-util/provider-and-model->provider value)
+            inner-model    (provider-util/provider-and-model->model value)]
         (when-not (contains? direct-providers inner-provider)
           (throw (ex-info (tru "Unknown inner provider {0} in metabase/ prefix. Supported: {1}"
                                (pr-str inner-provider) (str/join ", " (sort direct-providers)))
@@ -174,35 +176,16 @@
     "openrouter" (llm.settings/llm-openrouter-api-key)
     nil))
 
-(defn- provider-prefix
-  "Extract the top-level provider prefix from a provider-and-model string.
-  For `metabase/anthropic/model` returns `metabase`."
-  [provider-and-model]
-  (some-> provider-and-model
-          (str/split #"/" 2)
-          first))
-
-(defn- direct-provider-prefix
-  "Extract the direct (non-metabase) provider prefix.
-  For `metabase/anthropic/model` returns `anthropic`.
-  For `anthropic/model` returns `anthropic`."
-  [provider-and-model]
-  (when provider-and-model
-    (let [[first-seg rest-seg] (str/split provider-and-model #"/" 2)]
-      (if (= first-seg "metabase")
-        (first (str/split rest-seg #"/" 2))
-        first-seg))))
-
 (defn- llm-provider-configured?
   "Check if a provider-and-model string has the necessary configuration.
   For `metabase/*` providers, checks that the proxy URL is set.
   For direct providers, checks that a BYOK API key is set."
   [provider-and-model]
   (boolean
-   (if (= "metabase" (provider-prefix provider-and-model))
+   (if (provider-util/metabase-provider? provider-and-model)
      (some? (llm.settings/llm-proxy-base-url))
      (some-> provider-and-model
-             direct-provider-prefix
+             provider-util/provider-and-model->provider
              configured-provider-api-key
              token-configured?))))
 

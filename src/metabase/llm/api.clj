@@ -3,7 +3,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
-   [clojure.string :as str]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -14,6 +13,7 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.core :as metabot]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
@@ -100,10 +100,8 @@
     (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))
   (let [provider-and-model (metabot.settings/llm-metabot-provider)
-        ai-proxy?          (metabot.self/ai-proxy? provider-and-model)
-        provider           (if ai-proxy?
-                             (second (str/split provider-and-model #"/" 3))
-                             (first (str/split provider-and-model #"/" 2)))]
+        ai-proxy?          (metabot/metabase-provider? provider-and-model)
+        provider           (metabot/provider-and-model->provider provider-and-model)]
     (metabot.self/list-models provider {:ai-proxy? ai-proxy?})))
 
 (def ^:private table-with-columns-schema

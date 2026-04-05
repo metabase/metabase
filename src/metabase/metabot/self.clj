@@ -10,10 +10,10 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
-   [clojure.string :as str]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
+   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
@@ -42,22 +42,12 @@
     (throw (ex-info (str "Unknown LLM provider: " provider)
                     {:provider provider}))))
 
-(defn ai-proxy?
-  "Returns true when the provider-and-model string uses the Metabase AI proxy
-  (i.e. starts with `metabase/`)."
-  [provider-and-model]
-  (boolean (some-> provider-and-model (str/starts-with? "metabase/"))))
-
 (defn- parse-provider-model [s]
-  (let [[first-seg rest-seg] (str/split s #"/" 2)
-        ;; metabase/anthropic/model → provider=anthropic, model=model
-        [prov model] (if (= first-seg "metabase")
-                       (str/split rest-seg #"/" 2)
-                       [first-seg rest-seg])]
-    {:provider   prov
-     :stream-fn  (resolve-adapter prov)
-     :model      model
-     :ai-proxy?  (= first-seg "metabase")}))
+  (let [provider (provider-util/provider-and-model->provider s)]
+    {:provider   provider
+     :stream-fn  (resolve-adapter provider)
+     :model      (provider-util/provider-and-model->model s)
+     :ai-proxy?  (provider-util/metabase-provider? s)}))
 
 (defn list-models
   "List available models for a provider using its configured API key,

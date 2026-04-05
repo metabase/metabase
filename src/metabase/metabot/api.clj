@@ -20,6 +20,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
@@ -49,7 +50,7 @@
                          messages)
         messages (-> (remove #(or (= % state) (= % finish)) messages)
                      vec)
-        ai-proxy? (metabot.self/ai-proxy? (metabot.settings/llm-metabot-provider))]
+        ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                               (constantly (cond-> {:user_id    api/*current-user-id*}
                                             state (assoc :state state))))
@@ -98,7 +99,7 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
-        ai-proxy?  (metabot.self/ai-proxy? (metabot.settings/llm-metabot-provider))
+        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
         ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
         ;; :data is like `:navigate_to`
         content    (->> parts
@@ -403,9 +404,7 @@
 
 (defn- current-provider
   []
-  (some-> (metabot.settings/llm-metabot-provider)
-          (str/split #"/" 2)
-          first))
+  (provider-util/provider-and-model->provider (metabot.settings/llm-metabot-provider)))
 
 (defn- api-error->status-code
   [error]

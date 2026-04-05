@@ -74,18 +74,6 @@
                   (throw e))))
             (is (= expected (:tool_choice @captured)))))))))
 
-;;; ai-proxy? tests
-
-(deftest ^:parallel ai-proxy?-test
-  (testing "returns true for metabase/ prefixed providers"
-    (is (true? (self/ai-proxy? "metabase/anthropic/claude-haiku-4-5")))
-    (is (true? (self/ai-proxy? "metabase/openai/gpt-4.1-mini"))))
-  (testing "returns false for direct providers"
-    (is (false? (self/ai-proxy? "anthropic/claude-haiku-4-5")))
-    (is (false? (self/ai-proxy? "openrouter/anthropic/claude-haiku-4-5"))))
-  (testing "returns false for nil"
-    (is (false? (self/ai-proxy? nil)))))
-
 ;;; utils tests
 
 (deftest sse-reducible-test
