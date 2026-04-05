@@ -10,9 +10,10 @@
 
 (deftest llm-anthropic-api-key-setter-test
   (testing "accepts valid sk-ant- key and trims whitespace"
-    (mt/discard-setting-changes [llm-anthropic-api-key]
-      (llm.settings/llm-anthropic-api-key! "  sk-ant-abc123  ")
-      (is (= "sk-ant-abc123" (llm.settings/llm-anthropic-api-key)))))
+    (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
+      (mt/discard-setting-changes [llm-anthropic-api-key]
+        (llm.settings/llm-anthropic-api-key! "  sk-ant-abc123  ")
+        (is (= "sk-ant-abc123" (llm.settings/llm-anthropic-api-key))))))
 
   (testing "rejects keys without sk-ant- prefix"
     (is (thrown-with-msg?
@@ -21,16 +22,17 @@
          (llm.settings/llm-anthropic-api-key! "invalid-key"))))
 
   (testing "empty/nil clears the setting"
-    (mt/discard-setting-changes [llm-anthropic-api-key]
-      (llm.settings/llm-anthropic-api-key! "sk-ant-abc123")
-      (llm.settings/llm-anthropic-api-key! "")
-      (is (nil? (llm.settings/llm-anthropic-api-key))))))
+    (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
+      (mt/discard-setting-changes [llm-anthropic-api-key]
+        (llm.settings/llm-anthropic-api-key! "sk-ant-abc123")
+        (llm.settings/llm-anthropic-api-key! "")
+        (is (nil? (llm.settings/llm-anthropic-api-key)))))))
 
 ;;; ------------------------------------------- llm-anthropic-api-key-configured? Tests -------------------------------------------
 
 (deftest llm-anthropic-api-key-configured?-test
   (testing "returns false when no API key is set"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
       (is (false? (llm.settings/llm-anthropic-api-key-configured?)))))
 
   (testing "returns true when API key is set"

@@ -291,31 +291,32 @@
              (metabot.settings/llm-metabot-provider))))))
 
 (deftest settings-put-verifies-and-saves-api-keys-test
-  (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
-    (let [calls (atom 0)]
-      (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
-                                               (swap! calls inc)
-                                               (is (= "anthropic" provider))
-                                               (is (= "sk-ant-valid" api-key))
-                                               (case (long @calls)
-                                                 1 (is (nil? (llm.settings/llm-anthropic-api-key))
-                                                       "verification should happen before saving the key")
-                                                 2 (is (= "sk-ant-valid" (llm.settings/llm-anthropic-api-key))
-                                                       "response should use the saved key")
-                                                 (is false (str "unexpected list-models call: " @calls)))
-                                               {:models [{:id "claude-haiku-4-5"
-                                                          :display_name "Claude Haiku 4.5"}]})]
-        (is (= {:value  (metabot.settings/llm-metabot-provider)
-                :models [{:id "claude-haiku-4-5"
-                          :display_name "Claude Haiku 4.5"
-                          :group "Haiku"}]}
-               (mt/user-http-request :crowberto :put 200 "metabot/settings"
-                                     {:provider "anthropic"
-                                      :api-key  "sk-ant-valid"})))
-        (is (= 2 @calls)
-            "should verify first, then fetch models again after saving")
-        (is (= "sk-ant-valid"
-               (llm.settings/llm-anthropic-api-key)))))))
+  (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+      (let [calls (atom 0)]
+        (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                                 (swap! calls inc)
+                                                 (is (= "anthropic" provider))
+                                                 (is (= "sk-ant-valid" api-key))
+                                                 (case (long @calls)
+                                                   1 (is (nil? (llm.settings/llm-anthropic-api-key))
+                                                         "verification should happen before saving the key")
+                                                   2 (is (= "sk-ant-valid" (llm.settings/llm-anthropic-api-key))
+                                                         "response should use the saved key")
+                                                   (is false (str "unexpected list-models call: " @calls)))
+                                                 {:models [{:id "claude-haiku-4-5"
+                                                            :display_name "Claude Haiku 4.5"}]})]
+          (is (= {:value  (metabot.settings/llm-metabot-provider)
+                  :models [{:id "claude-haiku-4-5"
+                            :display_name "Claude Haiku 4.5"
+                            :group "Haiku"}]}
+                 (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                       {:provider "anthropic"
+                                        :api-key  "sk-ant-valid"})))
+          (is (= 2 @calls)
+              "should verify first, then fetch models again after saving")
+          (is (= "sk-ant-valid"
+                 (llm.settings/llm-anthropic-api-key))))))))
 
 (deftest settings-put-rejects-invalid-api-key-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]

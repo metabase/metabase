@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase.llm.anthropic :as anthropic]
+   [metabase.llm.settings :as llm.settings]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -105,7 +106,7 @@
 
 (deftest chat-completion-not-configured-test
   (testing "throws when API key not configured"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"not configured"

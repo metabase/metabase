@@ -1,6 +1,7 @@
 (ns metabase.metabot.settings-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -98,17 +99,17 @@
 
 (deftest metabot-configured-with-direct-provider-no-api-key-test
   (testing "returns false when direct provider has no API key"
-    (mt/with-temporary-setting-values [llm-metabot-provider  "anthropic/claude-sonnet-4"
-                                       llm-anthropic-api-key nil]
-      (is (false? (metabot.settings/llm-metabot-configured?))))))
+    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+      (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4"]
+        (is (false? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-configured-proxy-url-not-fallback-for-direct-provider-test
   (testing "proxy URL alone does not make a direct provider configured"
     (mt/with-premium-features #{:metabase-ai-provider}
-      (mt/with-temporary-setting-values [llm-metabot-provider  "anthropic/claude-sonnet-4"
-                                         llm-anthropic-api-key nil
-                                         llm-proxy-base-url    "https://proxy.example.com"]
-        (is (false? (metabot.settings/llm-metabot-configured?)))))))
+      (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+        (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4"
+                                           llm-proxy-base-url   "https://proxy.example.com"]
+          (is (false? (metabot.settings/llm-metabot-configured?))))))))
 
 ;;; ------------------------------------------- validate-metabot-provider! Tests -------------------------------------------
 ;; The validator is private; exercise it through the setting setter.
@@ -172,10 +173,10 @@
 
 (deftest internal-tasks-requires-lite-api-key-test
   (testing "returns false when enabled but lite provider has no api key"
-    (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
-                                       llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
-                                       llm-anthropic-api-key               nil]
-      (is (false? (metabot.settings/llm-metabot-internal-tasks-enabled?))))))
+    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+      (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
+                                         llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"]
+        (is (false? (metabot.settings/llm-metabot-internal-tasks-enabled?)))))))
 
 (deftest internal-tasks-enabled-with-anthropic-test
   (testing "returns true when enabled and anthropic lite provider api key is configured"
