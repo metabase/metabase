@@ -142,7 +142,7 @@ export function TenantLimitsTab({
                           ? periodI18nContext.adjective
                               .t`Max total ${periodAdjective} token usage (millions)`
                           : periodI18nContext.adjective
-                              .t`Max total ${periodAdjective} conversation count`}
+                              .t`Max total ${periodAdjective} message count`}
                       </th>
                     </tr>
                   </thead>
@@ -165,7 +165,7 @@ export function TenantLimitsTab({
                                 ? periodI18nContext.adjective
                                     .t`Max total ${periodAdjective} tokens for ${tenant.name} (millions)`
                                 : c("{0} is the tenant name")
-                                    .t`Max total ${periodAdjective} conversations for ${tenant.name}`
+                                    .t`Max total ${periodAdjective} messages for ${tenant.name}`
                             }
                           />
                         </td>

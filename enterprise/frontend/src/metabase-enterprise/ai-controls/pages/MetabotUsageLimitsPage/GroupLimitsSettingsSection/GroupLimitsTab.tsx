@@ -122,7 +122,7 @@ export function GroupLimitsTab({
                       ? periodI18nContext.noun
                           .t`Max tokens per user each ${periodNoun} (millions)`
                       : periodI18nContext.noun
-                          .t`Max conversations per user each ${periodNoun}`}
+                          .t`Max messages per user each ${periodNoun}`}
                   </th>
                 </tr>
               </thead>
@@ -143,7 +143,7 @@ export function GroupLimitsTab({
                             ? c("{0} is the group name")
                                 .t`Max tokens per user for ${group.name} (millions)`
                             : c("{0} is the group name")
-                                .t`Max conversations per user for ${group.name}`
+                                .t`Max messages per user for ${group.name}`
                         }
                       />
                     </td>

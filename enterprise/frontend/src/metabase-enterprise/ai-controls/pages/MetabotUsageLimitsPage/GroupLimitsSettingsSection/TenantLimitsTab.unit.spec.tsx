@@ -68,12 +68,10 @@ describe("TenantLimitsTab", () => {
     expect(screen.getByText(/Max total.*token usage/)).toBeInTheDocument();
   });
 
-  it("shows conversation-based column header when limitType is conversations", () => {
-    setup({ limitType: "conversations" });
+  it("shows message-based column header when limitType is messages", () => {
+    setup({ limitType: "messages" });
 
-    expect(
-      screen.getByText(/Max total.*conversation count/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Max total.*message count/)).toBeInTheDocument();
   });
 
   it("populates inputs from existing tenant limits", () => {

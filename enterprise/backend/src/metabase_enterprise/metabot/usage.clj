@@ -69,7 +69,7 @@
                 0)
             1000000)
 
-      :conversations
+      :messages
       (:cnt (t2/query-one {:select [[[:count :*] :cnt]]
                            :from   [:ai_usage_log]
                            :where  full-where})))))

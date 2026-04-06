@@ -107,7 +107,7 @@ export function GeneralLimitsSettingsSection() {
   const limitTypeOptions: LimitTypeOption[] = useMemo(() => {
     return [
       { value: "tokens", label: t`By token usage` },
-      { value: "conversations", label: t`By conversation count` },
+      { value: "messages", label: t`By message count` },
     ];
   }, []);
 
@@ -190,7 +190,7 @@ export function GeneralLimitsSettingsSection() {
               ? i18nContext.adjective
                   .t`Total ${periodAdjective.toLowerCase()} instance limit (millions of tokens)`
               : i18nContext.adjective
-                  .t`Total ${periodAdjective.toLowerCase()} instance limit (conversations)`
+                  .t`Total ${periodAdjective.toLowerCase()} instance limit (messages)`
           }
           description={t`This is the maximum amount all users should be able to use in total.`}
           placeholder={t`Unlimited`}

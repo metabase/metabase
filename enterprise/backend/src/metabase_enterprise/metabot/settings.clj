@@ -4,7 +4,7 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(def ^:private valid-limit-units #{:tokens :conversations})
+(def ^:private valid-limit-units #{:tokens :messages})
 
 (defsetting metabot-limit-unit
   (deferred-tru "The unit used for metabot usage limits.")
@@ -18,7 +18,7 @@
                 (let [v (some-> new-value keyword)]
                   (when (and v (not (contains? valid-limit-units v)))
                     (throw (ex-info (str "Invalid limit unit: " (pr-str new-value)
-                                         ". Must be one of: tokens, conversations.")
+                                         ". Must be one of: tokens, messages.")
                                     {:status-code 400})))
                   (setting/set-value-of-type! :keyword :metabot-limit-unit v))))
 

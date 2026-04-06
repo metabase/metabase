@@ -38,13 +38,13 @@ function setup({
 
 describe("GeneralLimitsSettingsSection", () => {
   it("renders the limit type segmented control with saved value", async () => {
-    setup({ limitType: "conversations" });
+    setup({ limitType: "messages" });
 
     expect(
       await screen.findByText("How do you want to limit AI usage?"),
     ).toBeInTheDocument();
     expect(screen.getByText("By token usage")).toBeInTheDocument();
-    expect(screen.getByText("By conversation count")).toBeInTheDocument();
+    expect(screen.getByText("By message count")).toBeInTheDocument();
   });
 
   it("renders the reset period segmented control with saved value", async () => {
@@ -69,13 +69,13 @@ describe("GeneralLimitsSettingsSection", () => {
     });
   });
 
-  it("shows conversation-based label for instance limit when limit type is conversations", async () => {
-    setup({ limitType: "conversations" });
+  it("shows message-based label for instance limit when limit type is messages", async () => {
+    setup({ limitType: "messages" });
     await screen.findByText("How do you want to limit AI usage?");
 
     await waitFor(() => {
       expect(
-        screen.getByText(/instance limit \(conversations\)/),
+        screen.getByText(/instance limit \(messages\)/),
       ).toBeInTheDocument();
     });
   });
@@ -111,11 +111,9 @@ describe("GeneralLimitsSettingsSection", () => {
     setup({ limitType: "tokens" });
     await screen.findByText("How do you want to limit AI usage?");
 
-    await userEvent.click(screen.getByText("By conversation count"));
+    await userEvent.click(screen.getByText("By message count"));
 
-    expect(
-      screen.getByText(/instance limit \(conversations\)/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/instance limit \(messages\)/)).toBeInTheDocument();
   });
 
   it("updates reset period setting when user clicks a different option", async () => {
