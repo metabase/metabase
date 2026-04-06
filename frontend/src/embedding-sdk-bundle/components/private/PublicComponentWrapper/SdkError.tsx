@@ -102,9 +102,19 @@ const FORCE_DARK_TEXT_COLOR = {
 } as CSSProperties;
 
 const DefaultErrorMessage = ({ message, onClose }: SdkErrorComponentProps) => (
-  <Box p="sm" style={FORCE_DARK_TEXT_COLOR}>
+  <Box p="sm" style={FORCE_DARK_TEXT_COLOR} maw={600}>
     <Alert variant="error" icon="warning" onClose={onClose}>
-      {message}
+      <Box
+        style={{
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          display: "-webkit-box",
+          overflow: "hidden",
+          wordBreak: "break-all",
+        }}
+      >
+        {message}
+      </Box>
     </Alert>
   </Box>
 );

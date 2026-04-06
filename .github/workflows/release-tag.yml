@@ -151,7 +151,7 @@ jobs:
         edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
@@ -247,7 +247,7 @@ jobs:
         fi
 
     - name: Login to Docker Hub
-      uses: docker/login-action@v3
+      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
       with:
         username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
@@ -303,7 +303,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}

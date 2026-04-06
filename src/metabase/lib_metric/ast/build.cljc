@@ -386,8 +386,8 @@
                                  (comp (filter #(= leaf-uuid (:lib/uuid %)))
                                        (map :filter))
                                  (or filters []))
-        ;; Extract flat projections for this leaf's type/id
-        leaf-projections   (perf/some #(when (and (= leaf-type (:type %)) (= leaf-id (:id %)))
+        ;; Extract flat projections for this leaf's :lib/uuid
+        leaf-projections   (perf/some #(when (= leaf-uuid (:lib/uuid %))
                                          (:projection %))
                                       (or projections []))
         ;; Convert filters and projections to AST nodes
