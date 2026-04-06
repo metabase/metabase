@@ -58,11 +58,10 @@ export const isTouchDevice = () => {
       window.matchMedia("(pointer: coarse)").matches;
     const hasHoverSupport = window.matchMedia("(hover: hover)").matches;
 
-    if (hasCoarsePointerSupport && !hasHoverSupport) {
-      return true;
-    }
+    return hasCoarsePointerSupport && !hasHoverSupport;
   }
 
+  // Fallback for environments without matchMedia (e.g. older browsers)
   return typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
 };
 

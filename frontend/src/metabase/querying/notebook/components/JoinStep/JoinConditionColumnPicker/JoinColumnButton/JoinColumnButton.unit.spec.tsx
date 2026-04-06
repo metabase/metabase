@@ -60,7 +60,7 @@ describe("JoinColumnButton scroll on auto-open", () => {
     });
   });
 
-  it("does not scroll on user-initiated open in mobile SDK", () => {
+  it("does not scroll when mounted as closed then opened later", () => {
     setupMobileSDK();
 
     const { rerender } = renderWithProviders(

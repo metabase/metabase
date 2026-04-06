@@ -1,6 +1,111 @@
-import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
+import {
+  isTouchDevice,
+  parseHashOptions,
+  stringifyHashOptions,
+} from "metabase/utils/browser";
 
 describe("browser", () => {
+  describe("isTouchDevice", () => {
+    const originalMatchMedia = window.matchMedia;
+
+    function mockMatchMedia(
+      results: Record<string, boolean>,
+    ): typeof window.matchMedia {
+      return (query: string) =>
+        ({
+          matches: results[query] ?? false,
+          media: query,
+          onchange: null,
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          dispatchEvent: jest.fn(),
+        }) as MediaQueryList;
+    }
+
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+      Object.defineProperty(navigator, "maxTouchPoints", {
+        value: 0,
+        configurable: true,
+      });
+    });
+
+    it("returns true for touch-only devices (coarse pointer, no hover)", () => {
+      window.matchMedia = mockMatchMedia({
+        "(pointer: coarse)": true,
+        "(hover: hover)": false,
+      });
+
+      expect(isTouchDevice()).toBe(true);
+    });
+
+    it("returns false for desktop (fine pointer, has hover)", () => {
+      window.matchMedia = mockMatchMedia({
+        "(pointer: coarse)": false,
+        "(hover: hover)": true,
+      });
+
+      expect(isTouchDevice()).toBe(false);
+    });
+
+    it("returns false for 2-in-1 laptops in laptop mode (fine pointer + touch screen)", () => {
+      window.matchMedia = mockMatchMedia({
+        "(pointer: coarse)": false,
+        "(hover: hover)": true,
+      });
+      Object.defineProperty(navigator, "maxTouchPoints", {
+        value: 10,
+        configurable: true,
+      });
+
+      expect(isTouchDevice()).toBe(false);
+    });
+
+    it("returns true for 2-in-1 laptops in tablet mode (coarse pointer, no hover)", () => {
+      window.matchMedia = mockMatchMedia({
+        "(pointer: coarse)": true,
+        "(hover: hover)": false,
+      });
+      Object.defineProperty(navigator, "maxTouchPoints", {
+        value: 10,
+        configurable: true,
+      });
+
+      expect(isTouchDevice()).toBe(true);
+    });
+
+    it("returns false when only hover is missing but pointer is fine", () => {
+      window.matchMedia = mockMatchMedia({
+        "(pointer: coarse)": false,
+        "(hover: hover)": false,
+      });
+
+      expect(isTouchDevice()).toBe(false);
+    });
+
+    it("falls back to maxTouchPoints when matchMedia is not available", () => {
+      (window as any).matchMedia = undefined;
+      Object.defineProperty(navigator, "maxTouchPoints", {
+        value: 5,
+        configurable: true,
+      });
+
+      expect(isTouchDevice()).toBe(true);
+    });
+
+    it("returns false when matchMedia unavailable and no touch points", () => {
+      (window as any).matchMedia = undefined;
+      Object.defineProperty(navigator, "maxTouchPoints", {
+        value: 0,
+        configurable: true,
+      });
+
+      expect(isTouchDevice()).toBe(false);
+    });
+  });
+
   describe("parseHashOptions", () => {
     it("should parse with prepended '#'", () => {
       expect(parseHashOptions("#foo=bar")).toEqual({ foo: "bar" });
