@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
 import type { MetabaseProtocolEntityModel } from "metabase/metabot/utils/links";
 import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { entityToUrlableModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
-import { Icon } from "metabase/ui";
 
 import S from "../AIMarkdown.module.css";
 
@@ -44,7 +44,7 @@ export const MarkdownSmartLink = ({
       className={S.smartLink}
     >
       <span className={S.smartLinkInner}>
-        <Icon name={icon.name} className={S.icon} />
+        <EntityIcon {...icon} className={S.icon} />
         {name}
       </span>
     </InternalLink>

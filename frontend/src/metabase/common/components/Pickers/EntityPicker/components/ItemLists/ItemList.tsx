@@ -1,6 +1,7 @@
 import type React from "react";
 import { useMemo } from "react";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useSelector } from "metabase/lib/redux";
@@ -130,7 +131,7 @@ export function ItemList({
                 </Flex>
               }
               active={isSelected}
-              leftSection={<Icon {...icon} />}
+              leftSection={<EntityIcon {...icon} />}
               onClick={(e: React.MouseEvent) => {
                 e.preventDefault(); // prevent form submission
                 e.stopPropagation(); // prevent parent onClick
