@@ -16,7 +16,7 @@
 
 (def ^:private test-advisories
   "Default test advisories covering different severities and match statuses."
-  [{:advisory_id       "SC-TEST-001"
+  [{:advisory_id       "SC-0000-001"
     :severity          "critical"
     :title             "Test Critical Advisory"
     :description       "Critical vulnerability in serialization."
@@ -25,7 +25,7 @@
     :match_status      "active"
     :published_at      #t "2026-03-24T00:00:00Z"
     :updated_at        #t "2026-03-24T00:00:00Z"}
-   {:advisory_id       "SC-TEST-002"
+   {:advisory_id       "SC-0000-002"
     :severity          "high"
     :title             "Test High Advisory"
     :description       "SQL injection in Redshift driver."
@@ -34,7 +34,7 @@
     :match_status      "resolved"
     :published_at      #t "2026-03-20T00:00:00Z"
     :updated_at        #t "2026-03-20T00:00:00Z"}
-   {:advisory_id       "SC-TEST-003"
+   {:advisory_id       "SC-0000-003"
     :severity          "medium"
     :title             "Test Medium Advisory"
     :description       "GeoJSON SSRF."
@@ -66,7 +66,7 @@
           (let [response (mt/user-http-request :crowberto :get 200 "ee/security-center")]
             (is (contains? response :last_checked_at))
             (is (= 3 (count (:advisories response))))
-            (is (= "SC-TEST-001" (-> response :advisories first :advisory_id)))))
+            (is (= "SC-0000-001" (-> response :advisories first :advisory_id)))))
         (testing "non-superuser gets 403"
           (mt/user-http-request :rasta :get 403 "ee/security-center"))))))
 
@@ -82,18 +82,18 @@
           (is (=? {:message  "Security Center is not available on this instance."
                    :status   "error-premium-feature-not-available"}
                   (mt/user-http-request :crowberto :post 402
-                                        "ee/security-center/SC-TEST-001/acknowledge"))))))))
+                                        "ee/security-center/SC-0000-001/acknowledge"))))))))
 
 (deftest acknowledge-advisory-test
   (testing "POST /api/ee/security-center/:id/acknowledge"
     (mt/with-premium-features #{:admin-security-center :audit-app}
       (with-test-advisories!
         (testing "superuser can acknowledge"
-          (is (=? {:advisory_id     "SC-TEST-001"
+          (is (=? {:advisory_id     "SC-0000-001"
                    :acknowledged_at some?
                    :acknowledged_by some?}
                   (mt/user-http-request :crowberto :post 200
-                                        "ee/security-center/SC-TEST-001/acknowledge")))
+                                        "ee/security-center/SC-0000-001/acknowledge")))
           (testing "creates an audit log entry"
             (is (=? {:topic   :security-advisory-acknowledge
                      :user_id (mt/user->id :crowberto)}
@@ -102,13 +102,13 @@
                                    {:order-by [[:id :desc]]})))))
         (testing "cannot acknowledge twice"
           (mt/user-http-request :crowberto :post 409
-                                "ee/security-center/SC-TEST-001/acknowledge"))
+                                "ee/security-center/SC-0000-001/acknowledge"))
         (testing "404 for unknown advisory"
           (mt/user-http-request :crowberto :post 404
-                                "ee/security-center/SC-FAKE/acknowledge"))
+                                "ee/security-center/SC-0000-999/acknowledge"))
         (testing "non-superuser gets 403"
           (mt/user-http-request :rasta :post 403
-                                "ee/security-center/SC-TEST-001/acknowledge"))))))
+                                "ee/security-center/SC-0000-001/acknowledge"))))))
 
 (deftest sync-endpoint-test
   (testing "POST /api/ee/security-center/sync"
