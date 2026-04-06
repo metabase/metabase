@@ -706,6 +706,6 @@
           (is (boolean? (:insert priv)))
           (is (boolean? (:delete priv))))
         (testing "Test tables should appear with at least SELECT privilege"
-          (let [test-tables (filter (fn [priv] (str/includes? (str/upper-case (:table priv)) "ORDERS")) privileges)]
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
             (when (seq test-tables)
               (is (every? :select test-tables)))))))))

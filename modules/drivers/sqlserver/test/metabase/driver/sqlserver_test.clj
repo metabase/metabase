@@ -26,6 +26,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [next.jdbc]
@@ -907,7 +908,7 @@
            (testing "Test tables should appear with at least SELECT privilege"
              (let [dbo-orders (filter (fn [priv]
                                         (and (= "dbo" (:schema priv))
-                                             (= "ORDERS" (str/upper-case (:table priv)))))
+                                             (= "ORDERS" (u/upper-case-en (:table priv)))))
                                       privileges)]
                (when (seq dbo-orders)
                  (is (every? :select dbo-orders)))))))))))

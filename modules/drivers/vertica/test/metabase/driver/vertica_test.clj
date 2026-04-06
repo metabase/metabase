@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.test.data.interface :as tx]))
 
 (set! *warn-on-reflection* true)
@@ -93,6 +94,6 @@
           (is (boolean? (:insert priv)))
           (is (boolean? (:delete priv))))
         (testing "Test tables should appear with at least SELECT privilege"
-          (let [orders (filter (fn [priv] (str/includes? (str/lower-case (:table priv)) "orders")) privileges)]
+          (let [orders (filter (fn [priv] (str/includes? (u/lower-case-en (:table priv)) "orders")) privileges)]
             (when (seq orders)
               (is (every? :select orders)))))))))
