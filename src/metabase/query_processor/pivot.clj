@@ -24,7 +24,6 @@
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -505,8 +504,7 @@
   ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
-   (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
-     (qp.setup/with-qp-setup [query query]
+   (qp.setup/with-qp-setup [query query]
        (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query) ; normalize to MBQL 5 if needed.
              rff         (or rff qp.reducible/default-rff)
              pivot-opts  (or
@@ -519,4 +517,4 @@
                              (assoc-in [:constraints :max-results] pivot-limit)
                              add-canonical-col-info)
              all-queries (generate-queries query pivot-opts)]
-         (process-multiple-queries all-queries rff pivot-limit))))))
+         (process-multiple-queries all-queries rff pivot-limit)))))
