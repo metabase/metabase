@@ -1,7 +1,18 @@
 const { H } = cy;
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
-describe("Security Center > Snowplow tracking", () => {
-  beforeEach(() => {
+describe("Security Center > Snowplow tracking", { tags: "@enterprise" }, () => {
+  before(() => {
+    if (!IS_ENTERPRISE) {
+      cy.log("Skipping — requires EE build");
+      return;
+    }
+  });
+
+  beforeEach(function () {
+    if (!IS_ENTERPRISE) {
+      this.skip();
+    }
     H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
@@ -14,6 +25,8 @@ describe("Security Center > Snowplow tracking", () => {
       last_checked_at: null,
       advisories: [],
     });
+    cy.intercept("GET", "/api/user/recipients", { data: [] });
+    cy.intercept("GET", "/api/channel", { channels: {} });
   });
 
   afterEach(() => {
