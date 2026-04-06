@@ -506,8 +506,7 @@
   ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
-   (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
-     (qp.setup/with-qp-setup [query query]
+   (qp.setup/with-qp-setup [query query]
        (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query) ; normalize to MBQL 5 if needed.
              rff         (or rff qp.reducible/default-rff)
              pivot-opts  (or
@@ -520,4 +519,4 @@
                              (assoc-in [:constraints :max-results] pivot-limit)
                              add-canonical-col-info)
              all-queries (generate-queries query pivot-opts)]
-         (process-multiple-queries all-queries rff pivot-limit))))))
+         (process-multiple-queries all-queries rff pivot-limit)))))
