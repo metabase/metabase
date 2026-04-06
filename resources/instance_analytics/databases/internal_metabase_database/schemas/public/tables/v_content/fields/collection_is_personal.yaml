@@ -1,0 +1,21 @@
+name: collection_is_personal
+display_name: Collection Is Personal
+created_at: '2026-04-06T21:55:47.239237Z'
+visibility_type: normal
+table_id: [internal_metabase_database, public, v_content]
+database_type: bool
+base_type: type/Boolean
+effective_type: type/Boolean
+dimensions: []
+position: 16
+custom_position: 0
+database_position: 16
+has_field_values: auto-list
+serdes/meta:
+- {id: internal_metabase_database, model: Database}
+- {id: public, model: Schema}
+- {id: v_content, model: Table}
+- {id: collection_is_personal, model: Field}
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

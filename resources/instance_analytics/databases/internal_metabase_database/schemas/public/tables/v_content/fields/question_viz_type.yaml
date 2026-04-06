@@ -1,0 +1,21 @@
+name: question_viz_type
+display_name: Question Viz Type
+created_at: '2026-04-06T21:55:47.239237Z'
+visibility_type: normal
+table_id: [internal_metabase_database, public, v_content]
+database_type: text
+base_type: type/Text
+effective_type: type/Text
+dimensions: []
+position: 17
+custom_position: 0
+database_position: 17
+has_field_values: auto-list
+serdes/meta:
+- {id: internal_metabase_database, model: Database}
+- {id: public, model: Schema}
+- {id: v_content, model: Table}
+- {id: question_viz_type, model: Field}
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
