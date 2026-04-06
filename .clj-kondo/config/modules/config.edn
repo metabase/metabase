@@ -3116,7 +3116,8 @@
   {:team "Gadget"
    :api  #{metabase-enterprise.security-center.api
            metabase-enterprise.security-center.init}
-   :uses #{api
+   :uses #{analytics
+           api
            app-db
            channel
            config
