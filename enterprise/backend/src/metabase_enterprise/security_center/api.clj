@@ -21,7 +21,13 @@
                          :published_at :match_status :last_evaluated_at
                          :acknowledged_by :acknowledged_at :affected_versions]))
 
-;; TODO (Ngoc 2026-03-31) -- tighten `:any` types below once we finalize timestamp and user schemas
+(def ^:private AcknowledgedByUser
+  "Schema for a hydrated acknowledged_by user map."
+  [:map
+   [:id          ms/PositiveInt]
+   [:common_name ms/NonBlankString]
+   [:email       ms/Email]])
+
 (def ^:private AdvisoryResponse
   "Schema for a single advisory in the API response."
   [:map
@@ -31,11 +37,11 @@
    [:description       ms/NonBlankString]
    [:advisory_url      [:maybe ms/NonBlankString]]
    [:remediation       ms/NonBlankString]
-   [:published_at      :any]
+   [:published_at      ms/TemporalInstant]
    [:match_status      ::security-center.schema/match-status]
-   [:last_evaluated_at [:maybe :any]]
-   [:acknowledged_by   [:maybe :any]]
-   [:acknowledged_at   [:maybe :any]]
+   [:last_evaluated_at [:maybe ms/TemporalInstant]]
+   [:acknowledged_by   [:maybe AcknowledgedByUser]]
+   [:acknowledged_at   [:maybe ms/TemporalInstant]]
    [:affected_versions ::security-center.schema/affected-versions]])
 
 (def ^:private AcknowledgeResponse
@@ -43,11 +49,11 @@
   [:map
    [:advisory_id     ms/NonBlankString]
    [:match_status    ::security-center.schema/match-status]
-   [:acknowledged_by [:maybe :any]]
-   [:acknowledged_at [:maybe :any]]])
+   [:acknowledged_by [:maybe AcknowledgedByUser]]
+   [:acknowledged_at [:maybe ms/TemporalInstant]]])
 
 (api.macros/defendpoint :get "/" :- [:map
-                                     [:last_checked_at [:maybe :any]]
+                                     [:last_checked_at [:maybe ms/TemporalInstant]]
                                      [:advisories [:sequential AdvisoryResponse]]]
   "List all security advisories with match status."
   []
