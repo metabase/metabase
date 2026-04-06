@@ -1,15 +1,18 @@
 (ns metabase-enterprise.security-center.fetch-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (defn- make-advisory
-  "Build a minimal advisory map. `overrides` are merged in."
+  "Build a minimal advisory map matching `parse-advisory` output. `overrides` are merged in."
   [advisory-id & {:as overrides}]
   (merge {:advisory_id       advisory-id
           :severity          "high"
@@ -18,9 +21,8 @@
           :remediation       "Upgrade"
           :affected_versions [{:min "0.1.0" :fixed "99.99.99"}]
           :matching_query    nil
-          :match_status      "unknown"
-          :published_at      "2026-03-24T00:00:00Z"
-          :updated_at        "2026-03-24T00:00:00Z"}
+          :published_at      #t "2026-03-24T00:00:00Z"
+          :updated_at        #t "2026-03-24T00:00:00Z"}
          overrides))
 
 (deftest sync-advisories-inserts-new-test
@@ -63,21 +65,51 @@
                :acknowledged_at some?}
               (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-003"))))))
 
-(deftest sync-advisories-parses-edn-matching-query-test
-  (testing "matching_query arrives as an EDN string from the API and is parsed into a map"
-    (let [edn-string "{:default {:select [1] :from [:core_user] :where [:= :email \"x\"] :limit 1}}"
-          expected   {:default {:select [1] :from [:core_user] :where [:= :email "x"] :limit 1}}]
+(defn- make-json-advisory
+  "Build a JSON-shaped advisory map (as it arrives from the store API, before parsing).
+   Uses string severity and `id` instead of `advisory_id`."
+  [advisory-id & {:as overrides}]
+  (merge {"id"                advisory-id
+          "severity"          "high"
+          "title"             (str "Advisory " advisory-id)
+          "description"       "Test advisory"
+          "remediation"       "Upgrade"
+          "affected_versions" [{"min" "0.1.0" "fixed" "99.99.99"}]
+          "matching_query"    nil
+          "published_at"      "2026-03-24T00:00:00Z"
+          "updated_at"        "2026-03-24T00:00:00Z"
+          "advisory_url"      nil}
+         overrides))
+
+(defn- fake-store-response
+  "Build a ring-style HTTP response whose body is JSON containing the given advisories."
+  [advisories]
+  {:status 200
+   :body   (json/encode {"advisories" advisories})})
+
+(deftest fetch-advisories-from-json-test
+  (testing "full pipeline: JSON response → schema validation → EDN parsing → upsert"
+    (let [query-edn "{:select [1] :from [:core_user] :where [:= :email \"x\"] :limit 1}"
+          advisory  (make-json-advisory "SC-2026-001"
+                                        "matching_query" {"default" query-edn})]
       (mt/with-model-cleanup [:model/SecurityAdvisory]
-        (with-redefs [fetch/fetch-advisories-from-store
-                      (constantly [(make-advisory "SC-EDN-001" :matching_query edn-string)])]
+        (with-redefs [http/get                                      (constantly (fake-store-response [advisory]))
+                      premium-features/premium-embedding-token      (constantly "fake-token")
+                      premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
           (fetch/sync-advisories!)
-          (is (= expected
-                 (:matching_query (t2/select-one :model/SecurityAdvisory :advisory_id "SC-EDN-001")))))))))
+          (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-2026-001")]
+            (is (some? row))
+            (is (= {:default {:select [1] :from [:core_user] :where [:= :email "x"] :limit 1}}
+                   (:matching_query row)))
+            (is (=? {:advisory_id "SC-2026-001"
+                     :severity    :high
+                     :title       "Advisory SC-2026-001"}
+                    row))))))))
 
 (deftest sync-advisories-stores-updated-at-test
   (mt/with-model-cleanup [:model/SecurityAdvisory]
     (with-redefs [fetch/fetch-advisories-from-store
-                  (constantly [(make-advisory "SC-UPD-001" :updated_at "2026-04-01T12:00:00Z")])]
+                  (constantly [(make-advisory "SC-UPD-001" :updated_at #t "2026-04-01T12:00:00Z")])]
       (fetch/sync-advisories!)
       (let [row (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-001")]
         (is (some? (:updated_at row)))
@@ -86,9 +118,9 @@
 (deftest sync-advisories-updates-updated-at-on-resync-test
   (testing "updated_at is refreshed when an existing advisory is re-synced"
     (mt/with-temp [:model/SecurityAdvisory _
-                   (make-advisory "SC-UPD-003" :published_at #t "2026-03-24T00:00:00Z" :updated_at #t "2026-03-24T00:00:00Z")]
+                   (make-advisory "SC-UPD-003" :match_status "unknown" :published_at #t "2026-03-24T00:00:00Z" :updated_at #t "2026-03-24T00:00:00Z")]
       (with-redefs [fetch/fetch-advisories-from-store
-                    (constantly [(make-advisory "SC-UPD-003" :updated_at "2026-04-02T08:00:00Z")])]
+                    (constantly [(make-advisory "SC-UPD-003" :updated_at #t "2026-04-02T08:00:00Z")])]
         (fetch/sync-advisories!)
         (is (=? {:updated_at some?}
                 (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-003")))
