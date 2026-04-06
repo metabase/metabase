@@ -1,5 +1,11 @@
-import type { DndContextProps, DragEndEvent } from "@dnd-kit/core";
-import { DndContext, PointerSensor, useSensor } from "@dnd-kit/core";
+import {
+  DndContext,
+  type DndContextProps,
+  type DragEndEvent,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+} from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -136,7 +142,10 @@ function ClauseStepDndContext<T>({
   children,
   onReorder,
 }: ClauseStepDndContextProps<T>) {
-  const pointerSensor = useSensor(PointerSensor, {
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: { distance: 15 },
+  });
+  const touchSensor = useSensor(TouchSensor, {
     activationConstraint: { distance: 15 },
   });
 
@@ -153,7 +162,7 @@ function ClauseStepDndContext<T>({
 
   return (
     <DndContext
-      sensors={[pointerSensor]}
+      sensors={[mouseSensor, touchSensor]}
       modifiers={[restrictToParentElement]}
       onDragEnd={handleSortEnd}
     >

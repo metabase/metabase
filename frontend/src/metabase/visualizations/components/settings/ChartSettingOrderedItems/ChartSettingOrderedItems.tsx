@@ -1,4 +1,4 @@
-import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { MouseSensor, TouchSensor, useSensor } from "@dnd-kit/core";
 import { useCallback } from "react";
 
 import type {
@@ -56,7 +56,10 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   dividers = [],
 }: ChartSettingOrderedItemsProps<T>) {
   const isDragDisabled = items.length < 1;
-  const pointerSensor = useSensor(PointerSensor, {
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: { distance: 15 },
+  });
+  const touchSensor = useSensor(TouchSensor, {
     activationConstraint: { distance: 15 },
   });
 
@@ -119,7 +122,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
       renderItem={renderItem}
       items={items}
       onSortEnd={onSortEnd}
-      sensors={[pointerSensor]}
+      sensors={[mouseSensor, touchSensor]}
       dividers={dividers}
     />
   );

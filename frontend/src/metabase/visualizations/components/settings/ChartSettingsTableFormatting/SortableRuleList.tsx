@@ -1,4 +1,4 @@
-import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { MouseSensor, TouchSensor, useSensor } from "@dnd-kit/core";
 import { useMemo } from "react";
 
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
@@ -34,7 +34,10 @@ export const SortableRuleList = ({
 
   const getId = (rule: RuleWithId) => rule.id.toString();
 
-  const pointerSensor = useSensor(PointerSensor, {
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: { distance: 15 },
+  });
+  const touchSensor = useSensor(TouchSensor, {
     activationConstraint: { distance: 15 },
   });
 
@@ -74,7 +77,7 @@ export const SortableRuleList = ({
         items={rulesWithIDs}
         getId={getId}
         renderItem={renderItem}
-        sensors={[pointerSensor]}
+        sensors={[mouseSensor, touchSensor]}
         onSortEnd={handleSortEnd}
       />
     </div>

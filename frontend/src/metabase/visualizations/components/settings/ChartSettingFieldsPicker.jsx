@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { MouseSensor, TouchSensor, useSensor } from "@dnd-kit/core";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
@@ -42,7 +42,10 @@ export const ChartSettingFieldsPicker = ({
   );
   const getId = useCallback((field) => field, []);
 
-  const pointerSensor = useSensor(PointerSensor, {
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: { distance: 15 },
+  });
+  const touchSensor = useSensor(TouchSensor, {
     activationConstraint: { distance: 15 },
   });
 
@@ -137,7 +140,7 @@ export const ChartSettingFieldsPicker = ({
           renderItem={renderItem}
           items={sortableFields}
           onSortEnd={handleDragEnd}
-          sensors={[pointerSensor]}
+          sensors={[mouseSensor, touchSensor]}
           dividers={[]}
         />
       ) : (

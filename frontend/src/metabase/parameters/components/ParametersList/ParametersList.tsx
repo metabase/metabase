@@ -1,4 +1,4 @@
-import { PointerSensor, useSensor } from "@dnd-kit/core";
+import { MouseSensor, TouchSensor, useSensor } from "@dnd-kit/core";
 import cx from "classnames";
 import { forwardRef, useCallback, useMemo } from "react";
 
@@ -48,7 +48,10 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
     },
     ref,
   ) {
-    const pointerSensor = useSensor(PointerSensor, {
+    const mouseSensor = useSensor(MouseSensor, {
+      activationConstraint: { distance: 15 },
+    });
+    const touchSensor = useSensor(TouchSensor, {
       activationConstraint: { distance: 15 },
     });
 
@@ -133,7 +136,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
             getId={getId}
             renderItem={renderItem}
             onSortEnd={handleSortEnd}
-            sensors={[pointerSensor]}
+            sensors={[mouseSensor, touchSensor]}
           />
         ) : (
           <>

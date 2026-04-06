@@ -1,10 +1,9 @@
-import type { DragEndEvent, UniqueIdentifier } from "@dnd-kit/core";
 import {
-  DndContext,
-  MouseSensor,
-  PointerSensor,
-  useSensor,
+  type DragEndEvent,
+  TouchSensor,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
+import { DndContext, MouseSensor, useSensor } from "@dnd-kit/core";
 import {
   restrictToHorizontalAxis,
   restrictToParentElement,
@@ -65,13 +64,10 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
     const itemsCount = itemIds?.length ?? 0;
     const previousItemsCount = usePreviousDistinct(itemsCount) ?? 0;
 
-    const pointerSensor = useSensor(PointerSensor, {
+    const mouseSensor = useSensor(MouseSensor, {
       activationConstraint: { distance: 10 },
     });
-
-    // Needed for DnD e2e tests to work
-    // See https://github.com/clauderic/dnd-kit/issues/208#issuecomment-824469766
-    const mouseSensor = useSensor(MouseSensor, {
+    const touchSensor = useSensor(TouchSensor, {
       activationConstraint: { distance: 10 },
     });
 
@@ -125,7 +121,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
         <DndContext
           onDragEnd={onDragEnd}
           modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
-          sensors={[pointerSensor, mouseSensor]}
+          sensors={[mouseSensor, touchSensor]}
           collisionDetection={tabsCollisionDetection}
         >
           <SortableContext
