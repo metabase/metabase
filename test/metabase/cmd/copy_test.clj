@@ -40,6 +40,7 @@
     :model/MetabotConversation
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
+    :model/MetabotPermissions
     :model/MetabotMessage
     :model/PythonLibrary
     :model/PremiumFeaturesCache

@@ -76,6 +76,15 @@
         users-by-id (batch-load-users user-ids)]
     (mapv #(assoc % :user (get users-by-id (:user_id %))) conversations)))
 
+(def ^:private first-assistant-model-subquery
+  {:select   [:mm.profile_id]
+   :from     [[:metabot_message :mm]]
+   :where    [:and
+              [:= :mm.conversation_id :c.id]
+              [:= :mm.role "assistant"]]
+   :order-by [[:mm.created_at :asc]]
+   :limit    1})
+
 ;;; -------------------------------------------------- Endpoints --------------------------------------------------
 
 (api.macros/defendpoint :get "/conversations"
@@ -99,7 +108,6 @@
         sort-by-kw   (keyword (or sort-by "created_at"))
         sort-dir-kw  (if (= sort-dir "asc") :asc :desc)
         where-clause (when user-id [:= :c.user_id user-id])
-        ;; Main query with model fetched via correlated subquery
         base-query   {:select    [[:c.id :conversation_id]
                                   [:c.created_at :created_at]
                                   [:c.user_id :user_id]
@@ -109,10 +117,7 @@
                                   [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
                                   [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
                                   [[:max :m.created_at] :last_message_at]
-                                  ;; Subquery for model (first assistant message's profile_id)
-                                  [[:raw "(SELECT mm.profile_id FROM metabot_message mm
-                                           WHERE mm.conversation_id = c.id AND mm.role = 'assistant'
-                                           ORDER BY mm.created_at LIMIT 1)"] :model]]
+                                  [first-assistant-model-subquery :model]]
                       :from      [[:metabot_conversation :c]]
                       :left-join [[:metabot_message :m] [:and
                                                          [:= :m.conversation_id :c.id]
