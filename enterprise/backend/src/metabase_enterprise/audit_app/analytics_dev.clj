@@ -33,7 +33,7 @@
 
 (def ^:private canonical-db-id
   "The serdes ID used in YAMLs for the audit database."
-  audit-ee/default-db-name)
+  (serialization/slugify-name audit-ee/default-db-name))
 
 (def ^:private canonical-creator-id
   "The creator email used in YAMLs for all analytics content."
