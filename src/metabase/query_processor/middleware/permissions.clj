@@ -105,6 +105,14 @@
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join :query-permissions/gtapped-table))))
 
+(defn remove-persisted-info-native-keys
+  "Pre-processing middleware. Removes `:persisted-info/native` keys from query stages."
+  [query]
+  (lib.walk/walk
+   query
+   (fn [_query _path-type _path stage-or-join]
+     (dissoc stage-or-join :persisted-info/native))))
+
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [{database-id :database, {gtap-perms :gtaps} ::perms :as outer-query} :- [:map [:database ::lib.schema.id/database]]]

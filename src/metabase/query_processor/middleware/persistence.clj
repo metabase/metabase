@@ -18,5 +18,8 @@
                (perms/impersonation-enforced-for-db? (:database query))))
     (lib.util.match/replace query
       (x :guard (every-pred map? :persisted-info/native))
-      (dissoc x :persisted-info/native))
+      (-> x
+          (dissoc :persisted-info/native)
+          ;; Signal to the SQL QP's persisted-cache lookup that it should skip the cache.
+          (assoc :qp/skip-persisted-cache true)))
     query))
