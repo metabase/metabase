@@ -11598,6 +11598,11 @@ databaseChangeLog:
       id: v45.2026-03-30T00:00:00
       author: bronsa
       comment: Create security_advisory table for Security Center
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: security_advisory
       changes:
         - createTable:
             tableName: security_advisory
@@ -11701,6 +11706,11 @@ databaseChangeLog:
       id: v45.2026-03-30T00:00:01
       author: bronsa
       comment: Add unique constraint on security_advisory.advisory_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: uq_security_advisory_advisory_id
       changes:
         - addUniqueConstraint:
             tableName: security_advisory
@@ -11711,6 +11721,11 @@ databaseChangeLog:
       id: v45.2026-03-30T00:00:02
       author: bronsa
       comment: Add index on security_advisory.acknowledged_by FK
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_security_advisory_acknowledged_by
       changes:
         - createIndex:
             tableName: security_advisory
@@ -11723,6 +11738,11 @@ databaseChangeLog:
       id: v45.2026-03-30T00:00:03
       author: bronsa
       comment: Add FK on security_advisory.acknowledged_by
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_security_advisory_acknowledged_by
       changes:
         - addForeignKeyConstraint:
             baseTableName: security_advisory
@@ -11735,6 +11755,11 @@ databaseChangeLog:
       id: v45.2026-03-30T00:00:04
       author: bronsa
       comment: Add index on security_advisory.match_status
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_security_advisory_match_status
       changes:
         - createIndex:
             tableName: security_advisory
@@ -11747,6 +11772,12 @@ databaseChangeLog:
       id: v45.2026-04-01T00:00:00
       author: bronsa
       comment: Add last_notified_at column to security_advisory for repeat notification cadence
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: security_advisory
+                columnName: last_notified_at
       changes:
         - addColumn:
             tableName: security_advisory
@@ -11762,6 +11793,12 @@ databaseChangeLog:
       id: v45.2026-04-03T00:00:00
       author: bronsa
       comment: Add updated_at column to security_advisory for incremental sync cursor
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: security_advisory
+                columnName: updated_at
       changes:
         - addColumn:
             tableName: security_advisory
