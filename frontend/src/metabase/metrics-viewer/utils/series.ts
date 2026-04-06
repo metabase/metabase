@@ -656,7 +656,7 @@ export function buildDimensionItemsFromDefinitions(
 
     const entity = formulaEntities[slot.entityIndex];
 
-    if (slot.tokenPosition !== undefined && isExpressionEntry(entity)) {
+    if (isExpressionEntry(entity)) {
       // Expression entity — gather all token slots for this entity and
       // produce a single ExpressionDimensionItem.
       processedEntityIndices.add(slot.entityIndex);
@@ -694,17 +694,18 @@ export function buildDimensionItemsFromDefinitions(
         label,
         metricSources,
       } satisfies ExpressionDimensionItem);
-    } else {
-      // Standalone metric slot.
+    }
+
+    if (isMetricEntry(entity)) {
       processedEntityIndices.add(slot.entityIndex);
 
       const item = buildStandaloneDimensionItem(
+        entity,
         slot,
         definitions,
         dimensionMapping,
         modifiedDefinitionsByEntityIndex,
         sourceColors,
-        projectionConfig,
         dimensionFilter,
       );
       if (item) {
@@ -717,15 +718,15 @@ export function buildDimensionItemsFromDefinitions(
 }
 
 function buildStandaloneDimensionItem(
+  entity: MetricDefinitionEntry,
   slot: MetricSlot,
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   dimensionMapping: Record<number, DimensionId | null>,
   modifiedDefinitionsByEntityIndex: Map<number, MetricDefinition>,
   sourceColors: SourceColorMap,
-  projectionConfig: { temporalUnit?: TemporalUnit; binningStrategy?: string },
   dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
 ): DimensionItem | null {
-  const defEntry = definitions[slot.sourceId];
+  const defEntry = getEffectiveDefinitionEntry(entity, definitions);
   if (!defEntry?.definition) {
     return null;
   }

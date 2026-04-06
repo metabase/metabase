@@ -617,8 +617,8 @@ function findSubtypeFromExistingTab(
   for (const [key, dimensionName] of getObjectEntries(
     tab.dimensionBySlotIndex,
   )) {
-    const entityIndex = Number(key);
-    const sourceId = slotIndexToSourceId.get(entityIndex);
+    const slotIndex = Number(key);
+    const sourceId = slotIndexToSourceId.get(slotIndex);
     if (!sourceId) {
       continue;
     }

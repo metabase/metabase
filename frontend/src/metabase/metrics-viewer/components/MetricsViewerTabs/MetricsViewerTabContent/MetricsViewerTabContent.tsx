@@ -262,8 +262,7 @@ export function MetricsViewerTabContent({
   const allFilterDimensions = useMemo(() => {
     const filterDimensions: DimensionMetadata[] = [];
     for (const key of getObjectKeys(tab.dimensionMapping)) {
-      const slotIndex = Number(key);
-      const slot = metricSlots[slotIndex];
+      const slot = metricSlots[Number(key)];
       if (!slot) {
         continue;
       }

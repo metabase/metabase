@@ -87,77 +87,6 @@ function getValidSelectedTabId(
   return selectedTabExists ? currentSelectedId : (newTabs[0]?.id ?? null);
 }
 
-function addDefinitionToTabs(
-  tabs: MetricsViewerTabState[],
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  formulaEntities: MetricsViewerFormulaEntity[],
-  newDefId: MetricSourceId,
-  newDef: MetricDefinition,
-): MetricsViewerTabState[] {
-  const existingDefinitions = objectFromEntries(
-    Object.values(definitions)
-      .filter((entry) => entry.id !== newDefId)
-      .map((entry) => [entry.id, entry.definition] as const),
-  );
-
-  const slots = computeMetricSlots(formulaEntities);
-
-  // Find all slots for this definition
-  const defSlots = slots.filter((s) => s.sourceId === newDefId);
-
-  return tabs.map((tab) => {
-    // Check if any slot for this def is already in dimensionMapping
-    if (
-      defSlots.some((s) => s.slotIndex in tab.dimensionMapping) ||
-      tab.label == null
-    ) {
-      return tab;
-    }
-
-    const activeMappings: Record<number, string> = {};
-    for (const [key, value] of getObjectEntries(tab.dimensionMapping)) {
-      if (value != null) {
-        activeMappings[Number(key)] = value;
-      }
-    }
-    const storedTab: StoredMetricsViewerTab = {
-      id: tab.id,
-      type: tab.type,
-      label: tab.label,
-      dimensionBySlotIndex: activeMappings,
-    };
-
-    // Build slot index → sourceId lookup for tab matching
-    const slotIndexToSourceId = new Map<number, MetricSourceId>();
-    for (const slot of slots) {
-      slotIndexToSourceId.set(slot.slotIndex, slot.sourceId);
-    }
-
-    const matchingDimension = findMatchingDimensionForTab(
-      newDef,
-      storedTab,
-      existingDefinitions,
-      slotIndexToSourceId,
-    );
-
-    if (matchingDimension) {
-      const newMappings: Record<number, string> = {};
-      for (const slot of defSlots) {
-        newMappings[slot.slotIndex] = matchingDimension;
-      }
-      return {
-        ...tab,
-        dimensionMapping: {
-          ...tab.dimensionMapping,
-          ...newMappings,
-        },
-      };
-    }
-
-    return tab;
-  });
-}
-
 /**
  * For each tab, find slots that have no dimension assigned yet but whose
  * definition IS loaded, and try to smart-match a dimension using the same
@@ -338,28 +267,12 @@ export function useViewerState(): UseViewerStateResult {
           return prev;
         }
 
-        const newDefinitions = {
-          ...prev.definitions,
-          [entry.id]: entry,
-        };
-
-        if (prev.tabs.length === 0 || !entry.definition) {
-          return {
-            ...prev,
-            definitions: newDefinitions,
-          };
-        }
-
         return {
           ...prev,
-          definitions: newDefinitions,
-          tabs: addDefinitionToTabs(
-            prev.tabs,
-            newDefinitions,
-            prev.formulaEntities,
-            entry.id,
-            entry.definition,
-          ),
+          definitions: {
+            ...prev.definitions,
+            [entry.id]: entry,
+          },
         };
       }),
     [],
