@@ -65,9 +65,14 @@ function SidebarLink({
     if (isValidElement(icon)) {
       return icon;
     }
-    const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+    const iconProps = isIconPropsObject(icon)
+      ? icon
+      : { name: icon, iconUrl: undefined };
     const iconUrl =
-      "iconUrl" in iconProps ? (iconProps.iconUrl as string) : undefined;
+      "iconUrl" in iconProps && iconProps.iconUrl
+        ? iconProps.iconUrl
+        : undefined;
+
     if (iconUrl) {
       return (
         <TreeNode.IconContainer transparent={false}>
@@ -75,9 +80,13 @@ function SidebarLink({
         </TreeNode.IconContainer>
       );
     }
+
     return (
       <TreeNode.IconContainer transparent={false}>
-        <SidebarIcon {...(iconProps as IconProps)} isSelected={isSelected} />
+        <SidebarIcon
+          {...(_.omit(iconProps, "iconUrl") as IconProps)}
+          isSelected={isSelected}
+        />
       </TreeNode.IconContainer>
     );
   }, [icon, isSelected]);

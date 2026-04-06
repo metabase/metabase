@@ -48,18 +48,14 @@ export function SelectListItem({
       hasLeftIcon={!!icon}
       hasRightIcon={!!rightIcon}
     >
-      {icon &&
-        (iconUrl ? (
-          <EntityIcon
-            name={iconProps.name}
-            iconUrl={iconUrl}
-            size={iconProps.size as number}
-            className={classNames.icon}
-            color="brand"
-          />
-        ) : (
-          <ItemIcon className={classNames.icon} c="brand" {...iconProps} />
-        ))}
+      {icon && (
+        <EntityIcon
+          {...iconProps}
+          iconUrl={iconUrl}
+          className={classNames.icon}
+          color="brand"
+        />
+      )}
       <ItemTitle
         className={classNames.label}
         fw="bold"
