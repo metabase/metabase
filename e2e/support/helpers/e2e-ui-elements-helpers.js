@@ -362,6 +362,7 @@ export const moveDnDKitListElement = (
  * @param {Object} options
  * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {boolean} [options.usePointerEvents=false] - Use pointer events instead of mouse events (for components using PointerSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 export const moveDnDKitElementByAlias = (alias, options) => {
@@ -378,45 +379,58 @@ export const moveDnDKitElementByAlias = (alias, options) => {
  * @param {Object} options
  * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
+ * @param {boolean} [options.usePointerEvents=false] - Use pointer events instead of mouse events (for components using PointerSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 const moveDnDKitElementByGetter = (
   getElement,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
+  {
+    horizontal = 0,
+    vertical = 0,
+    usePointerEvents = false,
+    onBeforeDragEnd = () => {},
+  } = {},
 ) => {
+  const down = usePointerEvents ? "pointerdown" : "mousedown";
+  const move = usePointerEvents ? "pointermove" : "mousemove";
+  const up = usePointerEvents ? "pointerup" : "mouseup";
+  const extraProps = usePointerEvents
+    ? { isPrimary: true }
+    : { eventConstructor: "MouseEvent" };
+
   getElement()
-    .trigger("pointerdown", 0, 0, {
+    .trigger(down, 0, 0, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 
   // This initial move needs to be greater than the activation constraint
-  // of the pointer sensor
+  // of the sensor
   getElement()
-    .trigger("pointermove", 20, 20, {
+    .trigger(move, 20, 20, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 
   getElement()
-    .trigger("pointermove", horizontal, vertical, {
+    .trigger(move, horizontal, vertical, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 
   onBeforeDragEnd();
 
   cy.document()
-    .trigger("pointerup", {
+    .trigger(up, {
       force: true,
-      isPrimary: true,
       button: 0,
+      ...extraProps,
     })
     .wait(200);
 };
