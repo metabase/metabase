@@ -10,20 +10,20 @@ import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface QuestionSummarizeWidgetProps {
   isShowingSummarySidebar: boolean;
-  onEditSummary: () => void;
+  editSummary: () => void;
   onCloseSummary: () => void;
 }
 
 export function QuestionSummarizeWidget({
   isShowingSummarySidebar,
-  onEditSummary,
+  editSummary,
   onCloseSummary,
 }: QuestionSummarizeWidgetProps) {
   const handleClick = () => {
     if (isShowingSummarySidebar) {
       onCloseSummary();
     } else {
-      onEditSummary();
+      editSummary();
     }
   };
 

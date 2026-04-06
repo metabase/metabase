@@ -87,7 +87,11 @@ export const DatabaseEditConnectionForm = withRouter(
 
     return (
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
-        <LoadingAndErrorWrapper loading={!database} error={initializeError}>
+        <LoadingAndErrorWrapper
+          loading={!database}
+          error={initializeError}
+          noWrapper
+        >
           {isDbModifiable({
             id: database?.id,
             is_attached_dwh: isAttachedDWH,

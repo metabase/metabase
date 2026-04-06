@@ -144,10 +144,7 @@
      ;; Produced by older queries and the `reconcile-breakout-and-order-by-bucketing` QP middleware. Used as a
      ;; fallback in `nest-breakouts` to determine column granularity when `:temporal-unit` is nil or `:default`.
      ;; Not produced by MLv2 code; new queries will not contain this key.
-     [:original-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]
-     ;;
-     ;; Propagated from `:metabase.lib.schema.metadata/column` metadata; see description there.
-     [:qp.pivot/pivot-grouping? {:optional true} [:maybe :boolean]]]]
+     [:original-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]]
    (common/disallowed-keys
     (into {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}
           (map (fn [[old-key new-key]]

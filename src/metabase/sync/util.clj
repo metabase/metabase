@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -270,15 +271,19 @@
                                     {:run_type    run-type
                                      :entity_type :database
                                      :entity_id   (u/the-id database)})
-        ((with-duplicate-ops-prevented
-          operation database
-          (with-sync-events
-           operation database
-           (with-start-and-finish-logging
-            message
-            (with-db-logging-disabled
-             (sync-in-context database
-                              (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))))
+        (let [sync-fn (with-duplicate-ops-prevented
+                       operation database
+                       (with-sync-events
+                        operation database
+                        (with-start-and-finish-logging
+                         message
+                         (with-db-logging-disabled
+                          (sync-in-context database
+                                           (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
+              result (sync-fn)]
+          (when (instance? Throwable result)
+            (prometheus/inc! :metabase-sync/failures {:driver (name (:engine database))}))
+          result)))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things

@@ -112,6 +112,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
 
     return visibleValuePopulatedParameters.length > 0 ? (
       <Flex
+        role="list"
         display="flex"
         direction={vertical ? "column" : "row"}
         align="end"

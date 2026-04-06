@@ -49,10 +49,6 @@ export function newPythonTransform() {
   return `${TRANSFORMS_ROOT_URL}/new/python`;
 }
 
-export function pythonTransformsUpsell() {
-  return `${TRANSFORMS_ROOT_URL}/python-transforms`;
-}
-
 export function newTransformFromCard(cardId: CardId) {
   return `${TRANSFORMS_ROOT_URL}/new/card/${cardId}`;
 }
@@ -79,6 +75,10 @@ export function transformDependencies(transformId: TransformId) {
 
 export function transformInspect(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/inspect`;
+}
+
+export function transformMigrateModels() {
+  return `${TRANSFORMS_ROOT_URL}/tools/migrate-models`;
 }
 
 export function transformJobList() {

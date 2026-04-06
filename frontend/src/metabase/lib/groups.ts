@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import type { SpecialGroupType } from "metabase/admin/permissions/types";
-import { color } from "metabase/lib/colors";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { GroupInfo } from "metabase-types/api";
 
@@ -44,22 +43,8 @@ export function getSpecialGroupType(
   return null;
 }
 
-export function canEditPermissions(group: Pick<GroupInfo, "magic_group_type">) {
-  return !isAdminGroup(group);
-}
-
 export function canEditMembership(group: Pick<GroupInfo, "magic_group_type">) {
   return !isDefaultGroup(group) && !PLUGIN_TENANTS.isExternalUsersGroup(group);
-}
-
-export function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
-  if (isAdminGroup(group)) {
-    return color("filter");
-  } else if (isDefaultGroup(group)) {
-    return color("text-secondary");
-  } else {
-    return color("brand");
-  }
 }
 
 export function getGroupNameLocalized(group: Pick<GroupInfo, "name">) {

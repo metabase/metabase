@@ -7,11 +7,12 @@ on:
 
 jobs:
   module-boundaries-stats:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: get module boundary stats
@@ -20,6 +21,7 @@ jobs:
           NAMED_MODULES=$(node --input-type=module -e "
             import { elements } from './frontend/lint/module-boundaries.mjs';
             const named = elements.filter(e => !['shared/other', 'app/misc', 'other'].includes(e.type));
+            console.log(named.length);
           ")
 
           NAMED_DIRS=$(node --input-type=module -e "
@@ -29,6 +31,7 @@ jobs:
               const m = el.pattern.match(/^frontend\/src\/metabase\/(\w[\w-]*)\//)
               if (m) dirs.add(m[1]);
             }
+            for (const d of dirs) console.log(d);
           ")
           TOTAL_DIRS=$(ls -d frontend/src/metabase/*/ | xargs -I{} basename {} | wc -l | tr -d ' ')
           NAMED_COUNT=$(echo "$NAMED_DIRS" | grep -c . || true)

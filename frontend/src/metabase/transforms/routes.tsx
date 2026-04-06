@@ -2,11 +2,13 @@ import { IndexRoute, Route } from "react-router";
 
 import {
   PLUGIN_DEPENDENCIES,
+  PLUGIN_REPLACEMENT,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
+import { JobSectionLayout } from "./pages/JobSectionLayout";
 import { NewJobPage } from "./pages/NewJobPage";
 import {
   NewCardTransformPage,
@@ -15,24 +17,23 @@ import {
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
-import { TransformInspectPage } from "./pages/TransformInspectPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
 import { TransformSettingsPage } from "./pages/TransformSettingsPage";
-import { TransformTopNavLayout } from "./pages/TransformTopNavLayout";
 
 export function getDataStudioTransformRoutes() {
   return (
     <>
-      <Route path="runs" component={TransformTopNavLayout}>
-        <IndexRoute component={RunListPage} />
-      </Route>
+      <Route path="runs" component={RunListPage} />
       <Route>
         <IndexRoute component={TransformListPage} />
-        <Route path="jobs" component={JobListPage} />
-        <Route path="jobs/new" component={NewJobPage} />
-        <Route path="jobs/:jobId" component={JobPage} />
+        <Route path="jobs" component={JobSectionLayout}>
+          <IndexRoute component={JobListPage} />
+          <Route path="new" component={NewJobPage} />
+          <Route path=":jobId" component={JobPage} />
+        </Route>
+
         <Route path="new/query" component={NewQueryTransformPage} />
         <Route path="new/native" component={NewNativeTransformPage} />
         <Route path="new/card/:cardId" component={NewCardTransformPage} />
@@ -40,11 +41,7 @@ export function getDataStudioTransformRoutes() {
         <Route path=":transformId/edit" component={TransformQueryPage} />
         <Route path=":transformId/run" component={TransformRunPage} />
         <Route path=":transformId/settings" component={TransformSettingsPage} />
-        <Route path=":transformId/inspect" component={TransformInspectPage} />
-        <Route
-          path=":transformId/inspect/:lensId"
-          component={TransformInspectPage}
-        />
+        {PLUGIN_TRANSFORMS_PYTHON.getInspectorRoutes()}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
             path=":transformId/dependencies"
@@ -54,6 +51,7 @@ export function getDataStudioTransformRoutes() {
           </Route>
         )}
         {PLUGIN_TRANSFORMS_PYTHON.getPythonTransformsRoutes()}
+        {PLUGIN_REPLACEMENT.getTransformToolsRoutes()}
       </Route>
     </>
   );

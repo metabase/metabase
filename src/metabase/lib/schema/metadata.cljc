@@ -518,16 +518,21 @@
     ;; settings that use it as a key.
     [:qp/implicit-field? {:optional true} [:maybe :boolean]]
     ;;
-    ;; Whether this is the special `pivot-grouping` column added by the Pivot QP
-    ;; in [[metabase.query-processor.pivot/add-pivot-group-breakout]]. In `OVER` window function `GROUP BY` and `ORDER
-    ;; BY` this should be "optimized out" since some databases like Redshift don't allow constant expressions there.
-    ;; See also [[metabase.driver.sql.query-processor/pivot-query-group-constant-expression?]] (where this is used by
-    ;; the SQL QP) and [[metabase.query-processor.pivot-test/offset-pivot-test]] (a test that will fail if this key is
-    ;; removed)
+    ;; Coercion strategies (eg. UNIX seconds -> :type/DateTime) are configured on :model/Fields in the Admin UI, and
+    ;; reflected on refs to that field on the *first* stage of an MBQL query or a join, where the column first appears
+    ;; in the query. After the column passes through a stage boundary, it's no longer marked with the coercion strategy
+    ;; to avoid double-coercion.
     ;;
-    ;; This should be propagated as-is to subsequent stages and copied into ref option maps, and from ref option maps
-    ;; into calculated metadata.
-    [:qp.pivot/pivot-grouping? {:optional true} [:maybe :boolean]]]
+    ;; *However*, when a table is sandboxed by a native query, and it has fields which need coercion, the SQL subquery
+    ;; does not do the coercion (it's supposed to be a drop-in replacement for the table) but then the MBQL refs to its
+    ;; columns are not in the first stage anymore! So the sandboxing middleware sets this flag to the
+    ;; `:coercion-strategy`, along with `:qp/native-sandbox-column.propagate-coercion? true` (see below). Lib will
+    ;; propagate the coercion strategy through *exactly one* stage boundary, so it can get from the SQL first stage to
+    ;; the earliest MBQL stage, where the coercion will get applied correctly. See QUE2-376 or #69867 for more details.
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} :keyword]
+    ;;
+    ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
+    [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]]
    ;;
    ;; Additional constraints
    ;;

@@ -1180,4 +1180,8 @@
                                           qu)])))))
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
-  "llm/prompts/dialects/sqlserver.md")
+  "metabot/prompts/dialects/sqlserver.md")
+
+(defmethod driver/validate-impersonated-query :sqlserver
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))

@@ -1,9 +1,9 @@
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
-import { getColorsForValues } from "metabase/lib/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
 import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
@@ -248,7 +248,7 @@ export function buildRawSeriesFromDefinitions(
     return { series: [], cardIdToDimensionId: {} };
   }
 
-  const vizSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
+  const baseSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
     firstSettingsEntry.def,
     firstSettingsEntry.dimension,
   );
@@ -289,7 +289,7 @@ export function buildRawSeriesFromDefinitions(
 
     const singleSeries: SingleSeries = {
       card: createSeriesCard(cardId, name, display, {
-        ...vizSettings,
+        ...baseSettings,
         ...computeColorVizSettings({
           displayType: display,
           seriesKey,
@@ -300,7 +300,7 @@ export function buildRawSeriesFromDefinitions(
     };
 
     let entrySeries: SingleSeries[];
-    if (!entryHasBreakout(entry)) {
+    if (!entryHasBreakout(entry) || singleSeries.data.rows.length === 0) {
       entrySeries = [singleSeries];
     } else {
       entrySeries = splitByBreakout(

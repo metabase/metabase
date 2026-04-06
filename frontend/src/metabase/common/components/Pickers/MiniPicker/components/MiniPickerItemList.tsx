@@ -12,7 +12,6 @@ import {
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { canCollectionCardBeUsed } from "metabase/common/components/Pickers/utils";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
@@ -20,7 +19,16 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getIcon } from "metabase/lib/icon";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import { Box, Flex, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Ellipsified,
+  Flex,
+  Icon,
+  Repeat,
+  Skeleton,
+  Stack,
+  Text,
+} from "metabase/ui";
 import type {
   CollectionItem,
   SchemaName,
@@ -36,6 +44,7 @@ import type {
   MiniPickerSchemaItem,
   MiniPickerTableItem,
 } from "../types";
+import { getOurAnalytics } from "../utils";
 
 import { MiniPickerItem } from "./MiniPickerItem";
 import styles from "./MiniPickerItem.module.css";
@@ -132,20 +141,22 @@ function RootItemList() {
           }}
         />
       )) ?? <MiniPickerListLoader />}
-      <MiniPickerItem
-        name={rootCollectionError ? t`Collections` : t`Our analytics`}
-        model="collection"
-        isFolder
-        onClick={() => {
-          setPath([
-            {
-              model: "collection",
-              id: "root" as any, // cmon typescript, trust me
-              name: rootCollectionError ? t`Collections` : t`Our analytics`,
-            },
-          ]);
-        }}
-      />
+      {!isHidden(getOurAnalytics()) && (
+        <MiniPickerItem
+          name={rootCollectionError ? t`Collections` : t`Our analytics`}
+          model="collection"
+          isFolder
+          onClick={() => {
+            setPath([
+              {
+                model: "collection",
+                id: "root" as any, // cmon typescript, trust me
+                name: rootCollectionError ? t`Collections` : t`Our analytics`,
+              },
+            ]);
+          }}
+        />
+      )}
     </ItemList>
   );
 }

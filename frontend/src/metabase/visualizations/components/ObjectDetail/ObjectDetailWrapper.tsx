@@ -21,6 +21,7 @@ export function ObjectDetailWrapper({
   card,
   dashcard,
   isObjectDetail,
+  onActionSuccess,
   ...rest
 }: ObjectDetailProps) {
   const [currentObjectIndex, setCurrentObjectIndex] = useState(0);
@@ -87,6 +88,7 @@ export function ObjectDetailWrapper({
           table={table}
           tableForeignKeys={tableForeignKeys}
           url={getRowUrl(question, columns, table, zoomedRowID)}
+          onActionSuccess={onActionSuccess}
           onClose={closeObjectDetail}
           onNextClick={canZoomNextRow ? viewNextObjectDetail : undefined}
           onPreviousClick={

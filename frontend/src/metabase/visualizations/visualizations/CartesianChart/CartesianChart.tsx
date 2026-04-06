@@ -79,16 +79,17 @@ const CartesianChartInner = memo(function CartesianChartInner(
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
 
-  const { chartModel, timelineEventsModel, option } = useModelsAndOption(
-    {
-      ...props,
-      width: chartSize.width,
-      height: chartSize.height,
-      hiddenSeries,
-      settings,
-    },
-    containerRef,
-  );
+  const { chartModel, timelineEventsModel, option, renderingContext } =
+    useModelsAndOption(
+      {
+        ...props,
+        width: chartSize.width,
+        height: chartSize.height,
+        hiddenSeries,
+        settings,
+      },
+      containerRef,
+    );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
@@ -135,6 +136,7 @@ const CartesianChartInner = memo(function CartesianChartInner(
     chartModel,
     timelineEventsModel,
     option,
+    renderingContext,
     props,
   );
 

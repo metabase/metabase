@@ -58,6 +58,7 @@
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotMessage
+    :model/MetabotPermissions
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -66,6 +67,10 @@
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient
+    :model/OAuthAccessToken
+    :model/OAuthAuthorizationCode
+    :model/OAuthClient
+    :model/OAuthRefreshToken
     :model/ParameterCard
     :model/Permissions
     :model/PermissionsGroup

@@ -39,7 +39,9 @@ export const useHasCheckpointOptions = (source: TransformSource) => {
     useNativeHasCheckpointFieldOptions(libQuery);
 
   const pythonTableId = isPythonTransform
-    ? Object.values(source["source-tables"]).find(isConcreteTableId)
+    ? Object.values(source["source-tables"]).find(({ table_id }) =>
+        isConcreteTableId(table_id),
+      )?.table_id
     : null;
   const { data: pythonTable } = useGetTableQueryMetadataQuery(
     pythonTableId ? { id: pythonTableId } : skipToken,

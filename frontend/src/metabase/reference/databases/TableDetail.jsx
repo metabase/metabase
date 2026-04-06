@@ -15,11 +15,13 @@ import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getShallowFields as getFields,
+  getMetadata,
+} from "metabase/selectors/metadata";
 
 import {
   getError,
-  getFields,
   getHasSingleSchema,
   getIsEditing,
   getIsFormulaExpanded,

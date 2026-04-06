@@ -22,6 +22,7 @@
   transform-timeout]
  [metabase.transforms-base.util
   native-query-transform?
+  output-table
   python-transform?
   query-transform?
   transform-source-database
@@ -31,7 +32,6 @@
   add-source-readable
   is-temp-transform-table?]
  [metabase.transforms.crud
-  source-tables-vec->map-for-fe
   check-database-feature
   check-feature-enabled!
   validate-incremental-column-type!

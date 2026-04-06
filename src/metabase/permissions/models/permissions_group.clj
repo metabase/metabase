@@ -121,7 +121,7 @@
 (defn- set-default-permission-values!
   [group]
   (t2/with-transaction [_conn]
-    (doseq [db-id (t2/select-pks-vec :model/Database)]
+    (doseq [db-id (t2/select-pks-vec :model/Database :router_database_id nil)]
       (if (:is_tenant_group group)
         (data-perms/set-external-group-permissions! group db-id)
         (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users)))))))

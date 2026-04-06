@@ -7,7 +7,8 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
-   [metabase.query-processor :as qp]
+   [metabase.metrics.permissions :as metrics.perms]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
@@ -84,7 +85,8 @@
 (mu/defn- hydrated-metric [id :- ms/PositiveInt]
   (api/read-check (t2/select-one :model/Card :id id :type "metric"))
   (metrics/sync-dimensions! :metadata/metric id)
-  (t2/select-one :model/Card :id id :type "metric"))
+  (-> (t2/select-one :model/Card :id id :type "metric")
+      metrics.perms/filter-dimensions-for-user))
 
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
@@ -127,10 +129,10 @@
     (fn [{:keys [expression filters]}]
       (let [expr-uuids (set (collect-expression-uuids expression))]
         (every? #(contains? expr-uuids (:lib/uuid %)) (or filters []))))]
-   [:fn {:error/message "Projection type/id pairs must correspond to expression leaves"}
+   [:fn {:error/message "Projection :lib/uuid values must reference UUIDs from expression"}
     (fn [{:keys [expression projections]}]
-      (let [leaves (set (collect-expression-leaves expression))]
-        (every? #(contains? leaves [(:type %) (:id %)]) (or projections []))))]])
+      (let [expr-uuids (set (collect-expression-uuids expression))]
+        (every? #(contains? expr-uuids (:lib/uuid %)) (or projections []))))]])
 
 (mr/def ::DatasetRequest
   "Schema for POST /dataset request body."

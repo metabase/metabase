@@ -240,7 +240,7 @@
              {:server-url     server-url
               :code           (:body source)
               :run-id         run-id
-              :table-name->id resolved-source-tables
+              :source-tables  resolved-source-tables
               :shared-storage @shared-storage-ref})
 
             output-manifest (python-runner/read-output-manifest @shared-storage-ref)

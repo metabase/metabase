@@ -20,20 +20,23 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { sumArray } from "metabase/lib/arrays";
-import {
-  COLUMN_SHOW_TOTALS,
-  isPivotGroupColumn,
-  multiLevelPivot,
-} from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { useMantineTheme } from "metabase/ui";
 import {
+  COLUMN_SHOW_TOTALS,
+  isPivotGroupColumn,
+  multiLevelPivot,
+} from "metabase/visualizations/lib/data_grid";
+import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  VisualizationDefinition,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import type { State } from "metabase-types/store";
 
 import {
@@ -357,7 +360,10 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
 
     const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
     const bodyHeight = height - topHeaderHeight;
-    const topHeaderWidth = viewPortWidth - leftHeaderWidth;
+    const verticalScrollBarSize =
+      rowCount * CELL_HEIGHT > bodyHeight ? getScrollBarSize() : 0;
+    const topHeaderWidth =
+      viewPortWidth - leftHeaderWidth - verticalScrollBarSize;
 
     function getCellClickHandler(clicked: PivotTableClicked) {
       if (!clicked) {
@@ -461,6 +467,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                   </PivotTableTopLeftCellsContainer>
                   {/* top header */}
                   <Collection
+                    aria-label="pivot-table-top-header"
                     style={{ minWidth: `${topHeaderWidth}px` }}
                     ref={topHeaderRef}
                     className={CS.scrollHideAll}
@@ -612,19 +619,21 @@ export const PivotTableView = ExplicitSize<
   refreshMode: "debounceLeading",
 })(PivotTableInner);
 
+const PivotViz: VisualizationDefinition = {
+  getUiName: () => t`Pivot Table`,
+  identifier: "pivot",
+  iconName: "pivot_table",
+  minSize: getMinSize("pivot"),
+  defaultSize: getDefaultSize("pivot"),
+  canSavePng: false,
+  isSensible,
+  checkRenderable,
+  settings,
+  columnSettings,
+  isLiveResizable: () => false,
+};
+
 export const PivotTable = Object.assign(
   connect(mapStateToProps)(PivotTableView),
-  {
-    getUiName: () => t`Pivot Table`,
-    identifier: "pivot",
-    iconName: "pivot_table",
-    minSize: getMinSize("pivot"),
-    defaultSize: getDefaultSize("pivot"),
-    canSavePng: false,
-    isSensible,
-    checkRenderable,
-    settings,
-    columnSettings,
-    isLiveResizable: () => false,
-  },
+  PivotViz,
 );

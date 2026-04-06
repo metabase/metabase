@@ -34,6 +34,14 @@ describe("DashboardHeader - enterprise", () => {
       dashboard: INSTANCE_ANALYTICS_DASHBOARD,
       collections: [INSTANCE_ANALYTICS_COLLECTION],
     });
+
+    // Expect heading element to be present with correct role and aria-level (#70544)
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: /Analytics Dashboard/,
+      }),
+    ).toBeInTheDocument();
     expect(
       await screen.findByRole("img", { name: /audit/i }),
     ).toBeInTheDocument();

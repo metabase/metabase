@@ -11,14 +11,6 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
-export const INITIALIZE = "metabase/dashboard/INITIALIZE";
-export const initialize = createAction<{ clearCache?: boolean } | undefined>(
-  INITIALIZE,
-);
-
-export const RESET = "metabase/dashboard/RESET";
-export const reset = createAction(RESET);
-
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 export const setEditingDashboard = (dashboard: Dashboard | null) => {
   return (dispatch: Dispatch, getState: GetState) => {

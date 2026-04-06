@@ -43,19 +43,6 @@ const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = (
   // These 2 properties belongs in embedding-data-picker reducer
   .concat("entity_types", "data_picker");
 
-export const urlParameterToBoolean = (
-  urlParameter: string | string[] | boolean | undefined,
-) => {
-  if (urlParameter === undefined) {
-    return undefined;
-  }
-  if (Array.isArray(urlParameter)) {
-    return Boolean(urlParameter.at(-1));
-  } else {
-    return Boolean(urlParameter);
-  }
-};
-
 interface Location {
   search: string;
 }

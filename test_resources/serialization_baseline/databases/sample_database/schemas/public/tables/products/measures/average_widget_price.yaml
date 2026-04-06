@@ -1,0 +1,31 @@
+created_at: '2026-04-02T01:50:06.081195Z'
+creator_id: admin@example.com
+definition:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - avg
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+description: Average price of Widget products — uses Widget Products segment and Average Product Price measure
+entity_id: K7cMzOau9SI2h8hCx936w
+name: Average Widget Price
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+serdes/meta:
+- id: K7cMzOau9SI2h8hCx936w
+  label: average_widget_price
+  model: Measure

@@ -121,7 +121,13 @@
     :display-name (deferred-tru "Passphrase for SSH private key")
     :type         :password
     :placeholder  "******"
-    :visible-if   {"tunnel-auth-option" "ssh-key"}}])
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}
+   {:name         "tunnel-known-hosts"
+    :display-name (deferred-tru "SSH known hosts")
+    :type         :secret
+    :secret-kind  :binary-blob
+    :placeholder  (deferred-tru "Paste known_hosts content or upload file")
+    :visible-if   {"tunnel-enabled" true}}])
 
 (def destination-database-option
   "Map representing the 'is this a destination database' option"

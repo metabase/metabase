@@ -360,7 +360,7 @@
           table-col #(assoc % :lib/source :source/table-defaults)
           join-col  #(-> %
                          (merge {:lib/source                   :source/joins
-                                 :lib/join-alias "Orders"}))
+                                 :lib/join-alias "Orders_2"}))
           sorted    #(sort-by (juxt :position :lib/original-join-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (->> (sorted (concat (map table-col cols)
@@ -403,12 +403,12 @@
           just-3 (lib/replace-join base join (lib/with-join-fields join [(meta/field-metadata :orders :id)]))]
       (is (=? [{:lib/desired-column-alias "ID"}
                {:lib/desired-column-alias "TAX"}
-               {:lib/desired-column-alias "Orders__ID"}
-               {:lib/desired-column-alias "Orders__TAX"}]
+               {:lib/desired-column-alias "Orders_2__ID"}
+               {:lib/desired-column-alias "Orders_2__TAX"}]
               (lib/returned-columns all-4)))
       (is (=? [{:lib/desired-column-alias "ID"}
                {:lib/desired-column-alias "TAX"}
-               {:lib/desired-column-alias "Orders__ID"}]
+               {:lib/desired-column-alias "Orders_2__ID"}]
               (lib/returned-columns just-3)))
       (testing "matching the four fields against"
         (let [hr-own-id   {:lib/type           :metadata/column

@@ -1,4 +1,4 @@
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import type { GroupId, User } from "metabase-types/api";
 
 export const userToColor = (user: User) => {

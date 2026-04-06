@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.deps-graph]
+   [dev.model-boundary-config]
    [metabase.util.json :as json]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
@@ -183,3 +184,79 @@
                 module
                 used-module
                 (symbol (str/replace used-module #"-rest$" ""))))))
+
+;;;; Model boundary tests
+
+(deftest ^:parallel model-boundaries-test
+  (testing "Model boundary enforcement\n"
+    (let [ownership    (dev.deps-graph/model-ownership)
+          known-models (set (keys ownership))
+          config       (modules-config)
+          violations   (dev.deps-graph/model-boundary-violations (dev.deps-graph/kondo-config))]
+      (testing "No model boundary violations"
+        (doseq [{:keys [file module model defining-module violation-type]} violations]
+          (testing (format "\n%s (module %s) references %s (defined in %s) — %s violation"
+                           file module model (or defining-module "unknown") (name violation-type))
+            (is (nil? violation-type)))))
+      (testing ":model-exports and :model-imports reference valid models"
+        (doseq [[module module-config] config
+                config-key [:model-exports :model-imports]
+                :when (set? (get module-config config-key))
+                model (get module-config config-key)]
+          (testing (format "\n'%s' %s %s should be a known model" module config-key model)
+            (is (contains? known-models model)))))
+      (testing ":model-exports only lists models owned by the module"
+        (doseq [[module module-config] config
+                :when                  (set? (:model-exports module-config))
+                model                  (:model-exports module-config)]
+          (testing (format "\n'%s' exports %s (owned by %s)" module model (get ownership model))
+            (is (= module (get ownership model)))))))))
+
+(deftest ^:parallel model-config-not-stale-test
+  (testing "Model exports and imports should not list models that are unused.\n"
+    (let [{computed-exports :model-exports
+           computed-imports :model-imports} (dev.model-boundary-config/compute-model-boundaries)
+          config (modules-config)]
+      (doseq [[config-key computed direction] [[:model-exports computed-exports "exports"]
+                                               [:model-imports computed-imports "imports"]]
+              [module module-config]           config
+              :when                            (set? (get module-config config-key))
+              :let                             [needed     (get computed module #{})
+                                                configured (get module-config config-key)
+                                                stale      (set/difference configured needed)]
+              :when                            (seq stale)]
+        (testing (format "\n'%s' %s models that aren't used — remove them from %s."
+                         module direction config-key)
+          (is (empty? (sort stale))))))))
+
+(deftest ^:parallel model-exports-sorted-test
+  (testing "Module :model-exports should be sorted"
+    (do-each-module-config
+     (fn [module config-zloc]
+       (when-let [exports (-> config-zloc
+                              z/down
+                              (z/find (fn [zloc]
+                                        (and (n/keyword-node? (z/node zloc))
+                                             (= (z/sexpr zloc) :model-exports))))
+                              z/right
+                              z/child-sexprs
+                              not-empty)]
+         (testing (format "\n'%s' module :model-exports" module)
+           (is (= (sort exports)
+                  exports))))))))
+
+(deftest ^:parallel model-imports-sorted-test
+  (testing "Module :model-imports should be sorted"
+    (do-each-module-config
+     (fn [module config-zloc]
+       (when-let [imports (-> config-zloc
+                              z/down
+                              (z/find (fn [zloc]
+                                        (and (n/keyword-node? (z/node zloc))
+                                             (= (z/sexpr zloc) :model-imports))))
+                              z/right
+                              z/child-sexprs
+                              not-empty)]
+         (testing (format "\n'%s' module :model-imports" module)
+           (is (= (sort imports)
+                  imports))))))))

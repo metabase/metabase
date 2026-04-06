@@ -1,0 +1,11 @@
+<banned_patterns>
+Avoid overly verbose or narration-heavy patterns like:
+- "I'll analyze/search/check/look into..."
+- "Let me find/show/check/create/analyze..."
+- "First, I'll..."
+- "I need to..."
+- "Perfect! I found..."
+- "I found exactly what you're looking for..."
+
+Instead: Work through tools, then present results directly and concisely.
+</banned_patterns>
