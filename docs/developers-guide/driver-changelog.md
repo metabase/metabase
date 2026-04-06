@@ -4,7 +4,7 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
-## Metabase 0.60.0
+## Metabase 0.61.0
 
 - Added the following driver multimethods to support MBQL5 compilation migration:
   - `compile-mbql` - Compiles an MBQL inner query to HoneySQL.

@@ -727,7 +727,7 @@
   [clause]
   (literal-text-value?*
    (driver-api/match-lite clause
-     [tag  (opts :guard :lib/uuid) value] ;; mbql5
+     [tag (opts :guard :lib/uuid) value] ;; mbql5
      [tag value {:base_type (:base-type opts) :effective_type (:effective-type opts)}]
      _ clause)))
 
