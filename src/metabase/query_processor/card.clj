@@ -332,7 +332,6 @@
       (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
-    (binding [qp.perms/*card-id* card-id]
-      (qp.store/with-metadata-provider (:database_id card)
-        (qp.results-metadata/store-previous-result-metadata! card)
-        (runner query info)))))
+    (qp.store/with-metadata-provider (:database_id card)
+      (qp.results-metadata/store-previous-result-metadata! card)
+      (runner (assoc query :info info) info)))))
