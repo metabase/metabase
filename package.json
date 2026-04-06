@@ -420,6 +420,7 @@
     "d3-color": "^3.1.0",
     "debug": "^4.3.4",
     "diff": "^5.2.2",
+    "dompurify": "^3.3.2",
     "elliptic": "^6.6.1",
     "follow-redirects": "^1.15.5",
     "json5": "2.2.2",
