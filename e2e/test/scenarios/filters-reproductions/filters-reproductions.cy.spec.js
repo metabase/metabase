@@ -1566,3 +1566,34 @@ describe("issue QUE-2567 (bis)", () => {
     });
   });
 });
+
+describe("issue 69229", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.createQuestion(
+      {
+        name: "69229",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+      },
+      {
+        visitQuestion: true,
+      },
+    );
+  });
+  it("should render a date range when filtering a bucketed column (metabase#69229)", () => {
+    H.tableInteractiveBody().findByText("19").click();
+    H.popover().findByText("See this month by week").click();
+    cy.findByTestId("filter-pill").click();
+    H.popover()
+      .findByText("Between")
+      .parent()
+      .should("have.attr", "aria-selected", "true");
+  });
+});
