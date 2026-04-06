@@ -2,15 +2,57 @@
   "Fetch security advisories from the MetaStore and upsert into the appdb."
   (:require
    [clj-http.client :as http]
+   [clojure.edn :as edn]
    [clojure.set :as set]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
+
+;;; ---------------------------------------- Store API response schemas ----------------------------------------
+
+(mr/def ::advisory-id
+  [:re #"^SC-\d{4}-\d{3,}$"])
+
+(mr/def ::severity
+  [:enum "critical" "high" "medium" "low"])
+
+(mr/def ::semver
+  [:re #"^\d+\.\d+\.\d+$"])
+
+(mr/def ::affected-version
+  [:map {:closed true}
+   [:min ::semver]
+   [:fixed ::semver]])
+
+(mr/def ::driver
+  [:enum :default :postgres :mysql :h2])
+
+(mr/def ::matching-query
+  "A map of driver -> honeysql query stored as EDN string."
+  [:map-of ::driver :string])
+
+(mr/def ::advisory
+  [:map
+   [:id ::advisory-id]
+   [:title [:string {:min 1}]]
+   [:severity ::severity]
+   [:description [:string {:min 1}]]
+   [:published_at ms/TemporalString]
+   [:updated_at ms/TemporalString]
+   [:advisory_url [:maybe :string]]
+   [:affected_versions [:vector {:min 1} ::affected-version]]
+   [:matching_query [:maybe ::matching-query]]
+   [:remediation [:string {:min 1}]]])
+
+;;; ---------------------------------------- Fetch helpers ----------------------------------------
 
 (def ^:private ^String hm-url
   "Base URL for the Harbormaster / MetaStore API."
@@ -30,7 +72,25 @@
           t/instant
           t/format))
 
-(defn- fetch-advisories-from-store
+(defn- parse-matching-query
+  "Parse each EDN string value in a matching_query map into Clojure data."
+  [matching-query]
+  (when matching-query
+    (update-vals matching-query edn/read-string)))
+
+(defn- parse-advisory
+  "Parse matching_query EDN strings, convert temporal strings, and rename :id to :advisory_id."
+  [advisory]
+  (-> advisory
+      (update :matching_query parse-matching-query)
+      (update :published_at t/offset-date-time)
+      (update :updated_at t/offset-date-time)
+      (set/rename-keys {:id :advisory_id})
+      (select-keys [:advisory_id :title :severity :description :advisory_url
+                    :remediation :affected_versions :matching_query
+                    :published_at :updated_at])))
+
+(mu/defn ^:private fetch-advisories-from-store :- [:maybe [:sequential [:map]]]
   "GET advisories from the MetaStore. Returns a seq of advisory maps or nil on failure.
    Sends the latest `updated_at` as a `since` cursor so only changed advisories are returned."
   []
@@ -47,7 +107,9 @@
                                   :socket-timeout     5000
                                   :connection-timeout 2000})]
       (if (http/success? resp)
-        (:advisories (json/decode+kw (:body resp)))
+        (let [advisories (:advisories (json/decode+kw (:body resp)))]
+          (mu/validate-throw [:sequential ::advisory] advisories)
+          (mapv parse-advisory advisories))
         (log/warnf "Advisory fetch failed with status %s" (:status resp))))))
 
 (defn- upsert-advisory!
@@ -55,20 +117,12 @@
    On insert, match_status starts as :unknown until the matching engine evaluates it.
    On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
   [advisory]
-  (let [advisory (cond-> (set/rename-keys advisory {:id :advisory_id})
-                   (string? (:published_at advisory))
-                   (update :published_at t/offset-date-time)
-                   (string? (:updated_at advisory))
-                   (update :updated_at t/offset-date-time))
-        advisory (select-keys advisory [:advisory_id :title :severity :description :advisory_url
-                                        :remediation :affected_versions :matching_query
-                                        :published_at :updated_at])]
-    (mdb/update-or-insert! :model/SecurityAdvisory
-                           {:advisory_id (:advisory_id advisory)}
-                           (fn [existing]
-                             (if existing
-                               (dissoc advisory :advisory_id)
-                               (assoc advisory :match_status :unknown))))))
+  (mdb/update-or-insert! :model/SecurityAdvisory
+                         {:advisory_id (:advisory_id advisory)}
+                         (fn [existing]
+                           (if existing
+                             (dissoc advisory :advisory_id)
+                             (assoc advisory :match_status :unknown)))))
 
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."
