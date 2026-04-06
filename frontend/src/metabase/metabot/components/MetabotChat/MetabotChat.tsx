@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { getIsHosted } from "metabase/setup/selectors";
@@ -19,7 +20,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import { useMetabotAgent } from "../../hooks";
+import { useMetabotAgent, useMetabotName } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
@@ -47,6 +48,8 @@ export const MetabotChat = ({
 }) => {
   const isHosted = useSelector(getIsHosted);
   const metabot = useMetabotAgent(config.agentId);
+  const metabotName = useMetabotName();
+  const showIllustrations = useSetting("metabot-show-illustrations");
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -81,7 +84,7 @@ export const MetabotChat = ({
       <Box ref={headerRef} className={Styles.header}>
         <Flex align-items="center">
           <Text lh={1} fz="sm" c="text-secondary">
-            {t`Metabot isn't perfect. Double-check results.`}
+            {t`${metabotName} isn't perfect. Double-check results.`}
           </Text>
         </Flex>
 
@@ -119,7 +122,9 @@ export const MetabotChat = ({
               justify="center"
               data-testid="metabot-empty-chat-info"
             >
-              <Box component={EmptyDashboardBot} w="6rem" />
+              {showIllustrations && (
+                <Box component={EmptyDashboardBot} w="6rem" />
+              )}
               <Text c="text-tertiary" maw="12rem" ta="center" lh="lg">
                 {config.emptyText ??
                   t`I can help you explore your metrics and models.`}

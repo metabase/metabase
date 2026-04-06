@@ -108,7 +108,7 @@
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map
-                              [:product-type [:enum "metabase-ai" "metabase-ai-tiered" "python-execution" "transforms" "transforms-basic" "transforms-advanced"]]]
+                              [:product-type [:enum "metabase-ai" "metabase-ai-tiered" "python-execution" "transforms" "transforms-basic" "transforms-advanced" "transforms-basic-metered" "transforms-advanced-metered"]]]
    _query-params
    {:keys            [quantity]
     terms-of-service :terms_of_service} :- [:map
@@ -127,19 +127,11 @@
          (not quantity))
     response-no-quantity
 
-    (and (= product-type "python-execution")
-         (premium-features/enable-python-transforms?))
-    response-not-eligible
-
-    (and (= product-type "transforms")
+    (and (#{"transforms" "transforms-basic" "transforms-basic-metered"} product-type)
          (premium-features/enable-basic-transforms?))
     response-not-eligible
 
-    (and (= product-type "transforms-basic")
-         (premium-features/enable-basic-transforms?))
-    response-not-eligible
-
-    (and (= product-type "transforms-advanced")
+    (and (#{"python-execution" "transforms-advanced" "transforms-advanced-metered"} product-type)
          (premium-features/enable-python-transforms?))
     response-not-eligible
 

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { NewModals } from "metabase/new/components/NewModals/NewModals";
@@ -33,6 +34,7 @@ async function setup({
   databases = [SAMPLE_DATABASE],
   canWrite = true,
 }: SetupOpts = {}) {
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints(databases);
   setupCollectionByIdEndpoint({
     collections: [COLLECTION],

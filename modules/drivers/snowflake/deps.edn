@@ -8,6 +8,7 @@
                                                    ;; since it's a top-level dep in `/deps.edn` but adding the
                                                    ;; exclusion here will (hopefully?) prevent code scanning alerts
                                                    ;; from complaining about it as well.
-                                                   io.netty/netty-codec-http]}
+                                                   io.netty/netty-codec-http
+                                                   io.netty/netty-codec-http2]}
   ;; drop when snowflake update driver to the one without the vulnerabilities
   io.grpc/grpc-netty-shaded         {:mvn/version "1.77.0"}}}

@@ -141,7 +141,9 @@
                     "The user is currently looking at the rows of a table:"
                     #(entity-details/get-table-details {:table-id (:id entity)
                                                         :with-field-values? false
-                                                        :with-metrics? false})
+                                                        :with-metrics? false
+                                                        :with-measures? true
+                                                        :with-segments? true})
                     llm-rep/table->xml))
 
 (defmethod format-entity "model"
@@ -150,7 +152,9 @@
                     "The user is currently looking at the rows of a model:"
                     #(entity-details/get-table-details {:model-id (:id entity)
                                                         :with-field-values? false
-                                                        :with-metrics? false})
+                                                        :with-metrics? false
+                                                        :with-measures? true
+                                                        :with-segments? true})
                     llm-rep/model->xml))
 
 (defn- format-chart-config-ids
@@ -162,7 +166,7 @@
       (str id)
       (str/join ", " (map-indexed (fn [idx _] (str id "-" idx)) chart_configs)))))
 
-(defn format-native-query
+(defn- format-native-query
   "Format viewing `item`"
   [item]
   (assert (lib/native-only-query? (:query item))

@@ -204,15 +204,16 @@ describe("scenarios > metrics > metric page", () => {
       cy.findByText("By Created At").should("exist");
       cy.findByText("By State").should("exist");
       cy.findByText("By Category").should("exist");
-      cy.findByText("By Name").should("exist");
+      cy.findByText("By City").should("exist");
       cy.findAllByText(/^By /).should("have.length", 4);
 
       cy.findByText("Show more").scrollIntoView().click();
 
+      cy.findByText("By Name").should("exist");
       cy.findByText("By Source").should("exist");
       cy.findByText("By Title").should("exist");
       cy.findByText("By Vendor").should("exist");
-      cy.findAllByText(/^By /).should("have.length", 7);
+      cy.findAllByText(/^By /).should("have.length", 8);
     });
   });
 
