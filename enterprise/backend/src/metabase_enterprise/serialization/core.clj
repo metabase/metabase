@@ -21,6 +21,7 @@
   make-targets-of-type
   extract]
  [metabase-enterprise.serialization.v2.ingest
+  legal-top-level-paths
   strip-labels
   Ingestable
   ingest-yaml
@@ -33,4 +34,4 @@
   load-metabase!]
  [metabase-enterprise.serialization.v2.storage
   store!
-  escape-segment])
+  resolve-storage-path])

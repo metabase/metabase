@@ -6,6 +6,7 @@
    [malli.transform :as mtx]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.filters :as filter-tools]
@@ -202,7 +203,8 @@
   [filter]
   (let [normalized (normalize-ai-args filter)
         filter-type (:filter-type normalized)
-        normalized (assoc normalized :operation (normalize-construct-operation (:operation normalized)))]
+        normalized (cond-> normalized
+                     (:operation normalized) (update :operation normalize-construct-operation))]
     (case filter-type
       :multi-value (-> normalized
                        (dissoc :filter-type :value)
@@ -316,7 +318,8 @@
       {:output (str "Unsupported query_type: " query-type)})))
 
 (mu/defn ^{:tool-name "construct_notebook_query"
-           :decode    decode-tool-args}
+           :decode    decode-tool-args
+           :scope     scope/agent-notebook-create}
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
   [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]

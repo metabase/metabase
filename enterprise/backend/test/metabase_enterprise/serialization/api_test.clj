@@ -31,16 +31,11 @@
   [#"([^/]+)?/$"                               :dir
    #"/settings.yaml$"                          :settings
    #"/export.log$"                             :log
-   #"/collections/metabots/(.*)\.yaml$"        :metabot
-   #"/collections/.*/cards/(.*)\.yaml$"        :card
-   #"/collections/.*/dashboards/(.*)\.yaml$"   :dashboard
-   #"/collections/.*collection/([^/]*)\.yaml$" :collection
-   #"/collections/([^/]*)\.yaml$"              :collection
-   #"/snippets/(.*)\.yaml"                     :snippet
+   #"/collections/(.*)\.yaml$"                 :collection-entity
    #"/databases/.*/schemas/(.*)"               :schema
    #"/databases/(.*)\.yaml"                    :database
    #"/transforms/(.*)\.yaml"                   :transform
-   #"/python-libraries/(.*)\.yaml"             :python-library])
+   #"/python_libraries/(.*)\.yaml"             :python-library])
 
 (defn- file-type
   "Find out entity type by file path"
@@ -130,34 +125,33 @@
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :dir :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export two collections"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:id coll) :collection (:id coll2)
                                               :data_model false :settings false)]
-                  (is (= 2
-                         (->> (tar-file-types f true)
-                              (filter #(= :collection (first %)))
-                              count)))))
+                  (is (some #(= :collection-entity (first %))
+                            (tar-file-types f true))
+                      "Export should contain collection entities")))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               ;; eid:... syntax is kept for backward compat
                                               :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :dir :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "We can export that collection using entity id"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :collection (:entity_id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection :transform :python-library}
+                  (is (= #{:log :dir :collection-entity :transform :python-library}
                          (tar-file-types f)))))
 
               (testing "Default export: all-collections, data-model, settings"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
-                  (is (= #{:transform :log :dir :dashboard :card :collection :settings :schema :database :python-library}
+                  (is (= #{:transform :log :dir :collection-entity :settings :schema :database :python-library}
                          (tar-file-types f)))))
 
               (testing "On exception API returns log"
@@ -304,7 +298,7 @@
 
 (deftest import-collection-reference-error-test
   (testing "Import fails with 500 when collection reference is invalid"
-    (with-serialization-test-data! [coll _dash card]
+    (with-serialization-test-data! [coll _dash _card]
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
@@ -312,7 +306,7 @@
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
-                                                                (str/includes? (.getName file) (:entity_id card))
+                                                                (= (.getName file) "frobinate.yaml")
                                                                 (assoc :collection_id "DoesNotExist"))))]
           (let [res (binding [api.serialization/*additive-logging* false]
                       (mt/user-http-request :crowberto :post 500 "ee/serialization/import"
@@ -335,7 +329,7 @@
 
 (deftest import-continue-on-error-test
   (testing "Import with continue_on_error=true succeeds partially despite errors"
-    (with-serialization-test-data! [coll _dash card]
+    (with-serialization-test-data! [coll _dash _card]
       (let [ba (do-export (:id coll))]
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
@@ -343,7 +337,7 @@
         (mt/with-dynamic-fn-redefs [v2.ingest/ingest-file (let [ingest-file (mt/dynamic-value #'v2.ingest/ingest-file)]
                                                             (fn [^File file]
                                                               (cond-> (ingest-file file)
-                                                                (str/includes? (.getName file) (:entity_id card))
+                                                                (= (.getName file) "frobinate.yaml")
                                                                 (assoc :collection_id "DoesNotExist"))))]
           (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
                                           {:request-options {:headers {"content-type" "multipart/form-data"}}}

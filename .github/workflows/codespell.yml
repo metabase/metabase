@@ -8,6 +8,7 @@ on:
 
 jobs:
   codespell:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     permissions:
@@ -67,7 +68,7 @@ jobs:
 
       - name: Fix spelling errors with Claude Code
         if: steps.codespell_check.outcome == 'failure'
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@3ac52d0da9f8ec9ca7b4dc23bb477e36ef9c77a9 # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
@@ -82,7 +83,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.codespell_check.outcome == 'failure'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: claude-fix/codespell-${{ steps.date.outputs.date }}

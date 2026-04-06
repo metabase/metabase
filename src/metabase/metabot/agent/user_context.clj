@@ -58,8 +58,7 @@
   [context]
   (when-let [viewing (:user_is_viewing context)]
     (some (fn [item]
-            (when (= "native" (effective-context-type item))
-              (some-> (:sql_engine item) u/lower-case-en)))
+            (some-> item :sql_engine u/lower-case-en))
           viewing)))
 
 ;;; Context Normalization
@@ -95,10 +94,7 @@
   Handles the fact that the frontend sends `type: \"adhoc\"` for both notebook
   and native SQL queries by inspecting the inner dataset-query type."
   [item]
-  (let [t (normalize-context-type (:type item))]
-    (if (and (= "adhoc" t) (native-query-item? item))
-      "native"
-      t)))
+  (normalize-context-type (:type item)))
 
 ;;; Entity Formatting
 
@@ -145,7 +141,9 @@
                     "The user is currently looking at the rows of a table:"
                     #(entity-details/get-table-details {:table-id (:id entity)
                                                         :with-field-values? false
-                                                        :with-metrics? false})
+                                                        :with-metrics? false
+                                                        :with-measures? true
+                                                        :with-segments? true})
                     llm-rep/table->xml))
 
 (defmethod format-entity "model"
@@ -154,7 +152,9 @@
                     "The user is currently looking at the rows of a model:"
                     #(entity-details/get-table-details {:model-id (:id entity)
                                                         :with-field-values? false
-                                                        :with-metrics? false})
+                                                        :with-metrics? false
+                                                        :with-measures? true
+                                                        :with-segments? true})
                     llm-rep/model->xml))
 
 (defn- format-chart-config-ids
@@ -166,10 +166,31 @@
       (str id)
       (str/join ", " (map-indexed (fn [idx _] (str id "-" idx)) chart_configs)))))
 
+(defn- format-native-query
+  "Format viewing `item`"
+  [item]
+  (assert (lib/native-only-query? (:query item))
+          "Native MBQL5 query expected.")
+  (te/lines
+   "The user is currently in the SQL editor."
+   (when (:id item)
+     (te/field "Query ID" (:id item)))
+   (te/field "Current SQL query"
+             (te/code (lib/raw-native-query (:query item)) "sql"))
+   (te/field "Database ID" (get-in item [:query :database]))
+   (te/field "Database SQL engine" (:sql_engine item))
+   (when-some [error (:error item)]
+     (te/field "Query error" (te/code error)))
+   (when-let [config-ids (format-chart-config-ids item)]
+     (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
+   (te/field "Tables used" (some->> (:used_tables item)
+                                    (map format-entity)
+                                    te/lines))))
+
 (defmethod format-entity "question"
   [entity]
   (if (native-query-item? entity)
-    (format-entity "native" entity)
+    (format-native-query entity)
     (fetch-and-format entity
                       "The user is currently looking at the results of a report:"
                       #(entity-details/get-report-details {:report-id (:id entity)
@@ -196,47 +217,16 @@
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
-  (te/lines "The user is currently in the notebook editor viewing a query."
-            (te/field "Query ID" (:id item))
-            (te/field "Database ID" (get-in item [:query :database]))
-            (when-let [config-ids (format-chart-config-ids item)]
-              (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
-            (te/field "Tables used" (some->> (:used_tables item)
-                                             (map format-entity)
-                                             te/lines))))
-
-;; Format native SQL query viewing context.
-;; The :query field can be either a plain SQL string (legacy / explicit `type: "native"`)
-;; or a dataset-query map (from the frontend with `type: "adhoc"`) where the actual SQL
-;; lives at [:native :query].
-(defmethod format-entity "native"
-  [item]
-  (let [query-val (:query item)
-        sql-text  (cond
-                    ;; Plain SQL string (legacy)
-                    (string? query-val) query-val
-                    ;; MLv2/pMBQL or legacy dataset-query map: normalize and use lib
-                    (and (map? query-val) (:database query-val))
-                    (try
-                      (lib/raw-native-query (lib-be/normalize-query query-val))
-                      (catch Exception _
-                        ;; Fall back to manual extraction
-                        (or (some :native (:stages query-val))
-                            (get-in query-val [:native :query]))))
-                    ;; Other map shapes
-                    (map? query-val) (get-in query-val [:native :query])
-                    :else nil)]
-    (te/lines
-     "The user is currently in the SQL editor."
-     (te/field "Query ID" (:id item))
-     (te/field "Current SQL query" (te/code sql-text "sql"))
-     (te/field "Database SQL engine" (:sql_engine item))
-     (te/field "Query error" (te/code (:error item)))
-     (when-let [config-ids (format-chart-config-ids item)]
-       (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
-     (te/field "Tables used" (some->> (:used_tables item)
-                                      (map format-entity)
-                                      te/lines)))))
+  (if (native-query-item? item)
+    (format-native-query item)
+    (te/lines "The user is currently in the notebook editor viewing a query."
+              (te/field "Query ID" (:id item))
+              (te/field "Database ID" (get-in item [:query :database]))
+              (when-let [config-ids (format-chart-config-ids item)]
+                (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
+              (te/field "Tables used" (some->> (:used_tables item)
+                                               (map format-entity)
+                                               te/lines)))))
 
 (defn- transform-query-source-text
   [source]

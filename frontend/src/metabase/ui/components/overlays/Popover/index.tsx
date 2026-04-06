@@ -3,9 +3,9 @@ import { Popover as MantinePopover } from "@mantine/core";
 import cx from "classnames";
 import { type Ref, forwardRef, useEffect } from "react";
 
-import { useSequencedContentCloseHandler } from "metabase/common/hooks/use-sequenced-content-close-handler";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { PreventEagerPortal } from "metabase/ui";
+import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";
 
 export type { PopoverProps } from "@mantine/core";
 export { popoverOverrides } from "./Popover.config";

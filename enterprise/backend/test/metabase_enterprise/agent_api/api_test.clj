@@ -27,7 +27,7 @@
   "Sets up JWT authentication and premium features for Agent API tests."
   [& body]
   `(sso.test-setup/with-jwt-default-setup!
-     (mt/with-additional-premium-features #{:agent-api :metabot-v3}
+     (mt/with-additional-premium-features #{:agent-api}
        ~@body)))
 
 (defn- current-epoch-seconds []
@@ -372,7 +372,7 @@
         (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
                                                                  :scope "agent:search"}))}]
           (is (= {:error   "unsupported_scope"
-                  :message "Token does not have required scope: agent:table:read"}
+                  :message "Insufficient scope for this operation."}
                  (client/client :get 403 (str "agent/v1/table/" table-id)
                                 {:request-options {:headers headers}})))))
 
@@ -387,7 +387,7 @@
         (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
                                                                  :scope ""}))}]
           (is (= {:error   "unsupported_scope"
-                  :message "Token does not have required scope: agent:table:read"}
+                  :message "Insufficient scope for this operation."}
                  (client/client :get 403 (str "agent/v1/table/" table-id)
                                 {:request-options {:headers headers}}))))))))
 
@@ -413,7 +413,7 @@
       (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
                                                                :scope "agent:query:construct"}))}]
         (is (= {:error   "unsupported_scope"
-                :message "Token does not have required scope: agent:query"}
+                :message "Insufficient scope for this operation."}
                (client/client :post 403 "agent/v1/query"
                               {:request-options {:headers headers}}
                               {:table_id (mt/id :orders) :limit 1})))))))

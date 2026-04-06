@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.json :as json]
@@ -45,8 +46,34 @@
         (.newLine w)
         (.newLine w)))))
 
+(def item-types
+  "Allowed values for the `:type` key of `:user_is_viewing` item."
+  #{"adhoc"
+
+    "question"
+    "model"
+    "metric"
+
+    "document"
+    "dashboard"
+    "transform"
+    "code_editor"})
+
+(def ^:private item-type-schema
+  "Schema for the `:type` key of `:user_is_viewing` item."
+  (into [:enum] item-types))
+
 (mr/def ::context
-  [:map-of :keyword :any])
+  [:and
+   [:map-of :keyword :any]
+   [:map
+    [:user_is_viewing
+     {:optional true}
+     [:vector [:map
+               [:type item-type-schema]
+               [:query
+                {:optional true}
+                ::lib.schema/query]]]]]])
 
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
