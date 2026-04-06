@@ -2000,6 +2000,7 @@
               api
               channel
               config
+              encryption
               formatter
               lib
               metabot
@@ -2115,7 +2116,7 @@
   {:team "UX West"
    :api  #{metabase.system.core
            metabase.system.init}
-   :uses #{appearance settings util}}
+   :uses #{appearance encryption settings util}}
 
   task
   {:team "UX West"

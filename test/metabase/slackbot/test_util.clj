@@ -4,13 +4,13 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.mac :as mac]
    [metabase.channel.slack :as channel.slack]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.metabot.agent.core :as agent]
    [metabase.slackbot.api :as slackbot]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
    [metabase.slackbot.query :as slackbot.query]
    [metabase.test :as mt]
-   [metabase.encryption.impl :as encryption]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -49,9 +49,9 @@
   "Use the existing encryption key if one is configured, otherwise set a test key.
    Avoids conflicts with encrypted settings in the DB that were written with the real key."
   [& body]
-  `(if (encryption/default-encryption-enabled?)
+  `(if (encryption.impl/default-encryption-enabled?)
      (do ~@body)
-     (with-redefs [encryption/default-secret-key test-encryption-key]
+     (with-redefs [encryption.impl/default-secret-key test-encryption-key]
        ~@body)))
 
 (defmacro with-slackbot-setup

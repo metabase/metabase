@@ -2,11 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.slackbot.test-util :as tu]
    [metabase.sso.settings :as sso-settings]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.encryption.impl :as encryption]))
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,7 +33,7 @@
           (is (= "Slack integration is not fully configured." (post-events 503)))))
 
       (testing "returns 503 when encryption disabled"
-        (with-redefs [encryption/default-secret-key nil]
+        (with-redefs [encryption.impl/default-secret-key nil]
           (is (= "Slack integration is not fully configured." (post-events 503)))))
 
       (testing "returns 503 when site-url missing"
