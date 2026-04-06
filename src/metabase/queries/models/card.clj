@@ -1301,7 +1301,7 @@
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
-          :embedding_params :enable_embedding :embedding_type :entity_id :metabase_version :public_uuid :query_type :type :name
+          :embedding_params :enable_embedding :embedding_type :entity_id :metabase_version :public_uuid :type :name
           :card_schema]
    :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
@@ -1316,12 +1316,21 @@
           ;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
-          :legacy_query]
+          :legacy_query
+          ;; derived from dataset_query by populate-query-fields on insert/update
+          :query_type :table_id :source_card_id]
    :transform
    {:created_at             (serdes/date)
-    :database_id            (serdes/fk :model/Database :name)
-    :table_id               (serdes/fk :model/Table)
-    :source_card_id         (serdes/fk :model/Card)
+    ;; database_id is usually derivable from dataset_query, but must be kept when the query
+    ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
+    :database_id            (let [{:keys [import]} (serdes/fk :model/Database :name)]
+                              {:export-with-context
+                               (fn [{:keys [dataset_query database_id]} _k _v]
+                                 (if (and (seq dataset_query) (get dataset_query :database))
+                                   ::serdes/skip
+                                   (when database_id
+                                     (serdes/*export-database-fk* database_id))))
+                               :import import})
     :collection_id          (serdes/fk :model/Collection)
     :dashboard_id           (serdes/fk :model/Dashboard)
     :document_id            (serdes/fk :model/Document)

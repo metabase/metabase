@@ -2157,3 +2157,93 @@
             (let [metabot (t2/select-one :model/Metabot :name "Minimal Bot")]
               (is (some? metabot))
               (is (= "Minimal Bot" (:name metabot))))))))))
+
+;;; ===========================================================================
+;;; Round-trip tests for stripped fields
+;;;
+;;; Export now omits table_id, database_id, query_type, source_card_id from
+;;; Cards, and table_id from Segments/Measures. These tests verify the full
+;;; export → import round-trip backfills the fields correctly.
+;;; ===========================================================================
+
+(deftest card-stripped-fields-round-trip-test
+  (testing "Card round-trip: stripped fields (table_id, database_id, query_type) are backfilled on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db    (ts/create! :model/Database :name "my-db")
+                table (ts/create! :model/Table :name "orders" :db_id (:id db))
+                _     (ts/create! :model/Field :name "id" :table_id (:id table))
+                user  (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _card (ts/create! :model/Card
+                                  :collection_id nil
+                                  :creator_id    (:id user)
+                                  :name          "Round Trip Card"
+                                  :dataset_query (mbql5-query (:id db) (:id table))
+                                  :display       :table)]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            ;; Verify the fields are actually stripped from export
+            (let [card-ser (first (filter #(= "Card" (-> % :serdes/meta last :model)) @serialized))]
+              (is (not (contains? card-ser :table_id)) "table_id should be stripped from export")
+              (is (not (contains? card-ser :database_id)) "database_id should be stripped from export")
+              (is (not (contains? card-ser :query_type)) "query_type should be stripped from export"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [card  (t2/select-one :model/Card :name "Round Trip Card")
+                db    (t2/select-one :model/Database :name "my-db")
+                table (t2/select-one :model/Table :name "orders")]
+            (is (some? card))
+            (is (= (:id db) (:database_id card)) "database_id backfilled from query")
+            (is (= (:id table) (:table_id card)) "table_id backfilled from query")
+            (is (= :query (:query_type card)) "query_type backfilled from query")
+            (is (nil? (:source_card_id card)) "source_card_id nil for table-based query")))))))
+
+(deftest segment-stripped-fields-round-trip-test
+  (testing "Segment round-trip: stripped table_id is backfilled from definition on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "customers" :db_id (:id db))
+                field    (ts/create! :model/Field :name "age" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _segment (ts/create! :model/Segment :table_id (:id table) :name "Minors"
+                                     :definition (mbql5-segment-definition (:id db) (:id table) (:id field))
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [seg-ser (first (filter #(= "Segment" (-> % :serdes/meta last :model)) @serialized))]
+              (is (not (contains? seg-ser :table_id)) "table_id should be stripped from export"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [segment (t2/select-one :model/Segment :name "Minors")
+                table   (t2/select-one :model/Table :name "customers")]
+            (is (some? segment))
+            (is (= (:id table) (:table_id segment)) "table_id backfilled from definition")))))))
+
+(deftest measure-stripped-fields-round-trip-test
+  (testing "Measure round-trip: stripped table_id is backfilled from definition on import"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db       (ts/create! :model/Database :name "my-db")
+                table    (ts/create! :model/Table :name "sales" :db_id (:id db))
+                field    (ts/create! :model/Field :name "amount" :table_id (:id table))
+                user     (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                _measure (ts/create! :model/Measure :table_id (:id table) :name "Total Sales"
+                                     :definition (mbql5-measure-definition (:id db) (:id table) (:id field))
+                                     :creator_id (:id user))]
+            (reset! serialized (into [] (serdes.extract/extract {})))
+            (let [msr-ser (first (filter #(= "Measure" (-> % :serdes/meta last :model)) @serialized))]
+              (is (not (contains? msr-ser :table_id)) "table_id should be stripped from export"))))
+
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (let [measure (t2/select-one :model/Measure :name "Total Sales")
+                table   (t2/select-one :model/Table :name "sales")]
+            (is (some? measure))
+            (is (= (:id table) (:table_id measure)) "table_id backfilled from definition")))))))

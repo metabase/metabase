@@ -195,8 +195,10 @@
     table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]
-  (into (-> measure :table_id serdes/table->path serdes/storage-path-prefixes)
-        [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}]))
+  (let [table-path (or (:table_id measure)
+                       (get-in measure [:definition :stages 0 :source-table]))]
+    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
+          [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
 
 (defn- import-measure-definition
   "Import a measure definition from serialization format.
@@ -210,9 +212,10 @@
   {:copy [:name :archived :description :entity_id]
    :skip [:dependency_analysis_version
           ;; dimensions are computed from the query and reconciled on read, not serialized
-          :dimensions :dimension_mappings]
+          :dimensions :dimension_mappings
+          ;; derived from definition by before-insert via lib/primary-source-table-id
+          :table_id]
    :transform {:created_at (serdes/date)
-               :table_id (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import import-measure-definition}}
    :defaults {:archived false}})
