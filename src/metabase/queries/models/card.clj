@@ -1324,7 +1324,8 @@
     ;; database_id is usually derivable from dataset_query, but must be kept when the query
     ;; is empty (e.g. a native card with no query yet) and database_id is the only reference.
     :database_id            (let [{:keys [import]} (serdes/fk :model/Database :name)]
-                              {:export-with-context
+                              {::serdes/fk true
+                               :export-with-context
                                (fn [{:keys [dataset_query database_id]} _k _v]
                                  (if (and (seq dataset_query) (get dataset_query :database))
                                    ::serdes/skip

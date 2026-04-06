@@ -3,12 +3,6 @@ entity_id: sRcMoDeL00ExAmPlEx001
 created_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: table
-query_type: query
-database_id: Sample Database
-table_id:
-- Sample Database
-- PUBLIC
-- ORDERS
 parameters: []
 parameter_mappings: []
 dataset_query:

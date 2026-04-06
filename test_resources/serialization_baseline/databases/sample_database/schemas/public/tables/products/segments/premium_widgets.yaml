@@ -25,10 +25,6 @@ definition:
 description: Widget products priced above $50 — refines the Widget Products segment
 entity_id: 2hxhoN3HrQJIaWc5umpBn
 name: Premium Widgets
-table_id:
-- Sample Database
-- PUBLIC
-- PRODUCTS
 serdes/meta:
 - id: 2hxhoN3HrQJIaWc5umpBn
   label: premium_widgets

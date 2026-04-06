@@ -20,10 +20,6 @@ definition:
   lib/type: mbql/query
 entity_id: d4G5fMj5smJ17Nd0dvE2A
 name: Median Order Total
-table_id:
-- Sample Database
-- PUBLIC
-- ORDERS
 serdes/meta:
 - id: d4G5fMj5smJ17Nd0dvE2A
   label: median_order_total
