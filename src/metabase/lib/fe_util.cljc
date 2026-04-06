@@ -530,9 +530,11 @@
       ;; exactly 1 argument, but the column has a temporal bucketing
       [(op :guard #{:=}) _ (col-ref :guard date-col?) & (args :len 1 :guard (every? string? args))]
       (let [unit (:temporal-unit (second col-ref))
-            start (first args)
-            end (u.time/add start unit 1)]
-        (result :between col-ref [start end]))
+            start (u.time/coerce-to-timestamp (first args))
+            range (u.time/to-range start {:unit unit})]
+        {:operator :between
+         :column (ref->col col-ref)
+         :values range})
 
       (:or
        ;; exactly 1 argument
