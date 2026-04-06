@@ -24,7 +24,7 @@
                 created-at (assoc :created_at created-at)
                 deleted-at (assoc :deleted_at deleted-at))))
 
-(deftest ^:parallel list-conversations-test
+(deftest list-conversations-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations"
       (testing "requires superuser"
@@ -97,12 +97,16 @@
             (let [response          (mt/user-http-request :crowberto :get 200 "ee/metabot-analytics/conversations")
                   conversation-ids  (map :conversation_id (:data response))
                   convo-1-response  (some #(when (= (:conversation_id %) convo-1) %) (:data response))
-                  convo-2-response  (some #(when (= (:conversation_id %) convo-2) %) (:data response))]
+                  convo-2-response  (some #(when (= (:conversation_id %) convo-2) %) (:data response))
+                  convo-3-response  (some #(when (= (:conversation_id %) convo-3) %) (:data response))]
               (is (= 3 (:total response)))
               (is (= 50 (:limit response)))
               (is (= 0 (:offset response)))
               (is (= [convo-3 convo-2 convo-1] conversation-ids))
-              (is (nil? (:model (some #(when (= (:conversation_id %) convo-3) %) (:data response)))))
+              (is (nil? (:model convo-3-response)))
+              (is (= 0 (:message_count convo-3-response)))
+              (is (= 0 (:assistant_message_count convo-3-response)))
+              (is (= 0 (:total_tokens convo-3-response)))
               (is (= {:conversation_id         convo-1
                       :summary                 "First conversation"
                       :user_id                 crowberto-id
@@ -144,7 +148,7 @@
             (is (some? (:errors (mt/user-http-request :crowberto :get 400
                                                       "ee/metabot-analytics/conversations?sort-by=drop_table"))))))))))
 
-(deftest ^:parallel get-conversation-detail-test
+(deftest get-conversation-detail-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations/:id"
       (mt/with-model-cleanup [:model/MetabotMessage

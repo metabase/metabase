@@ -203,6 +203,16 @@
       (finally
         (Files/deleteIfExists jar-path)))))
 
+(deftest views-checksum-not-recorded-when-sync-fails-test
+  (mt/with-temp [:model/Database audit-db {:engine "h2" :is_audit true}]
+    (let [checksum 12345]
+      (ee.audit.settings/last-analytics-views-checksum! 0)
+      (with-redefs [ee-audit/views-checksum (constantly checksum)
+                    metabase.sync.sync-metadata.sync-metadata/sync-database! (fn [& _]
+                                                                               (throw (Exception. "sync failed")))]
+        (is (nil? (#'ee-audit/maybe-sync-audit-views! audit-db)))
+        (is (= 0 (ee.audit.settings/last-analytics-views-checksum)))))))
+
 (deftest adjust-audit-db-to-source-test
   (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"
     (mt/with-temp [:model/Database {audit-db-id :id} {:engine "h2"}

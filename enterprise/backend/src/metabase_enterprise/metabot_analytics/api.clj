@@ -81,7 +81,8 @@
    :from     [[:metabot_message :mm]]
    :where    [:and
               [:= :mm.conversation_id :c.id]
-              [:= :mm.role "assistant"]]
+              [:= :mm.role "assistant"]
+              [:= :mm.deleted_at nil]]
    :order-by [[:mm.created_at :asc]]
    :limit    1})
 

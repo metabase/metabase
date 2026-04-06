@@ -330,11 +330,14 @@
     (when (and current (not= current last))
       (log/info "Analytics views changed, syncing Audit DB schema")
       (let [sync-future (future
-                          (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
-                          (log/info "Audit DB views sync complete."))]
+                          (try
+                            (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
+                            (audit-app.settings/last-analytics-views-checksum! current)
+                            (log/info "Audit DB views sync complete.")
+                            (catch Exception e
+                              (log/error e "Audit DB views sync failed."))))]
         (when config/is-test?
-          @sync-future))
-      (audit-app.settings/last-analytics-views-checksum! current))))
+          @sync-future)))))
 
 (defenterprise ensure-audit-db-installed!
   "EE implementation of `ensure-db-installed!`. Installs audit db if it does not already exist, and loads audit

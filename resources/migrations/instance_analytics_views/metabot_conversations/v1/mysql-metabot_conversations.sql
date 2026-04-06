@@ -17,6 +17,7 @@ SELECT
      FROM metabot_message mm
      WHERE mm.conversation_id = c.id
        AND mm.role = 'assistant'
+       AND mm.deleted_at IS NULL
      ORDER BY mm.created_at
      LIMIT 1)                                                         AS model
 FROM metabot_conversation c
