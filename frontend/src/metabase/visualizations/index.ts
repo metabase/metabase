@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isStorybookActive } from "metabase/env";
+import type { IconName } from "metabase/ui";
 import type {
   DatasetData,
   RawSeries,
@@ -116,9 +117,15 @@ export function getVisualizationTransformed(
   return { series, visualization };
 }
 
-export function getIconForVisualizationType(display: VisualizationDisplay) {
+export function getIconForVisualizationType(display: VisualizationDisplay): {
+  name: IconName;
+  iconUrl?: string;
+} {
   const viz = visualizations.get(display);
-  return viz?.iconName ?? "unknown";
+  return {
+    name: viz?.iconName ?? "unknown",
+    iconUrl: viz?.iconUrl,
+  };
 }
 
 export const extractRemappings = (series: Series) => {

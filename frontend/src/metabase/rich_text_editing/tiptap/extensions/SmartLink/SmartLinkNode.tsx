@@ -20,6 +20,7 @@ import {
   useGetTransformQuery,
   useListMentionsQuery,
 } from "metabase/api";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
 import { updateMentionsCache } from "metabase/documents/documents.slice";
 import {
@@ -532,7 +533,7 @@ export const SmartLinkComponent = memo(
           className={styles.smartLink}
         >
           <span className={styles.smartLinkInner}>
-            <Icon name={iconData.name} className={styles.icon} />
+            <EntityIcon {...iconData} className={styles.icon} />
             {getName(entity)}
           </span>
         </Link>

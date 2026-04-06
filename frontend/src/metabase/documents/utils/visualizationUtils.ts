@@ -10,6 +10,7 @@ export interface VisualizationItem {
   value: VisualizationDisplay;
   label: string;
   iconName: IconName | null;
+  iconUrl?: string;
 }
 
 /**
@@ -27,6 +28,7 @@ export function getVisualizationItem(
     value: visualizationType,
     label: visualization.getUiName(),
     iconName: visualization.iconName,
+    iconUrl: visualization.iconUrl,
   };
 }
 

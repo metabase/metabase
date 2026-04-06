@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Markdown } from "metabase/common/components/Markdown";
+import type { IconData } from "metabase/lib/icon";
 import { getIcon } from "metabase/lib/icon";
 import { isEmpty } from "metabase/lib/validate";
 import { Icon } from "metabase/ui";
@@ -22,7 +24,7 @@ export const EntityDisplay = ({
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon c="brand" name={getSearchIconName(entity)} />
+        <EntityIcon color="brand" {...getSearchIcon(entity)} />
         <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
@@ -65,13 +67,13 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   );
 };
 
-function getSearchIconName(entity: UnrestrictedLinkEntity) {
-  const entityIcon = getIcon(entity) ?? { name: "link" };
+function getSearchIcon(entity: UnrestrictedLinkEntity): IconData {
+  const entityIcon = getIcon(entity) ?? { name: "link" as const };
 
   // we need to change this icon to make it match the icon in the search results
   if (entity.model === "table") {
     entityIcon.name = "database";
   }
 
-  return entityIcon.name;
+  return entityIcon;
 }
