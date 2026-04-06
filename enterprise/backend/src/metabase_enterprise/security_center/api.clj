@@ -19,8 +19,8 @@
   "Format a SecurityAdvisory row for API response. Expects `:acknowledged_by_user` to be hydrated."
   [advisory]
   (-> (select-keys advisory [:advisory_id :title :severity :description :advisory_url :remediation
-                              :published_at :match_status :last_evaluated_at
-                              :acknowledged_by_user :acknowledged_at :affected_versions])
+                             :published_at :match_status :last_evaluated_at
+                             :acknowledged_by_user :acknowledged_at :affected_versions])
       (set/rename-keys {:acknowledged_by_user :acknowledged_by})))
 
 (def ^:private AcknowledgedByUser
@@ -59,6 +59,7 @@
                                      [:advisories [:sequential AdvisoryResponse]]]
   "List all security advisories with match status."
   []
+  (api/check-superuser)
   (let [advisories (t2/hydrate (t2/select :model/SecurityAdvisory {:order-by [[:published_at :desc]]})
                                :acknowledged_by_user)]
     {:last_checked_at (some :last_evaluated_at advisories)
@@ -73,6 +74,7 @@
 (api.macros/defendpoint :post "/:advisory-id/acknowledge" :- AcknowledgeResponse
   "Acknowledge a security advisory. Stops repeat notifications."
   [{:keys [advisory-id]} :- [:map [:advisory-id ms/NonBlankString]]]
+  (api/check-superuser)
   (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
@@ -83,6 +85,7 @@
   "Trigger an async advisory sync + re-evaluation.
    Returns immediately. No-ops if a sync is already in progress."
   []
+  (api/check-superuser)
   (when (compare-and-set! syncing? false true)
     (future
       (try
@@ -94,6 +97,7 @@
 (api.macros/defendpoint :post "/test-notification" :- [:map [:success :boolean]]
   "Send a test notification through the configured Security Center channels."
   []
+  (api/check-superuser)
   (notification/send-test-notification!)
   {:success true})
 
