@@ -3,6 +3,12 @@
   (:require
    [metabase.util.malli.registry :as mr]))
 
+(mr/def ::advisory-id
+  [:re #"^SC-\d{4}-\d{3,}$"])
+
+(mr/def ::semver
+  [:re #"^\d+\.\d+\.\d+$"])
+
 (mr/def ::severity
   [:enum :critical :high :medium :low])
 
@@ -12,8 +18,8 @@
 (mr/def ::version-range
   "A single affected version range with inclusive min and exclusive fixed."
   [:map
-   [:min   :string]
-   [:fixed :string]])
+   [:min   ::semver]
+   [:fixed ::semver]])
 
 (mr/def ::affected-versions
   [:sequential ::version-range])

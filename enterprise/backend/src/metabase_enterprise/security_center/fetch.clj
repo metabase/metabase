@@ -5,6 +5,7 @@
    [clojure.edn :as edn]
    [clojure.set :as set]
    [java-time.api :as t]
+   [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
@@ -18,19 +19,13 @@
 
 ;;; ---------------------------------------- Store API response schemas ----------------------------------------
 
-(mr/def ::advisory-id
-  [:re #"^SC-\d{4}-\d{3,}$"])
-
 (mr/def ::severity
   [:enum "critical" "high" "medium" "low"])
 
-(mr/def ::semver
-  [:re #"^\d+\.\d+\.\d+$"])
-
 (mr/def ::affected-version
   [:map {:closed true}
-   [:min ::semver]
-   [:fixed ::semver]])
+   [:min ::security-center.schema/semver]
+   [:fixed ::security-center.schema/semver]])
 
 (mr/def ::driver
   [:enum :default :postgres :mysql :h2])
@@ -41,7 +36,7 @@
 
 (mr/def ::advisory
   [:map
-   [:id ::advisory-id]
+   [:id ::security-center.schema/advisory-id]
    [:title [:string {:min 1}]]
    [:severity ::severity]
    [:description [:string {:min 1}]]

@@ -33,7 +33,7 @@
 (def ^:private AdvisoryResponse
   "Schema for a single advisory in the API response."
   [:map
-   [:advisory_id       ms/NonBlankString]
+   [:advisory_id       ::security-center.schema/advisory-id]
    [:title             ms/NonBlankString]
    [:severity          ::security-center.schema/severity]
    [:description       ms/NonBlankString]
@@ -49,7 +49,7 @@
 (def ^:private AcknowledgeResponse
   "Schema for the acknowledge endpoint response."
   [:map
-   [:advisory_id     ms/NonBlankString]
+   [:advisory_id     ::security-center.schema/advisory-id]
    [:match_status    ::security-center.schema/match-status]
    [:acknowledged_by [:maybe AcknowledgedByUser]]
    [:acknowledged_at [:maybe ms/TemporalInstant]]])
@@ -73,7 +73,7 @@
 
 (api.macros/defendpoint :post "/:advisory-id/acknowledge" :- AcknowledgeResponse
   "Acknowledge a security advisory. Stops repeat notifications."
-  [{:keys [advisory-id]} :- [:map [:advisory-id ms/NonBlankString]]]
+  [{:keys [advisory-id]} :- [:map [:advisory-id ::security-center.schema/advisory-id]]]
   (api/check-superuser)
   (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
     (api/check-404 advisory)
