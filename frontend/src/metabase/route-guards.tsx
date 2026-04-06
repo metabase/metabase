@@ -136,11 +136,35 @@ const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
+const UserHasMfaIfRequired = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserHasMfaIfRequired",
+  redirectPath: "/mfa/setup-required",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) => {
+    const user = state.currentUser;
+    if (!user) {
+      return true;
+    }
+    const requireMfa = getSetting(state, "require-mfa");
+    if (!requireMfa) {
+      return true;
+    }
+    if (user.sso_source) {
+      return true;
+    }
+    return user.totp_enabled;
+  },
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
 export const IsAuthenticated = MetabaseIsSetup(
-  UserIsAuthenticated(({ children }) => children),
+  UserIsAuthenticated(UserHasMfaIfRequired(({ children }) => children)),
 );
 export const IsAdmin = MetabaseIsSetup(
-  UserIsAuthenticated(UserIsAdmin(({ children }) => children)),
+  UserIsAuthenticated(
+    UserHasMfaIfRequired(UserIsAdmin(({ children }) => children)),
+  ),
 );
 
 export const IsNotAuthenticated = MetabaseIsSetup(
@@ -148,7 +172,9 @@ export const IsNotAuthenticated = MetabaseIsSetup(
 );
 
 export const CanAccessSettings = MetabaseIsSetup(
-  UserIsAuthenticated(UserCanAccessSettings(({ children }) => children)),
+  UserIsAuthenticated(
+    UserHasMfaIfRequired(UserCanAccessSettings(({ children }) => children)),
+  ),
 );
 
 export const CanAccessOnboarding = UserCanAccessOnboarding(
@@ -158,7 +184,9 @@ export const CanAccessOnboarding = UserCanAccessOnboarding(
 // Must be in sync with canAccessDataStudio in frontend/src/metabase/data-studio/selectors.ts
 export const CanAccessDataStudio = MetabaseIsSetup(
   UserIsAuthenticated(
-    UserCanAccessDataStudio(AvailableInEmbedding(({ children }) => children)),
+    UserHasMfaIfRequired(
+      UserCanAccessDataStudio(AvailableInEmbedding(({ children }) => children)),
+    ),
   ),
 );
 

@@ -10,6 +10,7 @@
    [metabase.server.middleware.json :as mw.json]
    [metabase.server.middleware.log :as mw.log]
    [metabase.server.middleware.metadata-provider-cache :as mw.mp-cache]
+   [metabase.server.middleware.mfa-enforcement :as mw.mfa-enforcement]
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.premium-features-cache :as mw.pf-cache]
@@ -93,6 +94,7 @@
         #'mw.auth/verify-slack-request               ; looks for requests from slack and assocs a :slack/validated? on the request if valid
         #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
+        #'mw.mfa-enforcement/wrap-enforce-mfa        ; Block non-MFA users when require-mfa is enabled
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
         #'mw.session/wrap-current-user-info          ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
         #'mw.pf-cache/wrap-premium-features-cache-check ; check cookie to refresh premium features cache if needed

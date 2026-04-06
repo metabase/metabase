@@ -14,8 +14,9 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { getSetting } from "metabase/selectors/settings";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import type {
   GroupId,
@@ -84,6 +85,8 @@ export const PeopleList = ({
   const { data: membershipsByUser = {} } = useListUserMembershipsQuery();
 
   const { page, pageSize, status } = query;
+
+  const requireMfa = useSelector((state) => getSetting(state, "require-mfa"));
 
   const isCurrentUser = (u: User) => currentUser.id === u.id;
   const showDeactivated = status === ACTIVE_STATUS.deactivated;
@@ -181,6 +184,7 @@ export const PeopleList = ({
               <th>{t`Name`}</th>
               <th />
               <th>{t`Email`}</th>
+              {requireMfa && <th>{t`MFA`}</th>}
               {showDeactivated ? (
                 <Fragment>
                   {external && <th>{t`Tenant`}</th>}

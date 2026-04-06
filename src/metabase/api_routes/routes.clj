@@ -1,6 +1,7 @@
 (ns metabase.api-routes.routes
   (:require
    [compojure.route :as route]
+   [metabase.account.mfa-api]
    [metabase.actions-rest.api]
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
@@ -71,7 +72,8 @@
    [metabase.warehouses-rest.api]
    [metabase.xrays.api]))
 
-(comment metabase.actions-rest.api/keep-me
+(comment metabase.account.mfa-api/keep-me
+         metabase.actions-rest.api/keep-me
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
          metabase.analytics.api/keep-me
@@ -192,6 +194,7 @@
    "/measure"              (+auth 'metabase.measures.api)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
+   "/mfa"                  (+auth 'metabase.account.mfa-api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes

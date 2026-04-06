@@ -11,4 +11,6 @@
    [:is-data-analyst?   {:optional true} :boolean]
    [:user-locale        {:optional true} [:maybe string?]]
    [:is-group-manager?  {:optional true} :boolean]
-   [:permissions-set    {:optional true} [:set :string]]])
+   [:permissions-set    {:optional true} [:set :string]]
+   [:totp-enabled?      {:optional true} :boolean]
+   [:sso-source         {:optional true} [:maybe :string]]])

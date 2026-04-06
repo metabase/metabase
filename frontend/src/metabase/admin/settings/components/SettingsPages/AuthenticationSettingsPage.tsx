@@ -11,6 +11,7 @@ import {
 import { Box, Flex, Stack } from "metabase/ui";
 
 import { ApiKeysAuthCard } from "../../auth/components/ApiKeysAuthCard";
+import { MfaCard } from "../../auth/components/MfaCard/MfaCard";
 import { GoogleAuthCard } from "../../auth/containers/GoogleAuthCard/GoogleAuthCard";
 import { LdapAuthCard } from "../../auth/containers/LdapAuthCard";
 import { ManageApiKeys } from "../ApiKeys/ManageApiKeys";
@@ -34,6 +35,7 @@ export function AuthenticationSettingsPage({
     <SettingsPageWrapper title={t`Authentication`}>
       <Flex justify={"space-between"} gap="lg">
         <Stack gap="lg">
+          <MfaCard />
           <GoogleAuthCard />
           <LdapAuthCard />
           <ApiKeysAuthCard />

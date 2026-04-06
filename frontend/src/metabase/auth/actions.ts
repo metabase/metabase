@@ -15,7 +15,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { SessionApi, UtilApi } from "metabase/services";
 
-import type { LoginData } from "./types";
+import type { LoginData, MfaVerifyData } from "./types";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(
@@ -58,7 +58,27 @@ export const login = createAsyncThunk(
   LOGIN,
   async ({ data }: LoginPayload, { dispatch, rejectWithValue }) => {
     try {
-      await SessionApi.create(data);
+      const response = await SessionApi.create(data);
+      if (response?.mfa_required) {
+        return { mfaRequired: true, mfaToken: response.mfa_token };
+      }
+      await dispatch(refreshSession()).unwrap();
+      if (!isSmallScreen()) {
+        dispatch(openNavbar());
+      }
+      return { mfaRequired: false };
+    } catch (error) {
+      return rejectWithValue(error);
+    }
+  },
+);
+
+export const MFA_VERIFY = "metabase/auth/MFA_VERIFY";
+export const mfaVerify = createAsyncThunk(
+  MFA_VERIFY,
+  async (data: MfaVerifyData, { dispatch, rejectWithValue }) => {
+    try {
+      await SessionApi.mfaVerify(data);
       await dispatch(refreshSession()).unwrap();
       if (!isSmallScreen()) {
         dispatch(openNavbar());

@@ -318,9 +318,18 @@ export const SessionApi = {
   create: POST("/api/session"),
   createWithGoogleAuth: POST("/api/session/google_auth"),
   delete: DELETE("/api/session"),
+  mfaVerify: POST("/api/session/mfa-verify"),
   slo: POST("/auth/sso/logout"),
   forgot_password: POST("/api/session/forgot_password"),
   reset_password: POST("/api/session/reset_password"),
+};
+
+export const MfaApi = {
+  setup: POST("/api/mfa/setup"),
+  confirm: POST("/api/mfa/confirm"),
+  disable: POST("/api/mfa/disable"),
+  regenerateRecoveryCodes: POST("/api/mfa/recovery-codes"),
+  adminReset: POST("/api/user/:id/reset-mfa"),
 };
 
 export const SettingsApi = {
