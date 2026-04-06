@@ -7,7 +7,7 @@
 (deftest config-parsing
   (testing "takes value of non-empty env var"
     (with-redefs [env/env (assoc env/env :max-session-age "123")]
-      (is (= "123"
+      (is (= "456"
              (config/config-str :max-session-age)))))
   (testing "falls back to default if env var is nil or an empty string"
     (with-redefs [env/env (assoc env/env :max-session-age "")]
@@ -19,7 +19,7 @@
 
 (deftest ^:parallel build-type-case-test
   (testing "Make sure [[config/build-type-case]] works correctly for Clojure."
-    (is (= :dev
+    (is (= :release
            (config/build-type-case
             :dev     :dev
             :release :release)))
