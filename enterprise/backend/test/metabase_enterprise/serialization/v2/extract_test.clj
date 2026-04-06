@@ -1296,8 +1296,6 @@
                  (:parameters ser)))
           (is (= #{[{:model "Database"   :id "My Database"}]
                    [{:model "Collection" :id coll-eid-2}]
-                   [{:model "Database"   :id "My Database"}
-                    {:model "Table"      :id "Schemaless Table"}]
                    [{:model "Card"       :id card-eid-1}]
                    [{:model "Database"   :id "My Database"}
                     {:model "Table"      :id "Schemaless Table"}
@@ -2788,8 +2786,8 @@
           (is (= "Test DB" (:database_id ser))
               "database_id should be kept when query is empty"))))))
 
-(deftest card-export-source-card-not-in-deps-test
-  (testing "Card export dependencies don't include table_id or source_card_id (they're stripped)"
+(deftest card-export-deps-come-from-query-test
+  (testing "Card dependencies come from dataset_query, not from stripped FK fields"
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Test DB"}
                          :model/Table {table-id :id} {:name "orders" :db_id db-id}
@@ -2799,11 +2797,12 @@
                                                     :display :table}]
         (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))
               deps (serdes/dependencies ser)]
-          (is (not (some #(= "Database" (:model (first %))) deps))
-              "Should not have a standalone Database dependency (derivable from query)")
-          ;; Table dependency should come from the query's mbql-deps, not from table_id
+          ;; Database dep comes from mbql-deps on the query's :database key
+          (is (contains? (set deps) [{:model "Database" :id "Test DB"}])
+              "Database dependency should come from the query")
+          ;; Table dep comes from mbql-deps on the query's :source-table
           (is (some #(some (fn [step] (= "Table" (:model step))) %) deps)
-              "Table dependency should still come from the query itself"))))))
+              "Table dependency should come from the query"))))))
 
 (deftest segment-export-strips-table-id-test
   (testing "Segment export omits table_id — derivable from definition"
