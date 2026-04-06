@@ -90,7 +90,7 @@ export const updateUrl = createThunkAction(
 
       const { currentState } = getState().qb;
       const queryParams = preserveParameters ? getCurrentQueryParams() : {};
-      const url = getURLForCardState(newState, dirty, queryParams, objectId);
+      const url = getURLForCardState(newState, dirty, queryParams, objectId, question);
 
       const urlParsed = parseUrl(url);
       const locationDescriptor: LocationDescriptor = {

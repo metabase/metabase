@@ -5,6 +5,7 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -73,7 +74,9 @@
                [:type item-type-schema]
                [:query
                 {:optional true}
-                ::lib.schema/query]]]]]])
+                [:or 
+                 ::lib.schema/query
+                 ::mbql.s/Query]]]]]]])
 
 (defn- query-for-sql-parsing
   "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed

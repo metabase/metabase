@@ -191,7 +191,12 @@ export function tableRowsQuery(
   // This will result in a URL like "/question#?db=1&table=1"
   // The QB will parse the querystring and use DB and table IDs to create an ad-hoc question
   // We should refactor the initializeQB to avoid passing query string to hash as it's pretty confusing
-  return question(null, { hash: query });
+
+  console.log("PRIII")
+  let rrr = question(null, { hash: query });
+  console.log(rrr)
+  return rrr
+  // return question(null, { hash: query });
 }
 
 export function xrayModel(id: CardId) {

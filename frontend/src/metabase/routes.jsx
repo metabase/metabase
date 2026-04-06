@@ -402,8 +402,10 @@ export const getRoutes = (store) => {
       {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
       <Route
         path="/q"
-        onEnter={({ location }, replace) =>
-          replace({ pathname: "/question", hash: location.hash })
+        onEnter={({ location }, replace) => {
+          console.log("RERERxss")
+          return replace({ pathname: "/question", hash: location.hash })
+        }
         }
       />
       <Route

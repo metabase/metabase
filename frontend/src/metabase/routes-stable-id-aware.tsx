@@ -38,6 +38,9 @@ export const EntityIdRedirect = ({
 }: EntityIdRedirectProps) => {
   const currentUrl = location.pathname + location.search;
 
+  console.log("WIWIW")
+  console.log(currentUrl)
+
   const paramsWithValues: ParamWithValue[] = useMemo(() => {
     // add the value from the params or the query
     return parametersToTranslate.map((config) => {
@@ -137,6 +140,8 @@ function handleResults({
 export function createEntityIdRedirect(config: {
   parametersToTranslate: ParamConfig[];
 }) {
+  console.log("CACAC")
+  console.log(config)
   const Component = (props: WithRouterProps) => (
     <EntityIdRedirect
       {...props}
