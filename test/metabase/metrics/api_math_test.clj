@@ -108,12 +108,26 @@
                         :filter   [:= {} [:dimension {} "550e8400-e29b-41d4-a716-446655440001"] "value"]}]}))))
 
 (deftest valid-definition-with-projections-test
-  (testing "Valid definition with matching projection type/id"
+  (testing "Valid definition with matching projection :lib/uuid"
     (is (valid-definition?
          {:expression  [:metric {:lib/uuid "a"} 42]
           :projections [{:type       :metric
                          :id         42
-                         :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440001"]]}]}))))
+                         :lib/uuid   "a"
+                         :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440001"]]}]})))
+  (testing "Valid definition with same metric ID twice, different projections per instance"
+    (is (valid-definition?
+         {:expression  [:+ {}
+                        [:metric {:lib/uuid "a"} 42]
+                        [:metric {:lib/uuid "b"} 42]]
+          :projections [{:type       :metric
+                         :id         42
+                         :lib/uuid   "a"
+                         :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440001"]]}
+                        {:type       :metric
+                         :id         42
+                         :lib/uuid   "b"
+                         :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440002"]]}]}))))
 
 (deftest duplicate-uuid-invalid-test
   (testing "Duplicate :lib/uuid values in expression are invalid"
@@ -129,12 +143,13 @@
                :filters    [{:lib/uuid "does-not-exist"
                              :filter   [:= {} [:dimension {} "550e8400-e29b-41d4-a716-446655440001"] "value"]}]})))))
 
-(deftest projection-type-id-not-in-expression-test
-  (testing "Projection type/id not matching expression leaf is invalid"
+(deftest projection-uuid-not-in-expression-test
+  (testing "Projection :lib/uuid not matching any expression leaf is invalid"
     (is (not (valid-definition?
               {:expression  [:metric {:lib/uuid "a"} 42]
-               :projections [{:type       :measure
-                              :id         99
+               :projections [{:type       :metric
+                              :id         42
+                              :lib/uuid   "does-not-exist"
                               :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440001"]]}]})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -174,9 +189,10 @@
 (deftest normalize-typed-projection-test
   (testing "Typed projection with string keys normalizes correctly"
     (let [decoded (decode ::lib-metric.schema/typed-projection
-                          {"type" "metric" "id" 42 "projection" [["dimension" {} "d1"]]})]
+                          {"type" "metric" "id" 42 "lib/uuid" "abc" "projection" [["dimension" {} "d1"]]})]
       (is (= :metric (:type decoded)))
       (is (= 42 (:id decoded)))
+      (is (= "abc" (:lib/uuid decoded)))
       (is (= 1 (count (:projection decoded)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

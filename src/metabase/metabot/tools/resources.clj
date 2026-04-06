@@ -19,6 +19,7 @@
   - metabase://dashboard/{id} - Dashboard details"
   (:require
    [clojure.string :as str]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -78,16 +79,20 @@
       ;; metabase://table/123/fields
       (= sub-resource "fields")
       (entity-details/get-table-details {:table-id table-id
-                                         :with-fields true
-                                         :with-field-values false
-                                         :with-related-tables false})
+                                         :with-fields? true
+                                         :with-field-values? false
+                                         :with-related-tables? false
+                                         :with-measures? true
+                                         :with-segments? true})
 
       ;; metabase://table/123
       (nil? sub-resource)
       (entity-details/get-table-details {:table-id table-id
-                                         :with-fields false
-                                         :with-field-values false
-                                         :with-related-tables false})
+                                         :with-fields? false
+                                         :with-field-values? false
+                                         :with-related-tables? false
+                                         :with-measures? true
+                                         :with-segments? true})
 
       :else
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for table. Supported: fields")
@@ -108,16 +113,20 @@
       ;; metabase://model/123/fields
       (= sub-resource "fields")
       (entity-details/get-table-details {:model-id model-id
-                                         :with-fields true
-                                         :with-field-values false
-                                         :with-related-tables false})
+                                         :with-fields? true
+                                         :with-field-values? false
+                                         :with-related-tables? false
+                                         :with-measures? true
+                                         :with-segments? true})
 
       ;; metabase://model/123
       (nil? sub-resource)
       (entity-details/get-table-details {:model-id model-id
-                                         :with-fields false
-                                         :with-field-values false
-                                         :with-related-tables false})
+                                         :with-fields? false
+                                         :with-field-values? false
+                                         :with-related-tables? false
+                                         :with-measures? true
+                                         :with-segments? true})
 
       :else
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for model. Supported: fields")
@@ -269,7 +278,8 @@
     {:resources resources
      :output formatted}))
 
-(mu/defn ^{:tool-name "read_resource"}
+(mu/defn ^{:tool-name "read_resource"
+           :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns.
 
