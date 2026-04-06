@@ -9,13 +9,14 @@ import type { Advisory } from "metabase-types/api";
 const POLLING_INTERVAL = 2000;
 
 export function useSecurityAdvisories(isPolling = false) {
-  const { data: response, isLoading } = useListSecurityAdvisoriesQuery(
-    undefined,
-    {
-      refetchOnMountOrArgChange: true,
-      pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
-    },
-  );
+  const {
+    data: response,
+    isLoading,
+    isError,
+  } = useListSecurityAdvisoriesQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+    pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+  });
   const [acknowledgeAdvisory] = useAcknowledgeAdvisoryMutation();
 
   const advisories: Advisory[] = useMemo(
@@ -27,6 +28,7 @@ export function useSecurityAdvisories(isPolling = false) {
     data: advisories,
     lastCheckedAt: response?.last_checked_at ?? null,
     isLoading,
+    isError,
     acknowledgeAdvisory,
   };
 }
