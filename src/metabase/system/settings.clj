@@ -3,9 +3,9 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.encryption.impl :as encryption]
    [metabase.util.fonts :as u.fonts]
    [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -133,5 +133,5 @@
   :type       :boolean
   :export?    false
   :setter     :none
-  :getter     encryption/default-encryption-enabled?
+  :getter     encryption.impl/default-encryption-enabled?
   :doc        false)

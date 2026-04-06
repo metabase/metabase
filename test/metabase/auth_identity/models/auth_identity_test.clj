@@ -1,9 +1,9 @@
 (ns metabase.auth-identity.models.auth-identity-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]
-   [metabase.encryption.impl :as encryption]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.encryption.impl-test :as encryption-test]
+   [metabase.test :as mt]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -193,7 +193,7 @@
                                          :credentials {:secret "super-secret"}})
         (let [raw (t2/select-one-fn :credentials :auth_identity
                                     :user_id user-id :provider "google")]
-          (is (encryption/possibly-encrypted-string? raw)
+          (is (encryption.impl/possibly-encrypted-string? raw)
               "Raw column value should be encrypted")
           (is (not (re-find #"super-secret" (str raw)))
               "Plaintext must not appear in the stored value"))

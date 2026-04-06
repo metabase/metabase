@@ -2,12 +2,12 @@
   "Configuration, manifest, and validation helpers for slackbot."
   (:require
    [metabase.channel.settings :as channel.settings]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.settings :as slackbot.settings]
    [metabase.sso.settings :as sso-settings]
-   [metabase.system.core :as system]
-   [metabase.encryption.impl :as encryption]))
+   [metabase.system.core :as system]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,7 +67,7 @@
         (sso-settings/slack-connect-client-secret)
         (slackbot.settings/metabot-slack-signing-secret)
         (channel.settings/unobfuscated-slack-app-token)
-        (encryption/default-encryption-enabled?))))
+        (encryption.impl/default-encryption-enabled?))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn validate-bot-token!

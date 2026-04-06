@@ -6,10 +6,10 @@
    [metabase-enterprise.mfa.recovery-codes :as recovery-codes]
    [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
+   [metabase.encryption.impl :as encryption.impl]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
-   [metabase.encryption.impl :as encryption]
-   [metabase.encryption.impl-test :as encryption-test]
    [metabase.util.password :as u.password]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
@@ -180,10 +180,10 @@
         (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
               raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
               plaintext (encryption-test/with-secret-key k1
-                          (encryption/maybe-decrypt raw))
+                          (encryption.impl/maybe-decrypt raw))
               rotated   (encryption-test/with-secret-key k2
-                          (encryption/maybe-encrypt plaintext))]
-          (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
+                          (encryption.impl/maybe-encrypt plaintext))]
+          (is (encryption.impl/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
           (t2/update! :auth_identity ai-id {:credentials rotated}))
         (encryption-test/with-secret-key k2
           (is (true? (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))

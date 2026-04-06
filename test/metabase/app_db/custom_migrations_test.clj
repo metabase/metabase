@@ -2767,7 +2767,7 @@
                                                 :uploads_enabled true
                                                 :uploads_schema_name uploads-schema-name
                                                 :uploads_table_prefix "uploads_"
-                                                :details (mi/encrypted-json-in {:dbname "db_foo"})})
+                                                :details (encryption.impl/maybe-encrypt (json/encode {:dbname "db_foo"}))})
                 insert-table! (fn [db-id name schema active is-upload display-name]
                                 (t2/insert-returning-pk! :metabase_table
                                                          {:db_id db-id

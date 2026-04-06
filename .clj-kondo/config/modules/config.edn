@@ -354,10 +354,7 @@
            encryption
            task
            util}
-   :model-imports #{:model/Field
-                    :model/QueryCache
-                    :model/Secret
-                    :model/Setting}}
+   :model-imports #{:model/Field}}
 
   appearance
   {:team "UX West"
@@ -979,22 +976,31 @@
            util}
    :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
+  encryption
+  {:team "UX West"
+   :api  #{metabase.encryption.core
+           metabase.encryption.impl
+           metabase.encryption.init
+           metabase.encryption.spec}
+   :uses #{config
+           models
+           settings
+           util}
+   :model-imports #{:model/AuthIdentity
+                    :model/Channel
+                    :model/Database
+                    :model/QueryCache
+                    :model/Secret
+                    :model/Setting
+                    :model/User
+                    :model/WorkspaceDatabase}}
+
   entity-retrieval
   {:team "Metabot"
    :api  #{metabase.entity-retrieval.core
            metabase.entity-retrieval.mirror}
    :uses #{premium-features}
    :model-imports #{:model/OsiAiContext}}
-
-  encryption
-  {:team "UX West"
-   :api  #{metabase.encryption.core
-           metabase.encryption.impl
-           metabase.encryption.init}
-   :uses #{config
-           models
-           settings
-           util}}
 
   events
   {:team "DevEx"
@@ -2160,7 +2166,8 @@
            premium-features
            util
            enterprise/advanced-permissions}
-   :model-exports #{:model/Setting}}
+   :model-exports #{:model/Setting}
+   :model-imports #{:model/User}}
 
   settings-rest
   {:team "DevEx"
@@ -2205,6 +2212,7 @@
               analytics-interface
               api
               channel
+              encryption
               formatter
               lib
               metabot
@@ -2328,7 +2336,7 @@
   {:team "UX West"
    :api  #{metabase.system.core
            metabase.system.init}
-   :uses #{appearance settings util}}
+   :uses #{appearance encryption settings util}}
 
   task
   {:team "UX West"
@@ -3370,7 +3378,7 @@
            audit-app
            collections
            driver
-           models
+           encryption
            util
            warehouse-schema
            warehouses
@@ -3424,6 +3432,7 @@
            appearance
            channel
            config
+           encryption
            events
            premium-features
            settings
@@ -3812,7 +3821,7 @@
            sql-tools
            util
            workspaces}
-   :model-exports #{:model/Workspace}
+   :model-exports #{:model/Workspace :model/WorkspaceDatabase}
    :model-imports #{:model/Database
                     :model/Table
                     :model/User}}}

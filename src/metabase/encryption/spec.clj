@@ -19,6 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [methodical.core :as m]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
@@ -30,12 +31,18 @@
 (def ^:private cached-decrypt-then-decode
   (memoize/ttl
    (fn [decrypt v]
-     (try (json/decode+kw (decrypt v))
-          ;; TODO: IMO it would be a LOT SAFER to just fail fast in this case. This way someone can more-or-less
-          ;; immediately detect that they have data in their database that's encrypted with an old token. This matches
-          ;; the old behavior, though.
-          (catch Exception _
-            {})))
+     (let [decrypted (decrypt v)]
+       (try
+         (json/decode+kw decrypted)
+         ;; TODO: IMO it would be a LOT SAFER to just fail fast in this case. This way someone can more-or-less
+         ;; immediately detect that they have data in their database that's encrypted with an old token. This matches
+         ;; the old behavior, though: fall back to the raw value, as `mi/encrypted-json-out` did. Callers that need
+         ;; fail-closed semantics (e.g. MFA credentials) rely on downstream processing rejecting the raw string.
+         (catch Exception e
+           (if (encryption.impl/possibly-encrypted-string? decrypted)
+             (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+             (log/error e "Error parsing JSON"))
+           v))))
    :ttl/threshold (* 60 60 1000)))
 
 (defn- decrypt-then-decode [decrypt v]
@@ -166,10 +173,8 @@
                                                  row conditional-cols))]
     (t2/define-before-insert hook-kw [row]
       (encrypt-conditional-columns row))
-
     (t2/define-before-update hook-kw [row]
       (encrypt-conditional-columns row))
-
     (t2/define-after-select hook-kw [row]
       (reduce-kv (fn [r column {:keys [out encrypt-if?]}]
                    (let [decrypt-fn encryption.impl/maybe-decrypt
@@ -178,5 +183,4 @@
                        (and (some? (get r column)) (encrypt-if? r))
                        (update column (partial out-fn decrypt-fn)))))
                  row conditional-cols))
-
     (derive model hook-kw)))

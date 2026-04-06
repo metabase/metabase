@@ -20,10 +20,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.sso.core :as sso]
-   [metabase.encryption.impl :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -215,7 +215,7 @@
   whether the instance encrypts secrets at rest."
   []
   (api/check-superuser)
-  {:encryption_key_set (encryption/default-encryption-enabled?)
+  {:encryption_key_set (encryption.impl/default-encryption-enabled?)
    :enrolled_count     (t2/count :model/AuthIdentity :provider "totp" :confirmed_at [:not= nil])
    :unenrolled_count   (t2/count :model/User {:where unenrolled-user-where})})
 

@@ -22,7 +22,7 @@
    [metabase.audit-app.impl :as audit-app.impl]
    [metabase.collections.models.collection :as collection]
    [metabase.driver.util :as driver.u]
-   [metabase.models.interface :as mi]
+   [metabase.encryption.spec :as encryption.spec]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field :as schema.field]
    [metabase.warehouses.models.database :as database])
@@ -40,7 +40,7 @@
    #'audit-app.impl/memoized-select-audit-entity*
    #'driver.u/memoized-supports?*
    #'driver.u/memoized-features*
-   #'mi/cached-encrypted-json-out
+   #'encryption.spec/cached-decrypt-then-decode
    #'collection/can-access-root-collection?
    #'collection/visible-collection-ids*
    #'serialization.dump/serialization-sorted-map])
