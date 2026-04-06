@@ -32,7 +32,7 @@
    When `strip-computed-fingerprints?` is true, fingerprints are stripped from columns that have no
    backing Field (`:id` is nil), such as aggregation columns. This prevents spurious result_metadata
    UPDATEs when parameterized queries produce different fingerprints for computed columns."
-  [metadata & {:keys [strip-computed-fingerprints?]}]
+  [metadata]
   (letfn [(remove-underscore-nil-keys
             ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
             ;; dash. Remove the nil value
@@ -52,7 +52,6 @@
               (keyword? m) (u/qualified-name m)
               (map? m) (-> (update-vals m standardize-metadata)
                            (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
-                           (cond-> strip-computed-fingerprints? (dissoc :fingerprint))
                            (remove-underscore-nil-keys))
               (sequential? m) (mapv standardize-metadata m)
               (set? m) (into #{} (map standardize-metadata) m)
@@ -73,6 +72,7 @@
       (when (and actual-metadata
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
+                 (not parameterized?)
                  (not= actual-metadata :none)
                  (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database query))
                  card-id
@@ -81,13 +81,11 @@
                  ;; Only update changed metadata. When the query is parameterized, strip fingerprints
                  ;; from computed columns (no backing Field) before comparing, because those fingerprints
                  ;; are derived from the filtered result rows and vary by parameter value.
-                 (not= (comparable-metadata actual-metadata
-                                            :strip-computed-fingerprints? parameterized?)
+                 (not= (comparable-metadata actual-metadata)
                        (comparable-metadata
                         ;; existing usage -- don't use going forward
                         #_{:clj-kondo/ignore [:deprecated-var]}
-                        (qp.store/miscellaneous-value [::card-stored-metadata])
-                        :strip-computed-fingerprints? parameterized?)))
+                        (qp.store/miscellaneous-value [::card-stored-metadata]))))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
         (t2/update! :model/Card card-id {:result_metadata actual-metadata
