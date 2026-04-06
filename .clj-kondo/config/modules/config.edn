@@ -2829,7 +2829,8 @@
            warehouse-schema
            warehouses}
    :model-exports #{:model/DatabaseRouter}
-   :model-imports #{:model/Database}}
+   :model-imports #{:model/Database
+                    :model/Transform}}
 
   enterprise/dependencies
   {:team "Graphy"
@@ -2956,7 +2957,6 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
-
   enterprise/metabot
   {:team    "Metabot"
    :api     #{metabase-enterprise.metabot.api.routes
@@ -2980,7 +2980,6 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Transform}}
-
 
   enterprise/permission-debug
   {:team "UX West"

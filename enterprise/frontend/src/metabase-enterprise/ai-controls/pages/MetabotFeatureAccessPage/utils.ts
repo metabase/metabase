@@ -2,11 +2,11 @@ import { useDebouncedCallback } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
-  useGetAIControlsGroupPermissionsQuery,
-  useUpdateAIControlsGroupPermissionsMutation,
-} from "metabase-enterprise/api";
+  useGetMetabotPermissionsQuery,
+  useUpdateMetabotPermissionsMutation,
+} from "metabase/api";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
 
 export type GroupTab = "user-groups" | "tenant-groups";
@@ -24,9 +24,8 @@ const PERMISSIONS_SAVE_DEBOUNCE = 500;
 
 export const useMetabotGroupPermissions = () => {
   const { data: permissionsQueryData, error: permissionsQueryError } =
-    useGetAIControlsGroupPermissionsQuery();
-  const [updateGroupPermissions] =
-    useUpdateAIControlsGroupPermissionsMutation();
+    useGetMetabotPermissionsQuery();
+  const [updateMetabotPermissions] = useUpdateMetabotPermissionsMutation();
   const [groupPermissions, setGroupPermissions] = useState<
     MetabotGroupPermission[]
   >([]);
@@ -46,7 +45,7 @@ export const useMetabotGroupPermissions = () => {
 
   const debouncedUpdatePermissions = useDebouncedCallback(async () => {
     try {
-      await updateGroupPermissions({
+      await updateMetabotPermissions({
         permissions: groupPermissions,
       }).unwrap();
     } catch {

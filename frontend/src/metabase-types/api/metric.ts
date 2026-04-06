@@ -35,6 +35,7 @@ export type InstanceFilter = {
 export type TypedProjection = {
   type: "metric" | "measure";
   id: number;
+  "lib/uuid": string;
   projection: unknown[];
 };
 
