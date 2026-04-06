@@ -19,7 +19,7 @@ import type {
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
 export type TranslateContentStringFunction = <
-  MsgidType = string | boolean | null | undefined,
+  MsgidType = string | boolean | string[] | boolean[] | null | undefined,
 >(
   dictionary: DictionaryArray | undefined,
   locale: string | undefined,
@@ -40,6 +40,12 @@ export const translateContentString: TranslateContentStringFunction = (
 ) => {
   if (!locale) {
     return rawMsgid;
+  }
+
+  if (Array.isArray(rawMsgid)) {
+    return rawMsgid.map((msgid) =>
+      translateContentString(dictionary, locale, msgid),
+    );
   }
 
   if (typeof rawMsgid !== "string" && typeof rawMsgid !== "boolean") {
