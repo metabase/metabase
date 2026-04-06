@@ -212,5 +212,4 @@ serdes/meta:
   label: source_card_reference
   model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
-source_card_id: h5F2EjHsRd73Dqqh8sAtd
 type: question
