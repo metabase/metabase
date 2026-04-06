@@ -104,7 +104,9 @@
         (not (str/starts-with? latest-migration "v"))
         changelog-legacy-file
 
-        (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
+        ;; If the ID starts with "v" but doesn't match the versioned pattern (e.g., a release-flag
+        ;; migration ID), some-> short-circuits to nil (falsy) and we fall through to :else.
+        (some-> (re-find #"v(\d+)\..*" latest-migration) second parse-long (< 45))
         changelog-legacy-file
 
         :else
@@ -191,16 +193,20 @@
     (.toString writer)))
 
 (defn unrun-migrations
-  "Returns a list of unrun migrations.
+  "Returns a list of unrun migrations for the given `contexts` (default: all non-RF migrations).
 
   It's a good idea to check to make sure there's actually something to do before running `(migrate :up)` so we can
   skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
   using them.
 
   IMPORTANT: this function takes `data-source` but not `liquibase` because `.listUnrunChangeSets` is buggy. See #38257."
-  [^DataSource data-source]
-  (with-liquibase [liquibase data-source]
-    (.listUnrunChangeSets liquibase nil (LabelExpression.))))
+  ([^DataSource data-source]
+   ;; Contexts("default") causes Liquibase to run changesets with *no* context (all normal migrations)
+   ;; but skip changesets that have an explicit context (i.e. rf-* release-flag changesets).
+   (unrun-migrations data-source (Contexts. "default")))
+  ([^DataSource data-source ^Contexts contexts]
+   (with-liquibase [liquibase data-source]
+     (.listUnrunChangeSets liquibase contexts (LabelExpression.)))))
 
 (defn- migration-lock-exists?
   "Is a migration lock in place for `liquibase`?"
@@ -373,8 +379,8 @@
         (let [to-run-migrations      (unrun-migrations data-source)
               unrun-migrations-count (count to-run-migrations)]
           (if (pos? unrun-migrations-count)
-            (let [^Contexts contexts nil
-                  timer              (u/start-timer)]
+            (let [contexts (Contexts. "default")
+                  timer    (u/start-timer)]
               (log/infof "Running %s migrations ..." unrun-migrations-count)
               (doseq [^ChangeSet change to-run-migrations]
                 (log/tracef "To run migration %s" (.getId change)))
@@ -388,14 +394,15 @@
   ([liquibase]
    (update-with-change-log liquibase {}))
   ([^Liquibase liquibase
-    {:keys [^List change-set-filters exec-listener]
-     :or {change-set-filters []}}]
+    {:keys [^List change-set-filters exec-listener ^Contexts contexts]
+     :or {change-set-filters []
+          contexts           (Contexts. "default")}}]
    (assert-locked liquibase)
    (let [change-log     (.getDatabaseChangeLog liquibase)
          database       (.getDatabase liquibase)
          log-iterator   (ChangeLogIterator. change-log ^"[Lliquibase.changelog.filter.ChangeSetFilter;" (into-array ChangeSetFilter change-set-filters))
          update-visitor (UpdateVisitor. database ^ChangeExecListener exec-listener)
-         runtime-env    (RuntimeEnvironment. database (Contexts.) nil)]
+         runtime-env    (RuntimeEnvironment. database contexts nil)]
      (.run ^ChangeLogIterator log-iterator update-visitor runtime-env))))
 
 (mu/defn force-migrate-up-if-needed!
@@ -446,6 +453,44 @@
           (finally
             (doseq [[^ChangeSet change-set fail-on-error?] fail-on-errors]
               (.setFailOnError change-set fail-on-error?))))))))
+
+;;; ---- Release flag migrations ----
+
+(defn- enabled-rf-contexts
+  "Returns a seq of Liquibase context name strings for each enabled RF_ environment variable.
+  Only reads from the OS environment — not JVM system properties or app-defaults — so migrations
+  cannot be accidentally enabled via other config mechanisms.
+
+  RF_JOKE_OF_THE_DAY=true -> context \"rf-joke-of-the-day\""
+  []
+  (seq (for [[k v] (System/getenv)
+             :when (and (str/starts-with? k "RF_")
+                        (= "true" (str/lower-case (str/trim v))))]
+         (-> k (subs 3) str/lower-case (str/replace "_" "-") (->> (str "rf-"))))))
+
+(defn run-release-flag-migrations-if-needed!
+  "Run any unrun release-flag migrations for each enabled RF_ environment variable.
+
+  Release-flag changesets live in 'migrations/release-flags/' alongside normal migrations and are
+  protected by a Liquibase context matching their flag name. Normal updates pass Contexts(\"default\")
+  which skips any changeset with an explicit context, so RF changesets never run accidentally.
+
+  Naming convention: a changeset must declare 'context: rf-<flag-name>' where <flag-name> is the
+  part of the env var after 'RF_', lowercased with underscores replaced by dashes.
+
+  Example: RF_JOKE_OF_THE_DAY=true runs all changesets with 'context: rf-joke-of-the-day'."
+  [^Liquibase liquibase ^DataSource data-source]
+  (doseq [ctx (enabled-rf-contexts)]
+    (let [contexts (Contexts. ctx)]
+      ;; Use a fresh Liquibase instance for the pre-lock check to avoid the .listUnrunChangeSets
+      ;; caching bug. See #38257. .update is idempotent so there is no correctness risk here.
+      (when (seq (unrun-migrations data-source contexts))
+        (log/infof "Running release-flag migrations for context: %s" ctx)
+        (with-scope-locked liquibase
+          (.update liquibase contexts)
+          (log/infof "Completed release-flag migrations for %s" ctx))))))
+
+;;; ---- Legacy / consolidated migrations ----
 
 (def ^:private legacy-migrations-file "migrations/000_legacy_migrations.yaml")
 (def ^:private update001-migrations-file "migrations/001_update_migrations.yaml")

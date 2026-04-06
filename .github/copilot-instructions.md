@@ -52,4 +52,8 @@ When reviewing code, use these emoji prefixes to categorize feedback:
 - For non-critical issues, link to the specific line from the summary instead
 - Delete all stale comments and summaries on each new push or CI run
 
+## Release flags
+
+All code adding or using release flags should follow the best practices outlined in `docs/developers-guide/release-flags.md`.
+
 Language-specific rules are in `.github/instructions/*.instructions.md`.

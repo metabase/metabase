@@ -114,6 +114,7 @@
    "QueryField"
    "QueryTable"
    "RecentViews"
+   "ReleaseFlag"
    "ReplacementRun"
    "RemoteSyncObject"
    "RemoteSyncTask"

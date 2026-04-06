@@ -1014,6 +1014,13 @@
                     :model/QueryExecution
                     :model/User}}
 
+  joke-of-the-day
+  {:team "UX West"
+   :api  #{metabase.joke-of-the-day.api}
+   :uses #{api
+           release-flags
+           util}}
+
   legacy-mbql
   {:team "Querying Platform"
    :api  #{metabase.legacy-mbql.normalize
@@ -1758,6 +1765,15 @@
                     :model/QueryExecution
                     :model/Table}}
 
+  release-flags
+  {:team "UX West"
+   :api  #{metabase.release-flags.api
+           metabase.release-flags.core
+           metabase.release-flags.init}
+   :uses #{api
+           task
+           util}}
+
   remote-sync
   {:team "UX West"
    :api  #{metabase.remote-sync.core
@@ -1776,7 +1792,7 @@
            api
            config
            embedding
-           permissions ; FIXME
+           permissions                  ; FIXME
            session
            settings
            users
@@ -1902,6 +1918,7 @@
            oauth-server
            premium-features
            query-processor
+           release-flags
            request
            session
            settings
@@ -1917,7 +1934,7 @@
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
-           metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
+           metabase.session.settings}   ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
            app-db
            auth-identity
