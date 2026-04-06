@@ -6,6 +6,7 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { Box, Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
+import { trackSecurityCenterPageViewed } from "../../analytics";
 import {
   NotificationConfigProvider,
   useNotificationConfigState,
@@ -94,6 +95,10 @@ export function SecurityCenterPage() {
   }, [isPolling, lastCheckedAt, sendToast]);
 
   const isSyncInProgress = isSyncing || isPolling;
+
+  useEffect(() => {
+    trackSecurityCenterPageViewed();
+  }, []);
 
   const currentVersion = version?.tag ?? "";
   const targetVersion = getTargetUpgradeVersion(advisories);
