@@ -21,7 +21,7 @@ export function usePurchaseMetabotAi(
       }
 
       await purchaseCloudAddOn({
-        product_type: "metabase-ai-metered",
+        product_type: "metabase-ai-managed",
         terms_of_service: hasAcceptedTerms,
       }).unwrap();
     },

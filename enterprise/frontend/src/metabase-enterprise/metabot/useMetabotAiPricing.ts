@@ -16,7 +16,7 @@ type MetabotAiPricing = {
   unitCount: number;
 };
 
-const METABASE_AI_PRODUCT_TYPE = "metabase-ai-metered";
+const METABASE_AI_PRODUCT_TYPE = "metabase-ai-managed";
 
 export function useMetabotAiPricing(
   shouldLoadMetabaseBilling: boolean,

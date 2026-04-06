@@ -30,7 +30,7 @@ import { usePurchaseMetabotAi } from "../../usePurchaseMetabotAi";
 
 import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
-const METABASE_AI_PROVIDER_FEATURE = "metabase-ai-provider";
+const METABASE_AI_PROVIDER_FEATURE = "metabase-ai-managed";
 const METABASE_HOSTING_TERMS_URL = "https://www.metabase.com/license/hosting";
 
 type MetabaseAIProviderSetupProps = {

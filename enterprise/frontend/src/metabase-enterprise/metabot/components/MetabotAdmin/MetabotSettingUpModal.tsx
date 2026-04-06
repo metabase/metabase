@@ -15,7 +15,7 @@ import {
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-const METABASE_AI_PROVIDER_FEATURE = "metabase-ai-provider";
+const METABASE_AI_PROVIDER_FEATURE = "metabase-ai-managed";
 
 export function MetabotSettingUpModal({
   isSavingConfiguration = false,

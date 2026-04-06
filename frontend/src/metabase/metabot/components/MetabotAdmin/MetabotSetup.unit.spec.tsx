@@ -162,8 +162,8 @@ async function setup({
     "llm-metabot-configured?": isConfigured,
     "token-features": createMockTokenFeatures({
       hosting: isHosted,
-      "metabase-ai-provider": tokenStatusFeatures.includes(
-        "metabase-ai-provider",
+      "metabase-ai-managed": tokenStatusFeatures.includes(
+        "metabase-ai-managed",
       ),
     }),
     "token-status": createMockTokenStatus({
@@ -231,7 +231,7 @@ async function setup({
         is_metered: true,
         name: "Metabase AI",
         product_tiers: [],
-        product_type: "metabase-ai-metered",
+        product_type: "metabase-ai-managed",
         short_name: "Metabase AI",
         token_features: [],
         trial_days: null,
@@ -239,14 +239,14 @@ async function setup({
     ]);
 
     fetchMock.post(
-      "path:/api/ee/cloud-add-ons/metabase-ai-metered",
+      "path:/api/ee/cloud-add-ons/metabase-ai-managed",
       purchaseCloudAddOnResponse,
     );
     fetchMock.post("path:/api/premium-features/token/refresh", () => {
       sessionProperties["token-features"] = createMockTokenFeatures({
         hosting: isHosted,
-        "metabase-ai-provider": refreshedTokenStatusFeatures.includes(
-          "metabase-ai-provider",
+        "metabase-ai-managed": refreshedTokenStatusFeatures.includes(
+          "metabase-ai-managed",
         ),
       });
       sessionProperties["token-status"] = createMockTokenStatus({
@@ -537,7 +537,7 @@ describe("MetabotSetup", () => {
       savedProviderValue: "anthropic/claude-haiku-4-5",
       isConfigured: true,
       isStoreUser: false,
-      tokenStatusFeatures: ["metabase-ai-provider"],
+      tokenStatusFeatures: ["metabase-ai-managed"],
       updateResponse: {
         value: "metabase/anthropic/claude-sonnet-4-6",
         models: DEFAULT_RESPONSES.metabase.models,
@@ -566,7 +566,7 @@ describe("MetabotSetup", () => {
 
     expect(
       fetchMock.callHistory.called(
-        "path:/api/ee/cloud-add-ons/metabase-ai-metered",
+        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
       ),
     ).toBe(false);
 
@@ -592,7 +592,7 @@ describe("MetabotSetup", () => {
         isConfigured: false,
         isStoreUser: true,
         tokenStatusFeatures: [],
-        refreshedTokenStatusFeatures: ["metabase-ai-provider"],
+        refreshedTokenStatusFeatures: ["metabase-ai-managed"],
         updateResponse: {
           value: "metabase/anthropic/claude-sonnet-4-6",
           models: DEFAULT_RESPONSES.metabase.models,
@@ -623,13 +623,13 @@ describe("MetabotSetup", () => {
       await waitFor(() => {
         expect(
           fetchMock.callHistory.called(
-            "path:/api/ee/cloud-add-ons/metabase-ai-metered",
+            "path:/api/ee/cloud-add-ons/metabase-ai-managed",
           ),
         ).toBe(true);
       });
 
       const request = fetchMock.callHistory
-        .calls("path:/api/ee/cloud-add-ons/metabase-ai-metered")
+        .calls("path:/api/ee/cloud-add-ons/metabase-ai-managed")
         .find((call) => call.request?.method === "POST");
 
       expect(request?.options?.body).toBe(

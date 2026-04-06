@@ -24,6 +24,7 @@
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
+   [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
    [metabase-enterprise.permission-debug.api]
    [metabase-enterprise.remote-sync.api]

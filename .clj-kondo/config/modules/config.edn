@@ -2966,6 +2966,7 @@
               lib-be
               metabot
               models
+              permissions
               premium-features
               settings
               task

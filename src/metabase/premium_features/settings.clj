@@ -300,9 +300,9 @@
   "Should we allow users to use workspaces?"
   :workspaces)
 
-(define-premium-feature ^{:added "0.60.0"} enable-metabase-ai-provider?
+(define-premium-feature ^{:added "0.60.0"} enable-metabase-ai-managed?
   "Should we allow users to use the Metabase-managed AI provider?"
-  :metabase-ai-provider)
+  :metabase-ai-managed)
 
 (define-premium-feature enable-writable-connection?
   "Should we allow admins to configure separate write connection credentials?"
@@ -338,7 +338,7 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :metabase-ai-provider           (enable-metabase-ai-provider?)
+   :metabase-ai-managed            (enable-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :remote_sync                    (enable-remote-sync?)

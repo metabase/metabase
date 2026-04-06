@@ -124,7 +124,6 @@
 
 (defsetting llm-proxy-base-url
   (deferred-tru "Base URL for the LLM proxy. When set, all LLM requests are routed through this proxy and authenticated with the instance token instead of provider API keys.")
-  :feature          :metabase-ai-provider
   :encryption       :no
   :visibility       :internal
   :default          nil
