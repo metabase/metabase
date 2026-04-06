@@ -290,15 +290,14 @@
 
 (defn- has-perm-for-table?
   [perm-type table-id->required-perm db-id]
-  (every? true?
-          (vals (into {} (for [[table-id required-perm] table-id->required-perm]
-                           [table-id (boolean
-                                      (perms/user-has-permission-for-table?
-                                       api/*current-user-id*
-                                       perm-type
-                                       required-perm
-                                       db-id
-                                       table-id))])))))
+  (every? (fn [[table-id required-perm]]
+            (perms/user-has-permission-for-table?
+             api/*current-user-id*
+             perm-type
+             required-perm
+             db-id
+             table-id))
+          table-id->required-perm))
 
 (defn- card
   [database-id card-id]
@@ -414,17 +413,18 @@
   queries they wouldn't be allowed to run!"
   [query :- :map]
   {:pre [(map? query)]}
-  (when-not (can-run-query? query)
-    (let [required-perms (try
-                           (required-perms-for-query query :throw-exceptions? true)
-                           (catch Throwable e
-                             e))]
-      (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                      {:status-code    403
-                       :query          query
-                       :required-perms (if (instance? Throwable required-perms)
-                                         :error
-                                         required-perms)
-                       :actual-perms   @api/*current-user-permissions-set*}
-                      (when (instance? Throwable required-perms)
-                        required-perms))))))
+  (let [query (dissoc query :query-permissions/perms)]
+    (when-not (can-run-query? query)
+      (let [required-perms (try
+                             (required-perms-for-query query :throw-exceptions? true)
+                             (catch Throwable e
+                               e))]
+        (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                        {:status-code    403
+                         :query          query
+                         :required-perms (if (instance? Throwable required-perms)
+                                           :error
+                                           required-perms)
+                         :actual-perms   @api/*current-user-permissions-set*}
+                        (when (instance? Throwable required-perms)
+                          required-perms)))))))
