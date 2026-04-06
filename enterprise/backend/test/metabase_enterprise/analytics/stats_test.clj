@@ -1,10 +1,12 @@
 (ns metabase-enterprise.analytics.stats-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.analytics.stats :as ee-stats]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.analytics.stats :as stats]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -42,7 +44,7 @@
     (mdb/setup-db!)
     (testing "with no transforms"
       (is (=? {:transforms 0 :transform_runs_last_24h 0}
-              (ee-stats/ee-transform-metrics))))
+              (#'stats/transform-metrics))))
     (testing "with transforms"
       (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
                                                           :table "test_table"}
@@ -52,7 +54,7 @@
                      :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 1))
                                             :transform_id (:id transform)}]
         (is (=? {:transforms 1 :transform_runs_last_24h 1}
-                (ee-stats/ee-transform-metrics))))
+                (#'stats/transform-metrics))))
       (testing "with old transform runs"
         (mt/with-temp [:model/Transform transform {:target {:database (mt/id)
                                                             :table "test_table"}
@@ -61,4 +63,4 @@
                                                             :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}
                        :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 25))
                                               :transform_id (:id transform)}]
-          (is (zero? (:transform_runs_last_24h (ee-stats/ee-transform-metrics)))))))))
+          (is (zero? (:transform_runs_last_24h (#'stats/transform-metrics)))))))))
