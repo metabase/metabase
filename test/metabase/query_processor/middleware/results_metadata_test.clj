@@ -504,3 +504,98 @@
                                                                 :description    "The date and time an order was submitted."
                                                                 :display_name   "Created At: Quarter"
                                                                 :effective_type :type/DateTime}])))))
+
+(deftest aggregation-fingerprints-change-with-different-filters-test
+  ;; Aggregation columns (count, sum, etc.) have no backing Field, so their fingerprints are
+  ;; computed from result rows. When the query itself changes (different filter baked in),
+  ;; different rows produce different fingerprints and result_metadata is updated.
+  ;; This demonstrates the mechanism that causes thrashing when combined with parameterized queries.
+  (mt/with-temp [:model/Card {card-id :id}
+                 {:dataset_query   (mt/mbql-query orders
+                                     {:aggregation [[:count] [:sum $total]]
+                                      :breakout    [$product_id]})
+                  :result_metadata nil}]
+    (let [update-count (atom 0)
+          run-with-param!
+          (fn [product-id]
+            (let [card  (t2/select-one :model/Card :id card-id)]
+              (qp.store/with-metadata-provider (:database_id card)
+                (middleware.results-metadata/store-previous-result-metadata! card)
+                (let [;; Modify the query in place:
+                      query (assoc (mt/mbql-query orders
+                                     {:aggregation [[:count] [:sum $total]]
+                                      :breakout    [$product_id]
+                                      :filter      [:= $product_id product-id]})
+                                   :info {:executed-by (mt/user->id :rasta)
+                                          :context     :question
+                                          :card-id     card-id})]
+                  (qp/process-query (qp/userland-query query)))))
+            (t2/select-one-fn :result_metadata :model/Card :id card-id))]
+      ;; First run establishes baseline metadata
+      (run-with-param! 1)
+      (reset! update-count 0)
+      ;; Second run with different filter — metadata should update because the query changed
+      (let [meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
+            _           (run-with-param! 50)
+            meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)
+            agg-fp      (fn [m] (->> m
+                                     (filter #(nil? (:id %)))
+                                     (mapv (juxt :name :fingerprint))))]
+        (is (not= meta-before meta-after)
+            "result_metadata should update when the query changes")
+        (is (not= (agg-fp meta-before) (agg-fp meta-after))
+            "Aggregation column fingerprints should differ for different queries"))
+      ;; Third run with original filter — metadata updates again
+      (let [meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
+            _           (run-with-param! 1)
+            meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+        (is (not= meta-before meta-after)
+            "result_metadata should update when the query changes back")))))
+
+(deftest parameterized-aggregation-queries-do-not-thrash-result-metadata-test
+  ;; When parameters are applied via :parameters (as in embed dashcard queries), the fix prevents result_metadata
+  ;; thrashing on aggregation columns by stripping computed fingerprints from the comparison.
+  (mt/with-temp [:model/Card {card-id :id}
+                 {:dataset_query   (mt/mbql-query orders
+                                     {:aggregation [[:count] [:sum $total]]
+                                      :breakout    [$product_id]})
+                  :result_metadata nil}]
+    (let [run-with-parameters!
+          (fn [product-id]
+            (let [card (t2/select-one :model/Card :id card-id)]
+              (qp.store/with-metadata-provider (:database_id card)
+                (middleware.results-metadata/store-previous-result-metadata! card)
+                (let [query (-> (mt/mbql-query orders
+                                  {:aggregation [[:count] [:sum $total]]
+                                   :breakout    [$product_id]})
+                                (assoc :parameters [{:type   :id
+                                                     :target [:dimension (mt/$ids orders $product_id)]
+                                                     :value  [product-id]}])
+                                (assoc :info {:executed-by (mt/user->id :rasta)
+                                              :context     :question
+                                              :card-id     card-id}))]
+                  (qp/process-query (qp/userland-query query))))))
+          result-fingerprints (fn [result]
+                                (->> (get-in result [:data :results_metadata :columns])
+                                     (filter #(nil? (:id %)))
+                                     (mapv (juxt :name :fingerprint))))
+          ;; First run establishes baseline metadata
+          result-1            (run-with-parameters! 1)
+          meta-before         (t2/select-one-fn :result_metadata :model/Card :id card-id)
+          ;; Second run with different parameter
+          result-2            (run-with-parameters! 50)
+          meta-after          (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+      (let [stored-agg-fps (into [] (comp (filter #(nil? (:id %)))
+                                          (map :fingerprint))
+                                 meta-before)]
+        (is (every? some? stored-agg-fps)
+            "aggregation columns in stored result_metadata should have fingerprints"))
+      (is (= meta-before meta-after)
+          "result_metadata should not thrash for parameterized queries with aggregation columns")
+      (is (some? (result-fingerprints result-1))
+          "first result should have fingerprints")
+      (is (some? (result-fingerprints result-2))
+          "second result should have fingerprints")
+      (is (not= (result-fingerprints result-1)
+                (result-fingerprints result-2))
+          "result fingerprints should differ between parameters — they're computed per-query, just not written back"))))
