@@ -1,0 +1,19 @@
+name: LAST_LOGIN
+display_name: Last Login
+created_at: '2026-04-06T19:22:33.614285Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, PUBLIC, V_USERS]
+database_type: TIMESTAMP WITH TIME ZONE
+base_type: type/DateTimeWithLocalTZ
+effective_type: type/DateTimeWithLocalTZ
+dimensions: []
+position: 8
+custom_position: 0
+database_position: 8
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: PUBLIC, model: Schema}
+- {id: V_USERS, model: Table}
+- {id: LAST_LOGIN, model: Field}
+database_is_generated: false
+database_is_nullable: true

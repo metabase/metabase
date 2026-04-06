@@ -1,0 +1,20 @@
+name: STATUS
+display_name: Status
+created_at: '2026-04-06T19:22:33.894357Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, PUBLIC, V_TASKS]
+database_type: CHARACTER VARYING
+base_type: type/Text
+effective_type: type/Text
+dimensions: []
+position: 2
+custom_position: 0
+database_position: 2
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: PUBLIC, model: Schema}
+- {id: V_TASKS, model: Table}
+- {id: STATUS, model: Field}
+database_is_generated: false
+database_is_nullable: true

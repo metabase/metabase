@@ -1,0 +1,20 @@
+name: USER_ID
+display_name: User ID
+created_at: '2026-04-06T19:22:33.96711Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, PUBLIC, V_AUDIT_LOG]
+database_type: INTEGER
+base_type: type/Integer
+effective_type: type/Integer
+dimensions: []
+position: 4
+custom_position: 0
+database_position: 4
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: PUBLIC, model: Schema}
+- {id: V_AUDIT_LOG, model: Table}
+- {id: USER_ID, model: Field}
+database_is_generated: false
+database_is_nullable: true

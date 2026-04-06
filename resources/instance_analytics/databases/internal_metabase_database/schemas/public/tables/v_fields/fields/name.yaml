@@ -1,0 +1,20 @@
+name: NAME
+display_name: Name
+created_at: '2026-04-06T19:22:34.205726Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, PUBLIC, V_FIELDS]
+database_type: CHARACTER VARYING
+base_type: type/Text
+effective_type: type/Text
+dimensions: []
+position: 4
+custom_position: 0
+database_position: 4
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: PUBLIC, model: Schema}
+- {id: V_FIELDS, model: Table}
+- {id: NAME, model: Field}
+database_is_generated: false
+database_is_nullable: true

@@ -1,0 +1,19 @@
+name: STARTED_AT
+display_name: Started At
+created_at: '2026-04-06T19:22:33.894357Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, PUBLIC, V_TASKS]
+database_type: TIMESTAMP WITH TIME ZONE
+base_type: type/DateTimeWithLocalTZ
+effective_type: type/DateTimeWithLocalTZ
+dimensions: []
+position: 4
+custom_position: 0
+database_position: 4
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: PUBLIC, model: Schema}
+- {id: V_TASKS, model: Table}
+- {id: STARTED_AT, model: Field}
+database_is_generated: false
+database_is_nullable: true

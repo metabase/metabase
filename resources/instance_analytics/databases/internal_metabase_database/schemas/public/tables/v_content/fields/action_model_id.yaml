@@ -1,0 +1,20 @@
+name: ACTION_MODEL_ID
+display_name: Action Model ID
+created_at: '2026-04-06T19:22:33.561354Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, PUBLIC, V_CONTENT]
+database_type: INTEGER
+base_type: type/Integer
+effective_type: type/Integer
+dimensions: []
+position: 14
+custom_position: 0
+database_position: 14
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: PUBLIC, model: Schema}
+- {id: V_CONTENT, model: Table}
+- {id: ACTION_MODEL_ID, model: Field}
+database_is_generated: false
+database_is_nullable: true

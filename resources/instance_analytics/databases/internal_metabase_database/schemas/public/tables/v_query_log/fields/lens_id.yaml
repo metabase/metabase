@@ -1,0 +1,20 @@
+name: LENS_ID
+display_name: Lens ID
+created_at: '2026-04-06T19:22:34.065613Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, PUBLIC, V_QUERY_LOG]
+database_type: CHARACTER VARYING
+base_type: type/Text
+effective_type: type/Text
+dimensions: []
+position: 20
+custom_position: 0
+database_position: 20
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: PUBLIC, model: Schema}
+- {id: V_QUERY_LOG, model: Table}
+- {id: LENS_ID, model: Field}
+database_is_generated: false
+database_is_nullable: true

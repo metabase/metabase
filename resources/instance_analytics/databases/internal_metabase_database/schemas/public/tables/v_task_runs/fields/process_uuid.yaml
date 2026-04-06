@@ -1,0 +1,20 @@
+name: PROCESS_UUID
+display_name: Process UUID
+created_at: '2026-04-06T19:22:33.793564Z'
+visibility_type: normal
+table_id: [Internal Metabase Database, PUBLIC, V_TASK_RUNS]
+database_type: CHARACTER VARYING
+base_type: type/Text
+effective_type: type/Text
+dimensions: []
+position: 9
+custom_position: 0
+database_position: 9
+has_field_values: auto-list
+serdes/meta:
+- {id: Internal Metabase Database, model: Database}
+- {id: PUBLIC, model: Schema}
+- {id: V_TASK_RUNS, model: Table}
+- {id: PROCESS_UUID, model: Field}
+database_is_generated: false
+database_is_nullable: true
