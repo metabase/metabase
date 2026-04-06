@@ -20,7 +20,10 @@ import {
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockUser,
+  createMockUserMetabotPermissions,
+} from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -169,6 +172,10 @@ export function setup(
   fetchMock.get(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: promptSuggestions, offset: 0, limit: 3, total: 3 },
+  );
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    createMockUserMetabotPermissions(),
   );
   setupDatabaseListEndpoint([]);
 

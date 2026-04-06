@@ -1,6 +1,9 @@
 import { Route } from "react-router";
 
-import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
+import {
+  setupCollectionByIdEndpoint,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockCollection,
@@ -17,6 +20,7 @@ type SetupOpts = {
 function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
   const transform = createMockTransform({ id: 1, name: "Test Transform" });
 
+  setupUserMetabotPermissionsEndpoint();
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root" })],
   });

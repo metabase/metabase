@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.snippets
   (:require
    [clojure.string :as str]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.native-query-snippets.core :as snippets]
    [metabase.util.malli :as mu]))
@@ -55,6 +56,7 @@
     result))
 
 (mu/defn ^{:tool-name    "list_snippets"
+           :scope        scope/agent-snippets-read
            :capabilities #{:feature-snippets}}
   list-snippets-tool
   "List all SQL snippets available in the Metabase instance.
@@ -62,10 +64,11 @@
   Use this tool before editing or creating SQL transforms to understand what
   snippets are available. If any snippets may be relevant to the user's request,
   fetch their content using the get_snippet_details tool."
-  [_args :- [:maybe [:map {:closed true}]]]
+  [_args :- [:map {:closed true}]]
   (add-output (get-snippets {}) format-snippet-list-output))
 
 (mu/defn ^{:tool-name    "get_snippet_details"
+           :scope        scope/agent-snippets-read
            :capabilities #{:feature-snippets}}
   get-snippet-details-tool
   "Get the full details of a SQL snippet including its content.

@@ -1,5 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
@@ -39,6 +40,8 @@ export const setup = ({
       "token-features": createMockTokenFeatures(tokenFeatures),
     }),
   });
+
+  setupUserMetabotPermissionsEndpoint();
 
   enterprisePlugins.forEach((plugin) => {
     setupEnterpriseOnlyPlugin(plugin);
