@@ -334,4 +334,4 @@
                 (u/pprint-to-str query))
     (qp.store/with-metadata-provider (:database_id card)
       (qp.results-metadata/store-previous-result-metadata! card)
-      (runner (assoc query :info info) info)))))
+      (runner (assoc query :info info) info))))
