@@ -700,10 +700,13 @@
   "Fetches the legacy_input field from a result's metadata and attaches a score based on the
   embedding distance."
   [weights scorers row]
-  (-> (get-in row [:metadata :legacy_input])
-      (assoc
-       :score (:total_score row 1.0)
-       :all-scores (scoring/all-scores weights scorers row))))
+  (let [raw (get-in row [:metadata :legacy_input])
+        ;; legacy_input may be a pre-encoded JSON string (from ->document) stored as a string
+        ;; value inside the metadata JSONB blob; decode it back to a map if so.
+        legacy-input (cond-> raw (string? raw) (json/decode true))]
+    (assoc legacy-input
+           :score (:total_score row 1.0)
+           :all-scores (scoring/all-scores weights scorers row))))
 
 (defn- decode-metadata
   "Decode `row`s `:metadata`."
