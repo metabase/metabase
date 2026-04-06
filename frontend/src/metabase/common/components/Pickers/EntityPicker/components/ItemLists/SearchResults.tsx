@@ -5,7 +5,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
-import { getIcon } from "metabase/utils/icon";
 import {
   Box,
   Ellipsified,
@@ -15,6 +14,7 @@ import {
   SegmentedControl,
   Text,
 } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
 
 import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
 import { useOmniPickerContext } from "../../context";

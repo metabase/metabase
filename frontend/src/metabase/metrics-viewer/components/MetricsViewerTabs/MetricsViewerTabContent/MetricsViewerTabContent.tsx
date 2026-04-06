@@ -2,9 +2,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Center, Flex, Stack } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
-import { Center, Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";

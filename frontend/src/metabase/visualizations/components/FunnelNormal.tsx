@@ -3,6 +3,8 @@ import Color from "color";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { Ellipsified } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import {
   formatChangeWithSign,
   formatNumber,
@@ -10,8 +12,6 @@ import {
 } from "metabase/utils/formatting";
 import { formatNullable } from "metabase/utils/formatting/nullable";
 import { isNotNull } from "metabase/utils/types";
-import { Ellipsified } from "metabase/ui";
-import { color } from "metabase/ui/colors";
 import {
   FunnelNormalRoot,
   FunnelStart,

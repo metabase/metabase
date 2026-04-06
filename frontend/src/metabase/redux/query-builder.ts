@@ -1,8 +1,8 @@
 import { createAction } from "redux-actions";
 
+import { UserApi } from "metabase/services";
 import { createThunkAction } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
-import { UserApi } from "metabase/services";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";

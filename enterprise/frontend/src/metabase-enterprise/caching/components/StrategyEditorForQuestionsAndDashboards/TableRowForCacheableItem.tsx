@@ -4,9 +4,9 @@ import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { MaybeLink } from "metabase/common/components/Badge/Badge.styled";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { Link } from "metabase/common/components/Link";
+import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
 import { getIcon } from "metabase/utils/icon";
 import * as Urls from "metabase/utils/urls";
-import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 
 import type { CacheableItem, UpdateTarget } from "../types";

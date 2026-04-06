@@ -9,7 +9,6 @@ import {
   updateCardEnableEmbedding,
 } from "metabase/api";
 import { TimelineEvents } from "metabase/entities/timeline-events";
-import type { Deferred } from "metabase/utils/promise";
 import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
   API_UPDATE_QUESTION,
@@ -49,6 +48,7 @@ import {
   SOFT_RELOAD_CARD,
   ZOOM_IN_ROW,
 } from "metabase/redux/query-builder";
+import type { Deferred } from "metabase/utils/promise";
 import type {
   Card,
   CollectionItemModel,

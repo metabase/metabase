@@ -5,8 +5,8 @@ import {
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
-import { METAKEY } from "metabase/utils/browser";
 import { ActionIcon, type ActionIconProps, Tooltip } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
 
 import { trackMetabotChatOpened } from "../analytics";
 

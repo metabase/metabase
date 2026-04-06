@@ -17,8 +17,6 @@ import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useSetting } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import { getIcon } from "metabase/utils/icon";
-import { useSelector } from "metabase/utils/redux";
 import {
   Box,
   Ellipsified,
@@ -29,6 +27,8 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
+import { useSelector } from "metabase/utils/redux";
 import type {
   CollectionItem,
   SchemaName,

@@ -6,9 +6,9 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { Box, Ellipsified, Flex } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { Box, Ellipsified, Flex } from "metabase/ui";
 import type { TaskRun } from "metabase-types/api";
 
 import { formatTaskRunType, renderTaskRunCounters } from "../../utils";

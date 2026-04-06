@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
-import { trackSchemaEvent } from "metabase/utils/analytics";
-import { isWithinIframe } from "metabase/utils/iframe";
 import { setGuestTokenFetchError } from "embedding-sdk-bundle/store/guest-embed";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { trackSchemaEvent } from "metabase/utils/analytics";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {

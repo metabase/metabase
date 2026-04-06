@@ -6,10 +6,10 @@ import { usePrevious } from "react-use";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
+import { selectTab } from "metabase/redux/dashboard";
 import { IS_EMBED_PREVIEW } from "metabase/utils/embed";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { selectTab } from "metabase/redux/dashboard";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 import {

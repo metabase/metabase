@@ -4,8 +4,8 @@
 import Color from "color";
 
 import { alpha } from "metabase/ui/colors";
-import { isNumber } from "metabase/utils/types";
 import { getSafeColor } from "metabase/ui/colors/safe-color";
+import { isNumber } from "metabase/utils/types";
 import type {
   ColumnFormattingOperator,
   ColumnFormattingSetting,

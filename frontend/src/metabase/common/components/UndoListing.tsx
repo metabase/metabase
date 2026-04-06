@@ -21,9 +21,9 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
+import { Ellipsified, Portal, Progress } from "metabase/ui";
 import { capitalize, inflect } from "metabase/utils/formatting";
 import { useDispatch, useSelector } from "metabase/utils/redux";
-import { Ellipsified, Portal, Progress } from "metabase/ui";
 import type { Undo } from "metabase-types/store/undo";
 
 import CS from "./UndoListing.module.css";

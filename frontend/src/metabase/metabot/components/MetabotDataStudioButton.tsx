@@ -6,10 +6,10 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { getLocation } from "metabase/selectors/routing";
+import { ActionIcon, Tooltip } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { ActionIcon, Tooltip } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
 

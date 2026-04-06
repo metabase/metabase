@@ -8,8 +8,8 @@ import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
-import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 
 import type { SizeToFitOptions } from "./SizeToFitModifier";
 import { sizeToFitModifierFn } from "./SizeToFitModifier";

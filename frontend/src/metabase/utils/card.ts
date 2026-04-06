@@ -1,9 +1,9 @@
+import querystring from "querystring";
+
 import _ from "underscore";
 
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
-import querystring from "querystring";
-
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
 
