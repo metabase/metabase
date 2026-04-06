@@ -119,7 +119,7 @@
   {:name        table-name
    :schema      nil
    :description nil
-   :is_writable nil})
+   :is_writable true})
 
 (deftest timestamp-test-db
   (let [driver :sqlite]
