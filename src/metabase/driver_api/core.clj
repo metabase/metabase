@@ -172,6 +172,7 @@
  qp.util/default-query->remark
  qp.util/query->remark
  qp.wrap-value-literals/wrap-value-literals-in-mbql
+ qp.wrap-value-literals/wrap-value-literals-in-mbql5
  qp.writeback/execute-write-sql!
  qp/process-query
  secrets/clean-secret-properties-from-details

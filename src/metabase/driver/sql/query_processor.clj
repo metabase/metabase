@@ -303,7 +303,7 @@
 
 (defmulti mbql-clause-with-opts
   "Returns an MBQL clause in the desired MBQL format of the driver."
-  {:added "0.60.0" :arglists '([driver tag opts & args])}
+  {:added "0.61.0" :arglists '([driver tag opts & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -733,7 +733,7 @@
 
 (defmulti expression-by-name
   "Gets an expression from a query or stage (`*inner-query`) by name."
-  {:added "0.60.0" :arglists '([driver inner-query expression-name])}
+  {:added "0.61.0" :arglists '([driver inner-query expression-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1033,7 +1033,7 @@
 
 (defmulti over-order-by->honeysql
   "Returns the HoneySQL for an order by clause in the over clause of a window function."
-  {:added "0.60.0" :arglists '([driver aggregations order-by])}
+  {:added "0.61.0" :arglists '([driver aggregations order-by])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1070,7 +1070,7 @@
 
 (defmulti breakout-options-index
   "Returns the index of options in a breakout clause."
-  {:added "0.60.0", :arglists '([driver])}
+  {:added "0.61.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1596,7 +1596,7 @@
 
 (defmulti aggregation-name
   "Returns the name of an aggregation clause."
-  {:added "0.60.0" :arglists '([driver inner-query ag-clause])}
+  {:added "0.61.0" :arglists '([driver inner-query ag-clause])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -1705,7 +1705,7 @@
 
 (defmulti clause-value-idx
   "Returns the index of the value in a value clause."
-  {:added "0.60.0" :arglists '([driver])}
+  {:added "0.61.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -2201,7 +2201,7 @@
 
 (defmulti compile-mbql
   "Compiles an MBQL inner query to HoneySQL."
-  {:added "0.60.0" :arglists '([driver mbql])}
+  {:added "0.61.0" :arglists '([driver mbql])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

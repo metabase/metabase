@@ -14,6 +14,11 @@ title: Driver interface changelog
   - `over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
   - `clause-value-idx` - Returns the index of the value in a value clause.
   - `breakout-options-index` - Returns the index of options in a breakout clause.
+  - `field->clause` - Returns an MBQL field clause with the given options.
+  - `to-clause` - Helper to dispatch to `params.ops/to-clause` or `qp.params.ops/to-clause`.
+  - `desugar-filter-clause` - Helper to dispatch to `driver-api/desugar-filter-clause` or `lib/desugar-filter-clause`.
+  - `wrap-value-literals-in-mbql` - Helper to dispatch to `driver-api/wrap-value-literals-in-mbql` or `driver-api/wrap-value-literals-in-mbql5`.
+  - `date-string->filter` - Helper to dispatch to `params.dates/date-string->filter` or `qp.params.dates/date-string->filter`.
   These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should not need to
   implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent.
   See the `:h2` driver for an example. These methods will eventually be deprecated in favour of the `:sql-mbql5`
@@ -21,6 +26,8 @@ title: Driver interface changelog
 
 - Added a `driver` parameter to `sql.qp/maybe-cast-uuid-for-text-compare`. Any drivers that call this function should
   update it to pass in the `driver` parameter now. An example is in the Snowflake driver's `string-filter` function.
+
+## Metabase 0.60.0
 
 - Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.
   It should return the query if it is valid and throw otherwise.
