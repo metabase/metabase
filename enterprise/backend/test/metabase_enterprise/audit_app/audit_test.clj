@@ -14,6 +14,7 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
+   [metabase.sync.sync :as sync]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -208,8 +209,8 @@
     (let [checksum 12345]
       (ee.audit.settings/last-analytics-views-checksum! 0)
       (with-redefs [ee-audit/views-checksum (constantly checksum)
-                    metabase.sync.sync-metadata.sync-metadata/sync-database! (fn [& _]
-                                                                               (throw (Exception. "sync failed")))]
+                    sync/sync-database! (fn [& _]
+                                          (throw (Exception. "sync failed")))]
         (is (nil? (#'ee-audit/maybe-sync-audit-views! audit-db)))
         (is (= 0 (ee.audit.settings/last-analytics-views-checksum)))))))
 

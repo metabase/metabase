@@ -4,6 +4,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- insert-conversation!
   [{:keys [conversation-id user-id created-at summary state]}]
   (t2/insert! :model/MetabotConversation
