@@ -28,13 +28,14 @@ export function EntityIcon({
   ...rest
 }: EntityIconProps) {
   if (iconUrl) {
+    // color is intentionally not applied — CSS color has no effect on <img>
     return (
       <img
-        {...(rest as ImgHTMLAttributes<HTMLImageElement>)}
         aria-hidden={alt ? undefined : "true"}
         src={iconUrl}
         alt={alt}
         style={{ ...style, width: size, height: size }}
+        {...(rest as ImgHTMLAttributes<HTMLImageElement>)}
       />
     );
   }

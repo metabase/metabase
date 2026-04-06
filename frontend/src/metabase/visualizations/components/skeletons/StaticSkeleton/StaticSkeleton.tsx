@@ -6,7 +6,6 @@ import { Group, Tooltip } from "metabase/ui";
 
 import {
   SkeletonDescription,
-  SkeletonIcon,
   SkeletonIconContainer,
   SkeletonRoot,
   SkeletonTitle,
@@ -42,15 +41,12 @@ const StaticSkeleton = ({
       {icon && (
         <Tooltip label={tooltip} disabled={!tooltip}>
           <SkeletonIconContainer>
-            {icon.iconUrl ? (
-              <EntityIcon
-                name={icon.name}
-                iconUrl={icon.iconUrl}
-                size="1.5rem"
-              />
-            ) : (
-              <SkeletonIcon {...icon} />
-            )}
+            <EntityIcon
+              {...icon}
+              size="1.5rem"
+              color="text-secondary"
+              style={{ display: "block" }}
+            />
             {tooltip && (
               <SkeletonTooltipIconContainer>
                 <SkeletonTooltipIcon name="eye_crossed_out" />

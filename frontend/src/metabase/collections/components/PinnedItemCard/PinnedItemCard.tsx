@@ -28,7 +28,6 @@ import {
   Description,
   Header,
   ItemCard,
-  ItemIcon,
   ItemLink,
   Title,
 } from "./PinnedItemCard.styled";
@@ -128,15 +127,7 @@ function PinnedItemCard({
       <ItemCard flat>
         <Body>
           <Header>
-            {iconData.iconUrl ? (
-              <EntityIcon
-                {...iconData}
-                size="1.5rem"
-                style={{ color: "var(--mb-color-brand)" }}
-              />
-            ) : (
-              <ItemIcon name={iconData.name} />
-            )}
+            <EntityIcon {...iconData} size="1.5rem" color="brand" />
             <ActionsContainer h={item ? undefined : "2rem"}>
               {hasActions && (
                 // This component is used within a `<Link>` component,
