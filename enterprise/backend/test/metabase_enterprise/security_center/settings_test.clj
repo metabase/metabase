@@ -1,10 +1,27 @@
 (ns metabase-enterprise.security-center.settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
+
+(deftest security-center-enabled?-test
+  (testing "enabled when feature flag present, not trial, and self-hosted"
+    (mt/with-premium-features #{:admin-security-center}
+      (is (true? (premium-features/security-center-enabled?)))))
+  (testing "disabled without the feature flag"
+    (mt/with-premium-features #{}
+      (is (false? (premium-features/security-center-enabled?)))))
+  (testing "disabled on cloud (hosted) even with the feature flag"
+    (mt/with-premium-features #{:admin-security-center :hosting}
+      (is (false? (premium-features/security-center-enabled?)))))
+  (testing "disabled on trial even with the feature flag"
+    (mt/with-premium-features #{:admin-security-center}
+      (mt/with-dynamic-fn-redefs [token-check/is-trial? (constantly true)]
+        (is (false? (premium-features/security-center-enabled?)))))))
 
 (deftest security-center-email-recipients-test
   (testing "PUT /api/setting/security-center-email-recipients"

@@ -25,7 +25,6 @@
   assert-has-any-features
   ee-feature-error
   is-trial?
-  security-center-enabled?
   has-any-features?
   has-feature?
   log-enabled?
@@ -88,6 +87,7 @@
   hide-embed-branding?
   is-hosted?
   premium-embedding-token
+  security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?
   token-features

@@ -23,6 +23,7 @@ function setup(
     data: advisories,
     lastCheckedAt,
     isLoading: false,
+    isError: false,
     acknowledgeAdvisory: mockAcknowledge,
   });
 

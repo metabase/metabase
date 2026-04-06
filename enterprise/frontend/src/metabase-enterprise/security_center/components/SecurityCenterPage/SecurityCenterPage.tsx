@@ -34,6 +34,7 @@ export function SecurityCenterPage() {
   const {
     data: advisories,
     lastCheckedAt,
+    isError,
     acknowledgeAdvisory,
   } = useSecurityAdvisories(isPolling);
   const [syncAdvisories, { isLoading: isSyncing }] =
@@ -105,6 +106,23 @@ export function SecurityCenterPage() {
   const filtered = filterAdvisories(advisories, filter);
 
   const nothingToShow = filtered.length === 0 || advisories.length === 0;
+
+  if (isError) {
+    return (
+      <Box className={S.root}>
+        <Stack gap="lg" className={S.header}>
+          <Title order={1}>{t`Security Center`}</Title>
+        </Stack>
+        <Stack gap="xl" className={S.content}>
+          <EmptyState
+            className={S.emptyState}
+            icon="warning_triangle_filled"
+            message={t`Something went wrong loading security advisories.`}
+          />
+        </Stack>
+      </Box>
+    );
+  }
 
   return (
     <NotificationConfigProvider value={notificationConfig}>
