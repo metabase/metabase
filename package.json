@@ -431,6 +431,7 @@
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.40.1",
+    "qs": "^6.14.2",
     "webpack-dev-middleware": "^5.3.4",
     "webpack-dev-server": "^5.2.1",
     "webpack": "5.105.0"
