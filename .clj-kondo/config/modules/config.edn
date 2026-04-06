@@ -241,7 +241,8 @@
            metabase.api.settings
            metabase.api.util
            metabase.api.util.handlers}
-   :uses #{config
+   :uses #{api-scope
+           config
            events
            models
            settings
@@ -288,6 +289,11 @@
    :api  #{metabase.api-routes.cmd
            metabase.api-routes.core}
    :uses :any}
+
+  api-scope
+  {:team "Metabot"
+   :api  #{metabase.api-scope.core
+           metabase.api-scope.init}}
 
   app-db
   {:team "UX West"
@@ -1144,6 +1150,7 @@
            metabase.mcp.init}
    :uses #{agent-api
            api
+           api-scope
            config
            oauth-server
            request
@@ -1179,6 +1186,7 @@
    :uses    #{activity-feed
               analytics
               api
+              api-scope
               app-db
               audit-app
               channel
@@ -1236,11 +1244,13 @@
            lib-metric
            models
            parameters
+           permissions
+           premium-features
            query-processor
            request
            server
            util}
-   :model-imports #{:model/Card :model/Field :model/Measure}}
+   :model-imports #{:model/Card :model/Field :model/Measure :model/Table}}
 
   model-persistence
   {:team "Graphy"
@@ -2819,7 +2829,8 @@
            warehouse-schema
            warehouses}
    :model-exports #{:model/DatabaseRouter}
-   :model-imports #{:model/Database}}
+   :model-imports #{:model/Database
+                    :model/Transform}}
 
   enterprise/dependencies
   {:team "Graphy"
@@ -2946,7 +2957,7 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{}
+   :api     #{metabase-enterprise.metabot.api.routes}
    :friends #{enterprise/agent-api
               slackbot
               mcp
@@ -2959,7 +2970,10 @@
               util
               enterprise/dependencies
               enterprise/transforms-python}
-   :model-imports #{:model/Card :model/Transform}}
+   :model-imports #{:model/Card
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Transform}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -3287,6 +3301,7 @@
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
    :friends #{enterprise/agent-api}
    :uses #{api
+           api-scope
            app-db
            config
            database-routing

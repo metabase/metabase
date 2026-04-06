@@ -166,7 +166,7 @@
       (str id)
       (str/join ", " (map-indexed (fn [idx _] (str id "-" idx)) chart_configs)))))
 
-(defn format-native-query
+(defn- format-native-query
   "Format viewing `item`"
   [item]
   (assert (lib/native-only-query? (:query item))

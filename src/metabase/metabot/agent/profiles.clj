@@ -9,6 +9,8 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.premium-features.core :as premium-features]
@@ -35,6 +37,11 @@
                     {:tool-var   tool-var
                      :metadata   (meta tool-var)
                      :errors     (me/humanize (mu/explain tool-var-schema tool-var))})))
+  (when-let [required-scope (:scope (meta tool-var))]
+    (when-not (api-scope/registered-scope? required-scope)
+      (throw (ex-info (str "Tool has unregistered scope: " required-scope)
+                      {:tool-var tool-var
+                       :scope    required-scope}))))
   true)
 
 (mu/defn ^:private register-profile!
@@ -214,6 +221,17 @@
               (every? capabilities-set (:capabilities (meta tool-var))))
             tool-vars)))
 
+(defn- filter-by-scope
+  "Filter tool vars by the current user's scope set.
+  Removes tools whose `:scope` metadata is not satisfied by `*current-user-scope*`.
+  Tools without `:scope` metadata pass through."
+  [tool-vars]
+  (filter (fn [tool-var]
+            (let [required-scope (:scope (meta tool-var))]
+              (or (nil? required-scope)
+                  (api-scope/scope-matches? scope/*current-user-scope* required-scope))))
+          tool-vars))
+
 (defn- ee-feature-available?
   "Check if a tool's :ee-feature is available (or if the tool has no :ee-feature gate)."
   [tool-var]
@@ -237,12 +255,14 @@
     (assoc profile :model (metabot.settings/llm-metabot-provider))))
 
 (defn get-tools-for-profile
-  "Get tool registry filtered by profile configuration and user capabilities.
+  "Get tool registry filtered by profile configuration, user capabilities, and scope.
   Filters out EE-only tools when the feature is not available, then filters by
-  capabilities. Returns a map of tool-name -> tool-var."
+  capabilities, then filters by `*current-user-scope*`. Returns a map of
+  tool-name -> tool-var."
   [profile-id capabilities]
   (some-> (get-profile profile-id)
           :tools
           (->> (filter ee-feature-available?))
           (filter-by-capabilities capabilities)
+          filter-by-scope
           tool-map))

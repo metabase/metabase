@@ -85,6 +85,7 @@
    "LoginHistory"
    "MetabotConversation"
    "MetabotMessage"
+   "MetabotPermissions"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"

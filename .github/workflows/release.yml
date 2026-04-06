@@ -192,7 +192,7 @@ jobs:
         edition: [oss, ee]
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
@@ -535,7 +535,7 @@ jobs:
         echo "skipping version info update for nightly patch"
         exit 0
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
