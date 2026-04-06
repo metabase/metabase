@@ -758,7 +758,7 @@
              #"You do not have permissions to run this query"
              (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
                                       :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
-                                                                        :perms/create-queries {(mt/id :venues) :query-builder}}})))))))))
+                                                                        :perms/create-queries {(mt/id :venues) :query-builder}}}))))))))
 
 (deftest e2e-ignore-user-supplied-sandboxed-tables-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
