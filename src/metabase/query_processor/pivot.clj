@@ -18,7 +18,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
@@ -622,16 +621,15 @@
   ([query :- ::qp.schema/query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
-   (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
-     (qp.setup/with-qp-setup [query query]
-       (let [rff               (or rff qp.reducible/default-rff)
-             query             (lib/query (qp.store/metadata-provider) query)
-             pivot-opts        (or
-                                (pivot-options query (get query :viz-settings))
-                                (pivot-options query (get-in query [:info :visualization-settings]))
-                                (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
-             query             (-> query
-                                   (assoc-in [:middleware :pivot-options] pivot-opts))
-             all-queries       (generate-queries query pivot-opts)
-             column-mapping-fn (make-column-mapping-fn query)]
-         (process-multiple-queries all-queries rff column-mapping-fn))))))
+   (qp.setup/with-qp-setup [query query]
+     (let [rff               (or rff qp.reducible/default-rff)
+           query             (lib/query (qp.store/metadata-provider) query)
+           pivot-opts        (or
+                              (pivot-options query (get query :viz-settings))
+                              (pivot-options query (get-in query [:info :visualization-settings]))
+                              (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+           query             (-> query
+                                 (assoc-in [:middleware :pivot-options] pivot-opts))
+           all-queries       (generate-queries query pivot-opts)
+           column-mapping-fn (make-column-mapping-fn query)]
+       (process-multiple-queries all-queries rff column-mapping-fn)))))
