@@ -16,15 +16,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private offsets
-  "Map of topic-name -> long offset."
-  (atom {}))
-
-(def ^:private poll-state (mq.polling/make-poll-state))
-
-(def ^:private batch-size
-  "Maximum number of messages to fetch in a single poll."
-  100)
+(def ^:private state
+  {::offsets           (atom {})
+   ::poll-state        (mq.polling/make-poll-state)
+   ::batch-size        100
+   ::last-cleanup-ms   (atom 0)
+   ::last-lag-gauge-ms (atom 0)})
 
 (defn- current-max-id
   "Returns the current maximum id in topic_message_batch for the given topic, or 0."
@@ -42,12 +39,11 @@
                         [:= :topic_name (name topic-name)]
                         [:> :id offset]]
              :order-by [[:id :asc]]
-             :limit    batch-size}))
+             :limit    (::batch-size state)}))
 
 ;;; ------------------------------------------- Periodic tasks (run on polling thread) -------------------------------------------
 
 ;; Cleanup old messages
-(def ^:private last-cleanup-ms (atom 0))
 
 (defn- cleanup-old-messages! []
   (let [threshold (Timestamp/from (.minusMillis (Instant/now) (* 60 60 1000)))
@@ -56,10 +52,8 @@
       (log/infof "Cleaned up %d old topic messages" deleted)
       (mq.analytics/inc! :metabase-mq/appdb-cleanup-deleted {:transport "topic" :channel "all"} deleted))))
 
-(def ^:private last-lag-gauge-ms (atom 0))
-
 (defn- update-lag-gauges! []
-  (doseq [[topic-name offset] @offsets]
+  (doseq [[topic-name offset] @(::offsets state)]
     (let [max-id (current-max-id topic-name)]
       (mq.analytics/set! :metabase-mq/appdb-topic-subscriber-lag
                          {:channel (name topic-name)}
@@ -69,30 +63,30 @@
   "One iteration of the polling loop: run periodic tasks, then poll all topics.
   Returns true if any topic had messages delivered."
   []
-  (mq.polling/periodically! last-cleanup-ms   (* 10 60 1000) "topic cleanup"    cleanup-old-messages!)
-  (mq.polling/periodically! last-lag-gauge-ms (* 30 1000)    "topic lag gauge"  update-lag-gauges!)
+  (mq.polling/periodically! (::last-cleanup-ms state) (* 10 60 1000) "topic cleanup" cleanup-old-messages!)
+  (mq.polling/periodically! (::last-lag-gauge-ms state) (* 30 1000) "topic lag gauge" update-lag-gauges!)
   (let [found-work? (atom false)]
     (doseq [topic-name (remove mq.impl/channel-busy? (listener/topic-names))]
-      (let [offset (if (contains? @offsets topic-name)
-                     (get @offsets topic-name)
+      (let [offset (if (contains? @(::offsets state) topic-name)
+                     (get @(::offsets state) topic-name)
                      (let [o (current-max-id topic-name)]
-                       (swap! offsets assoc topic-name o)
+                       (swap! (::offsets state) assoc topic-name o)
                        o))
             rows   (poll-messages! topic-name offset)]
         (when (seq rows)
           (let [all-messages (into [] (mapcat (comp json/decode :messages)) rows)
                 max-id       (:id (last rows))]
             (when (mq.impl/submit-delivery! topic-name all-messages nil nil nil)
-              (swap! offsets assoc topic-name max-id)
+              (swap! (::offsets state) assoc topic-name max-id)
               (reset! found-work? true))))))
     @found-work?))
 
 (defmethod topic.backend/start! :topic.backend/appdb [_]
-  (mq.polling/start-polling! poll-state "Topic" 2000 poll-iteration!))
+  (mq.polling/start-polling! (::poll-state state) "Topic" 2000 poll-iteration!))
 
 (defmethod topic.backend/shutdown! :topic.backend/appdb [_]
-  (mq.polling/stop-polling! poll-state "Topic")
-  (reset! offsets {}))
+  (mq.polling/stop-polling! (::poll-state state) "Topic")
+  (reset! (::offsets state) {}))
 
 (defmethod topic.backend/publish! :topic.backend/appdb
   [_ topic-name messages]
@@ -100,15 +94,15 @@
                            {:topic_name (name topic-name)
                             :messages   (json/encode messages)})
   (when-not (mq.impl/channel-busy? topic-name)
-    (mq.polling/notify! poll-state)))
+    (mq.polling/notify! (::poll-state state))))
 
 (defmethod topic.backend/subscribe! :topic.backend/appdb
   [_ topic-name]
   (let [offset (current-max-id topic-name)]
-    (swap! offsets assoc topic-name offset)
+    (swap! (::offsets state) assoc topic-name offset)
     (log/infof "Subscribed to topic %s (starting offset %d)" (name topic-name) offset)))
 
 (defmethod topic.backend/unsubscribe! :topic.backend/appdb
   [_ topic-name]
-  (swap! offsets dissoc topic-name)
+  (swap! (::offsets state) dissoc topic-name)
   (log/infof "Unsubscribed from topic %s" (name topic-name)))
