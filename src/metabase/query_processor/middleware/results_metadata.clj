@@ -52,8 +52,7 @@
               (keyword? m) (u/qualified-name m)
               (map? m) (-> (update-vals m standardize-metadata)
                            (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
-                           (cond-> (and strip-computed-fingerprints? (nil? (:id m)))
-                             (dissoc :fingerprint))
+                           (cond-> strip-computed-fingerprints? (dissoc :fingerprint))
                            (remove-underscore-nil-keys))
               (sequential? m) (mapv standardize-metadata m)
               (set? m) (into #{} (map standardize-metadata) m)
