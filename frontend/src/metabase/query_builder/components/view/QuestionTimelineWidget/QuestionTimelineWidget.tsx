@@ -2,11 +2,11 @@ import { t } from "ttag";
 
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { ViewFooterButton } from "metabase/common/components/ViewFooterButton";
+import { getUiControls } from "metabase/query_builder/selectors";
 import {
   onCloseTimelines,
   onOpenTimelines,
-} from "metabase/query_builder/actions";
-import { getUiControls } from "metabase/query_builder/selectors";
+} from "metabase/redux/query-builder";
 import { Indicator } from "metabase/ui";
 import { trackSimpleEvent } from "metabase/utils/analytics";
 import { useDispatch, useSelector } from "metabase/utils/redux";

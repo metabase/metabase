@@ -1,5 +1,6 @@
 import { createMockEntitiesState } from "__support__/store";
 import * as questionActions from "metabase/questions/actions";
+import * as sharedQB from "metabase/redux/query-builder";
 import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";
@@ -449,7 +450,7 @@ describe("QB Actions > updateQuestion", () => {
 
       describe(questionType, () => {
         it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
-          const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
+          const closeSidebarSpy = jest.spyOn(sharedQB, "onCloseQuestionInfo");
           await setup({ card: getCard(), isShowingTemplateTagsEditor: true });
           expect(closeSidebarSpy).not.toHaveBeenCalled();
         });
@@ -471,7 +472,7 @@ describe("QB Actions > updateQuestion", () => {
           });
 
           it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
-            const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
+            const closeSidebarSpy = jest.spyOn(sharedQB, "onCloseQuestionInfo");
             await setup({ card: getCard(), isShowingTemplateTagsEditor: true });
             expect(closeSidebarSpy).toHaveBeenCalledTimes(1);
           });

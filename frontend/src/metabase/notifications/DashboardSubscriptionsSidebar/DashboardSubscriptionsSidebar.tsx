@@ -49,11 +49,6 @@ import type { DraftDashboardSubscription, State } from "metabase-types/store";
 
 import { getSupportedCardsForSubscriptions } from "./get-supported-cards-for-subscriptions";
 
-export const CHANNEL_ICONS: Record<string, string> = {
-  email: "mail",
-  slack: "slack",
-};
-
 const EDITING_MODES = {
   ADD_EMAIL: "add-edit-email",
   ADD_SLACK: "add-edit-slack",

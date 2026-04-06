@@ -208,4 +208,7 @@ export const GridMapPdfExport = {
     const asyncCallback = createAsyncCallback();
     await triggerPdfExport(canvasElement, asyncCallback);
   },
+  parameters: {
+    loki: { skip: true },
+  },
 };

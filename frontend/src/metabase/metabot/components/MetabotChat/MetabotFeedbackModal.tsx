@@ -6,6 +6,7 @@ import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
+import { useMetabotName } from "metabase/metabot/hooks";
 import { getMetabotId, getMetabotState } from "metabase/metabot/state";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -64,6 +65,7 @@ export const MetabotFeedbackModal = ({
   const applicationName = useSelector(getApplicationName);
   const isAdmin = useSelector(getUserIsAdmin);
   const version = useSetting("version");
+  const metabotName = useMetabotName();
 
   const metabotId = useSelector(getMetabotId);
   const metabotState = useSelector(getMetabotState);
@@ -92,7 +94,7 @@ export const MetabotFeedbackModal = ({
       opened
       onClose={onClose}
       size="md"
-      title={t`Metabot feedback`}
+      title={t`${metabotName} feedback`}
       data-testid="metabot-feedback-modal"
     >
       <FormProvider

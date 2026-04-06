@@ -8,7 +8,7 @@
 ;; GET /auth/sso/slack-connect
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/slack-connect"
+(api.macros/defendpoint :get "/"
   "Initiate Slack Connect SSO flow."
   [_route-params _query-params _body request]
   (try
@@ -20,7 +20,7 @@
 ;; GET /auth/sso/slack-connect/callback
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/slack-connect/callback"
+(api.macros/defendpoint :get "/callback"
   "Slack Connect OIDC callback."
   [_route-params _query-params _body request]
   (try
@@ -30,5 +30,5 @@
       (throw e))))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/auth/sso` Slack Connect routes."
+  "`/auth/sso/slack-connect` routes."
   (api.macros/ns-handler *ns*))

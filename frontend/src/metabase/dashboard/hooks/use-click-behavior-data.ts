@@ -2,6 +2,10 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import {
+  setOrUnsetParameterValues,
+  setParameterValue,
+} from "metabase/dashboard/actions/parameters";
+import {
   getDashCardById,
   getDashboardComplete,
   getParameterValuesBySlugMap,
@@ -96,6 +100,8 @@ function createGetExtraDataForClick(
       dashboard,
       dashcard,
       userAttributes,
+      setOrUnsetParameterValues,
+      setParameterValue,
     };
   };
 }

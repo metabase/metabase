@@ -11,7 +11,7 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
       ? getSchemaName(params.schemaId)
       : params.schemaId,
     tableId: Urls.extractEntityId(params.tableId),
-    tab: isDataStudioTableMetadataTab(params.tab) ? params.tab : "field",
+    tab: isDataStudioTableMetadataTab(params.tab) ? params.tab : "details",
     fieldId: Urls.extractEntityId(params.fieldId),
   };
 }

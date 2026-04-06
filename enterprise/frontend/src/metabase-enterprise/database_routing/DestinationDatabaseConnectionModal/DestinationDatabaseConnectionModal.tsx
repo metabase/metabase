@@ -113,42 +113,44 @@ export const DestinationDatabaseConnectionModal = ({
         body: S.modalBody,
       }}
     >
-      <LoadingAndErrorWrapper loading={isLoading} error={error}>
-        <Flex
-          py="sm"
-          px="md"
-          mx="xl"
-          my="md"
-          bg="background-secondary"
-          align="center"
-          justify="space-between"
-          bd="1px solid border"
-          style={{ borderRadius: ".5rem" }}
-        >
-          <Text>{t`You can also add databases programmatically via the API.`}</Text>
-          <ExternalLink
-            key="link"
-            href={docsUrl}
-            style={{ display: "flex", alignItems: "center", gap: 4 }}
+      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+        <>
+          <Flex
+            py="sm"
+            px="md"
+            mx="xl"
+            my="md"
+            bg="background-secondary"
+            align="center"
+            justify="space-between"
+            bd="1px solid border"
+            style={{ borderRadius: ".5rem" }}
           >
-            {t`Learn more`} <Icon name="share" aria-hidden />
-          </ExternalLink>
-        </Flex>
+            <Text>{t`You can also add databases programmatically via the API.`}</Text>
+            <ExternalLink
+              key="link"
+              href={docsUrl}
+              style={{ display: "flex", alignItems: "center", gap: 4 }}
+            >
+              {t`Learn more`} <Icon name="share" aria-hidden />
+            </ExternalLink>
+          </Flex>
 
-        <DatabaseEditConnectionForm
-          database={destinationDatabase}
-          isAttachedDWH={destinationDatabase?.is_attached_dwh ?? false}
-          handleSaveDb={handleSaveDatabase}
-          onSubmitted={handleOnSubmit}
-          onCancel={handleCloseModal}
-          route={route}
-          config={{
-            name: { isSlug: true },
-            engine: { fieldState: "hidden" },
-          }}
-          autofocusFieldName="name"
-          formLocation="admin"
-        />
+          <DatabaseEditConnectionForm
+            database={destinationDatabase}
+            isAttachedDWH={destinationDatabase?.is_attached_dwh ?? false}
+            handleSaveDb={handleSaveDatabase}
+            onSubmitted={handleOnSubmit}
+            onCancel={handleCloseModal}
+            route={route}
+            config={{
+              name: { isSlug: true },
+              engine: { fieldState: "hidden" },
+            }}
+            autofocusFieldName="name"
+            formLocation="admin"
+          />
+        </>
       </LoadingAndErrorWrapper>
     </Modal>
   );

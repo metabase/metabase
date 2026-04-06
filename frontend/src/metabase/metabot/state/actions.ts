@@ -11,6 +11,7 @@ import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-st
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { addUndo } from "metabase/redux/undo";
 import { getIsWorkspace } from "metabase/selectors/routing";
+import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { createAsyncThunk } from "metabase/utils/redux";
 import type {
@@ -74,7 +75,10 @@ type PromptErrorOutcome = {
   shouldRetry: boolean;
 };
 
-const handleResponseError = (error: unknown): PromptErrorOutcome => {
+const handleResponseError = (
+  error: unknown,
+  metabotName: string,
+): PromptErrorOutcome => {
   return match(error)
     .with({ name: "AbortError" }, () => ({
       errorMessage: false as const,
@@ -86,7 +90,7 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
       () => ({
         errorMessage: {
           type: "alert" as const,
-          message: METABOT_ERR_MSG.unauthenticated,
+          message: METABOT_ERR_MSG.unauthenticated(metabotName),
         },
         shouldRetry: true,
       }),
@@ -411,7 +415,13 @@ export const sendAgentRequest = createAsyncThunk<
       });
     } catch (error) {
       console.error(error);
-      return rejectWithValue({ type: "error", ...handleResponseError(error) });
+      return rejectWithValue({
+        type: "error",
+        ...handleResponseError(
+          error,
+          getSetting(getState(), "metabot-name") || "Metabot",
+        ),
+      });
     }
   },
 );

@@ -1,7 +1,7 @@
+import type { LocationDescriptorObject } from "history";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { open } from "metabase/utils/dom";
 import type Question from "metabase-lib/v1/Question";
 import type { Dispatch } from "metabase-types/store";
@@ -16,6 +16,7 @@ type ActionProps = {
   dispatch: Dispatch;
   onChangeCardAndRun?: OnChangeCardAndRun;
   onUpdateQuestion?: (question: Question) => void;
+  onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
 };
 
 export function performAction(
@@ -44,8 +45,11 @@ export function performAction(
     if (url) {
       open(url, {
         openInSameOrigin: (location) => {
-          dispatch(push(location));
-          dispatch(setParameterValuesFromQueryParams(location.query));
+          if (props.onSameOriginNavigation) {
+            props.onSameOriginNavigation(location);
+          } else {
+            dispatch(push(location));
+          }
         },
         ignoreSiteUrl,
       });

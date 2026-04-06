@@ -1,11 +1,13 @@
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Flex, Stack } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
+import { Center, Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { Dataset, TemporalUnit } from "metabase-types/api";
 
 import type {
@@ -58,18 +60,6 @@ export function MetricsViewerTabContent({
     return getObjectKeys(tab.dimensionMapping).some(isExecuting);
   }, [tab.dimensionMapping, isExecuting]);
 
-  const firstError = useMemo(() => {
-    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const err = errorsByDefinitionId.get(sourceId);
-      if (err) {
-        return err;
-      }
-    }
-    return null;
-  }, [tab.dimensionMapping, errorsByDefinitionId]);
-
-  const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
-
   const { series: rawSeries, cardIdToDimensionId } = useMemo(
     () =>
       buildRawSeriesFromDefinitions(
@@ -89,6 +79,25 @@ export function MetricsViewerTabContent({
       sourceColors,
     ],
   );
+
+  const firstError = useMemo(() => {
+    for (const series of rawSeries) {
+      const cols = series.data.cols;
+      if (!cols.some((col) => isMetric(col))) {
+        return t`Non-numeric metrics are not supported`;
+      }
+    }
+
+    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
+      const err = errorsByDefinitionId.get(sourceId);
+      if (err) {
+        return err;
+      }
+    }
+    return null;
+  }, [tab.dimensionMapping, errorsByDefinitionId, rawSeries]);
+
+  const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
   const dimensionItems = useMemo(
     () =>
@@ -202,7 +211,11 @@ export function MetricsViewerTabContent({
     mappedDimensionCount > 1 ? onDimensionRemove : undefined;
 
   if (isLoading || firstError) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={firstError} />;
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={firstError} />
+      </Center>
+    );
   }
 
   if (rawSeries.length === 0) {

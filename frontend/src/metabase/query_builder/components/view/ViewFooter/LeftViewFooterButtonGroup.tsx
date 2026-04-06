@@ -5,13 +5,13 @@ import { ButtonGroup } from "metabase/common/components/ButtonGroup";
 import { ViewButton } from "metabase/common/components/ViewButton";
 import CS from "metabase/css/core/index.css";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { getQuestion, getUiControls } from "metabase/query_builder/selectors";
 import {
   onCloseChartSettings,
   onCloseChartType,
   onOpenChartSettings,
   onOpenChartType,
-} from "metabase/query_builder/actions";
-import { getQuestion, getUiControls } from "metabase/query_builder/selectors";
+} from "metabase/redux/query-builder";
 import { Group } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { QueryBuilderUIControls } from "metabase-types/store";

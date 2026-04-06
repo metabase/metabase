@@ -124,31 +124,11 @@ export function recipientIsValid(recipient: RecipientPickerValue) {
   );
 }
 
-export function pulseIsValid(
-  pulse: DashboardSubscriptionData,
-  channelSpecs: ChannelSpecs,
-) {
-  return (
-    (pulse.name &&
-      pulse.cards.length > 0 &&
-      pulseChannelsAreValid(pulse, channelSpecs)) ||
-    false
-  );
-}
-
 export function dashboardPulseIsValid(
   pulse: DashboardSubscriptionData,
   channelSpecs: Partial<ChannelSpecs>,
 ) {
   return pulseChannelsAreValid(pulse, channelSpecs);
-}
-
-export function emailIsEnabled(pulse: DashboardSubscriptionData) {
-  return (
-    pulse.channels.filter(
-      (channel) => channel.channel_type === "email" && channel.enabled,
-    ).length > 0
-  );
 }
 
 export function cleanPulse<T extends DashboardSubscriptionData>(
@@ -185,19 +165,6 @@ function cleanPulseParameters(parameters: Parameter[]) {
       value: normalizedValue,
     };
   });
-}
-
-export function getDefaultChannel(channelSpecs: ChannelSpecs) {
-  // email is the first choice
-  if (channelSpecs.email?.configured) {
-    return channelSpecs.email;
-  }
-  // otherwise just pick the first configured
-  for (const channelSpec of Object.values(channelSpecs)) {
-    if (channelSpec.configured) {
-      return channelSpec;
-    }
-  }
 }
 
 export function createChannel(

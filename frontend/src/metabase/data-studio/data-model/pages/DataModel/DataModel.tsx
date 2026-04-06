@@ -192,7 +192,7 @@ function DataModelContent({ params }: Props) {
       >
         <PaneHeader
           breadcrumbs={
-            <DataStudioBreadcrumbs>{t`Data structure`}</DataStudioBreadcrumbs>
+            <DataStudioBreadcrumbs>{t`Tables`}</DataStudioBreadcrumbs>
           }
         />
         <RouterTablePicker

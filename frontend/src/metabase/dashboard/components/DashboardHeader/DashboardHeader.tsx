@@ -18,6 +18,7 @@ import {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { getSetting } from "metabase/selectors/settings";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Flex, Loader } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Dashboard } from "metabase-types/api";
@@ -36,9 +37,10 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
 
   const dispatch = useDispatch();
   const { isGuestEmbed } = useDashboardContext();
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   useMount(() => {
-    if (!isGuestEmbed) {
+    if (!isGuestEmbed && canManageSubscriptions) {
       dispatch(fetchPulseFormInput());
     }
   });

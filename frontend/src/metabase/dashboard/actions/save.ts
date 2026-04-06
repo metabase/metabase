@@ -2,6 +2,7 @@ import { assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
 import { Dashboards } from "metabase/entities/dashboards";
+import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import { CardApi } from "metabase/services";
 import { createThunkAction } from "metabase/utils/redux";
 import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";
@@ -24,9 +25,6 @@ import {
   haveDashboardCardsChanged,
   trackAddedIFrameDashcards,
 } from "./utils";
-
-export const UPDATE_DASHBOARD_AND_CARDS =
-  "metabase/dashboard/UPDATE_DASHBOARD_AND_CARDS";
 
 export const UPDATE_DASHBOARD = "metabase/dashboard/UPDATE_DASHBOARD";
 

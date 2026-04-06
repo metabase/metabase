@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
+import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import { Button, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { AIAnalysisContent } from "../AIAnalysisContent/AIAnalysisContent";
@@ -22,7 +23,7 @@ export function AIAnalysisContentWrapper({
     <Stack h="100%" p="lg" style={{ overflowY: "auto" }}>
       <Group justify="space-between" align="center">
         <Flex align="center" gap="xs">
-          <Icon name="metabot" />
+          <MetabotIcon />
           <Text fz="1.17em" ml="xs" fw="bold">
             {title}
           </Text>

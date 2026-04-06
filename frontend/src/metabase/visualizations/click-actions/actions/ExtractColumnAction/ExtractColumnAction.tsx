@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { setUIControls } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnExtractViaPlusModal } from "metabase/querying/analytics";
 import {
   ExtractColumn,
   hasExtractions,
 } from "metabase/querying/components/expressions";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Box, rem } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";

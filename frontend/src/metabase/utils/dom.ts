@@ -357,7 +357,7 @@ export function isSmallScreen(): boolean {
 }
 
 export const getEventTarget = (
-  event: MouseEvent | React.MouseEvent,
+  event: MouseEvent | React.MouseEvent | TouchEvent,
 ): HTMLElement => {
   let target = document.getElementById("popover-event-target");
   if (!target) {
@@ -365,8 +365,21 @@ export const getEventTarget = (
     target.id = "popover-event-target";
     document.body.appendChild(target);
   }
-  target.style.left = event.clientX - 3 + "px";
-  target.style.top = event.clientY - 3 + "px";
+
+  // TouchEvent (e.g. from iOS Safari via ECharts/zrender) doesn't have
+  // clientX/clientY directly — they live on individual Touch objects.
+  let clientX: number;
+  let clientY: number;
+  if ("changedTouches" in event && event.changedTouches?.length) {
+    clientX = event.changedTouches[0].clientX;
+    clientY = event.changedTouches[0].clientY;
+  } else {
+    clientX = (event as MouseEvent).clientX;
+    clientY = (event as MouseEvent).clientY;
+  }
+
+  target.style.left = clientX - 3 + "px";
+  target.style.top = clientY - 3 + "px";
 
   return target;
 };

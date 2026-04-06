@@ -670,28 +670,6 @@ export function getYAxesModels(
   };
 }
 
-type GetYAxisFormattingOptions = {
-  compactSeriesDataKeys: DataKey[];
-  axisSeriesKeysSet: Set<string>;
-  settings: ComputedVisualizationSettings;
-};
-
-export function getYAxisFormattingOptions({
-  compactSeriesDataKeys,
-  axisSeriesKeysSet,
-  settings,
-}: GetYAxisFormattingOptions): OptionsType {
-  const isCompact =
-    settings["graph.label_value_formatting"] === "compact" ||
-    compactSeriesDataKeys.some((dataKey) => axisSeriesKeysSet.has(dataKey));
-
-  if (isCompact) {
-    return { compact: isCompact };
-  }
-
-  return {};
-}
-
 const getFormatUnit = (
   dimensionColumn: DatasetColumn,
   dataTimeSeriesInterval: TimeSeriesInterval,

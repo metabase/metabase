@@ -13,14 +13,11 @@ export const useExtractResourceIdFromJwtToken = <TEntityId>({
   resourceId: TEntityId | undefined;
   token: SdkEntityToken | undefined;
 }): {
-  resourceId: TEntityId | null;
+  resourceId: TEntityId | number | null;
   token: SdkEntityToken | null;
   tokenError?: string;
 } => {
-  return useMemo<{
-    resourceId: TEntityId | null;
-    token: SdkEntityToken | null;
-  }>(() => {
+  return useMemo(() => {
     if (isJWT(resourceId)) {
       return {
         resourceId: null,

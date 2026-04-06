@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
+import { useMetabotName } from "metabase/metabot/hooks";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Button, Flex, Icon, Loader, Tooltip } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
@@ -36,6 +37,7 @@ export const MetabotInlineSQLPrompt = ({
   onValueChange,
 }: MetabotInlineSQLPromptProps) => {
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
+  const metabotName = useMetabotName();
 
   const isSubmitDisabled = !value.trim() || isLoading;
 
@@ -90,7 +92,7 @@ export const MetabotInlineSQLPrompt = ({
           {error}
         </Box>
         <Flex gap="xs" flex="1 0 auto">
-          <Tooltip disabled={isLoading} label={t`Send to Metabot`}>
+          <Tooltip disabled={isLoading} label={t`Send to ${metabotName}`}>
             <Button
               className={S.submitButton}
               data-testid="metabot-inline-sql-generate"

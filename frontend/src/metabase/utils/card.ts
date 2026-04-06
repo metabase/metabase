@@ -2,6 +2,9 @@ import _ from "underscore";
 
 import { b64hash_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
 import { stableStringify } from "metabase/utils/objects";
+import querystring from "querystring";
+
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, ParameterValuesMap, UnsavedCard } from "metabase-types/api";
 
 export type SerializeCardOptions = {
@@ -81,4 +84,35 @@ export function serializeCardForUrl(
 
 export function deserializeCardFromUrl(serialized: string): Card {
   return JSON.parse(b64hash_to_utf8(serialized));
+}
+
+export function deserializeCard(serializedCard: string) {
+  const card = deserializeCardFromUrl(serializedCard);
+  if (card.dataset_query.database != null) {
+    card.dataset_query = normalize(card.dataset_query);
+  }
+  return card;
+}
+
+type HashOptions = {
+  db?: string;
+  table?: string;
+  segment?: string;
+};
+
+export function parseHash(hash?: string) {
+  let options: HashOptions = {};
+  let serializedCard;
+
+  // hash can contain either query params starting with ? or a base64 serialized card
+  if (hash) {
+    const cleanHash = hash.replace(/^#/, "");
+    if (cleanHash.charAt(0) === "?") {
+      options = querystring.parse(cleanHash.substring(1));
+    } else {
+      serializedCard = cleanHash;
+    }
+  }
+
+  return { options, serializedCard };
 }

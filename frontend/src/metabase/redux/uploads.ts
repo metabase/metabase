@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
 import { Collections } from "metabase/entities/collections";
-import { runQuestionQuery } from "metabase/query_builder/actions";
 import { MetabaseApi } from "metabase/services";
 import { entityCompatibleQuery } from "metabase/utils/entities";
 import {
@@ -50,7 +49,7 @@ export interface UploadFileProps {
   tableId?: TableId;
   modelId?: CardId;
   uploadMode: UploadMode;
-  reloadQuestionData?: boolean;
+  onUploadComplete?: () => void;
 }
 
 export const uploadFile = createThunkAction(
@@ -61,7 +60,7 @@ export const uploadFile = createThunkAction(
     tableId,
     modelId,
     uploadMode,
-    reloadQuestionData,
+    onUploadComplete,
   }: UploadFileProps) =>
     async (dispatch: Dispatch) => {
       const id = Date.now();
@@ -120,8 +119,8 @@ export const uploadFile = createThunkAction(
           }),
         );
 
-        if (tableId && reloadQuestionData) {
-          dispatch(runQuestionQuery());
+        if (tableId && onUploadComplete) {
+          onUploadComplete();
         } else if (collectionId) {
           dispatch(Collections.actions.invalidateLists());
         }

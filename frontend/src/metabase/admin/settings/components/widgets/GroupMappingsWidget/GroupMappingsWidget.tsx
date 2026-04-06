@@ -1,7 +1,7 @@
 import _ from "underscore";
 
-import { updateSetting } from "metabase/admin/settings/settings";
 import { Groups } from "metabase/entities/groups";
+import { updateSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
 import { connect } from "metabase/utils/redux";
 import type { Settings } from "metabase-types/api/settings";

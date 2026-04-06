@@ -14,13 +14,11 @@ import {
   fetchDashboard,
   fetchDashboardCardData,
   hideAddParameterPopover,
-  initialize,
   moveDashboardToCollection,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   onUpdateDashCardVisualizationSettings,
   removeParameter,
-  reset,
   setArchivedDashboard,
   setDashboardAttributes,
   setEditingDashboard,
@@ -40,7 +38,6 @@ import {
   setParameterValueToDefault,
   setSharing,
   setSidebar,
-  showAddParameterPopover,
   toggleSidebar,
   updateDashboard,
   updateDashboardAndCards,
@@ -51,9 +48,14 @@ import {
   duplicateTab,
   moveTab,
   renameTab,
-  selectTab,
   undoDeleteTab,
 } from "metabase/dashboard/actions/tabs";
+import {
+  initialize,
+  reset,
+  selectTab,
+  showAddParameterPopover,
+} from "metabase/redux/dashboard";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import {
   canManageSubscriptions,

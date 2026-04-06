@@ -116,6 +116,3 @@ export const getDashboards = (state, props) => {
   const list = Dashboards.selectors.getList(state);
   return list && resourceListToMap(list);
 };
-
-export const getIsDashboardModalOpen = (state, props) =>
-  state.reference.isDashboardModalOpen;

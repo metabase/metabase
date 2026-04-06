@@ -4,10 +4,10 @@ import { t } from "ttag";
 import { createDatabase } from "metabase/admin/databases/database";
 import {
   initializeSettings,
-  updateSetting,
   updateSettings,
 } from "metabase/admin/settings/settings";
 import { userApi } from "metabase/api";
+import { updateSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
 import { loadLocalization } from "metabase/utils/i18n";
@@ -82,9 +82,6 @@ export const updateLocale = createAsyncThunk(
     await loadLocalization(locale.code);
   },
 );
-
-export const SUBMIT_LANGUAGE = "metabase/setup/SUBMIT_LANGUAGE";
-export const submitLanguage = createAction(SUBMIT_LANGUAGE);
 
 export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
   "metabase/setup/SUBMIT_USER_INFO",

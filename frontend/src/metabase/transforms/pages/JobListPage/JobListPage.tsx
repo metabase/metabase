@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { useListTransformJobsQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -15,6 +14,7 @@ import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
   Card,
+  Ellipsified,
   Flex,
   Icon,
   Stack,

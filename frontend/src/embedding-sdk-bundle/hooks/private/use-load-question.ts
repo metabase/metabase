@@ -82,6 +82,18 @@ export function useLoadQuestion({
 
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
+  /**
+   * Token change isn't an indicator to re-run the query. When users are refreshing
+   * the guest embeds token, the token will change, but not questionId. So we can
+   * rely on questionId that will change the loadAndQueryQuestion value and trigger
+   * the query again.
+   *
+   * As a reference, dashboards don't use this approach. It detects if the
+   * dashboardId has changed before triggering the query. So, the idea is quite similar.
+   */
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+
   const deferredRef = useRef<Deferred>();
 
   function deferred() {
@@ -115,7 +127,7 @@ export function useLoadQuestion({
           options,
           deserializedCard,
           questionId,
-          token,
+          token: tokenRef.current,
           initialSqlParameters,
           targetDashboardId,
         }),
@@ -126,7 +138,7 @@ export function useLoadQuestion({
       const results = await runQuestionQuerySdk({
         question: questionState.question,
         isGuestEmbed,
-        token,
+        token: tokenRef.current,
         originalQuestion: questionState.originalQuestion,
         parameterValues: questionState.parameterValues,
         cancelDeferred: deferred(),
@@ -169,7 +181,6 @@ export function useLoadQuestion({
     isGuestEmbed,
     sqlParameterKey,
     questionId,
-    token,
     targetDashboardId,
   ]);
 

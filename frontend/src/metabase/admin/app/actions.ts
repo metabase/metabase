@@ -1,5 +1,5 @@
-import { updateSetting } from "metabase/admin/settings/settings";
 import { createAsyncThunk } from "metabase/utils/redux";
+import { updateSetting } from "metabase/redux/settings";
 
 import { getCurrentVersion } from "./selectors";
 

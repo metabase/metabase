@@ -1,10 +1,12 @@
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-bundle/errors";
+import * as MetabaseErrors from "embedding-sdk-bundle/errors";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
+import { decodeJwt } from "metabase/utils/jwt";
 
 import { debouncedReportAnalytics } from "./analytics";
 import {
@@ -157,6 +159,12 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     Set<SdkIframeEmbedEventHandler>
   > = new Map();
   private _authManager: EmbedAuthManager | null = null;
+  ["custom-context"]: unknown;
+
+  constructor() {
+    super();
+    this["custom-context"] = undefined;
+  }
 
   get globalSettings() {
     return (window as any).metabaseConfig || {};
@@ -428,12 +436,25 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         // this is used from tests to await the loading of the iframe
         this._iframe.setAttribute("data-iframe-loaded", "true");
       }
-      this._updateSettings(this.properties);
+
+      const { guestEmbedProviderUri, token } = this.properties;
+
+      // No static token provided — fetch initial guest token first, then send settings
+      if (guestEmbedProviderUri && !token) {
+        await this._fetchInitialGuestToken();
+      } else {
+        this._updateSettings(this.properties);
+      }
+
       this._emitEvent({ type: "ready" });
     }
 
     if (event.data.type === "metabase.embed.requestSessionToken") {
       await this._authenticate();
+    }
+
+    if (event.data.type === "metabase.embed.requestGuestTokenRefresh") {
+      await this._refreshGuestToken(event.data.data.expiredToken);
     }
 
     // Note: if we wrap other functions like this, let's come up with a generic utility function
@@ -488,16 +509,137 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
   }
 
+  private reportAuthenticationError(error: unknown) {
+    this.sendMessage("metabase.embed.reportAuthenticationError", {
+      error:
+        error instanceof MetabaseError
+          ? error
+          : MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+              url: this.properties.guestEmbedProviderUri ?? "",
+              message: error instanceof Error ? error.message : String(error),
+            }),
+    });
+  }
+
   private async _authenticate() {
     if (!this._authManager) {
-      this.sendMessage("metabase.embed.reportAuthenticationError", {
-        error: SSO_NOT_ALLOWED(),
-      });
+      this.reportAuthenticationError(SSO_NOT_ALLOWED());
 
       return;
     }
 
     await this._authManager.authenticate();
+  }
+
+  private async _fetchInitialGuestToken(): Promise<void> {
+    try {
+      const token = await this._callGuestTokenProvider();
+      this._updateSettings({
+        token,
+        /**
+         * Clear these so SdkIframeEmbedRoute routes via the guest token branch, not the
+         * other branches (which matches on dashboardId/questionId). This applies to the
+         * call below too.
+         */
+        dashboardId: undefined,
+        questionId: undefined,
+      });
+    } catch (error) {
+      this.reportAuthenticationError(error);
+      // Send settings without a token so ComponentProvider can mount and display the error.
+      this._updateSettings({
+        dashboardId: undefined,
+        questionId: undefined,
+      });
+    }
+  }
+
+  private async _refreshGuestToken(expiredToken: string): Promise<void> {
+    try {
+      const token = await this._callGuestTokenProvider(expiredToken);
+      this.sendMessage("metabase.embed.submitRefreshedGuestToken", {
+        guestToken: token,
+      });
+    } catch (error) {
+      this.reportAuthenticationError(error);
+    }
+  }
+
+  /**
+   * Handles token refresh, and the initial token fetch if no static token is provided.
+   * Unlike the SSO counterpart which lives in the plugin system (AuthManager.ts),
+   * guest embeds are OSS so this is implemented directly here in embed.ts.
+   */
+  private async _callGuestTokenProvider(
+    expiredToken?: string,
+  ): Promise<string> {
+    const { guestEmbedProviderUri, componentName, dashboardId, questionId } =
+      this.properties;
+
+    if (!guestEmbedProviderUri) {
+      throw MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+        url: String(guestEmbedProviderUri),
+        message: "Guest embed provider URI is not configured.",
+      });
+    }
+
+    const guestEmbedProviderUriFullPath = new URL(
+      guestEmbedProviderUri,
+      window.location.origin,
+    );
+    guestEmbedProviderUriFullPath.searchParams.set("response", "json");
+
+    const entityType =
+      componentName === "metabase-dashboard" ? "dashboard" : "question";
+
+    const isRefreshingToken = expiredToken !== undefined;
+
+    // Prefer the attribute resource ID; fall back to decoding the expired token
+    // for the static token case (no dashboardId/questionId attribute).
+    const attributeResourceId =
+      componentName === "metabase-dashboard" ? dashboardId : questionId;
+    const tokenResourceId = isRefreshingToken
+      ? decodeJwt(expiredToken)?.resource?.[entityType]
+      : undefined;
+    const resourceId = attributeResourceId ?? tokenResourceId;
+
+    // Only works in React 19
+    const objectCustomContext = this["custom-context"];
+    const stringCustomContext = this.getAttribute("custom-context");
+    const customContext = objectCustomContext ?? stringCustomContext;
+    const body = {
+      entityType,
+      entityId: resourceId,
+      ...(customContext !== undefined && { customContext }),
+    };
+
+    const response = await fetch(guestEmbedProviderUriFullPath.toString(), {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw MetabaseErrors.CANNOT_FETCH_JWT_TOKEN({
+        url: guestEmbedProviderUri,
+        status: String(response.status),
+      });
+    }
+
+    const data = await response.json();
+
+    if (
+      data == null ||
+      typeof data !== "object" ||
+      typeof data.jwt !== "string"
+    ) {
+      throw MetabaseErrors.DEFAULT_ENDPOINT_ERROR({
+        actual: JSON.stringify(data),
+      });
+    }
+
+    return data.jwt;
   }
 }
 

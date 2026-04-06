@@ -3,6 +3,7 @@ import {
   closeObjectDetail,
   followForeignKey,
   loadObjectDetailFKReferences,
+  runQuestionQuery,
   viewNextObjectDetail,
   viewPreviousObjectDetail,
 } from "metabase/query_builder/actions";
@@ -74,6 +75,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
+  onActionSuccess: () => dispatch(runQuestionQuery()),
 });
 type MapDispatchProps = ReturnType<typeof mapDispatchToProps>;
 

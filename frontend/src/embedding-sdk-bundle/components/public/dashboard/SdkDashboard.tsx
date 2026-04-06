@@ -31,7 +31,11 @@ import {
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
+import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
+import {
+  getIsGuestEmbed,
+  getSessionTokenState,
+} from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type {
   DashboardEventHandlersProps,
@@ -194,6 +198,21 @@ const SdkDashboardInner = ({
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+  const dispatch = useSdkDispatch();
+  const [isFirstRender, setIsFirstRender] = useState(true);
+  const { rawToken: tokenFromStore, error: tokenFetchError } =
+    useSdkSelector(getSessionTokenState);
+
+  // Store token so the refresh handler can check expiry. No need to await — not used here.
+  useEffect(() => {
+    if (rawToken && isGuestEmbed) {
+      dispatch(setInitialGuestToken(rawToken));
+    }
+  }, [rawToken, isGuestEmbed, dispatch]);
+
+  useEffect(() => {
+    setIsFirstRender(false);
+  }, []);
 
   const {
     resourceId: dashboardId,
@@ -202,7 +221,9 @@ const SdkDashboardInner = ({
   } = useExtractResourceIdFromJwtToken({
     isGuestEmbed,
     resourceId: rawDashboardId,
-    token: rawToken ?? undefined,
+    // Skip stale Redux token on first render (e.g. wizard re-issuing a token when toggling parameters); rawToken prop takes precedence.
+    // From the next render onward, tokenFromStore is used and the value is from a refreshed token.
+    token: (!isFirstRender ? tokenFromStore : null) ?? rawToken ?? undefined,
   });
 
   useSetupContentTranslations({ token });
@@ -275,7 +296,6 @@ const SdkDashboardInner = ({
   ]);
 
   const errorPage = useSdkSelector(getErrorPage);
-  const dispatch = useSdkDispatch();
   useEffect(() => {
     if (dashboardId) {
       dispatch(resetErrorPage());
@@ -355,6 +375,10 @@ const SdkDashboardInner = ({
         <SdkError message={tokenError} />;
       </SdkDashboardStyledWrapper>
     );
+  }
+
+  if (tokenFetchError) {
+    return <SdkError message={tokenFetchError.message} />;
   }
 
   if (isStaticEmbeddingEntityLoadingError(errorPage, { isGuestEmbed })) {

@@ -89,14 +89,6 @@ export const canvasToBlob = (
   });
 };
 
-export const blobToFile = (
-  blob: Blob,
-  filename: string,
-  type = "image/png",
-): File => {
-  return new File([blob], filename, { type });
-};
-
 export interface DashboardRenderSetup {
   gridNode: HTMLElement;
   contentWidth: number;

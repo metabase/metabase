@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
 
 import { useSdkDispatch, useSdkStore } from "embedding-sdk-bundle/store";
+import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import {
   NAVIGATE_TO_NEW_CARD,
   reset as dashboardReset,
-} from "metabase/dashboard/actions";
-import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
+} from "metabase/redux/dashboard";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { navigateBackToDashboard } from "metabase/query_builder/actions";
+import { navigateBackToDashboard } from "metabase/redux/query-builder";
 import { getMetadata } from "metabase/selectors/metadata";
 import { isJWT } from "metabase/utils/jwt";
 import { parseNumber } from "metabase/utils/number";

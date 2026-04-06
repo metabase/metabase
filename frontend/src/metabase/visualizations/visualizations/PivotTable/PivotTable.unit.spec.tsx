@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
+import * as domUtils from "metabase/utils/dom";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
@@ -50,7 +51,7 @@ const TEST_CASES = [
 function setupPivotTable(
   options?: ComponentProps<typeof PivotTableTestWrapper>,
 ) {
-  renderWithProviders(<PivotTableTestWrapper {...options} />);
+  return renderWithProviders(<PivotTableTestWrapper {...options} />);
 }
 
 function setupPivotSettings() {
@@ -265,6 +266,32 @@ describe("Visualizations > PivotTable > PivotTable", () => {
           ).toBeInTheDocument();
         });
       });
+    });
+  });
+
+  describe("scrollbar alignment", () => {
+    it("should reduce top header width by scrollbar size when body has vertical scrollbar", () => {
+      const scrollBarSize = 15;
+      jest.spyOn(domUtils, "getScrollBarSize").mockReturnValue(scrollBarSize);
+
+      // Use a small height to force vertical scrolling (4 rows * 30px = 120px body content)
+      const { rerender } = setupPivotTable({ height: 100 });
+
+      const getTopHeaderWidth = () => {
+        const topHeader = screen.getByLabelText("pivot-table-top-header");
+        return parseInt(topHeader.style.minWidth);
+      };
+
+      const widthWithScrollbar = getTopHeaderWidth();
+
+      // Re-render with enough height that no vertical scrollbar is needed
+      rerender(<PivotTableTestWrapper height={500} />);
+
+      const widthWithoutScrollbar = getTopHeaderWidth();
+
+      expect(widthWithoutScrollbar - widthWithScrollbar).toBe(scrollBarSize);
+
+      jest.restoreAllMocks();
     });
   });
 });

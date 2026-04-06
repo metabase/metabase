@@ -1,7 +1,7 @@
 import { c } from "ttag";
 
-import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/querying/constants";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Button, Flex } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type {

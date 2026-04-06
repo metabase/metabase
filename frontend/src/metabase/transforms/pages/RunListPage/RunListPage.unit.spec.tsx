@@ -5,6 +5,7 @@ import {
   setupListTransformRunsEndpoint,
   setupListTransformTagsEndpoint,
   setupListTransformsEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -27,6 +28,7 @@ type SetupOpts = {
 };
 
 function setup({ runs = [] }: SetupOpts = {}) {
+  setupUserMetabotPermissionsEndpoint();
   setupListTransformRunsEndpoint(
     createMockListTransformRunsResponse({
       data: runs,

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { setUIControls } from "metabase/query_builder/actions";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Box, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import type {

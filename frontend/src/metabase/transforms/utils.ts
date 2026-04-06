@@ -71,13 +71,13 @@ export function validateDatabase(database: Database): DatabaseValidationResult {
   if (database.is_sample) {
     return {
       isValid: false,
-      message: t`Transforms can't be enabled on a Sample Database.`,
+      message: t`Transforms can't be enabled on the Sample Database.`,
     };
   }
   if (database.is_audit) {
     return {
       isValid: false,
-      message: t`Transforms can't be enabled on a Usage Analytics database.`,
+      message: t`Transforms can't be enabled on the Usage Analytics database.`,
     };
   }
   if (database.router_user_attribute || database.router_database_id) {

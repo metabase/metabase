@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { setUIControls } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCombineViaPlusModal } from "metabase/querying/analytics";
 import {
@@ -9,6 +8,7 @@ import {
 } from "metabase/querying/components/expressions";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
+import { setUIControls } from "metabase/redux/query-builder";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";

@@ -20,10 +20,6 @@ export function formatMetricName(metricName: string) {
   return formatIdentifier(metricName);
 }
 
-export function formatMeasureName(measureName: string) {
-  return formatIdentifier(measureName);
-}
-
 export function formatSegmentName(segmentName: string) {
   return formatIdentifier(segmentName);
 }

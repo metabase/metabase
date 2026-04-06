@@ -300,7 +300,7 @@ export function buildRawSeriesFromDefinitions(
     };
 
     let entrySeries: SingleSeries[];
-    if (!entryHasBreakout(entry)) {
+    if (!entryHasBreakout(entry) || singleSeries.data.rows.length === 0) {
       entrySeries = [singleSeries];
     } else {
       entrySeries = splitByBreakout(

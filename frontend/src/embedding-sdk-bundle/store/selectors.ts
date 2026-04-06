@@ -14,9 +14,6 @@ export const getInitStatus = (state: SdkStoreState) => state.sdk?.initStatus;
 
 export const getLoginStatus = (state: SdkStoreState) => state.sdk?.initStatus;
 
-export const getIsInitialized = (state: SdkStoreState) =>
-  getInitStatus(state).status !== "uninitialized";
-
 export const getIsLoggedIn = (state: SdkStoreState) =>
   getLoginStatus(state).status === "success";
 

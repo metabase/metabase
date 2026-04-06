@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Avatar, Flex, Icon } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
+import { Avatar, Ellipsified, Flex, Icon } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
 export const TransformOwnerAvatar = ({

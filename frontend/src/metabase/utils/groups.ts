@@ -39,10 +39,6 @@ export function getSpecialGroupType(
   return null;
 }
 
-export function canEditPermissions(group: Pick<GroupInfo, "magic_group_type">) {
-  return !isAdminGroup(group);
-}
-
 export function canEditMembership(group: Pick<GroupInfo, "magic_group_type">) {
   return !isDefaultGroup(group) && !PLUGIN_TENANTS.isExternalUsersGroup(group);
 }

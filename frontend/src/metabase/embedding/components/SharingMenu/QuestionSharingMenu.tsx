@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { setUIControls } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/querying/constants";
+import { setUIControls } from "metabase/redux/query-builder";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,

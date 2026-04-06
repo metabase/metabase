@@ -1,4 +1,3 @@
-import { createAction } from "redux-actions";
 import _ from "underscore";
 
 import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
@@ -7,6 +6,14 @@ import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import { Questions } from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
+import {
+  API_UPDATE_QUESTION,
+  SOFT_RELOAD_CARD,
+  clearQueryResult,
+  onCloseSidebars,
+  resetQB,
+  setParameterValue,
+} from "metabase/redux/query-builder";
 import { getMetadata } from "metabase/selectors/metadata";
 import { shouldOpenInBlankWindow } from "metabase/utils/dom";
 import { entityCompatibleQuery } from "metabase/utils/entities";
@@ -27,8 +34,6 @@ import type {
   DashboardTabId,
   Database,
   DatasetQuery,
-  ParameterId,
-  ParameterValueOrArray,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -43,24 +48,14 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../selectors";
-import {
-  clearQueryResult,
-  runDirtyQuestionQuery,
-  runQuestionQuery,
-} from "../querying";
-import { onCloseSidebars } from "../ui";
+import { runDirtyQuestionQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
 
 import { loadCard } from "./card";
-import { API_UPDATE_QUESTION, SOFT_RELOAD_CARD } from "./types";
 import { updateQuestion } from "./updateQuestion";
 
-export const RESET_QB = "metabase/qb/RESET_QB";
-export const resetQB = createAction(RESET_QB);
-
 // refreshes the card without triggering a run of the card's query
-export { SOFT_RELOAD_CARD };
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
@@ -337,14 +332,6 @@ export const apiUpdateQuestion = (
   };
 };
 
-export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
-export const setParameterValue = createAction(
-  SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: ParameterValueOrArray | null) => {
-    return { id: parameterId, value: normalizeValue(value) };
-  },
-);
-
 export const SET_PARAMETER_VALUE_TO_DEFAULT =
   "metabase/qb/SET_PARAMETER_VALUE_TO_DEFAULT";
 export const setParameterValueToDefault = createThunkAction(
@@ -360,20 +347,6 @@ export const setParameterValueToDefault = createThunkAction(
     }
   },
 );
-
-function normalizeValue(
-  value: ParameterValueOrArray | null,
-): ParameterValueOrArray | null {
-  if (value === "") {
-    return null;
-  }
-
-  if (Array.isArray(value) && value.length === 0) {
-    return null;
-  }
-
-  return value;
-}
 
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(

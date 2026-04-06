@@ -3,8 +3,8 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getParentEntity } from "metabase/query_builder/selectors";
+import { navigateBackToDashboard } from "metabase/redux/query-builder";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";

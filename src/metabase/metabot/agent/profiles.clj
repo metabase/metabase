@@ -9,6 +9,8 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
    [metabase.premium-features.core :as premium-features]
@@ -35,6 +37,11 @@
                     {:tool-var   tool-var
                      :metadata   (meta tool-var)
                      :errors     (me/humanize (mu/explain tool-var-schema tool-var))})))
+  (when-let [required-scope (:scope (meta tool-var))]
+    (when-not (api-scope/registered-scope? required-scope)
+      (throw (ex-info (str "Tool has unregistered scope: " required-scope)
+                      {:tool-var tool-var
+                       :scope    required-scope}))))
   true)
 
 (mu/defn ^:private register-profile!
@@ -169,8 +176,7 @@
    "permission:write_transforms"  :permission-write-transforms
    "feature:transforms"           :feature-transforms
    "feature:transforms-python"    :feature-transforms-python
-   "feature:snippets"             :feature-snippets
-   "automagic-dashboards"         :automagic-dashboards})
+   "feature:snippets"             :feature-snippets})
 
 (defn- capability->keyword
   "Normalize a capability value to a keyword. Strings are looked up in the
@@ -183,17 +189,48 @@
         ;; gracefully without requiring a map update.
         (keyword (-> (str cap) (str/replace ":" "-") (str/replace "_" "-"))))))
 
+;; TODO (lbrdnk 2026-03-18): `api-string->capability-keyword` hints there is need for feature snippets. I was unable
+;;                           to find matching logic in ai-service. I'll remove that in followup with related logic.
+(comment
+  (filter #(re-find #"snippet" (name %)) (keys (premium-features/token-features))))
+  ;;=> (:snippet_collections) <--- very probably we do not want to sentinel on this feature
+
+(def relevant-features
+  "Metabase features to add to capabilities set."
+  #{:transforms :transforms-python})
+
+(defn feature-capability-kws
+  "Get capabilities per features of this Metabase instance. Not cached to avoid staleness."
+  []
+  (into #{}
+        (comp (filter premium-features/has-feature?)
+              (map #(keyword (str "feature-" (name %)))))
+        relevant-features))
+
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.
   Removes tools that require capabilities the user doesn't have.
   Capabilities from the API arrive as strings (e.g. \"frontend:navigate_user_v1\")
-  while tool definitions use keywords (e.g. :frontend-navigate-user-v1), so we
+  while tool metadata uses keywords (e.g. :frontend-navigate-user-v1), so we
   normalize to keywords before comparing."
   [tool-vars capabilities]
-  (let [capabilities-set (into #{} (map capability->keyword) capabilities)]
+  (let [capabilities-set (into (feature-capability-kws)
+                               (map capability->keyword)
+                               capabilities)]
     (filter (fn [tool-var]
               (every? capabilities-set (:capabilities (meta tool-var))))
             tool-vars)))
+
+(defn- filter-by-scope
+  "Filter tool vars by the current user's scope set.
+  Removes tools whose `:scope` metadata is not satisfied by `*current-user-scope*`.
+  Tools without `:scope` metadata pass through."
+  [tool-vars]
+  (filter (fn [tool-var]
+            (let [required-scope (:scope (meta tool-var))]
+              (or (nil? required-scope)
+                  (api-scope/scope-matches? scope/*current-user-scope* required-scope))))
+          tool-vars))
 
 (defn- ee-feature-available?
   "Check if a tool's :ee-feature is available (or if the tool has no :ee-feature gate)."
@@ -218,12 +255,14 @@
     (assoc profile :model (metabot.settings/llm-metabot-provider))))
 
 (defn get-tools-for-profile
-  "Get tool registry filtered by profile configuration and user capabilities.
+  "Get tool registry filtered by profile configuration, user capabilities, and scope.
   Filters out EE-only tools when the feature is not available, then filters by
-  capabilities. Returns a map of tool-name -> tool-var."
+  capabilities, then filters by `*current-user-scope*`. Returns a map of
+  tool-name -> tool-var."
   [profile-id capabilities]
   (some-> (get-profile profile-id)
           :tools
           (->> (filter ee-feature-available?))
           (filter-by-capabilities capabilities)
+          filter-by-scope
           tool-map))

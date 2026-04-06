@@ -26,23 +26,6 @@ export const initializeSettings = createThunkAction(
   },
 );
 
-export const UPDATE_SETTING = "metabase/admin/settings/UPDATE_SETTING";
-export const updateSetting = createThunkAction(
-  UPDATE_SETTING,
-  function (setting) {
-    return async function (dispatch) {
-      try {
-        await SettingsApi.put(setting);
-      } catch (error) {
-        console.error("error updating setting", setting, error);
-        throw error;
-      } finally {
-        await dispatch(reloadSettings());
-      }
-    };
-  },
-);
-
 export const UPDATE_SETTINGS = "metabase/admin/settings/UPDATE_SETTINGS";
 export const updateSettings = createThunkAction(
   UPDATE_SETTINGS,

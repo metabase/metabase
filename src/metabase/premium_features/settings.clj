@@ -146,10 +146,6 @@
   "Should we enable SAML-based authentication?"
   :sso-saml)
 
-(define-premium-feature ^{:added "0.59.0"} enable-sso-slack?
-  "Should we enable Slack Connect (OIDC) authentication?"
-  :sso-slack)
-
 (define-premium-feature ^{:added "0.59.0"} enable-sso-oidc?
   "Should we enable OIDC-based authentication?"
   :sso-oidc)
@@ -171,7 +167,6 @@
   []
   (or (enable-sso-jwt?)
       (enable-sso-saml?)
-      (enable-sso-slack?)
       (enable-sso-oidc?)
       (enable-sso-ldap?)
       (enable-sso-google?)))
@@ -244,10 +239,6 @@
   "Is this a development instance that should have watermarks?"
   :development-mode)
 
-(define-premium-feature ^{:added "0.52.0"} enable-metabot-v3?
-  "Enable the newest LLM-based MetaBot? (The one that lives in [[metabase.metabot.core]].)"
-  :metabot-v3)
-
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
   "Should we enable modular embedding?"
@@ -313,6 +304,10 @@
   "Should we allow admins to configure separate write connection credentials?"
   :writable-connection)
 
+(define-premium-feature ^{:added "0.61.0"} enable-ai-controls?
+  "Should we enable AI controls (metabot permissions, scope management)?"
+  :ai-controls)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :attached_dwh                   (has-attached-dwh?)
@@ -339,7 +334,6 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
-   :metabot_v3                     (enable-metabot-v3?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :remote_sync                    (enable-remote-sync?)
@@ -354,7 +348,6 @@
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
    :sso_oidc                       (enable-sso-oidc?)
-   :sso_slack                      (enable-sso-slack?)
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :tenants                        (enable-tenants?)
@@ -363,7 +356,8 @@
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
    :workspaces                     (enable-workspaces?)
-   :writable_connection            (enable-writable-connection?)})
+   :writable_connection            (enable-writable-connection?)
+   :ai_controls                    (enable-ai-controls?)})
 
 (defsetting token-features
   "Features registered for this instance's token"

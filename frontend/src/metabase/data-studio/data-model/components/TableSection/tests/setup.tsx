@@ -42,7 +42,7 @@ export type SetupOpts = {
 export function setup({
   database = createMockDatabase(),
   table = createMockTable({ db: database }),
-  activeTab = "field",
+  activeTab = "details",
   segments,
   isAdmin = false,
   isDataAnalyst = false,

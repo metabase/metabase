@@ -8,7 +8,6 @@ import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowled
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
-  onOpenQuestionSettings,
   softReloadCard,
   turnModelIntoQuestion,
   turnQuestionIntoModel,
@@ -18,6 +17,7 @@ import { DatasetMetadataStrengthIndicator } from "metabase/query_builder/compone
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { onOpenQuestionSettings } from "metabase/redux/query-builder";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";

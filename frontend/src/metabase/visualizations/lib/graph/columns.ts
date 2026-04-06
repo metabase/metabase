@@ -75,16 +75,6 @@ export type CartesianChartColumns =
   | MultipleMetricsChartColumns
   | ScatterPlotColumns;
 
-export function assertMultiMetricColumns(
-  chartColumns: CartesianChartColumns,
-): MultipleMetricsChartColumns {
-  if ("breakout" in chartColumns) {
-    throw Error("Given `chartColumns` has breakout");
-  }
-
-  return chartColumns;
-}
-
 export const getCartesianChartColumns = (
   columns: RemappingHydratedDatasetColumn[],
   settings: Pick<

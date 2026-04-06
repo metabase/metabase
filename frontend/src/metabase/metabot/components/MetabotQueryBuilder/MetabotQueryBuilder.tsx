@@ -23,7 +23,7 @@ import {
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 
-import { useMetabotAgent, useMetabotEnabledEmbeddingAware } from "../../hooks";
+import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -247,8 +247,8 @@ const MetabotQueryBuilderInner = () => {
 export const MetabotQueryBuilder = (
   props: React.ComponentProps<typeof QueryBuilder>,
 ) => {
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
-  if (!isMetabotEnabled) {
+  const { canUseNlq } = useUserMetabotPermissions();
+  if (!canUseNlq) {
     return <QueryBuilder {...props} />;
   }
   return <MetabotQueryBuilderInner />;

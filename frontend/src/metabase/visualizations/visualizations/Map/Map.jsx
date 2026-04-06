@@ -249,8 +249,12 @@ export class Map extends Component {
         ),
         isQuantile: true,
       }),
-      getDefault: () => getColorplethColorScale(getAccentColors()[0]),
+      getDefault: (series, vizSettings) =>
+        getColorplethColorScale(
+          getPreferredColor(vizSettings["map.metric"]) ?? getAccentColors()[0],
+        ),
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
+      readDependencies: ["map.metric"],
     },
     "map.zoom": {},
     "map.center_latitude": {},

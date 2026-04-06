@@ -1,8 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { DashboardChartSettings } from "metabase/dashboard/components/DashboardChartSettings";
 import { Modal } from "metabase/ui";
-import { DashboardChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
   DashboardCard,
   Series,

@@ -16,7 +16,7 @@ import type { OmniPickerCollectionItem } from "metabase/common/components/Picker
 import { MoveModal } from "metabase/common/components/Pickers";
 import { Dashboards } from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
-import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
+import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Icon, Radio, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
