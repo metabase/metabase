@@ -22,8 +22,8 @@
   [advisory]
   (assoc advisory :fetched_at (mi/now)))
 
-(methodical/defmethod t2/batched-hydrate [:model/SecurityAdvisory :acknowledged_by]
-  "Hydrate `acknowledged_by` from an int FK to a User map with `:id`, `:common_name`, and `:email`."
+(methodical/defmethod t2/batched-hydrate [:model/SecurityAdvisory :acknowledged_by_user]
+  "Hydrate `:acknowledged_by_user` from the `:acknowledged_by` FK to a User map with `:id`, `:common_name`, and `:email`."
   [_model k advisories]
   (let [user-ids (keep :acknowledged_by advisories)
         id->user (when (seq user-ids)
@@ -54,4 +54,4 @@
                            {:event        "security_advisory_acknowledged"
                             :event_detail (name (:severity advisory))})
     (-> (t2/select-one :model/SecurityAdvisory :id (:id advisory))
-        (t2/hydrate :acknowledged_by))))
+        (t2/hydrate :acknowledged_by_user))))

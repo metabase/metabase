@@ -1,6 +1,7 @@
 (ns metabase-enterprise.security-center.api
   "API endpoints for Security Center advisories."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.schema :as security-center.schema]
@@ -15,11 +16,12 @@
    [toucan2.core :as t2]))
 
 (defn- advisory-response
-  "Format a SecurityAdvisory row for API response. Expects `:acknowledged_by` to be hydrated."
+  "Format a SecurityAdvisory row for API response. Expects `:acknowledged_by_user` to be hydrated."
   [advisory]
-  (select-keys advisory [:advisory_id :title :severity :description :advisory_url :remediation
-                         :published_at :match_status :last_evaluated_at
-                         :acknowledged_by :acknowledged_at :affected_versions]))
+  (-> (select-keys advisory [:advisory_id :title :severity :description :advisory_url :remediation
+                              :published_at :match_status :last_evaluated_at
+                              :acknowledged_by_user :acknowledged_at :affected_versions])
+      (set/rename-keys {:acknowledged_by_user :acknowledged_by})))
 
 (def ^:private AcknowledgedByUser
   "Schema for a hydrated acknowledged_by user map."
@@ -58,14 +60,15 @@
   "List all security advisories with match status."
   []
   (let [advisories (t2/hydrate (t2/select :model/SecurityAdvisory {:order-by [[:published_at :desc]]})
-                               :acknowledged_by)]
+                               :acknowledged_by_user)]
     {:last_checked_at (some :last_evaluated_at advisories)
      :advisories      (mapv advisory-response advisories)}))
 
 (defn- acknowledge-response
   "Format a slim response for the acknowledge endpoint."
   [advisory]
-  (select-keys advisory [:advisory_id :match_status :acknowledged_by :acknowledged_at]))
+  (-> (select-keys advisory [:advisory_id :match_status :acknowledged_by_user :acknowledged_at])
+      (set/rename-keys {:acknowledged_by_user :acknowledged_by})))
 
 (api.macros/defendpoint :post "/:advisory-id/acknowledge" :- AcknowledgeResponse
   "Acknowledge a security advisory. Stops repeat notifications."
