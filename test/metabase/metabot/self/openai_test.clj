@@ -30,7 +30,9 @@
     (testing "through full pipeline produces text + usage"
       (is (=? [{:type :start}
                {:type :text :text string?}
-               {:type :usage :usage map?}]
+               {:type  :usage
+                :usage {:promptTokens     pos-int?
+                        :completionTokens pos-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-tool-calls-conv-test
@@ -45,7 +47,9 @@
         (is (=? [{:type :start}
                  {:type :tool-input :function string? :arguments map?}]
                 (take 2 parts)))
-        (is (=? {:type :usage :usage map?}
+        (is (=? {:type  :usage
+                 :usage {:promptTokens     pos-int?
+                         :completionTokens pos-int?}}
                 (last parts)))))))
 
 (deftest ^:parallel openai-structured-output-conv-test
@@ -62,7 +66,9 @@
     (testing "through full pipeline produces text + usage"
       (is (=? [{:type :start}
                {:type :text :text string?}
-               {:type :usage :usage map?}]
+               {:type  :usage
+                :usage {:promptTokens     pos-int?
+                        :completionTokens pos-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
 (deftest ^:parallel openai-text-and-tool-calls-conv-test
@@ -79,8 +85,36 @@
       (is (=? [{:type :start}
                {:type :text :text string?}
                {:type :tool-input :function "get-time" :arguments {:tz string?}}
-               {:type :usage :usage map?}]
+               {:type  :usage
+                :usage {:promptTokens     pos-int?
+                        :completionTokens pos-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Usage normalization tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel openai-usage-strips-nested-details-test
+  (testing "nested *_details maps from reasoning models are stripped"
+    (let [raw-chunks (fixture "openai-text"
+                              {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
+          ;; Patch the last chunk to include nested usage details like reasoning models return
+          patched    (mapv (fn [chunk]
+                             (if (= (:type chunk) "response.completed")
+                               (assoc-in chunk [:response :usage]
+                                         {:input_tokens          20
+                                          :output_tokens         8
+                                          :total_tokens          28
+                                          :input_tokens_details  {:cached_tokens 5 :audio_tokens 0}
+                                          :output_tokens_details {:reasoning_tokens 3 :audio_tokens 0}})
+                               chunk))
+                           raw-chunks)
+          parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)
+          usage      (:usage (last parts))]
+      ;; no nested maps — safe for merge-with + in accumulate-usage-xf
+      (is (= {:promptTokens 20
+              :completionTokens 8}
+             usage)))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->openai-input tests

@@ -103,7 +103,9 @@
                                                                       :inputTextDelta delta}))
              (= (:type chunk)
                 "response.completed")           (rf {:type  :usage
-                                                     :usage (:usage response)
+                                                     :usage (let [u (:usage response)]
+                                                              {:promptTokens     (:input_tokens u 0)
+                                                               :completionTokens (:output_tokens u 0)})
                                                      ;; non-standard extension, not in AISDK5
                                                      :id    (:id response)
                                                      :model @model-name})
