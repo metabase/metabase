@@ -73,7 +73,7 @@
 
 (api.macros/defendpoint :post "/:advisory-id/acknowledge" :- AcknowledgeResponse
   "Acknowledge a security advisory. Stops repeat notifications."
-  [{:keys [advisory-id]} :- [:map [:advisory-id ::security-center.schema/advisory-id]]]
+  [{:keys [advisory-id]} :- [:map [:advisory-id ms/NonBlankString]]]
   (api/check-superuser)
   (let [advisory (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id)]
     (api/check-404 advisory)
