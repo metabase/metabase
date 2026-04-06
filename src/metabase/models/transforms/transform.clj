@@ -260,7 +260,7 @@
 (t2/define-before-delete :model/Transform [transform]
   (ws.table/delete-orphaned-provisional-table! (:target_table_id transform) (:id transform))
   (events/publish-event! :event/delete-transform {:id (:id transform)})
-  (search.core/async-delete! :model/Transform [(str (:id transform))])
+  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (defn update-transform-tags!

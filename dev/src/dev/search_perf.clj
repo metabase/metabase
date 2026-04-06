@@ -29,6 +29,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.util :as u]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
@@ -445,7 +446,9 @@
                                              :num-users  num-users
                                              :prefix     prefix})
          user-id (:user-id test-env)
-         _ (Thread/sleep 1000) ;; Wait for search index
+         ;; Wait for search index to update if using async indexing
+         _ (binding [search.ingestion/*force-sync* true]
+             (Thread/sleep 1000))
          queries [;; Exact prefix match
                   (str prefix "_table_00001")
                   ;; Partial prefix match

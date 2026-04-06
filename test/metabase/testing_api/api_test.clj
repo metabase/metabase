@@ -8,7 +8,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
-   [metabase.search.impl :as search.impl]
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
    [metabase.util :as u]
@@ -67,7 +66,7 @@
       (let [snapshot-name (munge (u/qualified-name ::search-index-snapshot))]
         (try
           ;; Ensure a search index exists before snapshotting
-          (search.impl/sync-init-index! {:force-reset? true})
+          (mt/user-http-request :crowberto :post 200 "search/re-init")
           (is (some? (search.index/active-table))
               "Precondition: search index should exist before snapshot")
           ;; Snapshot with a valid search index in place

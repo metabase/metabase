@@ -8,28 +8,8 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.mq.core :as mq]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
-
-;;; ----------------------------------------- Topic subscription -------------------------------------------
-
-(mq/def-listener! :topic/connection-pool-invalidated
-  {:sync-local-delivery true}
-  [{:keys [database-id all-databases]}]
-  (if all-databases
-    (doseq [{driver :engine, :as database} (t2/select :model/Database)]
-      (try
-        (driver/notify-database-updated driver database)
-        (catch Throwable e
-          (log/error e "Failed to notify database updated" {:id (:id database)}))))
-    (when-let [database (t2/select-one :model/Database :id database-id)]
-      (try
-        (driver/notify-database-updated (:engine database) database)
-        (catch Throwable e
-          (log/error e "Failed to notify database updated" {:id database-id}))))))
+   [methodical.core :as methodical]))
 
 (derive ::event :metabase/event)
 (derive :event/database-update ::event)
@@ -49,7 +29,6 @@
       (when (or details-changed?
                 (not= (remove-irrelevant-data database)
                       (remove-irrelevant-data previous-database)))
-        (mq/with-topic :topic/connection-pool-invalidated [t]
-          (mq/put t {:database-id (:id database)}))))
+        (driver/notify-database-updated (:engine database) database)))
     (catch Throwable e
       (log/warnf e "Failed to process driver notifications event. %s" topic))))

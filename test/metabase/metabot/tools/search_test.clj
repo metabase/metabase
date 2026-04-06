@@ -9,7 +9,6 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
-   [metabase.search.impl :as search.impl]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -278,7 +277,6 @@
                          :model/Dashboard  {dash-id-1 :id}      {:name "Our Dashboard",  :collection_id public-coll-id}
                          :model/Dashboard  {dash-id-2 :id}      {:name "My Dashboard",   :collection_id admins-coll-id}
                          :model/Dashboard  {dash-id-3 :id}      {:name "Your Dashboard", :collection_id others-coll-id}]
-            (search.impl/sync-reindex! {:in-place? true})
             (let [test-dashboard-ids #{dash-id-1 dash-id-2 dash-id-3}]
               (is (= #{"Our Dashboard" "My Dashboard"}
                      (->> (search/search {:term-queries ["Dashboard"]})
@@ -301,7 +299,6 @@
                                                          :collection_id analytics-coll-id}
                        :model/Dashboard {dash-3-id :id} {:name "No Desc Dashboard"
                                                          :collection_id no-desc-coll-id}]
-          (search.impl/sync-reindex! {:in-place? true})
           (testing "search results include collection descriptions"
             (let [results (search/search {:term-queries ["Dashboard"]})
                   test-dashboard-ids #{dash-1-id dash-2-id dash-3-id}
@@ -353,7 +350,6 @@
                        :model/Dashboard  {id-1 :id}    {:name "Regular Dash (sh1b0le#h)",    :collection_id coll-id}
                        :model/Dashboard  {id-2 :id}    {:name "Bookmarked Dash (sh1b0le#h)", :collection_id coll-id}
                        :model/DashboardBookmark _      {:dashboard_id id-2, :user_id api/*current-user-id*}]
-          (search.impl/sync-reindex! {:in-place? true})
           (let [base-query   {:term-queries ["sh1b0le#h"], :entity-types ["dashboard"]}
                 test-entity? (comp #{id-1 id-2} :id)
                 query        (fn [& [weights]]

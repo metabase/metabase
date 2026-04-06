@@ -120,6 +120,7 @@
   validate-settable-for-db!
   writable-settings]
  [metabase.settings.models.setting.cache
+  cache-update-check-interval-ms
   cache-last-updated-at
   restore-cache!]
  [metabase.settings.models.setting.multi-setting

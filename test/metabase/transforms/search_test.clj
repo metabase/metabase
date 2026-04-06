@@ -99,88 +99,89 @@
 (deftest transform-query-ingestion-test
   (testing "Contents of SQL and Python transform sources are extracted and indexed for full-text search"
     (when (= (mdb/db-type) :postgres)
-      (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Transform _ {:target {:database (mt/id)
+                                                  :table "test_table"}
+                                         :name "Test SQL transform"
+                                         :source {:type "query"
+                                                  :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
+        (let [ingested-transform (ingest-then-fetch! "transform" "Test SQL transform")
+              vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
+          (is (string? vector-value))
+          (is (re-find #"select" vector-value))
+          (is (re-find #"sql" vector-value))))
+
+      (mt/when-ee-evailable
+       (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
+                                          :source {:type "python"
+                                                   :source-database (mt/id)
+                                                   :body "import pandas as pd\n"}
+                                          :name "Test python transform"}]
+         (let [ingested-transform (ingest-then-fetch! "transform" "Test python transform")
+               vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
+           (is (string? vector-value))
+           (is (re-find #"import" vector-value))
+           (is (re-find #"panda" vector-value)))))
+
+      (testing "MBQL queries are not indexed in with_native_query_vector"
         (mt/with-temp [:model/Transform _ {:target {:database (mt/id)
-                                                    :table "test_table"}
-                                           :name "Test SQL transform"
+                                                    :table "test_mbql_table"}
+                                           :name "Test MBQL transform"
                                            :source {:type "query"
-                                                    :query (lib/native-query (mt/metadata-provider) "SELECT 1")}}]
-          (let [ingested-transform (ingest-then-fetch! "transform" "Test SQL transform")
+                                                    :query (mt/mbql-query venues {:limit 10})}}]
+          (let [ingested-transform (ingest-then-fetch! "transform" "Test MBQL transform")
                 vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
             (is (string? vector-value))
-            (is (re-find #"select" vector-value))
-            (is (re-find #"sql" vector-value))))
-
-        (mt/when-ee-evailable
-         (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
-                                            :source {:type "python"
-                                                     :source-database (mt/id)
-                                                     :body "import pandas as pd\n"}
-                                            :name "Test python transform"}]
-           (let [ingested-transform (ingest-then-fetch! "transform" "Test python transform")
-                 vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
-             (is (string? vector-value))
-             (is (re-find #"import" vector-value))
-             (is (re-find #"panda" vector-value)))))
-
-        (testing "MBQL queries are not indexed in with_native_query_vector"
-          (mt/with-temp [:model/Transform _ {:target {:database (mt/id)
-                                                      :table "test_mbql_table"}
-                                             :name "Test MBQL transform"
-                                             :source {:type "query"
-                                                      :query (mt/mbql-query venues {:limit 10})}}]
-            (let [ingested-transform (ingest-then-fetch! "transform" "Test MBQL transform")
-                  vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
-              (is (string? vector-value))
-              (is (re-find #"test" vector-value))
-              (is (re-find #"mbql" vector-value))
-              ;; Ensure that the actual MQBL query isn't indexed
-              (is (not (re-find #"source" vector-value)))
-              (is (not (re-find #"table" vector-value))))))))))
+            (is (re-find #"test" vector-value))
+            (is (re-find #"mbql" vector-value))
+            ;; Ensure that the actual MQBL query isn't indexed
+            (is (not (re-find #"source" vector-value)))
+            (is (not (re-find #"table" vector-value)))))))))
 
 (deftest transform-deletion-test
   (search.tu/with-temp-index-table
     (testing "Transform is removed from search index when deleted"
-      (mt/with-temp [:model/Transform {transform-id :id} {:name "Transform to delete"}]
-        (ingest! "transform" [:= :this.id transform-id])
-        (is (some? (fetch-one "transform" :model_id (str transform-id)))
-            "Transform should be in the search index after ingestion")
-        (t2/delete! :model/Transform :id transform-id)
-        (is (nil? (fetch-one "transform" :model_id (str transform-id)))
-            "Transform should be removed from the search index after deletion")))))
+      (binding [search.ingestion/*force-sync* true]
+        (mt/with-temp [:model/Transform {transform-id :id} {:name "Transform to delete"}]
+          (ingest! "transform" [:= :this.id transform-id])
+          (is (some? (fetch-one "transform" :model_id (str transform-id)))
+              "Transform should be in the search index after ingestion")
+          (t2/delete! :model/Transform :id transform-id)
+          (is (nil? (fetch-one "transform" :model_id (str transform-id)))
+              "Transform should be removed from the search index after deletion"))))))
 
 (deftest transform-search-test
   (mt/with-premium-features #{:transforms-basic}
     (search.tu/with-temp-index-table
       (mt/as-admin
         (testing "Transforms can be indexed and subsequently searched for"
-          (mt/with-temp [:model/Transform {transform-id :id}
-                         {:name "Customer Revenue Analysis"
-                          :description "Analyzes revenue by customer segment"
-                          :source {:type "query"
-                                   :query (mt/native-query {:query "SELECT customer_id, SUM(revenue) FROM orders GROUP BY customer_id"})}
-                          :target {:database (mt/id)
-                                   :table "customer_revenue"}}]
-            (ingest! "transform" [:= :this.id transform-id])
-            (testing "Can search by transform name"
-              (let [results (search.tu/search-results "Customer Revenue")]
-                (is (seq results) "Search should return results")
-                (is (some #(and (= "transform" (:model %))
-                                (= transform-id (:id %)))
-                          results)
-                    "Results should include the transform")))
-            (testing "Can search by transform description"
-              (let [results (search.tu/search-results "customer segment")]
-                (is (some #(and (= "transform" (:model %))
-                                (= transform-id (:id %)))
-                          results)
-                    "Should find transform by description text")))
-            (testing "Can filter search results to transforms only"
-              (mt/with-temp [:model/Card _ {:name "Customer Revenue Card"
-                                            :database_id (mt/id)
-                                            :table_id (mt/id :orders)
-                                            :dataset_query (mt/native-query {:query "SELECT 1"})}]
-                (ingest! "card" [:like :this.name "%Customer Revenue%"])
-                (let [transform-only-results (search.tu/search-results "Customer Revenue" {:models #{"transform"}})]
-                  (is (every? #(= "transform" (:model %)) transform-only-results)
-                      "All results should be transforms when filtered"))))))))))
+          (binding [search.ingestion/*force-sync* true]
+            (mt/with-temp [:model/Transform {transform-id :id}
+                           {:name "Customer Revenue Analysis"
+                            :description "Analyzes revenue by customer segment"
+                            :source {:type "query"
+                                     :query (mt/native-query {:query "SELECT customer_id, SUM(revenue) FROM orders GROUP BY customer_id"})}
+                            :target {:database (mt/id)
+                                     :table "customer_revenue"}}]
+              (ingest! "transform" [:= :this.id transform-id])
+              (testing "Can search by transform name"
+                (let [results (search.tu/search-results "Customer Revenue")]
+                  (is (seq results) "Search should return results")
+                  (is (some #(and (= "transform" (:model %))
+                                  (= transform-id (:id %)))
+                            results)
+                      "Results should include the transform")))
+              (testing "Can search by transform description"
+                (let [results (search.tu/search-results "customer segment")]
+                  (is (some #(and (= "transform" (:model %))
+                                  (= transform-id (:id %)))
+                            results)
+                      "Should find transform by description text")))
+              (testing "Can filter search results to transforms only"
+                (mt/with-temp [:model/Card _ {:name "Customer Revenue Card"
+                                              :database_id (mt/id)
+                                              :table_id (mt/id :orders)
+                                              :dataset_query (mt/native-query {:query "SELECT 1"})}]
+                  (ingest! "card" [:like :this.name "%Customer Revenue%"])
+                  (let [transform-only-results (search.tu/search-results "Customer Revenue" {:models #{"transform"}})]
+                    (is (every? #(= "transform" (:model %)) transform-only-results)
+                        "All results should be transforms when filtered")))))))))))

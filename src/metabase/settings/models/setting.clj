@@ -539,8 +539,8 @@
   (if config/*disable-setting-cache*
     (t2/select-one-fn :value :model/Setting :key setting-name-str)
     (do
-      (when (nil? (setting.cache/cache))
-        (setting.cache/restore-cache!))
+      ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
+      (setting.cache/restore-cache-if-needed!)
       (let [cache (setting.cache/cache)]
         (if (nil? cache)
           ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
@@ -866,9 +866,11 @@
               (set-new-setting! setting-name new-value))
             ;; update cached value
             (setting.cache/update-cache! setting-name new-value)
-            ;; Broadcast to other nodes so they invalidate their caches too.
+            ;; Record the fact that a Setting has been updated so eventually other instances (if applicable) find out
+            ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
+            ;; cause other instances to do needless reloading of the cache from the DB)
             (when-not config/*disable-setting-cache*
-              (setting.cache/broadcast-cache-invalidation!))))
+              (setting.cache/update-settings-last-updated!))))
         ;; Now return the `new-value`.
         new-value))))
 

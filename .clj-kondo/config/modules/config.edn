@@ -819,7 +819,6 @@
            legacy-mbql
            lib
            lib-be
-           mq
            premium-features
            query-processor
            settings
@@ -1853,7 +1852,6 @@
            lib
            lib-be
            models
-           mq
            permissions
            premium-features
            queries
@@ -1956,7 +1954,6 @@
            config
            events
            models
-           mq
            premium-features
            util
            enterprise/advanced-permissions}
@@ -2596,7 +2593,6 @@
            events
            lib
            models
-           mq
            query-processor
            util
            warehouse-schema}

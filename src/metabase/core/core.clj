@@ -35,6 +35,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.queue :as queue]
    [metabase.util.system-info :as u.system-info]
    [metabase.warehouses.models.database :as database])
   (:import
@@ -103,6 +104,7 @@
   "General application shutdown function which should be called once at application shutdown."
   []
   (log/info "Metabase Shutting Down ...")
+  (queue/stop-listeners!)
   (mq/shutdown!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
@@ -228,6 +230,7 @@
   (setting/log-deprecated-env-var-usage!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
+  (queue/start-listeners!)
   (init-status/set-complete!)
   (log/info "Metabase Initialization COMPLETE"))
 

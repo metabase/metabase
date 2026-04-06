@@ -12,6 +12,7 @@
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
@@ -315,7 +316,7 @@
         (log/warnf "Unable to find table %s and no longer tracking it as pending", table)
         (swap! *indexes* assoc :pending nil))))
 
-  (let [reindexing? (= :search/reindexing context)
+  (let [reindexing? (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
         do-writes   (fn []
                       (let [entries         (map document->entry documents)
                             ;; No need to update the active index if we are doing a full index, as this table will be
@@ -412,10 +413,12 @@
               (swap! *indexes* assoc :pending nil))
             (maybe-create-pending!)
             (activate-table!))]
-    ;; Creates and tracks tables with a unique transaction so the empty tables are available to other threads
-    ;; even while the initial startup and data load may be happening
-    (t2/with-connection [_ (mdb/data-source)]
-      (reset-logic))))
+    (if search.ingestion/*force-sync*
+      (reset-logic)
+      ;; Creates and tracks tables with a unique transaction so the empty tables are available to other threads
+      ;; even while the initial startup and data load may be happening
+      (t2/with-connection [_ (mdb/data-source)]
+        (reset-logic)))))
 
 (defn ensure-ready!
   "Ensure the index is ready to be populated. Return false if it was already ready."
@@ -450,16 +453,3 @@
            (finally
              (#'drop-table! table-name#)
              (t2/delete! :model/SearchIndexMetadata :version version#)))))))
-
-(defn expose-temp-table-to-server-threads!
-  "In tests that use HTTP requests, the server thread can't see the test's `*indexes*` binding.
-  Call this after `with-temp-index-table` to update the global atom so server threads find the temp table.
-  Returns a 0-arity fn that restores the previous state — call it in a `finally` block."
-  []
-  (let [prev-indexes @@#'*indexes*
-        prev-sync-at @@#'next-sync-at]
-    (reset! @#'*indexes* {:active (active-table)})
-    (reset! @#'next-sync-at (+ (long (#'now)) (long (* 24 60 60e9))))
-    (fn []
-      (reset! @#'*indexes* prev-indexes)
-      (reset! @#'next-sync-at prev-sync-at))))
