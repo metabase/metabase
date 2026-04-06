@@ -1,6 +1,8 @@
 (ns metabase.search.test-util
   (:require
    [metabase.api.common :as api]
+   [metabase.mq.publish :as mq.publish]
+   [metabase.mq.test-util :as mq.tu]
    [metabase.permissions.util :as perms-util]
    [metabase.request.core :as request] ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
    [metabase.search.appdb.index :as search.index]
@@ -15,10 +17,12 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-sync-search-indexing
-  "Perform all search indexing synchronously."
+  "Perform all search indexing synchronously.
+  Also disables transaction deferral so that after-insert hooks index entities inline."
   [& body]
-  `(binding [metabase.search.ingestion/*force-sync* true]
-     ~@body))
+  `(mq.tu/with-sync-mq
+     (binding [mq.publish/*defer-in-transaction?* false]
+       ~@body)))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
@@ -31,13 +35,34 @@
          ~@body))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-temp-index-table-for-http
+  "Like [[with-temp-index-table]] but also exposes the temp table to server threads (HTTP handlers).
+  Use this when your test makes HTTP search requests via `mt/user-http-request`.
+  Includes a `sync-reindex!` to populate the index."
+  [& body]
+  `(when (search/supports-index?)
+     (search.index/with-temp-index-table
+       (with-sync-search-indexing
+         (let [restore-fn# (search.index/expose-temp-table-to-server-threads!)]
+           (try
+             (search.impl/sync-reindex! {:in-place? true})
+             ~@body
+             (finally
+               (restore-fn#))))))))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-new-search-if-available*
-  "Create a temporary index table for the duration of the body."
+  "Create a temporary index table for the duration of the body.
+  Also exposes the temp table to server threads so HTTP-based tests work."
   [& body]
   `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/appdb)]
      (with-temp-index-table
-       (search/reindex! {:async? false :in-place? true})
-       ~@body)))
+       (let [restore-fn# (search.index/expose-temp-table-to-server-threads!)]
+         (try
+           (search.impl/sync-reindex! {:in-place? true})
+           ~@body
+           (finally
+             (restore-fn#)))))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-new-search-if-available-otherwise-legacy

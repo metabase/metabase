@@ -1,15 +1,18 @@
 (ns metabase.search.task.search-index
   (:require
+   [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.analytics.core :as analytics]
+   [metabase.mq.core :as mq]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
+   [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.startup.core :as startup]
-   [metabase.task.core :as task]
-   [metabase.tracing.core :as tracing]
-   [metabase.util.queue :as queue])
+   [metabase.task.core :as task])
   (:import
    (java.time Instant)
    (java.util Date)
@@ -19,7 +22,6 @@
 
 (def ^:private init-stem "metabase.task.search-index.init")
 (def ^:private reindex-stem "metabase.task.search-index.reindex")
-(def ^:private cluster-lock-name ::search-index-lock)
 
 (def init-job-key
   "Key used to define and trigger a job that ensures there is an active index."
@@ -31,19 +33,11 @@
 
 ;; We define the job bodies outside the defrecord, so that we can redefine them live from the REPL
 
-(defn init!
-  "Create a new index, if necessary"
-  []
-  (when (search/supports-index?)
-    (tracing/with-span :search "search.task.init" {}
-      (cluster-lock/with-cluster-lock cluster-lock-name
-        (search/init-index! {:force-reset? false, :re-populate? false})))))
-
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
-  (cluster-lock/with-cluster-lock cluster-lock-name
-    (search/reindex! {:async? false})))
+  (when (search/supports-index?)
+    (search/async-reindex!)))
 
 ;; Atom holding a promise that is delivered when the background init thread finishes.
 ;; nil when no init has been started — [[wait-for-init!]] returns immediately in that case.
@@ -56,14 +50,8 @@
   (some-> @init-promise deref))
 
 (defmethod startup/def-startup-logic! ::SearchIndexInit [_]
-  (let [p (promise)]
-    (reset! init-promise p)
-    (doto (Thread. ^Runnable (fn []
-                               (try
-                                 (init!)
-                                 (finally
-                                   (deliver p true)))))
-      .start)))
+  (when (search/supports-index?)
+    (search/async-init!)))
 
 (defmethod task/init! ::SearchIndexReindex [_]
   (let [job         (jobs/build
@@ -81,8 +69,69 @@
                        (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
 
-(defmethod queue/init-listener! ::SearchIndexUpdate [_]
-  (ingestion/start-listener!))
+(defn handle-command-message!
+  "Handle a command message from the search reindex queue."
+  [msg]
+  (condp = (keyword (:command msg))
+    :init (if (= (:version msg) (search.spec/index-version-hash))
+            (if-let [engine (:engine msg)]
+              (search.engine/init! engine (select-keys msg [:force-reset? :re-populate?]))
+              (search.impl/sync-init-index! {:force-reset? (:force-reset? msg false)
+                                             :re-populate?      false}))
+            (throw (ex-info "Cannot handle init for different index version. Will retry on a different node."
+                            {:expected (search.spec/index-version-hash)
+                             :received (:version msg)})))
+    :reindex (if-let [engine (:engine msg)]
+               (search.engine/reindex! engine (select-keys msg [:in-place?]))
+               (search.impl/sync-reindex! (select-keys msg [:in-place?])))
+    :delete (doseq [e            (search.engine/active-engines)
+                    search-model (->> (vals (search.spec/specifications))
+                                      (filter (comp #{(:model msg)} :model))
+                                      (map :name))]
+              (search.engine/delete! e search-model (:ids msg)))))
+
+(defn- command-key
+  "Extract the command value from a message map, handling both string and keyword keys
+  (messages may not be keywordized yet when dedup runs)."
+  [msg]
+  (when (map? msg)
+    (some-> (or (:command msg) (get msg "command")) keyword)))
+
+(defn dedup-search-messages
+  "Dedup function for search reindex queue messages.
+  - Update vectors: flatten to individual [model where] pairs, dedup by identity, re-group
+  - Command messages: collapse duplicate :init and :reindex (keep last), pass through :delete"
+  [messages]
+  (let [{commands true updates false} (group-by #(boolean (command-key %)) messages)
+        ;; For commands: collapse duplicate :init and :reindex, keep last occurrence
+        deduped-commands (let [grouped (group-by command-key commands)]
+                           (concat
+                            (when-let [inits (seq (:init grouped))]
+                              [(last inits)])
+                            (when-let [reindexes (seq (:reindex grouped))]
+                              [(last reindexes)])
+                            (:delete grouped)))
+        ;; For updates: flatten all update vecs, dedup individual pairs, re-wrap
+        deduped-updates (when (seq updates)
+                          (let [all-pairs (into [] cat updates)]
+                            (when (seq all-pairs)
+                              [(into [] (distinct) all-pairs)])))]
+    (vec (concat deduped-commands deduped-updates))))
+
+(mq/def-listener! :queue/search-reindex
+  {:max-batch-messages 50 :exclusive true
+   :dedup-fn dedup-search-messages}
+  [messages]
+  (try
+    (let [messages (map #(cond-> % (map? %) walk/keywordize-keys) messages)
+          {commands true updates false} (group-by #(boolean (and (map? %) (:command %))) messages)]
+      (doseq [cmd commands]
+        (handle-command-message! cmd))
+      (when (seq updates)
+        (ingestion/bulk-ingest! (into [] cat updates))))
+    (catch Exception e
+      (analytics/inc! :metabase-search/index-error)
+      (throw e))))
 
 (comment
   (task/job-exists? reindex-job-key)

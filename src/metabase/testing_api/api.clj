@@ -27,7 +27,6 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
-   (java.util Queue)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
 (set! *warn-on-reflection* true)
@@ -140,7 +139,6 @@
                              [:name ms/NonBlankString]]]
   ;; reset the system clock, in case `/set-time` was called without cleanup
   (alter-var-root #'java-time.clock/*clock* (constantly nil))
-  (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
   (search/sync-from-restored-db!)
   nil)

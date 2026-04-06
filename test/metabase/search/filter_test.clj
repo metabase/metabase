@@ -6,15 +6,13 @@
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
-   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
-                                  (search.tu/with-new-search-if-available-otherwise-legacy (thunk)))))
+(use-fixtures :each (fn [thunk] (search.tu/with-new-search-if-available-otherwise-legacy (thunk))))
 
 (defn- filter-keys []
   (remove #{:ids} (map :context-key (vals search.config/filters))))

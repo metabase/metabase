@@ -36,13 +36,14 @@
 (deftest transform-query-ingestion-test
   (testing "Contents of Python transform sources are extracted and indexed for full-text search"
     (when (= (mdb/db-type) :postgres)
-      (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
-                                         :source {:type "python"
-                                                  :source-database (mt/id)
-                                                  :body "import pandas as pd\n"}
-                                         :name "Test python transform"}]
-        (let [ingested-transform (search-test/ingest-then-fetch! "transform" "Test python transform")
-              vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
-          (is (string? vector-value))
-          (is (re-find #"import" vector-value))
-          (is (re-find #"panda" vector-value)))))))
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
+                                           :source {:type "python"
+                                                    :source-database (mt/id)
+                                                    :body "import pandas as pd\n"}
+                                           :name "Test python transform"}]
+          (let [ingested-transform (search-test/ingest-then-fetch! "transform" "Test python transform")
+                vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
+            (is (string? vector-value))
+            (is (re-find #"import" vector-value))
+            (is (re-find #"panda" vector-value))))))))

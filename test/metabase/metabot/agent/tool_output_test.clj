@@ -11,6 +11,7 @@
    [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.metabot.tools.resources :as resource-tools]
    [metabase.metabot.tools.search :as search-tools]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -194,31 +195,33 @@
 (deftest search-tool-structured-output-formats-correctly-test
   (testing "search tool :structured-output formats to clean XML via format-structured-result"
     (mt/test-driver :h2
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (search-tools/search-tool
-                      {:semantic_queries ["orders"]
-                       :keyword_queries  ["orders"]
-                       :entity_types     ["table"]})]
-          (assert-formatted-structured result "search: tables" #"<search-results\b"))))))
+      (search.tu/with-temp-index-table
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [result (search-tools/search-tool
+                        {:semantic_queries ["orders"]
+                         :keyword_queries  ["orders"]
+                         :entity_types     ["table"]})]
+            (assert-formatted-structured result "search: tables" #"<search-results\b")))))))
 
 (deftest search-tool-with-models-structured-output-test
   (testing "search tool with model results formats correctly"
     (mt/test-driver :h2
-      (mt/with-current-user (mt/user->id :crowberto)
-        (let [model-query (-> (lib/query (mt/metadata-provider)
-                                         (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
-                              (lib/with-fields [(lib.metadata/field (mt/metadata-provider) (mt/id :orders :id))
-                                                (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total))]))]
-          (mt/with-temp [:model/Card {_model-id :id} {:dataset_query model-query
-                                                      :database_id   (mt/id)
-                                                      :name          "Searchable Test Model"
-                                                      :type          :model}]
-            (let [result (search-tools/search-tool
-                          {:semantic_queries ["Searchable Test Model"]
-                           :keyword_queries  ["Searchable Test Model"]
-                           :entity_types     ["model"]})]
-              (assert-formatted-structured
-               result "search: model" #"<search-results\b"))))))))
+      (search.tu/with-temp-index-table
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [model-query (-> (lib/query (mt/metadata-provider)
+                                           (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))
+                                (lib/with-fields [(lib.metadata/field (mt/metadata-provider) (mt/id :orders :id))
+                                                  (lib.metadata/field (mt/metadata-provider) (mt/id :orders :total))]))]
+            (mt/with-temp [:model/Card {_model-id :id} {:dataset_query model-query
+                                                        :database_id   (mt/id)
+                                                        :name          "Searchable Test Model"
+                                                        :type          :model}]
+              (let [result (search-tools/search-tool
+                            {:semantic_queries ["Searchable Test Model"]
+                             :keyword_queries  ["Searchable Test Model"]
+                             :entity_types     ["model"]})]
+                (assert-formatted-structured
+                 result "search: model" #"<search-results\b")))))))))
 
 (deftest list-available-fields-structured-output-test
   (testing "list_available_fields :structured-output formats to clean XML"

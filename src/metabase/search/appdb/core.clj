@@ -1,7 +1,6 @@
 (ns metabase.search.appdb.core
   (:require
    [clojure.string :as str]
-   [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
@@ -13,12 +12,12 @@
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
+   [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.settings :as search.settings]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
-   [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -27,8 +26,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.time OffsetDateTime)
-   (java.util Queue)))
+   (java.time OffsetDateTime)))
 
 ;; Register the multimethods for each specialization
 (comment
@@ -131,8 +129,7 @@
       (when init-now?
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
-          (future
-            (search.engine/init! search-engine {:force-reset? false}))
+          (search.impl/async-init! :engine search-engine :force-reset? false)
           (catch Exception e
             (log/error e))))
       ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
@@ -148,15 +145,6 @@
 
   (tracing/with-span :search "search.appdb.query" {:search/query-length (count search-string)}
     (try
-      (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
-        ;; wait for a bit for the queue to be drained
-        (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
-          (when-not (u/poll {:thunk       pending-updates
-                             :done?       zero?
-                             :timeout-ms  2000
-                             :interval-ms 100})
-            (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
-
       (let [weights (search.config/weights search-ctx)
             scorers (search.scoring/scorers search-ctx)
             query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
@@ -204,7 +192,7 @@
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
         (log/info "Forcing early reindex because existing index is old")
-        (search.engine/reindex! :search.engine/appdb {}))
+        (search.impl/async-reindex! :engine :search.engine/appdb))
 
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
@@ -235,6 +223,4 @@
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
     (log/info "Reindexing appdb index because the site locale changed.")
-    (if search.ingestion/*force-sync*
-      (search.engine/reindex! :search.engine/appdb {})
-      (future (search.engine/reindex! :search.engine/appdb {})))))
+    (search.impl/async-reindex! :engine :search.engine/appdb)))

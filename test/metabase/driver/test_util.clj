@@ -1,7 +1,7 @@
 (ns metabase.driver.test-util
   (:require
    [mb.hawk.parallel]
-   [metabase.driver.events.report-timezone-updated]
+   [metabase.driver-api.core :as driver-api]
    [metabase.test.initialize :as initialize])
   (:import
    (org.apache.sshd.server SshServer)
@@ -14,7 +14,7 @@
   ;; It makes sense to notify databases only if app db is initialized.
   (when (initialize/initialized? :db)
     (initialize/initialize-if-needed! :plugins)
-    (#'metabase.driver.events.report-timezone-updated/notify-all-databases-updated)))
+    (driver-api/publish-event! :event/report-timezone-updated {})))
 
 (defmacro wrap-notify-all-databases-updated!
   [& body]

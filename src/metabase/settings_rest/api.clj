@@ -23,11 +23,6 @@
   [& body]
   `(do-with-setting-access-control (fn [] ~@body)))
 
-(defn- add-settings-last-updated-cookie
-  "Add a cookie with the current settings-last-updated timestamp to the response."
-  [response]
-  (assoc-in response [:mb/cookies :cookie/settings-cache-timestamp] true))
-
 ;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -56,7 +51,7 @@
    settings :- [:map-of kebab-cased-keyword :any]]
   (with-setting-access-control
     (setting/set-many! settings))
-  (add-settings-last-updated-cookie api/generic-204-no-content))
+  api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -82,4 +77,4 @@
    {:keys [value]} :- [:map [:value :any]]]
   (with-setting-access-control
     (setting/set! key value))
-  (add-settings-last-updated-cookie api/generic-204-no-content))
+  api/generic-204-no-content)

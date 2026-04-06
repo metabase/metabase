@@ -5,6 +5,7 @@
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.impl :as search.impl]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -36,13 +37,13 @@
   (testing "Cards with document_id are excluded from search indexing"
     (let [card-name (mt/random-name)
           regular-card-name (str card-name "-regular")]
-      (search.tu/with-temp-index-table
+      (search.tu/with-temp-index-table-for-http
         (mt/with-temp [:model/Document document {:name "Test Document"
                                                  :document (text->prose-mirror-ast "")}
                        :model/Card document-card (-> (card-with-name-and-query card-name)
                                                      (assoc :document_id (u/the-id document)))
                        :model/Card regular-card (card-with-name-and-query regular-card-name)]
-
+          (search.impl/sync-reindex! {:in-place? true})
           (testing "Search API excludes document cards"
             (let [results (mt/user-http-request :crowberto :get 200 "search" :q card-name :models "card")]
               (is (not (some #(= (:id %) (u/the-id document-card)) (:data results)))
@@ -53,51 +54,57 @@
 
 (deftest document-permission-filtering-test
   (testing "Document search respects collection-based permissions"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (search.tu/with-temp-index-table
-        (mt/with-temp [:model/Collection {coll-id :id} {}
-                       :model/Collection {private-coll-id :id} {}
-                       :model/Document {doc-in-public-coll :id} {:name "Public Document"
-                                                                 :collection_id coll-id
-                                                                 :document (text->prose-mirror-ast "content")}
-                       :model/Document {doc-in-private-coll :id} {:name "Private Document"
-                                                                  :collection_id private-coll-id
-                                                                  :document (text->prose-mirror-ast "content")}
-                       :model/Document {doc-archived :id} {:name "Archived Document"
-                                                           :collection_id coll-id
-                                                           :archived true
-                                                           :document (text->prose-mirror-ast "content")}]
-          ;; Give user read access to first collection only
-          (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
+    ;; Use unique search terms to avoid matching documents from other tests
+    (let [search-id   (mt/random-name)
+          public-name (str search-id " Public")
+          private-name (str search-id " Private")
+          archived-name (str search-id " Archived")]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (search.tu/with-temp-index-table-for-http
+          (mt/with-temp [:model/Collection {coll-id :id} {}
+                         :model/Collection {private-coll-id :id} {}
+                         :model/Document {doc-in-public-coll :id} {:name public-name
+                                                                   :collection_id coll-id
+                                                                   :document (text->prose-mirror-ast "content")}
+                         :model/Document {doc-in-private-coll :id} {:name private-name
+                                                                    :collection_id private-coll-id
+                                                                    :document (text->prose-mirror-ast "content")}
+                         :model/Document {doc-archived :id} {:name archived-name
+                                                             :collection_id coll-id
+                                                             :archived true
+                                                             :document (text->prose-mirror-ast "content")}]
+            (search.impl/sync-reindex! {:in-place? true})
+            ;; Give user read access to first collection only
+            (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
 
-          (testing "Regular user sees only documents in accessible collections"
-            (let [results (mt/user-http-request :rasta :get 200 "search" :q "Document" :models "document")]
-              (is (= #{doc-in-public-coll}
-                     (set (map :id (:data results))))
-                  "Should only see document in accessible collection")))
+            (testing "Regular user sees only documents in accessible collections"
+              (let [results (mt/user-http-request :rasta :get 200 "search" :q search-id :models "document")]
+                (is (= #{doc-in-public-coll}
+                       (set (map :id (:data results))))
+                    "Should only see document in accessible collection")))
 
-          (testing "Regular user cannot see archived documents (no write perms)"
-            (let [results (mt/user-http-request :rasta :get 200 "search" :q "Archived" :archived true :models "document")]
-              (is (empty? (:data results))
-                  "Should not see archived document without write permissions")))
+            (testing "Regular user cannot see archived documents (no write perms)"
+              (let [results (mt/user-http-request :rasta :get 200 "search" :q archived-name :archived true :models "document")]
+                (is (empty? (:data results))
+                    "Should not see archived document without write permissions")))
 
-          (testing "Admin can see all documents including archived"
-            (let [regular-results (mt/user-http-request :crowberto :get 200 "search" :q "Document" :models "document")
-                  archived-results (mt/user-http-request :crowberto :get 200 "search" :q "Archived" :archived true :models "document")]
-              (is (= #{doc-in-public-coll doc-in-private-coll}
-                     (set (map :id (:data regular-results))))
-                  "Admin should see all non-archived documents")
-              (is (= #{doc-archived}
-                     (set (map :id (:data archived-results))))
-                  "Admin should see archived documents")))
+            (testing "Admin can see all documents including archived"
+              (let [regular-results (mt/user-http-request :crowberto :get 200 "search" :q search-id :models "document")
+                    archived-results (mt/user-http-request :crowberto :get 200 "search" :q archived-name :archived true :models "document")]
+                (is (= #{doc-in-public-coll doc-in-private-coll}
+                       (set (map :id (:data regular-results))))
+                    "Admin should see all non-archived documents")
+                (is (= #{doc-archived}
+                       (set (map :id (:data archived-results))))
+                    "Admin should see archived documents")))
 
-          (testing "User with write permissions can see archived documents"
-            ;; Give user write access to first collection
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
-            (let [archived-results (mt/user-http-request :rasta :get 200 "search" :q "Archived" :archived true :models "document")]
-              (is (= #{doc-archived}
-                     (set (map :id (:data archived-results))))
-                  "User with write permissions should see archived documents in accessible collections"))))))))
+            (testing "User with write permissions can see archived documents"
+              ;; Give user write access to first collection
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+              (let [archived-results (mt/user-http-request :rasta :get 200 "search" :q archived-name :archived true :models "document")]
+                (is (= #{doc-archived}
+                       (set (map :id (:data archived-results))))
+                    "User with write permissions should see archived documents in accessible collections")))))))))
 
 (deftest document-view-tracking-integration-test
   (testing "Document view tracking integrates with search"

@@ -13,7 +13,7 @@
    [metabase.search.core :as search]
    [metabase.search.impl :as search.impl]
    [metabase.search.in-place.legacy :as search.legacy]
-   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms.feature-gating :as transforms.gating]
    [toucan2.core :as t2]))
@@ -95,7 +95,7 @@
                                                  :enabled-transform-source-types (transforms.gating/enabled-source-types)}))]
             ;; warm it up, in case the DB call depends on the order of test execution and it needs to
             ;; do some initialization
-            (search/init-index!)
+            (search.impl/sync-init-index!)
             (do-search)
             (t2/with-call-count [call-count]
               (do-search)
@@ -287,7 +287,7 @@
   (when (search/supports-index?)
     (#'search.index/sync-tracking-atoms!)
     (let [search-term (str (random-uuid))]
-      (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-sync-search-indexing
         (mt/with-temp
           [:model/Card {card-id :id} {:name search-term}]
           (mt/with-current-user (mt/user->id :crowberto)
