@@ -106,10 +106,10 @@
             :dependencies                   false
             :workspaces                     true
             :writable_connection            true}
-           (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))))
+           (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
 
 (deftest security-center-token-feature-test
   (testing "admin_security_center is true for self-hosted with the feature flag"
     (mt/with-premium-features #{:admin-security-center}
       (is (true? (:admin_security_center
-                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))))))))
+                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
