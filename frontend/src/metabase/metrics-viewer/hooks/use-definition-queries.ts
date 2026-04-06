@@ -123,7 +123,6 @@ function buildArithmeticRequest(
   // metric can appear multiple times (e.g. Revenue / Revenue).
   const leafRefs = new Map<number, ExpressionRef>();
   const projections: TypedProjection[] = [];
-  const seenProjections = new Set<string>();
   const filters: InstanceFilter[] = [];
   const modifiedDefinitions: {
     [slotIndex: number]: MetricDefinition;
@@ -169,11 +168,10 @@ function buildArithmeticRequest(
 
     if (jsdef.projections) {
       for (const proj of jsdef.projections) {
-        const key = `${proj.type}:${proj.id}`;
-        if (!seenProjections.has(key)) {
-          seenProjections.add(key);
-          projections.push(proj);
-        }
+        projections.push({
+          ...proj,
+          "lib/uuid": uuid,
+        });
       }
     }
 
