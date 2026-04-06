@@ -19,5 +19,7 @@
                (perms/impersonation-enforced-for-db? (:database query))))
     (lib.util.match/replace query
       (x :guard (every-pred map? :persisted-info/native))
-      (dissoc x :persisted-info/native))
+      (-> x
+          (dissoc :persisted-info/native)
+          (assoc :qp/skip-persisted-cache true)))
     query))
