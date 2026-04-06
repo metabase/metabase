@@ -92,6 +92,14 @@
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join :query-permissions/sandboxed-table))))
 
+(defn remove-persisted-info-native-keys
+  "Strips `:persisted-info/native` from query stages."
+  [query]
+  (lib.walk/walk
+   query
+   (fn [_query _path-type _path stage-or-join]
+     (dissoc stage-or-join :persisted-info/native))))
+
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [query :- ::qp.schema/any-query]
