@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.email.messages :as messages]
-   [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.server.instance :as server.instance]
    [metabase.session.core :as session]
