@@ -12,7 +12,6 @@
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -178,10 +177,8 @@
 
 (defmethod task/init! ::DependencyBackfill [_]
   (if (pos? (deps.settings/dependency-backfill-batch-size))
-    (schedule-next-run! (if config/is-test?
-                          0
-                          (deps.task-util/job-initial-delay
-                           (deps.settings/dependency-backfill-variance-minutes))))
+    (schedule-next-run! (deps.task-util/job-initial-delay
+                         (deps.settings/dependency-backfill-variance-minutes)))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))
 
 (derive ::backfill :metabase/event)
