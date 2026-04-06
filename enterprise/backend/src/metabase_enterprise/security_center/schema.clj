@@ -4,7 +4,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::advisory-id
-  [:re #"^SC-\d{4}-\d{3,}$"])
+  [:string {:min 1}])
 
 (mr/def ::semver
   [:re #"^\d+\.\d+\.\d+$"])
