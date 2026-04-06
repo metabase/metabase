@@ -2153,7 +2153,7 @@
            premium-features
            search
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/Card :model/Dashboard :model/SecurityAdvisory}}
 
   tiles
   {:team "UX West"
@@ -3130,6 +3130,7 @@
            system
            task
            util}
+   :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
 
   enterprise/semantic-search
