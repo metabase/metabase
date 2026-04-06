@@ -664,8 +664,8 @@
    {metadata :result_metadata, card-type :type, :as card-updates} :- CardUpdateSchema
    delete-old-dashcards? :- :boolean]
   (let [card-updates (-> card-updates
-                        (m/update-existing :dataset_query lib-be/normalize-query)
-                        (m/update-existing :dataset_query dissoc :info :query-permissions/perms))
+                         (m/update-existing :dataset_query lib-be/normalize-query)
+                         (m/update-existing :dataset_query dissoc :info :query-permissions/perms))
         query        (:dataset_query card-updates)]
     (check-if-card-can-be-saved query card-type)
     (when-some [query (:dataset_query card-updates)]
