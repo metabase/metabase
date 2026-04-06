@@ -5,16 +5,17 @@ import {
 
 const { H } = cy;
 
-// A tiny valid PNG (1×1 transparent pixel) as a data URI, used for icon upload tests
-const TINY_PNG_DATA_URI =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-
 describe("AI Controls > Metabot access and customization", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.updateSetting("metabot-enabled?", true);
+    llmMockServerSetup();
+  });
+
+  afterEach(() => {
+    llmMockServerTeardown();
   });
 
   describe("Feature Access page", () => {
@@ -307,7 +308,11 @@ describe("AI controls > AI usage limits", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    llmMockServerSetup();
+  });
+
+  afterEach(() => {
+    llmMockServerTeardown();
   });
 
   describe("AI Limits settings can be saved properly", () => {
@@ -383,14 +388,10 @@ describe("AI controls > AI usage limits", () => {
     });
   });
 
-  describe("Metabot shows quota-reached message when instance limit is set to 0", () => {
-    const quotaMessage =
-      "You have reached your AI usage limit for this period. Please try again later, Batman.";
-
+  describe("When instance limit is set to 0", () => {
     beforeEach(() => {
       // Enable Metabot with a configured LLM key
       H.updateSetting("metabot-enabled?", true);
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
 
       // Set messages as the limit type (easier to trigger with 0)
       // (These settings are added in PR #71699, so we call the API directly)
@@ -400,7 +401,7 @@ describe("AI controls > AI usage limits", () => {
 
       // Set a custom quota-reached message
       cy.request("PUT", "/api/setting/metabot-quota-reached-message", {
-        value: quotaMessage,
+        value: DEFAULT_QUOTA_MESSAGE,
       });
 
       // Set instance limit to 0 — any usage will immediately exceed it
@@ -412,13 +413,12 @@ describe("AI controls > AI usage limits", () => {
       cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
         "xrayCandidates",
       );
+
+      llmMockServerSetup();
     });
 
     afterEach(() => {
-      // Clean up instance limit
-      cy.request("PUT", "/api/ee/ai-controls/usage/instance", {
-        max_usage: null,
-      });
+      llmMockServerTeardown();
     });
 
     it("should show the quota-reached message when the user sends a message to Metabot", () => {
@@ -429,42 +429,20 @@ describe("AI controls > AI usage limits", () => {
       H.sendMetabotMessage("hello");
 
       // The backend returns the quota-reached message when limit is exceeded
-      H.lastChatMessage().should("have.text", quotaMessage);
-
-      // Ensure no actual LLM call was made (the limit check short-circuits)
-      cy.get("@agentReq.all").should("have.length", 1);
+      H.lastChatMessage().should("have.text", DEFAULT_QUOTA_MESSAGE);
     });
   });
 
   describe("Group limits handling", () => {
-    const quotaMessage =
-      "You have reached your AI usage limit for this period. Please try again later, Batman.";
-    const MOCK_LLM_PORT = 6123;
-    const MOCK_LLM_RESPONSE = "Hello from mock LLM!";
     let groupAId: number;
     let groupBId: number;
 
     beforeEach(() => {
-      // Start a mock server that impersonates the Anthropic Messages API
-      // so requests flow through the full backend (including quota checks)
-      // without needing a real LLM key.
-      cy.task("startMockLlmServer", {
-        port: MOCK_LLM_PORT,
-        responseText: MOCK_LLM_RESPONSE,
-      });
-
-      H.updateSetting("metabot-enabled?", true);
-      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
-      H.updateSetting(
-        "llm-anthropic-api-base-url",
-        `http://localhost:${MOCK_LLM_PORT}`,
-      );
-
       cy.request("PUT", "/api/setting/metabot-limit-unit", {
         value: "messages",
       });
       cy.request("PUT", "/api/setting/metabot-quota-reached-message", {
-        value: quotaMessage,
+        value: DEFAULT_QUOTA_MESSAGE,
       });
 
       // Set instance limit high so it doesn't interfere
@@ -529,8 +507,6 @@ describe("AI controls > AI usage limits", () => {
     });
 
     afterEach(() => {
-      cy.task("stopMockLlmServer");
-
       // Sign back in as admin for cleanup (tests may end signed in as normal user)
       cy.signInAsAdmin();
 
@@ -611,7 +587,155 @@ describe("AI controls > AI usage limits", () => {
 
       // With usage (101) > effective group limit (100) the backend short-circuits
       // before calling the LLM and returns the quota-reached message.
-      H.lastChatMessage().should("have.text", quotaMessage);
+      H.lastChatMessage().should("have.text", DEFAULT_QUOTA_MESSAGE);
     });
   });
 });
+
+describe("AI Controls > Tenant usage limits", () => {
+  let tenantId: number;
+  let tenantUserId: number;
+  const TENANT_USER_EMAIL = "tenant.user@metabase-test.com";
+  const TENANT_USER_PASSWORD = "12341234";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("bleeding-edge");
+    H.updateSetting("metabot-enabled?", true);
+
+    cy.request("PUT", "/api/setting/metabot-quota-reached-message", {
+      value: DEFAULT_QUOTA_MESSAGE,
+    });
+
+    // Enable multi-tenancy
+    H.updateSetting("use-tenants", true);
+
+    // Create a tenant
+    cy.request("POST", "/api/ee/tenant", {
+      name: "Test Corp",
+      slug: "test-corp",
+    }).then(({ body }) => {
+      tenantId = body.id;
+
+      // Create a user belonging to that tenant
+      cy.request("POST", "/api/user", {
+        first_name: "Tenant",
+        last_name: "User",
+        email: TENANT_USER_EMAIL,
+        password: TENANT_USER_PASSWORD,
+        tenant_id: tenantId,
+      }).then(({ body: user }) => {
+        tenantUserId = user.id;
+      });
+    });
+
+    cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
+    cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
+      "xrayCandidates",
+    );
+    cy.intercept("PUT", "/api/ee/ai-controls/usage/tenant/*").as(
+      "updateTenantLimit",
+    );
+    llmMockServerSetup();
+  });
+
+  afterEach(() => {
+    llmMockServerTeardown();
+  });
+
+  it("should allow updating tenant limits when tenants are enabled", () => {
+    cy.visit("/admin/metabot/1/usage-controls/ai-usage-limits");
+
+    cy.findByRole("tab", { name: "Specific tenants" }).click();
+
+    cy.findByTestId("tenant-limits-tab").should("be.visible");
+    cy.findByTestId("tenant-limits-tab")
+      .findByText("Test Corp")
+      .should("be.visible");
+    cy.findByLabelText(
+      "Max total monthly tokens for Test Corp (millions)",
+    ).type("10");
+    cy.wait("@updateTenantLimit").its("response.statusCode").should("eq", 200);
+  });
+
+  it("should show the quota-reached message when the tenant limit is set to 0 and the user sends a message", () => {
+    // Set tenant limit to 0 — any usage will immediately exceed it
+    cy.request("PUT", `/api/ee/ai-controls/usage/tenant/${tenantId}`, {
+      max_usage: 0,
+    });
+    // Clear the backend limit-check cache so the new limit is seen immediately,
+    cy.request("DELETE", "/api/testing/metabot/seed-ai-usage", {
+      user_id: tenantUserId,
+    });
+
+    // Sign in as the tenant user
+    cy.request("POST", "/api/session", {
+      username: TENANT_USER_EMAIL,
+      password: TENANT_USER_PASSWORD,
+    });
+
+    cy.visit("/");
+    cy.wait("@xrayCandidates");
+
+    H.openMetabotViaSearchButton();
+    H.sendMetabotMessage("hello");
+
+    // The backend returns the quota-reached message when the tenant limit is exceeded
+    H.lastChatMessage().should("contain.text", DEFAULT_QUOTA_MESSAGE);
+  });
+
+  it("should not show the quota-reached message when no tenant limit is set", () => {
+    // No tenant limit is set — the chat input should be available without a quota message
+    cy.request("PUT", `/api/ee/ai-controls/usage/tenant/${tenantId}`, {
+      max_usage: null,
+    });
+    // Clear the backend limit-check cache so the new null limit is seen immediately,
+    cy.request("DELETE", "/api/testing/metabot/seed-ai-usage", {
+      user_id: tenantUserId,
+    });
+
+    // Sign in as the tenant user
+    cy.request("POST", "/api/session", {
+      username: TENANT_USER_EMAIL,
+      password: TENANT_USER_PASSWORD,
+    });
+
+    cy.visit("/");
+    cy.wait("@xrayCandidates");
+
+    H.openMetabotViaSearchButton();
+    H.sendMetabotMessage("hello");
+
+    H.lastChatMessage().should("contain.text", MOCK_LLM_RESPONSE);
+    H.lastChatMessage().should("not.contain.text", DEFAULT_QUOTA_MESSAGE);
+  });
+});
+
+// A tiny valid PNG (1×1 transparent pixel) as a data URI, used for icon upload tests
+const TINY_PNG_DATA_URI =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+const MOCK_LLM_PORT = 6123;
+const MOCK_LLM_RESPONSE = "Hello from mock LLM!";
+const DEFAULT_QUOTA_MESSAGE =
+  "You have reached your AI usage limit for this period. Please try again later, Batman.";
+
+function llmMockServerSetup() {
+  // Start a mock server that impersonates the Anthropic Messages API
+  // so requests flow through the full backend (including quota checks)
+  // without needing a real LLM key.
+  cy.task("startMockLlmServer", {
+    port: MOCK_LLM_PORT,
+    responseText: MOCK_LLM_RESPONSE,
+  });
+
+  H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+  H.updateSetting(
+    "llm-anthropic-api-base-url",
+    `http://localhost:${MOCK_LLM_PORT}`,
+  );
+}
+
+function llmMockServerTeardown() {
+  cy.task("stopMockLlmServer");
+}

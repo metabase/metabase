@@ -1,7 +1,7 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
-import { type Dictionary, isEmpty } from "underscore";
+import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -15,40 +15,47 @@ import type {
 } from "metabase-types/api";
 
 import {
-  MAX_LIMIT_INPUT,
   SAVE_DEBOUNCE_MS,
   getLimitPeriodLabel,
+  sanitizeUsageLimitValue,
 } from "../utils";
 
 import S from "./GroupLimitsSettingsSection.module.css";
 
 type SpecificTenantsTabProps = {
-  error: unknown;
+  hasTenantsError: boolean;
   instanceLimit: number | null;
   isLoading: boolean;
   limitPeriod: MetabotLimitPeriod;
   limitType: MetabotLimitType;
   tenantLimits: MetabotTenantLimit[];
-  tenants: Tenant[] | undefined;
+  tenants: Tenant[];
 };
 
-export function TenantLimitsTab({
-  error,
-  instanceLimit,
-  isLoading,
-  limitPeriod,
-  limitType,
-  tenantLimits,
-  tenants,
-}: SpecificTenantsTabProps) {
+type TenantLimitsMap = Record<number, number | null>;
+
+export function TenantLimitsTab(props: SpecificTenantsTabProps) {
+  const {
+    hasTenantsError,
+    instanceLimit,
+    isLoading,
+    limitPeriod,
+    limitType,
+    tenantLimits,
+    tenants,
+  } = props;
   const [search, setSearch] = useState("");
   const [updateTenantLimit] = useUpdateAIControlsTenantLimitMutation();
-  const [localLimitsMap, setLocalLimitsMap] = useState<Dictionary<number>>({});
+  const [localLimitsMap, setLocalLimitsMap] = useState<TenantLimitsMap>({});
   const limitsMap = useMemo(
     () =>
-      (tenantLimits || []).reduce((map, limitObj) => {
-        return { ...map, [limitObj.tenant_id]: limitObj.max_usage };
-      }, {} as Dictionary<number>),
+      tenantLimits.reduce(
+        (map, limitObj) => ({
+          ...map,
+          [limitObj.tenant_id]: limitObj.max_usage,
+        }),
+        {} as TenantLimitsMap,
+      ),
     [tenantLimits],
   );
   const { sendErrorToast } = useMetadataToasts();
@@ -62,49 +69,50 @@ export function TenantLimitsTab({
     setLocalLimitsMap(limitsMap);
   }, [limitsMap, localLimitsMap]);
 
-  const debouncedSaveTenantLimits = useDebouncedCallback(async () => {
-    for (const tenantId in localLimitsMap) {
-      if (limitsMap[tenantId] !== localLimitsMap[tenantId]) {
-        updateTenantLimit({
-          tenantId: Number(tenantId),
-          max_usage: localLimitsMap[tenantId],
-        })
-          .unwrap()
-          .catch(() => {
-            sendErrorToast(t`Failed to update a tenant limit`);
-          });
+  const debouncedSaveTenantLimit = useDebouncedCallback(
+    async (tenant: Tenant, maxUsage: number | null) => {
+      try {
+        await updateTenantLimit({
+          tenantId: tenant.id,
+          max_usage: maxUsage,
+        }).unwrap();
+      } catch {
+        sendErrorToast(
+          c("{0} is the tenant name")
+            .t`Usage limit could not be updated for ${tenant.name} tenant`,
+        );
       }
-    }
-  }, SAVE_DEBOUNCE_MS);
+    },
+    SAVE_DEBOUNCE_MS,
+  );
 
-  const handleChange = (tenantId: number, value: string) => {
-    let sanitizedValue = value;
-
-    if (sanitizedValue !== "") {
-      sanitizedValue = Math.min(Number(value), MAX_LIMIT_INPUT).toString();
-    }
-
-    setLocalLimitsMap((prev) => ({
+  const handleChange = (tenant: Tenant, inputValue: string) => {
+    const maxUsage = sanitizeUsageLimitValue(inputValue);
+    setLocalLimitsMap((prev: Record<number, number | null>) => ({
       ...prev,
-      [tenantId]: sanitizedValue ? Number(sanitizedValue) : null,
+      [tenant.id]: maxUsage,
     }));
-    debouncedSaveTenantLimits();
+    debouncedSaveTenantLimit(tenant, maxUsage);
   };
 
   const filteredTenants = useMemo(() => {
-    if (!tenants) {
+    if (!tenants.length) {
       return [];
     }
+
     const query = search.trim().toLowerCase();
+
     if (!query) {
       return tenants;
     }
+
     return tenants.filter((tenant) =>
       tenant.name.toLowerCase().includes(query),
     );
   }, [tenants, search]);
 
-  const noTenantsToShow = tenants?.length === 0 && !error && !isLoading;
+  const noTenantsToShow =
+    tenants?.length === 0 && !hasTenantsError && !isLoading;
   const { adjective: periodAdjective, i18nContext: periodI18nContext } =
     getLimitPeriodLabel(limitPeriod);
   const placeholder =
@@ -117,7 +125,7 @@ export function TenantLimitsTab({
       </Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
-        error={error ? t`Error loading tenants` : null}
+        error={hasTenantsError ? t`Error loading tenants` : null}
       >
         {noTenantsToShow ? (
           <Alert mb="md" variant="error" icon={<Icon name="warning" />}>
@@ -155,7 +163,7 @@ export function TenantLimitsTab({
                             placeholder={placeholder}
                             value={localLimitsMap?.[tenant.id] ?? ""}
                             onChange={(e) =>
-                              handleChange(tenant.id, e.target.value)
+                              handleChange(tenant, e.target.value)
                             }
                             classNames={{ input: S.LimitInput }}
                             type="number"

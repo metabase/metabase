@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { setupUpdateAIControlsGroupLimitEndpoint } from "__support__/server-mocks/metabot";
 import { renderWithProviders, screen } from "__support__/ui";
 import type {
+  GroupInfo,
   MetabotGroupLimit,
   MetabotLimitPeriod,
   MetabotLimitType,
@@ -23,21 +24,32 @@ const marketingGroup = createMockGroup({
 });
 const defaultGroups = [adminGroup, marketingGroup];
 
+type SetupOpts = Partial<{
+  groups: GroupInfo[];
+  groupLimits: MetabotGroupLimit[];
+  instanceLimit: number | null;
+  limitType: MetabotLimitType;
+  limitPeriod: MetabotLimitPeriod;
+  variant: "regular-groups" | "tenant-groups";
+  hasError: boolean;
+  isLoading: boolean;
+}>;
+
 function setup({
   groups = defaultGroups,
-  groupLimits = [] as MetabotGroupLimit[],
-  instanceLimit = null as number | null,
-  limitType = "tokens" as MetabotLimitType,
-  limitPeriod = "monthly" as MetabotLimitPeriod,
-  variant = "regular-groups" as "regular-groups" | "tenant-groups",
-  error = null as unknown,
+  groupLimits = [],
+  instanceLimit = null,
+  limitType = "tokens",
+  limitPeriod = "monthly",
+  variant = "regular-groups",
+  hasError = false,
   isLoading = false,
-} = {}) {
+}: SetupOpts = {}) {
   setupUpdateAIControlsGroupLimitEndpoint();
 
   renderWithProviders(
     <GroupLimitsTab
-      error={error}
+      hasGroupsError={hasError}
       groupLimits={groupLimits}
       groups={groups}
       instanceLimit={instanceLimit}
@@ -122,14 +134,13 @@ describe("GroupLimitsTab", () => {
   });
 
   it("shows error message when error is present", () => {
-    setup({ error: new Error("fail"), groups: undefined });
-
+    setup({ hasError: true, groups: undefined });
     expect(screen.getByText("Error loading groups")).toBeInTheDocument();
   });
 
   it("shows tenant-specific error when variant is tenant-groups", () => {
     setup({
-      error: new Error("fail"),
+      hasError: true,
       groups: undefined,
       variant: "tenant-groups",
     });

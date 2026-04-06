@@ -56,7 +56,7 @@ describe("GroupLimitsSettingsSection", () => {
     setup();
 
     expect(await screen.findByText("Group limits")).toBeInTheDocument();
-    expect(screen.getByText("Administrators")).toBeInTheDocument();
+    expect(await screen.findByText("Administrators")).toBeInTheDocument();
     expect(screen.getByText("All Users")).toBeInTheDocument();
   });
 

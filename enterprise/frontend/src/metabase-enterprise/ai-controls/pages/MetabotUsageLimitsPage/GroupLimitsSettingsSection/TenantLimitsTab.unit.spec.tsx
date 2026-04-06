@@ -30,20 +30,30 @@ const tenant2 = createMockTenant({
 });
 const defaultTenants = [tenant1, tenant2];
 
+type SetupOpts = Partial<{
+  tenants: Tenant[];
+  tenantLimits: MetabotTenantLimit[];
+  instanceLimit: number | null;
+  limitType: MetabotLimitType;
+  limitPeriod: MetabotLimitPeriod;
+  hasError: boolean;
+  isLoading: boolean;
+}>;
+
 function setup({
-  tenants = defaultTenants as Tenant[] | undefined,
-  tenantLimits = [] as MetabotTenantLimit[],
-  instanceLimit = null as number | null,
-  limitType = "tokens" as MetabotLimitType,
-  limitPeriod = "monthly" as MetabotLimitPeriod,
-  error = null as unknown,
+  tenants = defaultTenants,
+  tenantLimits = [],
+  instanceLimit = null,
+  limitType = "tokens",
+  limitPeriod = "monthly",
+  hasError = false,
   isLoading = false,
-} = {}) {
+}: SetupOpts = {}) {
   setupUpdateAIControlsTenantLimitEndpoint();
 
   renderWithProviders(
     <TenantLimitsTab
-      error={error}
+      hasTenantsError={hasError}
       instanceLimit={instanceLimit}
       isLoading={isLoading}
       limitPeriod={limitPeriod}
@@ -121,8 +131,7 @@ describe("TenantLimitsTab", () => {
   });
 
   it("shows error message when error is present", () => {
-    setup({ error: new Error("fail"), tenants: undefined });
-
+    setup({ hasError: true, tenants: undefined });
     expect(screen.getByText("Error loading tenants")).toBeInTheDocument();
   });
 

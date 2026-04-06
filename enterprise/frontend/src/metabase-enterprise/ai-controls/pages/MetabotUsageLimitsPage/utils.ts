@@ -5,20 +5,33 @@ import type { MetabotLimitPeriod } from "metabase-types/api";
 export const SAVE_DEBOUNCE_MS = 500;
 export const MAX_LIMIT_INPUT = 999999999;
 
+const nounMap: Record<MetabotLimitPeriod, string> = {
+  get daily() {
+    return t`day`;
+  },
+  get weekly() {
+    return t`week`;
+  },
+  get monthly() {
+    return t`month`;
+  },
+};
+
+const adjectiveMap: Record<MetabotLimitPeriod, string> = {
+  get daily() {
+    return t`daily`;
+  },
+  get weekly() {
+    return t`weekly`;
+  },
+  get monthly() {
+    return t`monthly`;
+  },
+};
+
 export const getLimitPeriodLabel = (
   limitPeriod: MetabotLimitPeriod = "monthly",
 ) => {
-  const nounMap: Record<MetabotLimitPeriod, string> = {
-    daily: t`day`,
-    weekly: t`week`,
-    monthly: t`month`,
-  };
-  const adjectiveMap: Record<MetabotLimitPeriod, string> = {
-    daily: t`daily`,
-    weekly: t`weekly`,
-    monthly: t`monthly`,
-  };
-
   return {
     noun: nounMap[limitPeriod],
     adjective: adjectiveMap[limitPeriod],
@@ -31,4 +44,21 @@ export const getLimitPeriodLabel = (
       ),
     },
   };
+};
+
+/**
+ * Sanitizes the input value for a usage limit.
+ * Return an integer value or null if the input is empty.
+ */
+export const sanitizeUsageLimitValue = (inputValue: string) => {
+  let sanitizedStrValue = inputValue.trim();
+
+  if (sanitizedStrValue !== "") {
+    sanitizedStrValue = Math.min(
+      Number(inputValue),
+      MAX_LIMIT_INPUT,
+    ).toString();
+  }
+
+  return sanitizedStrValue ? parseInt(sanitizedStrValue) : null;
 };

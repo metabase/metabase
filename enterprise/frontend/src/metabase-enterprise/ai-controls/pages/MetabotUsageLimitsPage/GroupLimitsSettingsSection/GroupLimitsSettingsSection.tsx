@@ -29,7 +29,7 @@ export function GroupLimitsSettingsSection() {
 
   // Groups data
   const {
-    data: userGroups,
+    data: userGroups = [],
     isLoading: isLoadingUserGroups,
     error: userGroupsError,
   } = useListPermissionsGroupsQuery(
@@ -37,7 +37,7 @@ export function GroupLimitsSettingsSection() {
   );
 
   const {
-    data: tenantGroups,
+    data: tenantGroups = [],
     isLoading: isLoadingTenantGroups,
     error: tenantGroupsError,
   } = useListPermissionsGroupsQuery(
@@ -46,32 +46,44 @@ export function GroupLimitsSettingsSection() {
   );
 
   const {
-    data: tenants,
+    data: tenants = [],
     isLoading: isLoadingTenants,
     error: tenantsError,
   } = PLUGIN_TENANTS.useListActiveTenants();
 
   // Usage limits data
-  const { data: groupLimits } = useGetAIControlsGroupLimitsQuery();
+  const {
+    data: groupLimits = [],
+    isLoading: isLoadingGroupLimits,
+    error: groupLimitsError,
+  } = useGetAIControlsGroupLimitsQuery();
   const { data: instanceLimitData } = useGetAIControlsInstanceLimitQuery();
-  const { data: tenantLimits } = useGetAIControlsTenantLimitsQuery(undefined, {
+  const {
+    data: tenantLimits = [],
+    isLoading: isLoadingTenantLimits,
+    error: tenantLimitsError,
+  } = useGetAIControlsTenantLimitsQuery(undefined, {
     skip: !isUsingTenants,
   });
 
   const instanceLimit = instanceLimitData?.max_usage ?? null;
+
+  const commonLimitPeriodProps = {
+    instanceLimit,
+    limitPeriod,
+    limitType,
+  };
 
   if (!isUsingTenants) {
     return (
       <SettingsSection title={t`Group limits`}>
         <GroupLimitsTab
           data-testid="user-group-limits-tab"
-          error={userGroupsError}
-          groupLimits={groupLimits ?? []}
+          {...commonLimitPeriodProps}
+          hasGroupsError={!!(userGroupsError || groupLimitsError)}
+          groupLimits={groupLimits}
           groups={userGroups}
-          instanceLimit={instanceLimit}
-          isLoading={isLoadingUserGroups}
-          limitPeriod={limitPeriod}
-          limitType={limitType}
+          isLoading={isLoadingUserGroups || isLoadingGroupLimits}
           variant="regular-groups"
         />
       </SettingsSection>
@@ -92,38 +104,32 @@ export function GroupLimitsSettingsSection() {
 
         <Tabs.Panel value="user-groups">
           <GroupLimitsTab
-            error={userGroupsError}
-            groupLimits={groupLimits ?? []}
+            {...commonLimitPeriodProps}
+            hasGroupsError={!!(userGroupsError || groupLimitsError)}
+            groupLimits={groupLimits}
             groups={userGroups}
-            instanceLimit={instanceLimit}
-            isLoading={isLoadingUserGroups}
-            limitPeriod={limitPeriod}
-            limitType={limitType}
+            isLoading={isLoadingUserGroups || isLoadingGroupLimits}
             variant="regular-groups"
           />
         </Tabs.Panel>
 
         <Tabs.Panel value="tenant-groups">
           <GroupLimitsTab
-            error={tenantGroupsError}
-            groupLimits={groupLimits ?? []}
+            {...commonLimitPeriodProps}
+            hasGroupsError={!!(tenantGroupsError || groupLimitsError)}
+            groupLimits={groupLimits}
             groups={tenantGroups}
-            instanceLimit={instanceLimit}
-            isLoading={isLoadingTenantGroups}
-            limitPeriod={limitPeriod}
-            limitType={limitType}
+            isLoading={isLoadingTenantGroups || isLoadingGroupLimits}
             variant="tenant-groups"
           />
         </Tabs.Panel>
 
         <Tabs.Panel value="specific-tenants">
           <TenantLimitsTab
-            error={tenantsError}
-            instanceLimit={instanceLimit}
-            isLoading={isLoadingTenants}
-            limitPeriod={limitPeriod}
-            limitType={limitType}
-            tenantLimits={tenantLimits ?? []}
+            {...commonLimitPeriodProps}
+            hasTenantsError={!!(tenantsError || tenantLimitsError)}
+            isLoading={isLoadingTenants || isLoadingTenantLimits}
+            tenantLimits={tenantLimits}
             tenants={tenants}
           />
         </Tabs.Panel>

@@ -20,9 +20,9 @@ import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import S from "./GeneralLimitsSettingsSection.module.css";
 import {
-  MAX_LIMIT_INPUT,
   SAVE_DEBOUNCE_MS,
   getLimitPeriodLabel,
+  sanitizeUsageLimitValue,
 } from "./utils";
 
 type LimitTypeOption = SegmentedControlItem<MetabotLimitType>;
@@ -42,12 +42,10 @@ export function GeneralLimitsSettingsSection() {
   // Instance limit
   const { data: instanceLimitData } = useGetAIControlsInstanceLimitQuery();
   const [updateInstanceLimit] = useUpdateAIControlsInstanceLimitMutation();
-  const initialInstanceLimit = instanceLimitData
-    ? String(instanceLimitData.max_usage)
-    : undefined;
+  const initialInstanceLimit = instanceLimitData?.max_usage;
 
   // Local state
-  const [instanceLimitInput, setInstanceLimitInput] = useState<string>();
+  const [instanceLimitInput, setInstanceLimitInput] = useState<number | null>();
   const [limitType, setLimitType] = useState<MetabotLimitType>();
   const [limitPeriod, setLimitPeriod] = useState<MetabotLimitPeriod>();
   const [quotaMessage, setQuotaMessage] = useState<string>();
@@ -76,15 +74,14 @@ export function GeneralLimitsSettingsSection() {
       instanceLimitInput === undefined &&
       initialInstanceLimit !== undefined
     ) {
-      setInstanceLimitInput(initialInstanceLimit ?? "");
+      setInstanceLimitInput(initialInstanceLimit);
     }
   }, [initialInstanceLimit, instanceLimitInput]);
 
   // Debounced save functions
   const debouncedSaveInstanceLimit = useDebouncedCallback(
-    async (value: string) => {
+    async (maxUsage: number | null) => {
       try {
-        const maxUsage = value ? Number(value) : null;
         await updateInstanceLimit({ max_usage: maxUsage }).unwrap();
       } catch {
         sendErrorToast(t`Failed to update instance limit`);
@@ -95,11 +92,14 @@ export function GeneralLimitsSettingsSection() {
 
   const debouncedSaveQuotaMessage = useDebouncedCallback(
     async (value: string) => {
-      updateQuotaMessageSetting({
+      const response = await updateQuotaMessageSetting({
         key: "metabot-quota-reached-message",
         value: value || null,
         toast: false,
       });
+      if (response.error) {
+        sendErrorToast(t`Failed to update quota-reached message`);
+      }
     },
     SAVE_DEBOUNCE_MS,
   );
@@ -119,33 +119,34 @@ export function GeneralLimitsSettingsSection() {
     ];
   }, []);
 
-  const handleLimitTypeChange = (value: MetabotLimitType) => {
+  const handleLimitTypeChange = async (value: MetabotLimitType) => {
     setLimitType(value);
-    updateLimitTypeSetting({
+    const response = await updateLimitTypeSetting({
       key: "metabot-limit-unit",
       value,
       toast: false,
     });
+    if (response.error) {
+      sendErrorToast(t`Failed to update limit type`);
+    }
   };
 
-  const handleLimitPeriodChange = (value: MetabotLimitPeriod) => {
+  const handleLimitPeriodChange = async (value: MetabotLimitPeriod) => {
     setLimitPeriod(value);
-    updateLimitPeriodSetting({
+    const response = await updateLimitPeriodSetting({
       key: "metabot-limit-reset-rate",
       value,
       toast: false,
     });
+    if (response.error) {
+      sendErrorToast(t`Failed to update limits reset rate`);
+    }
   };
 
   const handleInstanceLimitChange = (e: ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-
-    if (value !== "") {
-      value = Math.min(Number(value), MAX_LIMIT_INPUT).toString();
-    }
-
-    setInstanceLimitInput(value);
-    debouncedSaveInstanceLimit(value);
+    const maxUsage = sanitizeUsageLimitValue(e.target.value);
+    setInstanceLimitInput(maxUsage);
+    debouncedSaveInstanceLimit(maxUsage);
   };
 
   const handleQuotaMessageChange = (e: ChangeEvent<HTMLInputElement>) => {

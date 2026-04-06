@@ -1,7 +1,7 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
-import { type Dictionary, isEmpty } from "underscore";
+import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { capitalize } from "metabase/lib/formatting/strings";
@@ -16,17 +16,17 @@ import type {
 } from "metabase-types/api";
 
 import {
-  MAX_LIMIT_INPUT,
   SAVE_DEBOUNCE_MS,
   getLimitPeriodLabel,
+  sanitizeUsageLimitValue,
 } from "../utils";
 
 import S from "./GroupLimitsSettingsSection.module.css";
 
 type GroupLimitsTabProps = {
-  error: unknown;
   groupLimits: MetabotGroupLimit[];
-  groups: GroupInfo[] | undefined;
+  groups: GroupInfo[];
+  hasGroupsError: unknown;
   instanceLimit: number | null;
   isLoading: boolean;
   limitPeriod: MetabotLimitPeriod;
@@ -34,23 +34,29 @@ type GroupLimitsTabProps = {
   variant: "regular-groups" | "tenant-groups";
 };
 
+type GroupLimitsMap = Record<number, number | null>;
+
 export function GroupLimitsTab({
   variant,
   groups,
   isLoading,
-  error,
+  hasGroupsError,
   limitPeriod,
   limitType,
   groupLimits,
   instanceLimit,
 }: GroupLimitsTabProps) {
   const [updateGroupLimit] = useUpdateAIControlsGroupLimitMutation();
-  const [localLimitsMap, setLocalLimitsMap] = useState<Dictionary<number>>({});
+  const [localLimitsMap, setLocalLimitsMap] = useState<GroupLimitsMap>({});
   const limitsMap = useMemo(
     () =>
-      (groupLimits || []).reduce((map, limitObj) => {
-        return { ...map, [limitObj.group_id]: limitObj.max_usage };
-      }, {} as Dictionary<number>),
+      groupLimits.reduce(
+        (map, limitObj) => ({
+          ...map,
+          [limitObj.group_id]: limitObj.max_usage,
+        }),
+        {} as GroupLimitsMap,
+      ),
     [groupLimits],
   );
   const { sendErrorToast } = useMetadataToasts();
@@ -64,36 +70,29 @@ export function GroupLimitsTab({
     setLocalLimitsMap(limitsMap);
   }, [limitsMap, localLimitsMap]);
 
-  const debouncedSaveGroupLimits = useDebouncedCallback(async () => {
-    for (const groupId in localLimitsMap) {
-      if (limitsMap[groupId] !== localLimitsMap[groupId]) {
-        updateGroupLimit({
-          groupId: Number(groupId),
-          max_usage: localLimitsMap[groupId],
-        })
-          .unwrap()
-          .catch(() => {
-            sendErrorToast(t`Failed to update a group limit`);
-          });
+  const debouncedSaveGroupLimit = useDebouncedCallback(
+    async (group: GroupInfo, maxUsage: number | null) => {
+      try {
+        await updateGroupLimit({
+          groupId: group.id,
+          max_usage: maxUsage,
+        }).unwrap();
+      } catch {
+        sendErrorToast(
+          t`Usage limit could not be updated for ${group.name} group`,
+        );
       }
-    }
-  }, SAVE_DEBOUNCE_MS);
+    },
+    SAVE_DEBOUNCE_MS,
+  );
 
   const placeholder =
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
-  const handleChange = (groupId: number, value: string) => {
-    let sanitizedValue = value;
-
-    if (sanitizedValue !== "") {
-      sanitizedValue = Math.min(Number(value), MAX_LIMIT_INPUT).toString();
-    }
-
-    setLocalLimitsMap((prev) => ({
-      ...prev,
-      [groupId]: sanitizedValue ? Number(sanitizedValue) : null,
-    }));
-    debouncedSaveGroupLimits();
+  const handleChange = (group: GroupInfo, inputValue: string) => {
+    const maxUsage = sanitizeUsageLimitValue(inputValue);
+    setLocalLimitsMap((prev) => ({ ...prev, [group.id]: maxUsage }));
+    debouncedSaveGroupLimit(group, maxUsage);
   };
 
   const {
@@ -109,9 +108,9 @@ export function GroupLimitsTab({
       <Text c="text-secondary">{description}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
-        error={error ? errorMessage : null}
+        error={hasGroupsError ? errorMessage : null}
       >
-        {groups && (
+        {groups.length > 0 && (
           <Box className={S.TableContainer}>
             <table className={S.Table}>
               <thead>
@@ -134,7 +133,7 @@ export function GroupLimitsTab({
                       <TextInput
                         placeholder={placeholder}
                         value={localLimitsMap?.[group.id] ?? ""}
-                        onChange={(e) => handleChange(group.id, e.target.value)}
+                        onChange={(e) => handleChange(group, e.target.value)}
                         classNames={{ input: S.LimitInput }}
                         type="number"
                         min={1}

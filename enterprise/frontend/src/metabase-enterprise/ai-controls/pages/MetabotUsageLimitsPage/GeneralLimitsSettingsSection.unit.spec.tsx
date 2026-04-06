@@ -45,6 +45,17 @@ describe("GeneralLimitsSettingsSection", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("By token usage")).toBeInTheDocument();
     expect(screen.getByText("By message count")).toBeInTheDocument();
+
+    // The radio input for the saved value should be checked
+    await waitFor(() => {
+      expect(
+        screen.getByRole("radio", { name: "By message count" }),
+      ).toBeChecked();
+    });
+
+    expect(
+      screen.getByRole("radio", { name: "By token usage" }),
+    ).not.toBeChecked();
   });
 
   it("renders the reset period segmented control with saved value", async () => {
@@ -56,6 +67,14 @@ describe("GeneralLimitsSettingsSection", () => {
     expect(screen.getByText("Daily")).toBeInTheDocument();
     expect(screen.getByText("Weekly")).toBeInTheDocument();
     expect(screen.getByText("Monthly")).toBeInTheDocument();
+
+    // The radio input for the saved value should be checked
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "Weekly" })).toBeChecked();
+    });
+
+    expect(screen.getByRole("radio", { name: "Daily" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Monthly" })).not.toBeChecked();
   });
 
   it("shows token-based label for instance limit when limit type is tokens", async () => {
