@@ -7,8 +7,8 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
