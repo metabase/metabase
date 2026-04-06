@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [mapv])
   (:require
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
    [clojure.math :as math]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -49,7 +50,8 @@
                               :database-routing                       true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
-                              :describe-is-generated                  true}]
+                              :describe-is-generated                  true
+                              :table-privileges                       true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
@@ -538,3 +540,17 @@
 
 (defmethod driver/llm-sql-dialect-resource :sqlite [_]
   "metabot/prompts/dialects/sqlite.md")
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :sqlite
+  [_driver conn-spec & {:as _options}]
+  ;; SQLite has no privilege system - all connected users have full access to all tables and views.
+  (->> (jdbc/query conn-spec
+                   ["SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%'"])
+       (map (fn [{:keys [name]}]
+              {:role   nil
+               :schema nil
+               :table  name
+               :select true
+               :update true
+               :insert true
+               :delete true}))))

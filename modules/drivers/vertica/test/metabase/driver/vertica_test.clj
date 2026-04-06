@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]))
@@ -73,3 +74,25 @@
            (->> (mt/native-query {:query (tx/native-array-query :vertica)})
                 mt/process-query
                 mt/rows)))))
+
+(deftest table-privileges-test
+  (mt/test-driver :vertica
+    (testing "`current-user-table-privileges` returns correct structure and privileges"
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            privileges  (sql-jdbc.sync/current-user-table-privileges :vertica conn-spec)]
+        (is (seq privileges) "Should return at least one table")
+        (doseq [priv privileges]
+          (is (= #{:role :schema :table :select :update :insert :delete}
+                 (set (keys priv)))
+              "Should have all required keys")
+          (is (nil? (:role priv)))
+          (is (string? (:schema priv)))
+          (is (string? (:table priv)))
+          (is (boolean? (:select priv)))
+          (is (boolean? (:update priv)))
+          (is (boolean? (:insert priv)))
+          (is (boolean? (:delete priv))))
+        (testing "Test tables should appear with at least SELECT privilege"
+          (let [orders (filter (fn [priv] (str/includes? (str/lower-case (:table priv)) "orders")) privileges)]
+            (when (seq orders)
+              (is (every? :select orders)))))))))

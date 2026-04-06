@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -276,3 +277,21 @@
                     (lib/query mp)
                     (qp/process-query)
                     (mt/rows))))))))
+
+(deftest table-privileges-test
+  (mt/test-driver :sqlite
+    (testing "All tables should have full privileges since SQLite has no privilege system"
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            privileges  (sql-jdbc.sync/current-user-table-privileges :sqlite conn-spec)]
+        (is (seq privileges) "Should return at least one table")
+        (doseq [priv privileges]
+          (testing (format "Table %s" (:table priv))
+            (is (= #{:role :schema :table :select :update :insert :delete}
+                   (set (keys priv)))
+                "Should have all required keys")
+            (is (nil? (:role priv)))
+            (is (nil? (:schema priv)))
+            (is (true? (:select priv)))
+            (is (true? (:update priv)))
+            (is (true? (:insert priv)))
+            (is (true? (:delete priv)))))))))

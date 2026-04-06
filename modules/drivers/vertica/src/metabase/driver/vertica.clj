@@ -41,7 +41,8 @@
                               :percentile-aggregations          false
                               :regex/lookaheads-and-lookbehinds false
                               :test/jvm-timezone-setting        false
-                              :uuid-type                        true}]
+                              :uuid-type                        true
+                              :table-privileges                 true}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
@@ -351,3 +352,28 @@
 
 (defmethod driver/llm-sql-dialect-resource :vertica [_]
   "metabot/prompts/dialects/vertica.md")
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :vertica
+  [_driver conn-spec & {:as _options}]
+  (->> (jdbc/query
+        conn-spec
+        (str/join
+         "\n"
+         ["SELECT"
+          "  NULL AS role,"
+          "  g.object_schema AS schema,"
+          "  g.object_name AS table,"
+          "  MAX(CASE WHEN g.privileges_description ILIKE '%SELECT%' THEN 1 ELSE 0 END) AS \"select\","
+          "  MAX(CASE WHEN g.privileges_description ILIKE '%UPDATE%' THEN 1 ELSE 0 END) AS \"update\","
+          "  MAX(CASE WHEN g.privileges_description ILIKE '%INSERT%' THEN 1 ELSE 0 END) AS \"insert\","
+          "  MAX(CASE WHEN g.privileges_description ILIKE '%DELETE%' THEN 1 ELSE 0 END) AS \"delete\""
+          "FROM v_catalog.grants g"
+          "WHERE g.grantee = CURRENT_USER"
+          "  AND g.object_type IN ('TABLE', 'VIEW')"
+          "GROUP BY g.object_schema, g.object_name"]))
+       (map (fn [row]
+              (-> row
+                  (update :select pos?)
+                  (update :update pos?)
+                  (update :insert pos?)
+                  (update :delete pos?))))))

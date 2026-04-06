@@ -62,7 +62,8 @@
                               :now                              true
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
-                              :regex/lookaheads-and-lookbehinds false}]
+                              :regex/lookaheads-and-lookbehinds false
+                              :table-privileges                true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
@@ -760,3 +761,42 @@
 
 (defmethod driver/llm-sql-dialect-resource :oracle [_]
   "metabot/prompts/dialects/oracle.md")
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :oracle
+  [_driver conn-spec & {:as _options}]
+  (->> (jdbc/query
+        conn-spec
+        (str/join
+         "\n"
+         [;; Tables/views owned by the current user have implicit full privileges.
+          "SELECT"
+          "  NULL AS \"role\","
+          "  o.owner AS \"schema\","
+          "  o.object_name AS \"table\","
+          "  1 AS \"select\","
+          "  1 AS \"update\","
+          "  1 AS \"insert\","
+          "  1 AS \"delete\""
+          "FROM all_objects o"
+          "WHERE o.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
+          "  AND o.object_type IN ('TABLE', 'VIEW')"
+          "UNION ALL"
+          ;; Tables/views granted to the current user via ALL_TAB_PRIVS.
+          "SELECT"
+          "  NULL AS \"role\","
+          "  p.table_schema AS \"schema\","
+          "  p.table_name AS \"table\","
+          "  MAX(CASE WHEN p.privilege = 'SELECT' THEN 1 ELSE 0 END) AS \"select\","
+          "  MAX(CASE WHEN p.privilege = 'UPDATE' THEN 1 ELSE 0 END) AS \"update\","
+          "  MAX(CASE WHEN p.privilege = 'INSERT' THEN 1 ELSE 0 END) AS \"insert\","
+          "  MAX(CASE WHEN p.privilege = 'DELETE' THEN 1 ELSE 0 END) AS \"delete\""
+          "FROM all_tab_privs p"
+          "WHERE p.grantee = SYS_CONTEXT('USERENV', 'CURRENT_USER')"
+          "  AND p.table_schema <> SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
+          "GROUP BY p.table_schema, p.table_name"]))
+       (map (fn [row]
+              (-> row
+                  (update :select pos?)
+                  (update :update pos?)
+                  (update :insert pos?)
+                  (update :delete pos?))))))

@@ -687,3 +687,25 @@
                                 (lib/breakout (lib/with-temporal-bucket orders-created-at :year))
                                 (lib/breakout products-category))]
       (is (= 20 (count (mt/rows (qp/process-query query))))))))
+
+(deftest table-privileges-test
+  (mt/test-driver :oracle
+    (testing "`current-user-table-privileges` returns correct structure and privileges"
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            privileges  (sql-jdbc.sync/current-user-table-privileges :oracle conn-spec)]
+        (is (seq privileges) "Should return at least one table")
+        (doseq [priv privileges]
+          (is (= #{:role :schema :table :select :update :insert :delete}
+                 (set (keys priv)))
+              "Should have all required keys")
+          (is (nil? (:role priv)))
+          (is (string? (:schema priv)))
+          (is (string? (:table priv)))
+          (is (boolean? (:select priv)))
+          (is (boolean? (:update priv)))
+          (is (boolean? (:insert priv)))
+          (is (boolean? (:delete priv))))
+        (testing "Test tables should appear with at least SELECT privilege"
+          (let [test-tables (filter (fn [priv] (str/includes? (str/upper-case (:table priv)) "ORDERS")) privileges)]
+            (when (seq test-tables)
+              (is (every? :select test-tables)))))))))
