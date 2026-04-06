@@ -1641,7 +1641,6 @@
                     :model/ModerationReview
                     :model/NativeQuerySnippet
                     :model/Revision
-                    :model/Table
                     :model/User}}
 
   queries-rest
