@@ -416,6 +416,7 @@
     "nth-check": "2.0.1",
     "on-headers": "^1.1.0",
     "webpack": "5.105.0",
+    "qs": "^6.14.2",
     "webpack-dev-middleware": "^5.3.4",
     "webpack-dev-server": "^5.2.1",
     "@codemirror/state": "^6.5.4",
