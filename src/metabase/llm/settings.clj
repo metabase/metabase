@@ -142,6 +142,14 @@
 
 ;;; -------------------------------------------------- General --------------------------------------------------
 
+(defsetting ai-features-enabled?
+  (deferred-tru "Whether AI features are enabled.")
+  :type       :boolean
+  :visibility :public
+  :default    true
+  :export?    true
+  :doc        false)
+
 (defsetting llm-max-tokens
   (deferred-tru "Maximum tokens for LLM responses.")
   :type :integer

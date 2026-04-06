@@ -1,32 +1,21 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type ReactNode, useEffect, useMemo } from "react";
-import { push } from "react-router-redux";
-import { P, match } from "ts-pattern";
+import type { ReactNode } from "react";
+import { match } from "ts-pattern";
 import { c, t } from "ttag";
-import _ from "underscore";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
   skipToken,
   useGetCollectionQuery,
-  useListMetabotsQuery,
   useUpdateMetabotMutation,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils/settings";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
-import { useSetting, useToast } from "metabase/common/hooks";
-import {
-  FIXED_METABOT_ENTITY_IDS,
-  FIXED_METABOT_IDS,
-} from "metabase/metabot/constants";
-import {
-  PLUGIN_EMBEDDING_IFRAME_SDK,
-  PLUGIN_EMBEDDING_SDK,
-  PLUGIN_MODERATION,
-} from "metabase/plugins";
+import { useToast } from "metabase/common/hooks";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   Box,
   Button,
@@ -38,7 +27,6 @@ import {
   Text,
 } from "metabase/ui";
 import { getIcon } from "metabase/utils/icon";
-import { useDispatch } from "metabase/utils/redux";
 import type {
   Collection,
   CollectionEssentials,
@@ -47,59 +35,8 @@ import type {
 } from "metabase-types/api";
 
 import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
-import { useMetabotIdPath } from "./utils";
 
-export function MetabotConfig() {
-  const isConfigured = useSetting("llm-metabot-configured?");
-
-  const metabotId = useMetabotIdPath() ?? FIXED_METABOT_IDS.DEFAULT;
-  const { data, isLoading, error } = useListMetabotsQuery();
-
-  const metabot = data?.items?.find((bot) => bot.id === metabotId);
-
-  const dispatch = useDispatch();
-
-  const hasEmbedding =
-    PLUGIN_EMBEDDING_SDK.isEnabled() || PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled();
-
-  const metabots = useMemo(() => _.sortBy(data?.items ?? [], "id"), [data]);
-
-  useEffect(() => {
-    if (!isConfigured) {
-      dispatch(push("/admin/metabot/setup"));
-    }
-  }, [isConfigured, dispatch]);
-
-  useEffect(() => {
-    if (metabotId === FIXED_METABOT_IDS.EMBEDDED && !hasEmbedding) {
-      dispatch(push(`/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`));
-    }
-  }, [metabotId, hasEmbedding, dispatch]);
-
-  useEffect(() => {
-    if (!metabot && metabots.length) {
-      dispatch(push(`/admin/metabot/${metabots[0]?.id}`));
-    }
-  }, [metabots, metabotId, dispatch, metabot, isLoading]);
-
-  if (isLoading || !metabot || !isConfigured) {
-    return (
-      <LoadingAndErrorWrapper
-        loading={isLoading || !data}
-        error={match({ isLoading, error, metabot, isConfigured })
-          .with(
-            { isLoading: false, error: P.not(null), isConfigured: true },
-            () => t`Error fetching Metabots`,
-          )
-          .with(
-            { isLoading: false, metabot: undefined, isConfigured: true },
-            () => t`Not found.`,
-          )
-          .otherwise(() => null)}
-      />
-    );
-  }
-
+export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
   const isEmbedMetabot =
     metabot.entity_id === FIXED_METABOT_ENTITY_IDS.EMBEDDED;
 
@@ -108,25 +45,17 @@ export function MetabotConfig() {
     : "metabot-enabled?";
 
   return (
-    <SettingsSection key={metabotId}>
-      <Box>
-        <SettingHeader
-          id="configure-metabot"
-          title={c("{0} is the name of an AI assistant")
-            .t`Configure ${metabot.name}`}
-          description={c("{0} is the name of an AI assistant") // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin ui
-            .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
-        />
-        {isEmbedMetabot && (
-          <Text c="text-secondary" maw="40rem">
-            {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
-          </Text>
-        )}
-        <MetabotEnabledToggle
-          settingKey={enabledSettingKey}
-          isEmbedMetabot={isEmbedMetabot}
-        />
-      </Box>
+    <Stack gap="lg">
+      {isEmbedMetabot && (
+        <Text c="text-secondary" maw="40rem">
+          {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
+        </Text>
+      )}
+
+      <MetabotEnabledToggle
+        settingKey={enabledSettingKey}
+        isEmbedMetabot={isEmbedMetabot}
+      />
 
       <MetabotSettingsBody settingKey={enabledSettingKey}>
         <PLUGIN_MODERATION.MetabotVerifiedContentConfigurationPane
@@ -144,7 +73,7 @@ export function MetabotConfig() {
 
         <MetabotPromptSuggestionPane metabot={metabot} />
       </MetabotSettingsBody>
-    </SettingsSection>
+    </Stack>
   );
 }
 
@@ -162,7 +91,7 @@ function MetabotEnabledToggle({
   };
 
   return (
-    <Box mt="lg">
+    <Box>
       <SettingHeader
         id="enable-metabot"
         title={isEmbedMetabot ? t`Enable Embedded Metabot` : t`Enable Metabot`}
@@ -205,19 +134,11 @@ function MetabotSettingsBody({
   const { value } = useAdminSetting(settingKey);
   const isDisabled = value === false;
 
-  return (
-    <Stack
-      gap="lg"
-      opacity={isDisabled ? 0.4 : 1}
-      aria-disabled={isDisabled || undefined}
-      style={{
-        pointerEvents: isDisabled ? "none" : "auto",
-        transition: "opacity 150ms ease",
-      }}
-    >
-      {children}
-    </Stack>
-  );
+  if (isDisabled) {
+    return null;
+  }
+
+  return <Stack gap="lg">{children}</Stack>;
 }
 
 function MetabotCollectionConfigurationPane({

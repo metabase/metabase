@@ -3,13 +3,13 @@ import type { ReactNode } from "react";
 export type AiControlsPlugin = {
   isEnabled: boolean;
   getAiControlsRoutes: () => ReactNode;
-  getAiControlsNavItems: () => ReactNode;
+  useAiControlsNavItems: () => ReactNode;
 };
 
 const getDefaultPluginAiControls = (): AiControlsPlugin => ({
   isEnabled: false,
   getAiControlsRoutes: () => null,
-  getAiControlsNavItems: () => null,
+  useAiControlsNavItems: () => null,
 });
 
 export const PLUGIN_AI_CONTROLS = getDefaultPluginAiControls();
