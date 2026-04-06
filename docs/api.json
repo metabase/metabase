@@ -6556,12 +6556,15 @@
         } ]
       },
       "metabase.lib-metric.schema.typed-projection" : {
-        "description" : "A projection associated with a specific source type and ID.",
+        "description" : "A projection associated with a specific expression leaf instance via :lib/uuid.\n   The :type and :id identify the source metric/measure for metadata resolution.\n   The :lib/uuid disambiguates multiple references to the same metric/measure in an expression.",
         "type" : "object",
         "properties" : {
           "id" : {
             "type" : "integer",
             "minimum" : 1
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "projection" : {
             "type" : "array",
@@ -6574,7 +6577,7 @@
             "enum" : [ "metric", "measure" ]
           }
         },
-        "required" : [ "type", "id", "projection" ]
+        "required" : [ "type", "id", "lib/uuid", "projection" ]
       },
       "metabase.lib-metric.schema.typed-projections" : {
         "description" : "A sequence of typed projections.",

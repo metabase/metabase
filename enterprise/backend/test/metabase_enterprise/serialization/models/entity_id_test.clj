@@ -58,6 +58,7 @@
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotMessage
+    :model/MetabotPermissions
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview

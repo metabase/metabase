@@ -10,6 +10,7 @@
 (deftest properties-token-features-test
   (mt/with-premium-features #{:admin-security-center
                               :advanced-permissions
+                              :ai-controls
                               :attached-dwh
                               :audit-app
                               :cache-granular-controls
@@ -57,6 +58,7 @@
                               :writable-connection}
     (is (= {:admin_security_center          true
             :advanced_permissions           true
+            :ai_controls                    true
             :attached_dwh                   true
             :audit_app                      true
             :cache_granular_controls        true

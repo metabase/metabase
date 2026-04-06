@@ -16,6 +16,7 @@ permissions:
   actions: read
   checks: write
   pull-requests: write
+  security-events: write
 
 jobs:
   files-changed:

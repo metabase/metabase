@@ -72,8 +72,8 @@ jobs:
           # All decision logic is in mage - it analyzes module dependencies,
           # branch context, labels, and file changes to decide what runs.
           MAGE_ARGS=(
-            --git-ref="${{ github.event.pull_request.base.ref || github.ref_name }}"
-            --is-master-or-release="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}"
+            --git-ref="${BASE_REF}"
+            --is-master-or-release="${IS_MASTER_OR_RELEASE}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
           )
@@ -87,6 +87,9 @@ jobs:
           echo "Run './bin/mage -driver-decisions -h' locally for the full list of drivers and labels."
           # Second call: output only key=value lines for GITHUB_OUTPUT
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> $GITHUB_OUTPUT
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}
         shell: bash
 
   be-tests-athena-ee:

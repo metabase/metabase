@@ -4,7 +4,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { useDispatch } from "metabase/lib/redux";
 import {
   useMetabotAgent,
-  useMetabotEnabledEmbeddingAware,
+  useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 
@@ -28,7 +28,7 @@ jest.mock("metabase/lib/redux", () => ({
 jest.mock("metabase/metabot/hooks", () => ({
   ...jest.requireActual("metabase/metabot/hooks"),
   useMetabotAgent: jest.fn(),
-  useMetabotEnabledEmbeddingAware: jest.fn(),
+  useUserMetabotPermissions: jest.fn(),
 }));
 
 jest.mock("metabase/query_builder/actions", () => ({
@@ -42,9 +42,14 @@ function setup(options?: {
 }) {
   const { isMetabotEnabled = true, isDoingScience = false } = options ?? {};
 
-  jest
-    .mocked(useMetabotEnabledEmbeddingAware)
-    .mockReturnValue(isMetabotEnabled);
+  jest.mocked(useUserMetabotPermissions).mockReturnValue({
+    isLoading: false,
+    isError: false,
+    canUseMetabot: isMetabotEnabled,
+    canUseSqlGeneration: isMetabotEnabled,
+    canUseNlq: isMetabotEnabled,
+    canUseOtherTools: isMetabotEnabled,
+  });
   jest.mocked(useMetabotAgent).mockReturnValue({
     submitInput: mockSubmitInput,
     isDoingScience,
