@@ -56,7 +56,7 @@
 
 (defn flat-projections
   "Extract flat dimension-reference vectors from typed projections.
-   [{:type :metric :id 42 :projection [dim-ref-1 dim-ref-2]} ...]
+   [{:type :metric :id 42 :lib/uuid \"a\" :projection [dim-ref-1 dim-ref-2]} ...]
    => [dim-ref-1 dim-ref-2 ...]"
   [typed-projections]
   (into [] (mapcat :projection) typed-projections))

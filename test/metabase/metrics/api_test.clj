@@ -303,8 +303,9 @@
             dim-id     (:id dim)
             response   (mt/user-http-request :rasta :post 200 "metric/breakout-values"
                                              {:definition {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                                           :projections [{:type :metric
-                                                                          :id   (:id metric)
+                                                           :projections [{:type     :metric
+                                                                          :id       (:id metric)
+                                                                          :lib/uuid "a"
                                                                           :projection [[:dimension {} dim-id]]}]}})]
         (is (sequential? (:values response)))
         (is (seq (:values response)))

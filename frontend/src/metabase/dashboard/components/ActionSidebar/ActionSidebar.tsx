@@ -5,14 +5,22 @@ import { t } from "ttag";
 import ActionViz from "metabase/actions/components/ActionViz";
 import { ActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
 import { isActionDashCard } from "metabase/actions/utils";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { FormField } from "metabase/common/components/FormField/FormField";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { Form, FormProvider, FormSelect, FormTextInput } from "metabase/forms";
 import { checkNotNull } from "metabase/lib/types";
-import { Box, Button, Divider, Flex, Modal, Stack, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Ellipsified,
+  Flex,
+  Modal,
+  Stack,
+  Title,
+} from "metabase/ui";
 import type { ActionDashboardCard } from "metabase-types/api";
 
 const settings = checkNotNull(ActionViz.settings);

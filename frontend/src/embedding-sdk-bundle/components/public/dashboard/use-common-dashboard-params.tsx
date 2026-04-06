@@ -4,9 +4,9 @@ import { usePrevious, useUnmount } from "react-use";
 import { useSdkDispatch, useSdkStore } from "embedding-sdk-bundle/store";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import { isJWT } from "metabase/lib/jwt";
 import { parseNumber } from "metabase/lib/number";
 import * as Urls from "metabase/lib/urls";
-import { isJWT } from "metabase/lib/utils";
 import {
   NAVIGATE_TO_NEW_CARD,
   reset as dashboardReset,

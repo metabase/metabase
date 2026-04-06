@@ -401,6 +401,7 @@
   (let [definition-with-projections (assoc (sample-definition)
                                            :projections [{:type :metric
                                                           :id 42
+                                                          :lib/uuid expr-uuid
                                                           :projection [[:dimension {} uuid-1]
                                                                        [:dimension {"temporal-unit" "year"} uuid-2]]}])
         ast (ast.build/from-definition definition-with-projections)

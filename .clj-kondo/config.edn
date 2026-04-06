@@ -480,6 +480,7 @@
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
   metabase.search.api-test/do-test-users                                                clojure.core/let
   metabase.settings.core/define-multi-setting                                           clojure.core/def
+  metabase.api-scope.core/defscope                                                      clj-kondo.lint-as/def-catch-all
   metabase.settings.core/defsetting                                                     clj-kondo.lint-as/def-catch-all
   metabase.settings.models.setting.multi-setting/define-multi-setting                   clojure.core/def
   metabase.settings.models.setting/defsetting                                           clj-kondo.lint-as/def-catch-all

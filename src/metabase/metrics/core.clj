@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.metrics.dimension :as metrics.dimension]
+   [metabase.metrics.permissions :as metrics.perms]
    [metabase.metrics.transforms :as metrics.transforms]
    [metabase.util.namespaces :as shared.ns]))
 
@@ -17,6 +18,8 @@
   dimension-values
   dimension-search-values
   dimension-remapped-value]
+ [metrics.perms
+  filter-dimensions-for-user]
  [metrics.transforms
   normalize-dimension
   normalize-target-ref

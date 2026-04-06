@@ -4,6 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.links :as links]
@@ -11,6 +13,7 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tools :as tools]
@@ -534,6 +537,27 @@
    :version   1
    :data      debug-log})
 
+(def ^:private profile-id->required-permission
+  "Map from profile-id to the metabot permission that must be `:yes` for a user
+  to use that profile. Profiles not listed here have no profile-level permission gate."
+  {:sql                       :permission/metabot-sql-generation
+   :nlq                       :permission/metabot-nlq
+   :transforms_codegen        :permission/metabot-sql-generation
+   :document-generate-content :permission/metabot-other-tools})
+
+(defn- check-metabot-access!
+  "Throw a 403 if the user's metabot permissions do not grant access to the
+  requested profile. First checks the base metabot on/off permission, then
+  the profile-specific permission."
+  [profile-id perms]
+  ;; Base metabot on/off check — blocks ALL profiles when metabot is disabled
+  (api/check (= :yes (:permission/metabot perms))
+             [403 "You do not have permission to use the AI assistant."])
+  ;; Profile-specific permission check
+  (when-let [required-perm (profile-id->required-permission profile-id)]
+    (api/check (= :yes (get perms required-perm))
+               [403 (format "You do not have permission to use the %s assistant." (name profile-id))])))
+
 (mu/defn run-agent-loop
   "Run agent loop, returning a reducible of parts.
 
@@ -557,7 +581,15 @@
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}
         track-user-intent? (and (metabot.settings/llm-metabot-internal-tasks-enabled?)
-                                (some-> opts :tracking-opts :track-user-intent?))]
+                                (some-> opts :tracking-opts :track-user-intent?))
+        perms              (or scope/*current-user-metabot-permissions*
+                               (if api/*is-superuser?*
+                                 scope/all-yes-permissions
+                                 (scope/resolve-user-permissions api/*current-user-id*)))
+        scopes             (if api/*is-superuser?*
+                             api-scope/unrestricted
+                             (scope/user-metabot-perms->scopes perms))]
+    (check-metabot-access! profile-id perms)
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot.agent/run-agent-loop
@@ -565,7 +597,9 @@
                           :msg-count  (count (:messages opts))}
           (prometheus/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms (u/start-timer)]
-            (binding [*debug-log* (when debug? (atom []))]
+            (binding [*debug-log*                              (when debug? (atom []))
+                      scope/*current-user-scope*               scopes
+                      scope/*current-user-metabot-permissions* perms]
               (try
                 (let [agent              (init-agent opts)
                       _                  (when track-user-intent?
@@ -584,6 +618,10 @@
                     result))
                 (catch Exception e
                   (prometheus/inc! :metabase-metabot/agent-errors labels)
+                  (when (:api-error (ex-data e))
+                    (log/debugf "API error details: status=%s body=%s"
+                                (:status (ex-data e))
+                                (pr-str (:body (ex-data e)))))
                   (if (:api-error (ex-data e))
                     (log/errorf "Agent loop API error: %s" (ex-message e))
                     (log/error e "Agent loop error"))

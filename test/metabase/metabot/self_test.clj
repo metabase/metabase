@@ -235,13 +235,23 @@
                    {:type :tool-input :id "call-err" :function "get-time" :arguments {:tz "Invalid/Timezone"}}])
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= (count chunks) (dec (count result))))
-      (let [tool-result (last result)]
-        (is (=? {:type       :tool-output-available
-                 :toolCallId "call-err"
-                 :toolName   "get-time"
-                 :error      {:message string?
-                              :type    string?}}
-                tool-result)))))
+      (is (=? {:type       :tool-output-available
+               :toolCallId "call-err"
+               :toolName   "get-time"
+               :error      {:message string?
+                            :type    string?}}
+              (last result)))))
+
+  (testing "tool-executor-xf handles nil arguments for no-arg tools"
+    (let [chunks (test-util/parts->aisdk-chunks
+                  [{:type :start :id "msg-nil"}
+                   {:type :tool-input :id "call-nil" :function "no-arg" :arguments nil}])
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
+      (is (=? {:type       :tool-output-available
+               :toolCallId "call-nil"
+               :toolName   "no-arg"
+               :result     {:output "ok"}}
+              (last result)))))
 
   (testing "tool-executor-xf ignores unknown tool names"
     (let [chunks (test-util/parts->aisdk-chunks

@@ -1,0 +1,564 @@
+name: String Functions
+entity_id: HeLFZSVb4Jm25p4tWfVP9
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - expressions:
+    - - concat
+      - lib/expression-name: Title and Category
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+      - ' ('
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - CATEGORY
+      - )
+    - - substring
+      - lib/expression-name: First 10 Chars
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+      - 1
+      - 10
+    - - replace
+      - lib/expression-name: Cleaned Vendor
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - VENDOR
+      - Inc.
+      - Incorporated
+    - - regex-match-first
+      - lib/expression-name: EAN Prefix
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - EAN
+      - ^\d{3}
+    - - trim
+      - lib/expression-name: Trimmed Title
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+    - - ltrim
+      - lib/expression-name: Left Trimmed
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+    - - rtrim
+      - lib/expression-name: Right Trimmed
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+    - - upper
+      - lib/expression-name: Upper Category
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - CATEGORY
+    - - lower
+      - lib/expression-name: Lower Title
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+    - - length
+      - lib/expression-name: Title Length
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+    - - substring
+      - lib/expression-name: Title From 5th Char
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - TITLE
+      - 5
+    limit: 10
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/BigInteger
+  database_type: BIGINT
+  display_name: ID
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - ID
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - ID
+  name: ID
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: ID
+  lib/desired-column-alias: ID
+  lib/original-display-name: ID
+  lib/original-name: ID
+  lib/source: source/table-defaults
+  lib/source-column-alias: ID
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Ean
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - EAN
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - EAN
+  name: EAN
+  position: 1
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: EAN
+  lib/desired-column-alias: EAN
+  lib/original-display-name: Ean
+  lib/original-name: EAN
+  lib/source: source/table-defaults
+  lib/source-column-alias: EAN
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Title
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - TITLE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - TITLE
+  name: TITLE
+  position: 2
+  semantic_type: type/Title
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: TITLE
+  lib/desired-column-alias: TITLE
+  lib/original-display-name: Title
+  lib/original-name: TITLE
+  lib/source: source/table-defaults
+  lib/source-column-alias: TITLE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Category
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - CATEGORY
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - CATEGORY
+  name: CATEGORY
+  position: 3
+  semantic_type: type/Category
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: CATEGORY
+  lib/desired-column-alias: CATEGORY
+  lib/original-display-name: Category
+  lib/original-name: CATEGORY
+  lib/source: source/table-defaults
+  lib/source-column-alias: CATEGORY
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Vendor
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - VENDOR
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - VENDOR
+  name: VENDOR
+  position: 4
+  semantic_type: type/Company
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: VENDOR
+  lib/desired-column-alias: VENDOR
+  lib/original-display-name: Vendor
+  lib/original-name: VENDOR
+  lib/source: source/table-defaults
+  lib/source-column-alias: VENDOR
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Price
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - PRICE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - PRICE
+  name: PRICE
+  position: 5
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: PRICE
+  lib/desired-column-alias: PRICE
+  lib/original-display-name: Price
+  lib/original-name: PRICE
+  lib/source: source/table-defaults
+  lib/source-column-alias: PRICE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Rating
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - RATING
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - RATING
+  name: RATING
+  position: 6
+  semantic_type: type/Score
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: RATING
+  lib/desired-column-alias: RATING
+  lib/original-display-name: Rating
+  lib/original-name: RATING
+  lib/source: source/table-defaults
+  lib/source-column-alias: RATING
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - CREATED_AT
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - CREATED_AT
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Title and Category
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Title and Category
+  name: Title and Category
+  source: fields
+  lib/deduplicated-name: Title and Category
+  lib/desired-column-alias: Title and Category
+  lib/expression-name: Title and Category
+  lib/original-name: Title and Category
+  lib/source: source/expressions
+  lib/source-column-alias: Title and Category
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: First 10 Chars
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - First 10 Chars
+  name: First 10 Chars
+  source: fields
+  lib/deduplicated-name: First 10 Chars
+  lib/desired-column-alias: First 10 Chars
+  lib/expression-name: First 10 Chars
+  lib/original-name: First 10 Chars
+  lib/source: source/expressions
+  lib/source-column-alias: First 10 Chars
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Cleaned Vendor
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Cleaned Vendor
+  name: Cleaned Vendor
+  source: fields
+  lib/deduplicated-name: Cleaned Vendor
+  lib/desired-column-alias: Cleaned Vendor
+  lib/expression-name: Cleaned Vendor
+  lib/original-name: Cleaned Vendor
+  lib/source: source/expressions
+  lib/source-column-alias: Cleaned Vendor
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: EAN Prefix
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - EAN Prefix
+  name: EAN Prefix
+  source: fields
+  lib/deduplicated-name: EAN Prefix
+  lib/desired-column-alias: EAN Prefix
+  lib/expression-name: EAN Prefix
+  lib/original-name: EAN Prefix
+  lib/source: source/expressions
+  lib/source-column-alias: EAN Prefix
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Trimmed Title
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Trimmed Title
+  name: Trimmed Title
+  source: fields
+  lib/deduplicated-name: Trimmed Title
+  lib/desired-column-alias: Trimmed Title
+  lib/expression-name: Trimmed Title
+  lib/original-name: Trimmed Title
+  lib/source: source/expressions
+  lib/source-column-alias: Trimmed Title
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Left Trimmed
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Left Trimmed
+  name: Left Trimmed
+  source: fields
+  lib/deduplicated-name: Left Trimmed
+  lib/desired-column-alias: Left Trimmed
+  lib/expression-name: Left Trimmed
+  lib/original-name: Left Trimmed
+  lib/source: source/expressions
+  lib/source-column-alias: Left Trimmed
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Right Trimmed
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Right Trimmed
+  name: Right Trimmed
+  source: fields
+  lib/deduplicated-name: Right Trimmed
+  lib/desired-column-alias: Right Trimmed
+  lib/expression-name: Right Trimmed
+  lib/original-name: Right Trimmed
+  lib/source: source/expressions
+  lib/source-column-alias: Right Trimmed
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Upper Category
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Upper Category
+  name: Upper Category
+  source: fields
+  lib/deduplicated-name: Upper Category
+  lib/desired-column-alias: Upper Category
+  lib/expression-name: Upper Category
+  lib/original-name: Upper Category
+  lib/source: source/expressions
+  lib/source-column-alias: Upper Category
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Lower Title
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Lower Title
+  name: Lower Title
+  source: fields
+  lib/deduplicated-name: Lower Title
+  lib/desired-column-alias: Lower Title
+  lib/expression-name: Lower Title
+  lib/original-name: Lower Title
+  lib/source: source/expressions
+  lib/source-column-alias: Lower Title
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Title Length
+  effective_type: type/Integer
+  field_ref:
+  - expression
+  - Title Length
+  name: Title Length
+  source: fields
+  lib/deduplicated-name: Title Length
+  lib/desired-column-alias: Title Length
+  lib/expression-name: Title Length
+  lib/original-name: Title Length
+  lib/source: source/expressions
+  lib/source-column-alias: Title Length
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Title From 5th Char
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Title From 5th Char
+  name: Title From 5th Char
+  source: fields
+  lib/deduplicated-name: Title From 5th Char
+  lib/desired-column-alias: Title From 5th Char
+  lib/expression-name: Title From 5th Char
+  lib/original-name: Title From 5th Char
+  lib/source: source/expressions
+  lib/source-column-alias: Title From 5th Char
+  qp/implicit-field?: true
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: HeLFZSVb4Jm25p4tWfVP9
+  label: string_functions
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

@@ -25,6 +25,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
@@ -1474,3 +1475,25 @@
             table (:table-row (first rows))]
         (is (= "users" (:name table)) "Should be plain name, not 'transform_test_users'")
         (is (= "PUBLIC" (:schema table)))))))
+
+(deftest hour-bucketing-time-field-in-source-query-test
+  (testing "Hour group-by on time fields from a source query should work (#68065)"
+    (mt/test-driver :snowflake
+      (mt/dataset time-test-data
+        (let [mp         (mt/metadata-provider)
+              users      (lib.metadata/table mp (mt/id :users))
+              time-field (lib.metadata/field mp (mt/id :users :last_login_time))
+              ;; Build a two-stage query: the first stage selects the time field,
+              ;; the second stage groups it by :hour. In the second stage the field is
+              ;; referenced by name (string), not by integer ID — this is where the bug
+              ;; manifests: field-metadata is nil and database-type info is lost, causing
+              ;; Snowflake to incorrectly cast to TIMESTAMPNTZ.
+              query      (-> (lib/query mp users)
+                             (lib/with-fields [time-field])
+                             lib/append-stage
+                             (notebook-helpers/add-breakout
+                              "Summaries" "Last Login Time"
+                              {:col-fn #(lib/with-temporal-bucket % :hour)}))]
+          (mt/with-native-query-testing-context query
+            (is (some? (mt/rows (qp/process-query query)))
+                "Hour bucketing on a time field from a source query should not error")))))))
