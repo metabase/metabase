@@ -7,7 +7,7 @@ describe("Security Center > Snowplow tracking", () => {
     cy.signInAsAdmin();
     H.enableTracking();
     H.mockSessionPropertiesTokenFeatures({
-      "admin_security_center": true,
+      admin_security_center: true,
     });
     // Stub the API so the page renders without a real EE backend
     cy.intercept("GET", "/api/ee/security-center", {
