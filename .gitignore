@@ -141,8 +141,6 @@ modules/drivers/*/.lsp/*
 
 .github/static-viz-sources.yaml
 
-# airgap
-/resources/airgap/
 
 # swc
 .swc/
