@@ -378,25 +378,37 @@
                           (map str/trim)
                           (remove str/blank?))
                     (str/split (:all_roles user-info) #",")))]
-        (->> (jdbc/query
-              conn-spec
-              (str/join
-               "\n"
-               ["SELECT"
-                "  NULL AS role,"
-                "  g.object_schema AS schema,"
-                "  g.object_name AS table,"
-                "  MAX(CASE WHEN g.privileges_description ILIKE '%SELECT%' THEN 1 ELSE 0 END) AS \"select\","
-                "  MAX(CASE WHEN g.privileges_description ILIKE '%UPDATE%' THEN 1 ELSE 0 END) AS \"update\","
-                "  MAX(CASE WHEN g.privileges_description ILIKE '%INSERT%' THEN 1 ELSE 0 END) AS \"insert\","
-                "  MAX(CASE WHEN g.privileges_description ILIKE '%DELETE%' THEN 1 ELSE 0 END) AS \"delete\""
-                "FROM v_catalog.grants g"
-                (str "WHERE g.grantee IN (" (str/join ", " (map #(str "'" (str/replace % "'" "''") "'") effective-grantees)) ")")
-                "  AND g.object_type IN ('TABLE', 'VIEW')"
-                "GROUP BY g.object_schema, g.object_name"]))
-             (map (fn [row]
-                    (-> row
-                        (update :select pos?)
-                        (update :update pos?)
-                        (update :insert pos?)
-                        (update :delete pos?)))))))))
+        (let [in-clause (str "(" (str/join ", " (map #(str "'" (str/replace % "'" "''") "'") effective-grantees)) ")")]
+          (->> (jdbc/query
+                conn-spec
+                (str/join
+                 "\n"
+                 [;; Table-level grants (direct per-table grants)
+                  "SELECT"
+                  "  g.object_schema AS schema,"
+                  "  g.object_name AS table_name,"
+                  "  g.privileges_description"
+                  "FROM v_catalog.grants g"
+                  (str "WHERE g.grantee IN " in-clause)
+                  "  AND g.object_type IN ('TABLE', 'VIEW')"
+                  "UNION ALL"
+                  ;; Schema-level grants expanded to all tables in that schema
+                  "SELECT"
+                  "  t.schema_name AS schema,"
+                  "  t.table_name AS table_name,"
+                  "  g.privileges_description"
+                  "FROM v_catalog.grants g"
+                  "JOIN v_catalog.all_tables t ON t.schema_name = g.object_name"
+                  (str "WHERE g.grantee IN " in-clause)
+                  "  AND g.object_type = 'SCHEMA'"
+                  "  AND t.table_type IN ('TABLE', 'VIEW')"]))
+               (group-by (juxt :schema :table_name))
+               (map (fn [[[schema table] rows]]
+                      (let [all-privs (str/join " " (map :privileges_description rows))]
+                        {:role   nil
+                         :schema schema
+                         :table  table
+                         :select (boolean (re-find #"(?i)SELECT" all-privs))
+                         :update (boolean (re-find #"(?i)UPDATE" all-privs))
+                         :insert (boolean (re-find #"(?i)INSERT" all-privs))
+                         :delete (boolean (re-find #"(?i)DELETE" all-privs))})))))))))
