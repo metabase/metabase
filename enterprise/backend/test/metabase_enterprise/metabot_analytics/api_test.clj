@@ -32,182 +32,205 @@
     (t2/delete! :model/MetabotMessage {:where [:in :conversation_id conversation-ids]})
     (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]})))
 
-(deftest list-conversations-test
+(defn- offset-date-time
+  [s]
+  (java.time.OffsetDateTime/parse s))
+
+(defn- find-conversation
+  [conversations conversation-id]
+  (some #(when (= (:conversation_id %) conversation-id) %) conversations))
+
+(defn- with-list-conversations-fixture!
+  [thunk]
   (mt/with-premium-features #{:audit-app}
-    (testing "GET /api/ee/metabot-analytics/conversations"
-      (testing "requires superuser"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 "ee/metabot-analytics/conversations"))))
-      (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-list-test@metabase.com"
-                                                     :first_name "Metabot"
-                                                     :last_name  "Analytics"}]
-        (let [response-path     (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id)
-              convo-1           (str (random-uuid))
-              convo-2           (str (random-uuid))
-              convo-3           (str (random-uuid))
-              jan-1             (java.time.OffsetDateTime/parse "2026-01-01T00:00:00Z")
-              jan-2             (java.time.OffsetDateTime/parse "2026-01-02T00:00:00Z")
-              jan-3             (java.time.OffsetDateTime/parse "2026-01-03T00:00:00Z")
-              jan-4             (java.time.OffsetDateTime/parse "2026-01-04T00:00:00Z")
-              jan-5             (java.time.OffsetDateTime/parse "2026-01-05T00:00:00Z")]
-          (try
-            (insert-conversation! {:conversation-id convo-1
-                                   :user-id         test-user-id
-                                   :created-at      jan-1
-                                   :summary         "First conversation"
-                                   :state           {:step "one"}})
-            (insert-conversation! {:conversation-id convo-2
-                                   :user-id         test-user-id
-                                   :created-at      jan-2
-                                   :summary         "Second conversation"})
-            (insert-conversation! {:conversation-id convo-3
-                                   :user-id         test-user-id
-                                   :created-at      jan-3
-                                   :summary         "Third conversation"})
-            (insert-message! {:conversation-id convo-1
-                              :created-at      jan-2
-                              :role            "user"
-                              :profile-id      "ignored-user-model"
-                              :total-tokens    3
-                              :data            [{:role "user" :content "hello"}]})
-            (insert-message! {:conversation-id convo-1
-                              :created-at      jan-3
-                              :role            "assistant"
-                              :profile-id      "gpt-4.1-mini"
-                              :total-tokens    7
-                              :data            [{:role "assistant" :content "hi"}]})
-            (insert-message! {:conversation-id convo-2
-                              :created-at      jan-4
-                              :role            "user"
-                              :profile-id      "ignored-user-model"
-                              :total-tokens    2
-                              :data            [{:role "user" :content "question"}]})
-            (insert-message! {:conversation-id convo-2
-                              :created-at      jan-5
-                              :role            "assistant"
-                              :profile-id      "gpt-5"
-                              :total-tokens    11
-                              :data            [{:role "assistant" :content "answer"}]})
-            (insert-message! {:conversation-id convo-2
-                              :created-at      jan-5
-                              :role            "assistant"
-                              :profile-id      "gpt-5"
-                              :total-tokens    13
-                              :data            [{:role "assistant" :content "follow-up"}]})
-            (insert-message! {:conversation-id convo-3
-                              :created-at      jan-4
-                              :role            "assistant"
-                              :profile-id      "deleted-model"
-                              :total-tokens    99
-                              :data            [{:role "assistant" :content "deleted"}]
-                              :deleted-at      jan-5})
+    (mt/with-temp [:model/User {test-user-id :id} {:email      "metabot-analytics-list-test@metabase.com"
+                                                   :first_name "Metabot"
+                                                   :last_name  "Analytics"}]
+      (let [response-path (format "ee/metabot-analytics/conversations?user-id=%s" test-user-id)
+            convo-1       (str (random-uuid))
+            convo-2       (str (random-uuid))
+            convo-3       (str (random-uuid))
+            jan-1         (offset-date-time "2026-01-01T00:00:00Z")
+            jan-2         (offset-date-time "2026-01-02T00:00:00Z")
+            jan-3         (offset-date-time "2026-01-03T00:00:00Z")
+            jan-4         (offset-date-time "2026-01-04T00:00:00Z")
+            jan-5         (offset-date-time "2026-01-05T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id convo-1
+                                 :user-id         test-user-id
+                                 :created-at      jan-1
+                                 :summary         "First conversation"
+                                 :state           {:step "one"}})
+          (insert-conversation! {:conversation-id convo-2
+                                 :user-id         test-user-id
+                                 :created-at      jan-2
+                                 :summary         "Second conversation"})
+          (insert-conversation! {:conversation-id convo-3
+                                 :user-id         test-user-id
+                                 :created-at      jan-3
+                                 :summary         "Third conversation"})
+          (insert-message! {:conversation-id convo-1
+                            :created-at      jan-2
+                            :role            "user"
+                            :profile-id      "ignored-user-model"
+                            :total-tokens    3
+                            :data            [{:role "user" :content "hello"}]})
+          (insert-message! {:conversation-id convo-1
+                            :created-at      jan-3
+                            :role            "assistant"
+                            :profile-id      "gpt-4.1-mini"
+                            :total-tokens    7
+                            :data            [{:role "assistant" :content "hi"}]})
+          (insert-message! {:conversation-id convo-2
+                            :created-at      jan-4
+                            :role            "user"
+                            :profile-id      "ignored-user-model"
+                            :total-tokens    2
+                            :data            [{:role "user" :content "question"}]})
+          (insert-message! {:conversation-id convo-2
+                            :created-at      jan-5
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    11
+                            :data            [{:role "assistant" :content "answer"}]})
+          (insert-message! {:conversation-id convo-2
+                            :created-at      jan-5
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    13
+                            :data            [{:role "assistant" :content "follow-up"}]})
+          (insert-message! {:conversation-id convo-3
+                            :created-at      jan-4
+                            :role            "assistant"
+                            :profile-id      "deleted-model"
+                            :total-tokens    99
+                            :data            [{:role "assistant" :content "deleted"}]
+                            :deleted-at      jan-5})
+          (thunk {:test-user-id  test-user-id
+                  :response-path response-path
+                  :convo-1       convo-1
+                  :convo-2       convo-2
+                  :convo-3       convo-3})
+          (finally
+            (delete-conversations! [convo-1 convo-2 convo-3]))))))
 
-            (testing "returns aggregated conversation data"
-              (let [response          (mt/user-http-request :crowberto :get 200 response-path)
-                    conversation-ids  (map :conversation_id (:data response))
-                    convo-1-response  (some #(when (= (:conversation_id %) convo-1) %) (:data response))
-                    convo-2-response  (some #(when (= (:conversation_id %) convo-2) %) (:data response))
-                    convo-3-response  (some #(when (= (:conversation_id %) convo-3) %) (:data response))]
-                (is (= 3 (:total response)))
-                (is (= 50 (:limit response)))
-                (is (= 0 (:offset response)))
-                (is (= [convo-3 convo-2 convo-1] conversation-ids))
-                (is (nil? (:model convo-3-response)))
-                (is (= 0 (:message_count convo-3-response)))
-                (is (= 0 (:assistant_message_count convo-3-response)))
-                (is (= 0 (:total_tokens convo-3-response)))
-                (is (= {:conversation_id         convo-1
-                        :summary                 "First conversation"
-                        :user_id                 test-user-id
-                        :message_count           2
-                        :user_message_count      1
-                        :assistant_message_count 1
-                        :total_tokens            10
-                        :model                   "gpt-4.1-mini"
-                        :user                    {:id         test-user-id
-                                                  :email      "metabot-analytics-list-test@metabase.com"
-                                                  :first_name "Metabot"
-                                                  :last_name  "Analytics"}}
-                       (select-keys convo-1-response [:conversation_id :summary :user_id :message_count
-                                                      :user_message_count :assistant_message_count :total_tokens
-                                                      :model :user])))
-                (is (= {:conversation_id         convo-2
-                        :message_count           3
-                        :user_message_count      1
-                        :assistant_message_count 2
-                        :total_tokens            26
-                        :model                   "gpt-5"}
-                       (select-keys convo-2-response [:conversation_id :message_count :user_message_count
-                                                      :assistant_message_count :total_tokens :model])))))
+(deftest list-conversations-requires-superuser-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations requires superuser"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "ee/metabot-analytics/conversations"))))))
 
-            (testing "respects pagination parameters"
-              (let [response (mt/user-http-request :crowberto :get 200
-                                                   (format "%s&limit=1&offset=1" response-path))]
-                (is (= 3 (:total response)))
-                (is (= 1 (:limit response)))
-                (is (= 1 (:offset response)))
-                (is (= [convo-2] (map :conversation_id (:data response))))))
+(deftest list-conversations-aggregates-data-test
+  (with-list-conversations-fixture!
+    (fn [{:keys [test-user-id response-path convo-1 convo-2 convo-3]}]
+      (let [response         (mt/user-http-request :crowberto :get 200 response-path)
+            conversation-ids (map :conversation_id (:data response))
+            convo-1-response (find-conversation (:data response) convo-1)
+            convo-2-response (find-conversation (:data response) convo-2)
+            convo-3-response (find-conversation (:data response) convo-3)]
+        (is (= 3 (:total response)))
+        (is (= 50 (:limit response)))
+        (is (= 0 (:offset response)))
+        (is (= [convo-3 convo-2 convo-1] conversation-ids))
+        (is (nil? (:model convo-3-response)))
+        (is (= 0 (:message_count convo-3-response)))
+        (is (= 0 (:assistant_message_count convo-3-response)))
+        (is (= 0 (:total_tokens convo-3-response)))
+        (is (= {:conversation_id         convo-1
+                :summary                 "First conversation"
+                :user_id                 test-user-id
+                :message_count           2
+                :user_message_count      1
+                :assistant_message_count 1
+                :total_tokens            10
+                :model                   "gpt-4.1-mini"
+                :user                    {:id         test-user-id
+                                          :email      "metabot-analytics-list-test@metabase.com"
+                                          :first_name "Metabot"
+                                          :last_name  "Analytics"}}
+               (select-keys convo-1-response [:conversation_id :summary :user_id :message_count
+                                              :user_message_count :assistant_message_count :total_tokens
+                                              :model :user])))
+        (is (= {:conversation_id         convo-2
+                :message_count           3
+                :user_message_count      1
+                :assistant_message_count 2
+                :total_tokens            26
+                :model                   "gpt-5"}
+               (select-keys convo-2-response [:conversation_id :message_count :user_message_count
+                                              :assistant_message_count :total_tokens :model])))))))
 
-            (testing "supports whitelisted sorting"
-              (let [response (mt/user-http-request :crowberto :get 200
-                                                   (format "%s&sort-by=message_count&sort-dir=asc" response-path))]
-                (is (= [convo-3 convo-1 convo-2] (map :conversation_id (:data response))))))
+(deftest list-conversations-pagination-test
+  (with-list-conversations-fixture!
+    (fn [{:keys [response-path convo-2]}]
+      (let [response (mt/user-http-request :crowberto :get 200
+                                           (format "%s&limit=1&offset=1" response-path))]
+        (is (= 3 (:total response)))
+        (is (= 1 (:limit response)))
+        (is (= 1 (:offset response)))
+        (is (= [convo-2] (map :conversation_id (:data response))))))))
 
-            (testing "rejects invalid sort-by values"
-              (is (some? (:errors (mt/user-http-request :crowberto :get 400
-                                                        (format "%s&sort-by=drop_table" response-path))))))
-            (finally
-              (delete-conversations! [convo-1 convo-2 convo-3])))))))
+(deftest list-conversations-sorting-test
+  (with-list-conversations-fixture!
+    (fn [{:keys [response-path convo-1 convo-2 convo-3]}]
+      (let [response (mt/user-http-request :crowberto :get 200
+                                           (format "%s&sort-by=message_count&sort-dir=asc" response-path))]
+        (is (= [convo-3 convo-1 convo-2] (map :conversation_id (:data response))))))))
 
-  (deftest get-conversation-detail-test
-    (mt/with-premium-features #{:audit-app}
-      (testing "GET /api/ee/metabot-analytics/conversations/:id"
-        (let [conversation-id (str (random-uuid))
-              user-id         (mt/user->id :crowberto)
-              jan-1           (java.time.OffsetDateTime/parse "2026-01-01T00:00:00Z")
-              jan-2           (java.time.OffsetDateTime/parse "2026-01-02T00:00:00Z")]
-          (try
-            (insert-conversation! {:conversation-id conversation-id
-                                   :user-id         user-id
-                                   :created-at      jan-1
-                                   :summary         "Conversation detail"
-                                   :state           {:foo "bar"}})
-            (insert-message! {:conversation-id conversation-id
-                              :created-at      jan-1
-                              :role            "user"
-                              :profile-id      "ignored-user-model"
-                              :total-tokens    4
-                              :data            [{:role "user" :content "hello"}]})
-            (insert-message! {:conversation-id conversation-id
-                              :created-at      jan-2
-                              :role            "assistant"
-                              :profile-id      "gpt-5"
-                              :total-tokens    8
-                              :data            [{:type "text" :text "hi there"}]})
+(deftest list-conversations-invalid-sort-test
+  (with-list-conversations-fixture!
+    (fn [{:keys [response-path]}]
+      (is (some? (:errors (mt/user-http-request :crowberto :get 400
+                                                (format "%s&sort-by=drop_table" response-path))))))))
 
-            (let [response (mt/user-http-request :crowberto :get 200
-                                                 (format "ee/metabot-analytics/conversations/%s" conversation-id))]
-              (is (= conversation-id (:conversation_id response)))
-              (is (= "Conversation detail" (:summary response)))
-              (is (= {:id         user-id
-                      :email      "crowberto@metabase.com"
-                      :first_name "Crowberto"
-                      :last_name  "Corv"}
-                     (:user response)))
-              (is (= ["user" "assistant"] (map :role (:messages response))))
-              (is (= ["ignored-user-model" "gpt-5"] (map :model (:messages response))))
-              (is (= 2 (count (:chat_messages response)))))
-            (finally
-              (delete-conversations! [conversation-id]))))))))
+(deftest get-conversation-detail-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)
+            jan-1           (offset-date-time "2026-01-01T00:00:00Z")
+            jan-2           (offset-date-time "2026-01-02T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id conversation-id
+                                 :user-id         user-id
+                                 :created-at      jan-1
+                                 :summary         "Conversation detail"
+                                 :state           {:foo "bar"}})
+          (insert-message! {:conversation-id conversation-id
+                            :created-at      jan-1
+                            :role            "user"
+                            :profile-id      "ignored-user-model"
+                            :total-tokens    4
+                            :data            [{:role "user" :content "hello"}]})
+          (insert-message! {:conversation-id conversation-id
+                            :created-at      jan-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    8
+                            :data            [{:type "text" :text "hi there"}]})
 
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" conversation-id))]
+            (is (= conversation-id (:conversation_id response)))
+            (is (= "Conversation detail" (:summary response)))
+            (is (= {:id         user-id
+                    :email      "crowberto@metabase.com"
+                    :first_name "Crowberto"
+                    :last_name  "Corv"}
+                   (:user response)))
+            (is (= ["user" "assistant"] (map :role (:messages response))))
+            (is (= ["ignored-user-model" "gpt-5"] (map :model (:messages response))))
+            (is (= 2 (count (:chat_messages response)))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
 (deftest get-conversation-detail-queries-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations/:id returns generated queries"
       (let [conversation-id (str (random-uuid))
             user-id         (mt/user->id :crowberto)
-            jan-1           (java.time.OffsetDateTime/parse "2026-01-01T00:00:00Z")
-            jan-2           (java.time.OffsetDateTime/parse "2026-01-02T00:00:00Z")
-            jan-3           (java.time.OffsetDateTime/parse "2026-01-03T00:00:00Z")
+            jan-1           (offset-date-time "2026-01-01T00:00:00Z")
+            jan-2           (offset-date-time "2026-01-02T00:00:00Z")
+            jan-3           (offset-date-time "2026-01-03T00:00:00Z")
             sql             "SELECT * FROM orders"]
         (try
           (insert-conversation! {:conversation-id conversation-id
@@ -271,4 +294,3 @@
               (is (contains? (set (:tables q)) "orders"))))
           (finally
             (delete-conversations! [conversation-id])))))))
-

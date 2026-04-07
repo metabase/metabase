@@ -9,14 +9,14 @@
 ;; real database/driver. The Macaw integration is exercised end-to-end in
 ;; the API integration test.
 
-(defn- with-stubbed-tables [tables thunk]
+(defn- with-stubbed-tables! [tables thunk]
   (with-redefs [analytics.queries/referenced-table-names (fn [_db _sql] tables)]
     (thunk)))
 
 ;;; ------------------------- happy paths -------------------------
 
 (deftest create-sql-query-row-test
-  (with-stubbed-tables ["orders" "products"]
+  (with-stubbed-tables! ["orders" "products"]
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 7
@@ -47,7 +47,7 @@
           (is (nil? (:mbql row))))))))
 
 (deftest edit-sql-query-row-test
-  (with-stubbed-tables ["orders"]
+  (with-stubbed-tables! ["orders"]
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 8
@@ -71,7 +71,7 @@
         (is (= "sql" (:query_type row)))))))
 
 (deftest replace-sql-query-row-test
-  (with-stubbed-tables []
+  (with-stubbed-tables! []
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 9
@@ -94,7 +94,7 @@
         (is (= "SELECT 3" (:sql row)))))))
 
 (deftest construct-notebook-query-legacy-test
-  (with-stubbed-tables []
+  (with-stubbed-tables! []
     (fn []
       (let [legacy-query {:database 7 :type :query :query {:source-table 5}}
             rows         (analytics.queries/messages->generated-queries
@@ -122,7 +122,7 @@
 
 (deftest construct-notebook-query-pmbql-test
   (testing "pMBQL with string-valued schema keys (the on-disk shape after JSON round-trip) is normalized then converted to legacy MBQL"
-    (with-stubbed-tables []
+    (with-stubbed-tables! []
       (fn []
         (let [pmbql {:lib/type "mbql/query"
                      :lib/metadata nil
@@ -149,7 +149,7 @@
 ;;; ------------------------- filtered-out cases -------------------------
 
 (deftest tool-input-without-output-is-filtered-test
-  (with-stubbed-tables []
+  (with-stubbed-tables! []
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 12
@@ -160,7 +160,7 @@
         (is (= [] rows))))))
 
 (deftest tool-output-with-error-is-filtered-test
-  (with-stubbed-tables []
+  (with-stubbed-tables! []
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 13
@@ -175,7 +175,7 @@
 
 (deftest tool-output-without-structured-is-filtered-test
   (testing "tools that hit a validation error return :output but no :structured-output"
-    (with-stubbed-tables []
+    (with-stubbed-tables! []
       (fn []
         (let [rows (analytics.queries/messages->generated-queries
                     [{:id 14
@@ -189,7 +189,7 @@
           (is (= [] rows)))))))
 
 (deftest non-query-tool-calls-are-skipped-test
-  (with-stubbed-tables ["orders"]
+  (with-stubbed-tables! ["orders"]
     (fn []
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 15
@@ -215,7 +215,7 @@
 
 (deftest slackbot-shape-blocks-are-filtered-test
   (testing "slackbot persists :_type 'TOOL_CALL' blocks; the :type filter excludes them"
-    (with-stubbed-tables []
+    (with-stubbed-tables! []
       (fn []
         (let [rows (analytics.queries/messages->generated-queries
                     [{:id 16
@@ -233,7 +233,7 @@
 ;;; ------------------------- aggregation -------------------------
 
 (deftest flattens-across-messages-preserving-order-test
-  (with-stubbed-tables ["t"]
+  (with-stubbed-tables! ["t"]
     (fn []
       (let [base-output (fn [qid sql]
                           {:type "tool-output"
