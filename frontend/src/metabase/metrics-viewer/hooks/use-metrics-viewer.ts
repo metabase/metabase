@@ -47,7 +47,7 @@ export interface UseMetricsViewerResult {
   tabs: MetricsViewerTabState[];
   activeTab: MetricsViewerTabState | null;
   activeTabId: string | null;
-
+  initialLoadComplete: boolean;
   loadingIds: Set<MetricSourceId>;
   resultsByEntityIndex: Map<number, Dataset>;
   errorsByDefinitionId: Map<MetricSourceId, string>;
@@ -91,6 +91,8 @@ export function useMetricsViewer({
   const {
     state,
     loadingIds,
+    initialLoadComplete,
+    setInitialLoadComplete,
     removeDefinition,
     setFormulaEntities,
     selectTab: changeTab,
@@ -125,6 +127,7 @@ export function useMetricsViewer({
     handleLoadSources,
     location,
     setFormulaEntities,
+    setInitialLoadComplete,
   );
 
   const activeTab = useMemo((): MetricsViewerTabState | null => {
@@ -312,7 +315,7 @@ export function useMetricsViewer({
     tabs: effectiveTabs,
     activeTab,
     activeTabId: state.selectedTabId,
-
+    initialLoadComplete,
     loadingIds,
     resultsByEntityIndex,
     errorsByDefinitionId,

@@ -16,7 +16,7 @@ import {
   setupDefinitionWithBreakout,
 } from "../../utils/__tests__/test-helpers";
 
-import type { MetricIdentityEntry } from "./utils";
+import type { MetricIdentityEntry, MetricNameMap } from "./utils";
 import {
   applyTrackedDefinitions,
   buildExpressionText,
@@ -33,27 +33,6 @@ jest.mock("../../utils/definition-builder", () => ({
 
 function makeSearchResult(id: number, model: "metric" | "measure") {
   return { id, model, name: `Result ${id}` };
-}
-
-/**
- * Helper to create a fake MetricDefinitionEntry with a minimal definition
- * that has the given name. The definition is cast to satisfy the type but
- * only supports getDefinitionName (which reads displayName from lib).
- */
-function makeMetricEntry(
-  sourceId: MetricSourceId,
-  name: string,
-): MetricDefinitionEntry {
-  // getDefinitionName calls LibMetric.displayName which returns the
-  // `display-name` key from the definition JS object. We fake it here.
-  const fakeDefinition = {
-    "display-name": name,
-  } as unknown as MetricDefinitionEntry["definition"];
-  return {
-    id: sourceId,
-    type: "metric",
-    definition: fakeDefinition,
-  };
 }
 
 describe("filterSearchResults", () => {
@@ -227,9 +206,10 @@ describe("cleanupParens", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildExpressionText", () => {
-  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
-  const costsEntry = makeMetricEntry("metric:2", "Costs");
-  const metricEntries = [revenueEntry, costsEntry];
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:2": "Costs",
+  };
 
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
@@ -249,13 +229,13 @@ describe("buildExpressionText", () => {
 
   it("renders a metric scaled by a decimal constant", () => {
     expect(
-      buildExpressionText([m("metric:1"), op("*"), k(0.85)], metricEntries),
+      buildExpressionText([m("metric:1"), op("*"), k(0.85)], metricNames),
     ).toBe("Revenue * 0.85");
   });
 
   it("renders an integer constant", () => {
     expect(
-      buildExpressionText([m("metric:1"), op("*"), k(100)], metricEntries),
+      buildExpressionText([m("metric:1"), op("*"), k(100)], metricNames),
     ).toBe("Revenue * 100");
   });
 
@@ -264,14 +244,14 @@ describe("buildExpressionText", () => {
     expect(
       buildExpressionText(
         [open, m("metric:1"), op("+"), m("metric:2"), close, op("*"), k(0.85)],
-        metricEntries,
+        metricNames,
       ),
     ).toBe("(Revenue + Costs) * 0.85");
   });
 
   it("renders a constant divided by a metric", () => {
     expect(
-      buildExpressionText([k(1), op("/"), m("metric:1")], metricEntries),
+      buildExpressionText([k(1), op("/"), m("metric:1")], metricNames),
     ).toBe("1 / Revenue");
   });
 });
@@ -281,9 +261,10 @@ describe("buildExpressionText", () => {
 // ---------------------------------------------------------------------------
 
 describe("parseFullText — numeric literal parsing", () => {
-  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
-  const costsEntry = makeMetricEntry("metric:2", "Costs");
-  const metricEntries = [revenueEntry, costsEntry];
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:2": "Costs",
+  };
 
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
@@ -300,7 +281,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a metric multiplied by a decimal constant", () => {
-    const result = parseFullText("Revenue * 0.85", metricEntries);
+    const result = parseFullText("Revenue * 0.85", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -309,7 +290,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a metric multiplied by an integer constant", () => {
-    const result = parseFullText("Revenue * 100", metricEntries);
+    const result = parseFullText("Revenue * 100", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -318,7 +299,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a constant on the left side", () => {
-    const result = parseFullText("0.5 * Revenue", metricEntries);
+    const result = parseFullText("0.5 * Revenue", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -327,7 +308,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a constant inside parentheses — (Revenue + Costs) * 0.85", () => {
-    const result = parseFullText("(Revenue + Costs) * 0.85", metricEntries);
+    const result = parseFullText("(Revenue + Costs) * 0.85", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -345,7 +326,7 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("parses multiple constants in one expression", () => {
     // 0.5 * Revenue + 0.5 * Costs
-    const result = parseFullText("0.5 * Revenue + 0.5 * Costs", metricEntries);
+    const result = parseFullText("0.5 * Revenue + 0.5 * Costs", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -363,7 +344,7 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("handles an integer that looks like it could start a decimal (no dot follows)", () => {
     // "1 + Revenue" — "1" is an integer with no fractional part
-    const result = parseFullText("1 + Revenue", metricEntries);
+    const result = parseFullText("1 + Revenue", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -372,7 +353,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a leading-dot decimal like .5", () => {
-    const result = parseFullText(".5 * Revenue", metricEntries);
+    const result = parseFullText(".5 * Revenue", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -381,7 +362,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a metric multiplied by a leading-dot decimal", () => {
-    const result = parseFullText("Revenue * .85", metricEntries);
+    const result = parseFullText("Revenue * .85", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -390,7 +371,7 @@ describe("parseFullText — numeric literal parsing", () => {
   });
 
   it("parses a negative leading-dot decimal", () => {
-    const result = parseFullText("-.5 * Revenue", metricEntries);
+    const result = parseFullText("-.5 * Revenue", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -401,7 +382,7 @@ describe("parseFullText — numeric literal parsing", () => {
   it("does not parse a trailing dot as part of the number", () => {
     // "1." — trailing dot with no digit after it; "1" is the constant, "." is
     // dropped (unknown tokens are filtered out of committed data)
-    const result = parseFullText("1.", metricEntries);
+    const result = parseFullText("1.", metricNames);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -411,7 +392,7 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("parses constants and metrics as separate items separated by a comma", () => {
     // "Revenue * 0.85, Costs"
-    const result = parseFullText("Revenue * 0.85, Costs", metricEntries);
+    const result = parseFullText("Revenue * 0.85, Costs", metricNames);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -426,12 +407,12 @@ describe("parseFullText — numeric literal parsing", () => {
 
   it("round-trips through buildExpressionText", () => {
     const text = "(Revenue + Costs) * 0.85";
-    const result = parseFullText(text, metricEntries);
+    const result = parseFullText(text, metricNames);
     expect(result).toHaveLength(1);
     const entry = result[0];
     if (entry.type === "expression") {
       // eslint-disable-next-line jest/no-conditional-expect
-      expect(buildExpressionText(entry.tokens, metricEntries)).toBe(text);
+      expect(buildExpressionText(entry.tokens, metricNames)).toBe(text);
     } else {
       throw new Error("Expected expression entry");
     }
@@ -443,9 +424,10 @@ describe("parseFullText — numeric literal parsing", () => {
 // ---------------------------------------------------------------------------
 
 describe("parseFullText — negative numbers", () => {
-  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
-  const costsEntry = makeMetricEntry("metric:2", "Costs");
-  const metricEntries = [revenueEntry, costsEntry];
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:2": "Costs",
+  };
 
   const metric = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
@@ -464,7 +446,7 @@ describe("parseFullText — negative numbers", () => {
   const close: ExpressionSubToken = { type: "close-paren" };
 
   it("parses a standalone negative integer", () => {
-    const result = parseFullText("-50", metricEntries);
+    const result = parseFullText("-50", metricNames);
     expect(result).toEqual([
       {
         id: "expression:-50",
@@ -476,7 +458,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses metric plus negative constant", () => {
-    const result = parseFullText("Revenue + -50", metricEntries);
+    const result = parseFullText("Revenue + -50", metricNames);
     expect(result).toEqual([
       {
         id: "expression:Revenue + -50",
@@ -488,7 +470,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses metric multiplied by negative decimal", () => {
-    const result = parseFullText("Revenue * -0.85", metricEntries);
+    const result = parseFullText("Revenue * -0.85", metricNames);
     expect(result).toEqual([
       {
         id: "expression:Revenue * -0.85",
@@ -500,7 +482,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses negative constant at the start of expression", () => {
-    const result = parseFullText("-50 * Revenue", metricEntries);
+    const result = parseFullText("-50 * Revenue", metricNames);
     expect(result).toEqual([
       {
         id: "expression:-50 * Revenue",
@@ -512,7 +494,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses negative constant after open-paren", () => {
-    const result = parseFullText("(-50 + Revenue)", metricEntries);
+    const result = parseFullText("(-50 + Revenue)", metricNames);
     expect(result).toEqual([
       {
         id: "expression:(-50 + Revenue)",
@@ -524,7 +506,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses subtraction of a negative constant", () => {
-    const result = parseFullText("Revenue - -50", metricEntries);
+    const result = parseFullText("Revenue - -50", metricNames);
     expect(result).toEqual([
       {
         id: "expression:Revenue - -50",
@@ -537,12 +519,12 @@ describe("parseFullText — negative numbers", () => {
 
   it("round-trips negative constants through buildExpressionText", () => {
     const text = "Revenue + -50";
-    const result = parseFullText(text, metricEntries);
+    const result = parseFullText(text, metricNames);
     expect(result).toHaveLength(1);
     const entry = result[0];
     if (entry.type === "expression") {
       // eslint-disable-next-line jest/no-conditional-expect
-      expect(buildExpressionText(entry.tokens, metricEntries)).toBe(text);
+      expect(buildExpressionText(entry.tokens, metricNames)).toBe(text);
     } else {
       throw new Error("Expected expression entry");
     }
@@ -555,11 +537,11 @@ describe("parseFullText — negative numbers", () => {
     "(-50 + Revenue)",
     "Revenue * -0.85",
   ])("does not report validation errors for: %s", (text) => {
-    expect(findInvalidRanges(text, metricEntries)).toEqual([]);
+    expect(findInvalidRanges(text, metricNames)).toEqual([]);
   });
 
   it("parses metric minus negative constant without spaces (Revenue--50)", () => {
-    const result = parseFullText("Revenue--50", metricEntries);
+    const result = parseFullText("Revenue--50", metricNames);
     expect(result).toEqual([
       {
         id: "expression:Revenue - -50",
@@ -571,7 +553,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("parses metric minus negative decimal without spaces (Revenue--0.5)", () => {
-    const result = parseFullText("Revenue--0.5", metricEntries);
+    const result = parseFullText("Revenue--0.5", metricNames);
     expect(result).toEqual([
       {
         id: "expression:Revenue - -0.5",
@@ -583,11 +565,11 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("does not report validation errors for Revenue--50", () => {
-    expect(findInvalidRanges("Revenue--50", metricEntries)).toEqual([]);
+    expect(findInvalidRanges("Revenue--50", metricNames)).toEqual([]);
   });
 
   it("still treats minus as binary operator after a metric", () => {
-    const result = parseFullText("Revenue - 50", metricEntries);
+    const result = parseFullText("Revenue - 50", metricNames);
     expect(result).toEqual([
       {
         id: "expression:Revenue - 50",
@@ -599,7 +581,7 @@ describe("parseFullText — negative numbers", () => {
   });
 
   it("still treats minus as binary operator after a constant", () => {
-    const result = parseFullText("100 - Revenue", metricEntries);
+    const result = parseFullText("100 - Revenue", metricNames);
     expect(result).toEqual([
       {
         id: "expression:100 - Revenue",
@@ -616,11 +598,6 @@ describe("parseFullText — negative numbers", () => {
 // ---------------------------------------------------------------------------
 
 describe("parseFullText — metric names with commas", () => {
-  const revTotalEntry = makeMetricEntry("metric:10", "Revenue, Total");
-  const costsEntry = makeMetricEntry("metric:2", "Costs");
-  const costsAnnualEntry = makeMetricEntry("metric:11", "Costs, Annual");
-  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
-
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
@@ -636,23 +613,32 @@ describe("parseFullText — metric names with commas", () => {
   });
 
   it("parses a single metric whose name contains a comma", () => {
-    const entries = [revTotalEntry, costsEntry];
-    const result = parseFullText("Revenue, Total", entries);
+    const names: MetricNameMap = {
+      "metric:10": "Revenue, Total",
+      "metric:2": "Costs",
+    };
+    const result = parseFullText("Revenue, Total", names);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
   });
 
   it("parses metric-with-comma followed by another metric", () => {
-    const entries = [revTotalEntry, costsEntry];
-    const result = parseFullText("Revenue, Total, Costs", entries);
+    const names: MetricNameMap = {
+      "metric:10": "Revenue, Total",
+      "metric:2": "Costs",
+    };
+    const result = parseFullText("Revenue, Total, Costs", names);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
     expect(result[1]).toMatchObject({ type: "metric", id: "metric:2" });
   });
 
   it("parses metric-with-comma in an expression", () => {
-    const entries = [revTotalEntry, costsEntry];
-    const result = parseFullText("Revenue, Total + Costs", entries);
+    const names: MetricNameMap = {
+      "metric:10": "Revenue, Total",
+      "metric:2": "Costs",
+    };
+    const result = parseFullText("Revenue, Total + Costs", names);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -661,8 +647,11 @@ describe("parseFullText — metric names with commas", () => {
   });
 
   it("parses two metrics whose names each contain commas", () => {
-    const entries = [revTotalEntry, costsAnnualEntry];
-    const result = parseFullText("Revenue, Total, Costs, Annual", entries);
+    const names: MetricNameMap = {
+      "metric:10": "Revenue, Total",
+      "metric:11": "Costs, Annual",
+    };
+    const result = parseFullText("Revenue, Total, Costs, Annual", names);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
     expect(result[1]).toMatchObject({ type: "metric", id: "metric:11" });
@@ -670,8 +659,12 @@ describe("parseFullText — metric names with commas", () => {
 
   it("prefers longer metric name over shorter one when both match", () => {
     // "Revenue, Total" should match as one metric, not "Revenue" + separator
-    const entries = [revTotalEntry, revenueEntry, costsEntry];
-    const result = parseFullText("Revenue, Total, Costs", entries);
+    const names: MetricNameMap = {
+      "metric:10": "Revenue, Total",
+      "metric:1": "Revenue",
+      "metric:2": "Costs",
+    };
+    const result = parseFullText("Revenue, Total, Costs", names);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:10" });
     expect(result[1]).toMatchObject({ type: "metric", id: "metric:2" });
@@ -679,16 +672,16 @@ describe("parseFullText — metric names with commas", () => {
 
   it("falls back to shorter metric when longer does not match", () => {
     // Only "Revenue" is known, not "Revenue, Total"
-    const entries = [revenueEntry, costsEntry];
-    const result = parseFullText("Revenue, Costs", entries);
+    const names: MetricNameMap = { "metric:1": "Revenue", "metric:2": "Costs" };
+    const result = parseFullText("Revenue, Costs", names);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:1" });
     expect(result[1]).toMatchObject({ type: "metric", id: "metric:2" });
   });
 
   it("handles metric-with-comma multiplied by a constant", () => {
-    const entries = [revTotalEntry];
-    const result = parseFullText("Revenue, Total * 0.85", entries);
+    const names: MetricNameMap = { "metric:10": "Revenue, Total" };
+    const result = parseFullText("Revenue, Total * 0.85", names);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       type: "expression",
@@ -702,20 +695,21 @@ describe("parseFullText — metric names with commas", () => {
 // ---------------------------------------------------------------------------
 
 describe("findInvalidRanges — unknown token detection", () => {
-  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
-  const costsEntry = makeMetricEntry("metric:2", "Costs");
-  const metricEntries = [revenueEntry, costsEntry];
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:2": "Costs",
+  };
 
   it("returns no errors for valid expression", () => {
-    expect(findInvalidRanges("Revenue + Costs", metricEntries)).toEqual([]);
+    expect(findInvalidRanges("Revenue + Costs", metricNames)).toEqual([]);
   });
 
   it("returns no errors for valid expression with constant", () => {
-    expect(findInvalidRanges("Revenue * 0.85", metricEntries)).toEqual([]);
+    expect(findInvalidRanges("Revenue * 0.85", metricNames)).toEqual([]);
   });
 
   it("flags a single unknown word", () => {
-    const errors = findInvalidRanges("Revenue + xyz", metricEntries);
+    const errors = findInvalidRanges("Revenue + xyz", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 10,
@@ -725,7 +719,7 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("flags unknown text that is not a known metric", () => {
-    const errors = findInvalidRanges("Foo", metricEntries);
+    const errors = findInvalidRanges("Foo", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       message: expect.stringContaining("Foo"),
@@ -733,15 +727,12 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("flags multiple unknown tokens in different segments", () => {
-    const errors = findInvalidRanges("abc, def", metricEntries);
+    const errors = findInvalidRanges("abc, def", metricNames);
     expect(errors.length).toBeGreaterThanOrEqual(2);
   });
 
   it("flags unknown token mixed with valid tokens", () => {
-    const errors = findInvalidRanges(
-      "Revenue + unknown + Costs",
-      metricEntries,
-    );
+    const errors = findInvalidRanges("Revenue + unknown + Costs", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       message: expect.stringContaining("unknown"),
@@ -749,21 +740,21 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("does not flag numbers as unknown", () => {
-    expect(findInvalidRanges("Revenue * 100", metricEntries)).toEqual([]);
+    expect(findInvalidRanges("Revenue * 100", metricNames)).toEqual([]);
   });
 
   it("does not flag parentheses as unknown", () => {
-    expect(findInvalidRanges("(Revenue + Costs)", metricEntries)).toEqual([]);
+    expect(findInvalidRanges("(Revenue + Costs)", metricNames)).toEqual([]);
   });
 
   it("does not flag operators as unknown", () => {
-    expect(
-      findInvalidRanges("Revenue + Costs - Revenue", metricEntries),
-    ).toEqual([]);
+    expect(findInvalidRanges("Revenue + Costs - Revenue", metricNames)).toEqual(
+      [],
+    );
   });
 
   it("flags unknown token at the start of expression", () => {
-    const errors = findInvalidRanges("xyz + Revenue", metricEntries);
+    const errors = findInvalidRanges("xyz + Revenue", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 0,
@@ -774,7 +765,7 @@ describe("findInvalidRanges — unknown token detection", () => {
 
   it("returns both structural and unknown errors", () => {
     // "xyz +" has an unknown token AND a trailing operator
-    const errors = findInvalidRanges("xyz +", metricEntries);
+    const errors = findInvalidRanges("xyz +", metricNames);
     expect(errors.length).toBeGreaterThanOrEqual(2);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("xyz"))).toBe(true);
@@ -782,8 +773,8 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("flags trailing characters after a metric name with special chars", () => {
-    const entry = makeMetricEntry("metric:99", "People Q H2 Orders, Count!");
-    const errors = findInvalidRanges("People Q H2 Orders, Count!!!!", [entry]);
+    const names: MetricNameMap = { "metric:99": "People Q H2 Orders, Count!" };
+    const errors = findInvalidRanges("People Q H2 Orders, Count!!!!", names);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 26,
@@ -794,7 +785,7 @@ describe("findInvalidRanges — unknown token detection", () => {
 });
 
 describe("getWordAtCursor — comma handling with metric entries", () => {
-  const commaMetric = makeMetricEntry("metric:99", "Revenue, Total");
+  const commaMetricNames: MetricNameMap = { "metric:99": "Revenue, Total" };
 
   it("without entries, comma is always a delimiter", () => {
     const text = "Revenue, Total";
@@ -805,19 +796,17 @@ describe("getWordAtCursor — comma handling with metric entries", () => {
 
   it("with entries, comma inside a known metric name is not a delimiter", () => {
     const text = "Revenue, Total";
-    const result = getWordAtCursor(text, text.length, [commaMetric]);
+    const result = getWordAtCursor(text, text.length, commaMetricNames);
     expect(result.word).toBe("Revenue, Total");
   });
 
   it("with entries, separator comma between two metrics is still a delimiter", () => {
-    const revenueEntry = makeMetricEntry("metric:1", "Revenue");
-    const ordersEntry = makeMetricEntry("metric:2", "Orders");
     const text = "Revenue, Orders";
     // cursor at end (inside "Orders")
-    const result = getWordAtCursor(text, text.length, [
-      revenueEntry,
-      ordersEntry,
-    ]);
+    const result = getWordAtCursor(text, text.length, {
+      "metric:1": "Revenue",
+      "metric:2": "Orders",
+    });
     expect(result.word).toBe("Orders");
   });
 
@@ -826,20 +815,20 @@ describe("getWordAtCursor — comma handling with metric entries", () => {
     // The comma is NOT a separator because "Revenue" alone is not a known
     // metric in this set — the only known metric is "Revenue, Total".
     const text = "Revenue, T";
-    const result = getWordAtCursor(text, text.length, [commaMetric]);
+    const result = getWordAtCursor(text, text.length, commaMetricNames);
     expect(result.word).toBe("Revenue, T");
   });
 
   it("math-operator delimiters still work with metric entries", () => {
     const text = "Revenue, Total + 1";
-    const result = getWordAtCursor(text, text.length, [commaMetric]);
+    const result = getWordAtCursor(text, text.length, commaMetricNames);
     expect(result.word).toBe("1");
   });
 
   it("returns full metric name when cursor is in the middle", () => {
     const text = "Revenue, Total";
     // cursor after the comma+space (position 9, inside "Total")
-    const result = getWordAtCursor(text, 9, [commaMetric]);
+    const result = getWordAtCursor(text, 9, commaMetricNames);
     expect(result.word).toBe("Revenue, Total");
   });
 });
@@ -863,18 +852,6 @@ function getExprTokenDefinitions(
     );
 }
 
-const mockDef = (name: string) =>
-  ({ "display-name": name }) as unknown as MetricDefinitionEntry["definition"];
-
-const metricEntryWithDef = (
-  id: MetricSourceId,
-  name: string,
-): MetricDefinitionEntry => ({
-  id,
-  type: "metric",
-  definition: mockDef(name),
-});
-
 let nextSlotIndex = 0;
 
 function identity(
@@ -892,10 +869,10 @@ describe("applyTrackedDefinitions", () => {
     nextSlotIndex = 0;
   });
 
-  const entries = [
-    metricEntryWithDef(sourceId(1), "Revenue"),
-    metricEntryWithDef(sourceId(2), "Geo Revenue"),
-  ];
+  const metricNames: MetricNameMap = {
+    [sourceId(1)]: "Revenue",
+    [sourceId(2)]: "Geo Revenue",
+  };
   const metadata = createMetricMetadata([REVENUE_METRIC, GEO_METRIC]);
   const revenueDef = setupDefinition(metadata, REVENUE_METRIC.id);
   const revenueBreakoutDef = setupDefinitionWithBreakout(
@@ -910,20 +887,20 @@ describe("applyTrackedDefinitions", () => {
   );
 
   it("returns empty array for empty inputs", () => {
-    const result = applyTrackedDefinitions([], [], "", entries);
+    const result = applyTrackedDefinitions([], [], "", metricNames);
     expect(result.entities).toEqual([]);
     expect(result.slotMapping.size).toBe(0);
   });
 
   it("applies tracked definition to a standalone metric by position", () => {
     const text = "Revenue";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     expect(entities).toHaveLength(1);
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
@@ -933,27 +910,27 @@ describe("applyTrackedDefinitions", () => {
 
   it("preserves null definition when tracked identity has null", () => {
     const text = "Revenue";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     const tracked = [identity(sourceId(1), 0, 7, null)];
     const { entities } = applyTrackedDefinitions(
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     expect((entities[0] as MetricDefinitionEntry).definition).toBeNull();
   });
 
   it("leaves entity unchanged when no tracked identity matches its position", () => {
     const text = "Revenue";
-    const parsed = parseFullText(text, entries);
-    const { entities } = applyTrackedDefinitions(parsed, [], text, entries);
+    const parsed = parseFullText(text, metricNames);
+    const { entities } = applyTrackedDefinitions(parsed, [], text, metricNames);
     expect(entities).toEqual(parsed);
   });
 
   it("matches definitions by exact position for comma-separated metrics", () => {
     const text = "Revenue, Geo Revenue";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     const tracked = [
       identity(sourceId(1), 0, 7, revenueBreakoutDef),
       identity(sourceId(2), 9, 20, geoBreakoutDef),
@@ -962,7 +939,7 @@ describe("applyTrackedDefinitions", () => {
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
@@ -974,13 +951,13 @@ describe("applyTrackedDefinitions", () => {
 
   it("strips breakout projections from expression token definitions", () => {
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     const [tokenDef] = getExprTokenDefinitions(entities, 0);
     expect(tokenDef).toBeDefined();
@@ -989,13 +966,13 @@ describe("applyTrackedDefinitions", () => {
 
   it("preserves non-breakout definitions on expression tokens", () => {
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     const [tokenDef] = getExprTokenDefinitions(entities, 0);
     expect(tokenDef).toBe(revenueDef);
@@ -1003,20 +980,20 @@ describe("applyTrackedDefinitions", () => {
 
   it("preserves reference identity for expression entries when no tokens change", () => {
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, entries);
-    const { entities } = applyTrackedDefinitions(parsed, [], text, entries);
+    const parsed = parseFullText(text, metricNames);
+    const { entities } = applyTrackedDefinitions(parsed, [], text, metricNames);
     expect(entities[0]).toBe(parsed[0]);
   });
 
   it("does not touch non-metric tokens inside expressions", () => {
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     const resultExpr = entities[0] as ExpressionDefinitionEntry;
     const parsedExpr = parsed[0] as ExpressionDefinitionEntry;
@@ -1026,14 +1003,14 @@ describe("applyTrackedDefinitions", () => {
 
   it("applies definition only to standalone metric, not expression token at different position", () => {
     const text = "Revenue, Revenue + 5";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     // Only the standalone Revenue (0-7) has a tracked identity
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
@@ -1046,13 +1023,13 @@ describe("applyTrackedDefinitions", () => {
     // Tracked identity at [100,107] — token was deleted (TrackDel).
     // New Revenue at [0,7] is a fresh instance, gets no override.
     const text = "Revenue";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     const tracked = [identity(sourceId(1), 100, 107, revenueDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     expect((entities[0] as MetricDefinitionEntry).definition).not.toBe(
       revenueDef,
@@ -1061,14 +1038,14 @@ describe("applyTrackedDefinitions", () => {
 
   it("newly added duplicate of same metric gets no definition from the tracked one", () => {
     const text = "Revenue, Revenue";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     // Only one tracked identity at position [0,7]
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     // First Revenue at [0,7] — exact position match
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
@@ -1083,13 +1060,13 @@ describe("applyTrackedDefinitions", () => {
   it("preserves definition when token survives edit (position tracked by RangeSet)", () => {
     // "Revenue + 5" — Revenue token at [0,7] survived the edit
     const text = "Revenue + 5";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
     const { entities } = applyTrackedDefinitions(
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     const [tokenDef] = getExprTokenDefinitions(entities, 0);
     expect(tokenDef).toBe(revenueDef);
@@ -1097,7 +1074,7 @@ describe("applyTrackedDefinitions", () => {
 
   it("two instances of same metric at different positions keep independent definitions", () => {
     const text = "Revenue, Revenue";
-    const parsed = parseFullText(text, entries);
+    const parsed = parseFullText(text, metricNames);
     const tracked = [
       identity(sourceId(1), 0, 7, revenueBreakoutDef, 0),
       identity(sourceId(1), 9, 16, revenueDef, 1),
@@ -1106,7 +1083,7 @@ describe("applyTrackedDefinitions", () => {
       parsed,
       tracked,
       text,
-      entries,
+      metricNames,
     );
     expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
