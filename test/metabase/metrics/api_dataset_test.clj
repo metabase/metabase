@@ -466,7 +466,7 @@
             price-dim (find-dimension-by-name hydrated "PRICE")]
         (is (some? price-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {} (:id price-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {} (:id price-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (= 4 (:row_count response))))))))
 
@@ -481,8 +481,8 @@
         (is (some? price-dim))
         (is (some? cat-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {} (:id price-dim)]
-                                                                                                    [:dimension {} (:id cat-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {} (:id price-dim)]
+                                                                                                                  [:dimension {} (:id cat-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (< 4 (:row_count response))
               "should have more than 4 rows for price/category combinations"))))))
@@ -497,7 +497,7 @@
         (is (some? price-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
                                          :filters     [{:lib/uuid "a" :filter [:>= {} [:dimension {} (:id price-dim)] 2]}]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {} (:id price-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {} (:id price-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (= 3 (:row_count response)) "prices 2, 3, 4")
           (let [rows (result-rows response)]
@@ -516,7 +516,7 @@
             date-dim (find-dimension-by-name hydrated "DATE")]
         (is (some? date-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :day} (:id date-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :day} (:id date-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (< 1 (:row_count response)) "should have multiple rows grouped by day"))))))
 
@@ -529,9 +529,9 @@
             date-dim (find-dimension-by-name hydrated "DATE")]
         (is (some? date-dim))
         (let [day-count  (:row_count (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                                       :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :day} (:id date-dim)]]}]}))
+                                                       :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :day} (:id date-dim)]]}]}))
               week-count (:row_count (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                                       :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :week} (:id date-dim)]]}]}))]
+                                                       :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :week} (:id date-dim)]]}]}))]
           (is (< week-count day-count) "week grouping should have fewer rows than day grouping"))))))
 
 (deftest dataset-projection-month-bucket-test
@@ -543,7 +543,7 @@
             date-dim (find-dimension-by-name hydrated "DATE")]
         (is (some? date-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :month} (:id date-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :month} (:id date-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (< 1 (:row_count response)) "should have multiple rows grouped by month"))))))
 
@@ -556,9 +556,9 @@
             date-dim (find-dimension-by-name hydrated "DATE")]
         (is (some? date-dim))
         (let [month-count   (:row_count (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                                          :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :month} (:id date-dim)]]}]}))
+                                                          :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :month} (:id date-dim)]]}]}))
               quarter-count (:row_count (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                                          :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :quarter} (:id date-dim)]]}]}))]
+                                                          :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :quarter} (:id date-dim)]]}]}))]
           (is (<= quarter-count month-count) "quarter grouping should have fewer or equal rows than month grouping"))))))
 
 (deftest dataset-projection-year-bucket-test
@@ -570,7 +570,7 @@
             date-dim (find-dimension-by-name hydrated "DATE")]
         (is (some? date-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :year} (:id date-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :year} (:id date-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (< 0 (:row_count response)) "should have at least one row grouped by year"))))))
 
@@ -583,7 +583,7 @@
             date-dim (find-dimension-by-name hydrated "DATE")]
         (is (some? date-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :day-of-week} (:id date-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :day-of-week} (:id date-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (= 7 (:row_count response))))))))
 
@@ -600,7 +600,7 @@
             lat-dim  (find-dimension-by-name hydrated "LATITUDE")]
         (is (some? lat-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {:binning {:strategy :default}} (:id lat-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:binning {:strategy :default}} (:id lat-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (< 1 (:row_count response)) "should have multiple bins"))))))
 
@@ -613,7 +613,7 @@
             lat-dim  (find-dimension-by-name hydrated "LATITUDE")]
         (is (some? lat-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {:binning {:strategy :num-bins :num-bins 5}} (:id lat-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:binning {:strategy :num-bins :num-bins 5}} (:id lat-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (<= (:row_count response) 6) "should have at most 5+1 bins"))))))
 
@@ -626,7 +626,7 @@
             lat-dim  (find-dimension-by-name hydrated "LATITUDE")]
         (is (some? lat-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {:binning {:strategy :bin-width :bin-width 10}} (:id lat-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:binning {:strategy :bin-width :bin-width 10}} (:id lat-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (< 0 (:row_count response)) "should have at least one bin"))))))
 
@@ -639,7 +639,7 @@
             lat-dim  (find-dimension-by-name hydrated "LATITUDE")]
         (is (some? lat-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {:binning {:strategy :default}} (:id lat-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:binning {:strategy :default}} (:id lat-dim)]]}]})]
           (is (= "completed" (:status response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -738,7 +738,7 @@
                 price-dim (find-measure-dimension-by-name hydrated "PRICE")]
             (is (some? price-dim))
             (let [response (dataset-request {:expression  [:measure {:lib/uuid "a"} (:id measure)]
-                                             :projections [{:type :measure :id (:id measure) :projection [[:dimension {} (:id price-dim)]]}]})]
+                                             :projections [{:type :measure :id (:id measure) :lib/uuid "a" :projection [[:dimension {} (:id price-dim)]]}]})]
               (is (= "completed" (:status response)))
               (is (= 4 (:row_count response))))))))))
 
@@ -756,7 +756,7 @@
                 date-dim (find-measure-dimension-by-name hydrated "DATE")]
             (is (some? date-dim))
             (let [response (dataset-request {:expression  [:measure {:lib/uuid "a"} (:id measure)]
-                                             :projections [{:type :measure :id (:id measure) :projection [[:dimension {:temporal-unit :month} (:id date-dim)]]}]})]
+                                             :projections [{:type :measure :id (:id measure) :lib/uuid "a" :projection [[:dimension {:temporal-unit :month} (:id date-dim)]]}]})]
               (is (= "completed" (:status response)))
               (is (< 1 (:row_count response)) "should have multiple rows grouped by month"))))))))
 
@@ -774,7 +774,7 @@
                 lat-dim  (find-measure-dimension-by-name hydrated "LATITUDE")]
             (is (some? lat-dim))
             (let [response (dataset-request {:expression  [:measure {:lib/uuid "a"} (:id measure)]
-                                             :projections [{:type :measure :id (:id measure) :projection [[:dimension {:binning {:strategy :num-bins :num-bins 5}} (:id lat-dim)]]}]})]
+                                             :projections [{:type :measure :id (:id measure) :lib/uuid "a" :projection [[:dimension {:binning {:strategy :num-bins :num-bins 5}} (:id lat-dim)]]}]})]
               (is (= "completed" (:status response)))
               (is (<= (:row_count response) 6) "should have at most 5+1 bins"))))))))
 
@@ -795,7 +795,7 @@
             (is (some? cat-dim))
             (let [response (dataset-request {:expression  [:measure {:lib/uuid "a"} (:id measure)]
                                              :filters     [{:lib/uuid "a" :filter [:>= {} [:dimension {} (:id price-dim)] 2]}]
-                                             :projections [{:type :measure :id (:id measure) :projection [[:dimension {} (:id cat-dim)]]}]})]
+                                             :projections [{:type :measure :id (:id measure) :lib/uuid "a" :projection [[:dimension {} (:id cat-dim)]]}]})]
               (is (= "completed" (:status response)))
               (is (< 1 (:row_count response)) "should have rows broken out by category"))))))))
 
@@ -945,7 +945,7 @@
         (is (some? date-dim))
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
                                          :filters     [{:lib/uuid "a" :filter [:time-interval {} [:dimension {} (:id date-dim)] -365 :day]}]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :month} (:id date-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :month} (:id date-dim)]]}]})]
           (is (= "completed" (:status response))))))))
 
 (deftest dataset-results-match-expected-count-test
@@ -982,8 +982,8 @@
                                          :filters     [{:lib/uuid "a" :filter [:and {}
                                                                                [:>= {} [:dimension {} (:id price-dim)] 2]
                                                                                [:<= {} [:dimension {} (:id price-dim)] 3]]}]
-                                         :projections [{:type :metric :id (:id metric) :projection [[:dimension {} (:id price-dim)]
-                                                                                                    [:dimension {} (:id cat-dim)]]}]})]
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {} (:id price-dim)]
+                                                                                                                  [:dimension {} (:id cat-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (< 1 (:row_count response)) "should have multiple rows for price/category combinations")
           (let [rows (result-rows response)]
@@ -1080,7 +1080,7 @@
               user-dim (find-dimension-by-name hydrated "USER_ID")]
           (is (some? user-dim) "USER_ID dimension should exist")
           (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                           :projections [{:type :metric :id (:id metric) :projection [[:dimension {} (:id user-dim)]]}]})]
+                                           :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {} (:id user-dim)]]}]})]
             (is (= "completed" (:status response)))
             (is (= 1746 (:row_count response))
                 "should have 1746 rows, one per unique user with orders")))))))
@@ -1095,7 +1095,7 @@
               category-dim (find-dimension-by-name hydrated "CATEGORY")]
           (is (some? category-dim) "CATEGORY dimension from Products should exist")
           (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                           :projections [{:type :metric :id (:id metric) :projection [[:dimension {} (:id category-dim)]]}]})]
+                                           :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {} (:id category-dim)]]}]})]
             (is (= "completed" (:status response)))
             (is (= 4 (:row_count response))
                 "should have 4 rows, one per product category")))))))
@@ -1113,7 +1113,7 @@
           (is (some? total-dim) "TOTAL dimension should exist")
           (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
                                            :filters     [{:lib/uuid "a" :filter [:> {} [:dimension {} (:id total-dim)] 20]}]
-                                           :projections [{:type :metric :id (:id metric) :projection [[:dimension {} (:id category-dim)]]}]})]
+                                           :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {} (:id category-dim)]]}]})]
             (is (= "completed" (:status response)))
             (is (= 4 (:row_count response))
                 "should have 4 rows, one per product category")))))))
@@ -1128,10 +1128,72 @@
               created-dim (find-dimension-by-name hydrated "CREATED_AT")]
           (is (some? created-dim) "CREATED_AT dimension should exist")
           (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                           :projections [{:type :metric :id (:id metric) :projection [[:dimension {:temporal-unit :month} (:id created-dim)]]}]})]
+                                           :projections [{:type :metric :id (:id metric) :lib/uuid "a" :projection [[:dimension {:temporal-unit :month} (:id created-dim)]]}]})]
             (is (= "completed" (:status response)))
             (is (= 49 (:row_count response))
                 "should have 49 months of order data")))))))
+
+(defn- create-orders-products-join-sum-price-query
+  "Create a pMBQL query joining Orders with Products, aggregating SUM(Products.PRICE).
+   This exercises the case where the aggregation references a column from the joined table,
+   which requires the join's fields to be visible across the two-stage query boundary."
+  ([]
+   (create-orders-products-join-sum-price-query nil))
+  ([join-fields]
+   (let [mp                (mt/metadata-provider)
+         orders-table      (lib.metadata/table mp (mt/id :orders))
+         products-table    (lib.metadata/table mp (mt/id :products))
+         orders-product-id (lib.metadata/field mp (mt/id :orders :product_id))
+         products-id       (lib.metadata/field mp (mt/id :products :id))
+         products-price    (lib.metadata/field mp (mt/id :products :price))]
+     (-> (lib/query mp orders-table)
+         (lib/join (cond-> (lib/join-clause products-table
+                                            [(lib/= orders-product-id
+                                                    (lib/with-join-alias products-id "Products"))])
+                     join-fields (lib/with-join-fields join-fields)))
+         (lib/aggregate (lib/sum (lib/with-join-alias products-price "Products")))))))
+
+(deftest dataset-metric-with-join-aggregation-on-joined-column-test
+  (testing "POST /api/metric/dataset with aggregation on a joined table column"
+    (let [query (create-orders-products-join-sum-price-query)]
+      (mt/with-temp [:model/Card metric {:name          "Sum of Product Prices"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (testing "basic execution without projection"
+          (let [response (dataset-request {:expression [:metric {:lib/uuid "a"} (:id metric)]})]
+            (is (= "completed" (:status response)))
+            (is (= 1 (:row_count response)))
+            (is (pos? (first-result response)))))
+        (testing "with temporal projection on base table column"
+          (let [hydrated    (hydrate-metric (:id metric))
+                created-dim (find-dimension-by-name hydrated "CREATED_AT")]
+            (is (some? created-dim) "CREATED_AT dimension should exist")
+            (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                                             :projections [{:type :metric :id (:id metric) :lib/uuid "a"
+                                                            :projection [[:dimension {:temporal-unit :month} (:id created-dim)]]}]})]
+              (is (= "completed" (:status response)))
+              (is (pos? (:row_count response))))))))))
+
+(deftest dataset-metric-with-join-explicit-fields-projection-test
+  (testing "POST /api/metric/dataset with join that has explicit :fields"
+    (let [mp             (mt/metadata-provider)
+          products-price (lib.metadata/field mp (mt/id :products :price))
+          query          (create-orders-products-join-sum-price-query
+                          [(lib/with-join-alias products-price "Products")])]
+      (mt/with-temp [:model/Card metric {:name          "Sum Price (explicit fields)"
+                                         :type          :metric
+                                         :dataset_query query}]
+        (let [hydrated     (hydrate-metric (:id metric))
+              category-dim (find-dimension-by-name hydrated "CATEGORY")]
+          (testing "CATEGORY dimension is advertised even though join only selects PRICE"
+            (is (some? category-dim)))
+          (testing "projecting by CATEGORY succeeds despite explicit :fields on join"
+            (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                                             :projections [{:type :metric :id (:id metric) :lib/uuid "a"
+                                                            :projection [[:dimension {} (:id category-dim)]]}]})]
+              (is (= "completed" (:status response)))
+              (is (= 4 (:row_count response))
+                  "should have 4 rows, one per product category"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Category 11: Source-Card (Model) Metrics                                          |
@@ -1189,7 +1251,7 @@
             created-dim (find-dimension-by-name hydrated "CREATED_AT")]
         (is (some? created-dim) "CREATED_AT dimension should exist for model-based metric")
         (let [response (dataset-request {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                                         :projections [{:type :metric :id (:id metric)
+                                         :projections [{:type :metric :id (:id metric) :lib/uuid "a"
                                                         :projection [[:dimension {:temporal-unit :month} (:id created-dim)]]}]})]
           (is (= "completed" (:status response)))
           (is (= 49 (:row_count response))
