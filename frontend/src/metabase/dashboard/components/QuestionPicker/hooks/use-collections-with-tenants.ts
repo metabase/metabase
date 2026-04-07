@@ -54,13 +54,16 @@ export function useCollectionsWithTenants(
       ),
       path: [ROOT_COLLECTION.id],
       parent: baseCollectionsById[ROOT_COLLECTION.id],
-      children: sharedRoot?.children ?? [],
+      children: [],
     };
 
-    // Re-parent children so their parent points to the synthetic root
-    for (const child of syntheticSharedRoot.children) {
-      child.parent = syntheticSharedRoot;
-    }
+    // Re-parent children immutably so their parent points to the synthetic root
+    syntheticSharedRoot.children = (sharedRoot?.children ?? []).map(
+      (child: any) => ({
+        ...child,
+        parent: syntheticSharedRoot,
+      }),
+    );
 
     // Also merge all shared collections into the map for navigation
     const merged: Record<CollectionId, any> = { ...baseCollectionsById };
