@@ -174,9 +174,7 @@
    "permission:save_questions"    :permission-save-questions
    "permission:write_sql_queries" :permission-write-sql-queries
    "permission:write_transforms"  :permission-write-transforms
-   "feature:transforms"           :feature-transforms
-   "feature:transforms-python"    :feature-transforms-python
-   "feature:snippets"             :feature-snippets})
+   "feature:transforms-python"    :feature-transforms-python})
 
 (defn- capability->keyword
   "Normalize a capability value to a keyword. Strings are looked up in the
@@ -189,17 +187,14 @@
         ;; gracefully without requiring a map update.
         (keyword (-> (str cap) (str/replace ":" "-") (str/replace "_" "-"))))))
 
-(def relevant-features
-  "Metabase features to add to capabilities set."
-  #{:transforms :transforms-python})
-
 (defn feature-capability-kws
   "Get capabilities per features of this Metabase instance. Not cached to avoid staleness."
   []
   (into #{}
         (comp (filter premium-features/has-feature?)
               (map #(keyword (str "feature-" (name %)))))
-        relevant-features))
+        ;; Currently only single ee feature maps to capability.
+        [:transforms-python]))
 
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.
