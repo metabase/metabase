@@ -79,24 +79,6 @@
   "Route-param schema for endpoints addressing a single conversation by id."
   [:map [:id ms/UUIDString]])
 
-;;; -------------------------------------------------- Helpers --------------------------------------------------
-
-(defn- batch-load-users
-  "Fetch user info for multiple user IDs in a single query.
-   Returns a map of user-id -> user-info."
-  [user-ids]
-  (when (seq user-ids)
-    (let [users (t2/select [:model/User :id :email :first_name :last_name]
-                           :id [:in user-ids])]
-      (into {} (map (juxt :id #(select-keys % [:id :email :first_name :last_name]))) users))))
-
-(defn- enrich-conversations-with-users
-  "Add user info to conversations using batch loading."
-  [conversations]
-  (let [user-ids    (into #{} (keep :user_id conversations))
-        users-by-id (batch-load-users user-ids)]
-    (mapv #(assoc % :user (get users-by-id (:user_id %))) conversations)))
-
 ;;; -------------------------------------------------- Endpoints --------------------------------------------------
 
 (def ^:private first-assistant-model-subquery
@@ -149,7 +131,7 @@
                                    (assoc :order-by [[sort-by-kw sort-dir-kw] [:c.id :asc]])
                                    (assoc :limit limit)
                                    (assoc :offset offset)))]
-    {:data   (enrich-conversations-with-users results)
+    {:data   (t2/hydrate (mapv #(t2/instance :model/MetabotConversation %) results) :user)
      :total  total
      :limit  (request/limit)
      :offset (request/offset)}))
@@ -159,18 +141,17 @@
   [conversation-id]
   (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-404 conversation)
-    (let [messages   (t2/select :model/MetabotMessage
-                                :conversation_id conversation-id
-                                {:where    [:= :deleted_at nil]
-                                 :order-by [[:created_at :asc]]})
-          users      (batch-load-users #{(:user_id conversation)})
-          user-info  (get users (:user_id conversation))]
+    (let [messages (t2/select :model/MetabotMessage
+                              :conversation_id conversation-id
+                              {:where    [:= :deleted_at nil]
+                               :order-by [[:created_at :asc]]})
+          hydrated (t2/hydrate conversation :user)]
       {:conversation_id (:id conversation)
        :created_at      (:created_at conversation)
        :user_id         (:user_id conversation)
        :summary         (:summary conversation)
        :state           (:state conversation)
-       :user            user-info
+       :user            (:user hydrated)
        :messages        (mapv (fn [m]
                                 {:message_id   (:id m)
                                  :created_at   (:created_at m)
