@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.runner-test
   "Tests for bulk metadata loading in the replacement runner."
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
@@ -12,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.field-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -275,3 +277,61 @@
                     (testing "child-1 retains original source (swap failed)"
                       (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-1-id)
                                             [:stages 0 :source-card]))))))))))))))
+
+(deftest copy-model-metadata-overrides!-test
+  (testing "copies user-edited metadata from model result_metadata to Field and FieldUserSettings"
+    (mt/with-temp [:model/Table {table-id :id} {:name   "transform_output"
+                                                :db_id  (mt/id)
+                                                :active true}
+                   :model/Field {field-1-id :id} {:name         "TOTAL"
+                                                  :table_id     table-id
+                                                  :base_type    :type/Float
+                                                  :display_name "Total"
+                                                  :description  nil
+                                                  :semantic_type nil}
+                   :model/Field {field-2-id :id} {:name         "CREATED_AT"
+                                                  :table_id     table-id
+                                                  :base_type    :type/DateTimeWithLocalTZ
+                                                  :display_name "Created At"
+                                                  :description  nil
+                                                  :semantic_type nil}
+                   :model/Card {card-id :id} {:type          :model
+                                              :database_id   (mt/id)
+                                              :dataset_query (mt/mbql-query orders)}]
+      ;; Set result_metadata directly via SQL to bypass Card hooks that recompute metadata
+      (t2/query-one {:update :report_card
+                     :set    {:result_metadata
+                              (json/encode [{:name          "TOTAL"
+                                             :display_name  "Order Total"
+                                             :description   "The total amount"
+                                             :semantic_type "type/Currency"
+                                             :base_type     "type/Float"}
+                                            {:name          "CREATED_AT"
+                                             :display_name  "Order Date"
+                                             :semantic_type "type/CreationTimestamp"
+                                             :base_type     "type/DateTimeWithLocalTZ"}])}
+                     :where  [:= :id card-id]})
+
+      (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
+
+      (testing "Field records are updated with overrides from model metadata"
+        (let [field-1 (t2/select-one :model/Field :id field-1-id)
+              field-2 (t2/select-one :model/Field :id field-2-id)]
+          (is (= "Order Total" (:display_name field-1)))
+          (is (= "The total amount" (:description field-1)))
+          (is (= :type/Currency (:semantic_type field-1)))
+
+          (is (= "Order Date" (:display_name field-2)))
+          (is (= :type/CreationTimestamp (:semantic_type field-2)))))
+
+      (testing "FieldUserSettings are created so overrides survive sync"
+        (let [fus-1 (t2/select-one :model/FieldUserSettings :field_id field-1-id)
+              fus-2 (t2/select-one :model/FieldUserSettings :field_id field-2-id)]
+          (is (some? fus-1))
+          (is (= "Order Total" (:display_name fus-1)))
+          (is (= "The total amount" (:description fus-1)))
+          (is (= :type/Currency (:semantic_type fus-1)))
+
+          (is (some? fus-2))
+          (is (= "Order Date" (:display_name fus-2)))
+          (is (= :type/CreationTimestamp (:semantic_type fus-2))))))))
