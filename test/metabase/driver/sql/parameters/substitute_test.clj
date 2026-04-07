@@ -7,6 +7,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -17,6 +18,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
 (defn- optional [& args] (params/->Optional args))
@@ -157,8 +159,10 @@
         (testing "The SQL identifier should include the parent field 'result' before 'tag_name'"
           ;; Currently this FAILS: the identifier is "PUBLIC"."VENUES"."tag_name" (missing "result")
           ;; It should be "PUBLIC"."VENUES"."result"."tag_name"
-          (is (str/includes? sql "\"result\".\"tag_name\"")
-              (str "Expected SQL to include parent field in identifier, got: " sql)))))))
+          (let [[exp-identifier] (sql.qp/format-honeysql driver/*driver*
+                                                         (h2x/identifier :field "result" "tag_name"))]
+            (is (str/includes? sql exp-identifier)
+                (str "Expected SQL to include parent field in identifier, got: " sql))))))))
 
 (def ^:private substitute-field-filter-test-2-test-cases
   (partition-all
