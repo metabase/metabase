@@ -1,8 +1,12 @@
-import { Stack } from "metabase/ui";
+import cx from "classnames";
+
+import { Box } from "metabase/ui";
 import type { Advisory, AdvisoryId } from "metabase-types/api";
 
 import { sortAdvisories } from "../../utils";
 import { AdvisoryCard } from "../AdvisoryCard/AdvisoryCard";
+
+import S from "./AdvisoryList.module.css";
 
 interface AdvisoryListProps {
   advisories: Advisory[];
@@ -18,7 +22,7 @@ export function AdvisoryList({
   const sorted = sortAdvisories(advisories);
 
   return (
-    <Stack gap="md" className={className}>
+    <Box className={cx(className, S.advisoryList)}>
       {sorted.map((advisory) => (
         <AdvisoryCard
           key={advisory.advisory_id}
@@ -26,6 +30,6 @@ export function AdvisoryList({
           onAcknowledge={onAcknowledge}
         />
       ))}
-    </Stack>
+    </Box>
   );
 }
