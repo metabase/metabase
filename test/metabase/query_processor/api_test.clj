@@ -945,9 +945,9 @@
       (is (= ["A   sian" "As"]
              (mt/user-http-request :crowberto :post 200 "dataset/parameter/remapping" body))))))
 
-(deftest ^:parallel adhoc-mlv2-query-test
+(deftest ^:parallel adhoc-mbql5-query-test
   (testing "POST /api/dataset"
-    (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
+    (testing "Should be able to run an ad-hoc MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -957,9 +957,9 @@
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
-(deftest ^:parallel mlv2-query-convert-to-native-test
+(deftest ^:parallel mbql5-query-convert-to-native-test
   (testing "POST /api/dataset/native"
-    (testing "Should be able to convert an MLv2 query to native (#39024)"
+    (testing "Should be able to convert an MBQL 5 query to native (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -986,9 +986,9 @@
                                               (driver/prettify-native-form :h2)
                                               str/split-lines))))))))))
 
-(deftest ^:parallel mlv2-query-convert-to-native-disable-default-limit-test
+(deftest ^:parallel mbql5-query-convert-to-native-disable-default-limit-test
   (testing "POST /api/dataset/native"
-    (testing "MLv2 query with disable-default-limit should compile to SQL without a LIMIT clause"
+    (testing "MBQL 5 query with disable-default-limit should compile to SQL without a LIMIT clause"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
