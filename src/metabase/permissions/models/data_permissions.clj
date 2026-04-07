@@ -720,12 +720,6 @@
   [db-ids]
   (zipmap db-ids (repeat :unrestricted)))
 
-(defn set-external-group-permissions!
-  "Sets the appropriate data permissions for a new external group or database - always the minimum possible data permissions."
-  [group-or-id db-id]
-  (doseq [[perm-type perm-value] (m/map-vals (fn [{:keys [values]}] (last values)) permissions.schema/data-permissions)]
-    (set-database-permission! group-or-id db-id perm-type perm-value)))
-
 (defenterprise new-database-view-data-permission-levels
   "Returns a map of {group-id → permission-level} for multiple groups. On OSS, all are `:unrestricted`."
   metabase-enterprise.advanced-permissions.common
