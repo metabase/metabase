@@ -2843,7 +2843,6 @@
            api
            app-db
            collections
-           config
            documents
            driver
            events
