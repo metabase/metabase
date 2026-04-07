@@ -2,6 +2,7 @@
   "MCP resource handlers. Provides the visualize-query HTML resource
    that renders interactive Metabase visualizations via the Embedding SDK."
   (:require
+   [clojure.java.io :as io]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
@@ -9,6 +10,24 @@
    [stencil.core :as stencil]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private embed-mcp-template-path "frontend_client/embed-mcp.html")
+
+;; The built template is emitted by HtmlWebpackPlugin into resources/frontend_client/
+;; during the frontend build. Backend-only test runs (e.g. CI app-db tests) don't
+;; produce it, so we fall back to a minimal inline template that still substitutes
+;; the same Mustache variables, keeping resource-read responses deterministic.
+(def ^:private embed-mcp-fallback-template
+  (str "<!doctype html><html><body><script>"
+       "window.metabaseConfig = {"
+       "instanceUrl: {{{instanceUrl}}},"
+       "sessionToken: {{{sessionToken}}}"
+       "};</script></body></html>"))
+
+(defn- render-embed-mcp [vars]
+  (if (io/resource embed-mcp-template-path)
+    (stencil/render-file embed-mcp-template-path vars)
+    (stencil/render-string embed-mcp-fallback-template vars)))
 
 (defonce ^:private registry
   (atom {:key->uri      {}
@@ -97,8 +116,7 @@
   :render-fn   (fn [opts]
                  (let [site-url    (system/site-url)
                        session-key (:session-key opts)]
-                   (stencil/render-file
-                    "frontend_client/embed-mcp.html"
+                   (render-embed-mcp
                     {:instanceUrl    (json/encode site-url)
                      :instanceUrlRaw site-url
                      :sessionToken   (when session-key (json/encode session-key))})))})
