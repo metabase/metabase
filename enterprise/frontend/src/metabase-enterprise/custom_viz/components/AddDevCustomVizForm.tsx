@@ -39,7 +39,7 @@ export function AddDevCustomVizForm() {
                 {t`Add a dev visualization`}
               </Text>
               <FormTextInput
-                name="dev_bundle_url"
+                name="devBundleUrl"
                 label={t`Dev server URL`}
                 description={t`URL of the local dev server serving the visualization bundle.`}
                 placeholder="http://localhost:5174"

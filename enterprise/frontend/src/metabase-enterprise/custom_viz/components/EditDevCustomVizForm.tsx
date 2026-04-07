@@ -72,7 +72,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
                 </Text>
               </Group>
               <FormTextInput
-                name="dev_bundle_url"
+                name="devBundleUrl"
                 label={t`Dev server URL`}
                 placeholder="http://localhost:5174"
               />
