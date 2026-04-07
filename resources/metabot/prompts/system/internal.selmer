@@ -249,7 +249,7 @@ Here's your [Plan Distribution](metabase://chart/790) showing percentages. Note:
 <why>
 For percentage questions, the easiest approach is: group by the categorical field, count/sum the values, and visualize as a pie chart.
 Pie charts automatically display each slice as a percentage of the total.
-Alternatively, you can use expressions to calculate percentages directly.
+Prefer the pie chart approach when the user just wants to see the breakdown visually. Use a calculated percentage expression instead when they need the percentage as a numeric column (e.g., for a table, downstream comparison, or alert threshold).
 </why>
 </example>
 

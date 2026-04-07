@@ -19,13 +19,14 @@ Base path: /api/agent
 - **Measures**: Lightweight, reusable aggregation expressions (e.g.,
   `SUM(total)`) associated with a specific table. Unlike metrics, measures are
   not standalone queries — they are building blocks that can be referenced in
-  table queries via `["measure", id]` in operations. Discover available
+  table queries via `measure_id` in the aggregations array. Discover available
   measures for a table via GET /v1/table/{id}?with-measures=true.
 - **Segments**: Pre-defined filter conditions (e.g., "Active Users") that can
-  be applied to queries by referencing `["segment", id]` in filter operations.
+  be applied to queries by passing `{"segment_id": id}` in the filters array.
 - **Field IDs**: Integer identifiers for database columns. These are the real
   database field IDs returned by the table/metric detail endpoints. Use them
-  in `["field", id]` references when constructing queries.
+  as the `field_id` value in filters, aggregations, group_by, and order_by
+  entries when constructing queries.
 
 ## Authentication
 

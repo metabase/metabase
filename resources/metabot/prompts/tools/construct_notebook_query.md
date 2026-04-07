@@ -1,4 +1,4 @@
-Use this tool to construct a notebook query directly from the structured MBQL tuple AST.
+Use this tool to construct a notebook query directly from the structured MBQL tuple AST. MBQL (Metabase Query Language) is Metabase's structured, JSON-friendly query AST — this tool builds a query directly in that AST instead of writing SQL.
 
 Return a payload with:
 - `source_entity`: `{"type":"table"|"model"|"question"|"metric","id":123}`
@@ -20,14 +20,13 @@ The program must use the structured source/context pattern:
 ```
 
 Rules:
-- Use real numeric ids only. Never use surrogate table/card/query field ids from the retired metabot query DSL.
+- Use real numeric ids only — the integer ids returned by the table/metric detail endpoints.
 - Use `["field", id]`, `["table", id]`, `["card", id]`, `["metric", id]`, and `["measure", id]` as needed.
 - `program` must be a JSON object, not a quoted JSON string.
 - Each item in `operations` must contain exactly one top-level transform.
   - Good: `[["aggregate", ["count"]], ["aggregate", ["sum", ["field", 301]]]]`
   - Bad: `[["aggregate", ["count"], ["sum", ["field", 301]]]]`
-- Prefer `["relative-datetime", n, "unit"]` for relative temporal values.
-  - `["relative-date", n, "unit"]` is accepted as an alias, but `relative-datetime` is the canonical form.
+- Use `["relative-datetime", n, "unit"]` for relative temporal values.
 - `source_entity` chooses the primary source:
   - `table` -> table
   - `model` -> model/dataset
@@ -103,7 +102,7 @@ Joins:
 - If a surrounding/related table is already shown in context for the source table, first try using that table's field ids directly without an explicit join.
 - Add an explicit join when you need custom join behavior, a join alias, explicit joined-field selection, self-joins, or direct related-field refs do not work.
 - Direct related-field refs are the default for one-hop related tables.
-- If an explicit join attempt returns a permission error, retry by removing the explicit join and using the related field ids directly from the source-table context instead of switching to SQL.
+- If an explicit join returns a permission error, the underlying table is not accessible — surface the error instead of retrying with implicit refs (they hit the same permission check).
 - Example:
 
 ```json
