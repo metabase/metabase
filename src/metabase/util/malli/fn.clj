@@ -285,22 +285,50 @@
         (.setStackTrace cleaned)))
     e))
 
+(defn- coerce-nil-to-empty-map?
+  "True if `arg-schema` opts into the `nil` → `{}` input coercion via the
+  `:metabase.util.malli/coerce-nil-to-empty-map` property on its (resolved)
+  schema properties. See [[metabase.util.malli/optional-args]]."
+  [arg-schema]
+  (boolean
+   (try
+     (-> arg-schema mr/resolve-schema mc/properties :metabase.util.malli/coerce-nil-to-empty-map)
+     (catch Throwable _ false))))
+
+(defn- nil->empty-map-coerce-bindings
+  "Returns a `let` binding vector that rebinds any args whose schema properties
+  opt into [[coerce-nil-to-empty-map?]] from `nil` to `{}`. Returns `nil` if no
+  args need coercion."
+  [[_cat & arg-schemas :as input-schema]]
+  (let [arg-names (input-schema-arg-names input-schema)
+        bindings  (vec (mapcat (core/fn [arg-name arg-schema]
+                                 (when (coerce-nil-to-empty-map? arg-schema)
+                                   [arg-name `(or ~arg-name {})]))
+                               arg-names
+                               arg-schemas))]
+    (when (seq bindings) bindings)))
+
 (defn- instrumented-arity [error-context [_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
                                  input-schema)
         arglist                (input-schema->arglist input-schema)
+        coerce-bindings        (nil->empty-map-coerce-bindings input-schema)
         input-validation-forms (input-schema->validation-forms error-context input-schema)
         result-form            (input-schema->application-form input-schema)
         result-form            (if (and output-schema
                                         (not= output-schema :any))
                                  `(->> ~result-form
                                        (validate-output ~error-context ~output-schema))
-                                 result-form)]
+                                 result-form)
+        body                   (if coerce-bindings
+                                 [`(let ~coerce-bindings
+                                     ~@input-validation-forms
+                                     ~result-form)]
+                                 (concat input-validation-forms [result-form]))]
     `(~arglist
       (try
-        ~@input-validation-forms
-        ~result-form
+        ~@body
         (catch Exception ~'error
           (throw (fixup-stacktrace ~'error)))))))
 
