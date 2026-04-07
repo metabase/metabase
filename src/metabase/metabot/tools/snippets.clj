@@ -56,8 +56,7 @@
     result))
 
 (mu/defn ^{:tool-name    "list_snippets"
-           :scope        scope/agent-snippets-read
-           :capabilities #{:feature-snippets}}
+           :scope        scope/agent-snippets-read}
   list-snippets-tool
   "List all SQL snippets available in the Metabase instance.
 
@@ -68,8 +67,7 @@
   (add-output (get-snippets {}) format-snippet-list-output))
 
 (mu/defn ^{:tool-name    "get_snippet_details"
-           :scope        scope/agent-snippets-read
-           :capabilities #{:feature-snippets}}
+           :scope        scope/agent-snippets-read}
   get-snippet-details-tool
   "Get the full details of a SQL snippet including its content.
 

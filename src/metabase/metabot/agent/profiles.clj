@@ -189,12 +189,6 @@
         ;; gracefully without requiring a map update.
         (keyword (-> (str cap) (str/replace ":" "-") (str/replace "_" "-"))))))
 
-;; TODO (lbrdnk 2026-03-18): `api-string->capability-keyword` hints there is need for feature snippets. I was unable
-;;                           to find matching logic in ai-service. I'll remove that in followup with related logic.
-(comment
-  (filter #(re-find #"snippet" (name %)) (keys (premium-features/token-features))))
-  ;;=> (:snippet_collections) <--- very probably we do not want to sentinel on this feature
-
 (def relevant-features
   "Metabase features to add to capabilities set."
   #{:transforms :transforms-python})
