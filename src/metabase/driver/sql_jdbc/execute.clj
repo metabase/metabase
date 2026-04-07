@@ -65,6 +65,8 @@
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
     [:write? {:optional true} [:maybe :boolean]]
     [:download? {:optional true} [:maybe :boolean]]
+    ;; true if called from table-rows-sample-query
+    [:sample? {:optional true} [:maybe :boolean]]
     ;; don't autoclose the connection
     [:keep-open? {:optional true} [:maybe :boolean]]]])
 
@@ -411,7 +413,7 @@
           ;; todo (dan 7/11/25): fixing straightforward postgres oom on downloads in #60733, but seems like write? is
           ;; not set here. Note this is explicitly silent when `write?`. Lots of tests fail with autocommit false
           ;; there.
-          (and (-> options :download?) (isa? driver/hierarchy driver :postgres))
+          (and (or (-> options :download?) (-> options :sample?)) (isa? driver/hierarchy driver :postgres))
           (try
             (log/trace (pr-str '(.setAutoCommit conn false)))
             (.setAutoCommit conn false)
@@ -785,7 +787,8 @@
        driver
        (driver-api/database (driver-api/metadata-provider))
        {:session-timezone (driver-api/report-timezone-id-if-supported driver (driver-api/database (driver-api/metadata-provider)))
-        :download? (download? (-> outer-query :info :context))}
+        :download? (download? (-> outer-query :info :context))
+        :sample?   (= :table-rows-sample (-> outer-query :info :context))}
        (fn [^Connection conn]
          (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
                      ^ResultSet rs (try
