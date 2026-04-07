@@ -73,7 +73,6 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
-        ;; only sync comment if old value was blank so we don't overwrite user-set values
         new-semantic-type?
         (and (nil? old-semantic-type)
              (not= old-semantic-type new-semantic-type))
