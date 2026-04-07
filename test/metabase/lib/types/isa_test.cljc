@@ -146,9 +146,9 @@
   (is (true? (lib.types.isa/numeric? {:effective-type :type/Float :semantic-type :type/Price})))
   (is (false? (lib.types.isa/numeric? {:effective-type :type/Text :semantic-type :type/Price}))))
 
-(deftest ^:parallel valid-filter-for?-test
+(deftest ^:parallel compatible-type?-test
   #_{:clj-kondo/ignore [:equals-true]}
-  (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/valid-filter-for?
+  (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/compatible-type?
                                                        {:base-type      base-lhs
                                                         :effective-type eff-lhs}
                                                        {:base-type      base-rhs
@@ -164,10 +164,13 @@
 
     true  :type/DateTime :type/Temporal :type/Time  :type/Temporal
 
+    true  :type/Boolean :type/Boolean :type/Boolean :type/Boolean
+
     false :type/String   :type/Text      :type/Integer  :type/Number
     false :type/Integer  :type/Number    :type/String   :type/Text
     false :type/DateTime :type/Temporal  :type/String   :type/Text
-    false :type/String   :type/Text      :type/DateTime :type/Temporal))
+    false :type/String   :type/Text      :type/DateTime :type/Temporal
+    false :type/Boolean  :type/Boolean   :type/String   :type/Text))
 
 (deftest ^:parallel effective-type-fallback-test
   (are [expected predicate column] (= expected (predicate column))
