@@ -11,8 +11,7 @@
   [[capture-current-ns!]] is called from the `ns` hook to stash the ns of the
   file currently being linted."
   (:require
-   [clj-kondo.hooks-api :as hooks]
-   [hooks.methodical.macros :as methodical.macros]))
+   [clj-kondo.hooks-api :as hooks]))
 
 (def ^:private current-ns
   "Populated by `hooks.clojure.core.ns/lint-ns` with the namespace symbol of
@@ -58,4 +57,8 @@
   defmethod body still runs."
   [{{[_defmethod multimethod & _args] :children} :node, :as input}]
   (check-multimethod! multimethod)
-  (methodical.macros/defmethod input))
+  ;; Delegate to the vendored methodical defmethod hook so kondo's normal
+  ;; analysis of the defmethod body still runs. Resolved lazily because
+  ;; `hooks.methodical.macros` isn't on the classpath during `.clj-kondo/test`
+  ;; unit-test runs.
+  ((requiring-resolve 'hooks.methodical.macros/defmethod) input))
