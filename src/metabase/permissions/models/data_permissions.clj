@@ -28,15 +28,31 @@
 
 (methodical/defmethod t2/table-name :model/DataPermissions [_model] :data_permissions)
 
+(def ^:dynamic ^:private *skip-cluster-locks*
+  "When true, skip per-(db-id, perm-type) cluster locks. Should only be bound to true
+   when a coarser lock is already held by the calling code."
+  false)
+
+(defmacro with-batch-permissions-lock
+  "Acquires a coarse cluster-wide lock for bulk permission mutations and skips fine-grained
+   per-(db-id, perm-type) locks within the body. All batch permission operations (group creation,
+   database addition, table addition, graph update) share this lock to prevent races."
+  [& body]
+  `(cluster-lock/with-cluster-lock ::batch-permissions-update
+     (binding [*skip-cluster-locks* true]
+       ~@body)))
+
 (mu/defn- with-cluster-lock-fn
   [m :- [:map
          [:db-id ms/PositiveInt]
          [:perm-type :string]]
    f :- fn?]
-  (cluster-lock/with-cluster-lock (keyword "data-permissions-" (str/join "-"
-                                                                         [(:db-id m)
-                                                                          (:perm-type m)]))
-    (f)))
+  (if *skip-cluster-locks*
+    (f)
+    (cluster-lock/with-cluster-lock (keyword "data-permissions-" (str/join "-"
+                                                                           [(:db-id m)
+                                                                            (:perm-type m)]))
+      (f))))
 
 (defmacro with-cluster-lock
   "Takes a map with `db-id` and `perm-type`, obtains a cluster lock for that combo, and executes the body"
@@ -711,36 +727,11 @@
                           :group_id group-id))
             lowest-to-highest-values))))
 
-(defenterprise new-group-view-data-permission-level
-  "Returns the default view-data permission level for a new group for a given database. On OSS, this is always `unrestricted`."
+(defenterprise new-group-view-data-permission-levels
+  "Batch variant: returns a map of {db-id → permission-level} for multiple databases. On OSS, all are `:unrestricted`."
   metabase-enterprise.advanced-permissions.common
-  [_group-id]
-  :unrestricted)
-
-(defn- new-group-permissions
-  "Returns a map of {perm-type value} to be set for a new group, for the provided database."
-  [db-or-id all-users-group-id]
-  (let [db-id                (u/the-id db-or-id)
-        view-data-level      (new-group-view-data-permission-level db-id)
-        create-queries-level (or (->> (t2/select-fn-set :value
-                                                        [:model/DataPermissions [:perm_value :value]]
-                                                        :perm_type :perms/create-queries
-                                                        :db_id db-id
-                                                        :group_id all-users-group-id)
-                                      (coalesce-most-restrictive :perms/create-queries))
-                                 :query-builder-and-native)
-        download-level      (or (->> (t2/select-fn-set :value
-                                                       [:model/DataPermissions [:perm_value :value]]
-                                                       :perm_type :perms/download-results
-                                                       :db_id db-id
-                                                       :group_id all-users-group-id)
-                                     (coalesce-most-restrictive :perms/download-results))
-                                :one-million-rows)]
-    {:perms/view-data view-data-level
-     :perms/create-queries create-queries-level
-     :perms/download-results download-level
-     :perms/manage-table-metadata :no
-     :perms/manage-database :no}))
+  [db-ids]
+  (zipmap db-ids (repeat :unrestricted)))
 
 (defn set-external-group-permissions!
   "Sets the appropriate data permissions for a new external group or database - always the minimum possible data permissions."
@@ -748,18 +739,17 @@
   (doseq [[perm-type perm-value] (m/map-vals (fn [{:keys [values]}] (last values)) permissions.schema/data-permissions)]
     (set-database-permission! group-or-id db-id perm-type perm-value)))
 
-(defn set-new-group-permissions!
-  "Sets permissions for a newly-added group to their appropriate values for a single database. This is generally based
-  on the permissions of the All Users group."
-  [group-or-id db-or-id all-users-group-id]
-  (doseq [[perm-type perm-value] (new-group-permissions db-or-id all-users-group-id)]
-    (set-database-permission! group-or-id db-or-id perm-type perm-value)))
-
 (defenterprise new-database-view-data-permission-level
   "Returns the default view-data permission level for a new database for a given group. On OSS, this is always `unrestricted`."
   metabase-enterprise.advanced-permissions.common
   [_group-id]
   :unrestricted)
+
+(defenterprise new-database-view-data-permission-levels
+  "Batch variant: returns a map of {group-id → permission-level} for multiple groups. On OSS, all are `:unrestricted`."
+  metabase-enterprise.advanced-permissions.common
+  [group-ids]
+  (zipmap group-ids (repeat :unrestricted)))
 
 (defn- new-database-permissions
   "Returns a map of {perm-type value} to be set for a new database, for the provided group."
@@ -992,6 +982,13 @@
   [_db-id _group-id]
   :unrestricted)
 
+(defenterprise new-table-view-data-permission-levels
+  "Batch variant: returns a map of {group-id → permission-level} for multiple groups and a single DB.
+   On OSS, all are `:unrestricted`."
+  metabase-enterprise.advanced-permissions.common
+  [_db-id group-ids]
+  (zipmap group-ids (repeat :unrestricted)))
+
 (mu/defn set-new-table-permissions!
   "Sets permissions for a single table all the provided groups, based on the following rules:
     - :view-data is set to :blocked if any other tables in the DB are :blocked or sandboxed
@@ -1064,6 +1061,241 @@
             (set-table-permissions-internal! group_id perm_type {table perm_value}))
           ;; These perms can be inserted raw, and don't require changes to existing perms in the DB
           (t2/insert! :model/DataPermissions simple-perms))))))
+
+;;; ---------------------------------------- Bulk permission functions ------------------------------------------------
+;; These functions set permissions for newly-created entities (groups, databases, tables) using batch SQL operations
+;; instead of per-row mutations. They are intended to be called from within a coarse cluster lock.
+
+(defn- least-permissive-defaults
+  "Returns a map of {perm-type → least-permissive-value} from the schema definition."
+  []
+  (m/map-vals (fn [{:keys [values]}] (last values)) permissions.schema/data-permissions))
+
+(defn set-default-group-permissions!
+  "Bulk-sets default permissions for a newly-created group across all databases.
+   When `use-all-users-perms?` is true (regular groups), values are based on the All Users group's
+   current permissions. When false (tenant/external groups), uses the most restrictive values.
+   Uses batch SQL operations instead of per-row mutations."
+  [group-or-id db-ids use-all-users-perms?]
+  (when (seq db-ids)
+    (let [group-id (u/the-id group-or-id)]
+      (if-not use-all-users-perms?
+        ;; External/tenant groups: all least-permissive values (static, no queries needed)
+        (batch-insert-permissions!
+         (for [db-id db-ids
+               [perm-type perm-value] (least-permissive-defaults)]
+           {:perm_type  perm-type
+            :group_id   group-id
+            :perm_value perm-value
+            :db_id      db-id}))
+        ;; Regular groups: compute based on All Users group
+        (let [au-id    (t2/select-one-pk :model/PermissionsGroup
+                                         :magic_group_type "all-internal-users")
+              au-perms (t2/select :model/DataPermissions :group_id au-id)
+              au-by-db (reduce (fn [acc {:keys [db_id perm_type perm_value]}]
+                                 (update-in acc [db_id perm_type] (fnil conj #{}) perm_value))
+                               {}
+                               au-perms)
+              view-data-levels (new-group-view-data-permission-levels db-ids)]
+          (batch-insert-permissions!
+           (for [db-id db-ids
+                 :let [view-data-level (get view-data-levels db-id :unrestricted)
+                       cq-values (get-in au-by-db [db-id :perms/create-queries])
+                       cq-level  (or (when (seq cq-values) (coalesce-most-restrictive :perms/create-queries cq-values))
+                                     :query-builder-and-native)
+                       dl-values (get-in au-by-db [db-id :perms/download-results])
+                       dl-level  (or (when (seq dl-values) (coalesce-most-restrictive :perms/download-results dl-values))
+                                     :one-million-rows)
+                       perm-map  (cond-> {:perms/view-data             view-data-level
+                                          :perms/create-queries        cq-level
+                                          :perms/download-results      dl-level
+                                          :perms/manage-table-metadata :no
+                                          :perms/manage-database       :no}
+                                   (or (not= view-data-level :unrestricted)
+                                       (not= cq-level :query-builder-and-native))
+                                   (assoc :perms/transforms :no))]
+                 [perm-type perm-value] perm-map]
+             {:perm_type  perm-type
+              :group_id   group-id
+              :perm_value perm-value
+              :db_id      db-id})))))))
+
+(defn set-default-database-permissions!
+  "Bulk-sets default permissions for a newly-created database across all groups.
+   For tenant groups, uses least-permissive values. For audit DBs, uses hardcoded values.
+   For other groups, values are based on the group's lowest existing permission level.
+   Uses batch SQL operations instead of per-row mutations."
+  [database groups]
+  (when (seq groups)
+    (let [db-id        (u/the-id database)
+          is-audit     (:is_audit database)
+          group-ids    (map u/the-id groups)
+          defaults     (least-permissive-defaults)
+          ;; Batch-fetch all groups' create-queries and download-results permissions (for lowest-perm-level logic)
+          all-perms    (when-not is-audit
+                         (t2/select :model/DataPermissions
+                                    {:where [:and
+                                             [:in :group_id group-ids]
+                                             [:in :perm_type ["perms/create-queries" "perms/download-results"]]]}))
+          ;; Group by (group_id, perm_type) → set of values
+          perms-by-grp (when all-perms
+                         (reduce (fn [acc {:keys [group_id perm_type perm_value]}]
+                                   (update-in acc [group_id perm_type] (fnil conj #{}) perm_value))
+                                 {}
+                                 all-perms))
+          ;; Batch-fetch view-data levels for all groups at once
+          view-data-levels (when-not is-audit
+                             (new-database-view-data-permission-levels group-ids))
+          perm-rows    (mapcat
+                        (fn [group]
+                          (let [group-id (u/the-id group)
+                                perm-map
+                                (cond
+                                  ;; Tenant groups always get least-permissive
+                                  (:is_tenant_group group)
+                                  defaults
+
+                                  ;; Audit DB gets hardcoded restrictive values
+                                  is-audit
+                                  {:perms/view-data             :unrestricted
+                                   :perms/create-queries        :no
+                                   :perms/download-results      :one-million-rows
+                                   :perms/manage-table-metadata :no
+                                   :perms/manage-database       :no}
+
+                                  ;; Normal: compute based on group's lowest existing perm level
+                                  :else
+                                  (let [view-data-level      (get view-data-levels group-id :unrestricted)
+                                        grp-vals             (get perms-by-grp group-id)
+                                        cq-values            (get grp-vals :perms/create-queries)
+                                        cq-level             (or (when (seq cq-values)
+                                                                   (coalesce-most-restrictive :perms/create-queries cq-values))
+                                                                 :query-builder-and-native)
+                                        download-level       (if (= view-data-level :blocked)
+                                                               :no
+                                                               (let [dl-values (get grp-vals :perms/download-results)]
+                                                                 (or (when (seq dl-values)
+                                                                       (coalesce-most-restrictive :perms/download-results dl-values))
+                                                                     :one-million-rows)))]
+                                    (cond-> {:perms/view-data             view-data-level
+                                             :perms/create-queries        cq-level
+                                             :perms/download-results      download-level
+                                             :perms/manage-table-metadata :no
+                                             :perms/manage-database       :no}
+                                      (or (not= view-data-level :unrestricted)
+                                          (not= cq-level :query-builder-and-native))
+                                      (assoc :perms/transforms :no))))]
+                            (for [[perm-type perm-value] perm-map]
+                              {:perm_type  perm-type
+                               :group_id   group-id
+                               :perm_value perm-value
+                               :db_id      db-id})))
+                        groups)]
+      (batch-insert-permissions! perm-rows))))
+
+(defn set-default-table-permissions!
+  "Bulk-sets default permissions for a newly-created table across all relevant groups.
+   Handles three cases per (group, perm-type):
+   - Group has DB-level perm matching default → no-op (DB-level covers it)
+   - Group has DB-level perm but new table needs :blocked → going-granular (expand to per-table rows)
+   - Group has no DB-level perm (already table-granular) → simple insert for the new table
+
+   `group-perm-defaults` is a seq of {:group-id G :perm-type PT :default-value V} triples."
+  [table group-perm-defaults]
+  (when (seq group-perm-defaults)
+    (let [table     (if (map? table)
+                      table
+                      (t2/select-one [:model/Table :id :db_id :schema] :id table))
+          db-id     (:db_id table)
+          table-id  (u/the-id table)
+          schema    (:schema table)
+          group-ids (distinct (map :group-id group-perm-defaults))
+          perm-types (distinct (map :perm-type group-perm-defaults))
+          ;; Batch SELECT #1: all DB-level permissions for this DB across all relevant groups + perm-types
+          db-level-perms (t2/select :model/DataPermissions
+                                    {:where [:and
+                                             [:= :db_id db-id]
+                                             [:= :table_id nil]
+                                             [:in :group_id group-ids]
+                                             [:in :perm_type (mapv u/qualified-name perm-types)]]})
+          ;; Index: {[group_id perm_type] → db-level-perm-row}
+          db-level-idx   (into {} (map (fn [p] [[(:group_id p) (:perm_type p)] p]) db-level-perms))
+          ;; Batch SELECT #2: all existing table-level permissions for this DB
+          ;; (needed for schema-permission-value logic and going-granular expansion)
+          table-perms    (t2/select :model/DataPermissions
+                                    {:where [:and
+                                             [:= :db_id db-id]
+                                             [:not= :table_id nil]
+                                             [:in :group_id group-ids]
+                                             [:in :perm_type (mapv u/qualified-name perm-types)]]})
+          ;; Index: {[group_id perm_type schema_name] → set of values}
+          schema-vals-idx (reduce (fn [acc {:keys [group_id perm_type schema_name perm_value]}]
+                                    (update-in acc [group_id perm_type schema_name] (fnil conj #{}) perm_value))
+                                  {}
+                                  table-perms)
+          ;; Batch SELECT #3: all tables in this DB (for going-granular expansion)
+          all-db-tables  (t2/select [:model/Table :id :db_id :schema] :db_id db-id :active true)
+          ;; Batch-fetch view-data levels for all groups at once
+          view-data-levels (new-table-view-data-permission-levels db-id group-ids)
+          ;; Classify each (group, perm-type) triple
+          {:keys [simple-perms going-granular db-rows-to-delete]}
+          (reduce
+           (fn [acc {:keys [group-id perm-type default-value]}]
+             (let [;; Enterprise hook override for view-data
+                   actual-value  (or (when (= perm-type :perms/view-data)
+                                       (get view-data-levels group-id))
+                                     ;; Schema-level consistency: if all tables in schema have same value, use it
+                                     (let [sv (get-in schema-vals-idx [group-id perm-type schema])]
+                                       (when (and (seq sv) (= (count sv) 1))
+                                         (first sv)))
+                                     default-value)
+                   db-level-perm (get db-level-idx [group-id perm-type])
+                   new-perm      {:perm_type   perm-type
+                                  :group_id    group-id
+                                  :perm_value  actual-value
+                                  :db_id       db-id
+                                  :table_id    table-id
+                                  :schema_name schema}]
+               (cond
+                 ;; Group has DB-level perm and new table needs :blocked → going-granular
+                 (and db-level-perm (= actual-value :blocked))
+                 (-> acc
+                     (update :going-granular conj {:group-id group-id :perm-type perm-type
+                                                   :new-perm new-perm :db-perm db-level-perm})
+                     (update :db-rows-to-delete conj (:id db-level-perm)))
+
+                 ;; Group has no DB-level perm (already table-granular) → simple insert
+                 (not db-level-perm)
+                 (update acc :simple-perms conj new-perm)
+
+                 ;; Group has DB-level perm matching or compatible → no-op
+                 :else
+                 acc)))
+           {:simple-perms [] :going-granular [] :db-rows-to-delete []}
+           group-perm-defaults)]
+      ;; Bulk DELETE: DB-level rows that need going-granular expansion
+      (when (seq db-rows-to-delete)
+        (batch-delete-permissions! db-rows-to-delete))
+      ;; Bulk INSERT: expansion rows for going-granular groups + simple insert rows
+      (let [expansion-rows (mapcat
+                            (fn [{:keys [group-id perm-type new-perm db-perm]}]
+                              (let [db-perm-value (:perm_value db-perm)
+                                    ;; Build per-table rows for all existing tables (with the old DB-level value)
+                                    existing-table-rows
+                                    (keep (fn [t]
+                                            (when (not= (:id t) table-id)
+                                              {:perm_type   perm-type
+                                               :group_id    group-id
+                                               :perm_value  (case db-perm-value
+                                                              :query-builder-and-native :query-builder
+                                                              db-perm-value)
+                                               :db_id       db-id
+                                               :table_id    (:id t)
+                                               :schema_name (:schema t)}))
+                                          all-db-tables)]
+                                (cons new-perm existing-table-rows)))
+                            going-granular)]
+        (batch-insert-permissions! (concat expansion-rows simple-perms))))))
 
 (defenterprise download-perms-level
   "Return the download permission for the query that the given user has. OSS returns :full"

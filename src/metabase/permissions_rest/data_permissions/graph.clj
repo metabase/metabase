@@ -9,10 +9,10 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -485,7 +485,7 @@
   impersonations and sandboxes are consistent if necessary."
   ([graph-updates :- ::permissions-rest.schema/data-permissions-graph]
    (when (seq graph-updates)
-     (cluster-lock/with-cluster-lock ::update-data-perms-graph
+     (data-perms/with-batch-permissions-lock
        (let [group-updates (:groups graph-updates)]
          (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)

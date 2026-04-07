@@ -66,7 +66,11 @@
   with-additional-table-permission
   with-relevant-permissions-for-user
   has-any-transforms-permission?
-  has-db-transforms-permission?]
+  has-db-transforms-permission?
+  set-default-group-permissions!
+  set-default-database-permissions!
+  set-default-table-permissions!
+  with-batch-permissions-lock]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
