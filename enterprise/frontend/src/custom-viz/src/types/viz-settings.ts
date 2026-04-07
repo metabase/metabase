@@ -143,8 +143,8 @@ export type CreateDefineSetting<
    *
    * Use this for settings whose default depends on the query result and must
    * survive subsequent renders without re-running `getDefault`. For example,
-   * auto-selected axis columns are
-   * persisted so that manually reordering series does not lose the original
+   * auto-selected axis columns are persisted so that manually
+   * reordering series does not lose the original
    * auto-selection when the question is saved and reopened.
    *
    * Without `persistDefault`, `getDefault` re-runs on every render and any
@@ -152,7 +152,6 @@ export type CreateDefineSetting<
    * default can be silently reset when data or column order changes.
    */
   persistDefault?: boolean;
-  set?: boolean;
 
   readDependencies?: string[];
   writeDependencies?: string[];
