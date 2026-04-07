@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.nio.file Files LinkOption OpenOption Path)
+   (java.nio.file Files LinkOption Path)
    (java.util.jar JarEntry JarFile)))
 
 (set! *warn-on-reflection* true)
@@ -221,15 +221,25 @@
 (defn- should-skip-checksum? [last-checksum]
   (= skip-checksum-flag last-checksum))
 
+(defn directory-content-checksum
+  "Stable hash of the relative paths and contents of files matching `glob` under `root` (recursively).
+   Detects renames (paths are included) and content swaps between files (single hash over sorted pairs)."
+  ([root] (directory-content-checksum root "**"))
+  ([^Path root glob]
+   (->> (fs/glob root glob)
+        (filter #(Files/isRegularFile ^Path % (u/varargs LinkOption)))
+        (mapv (fn [^Path path]
+                [(str (.relativize root path))
+                 (Files/readString path)]))
+        (sort-by first)
+        hash)))
+
 (defn analytics-checksum
-  "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
+  "Checksum of the serialized analytics content (collections, dashboards, cards) on the classpath.
+   Stored in the `last-analytics-checksum` setting; when it changes, `ensure-audit-db-installed!`
+   re-runs `serialization.cmd/v2-load-internal!` on boot."
   []
-  (->> ^Path (instance-analytics-plugin-dir (plugins/plugins-dir))
-       (.toFile)
-       file-seq
-       (remove fs/directory?)
-       (pmap #(hash (slurp %)))
-       (reduce +)))
+  (directory-content-checksum (instance-analytics-plugin-dir (plugins/plugins-dir))))
 
 (defn- should-load-audit?
   "Should we load audit data?"
@@ -305,20 +315,13 @@
       ::no-op)))
 
 (defn- views-checksum
-  "Hash the instance_analytics_views SQL files to detect when views have been added or modified."
+  "Checksum of the `instance_analytics_views` SQL files. Stored in the `last-analytics-views-checksum`
+   setting; when it changes, `ensure-audit-db-installed!` triggers a one-shot audit DB schema sync
+   so that newly added or renamed views become discoverable without waiting for the next scheduled sync."
   []
   (when (io/resource "migrations/instance_analytics_views")
     (u.files/with-open-path-to-resource [views-dir "migrations/instance_analytics_views"]
-      (with-open [paths (Files/walk views-dir (into-array java.nio.file.FileVisitOption []))]
-        (->> (iterator-seq (.iterator paths))
-             (filter #(Files/isRegularFile ^Path % (u/varargs LinkOption)))
-             (filter #(str/ends-with? (str (.getFileName ^Path %)) ".sql"))
-             ;; Keep the checksum stable across filesystems with different directory iteration order.
-             (sort-by str)
-             (map (fn [^Path path]
-                    (with-open [in (Files/newInputStream path (u/varargs OpenOption))]
-                      (hash (slurp in)))))
-             (reduce + 0))))))
+      (directory-content-checksum views-dir "**.sql"))))
 
 (defn- maybe-sync-audit-views!
   "Sync the audit DB schema if the analytics views have changed since the last sync.

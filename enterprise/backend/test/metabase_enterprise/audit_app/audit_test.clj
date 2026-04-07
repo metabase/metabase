@@ -182,19 +182,19 @@
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
 
 (deftest views-checksum-works-for-jar-resources-test
-  (let [jar-path  (Files/createTempFile "instance-analytics-views" ".jar" (make-array java.nio.file.attribute.FileAttribute 0))
-        resource  "migrations/instance_analytics_views"
-        contents  ["select 1;" "select 2;"]
-        expected  (reduce + 0 (map hash contents))
-        jar-url   (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]
+  (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar" (make-array java.nio.file.attribute.FileAttribute 0))
+        resource "migrations/instance_analytics_views"
+        entries  [["users/v1/postgres-users.sql"           "select 1;"]
+                  ["dashboards/v1/postgres-dashboards.sql" "select 2;"]]
+        jar-url  (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))
+        expected (hash (sort-by first (mapv (fn [[rel sql]] [rel sql]) entries)))]
     (try
       (with-open [out (-> jar-path
                           (Files/newOutputStream (into-array OpenOption []))
                           io/output-stream
                           JarOutputStream.)]
-        (doseq [[path sql] [[(str resource "/users/v1/postgres-users.sql") (first contents)]
-                            [(str resource "/dashboards/v1/postgres-dashboards.sql") (second contents)]]]
-          (.putNextEntry out (JarEntry. path))
+        (doseq [[rel sql] entries]
+          (.putNextEntry out (JarEntry. (str resource "/" rel)))
           (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
           (.closeEntry out)))
       (with-redefs [io/resource (fn [path]
@@ -203,6 +203,33 @@
         (is (= expected (#'ee-audit/views-checksum))))
       (finally
         (Files/deleteIfExists jar-path)))))
+
+(deftest views-checksum-detects-rename-test
+  (testing "renaming a file changes the checksum (path is part of the hash)"
+    (let [make-jar (fn [entries]
+                     (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar"
+                                                          (make-array java.nio.file.attribute.FileAttribute 0))
+                           resource "migrations/instance_analytics_views"]
+                       (with-open [out (-> jar-path
+                                           (Files/newOutputStream (into-array OpenOption []))
+                                           io/output-stream
+                                           JarOutputStream.)]
+                         (doseq [[rel sql] entries]
+                           (.putNextEntry out (JarEntry. (str resource "/" rel)))
+                           (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
+                           (.closeEntry out)))
+                       [jar-path (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]))
+          [jar-a url-a] (make-jar [["a.sql" "select 1;"]])
+          [jar-b url-b] (make-jar [["b.sql" "select 1;"]])]
+      (try
+        (let [checksum-a (with-redefs [io/resource (constantly url-a)]
+                           (#'ee-audit/views-checksum))
+              checksum-b (with-redefs [io/resource (constantly url-b)]
+                           (#'ee-audit/views-checksum))]
+          (is (not= checksum-a checksum-b)))
+        (finally
+          (Files/deleteIfExists jar-a)
+          (Files/deleteIfExists jar-b))))))
 
 (deftest views-checksum-not-recorded-when-sync-fails-test
   (mt/with-temp [:model/Database audit-db {:engine "h2" :is_audit true}]
