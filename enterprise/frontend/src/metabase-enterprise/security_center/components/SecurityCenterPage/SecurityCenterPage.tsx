@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting, useToast } from "metabase/common/hooks";
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { Box, Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
 import { trackSecurityCenterPageViewed } from "../../analytics";
@@ -44,6 +45,7 @@ export function SecurityCenterPage() {
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
   const [sendToast] = useToast();
+  const isSmallScreen = useIsSmallScreen();
 
   const lastCheckedAtBeforeSync = useRef<string | null>(null);
   const pollCountRef = useRef(0);
@@ -142,13 +144,17 @@ export function SecurityCenterPage() {
               onClick={handleSync}
               disabled={isSyncInProgress}
               data-testid="sync-advisories"
-            >{t`Check now`}</Button>
+            >
+              {isSmallScreen ? null : t`Check now`}
+            </Button>
             <Button
               variant="subtle"
-              leftSection={<Icon name="gear" />}
+              leftSection={isSmallScreen ? undefined : <Icon name="gear" />}
               onClick={() => setSettingsOpen(true)}
               data-testid="notification-config-toggle"
-            >{t`Notification settings`}</Button>
+            >
+              {isSmallScreen ? <Icon name="gear" /> : t`Notification settings`}
+            </Button>
           </Group>
           <Text c="text-secondary" data-testid="current-version">
             {t`Current version`}: {currentVersion}

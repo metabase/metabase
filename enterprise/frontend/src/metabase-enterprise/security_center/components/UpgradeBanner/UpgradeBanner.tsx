@@ -15,12 +15,7 @@ interface UpgradeBannerProps {
 
 export function UpgradeBanner({ targetVersion }: UpgradeBannerProps) {
   return (
-    <Group
-      className={S.root}
-      gap="sm"
-      wrap="nowrap"
-      data-testid="upgrade-banner"
-    >
+    <Group className={S.root} gap="sm" wrap="wrap" data-testid="upgrade-banner">
       <Icon name="warning" className={S.icon} />
       <Text fw="bold" size="md" className={S.text}>
         {c("{0} is a version number like v0.59.4")
