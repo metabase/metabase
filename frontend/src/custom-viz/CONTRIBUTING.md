@@ -37,12 +37,12 @@ Releases are published via the **Release Custom Viz Package** GitHub Actions wor
 
 ### How to trigger a release
 
-1. Go to **Actions → Release Custom Viz Package** in the GitHub UI.
+1. Go to the [**Release Custom Viz Package**](https://github.com/metabase/metabase/actions/workflows/release-custom-viz.yml) workflow in GitHub Actions.
 2. Click **Run workflow** and fill in the inputs:
 
 | Input      | Description                                   | Default       |
 | ---------- | --------------------------------------------- | ------------- |
-| **branch** | Branch to release from                        | `custom-viz`  |
+| **branch** | Branch to release from                        | `master`      |
 | **version**| Version to publish (e.g. `0.1.0`, `0.1.0-alpha.1`) | _(required)_ |
 | **npm_tag**| NPM dist-tag (`latest`, `next`, or `canary`)  | `latest`      |
 
