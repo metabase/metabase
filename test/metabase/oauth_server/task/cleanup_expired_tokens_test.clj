@@ -40,11 +40,9 @@
         (testing "only the live authorization code survives"
           (is (= #{live-code}
                  (surviving :model/OAuthAuthorizationCode :code))))
-
         (testing "only the live access token survives (expired and revoked are deleted)"
           (is (= #{live-access}
                  (surviving :model/OAuthAccessToken :token))))
-
         (testing "live and null-expiry refresh tokens survive; expired and revoked are deleted"
           (is (= #{live-refresh live-no-expiry-refresh}
                  (surviving :model/OAuthRefreshToken :token))))))))
