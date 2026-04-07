@@ -136,6 +136,21 @@ export type CreateDefineSetting<
    *  `"toggle"`. */
   inline?: boolean;
 
+  /**
+   * When `true`, the computed default value (from `getDefault`) is written
+   * into the card's stored `visualization_settings` the first time the query
+   * runs, even though the user never explicitly changed the setting.
+   *
+   * Use this for settings whose default depends on the query result and must
+   * survive subsequent renders without re-running `getDefault`. For example,
+   * auto-selected axis columns are
+   * persisted so that manually reordering series does not lose the original
+   * auto-selection when the question is saved and reopened.
+   *
+   * Without `persistDefault`, `getDefault` re-runs on every render and any
+   * derived state (e.g. user-applied series order) built on top of the
+   * default can be silently reset when data or column order changes.
+   */
   persistDefault?: boolean;
   set?: boolean;
 

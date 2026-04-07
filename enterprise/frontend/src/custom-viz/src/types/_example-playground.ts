@@ -52,6 +52,7 @@ export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
         id: "metricsColumn",
         title: "Metrics column",
         widget: "field",
+        persistDefault: true,
         index: 0,
         group: "Metrics",
         section: "Data",
