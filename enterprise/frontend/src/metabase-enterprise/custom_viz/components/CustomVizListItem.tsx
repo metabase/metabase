@@ -56,12 +56,13 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
       to={Urls.customVizEdit(plugin.id)}
       justify="space-between"
       align="center"
+      gap="md"
       p="md"
       className={S.customVizListItem}
     >
-      <Group gap="md" align="center">
+      <Group gap="md" align="flex-start" wrap="nowrap">
         <CustomVizIcon plugin={plugin} />
-        <Stack gap={4}>
+        <Stack gap="xs" py="xs">
           <Text fw={700}>{plugin.display_name}</Text>
           <Group gap="xs">
             <Text
@@ -94,6 +95,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
           )}
         </Stack>
       </Group>
+
       <Box
         onClick={(e: React.MouseEvent) => {
           e.preventDefault();
