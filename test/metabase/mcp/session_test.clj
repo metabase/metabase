@@ -12,12 +12,17 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
+(defn- derived-hash
+  "Derives the embedding session key from an MCP session id, then hashes it."
+  [session-id]
+  (session/hash-session-key (mcp.session/derive-embedding-session-key session-id)))
+
 (deftest create-returns-uuid-string-test
   (testing "create! returns a UUID string without writing to the database"
     (let [session-id (mcp.session/create! (mt/user->id :crowberto))]
       (is (string? session-id))
       (is (some? (parse-uuid session-id)))
-      (is (not (t2/exists? :core_session :key_hashed (session/hash-session-key (mcp.session/derive-embedding-session-key session-id))))
+      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
           "No core_session should exist yet"))))
 
 (deftest get-or-create-session-key-test
@@ -28,20 +33,20 @@
       (is (= (mcp.session/derive-embedding-session-key session-id) key))
       (is (not= session-id key)
           "Derived key must not equal the MCP session id that travels on the wire")
-      (is (t2/exists? :core_session :key_hashed (session/hash-session-key (mcp.session/derive-embedding-session-key session-id)))
+      (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
           "core_session should now exist")
       (testing "subsequent calls return the same key and don't create duplicates"
         (is (= key (mcp.session/get-or-create-session-key! session-id user-id)))
-        (is (= 1 (t2/count :core_session :key_hashed (session/hash-session-key (mcp.session/derive-embedding-session-key session-id)))))))))
+        (is (= 1 (t2/count :core_session :key_hashed (derived-hash session-id))))))))
 
 (deftest delete-test
   (testing "delete! removes the core_session if one was created"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
           _          (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (t2/exists? :core_session :key_hashed (session/hash-session-key (mcp.session/derive-embedding-session-key session-id))))
+      (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id user-id)
-      (is (not (t2/exists? :core_session :key_hashed (session/hash-session-key (mcp.session/derive-embedding-session-key session-id))))))))
+      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))))))
 
 (deftest delete-scoped-to-user-test
   (testing "delete! only removes sessions owned by the given user"
@@ -49,12 +54,12 @@
           other-id   (mt/user->id :rasta)
           session-id (mcp.session/create! user-id)
           _          (mcp.session/get-or-create-session-key! session-id user-id)]
-      (is (t2/exists? :core_session :key_hashed (session/hash-session-key (mcp.session/derive-embedding-session-key session-id))))
+      (is (t2/exists? :core_session :key_hashed (derived-hash session-id)))
       (mcp.session/delete! session-id other-id)
-      (is (t2/exists? :core_session :key_hashed (session/hash-session-key (mcp.session/derive-embedding-session-key session-id)))
+      (is (t2/exists? :core_session :key_hashed (derived-hash session-id))
           "Session should still exist — wrong user")
       (mcp.session/delete! session-id user-id)
-      (is (not (t2/exists? :core_session :key_hashed (session/hash-session-key (mcp.session/derive-embedding-session-key session-id))))
+      (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
           "Session should be deleted by the owning user"))))
 
 (deftest owned-by-user-test

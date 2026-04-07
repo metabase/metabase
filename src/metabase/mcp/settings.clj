@@ -5,6 +5,9 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+;; NOTE: uuid-nonce-base sets :setter :none, so this secret is not rotatable via the normal settings API.
+;; If rotation is needed (e.g. after a DB breach), an admin action should regenerate the secret and
+;; invalidate existing MCP-backed core_session rows. See also: premium-embedding-token-signing-key.
 (defsetting mcp-embedding-signing-secret
   (deferred-tru "Instance-wide secret used to derive embedding session keys for MCP sessions.")
   :encryption :when-encryption-key-set
