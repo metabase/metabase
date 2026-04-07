@@ -397,7 +397,7 @@
     ;; Use enough parameters (9) so that Clojure's PersistentHashMap doesn't coincidentally preserve insertion order.
     ;; PersistentArrayMap (used for <= 8 entries) preserves insertion order, but PersistentHashMap (>= 9) does not.
     (let [tag-names  ["zeta" "alpha" "mu" "beta" "omega" "gamma" "theta" "delta" "epsilon"]
-          tag-ids    (mapv #(str "_" (str/upper-case %) "_") tag-names)
+          tag-ids    (mapv #(str "_" (u/upper-case-en %) "_") tag-names)
           tags       (into {} (map (fn [n id] [n {:id id :name n :display-name (str n " param") :type :text}])
                                    tag-names tag-ids))
           params     (mapv (fn [n id] {:id id :type :string/= :slug n :name (str n " param")
