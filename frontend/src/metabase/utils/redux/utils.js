@@ -10,7 +10,7 @@ import {
   setRequestPromise,
   setRequestUnloaded,
 } from "metabase/redux/requests";
-import { delay } from "metabase/utils/delay";
+import { delay } from "metabase/utils/promise";
 
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";

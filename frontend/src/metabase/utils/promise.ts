@@ -1,5 +1,7 @@
 import { noop } from "underscore";
 
+import { delay as duration } from "metabase/utils/delay";
+
 export interface Deferred<T = unknown> {
   promise: Promise<T>;
   resolve(value?: T | PromiseLike<T>): void;
@@ -20,4 +22,8 @@ export function defer<T>(): Deferred<T> {
     resolve,
     reject,
   };
+}
+
+export function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, duration(ms)));
 }
