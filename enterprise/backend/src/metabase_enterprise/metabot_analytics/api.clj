@@ -22,6 +22,12 @@
    [:first_name [:maybe :string]]
    [:last_name [:maybe :string]]])
 
+(defn- user-info
+  "Project a hydrated user down to the API's public response shape."
+  [user]
+  (when user
+    (select-keys user [:id :email :first_name :last_name])))
+
 (def ^:private ConversationSummary
   "Schema for a conversation summary in list responses."
   [:map
@@ -131,10 +137,12 @@
                                    (assoc :order-by [[sort-by-kw sort-dir-kw] [:c.id :asc]])
                                    (assoc :limit limit)
                                    (assoc :offset offset)))]
-    {:data   (t2/hydrate (mapv #(t2/instance :model/MetabotConversation %) results) :user)
+    {:data   (mapv (fn [conversation]
+                     (update conversation :user user-info))
+                   (t2/hydrate (mapv #(t2/instance :model/MetabotConversation %) results) :user))
      :total  total
-     :limit  (request/limit)
-     :offset (request/offset)}))
+     :limit  limit
+     :offset offset}))
 
 (defn- fetch-conversation-detail
   "Fetch a conversation with all its messages, user info, and frontend-ready chat messages."
@@ -151,7 +159,7 @@
        :user_id         (:user_id conversation)
        :summary         (:summary conversation)
        :state           (:state conversation)
-       :user            (:user hydrated)
+       :user            (user-info (:user hydrated))
        :messages        (mapv (fn [m]
                                 {:message_id   (:id m)
                                  :created_at   (:created_at m)

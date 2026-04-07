@@ -50,7 +50,7 @@
 (defn- convert-content-block
   "Convert a single raw content block from `:data` into a frontend `MetabotChatMessage` map.
    Returns nil for blocks that should be skipped (tool-output, unknown types)."
-  [_role block]
+  [block]
   (let [block-type (:type block)
         block-role (:role block)]
     (cond
@@ -99,8 +99,7 @@
    Each message's `:data` (vector of content blocks) is flattened into typed chat messages."
   [message]
   (let [blocks    (or (:data message) [])
-        role      (name (:role message))
-        chat-msgs (into [] (keep #(convert-content-block role %)) blocks)]
+        chat-msgs (into [] (keep convert-content-block) blocks)]
     (merge-tool-results chat-msgs blocks)))
 
 (defn messages->chat-messages
