@@ -222,10 +222,8 @@
                      (not (.endsWith (.getName file) "___fieldusersettings.yaml"))
                      (not (.contains (.getPath file) "/channels/"))
                      (or (not (.contains (.getPath file) "/databases/"))
-                         (and (or (.contains (.getPath file) (str "/databases/" canonical-db-id))
-                                  (.contains (.getPath file) (str "/databases/" legacy-canonical-db-id)))
-                              (or (or (= (.getName file) (str canonical-db-id ".yaml"))
-                                      (= (.getName file) (str legacy-canonical-db-id ".yaml")))
+                         (and (.contains (.getPath file) (str "/databases/" canonical-db-id "/"))
+                              (or (= (.getName file) (str canonical-db-id ".yaml"))
                                   (some #(.contains (.getPath file) (str "/tables/" %))
                                         audit-ee.permissions/audit-db-view-names)))))]
     (let [relative-path (str/replace (.getPath file)
