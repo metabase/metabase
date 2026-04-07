@@ -2986,9 +2986,14 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.metabot-analytics.api}
    :uses #{api
+           driver
+           lib
+           lib-be
            metabot
+           request
+           sql-tools
            util}
-   :model-imports #{:model/MetabotConversation :model/MetabotMessage :model/User}}
+   :model-imports #{:model/MetabotConversation :model/MetabotMessage}}
 
   enterprise/permission-debug
   {:team "UX West"
