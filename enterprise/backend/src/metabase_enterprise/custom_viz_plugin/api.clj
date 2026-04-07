@@ -162,7 +162,7 @@
         manifest-str (when manifest (json/encode manifest))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
-        icon-dark    (:iconDark manifest)
+        icon-dark    (:icon_dark manifest)
         version-str  (get-in manifest [:metabase :version])
         plugin       (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                             :repo_url        sentinel-url
