@@ -9,6 +9,9 @@ function tryBind(port, host) {
   });
 }
 
+// NOTE: There is an inherent TOCTOU race between checking port availability
+// here and Metabase actually binding the port. Another process may claim the
+// port in between. This is a known limitation of port-scanning approaches.
 export async function findFreePort(start = 3000, end = 3100) {
   for (let p = start; p <= end; p++) {
     // Check both v4 and v6 wildcards so we don't collide with an existing

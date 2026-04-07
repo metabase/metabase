@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { readJson, CONFIG, PIDFILE, ROOT } from "../src/paths.mjs";
-import { rm, readFile } from "node:fs/promises";
+import { rm, readFile, unlink } from "node:fs/promises";
 import { info, warn } from "../src/log.mjs";
 
 const wipe = process.argv.includes("--wipe");
+
+async function tryUnlink(path) {
+  try { await unlink(path); } catch {}
+}
 
 async function main() {
   const cfg = await readJson(CONFIG);
@@ -13,11 +17,14 @@ async function main() {
   } else if (cfg.runtime === "docker") {
     info(`Stopping container ${cfg.containerName} ...`);
     spawnSync("docker", ["rm", "-f", cfg.containerName], { stdio: "inherit" });
+    await tryUnlink(CONFIG);
   } else if (cfg.runtime === "jar") {
     try {
       const pid = parseInt(await readFile(PIDFILE, "utf8"), 10);
       if (pid) { info(`Killing pid ${pid} ...`); try { process.kill(pid); } catch {} }
     } catch {}
+    await tryUnlink(PIDFILE);
+    await tryUnlink(CONFIG);
   }
   if (wipe) {
     warn(`Wiping ${ROOT} ...`);

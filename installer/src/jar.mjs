@@ -35,6 +35,7 @@ export async function spawnJar({ port }) {
     },
   });
   child.unref();
+  await out.close(); // child inherited the fd; close the parent's copy to avoid leak
   await writeFile(PIDFILE, String(child.pid));
   info(`Spawned Metabase (pid ${child.pid}); logs → ${LOG_FILE}`);
   return { pid: child.pid };

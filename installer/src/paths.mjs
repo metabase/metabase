@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
-import { mkdir, readFile, writeFile, chmod, stat } from "node:fs/promises";
+import { join, dirname } from "node:path";
+import { mkdir, readFile, writeFile, rename, stat, open } from "node:fs/promises";
 
 export const ROOT       = join(homedir(), ".metabase-mcpb");
 export const JARS_DIR   = join(ROOT, "jars");
@@ -25,8 +25,18 @@ export async function readJson(path) {
 }
 
 export async function writeJson(path, data, { secret = false } = {}) {
-  await writeFile(path, JSON.stringify(data, null, 2));
-  if (secret) await chmod(path, 0o600);
+  const content = JSON.stringify(data, null, 2);
+  if (secret) {
+    // Write to a temp file with restrictive permissions, then atomically rename
+    // to avoid a TOCTOU window where secrets are world-readable.
+    const tmp = path + ".tmp." + process.pid;
+    const fh = await open(tmp, "w", 0o600);
+    await fh.writeFile(content);
+    await fh.close();
+    await rename(tmp, path);
+  } else {
+    await writeFile(path, content);
+  }
 }
 
 export async function fileExists(path) {

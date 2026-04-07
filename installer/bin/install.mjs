@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { ensureDirs, readJson, writeJson, CONFIG, SECRETS } from "../src/paths.mjs";
+import { spawnSync } from "node:child_process";
+import { ensureDirs, readJson, writeJson, CONFIG, SECRETS, PIDFILE } from "../src/paths.mjs";
 import { acquireLock } from "../src/lock.mjs";
 import { detectRuntime } from "../src/runtime.mjs";
 import { findFreePort } from "../src/port.mjs";
@@ -7,7 +8,8 @@ import { waitForHealth } from "../src/health.mjs";
 import { completeFirstRun } from "../src/setup.mjs";
 import { ensureDockerContainer } from "../src/docker.mjs";
 import { ensureJar, spawnJar } from "../src/jar.mjs";
-import { info, err } from "../src/log.mjs";
+import { info, warn, err } from "../src/log.mjs";
+import { readFile } from "node:fs/promises";
 
 function printReady({ baseUrl, creds }) {
   console.log("");
@@ -48,6 +50,7 @@ async function main() {
       return;
     }
 
+    const fresh = process.argv.includes("--fresh");
     const runtime = detectRuntime();
     info(`Selected runtime: ${runtime}`);
 
@@ -57,7 +60,7 @@ async function main() {
     let cfg = { port, runtime };
 
     if (runtime === "docker") {
-      const c = ensureDockerContainer({ port });
+      const c = ensureDockerContainer({ port, fresh });
       cfg = { ...cfg, containerName: c.name, image: c.image, volume: c.volume };
     } else {
       await ensureJar();
@@ -69,7 +72,22 @@ async function main() {
 
     const baseUrl = `http://localhost:${port}`;
     info(`Waiting for Metabase to come up at ${baseUrl} ...`);
-    await waitForHealth(baseUrl);
+    try {
+      await waitForHealth(baseUrl);
+    } catch (healthErr) {
+      // Clean up the container/process we just started so we don't leave
+      // the system in an inconsistent state.
+      warn("Setup failed — cleaning up ...");
+      try {
+        if (runtime === "docker" && cfg.containerName) {
+          spawnSync("docker", ["rm", "-f", cfg.containerName]);
+        } else if (runtime === "jar") {
+          const pid = parseInt(await readFile(PIDFILE, "utf8").catch(() => ""), 10);
+          if (pid) try { process.kill(pid); } catch {}
+        }
+      } catch {}
+      throw healthErr;
+    }
 
     const creds = await completeFirstRun(baseUrl);
     printReady({ baseUrl, creds });

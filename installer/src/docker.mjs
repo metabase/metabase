@@ -19,20 +19,28 @@ function removeContainer() {
   d(["rm", "-f", NAME]);
 }
 
-export function ensureDockerContainer({ port }) {
+function volumeExists() {
+  const r = d(["volume", "inspect", VOLUME]);
+  return r.code === 0;
+}
+
+export function ensureDockerContainer({ port, fresh = false }) {
   info(`Pulling ${IMAGE} (may be cached) ...`);
   const pull = d(["pull", IMAGE]);
   if (pull.code !== 0) warn(`docker pull failed: ${pull.stderr}`);
 
   if (containerExists()) {
-    info(`Existing container '${NAME}' found — clobbering.`);
+    info(`Existing container '${NAME}' found — removing.`);
     removeContainer();
   }
 
-  // Fresh install path: also clobber any leftover volume from a prior failed
-  // run, otherwise we may inherit a corrupt H2 store.
-  const volRm = d(["volume", "rm", VOLUME]);
-  if (volRm.code === 0) info(`Removed stale volume '${VOLUME}'.`);
+  // Only remove the volume when explicitly requested (--fresh) or when no
+  // prior volume exists (first install).  This avoids destroying a valid
+  // database from a prior installation that was merely stopped.
+  if (fresh && volumeExists()) {
+    const volRm = d(["volume", "rm", VOLUME]);
+    if (volRm.code === 0) info(`Removed existing volume '${VOLUME}' (--fresh).`);
+  }
 
   info(`Starting container '${NAME}' on port ${port} ...`);
   const run = d([
