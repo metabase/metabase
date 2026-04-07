@@ -578,4 +578,3 @@
                :body   [{:id     1
                          :result {:contents some?}}]}
               batch-response)))))
-
