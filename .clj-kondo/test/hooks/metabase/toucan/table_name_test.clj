@@ -5,6 +5,15 @@
    [clojure.test :refer :all]
    [hooks.metabase.toucan.table-name :as toucan.table-name]))
 
+;; `hooks.methodical.macros` isn't on the classpath under `.clj-kondo/test`,
+;; so stub it out — `lint-defmethod` delegates to it via `requiring-resolve`.
+;; If it ever becomes available, warn so we remember to delete this stub.
+(if (find-ns 'hooks.methodical.macros)
+  (println (str "WARNING: hooks.methodical.macros is now on the test classpath; "
+                "the stub in " *ns* " is no longer needed and can be removed."))
+  (do (create-ns 'hooks.methodical.macros)
+      (intern 'hooks.methodical.macros 'defmethod (fn [input] input))))
+
 (defn- lint-defmethod [form filename]
   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/toucan-model-ns {:level :warning}}}
                                         :ignores    (atom nil)
