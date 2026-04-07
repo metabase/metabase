@@ -399,7 +399,7 @@
 
 (deftest ^:parallel aggregation-function-inside-expression-in-aggregation-test
   (testing "should allow using aggregation functions inside expressions in aggregation (metabase#52611)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (mt/test-drivers (mt/normal-driver-select {:+features [:expression-aggregations :binning]})
       (let [mp       (mt/metadata-provider)
             orders   (lib.metadata/table mp (mt/id :orders))
             total    (lib.metadata/field mp (mt/id :orders :total))
