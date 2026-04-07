@@ -183,6 +183,13 @@ export type CreateDefineSetting<
    */
   eraseDependencies?: string[];
 
+  /**
+   * Widget to render for this setting: either a built-in widget name (`WidgetName`)
+   * or a custom React component (`React.ComponentType<P>`).
+   *
+   * When using a custom component, `getProps` should return only the non-base props;
+   * base widget props are provided by the settings renderer.
+   */
   widget: W;
 
   /**
