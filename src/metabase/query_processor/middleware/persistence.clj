@@ -18,5 +18,7 @@
                (perms/impersonation-enforced-for-db? (:database query))))
     (lib.util.match/replace-lite query
       {:persisted-info/native (_ :guard identity)}
-      (dissoc &match :persisted-info/native))
+      (-> &match
+          (dissoc :persisted-info/native)
+          (assoc :qp/skip-persisted-cache true)))
     query))
