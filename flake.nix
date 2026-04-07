@@ -113,6 +113,12 @@
           src = filteredSrc;
         };
 
+        # Import security checks
+        security = import ./nix/security {
+          inherit pkgs lib;
+          src = filteredSrc;
+        };
+
         # Import tests
         tests = import ./nix/tests {
           inherit pkgs lib metabase;
@@ -205,6 +211,10 @@
           check-kondo = staticAnalysis.kondo;
           check-eastwood = staticAnalysis.eastwood;
           check-all-static = staticAnalysis.all;
+
+          # Security
+          check-ddl-audit = security.ddlAudit;
+          check-security-all = security.all;
 
           # Tests
           tests-health-check = tests.health-check;
