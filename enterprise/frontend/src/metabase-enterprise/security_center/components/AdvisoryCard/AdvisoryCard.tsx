@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import {
   Anchor,
   Badge,
   Button,
   Card,
-  Flex,
   Group,
   Stack,
   Text,
@@ -42,6 +42,18 @@ interface AdvisoryCardProps {
 export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
   const affected = isAffected(advisory);
   const acknowledged = isAcknowledged(advisory);
+  const isSmallScreen = useIsSmallScreen();
+
+  const acknowledgeButton = !acknowledged && onAcknowledge && (
+    <Button
+      variant="subtle"
+      size="compact-sm"
+      onClick={() => onAcknowledge(advisory.advisory_id)}
+      data-testid="acknowledge-button"
+    >
+      {t`Acknowledge`}
+    </Button>
+  );
 
   return (
     <Card
@@ -52,14 +64,18 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
       mih={184}
     >
       <Stack gap="sm">
-        <Flex justify="space-between" align="center" wrap="wrap" gap="sm">
-          <Group gap="sm">
+        <Group gap="sm" justify="space-between" wrap="nowrap">
+          <Group gap="sm" wrap="wrap">
             <Badge className={SEVERITY_CLASS[advisory.severity]}>
               {advisory.severity}
             </Badge>
-            <Title order={4}>{advisory.title}</Title>
-          </Group>
-          <Group gap="sm">
+            <Badge
+              variant="outline"
+              className={affected ? S.statusAffected : S.statusNotAffected}
+              data-testid="affected-status"
+            >
+              {affected ? t`Affected` : t`Not affected`}
+            </Badge>
             {acknowledged && (
               <Badge
                 color="brand"
@@ -69,15 +85,10 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
                 {t`Acknowledged`}
               </Badge>
             )}
-            <Badge
-              variant="outline"
-              className={affected ? S.statusAffected : S.statusNotAffected}
-              data-testid="affected-status"
-            >
-              {affected ? t`Affected` : t`Not affected`}
-            </Badge>
           </Group>
-        </Flex>
+          {isSmallScreen && acknowledgeButton}
+        </Group>
+        <Title order={4}>{advisory.title}</Title>
 
         <Text lineClamp={2} c="text-secondary">
           {advisory.description}
@@ -105,16 +116,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
               {t`View advisory`}
             </Anchor>
           )}
-          {!acknowledged && onAcknowledge && (
-            <Button
-              variant="subtle"
-              size="compact-sm"
-              onClick={() => onAcknowledge(advisory.advisory_id)}
-              data-testid="acknowledge-button"
-            >
-              {t`Acknowledge`}
-            </Button>
-          )}
+          {!isSmallScreen && acknowledgeButton}
         </Group>
       </Stack>
     </Card>
