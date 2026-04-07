@@ -1,7 +1,8 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { trackMetricPageViewed } from "metabase/browse/metrics/analytics";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { Card } from "metabase-types/api";
 
@@ -28,6 +29,12 @@ export function MetricPageShell({
 }: MetricPageShellProps) {
   const [updateCard] = useUpdateCardMutation();
   const [deleteCard] = useDeleteCardMutation();
+
+  useEffect(() => {
+    if (card.id != null) {
+      trackMetricPageViewed(card.id);
+    }
+  }, [card.id]);
 
   return (
     <>
