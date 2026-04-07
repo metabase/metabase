@@ -31,7 +31,7 @@ import {
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
 import { getEffectiveDefinitionEntry } from "../utils/definition-entries";
 import { computeMetricSlots } from "../utils/metric-slots";
-import { reconcileDimensionMappings } from "../utils/reconcile-dimension-mappings";
+import { remapDimensionMappings } from "../utils/remap-dimension-mappings";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -209,7 +209,10 @@ export interface UseViewerStateResult {
 
   removeDefinition: (id: MetricSourceId) => void;
   updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
-  setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void;
+  setFormulaEntities: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
 
   selectTab: (tabId: string) => void;
   addTab: (tab: MetricsViewerTabState) => void;
@@ -297,7 +300,7 @@ export function useViewerState(): UseViewerStateResult {
             : prev.tabs
                 .map((tab) => {
                   // Remove entries for removed slot indices.
-                  // Don't shift — reconcileDimensionMappings handles that
+                  // Don't shift — remapDimensionMappings handles that
                   // when formulaEntities are updated separately.
                   const newMapping: Record<number, string | null> = {};
                   for (const [key, value] of getObjectEntries(
@@ -521,19 +524,18 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const setFormulaEntities = useCallback(
-    (formulaEntities: MetricsViewerFormulaEntity[]) =>
+    (
+      formulaEntities: MetricsViewerFormulaEntity[],
+      slotMapping?: Map<number, number>,
+    ) =>
       setState((prev) => {
-        // Skip reconciliation when prev.formulaEntities is empty (initial URL
-        // restore).  The tabs already carry the correct dimensionMapping from
-        // initialize(); reconciling against an empty old list would wipe it.
-        const reconciledTabs =
-          prev.formulaEntities.length === 0
-            ? prev.tabs
-            : reconcileDimensionMappings(
-                prev.tabs,
-                prev.formulaEntities,
-                formulaEntities,
-              );
+        // When a slotMapping is provided (from commitAndCollapse or
+        // handleRemoveItem), use it to remap dimension mappings efficiently.
+        // Otherwise the caller is not changing entity structure (paren cleanup,
+        // filter/breakout changes, URL restore) so tabs are kept as-is.
+        const reconciledTabs = slotMapping
+          ? remapDimensionMappings(prev.tabs, slotMapping, formulaEntities)
+          : prev.tabs;
         let tabs = assignDimensionsForUnmappedSlots(
           reconciledTabs,
           prev.definitions,

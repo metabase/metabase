@@ -27,7 +27,10 @@ import S from "./MetricSearchPanel.module.css";
 type MetricSearchPanelProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
-  onFormulaEntitiesChange: (entities: MetricsViewerFormulaEntity[]) => void;
+  onFormulaEntitiesChange: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
   onAddMetric: (metric: SelectedMetric) => void;

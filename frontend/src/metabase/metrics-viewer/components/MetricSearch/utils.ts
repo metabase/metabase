@@ -932,6 +932,7 @@ export type MetricIdentityEntry = {
   from: number;
   to: number;
   definition: MetricDefinition | null;
+  slotIndex: number;
 };
 
 export function stripDefinitionProjections(
@@ -949,18 +950,27 @@ export function stripDefinitionProjections(
 
 const getPositionKey = (from: number, to: number) => `${from}:${to}`;
 
+export interface ApplyTrackedDefinitionsResult {
+  entities: MetricsViewerFormulaEntity[];
+  /** Maps old slot index → new slot index for matched metric tokens. */
+  slotMapping: Map<number, number>;
+}
+
 export function applyTrackedDefinitions(
   newEntities: MetricsViewerFormulaEntity[],
   trackedIdentities: MetricIdentityEntry[],
   text: string,
   metricEntries: MetricDefinitionEntry[],
-): MetricsViewerFormulaEntity[] {
-  const identityByPosition = new Map<string, MetricDefinition | null>();
+): ApplyTrackedDefinitionsResult {
+  const identityByPosition = new Map<
+    string,
+    { definition: MetricDefinition | null; slotIndex: number }
+  >();
   for (const identity of trackedIdentities) {
-    identityByPosition.set(
-      getPositionKey(identity.from, identity.to),
-      identity.definition,
-    );
+    identityByPosition.set(getPositionKey(identity.from, identity.to), {
+      definition: identity.definition,
+      slotIndex: identity.slotIndex,
+    });
   }
 
   const metricOverrides = new Map<
@@ -971,16 +981,24 @@ export function applyTrackedDefinitions(
     MetricsViewerFormulaEntity,
     Map<number, MetricDefinition | undefined>
   >();
+  const slotMapping = new Map<number, number>();
+  let newSlotCounter = 0;
 
   traverseMetricTokens(text, metricEntries, newEntities, (visit) => {
+    const newSlotIndex = newSlotCounter++;
     const key = getPositionKey(visit.positioned.from, visit.positioned.to);
-    if (!identityByPosition.has(key)) {
-      return;
-    }
     const tracked = identityByPosition.get(key);
 
+    if (tracked) {
+      slotMapping.set(tracked.slotIndex, newSlotIndex);
+    }
+
+    if (!tracked) {
+      return;
+    }
+
     if (visit.kind === "standalone") {
-      metricOverrides.set(visit.entity, tracked ?? null);
+      metricOverrides.set(visit.entity, tracked.definition ?? null);
       return;
     }
 
@@ -991,11 +1009,13 @@ export function applyTrackedDefinitions(
     }
     // remove any existing breakouts - not supported in math expressions
     const definition =
-      tracked != null ? stripDefinitionProjections(tracked) : undefined;
+      tracked.definition != null
+        ? stripDefinitionProjections(tracked.definition)
+        : undefined;
     tokenMap.set(visit.exprTokenIndex, definition);
   });
 
-  return newEntities.map((entity) => {
+  const entities = newEntities.map((entity) => {
     if (metricOverrides.has(entity)) {
       return { ...entity, definition: metricOverrides.get(entity) ?? null };
     }
@@ -1016,4 +1036,6 @@ export function applyTrackedDefinitions(
 
     return entity;
   });
+
+  return { entities, slotMapping };
 }
