@@ -1,5 +1,23 @@
 (ns metabase.agent-lib.capabilities.unsupported
-  "Guidance for unsupported or rewritten helper names in structured programs.")
+  "Guidance for unsupported or rewritten helper names in structured programs.
+
+  This catalog feeds the LLM system prompt with `do-not-use` guidance and
+  retry-shape/example fragments. It is *prompt-time* help, distinct from the
+  *runtime* repair layer in `metabase.agent-lib.repair.normalize.forms`:
+
+  - Many entries listed here (e.g. `dayofweek`, `month-of-year`, `temporal-diff`,
+    `count-if`, `variance`, `stddev-pop`, `count-distinct`, `is-not-null`) also
+    have a deterministic alias rewrite in the repair layer. For those, the
+    agent never actually sees a validation error — repair silently rewrites the
+    operator before validation. The entries here exist so the model learns the
+    canonical name from the prompt and emits it directly the next time.
+  - Other entries (e.g. `avg-where`) have no safe automatic rewrite — the agent
+    must restructure the program (e.g. introduce a conditional expression).
+    Those entries are the only ones that surface as actual retry guidance when
+    the model gets it wrong.
+
+  When adding a new entry, decide whether the rewrite is mechanical (also add
+  it to the repair layer) or structural (prompt-only).")
 
 (set! *warn-on-reflection* true)
 
