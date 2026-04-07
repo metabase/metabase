@@ -1,0 +1,33 @@
+import { useMemo } from "react";
+import { t } from "ttag";
+
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { useListAllCustomVizPluginsQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+
+import { AddDevCustomVizForm } from "./AddDevCustomVizForm";
+import { EditDevCustomVizForm } from "./EditDevCustomVizForm";
+
+export function CustomVizDevPage() {
+  const { data: plugins, error, isLoading } = useListAllCustomVizPluginsQuery();
+
+  const devPlugin = useMemo(
+    () => plugins?.find((plugin) => plugin.dev_only),
+    [plugins],
+  );
+
+  return (
+    <SettingsPageWrapper
+      title={t`Development`}
+      description={t`Set a dev bundle URL to load plugin code from a local dev server instead of the stored bundle. Changes take effect on the next page reload.`}
+    >
+      <LoadingAndErrorWrapper error={error} loading={isLoading} />
+
+      {devPlugin ? (
+        <EditDevCustomVizForm plugin={devPlugin} />
+      ) : (
+        <AddDevCustomVizForm />
+      )}
+    </SettingsPageWrapper>
+  );
+}
