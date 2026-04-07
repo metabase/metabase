@@ -28,10 +28,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- comparable-metadata
-  "Smooth out any unimportant differences in metadata so we can do an easy equality check.
-   When `strip-computed-fingerprints?` is true, fingerprints are stripped from columns that have no
-   backing Field (`:id` is nil), such as aggregation columns. This prevents spurious result_metadata
-   UPDATEs when parameterized queries produce different fingerprints for computed columns."
+  "Smooth out any unimportant differences in metadata so we can do an easy equality check."
   [metadata]
   (letfn [(remove-underscore-nil-keys
             ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
@@ -64,23 +61,24 @@
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
-    (let [actual-metadata    (or (when-let [pivot-metadata (get-in query [:info :pivot/result-metadata])]
-                                   (when (sequential? pivot-metadata)
-                                     pivot-metadata))
-                                 metadata)
-          parameterized?     (boolean (seq (:user-parameters query)))]
+    (let [actual-metadata (or (when-let [pivot-metadata (get-in query [:info :pivot/result-metadata])]
+                                (when (sequential? pivot-metadata)
+                                  pivot-metadata))
+                              metadata)]
       (when (and actual-metadata
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
-                 (not parameterized?)
+                 ;; Don't persist result_metadata for parameterized queries with non-default values.
+                 ;; MBQL queries with any parameters are skipped because filters change fingerprints.
+                 ;; Native queries are only skipped when parameter values differ from template tag defaults.
+                 ;; See QUE2-502 for details.
+                 (not (:qp/skip-result-metadata-persistence query))
                  (not= actual-metadata :none)
                  (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database query))
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
-                 ;; Only update changed metadata. When the query is parameterized, strip fingerprints
-                 ;; from computed columns (no backing Field) before comparing, because those fingerprints
-                 ;; are derived from the filtered result rows and vary by parameter value.
+                 ;; Only update changed metadata
                  (not= (comparable-metadata actual-metadata)
                        (comparable-metadata
                         ;; existing usage -- don't use going forward
