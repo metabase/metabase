@@ -150,21 +150,26 @@
     value))
 
 (defn repair-between-bounds
-  "Normalize temporal `between` bounds into canonical datetime helper forms."
+  "Normalize temporal `between` bounds into canonical datetime helper forms.
+  Preserves degenerate (fewer than 3) arg counts so repair remains idempotent
+  when the operator is embedded in a helper that reshapes its arguments
+  (e.g. `case`)."
   [args]
-  (let [[lhs lower upper] args
-        lower'            (wrap-now-as-expression lower)
-        upper'            (wrap-now-as-expression upper)]
-    (if (or (temporal-expression? lower')
-            (temporal-expression? upper'))
-      [lhs
-       (if (temporal-expression? upper')
-         (wrap-iso-date-as-absolute-datetime lower')
-         lower')
-       (if (temporal-expression? lower')
-         (wrap-iso-date-as-absolute-datetime upper')
-         upper')]
-      [lhs lower' upper'])))
+  (if (< (count args) 3)
+    (vec args)
+    (let [[lhs lower upper] args
+          lower'            (wrap-now-as-expression lower)
+          upper'            (wrap-now-as-expression upper)]
+      (if (or (temporal-expression? lower')
+              (temporal-expression? upper'))
+        [lhs
+         (if (temporal-expression? upper')
+           (wrap-iso-date-as-absolute-datetime lower')
+           lower')
+         (if (temporal-expression? lower')
+           (wrap-iso-date-as-absolute-datetime upper')
+           upper')]
+        [lhs lower' upper']))))
 
 (defn repair-operator-form
   "Normalize a nested operator form using the recursive `repair-node` callback."
@@ -190,11 +195,13 @@
       [op-name (coerce-non-negative-int (first args))]
 
       "with-temporal-bucket"
-      (let [[field bucket] args]
-        (if-let [extraction-op (and (string? bucket)
-                                    (temporal-bucket-extraction-aliases bucket))]
-          [extraction-op field]
-          [op-name field bucket]))
+      (if (< (count args) 2)
+        (into [op-name] args)
+        (let [[field bucket] args]
+          (if-let [extraction-op (and (string? bucket)
+                                      (temporal-bucket-extraction-aliases bucket))]
+            [extraction-op field]
+            [op-name field bucket])))
 
       ("contains" "does-not-contain" "starts-with" "ends-with")
       (into [op-name]
@@ -205,12 +212,14 @@
               pop))
 
       ("in" "not-in")
-      (let [[lhs rhs] args]
-        [op-name lhs (normalize-quarter-filter-value lhs rhs)])
+      (if (< (count args) 2)
+        (into [op-name] args)
+        (let [[lhs rhs] args]
+          [op-name lhs (normalize-quarter-filter-value lhs rhs)]))
 
       "="
-      (if (empty? args)
-        [op-name]
+      (if (< (count args) 2)
+        (into [op-name] args)
         (let [[lhs rhs] args
               rhs'      (normalize-quarter-filter-value lhs rhs)]
           (if (scalar-sequential? rhs')
@@ -218,8 +227,8 @@
             [op-name lhs rhs'])))
 
       "!="
-      (if (empty? args)
-        [op-name]
+      (if (< (count args) 2)
+        (into [op-name] args)
         (let [[lhs rhs] args
               rhs'      (normalize-quarter-filter-value lhs rhs)]
           (if (scalar-sequential? rhs')
@@ -227,16 +236,20 @@
             [op-name lhs rhs'])))
 
       "is"
-      (let [[lhs rhs] args]
-        (if (null-literal? rhs)
-          ["is-null" lhs]
-          ["=" lhs rhs]))
+      (if (< (count args) 2)
+        (into [op-name] args)
+        (let [[lhs rhs] args]
+          (if (null-literal? rhs)
+            ["is-null" lhs]
+            ["=" lhs rhs])))
 
       "is-not"
-      (let [[lhs rhs] args]
-        (if (null-literal? rhs)
-          ["not-null" lhs]
-          ["!=" lhs rhs]))
+      (if (< (count args) 2)
+        (into [op-name] args)
+        (let [[lhs rhs] args]
+          (if (null-literal? rhs)
+            ["not-null" lhs]
+            ["!=" lhs rhs])))
 
       "case"
       (let [args' (if (= "if" (syntax/raw-op-name raw-op))
@@ -250,11 +263,15 @@
       (into [op-name] (repair-between-bounds args))
 
       "percentile"
-      (let [[expr percentile] args]
-        [op-name expr (normalize-percentile-value percentile)])
+      (if (< (count args) 2)
+        (into [op-name] args)
+        (let [[expr percentile] args]
+          [op-name expr (normalize-percentile-value percentile)]))
 
       "with-join-conditions"
-      (let [[join-spec conditions] args]
-        [op-name join-spec (normalize-join-conditions conditions)])
+      (if (< (count args) 2)
+        (into [op-name] args)
+        (let [[join-spec conditions] args]
+          [op-name join-spec (normalize-join-conditions conditions)]))
 
       (into [op-name] args))))

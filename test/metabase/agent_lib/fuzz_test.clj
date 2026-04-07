@@ -239,3 +239,15 @@
           (is (structured-error? e))
           (is (re-find #"maximum operation count"
                        (:details (ex-data e)))))))))
+
+(deftest ^:parallel repair-idempotence-degenerate-helpers-test
+  (testing "degenerate operators inside `case` do not grow extra args on each repair pass (regression)"
+    (doseq [op ["in" "not-in" "=" "!=" "is" "is-not"
+                "between" "with-temporal-bucket" "percentile" "with-join-conditions"]]
+      (testing op
+        (let [program  {:source     {:type "context" :ref "source"}
+                        :operations [["filter" ["count" ["case" [op]]]]]}
+              once     (repair/repair-program program)
+              twice    (repair/repair-program once)]
+          (is (= once twice)
+              (str "repair of `[\"case\" [\"" op "\"]]` should be idempotent")))))))
