@@ -170,7 +170,8 @@
    :model_created_at    (some-> created_at to-instant)
    :model_updated_at    (some-> updated_at to-instant)
    :last_viewed_at      (some-> last_viewed_at to-instant)
-   :legacy_input        [:cast (json/encode legacy_input) :jsonb]
+   ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
+   :legacy_input        [:cast (if (string? legacy_input) legacy_input (json/encode legacy_input)) :jsonb]
    :metadata            [:cast (json/encode (dissoc doc :embedding)) :jsonb]
    :embedding           [:raw (format-embedding embedding)]
    :text_search_vector  (if (:name doc)
@@ -699,10 +700,13 @@
   "Fetches the legacy_input field from a result's metadata and attaches a score based on the
   embedding distance."
   [weights scorers row]
-  (-> (get-in row [:metadata :legacy_input])
-      (assoc
-       :score (:total_score row 1.0)
-       :all-scores (scoring/all-scores weights scorers row))))
+  (let [raw (get-in row [:metadata :legacy_input])
+        ;; legacy_input may be a pre-encoded JSON string (from ->document) stored as a string
+        ;; value inside the metadata JSONB blob; decode it back to a map if so.
+        legacy-input (cond-> raw (string? raw) (json/decode true))]
+    (assoc legacy-input
+           :score (:total_score row 1.0)
+           :all-scores (scoring/all-scores weights scorers row))))
 
 (defn- decode-metadata
   "Decode `row`s `:metadata`."
