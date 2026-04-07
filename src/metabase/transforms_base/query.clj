@@ -88,6 +88,7 @@
     (let [db (get-in source [:query :database])
           {driver :engine :as database} (t2/select-one :model/Database db)
           _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
+          target (transforms-base.u/resolve-target-schema driver target)
           ;; First incremental run (no checkpoint) should behave like non-incremental
           ;; to drop and recreate the table rather than appending to existing data.
           effective-transform-type (if (and (= :table-incremental (keyword (:type target)))

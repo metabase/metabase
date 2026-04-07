@@ -409,3 +409,19 @@
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))
+
+(deftest ^:parallel resolve-target-schema-test
+  (testing "resolve-target-schema fills in nil schema from driver default"
+    (testing "nil schema is resolved to driver's default"
+      (is (= {:schema "public" :name "my_table"}
+             (transforms-base.u/resolve-target-schema :postgres {:name "my_table"})))
+      (is (= {:schema "public" :name "my_table"}
+             (transforms-base.u/resolve-target-schema :postgres {:schema nil :name "my_table"}))))
+
+    (testing "explicit schema is preserved"
+      (is (= {:schema "custom_schema" :name "my_table"}
+             (transforms-base.u/resolve-target-schema :postgres {:schema "custom_schema" :name "my_table"}))))
+
+    (testing "H2 driver returns uppercase PUBLIC"
+      (is (= {:schema "PUBLIC" :name "my_table"}
+             (transforms-base.u/resolve-target-schema :h2 {:name "my_table"}))))))

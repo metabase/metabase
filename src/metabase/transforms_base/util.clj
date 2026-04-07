@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -109,6 +110,16 @@
     [:transforms/table]))
 
 ;;; ------------------------------------------------- Table Names -------------------------------------------------
+
+(defn resolve-target-schema
+  "If target has no schema, resolve it from the driver's default schema.
+   Returns target unchanged if schema is already set or driver has no default."
+  [driver target]
+  (if (:schema target)
+    target
+    (if-let [schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
+      (assoc target :schema schema)
+      target)))
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -472,7 +483,8 @@
         {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
-        database (t2/select-one :model/Database db-id)]
+        database (t2/select-one :model/Database db-id)
+        target (resolve-target-schema (:engine database) target)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when-let [table (sync-target! target database)]
       (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
