@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -40,13 +38,6 @@ export function GeneralLimitsSettingsSection() {
   } = useAdminSettingWithDebouncedInput<string | null>(
     "metabot-quota-reached-message",
   );
-  const prevLimitType = usePrevious(limitType);
-
-  useEffect(() => {
-    if (prevLimitType && limitType && limitType !== prevLimitType) {
-      handleInstanceLimitInputChange(null);
-    }
-  }, [prevLimitType, limitType, handleInstanceLimitInputChange]);
 
   return (
     <SettingsSection title={t`Settings and general limits`}>
