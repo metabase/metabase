@@ -9,7 +9,7 @@ export function CustomVisualizationsManagePage() {
     return <UpsellCustomViz source="settings-custom-viz" />;
   }
 
-  return <PLUGIN_CUSTOM_VIZ.ManageCustomVisualizationsPage />;
+  return <PLUGIN_CUSTOM_VIZ.CustomVizPage />;
 }
 
 export function CustomVisualizationsFormPage({
@@ -23,7 +23,7 @@ export function CustomVisualizationsFormPage({
     return <UpsellCustomViz source="settings-custom-viz" />;
   }
 
-  return <PLUGIN_CUSTOM_VIZ.CustomVizFormPage params={params} />;
+  return <PLUGIN_CUSTOM_VIZ.AddCustomVizPage params={params} />;
 }
 
 export function CustomVisualizationsDevelopmentPage() {
@@ -33,5 +33,5 @@ export function CustomVisualizationsDevelopmentPage() {
     return <UpsellCustomViz source="settings-custom-viz" />;
   }
 
-  return <PLUGIN_CUSTOM_VIZ.CustomVizDevelopmentPage />;
+  return <PLUGIN_CUSTOM_VIZ.CustomVizDevPage />;
 }

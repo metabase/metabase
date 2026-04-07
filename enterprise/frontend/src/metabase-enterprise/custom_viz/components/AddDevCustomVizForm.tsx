@@ -12,23 +12,26 @@ import {
 } from "metabase/forms";
 import { Group, Stack, Text } from "metabase/ui";
 
-export function AddDevPluginForm() {
+type FormState = {
+  devBundleUrl: string;
+};
+
+const initialValues: FormState = { devBundleUrl: "" };
+
+export function AddDevCustomVizForm() {
   const [createDevPlugin] = useCreateDevCustomVizPluginMutation();
 
   const handleSubmit = useCallback(
-    (values: { dev_bundle_url: string }) =>
+    (values: FormState) =>
       createDevPlugin({
-        dev_bundle_url: values.dev_bundle_url,
+        dev_bundle_url: values.devBundleUrl,
       }).unwrap(),
     [createDevPlugin],
   );
 
   return (
     <SettingsSection>
-      <FormProvider
-        initialValues={{ dev_bundle_url: "" }}
-        onSubmit={handleSubmit}
-      >
+      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
         {({ dirty }) => (
           <Form>
             <Stack gap="lg">

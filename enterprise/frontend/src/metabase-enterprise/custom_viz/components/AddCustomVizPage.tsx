@@ -29,7 +29,13 @@ type Props = {
   };
 };
 
-export function CustomVizFormPage({ params }: Props) {
+type FormState = {
+  repoUrl: string;
+  accessToken: string;
+  pinnedVersion: string;
+};
+
+export function AddCustomVizPage({ params }: Props) {
   const dispatch = useDispatch();
   const pluginId = params?.id ? parseInt(params.id, 10) : undefined;
   const { data: plugins } = useListAllCustomVizPluginsQuery();
@@ -39,32 +45,28 @@ export function CustomVizFormPage({ params }: Props) {
   const [createPlugin] = useCreateCustomVizPluginMutation();
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
 
-  const initialValues = useMemo(
+  const initialValues = useMemo<FormState>(
     () => ({
-      repo_url: plugin?.repo_url ?? "",
-      access_token: "",
-      pinned_version: plugin?.pinned_version ?? "",
+      repoUrl: plugin?.repo_url ?? "",
+      accessToken: "",
+      pinnedVersion: plugin?.pinned_version ?? "",
     }),
     [plugin],
   );
 
   const handleSubmit = useCallback(
-    async (values: {
-      repo_url: string;
-      access_token: string;
-      pinned_version: string;
-    }) => {
+    async (values: FormState) => {
       if (isEdit && plugin) {
         await updatePlugin({
           id: plugin.id,
-          access_token: values.access_token || undefined,
-          pinned_version: values.pinned_version || null,
+          access_token: values.accessToken || undefined,
+          pinned_version: values.pinnedVersion || null,
         }).unwrap();
       } else {
         await createPlugin({
-          repo_url: values.repo_url,
-          access_token: values.access_token || undefined,
-          pinned_version: values.pinned_version || null,
+          repo_url: values.repoUrl,
+          access_token: values.accessToken || undefined,
+          pinned_version: values.pinnedVersion || null,
         }).unwrap();
       }
       dispatch(push(BASE_PATH));

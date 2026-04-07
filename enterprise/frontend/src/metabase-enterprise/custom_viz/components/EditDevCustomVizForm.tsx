@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -20,15 +20,24 @@ type Props = {
   plugin: CustomVizPlugin;
 };
 
-export function EditDevPluginForm({ plugin }: Props) {
+type FormState = {
+  devBundleUrl: string;
+};
+
+export function EditDevCustomVizForm({ plugin }: Props) {
   const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
   const [deletePlugin] = useDeleteCustomVizPluginMutation();
 
+  const initialValues = useMemo<FormState>(
+    () => ({ devBundleUrl: plugin.dev_bundle_url ?? "" }),
+    [plugin.dev_bundle_url],
+  );
+
   const handleSubmit = useCallback(
-    (values: { dev_bundle_url: string }) =>
+    (values: FormState) =>
       setDevUrl({
         id: plugin.id,
-        dev_bundle_url: values.dev_bundle_url || null,
+        dev_bundle_url: values.devBundleUrl || null,
       }).unwrap(),
     [plugin.id, setDevUrl],
   );
@@ -41,7 +50,7 @@ export function EditDevPluginForm({ plugin }: Props) {
   return (
     <SettingsSection>
       <FormProvider
-        initialValues={{ dev_bundle_url: plugin.dev_bundle_url ?? "" }}
+        initialValues={initialValues}
         onSubmit={handleSubmit}
         enableReinitialize
       >

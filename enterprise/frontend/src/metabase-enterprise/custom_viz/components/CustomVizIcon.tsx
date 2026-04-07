@@ -8,9 +8,10 @@ type Props = {
 
 const ICON_SIZE = 20;
 
-export function PluginIconPreview({ plugin }: Props) {
+export function CustomVizIcon({ plugin }: Props) {
   const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
   const dimmed = !plugin.enabled;
+
   return (
     <Flex
       align="center"

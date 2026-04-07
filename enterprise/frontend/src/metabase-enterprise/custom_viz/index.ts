@@ -8,9 +8,9 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-import { CustomVizDevelopmentPage } from "./components/CustomVizDevelopmentPage";
-import { CustomVizFormPage } from "./components/CustomVizFormPage";
-import { ManageCustomVisualizationsPage } from "./components/ManageCustomVisualizationsPage";
+import { AddCustomVizPage } from "./components/AddCustomVizPage";
+import { CustomVizDevPage } from "./components/CustomVizDevPage";
+import { CustomVizPage } from "./components/CustomVizPage";
 import {
   loadCustomVizPlugin,
   useAutoLoadCustomVizPlugin,
@@ -53,9 +53,9 @@ function registerCustomVizPlugin(
 export function initializePlugin() {
   if (hasPremiumFeature("custom-viz")) {
     Object.assign(PLUGIN_CUSTOM_VIZ, {
-      ManageCustomVisualizationsPage,
-      CustomVizFormPage,
-      CustomVizDevelopmentPage,
+      CustomVizPage,
+      AddCustomVizPage,
+      CustomVizDevPage,
       useAutoLoadCustomVizPlugin,
       useCustomVizPlugins,
       loadCustomVizPlugin,

@@ -18,8 +18,8 @@ import {
 } from "metabase/ui";
 import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 
-import S from "./CustomVizPluginsSettingsPage.module.css";
-import { PluginIconPreview } from "./PluginIconPreview";
+import { CustomVizIcon } from "./CustomVizIcon";
+import S from "./CustomVizListItem.module.css";
 
 const BASE_PATH = "/admin/settings/custom-visualizations";
 
@@ -28,7 +28,7 @@ type Props = {
   onDelete: (id: CustomVizPluginId) => void;
 };
 
-export function PluginListItem({ plugin, onDelete }: Props) {
+export function CustomVizListItem({ plugin, onDelete }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [updatePlugin] = useUpdateCustomVizPluginMutation();
   const [refreshPlugin, { isLoading: isRefreshing }] =
@@ -58,10 +58,10 @@ export function PluginListItem({ plugin, onDelete }: Props) {
       justify="space-between"
       align="center"
       p="md"
-      className={S.pluginListItem}
+      className={S.customVizListItem}
     >
       <Group gap="md" align="center">
-        <PluginIconPreview plugin={plugin} />
+        <CustomVizIcon plugin={plugin} />
         <Stack gap={4}>
           <Text fw={700}>{plugin.display_name}</Text>
           <Group gap="xs">

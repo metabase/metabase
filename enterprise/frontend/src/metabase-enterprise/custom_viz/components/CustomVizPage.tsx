@@ -10,12 +10,12 @@ import { Link } from "metabase/common/components/Link";
 import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
 import type { CustomVizPluginId } from "metabase-types/api";
 
-import S from "./CustomVizPluginsSettingsPage.module.css";
-import { PluginListItem } from "./PluginListItem";
+import { CustomVizListItem } from "./CustomVizListItem";
+import S from "./CustomVizPage.module.css";
 
 const BASE_PATH = "/admin/settings/custom-visualizations";
 
-export function ManageCustomVisualizationsPage() {
+export function CustomVizPage() {
   const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
   const [deletePlugin] = useDeleteCustomVizPluginMutation();
 
@@ -79,7 +79,7 @@ export function ManageCustomVisualizationsPage() {
           }}
         >
           {repoPlugins.map((plugin) => (
-            <PluginListItem
+            <CustomVizListItem
               key={plugin.id}
               plugin={plugin}
               onDelete={handleDelete}
