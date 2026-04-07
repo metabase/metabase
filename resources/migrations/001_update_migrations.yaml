@@ -11594,39 +11594,6 @@ databaseChangeLog:
             where: base_type = 'type/Boolean' AND semantic_type = 'type/Category'
       rollback: # not necessary
 
-  - changeSet:
-      id: v55.2026-04-07T10:00:00
-      author: ctruter
-      comment: Drop non-unique index on core_session.key_hashed before adding unique constraint
-      changes:
-        - dropIndex:
-            tableName: core_session
-            indexName: idx_core_session_key_hashed
-      rollback:
-        - createIndex:
-            tableName: core_session
-            columns:
-              - column:
-                  name: key_hashed
-            indexName: idx_core_session_key_hashed
-
-  - changeSet:
-      id: v55.2026-04-07T10:00:01
-      author: ctruter
-      comment: Add unique index on core_session.key_hashed to prevent duplicate rows from concurrent MCP session creation
-      changes:
-        - createIndex:
-            tableName: core_session
-            columns:
-              - column:
-                  name: key_hashed
-            indexName: idx_core_session_key_hashed
-            unique: true
-      rollback:
-        - dropIndex:
-            tableName: core_session
-            indexName: idx_core_session_key_hashed
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

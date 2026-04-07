@@ -37,17 +37,26 @@
    (which is the MCP session UUID itself). Auditing is skipped for these sessions."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key session-id)]
-    ;; Uses select-or-insert! which handles the race condition: if a concurrent call
-    ;; inserts first (violating the unique constraint on key_hashed), the retry will
-    ;; pick up the existing row. We use raw :core_session instead of :model/Session
-    ;; to bypass the after-insert hook, which would publish spurious :event/user-login
-    ;; events.
+    ;; Scoped to (key_hashed, user_id) so same-user races collapse to one row in the
+    ;; common case. A concurrent race can still produce duplicates (no DB constraint;
+    ;; see `select-or-insert!` docstring) but they're harmless — both rows belong to
+    ;; the right user, both satisfy lookups, both TTL-reap.
+    ;;
+    ;; Do NOT add a unique constraint to "fix" this. On key_hashed alone, a cross-user
+    ;; UUID collision would silently hand user B's row to user A. On (user_id,
+    ;; key_hashed), downstream auth lookups by key_hashed alone would pick one of the
+    ;; colliding rows arbitrarily. Cross-user UUID collisions are an unaddressed risk
+    ;; across the whole session model (cookie sessions included) — it belongs in the
+    ;; auth layer, not here, and no constraint shape at this call site can fix it.
+    ;;
+    ;; Raw :core_session (not :model/Session) to bypass the after-insert hook, which
+    ;; would publish spurious :event/user-login events.
     (app-db.query/select-or-insert!
      :core_session
-     {:key_hashed key-hashed}
+     {:key_hashed key-hashed
+      :user_id    user-id}
      (fn []
        {:id              (session/generate-session-id)
-        :user_id         user-id
         :anti_csrf_token nil
         :created_at      :%now}))
     ;; The MCP session UUID *is* the session key.
