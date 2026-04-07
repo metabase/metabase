@@ -6,6 +6,7 @@
    [metabase.mcp.scope :as mcp.scope]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [stencil.core :as stencil]))
 
@@ -89,6 +90,16 @@
 
 ;;; registrations
 
+(def ^:private embed-template
+  "Resolved once at load time: prefer the rspack-built embed-mcp.html (with bundle
+   <script> tags injected); fall back to the source mcp_apps_template.html when
+   running tests without a frontend build."
+  (delay
+    (if (io/resource "frontend_client/embed-mcp.html")
+      "frontend_client/embed-mcp.html"
+      (do (log/warn "frontend_client/embed-mcp.html not found on classpath, falling back to mcp_apps_template.html")
+          "frontend_client/mcp_apps_template.html"))))
+
 (register-ui-resource!
  :visualize-query
  "ui://metabase/visualize-query.html"
@@ -97,15 +108,9 @@
   :description "Interactive Metabase SDK visualization for a query"
   :render-fn   (fn [opts]
                  (let [site-url    (system/site-url)
-                       session-key (:session-key opts)
-                       ;; In production the rspack build emits frontend_client/embed-mcp.html
-                       ;; (with bundle <script> tags injected); fall back to the source
-                       ;; mcp_apps_template.html when running tests without a frontend build.
-                       template    (if (io/resource "frontend_client/embed-mcp.html")
-                                     "frontend_client/embed-mcp.html"
-                                     "frontend_client/mcp_apps_template.html")]
+                       session-key (:session-key opts)]
                    (stencil/render-file
-                    template
+                    @embed-template
                     {:instanceUrl    (json/encode site-url)
                      :instanceUrlRaw site-url
                      :sessionToken   (when session-key (json/encode session-key))})))})
