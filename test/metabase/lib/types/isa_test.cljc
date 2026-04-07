@@ -162,15 +162,19 @@
     true  :type/Integer :type/Quantity  :type/Float :type/Number
     true  :type/Float   :type/Number    :type/Float :type/Price
 
-    true  :type/DateTime :type/Temporal :type/Time  :type/Temporal
+    true  :type/DateTime :type/DateTime :type/Date     :type/Date
+    true  :type/DateTime :type/DateTime :type/DateTime :type/DateTimeWithTZ
+    true  :type/Time     :type/Time     :type/Time     :type/TimeWithTZ
 
     true  :type/Boolean :type/Boolean :type/Boolean :type/Boolean
 
     false :type/String   :type/Text      :type/Integer  :type/Number
     false :type/Integer  :type/Number    :type/String   :type/Text
-    false :type/DateTime :type/Temporal  :type/String   :type/Text
-    false :type/String   :type/Text      :type/DateTime :type/Temporal
-    false :type/Boolean  :type/Boolean   :type/String   :type/Text))
+    false :type/DateTime :type/DateTime  :type/String   :type/Text
+    false :type/String   :type/Text      :type/DateTime :type/DateTime
+    false :type/Boolean  :type/Boolean   :type/String   :type/Text
+    false :type/DateTime :type/DateTime  :type/Time     :type/Time
+    false :type/Time     :type/Time      :type/Date     :type/Date))
 
 (deftest ^:parallel effective-type-fallback-test
   (are [expected predicate column] (= expected (predicate column))
