@@ -6,7 +6,7 @@ redirect_from:
 
 # General settings
 
-_Admin > Settings > Feneral_
+_Admin > Settings > General_
 
 This section contains settings for your whole instance, like its URL, the reporting timezone, and toggles for disabling or enabling some of Metabase's optional features.
 You can configure these settings by clicking the **grid icon** in the upper right, then going to **Admin** > **Settings** > **General**.
