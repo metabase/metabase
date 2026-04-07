@@ -516,11 +516,10 @@
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number (lib.temporal-bucket/with-temporal-bucket % nil))
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])
-        temporal? #(lib.util/original-isa? % :type/Temporal)
-        with-bucketing? #(clojure.core/and
-                          (temporal? %)
-                          (lib.util/clause? %)
-                          (clojure.core/contains? lib.schema.temporal-bucketing/datetime-truncation-units (:temporal-unit (second %))))
+        date-col-with-bucketing? #(clojure.core/and
+                                   (date-col? %)
+                                   (lib.util/clause? %)
+                                   (clojure.core/contains? lib.schema.temporal-bucketing/datetime-truncation-units (:temporal-unit (second %))))
         result    (fn [op col-ref args]
                     (let [date? (some u.time/matches-date? args)
                           values (mapv u.time/coerce-to-timestamp args)]
@@ -528,13 +527,13 @@
                         {:operator op, :column (ref->col col-ref), :values values, :with-time? (not date?)})))]
     (lib.util.match/match-lite filter-clause
       ;; exactly 1 argument, but the column has a temporal bucketing
-      [(op :guard #{:=}) _ (col-ref :guard date-col?) & (args :len 1 :guard (every? string? args))]
-      (let [unit (:temporal-unit (second col-ref))
-            start (u.time/coerce-to-timestamp (first args))
-            range (u.time/to-range start {:unit unit})]
+      [(op :guard #{:=}) _ (col-ref :guard date-col-with-bucketing?) & (args :len 1 :guard (every? string? args))]
+      (let [unit   (:temporal-unit (second col-ref))
+            start  (u.time/coerce-to-timestamp (first args))
+            values (u.time/to-range start {:unit unit})]
         {:operator :between
-         :column (ref->col col-ref)
-         :values range})
+         :column   (ref->col col-ref)
+         :values   values})
 
       (:or
        ;; exactly 1 argument
