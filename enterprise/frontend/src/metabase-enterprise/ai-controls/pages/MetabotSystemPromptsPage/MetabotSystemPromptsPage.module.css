@@ -1,0 +1,6 @@
+.textareaWrapper {
+  textarea {
+    line-height: 1.25rem;
+    min-height: 400px;
+  }
+}

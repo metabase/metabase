@@ -1320,8 +1320,7 @@
                           (not include-workspace?) (conj [:or
                                                           [:= :schema nil]
                                                           [:not
-                                                          ;; TODO (Chris 2025-12-09) -- dislike coupling to a constant, at least until we have an e2e test
-                                                           [:like :schema "mb__isolation_%"]
+                                                           (driver.u/workspace-isolated-schema-clause :schema)
                                                           ;; TODO (Chris 2025-12-09) -- this might behave terribly without an index when there are lots of workspaces
                                                            #_[:exists {:select [1]
                                                                        :from   [[(t2/table-name :model/Workspace) :w]]

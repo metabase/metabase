@@ -364,6 +364,7 @@ export const tokenFeatures = [
   "tenants",
   "workspaces",
   "writable_connection",
+  "ai_controls",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -591,6 +592,12 @@ interface PublicSettings {
   "session-cookies": boolean | null;
   "setup-token": string | null;
   "metabot-enabled?": boolean;
+  "metabot-name": string;
+  "metabot-icon": string | null;
+  "metabot-show-illustrations": boolean;
+  "metabot-chat-system-prompt": string | null;
+  "metabot-nlq-system-prompt": string | null;
+  "metabot-sql-system-prompt": string | null;
   "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
@@ -774,6 +781,8 @@ export interface EnterpriseSettings extends Settings {
   "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;
   "slack-connect-client-secret"?: string | null;
+  "mcp-apps-cors-enabled-clients": string[] | null;
+  "mcp-apps-cors-custom-origins": string | null;
   /**
    * @deprecated
    */

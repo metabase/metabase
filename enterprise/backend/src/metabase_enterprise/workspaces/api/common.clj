@@ -588,7 +588,7 @@
       (not (or target-db-id ws-db-id))
       {:status 403 :body (deferred-tru "Must target a database")}
 
-      (when-let [schema (:schema target)] (str/starts-with? schema "mb__isolation_"))
+      (when-let [schema (:schema target)] (driver.u/workspace-isolated-schema? schema))
       {:status 403 :body (deferred-tru "Must not target an isolated workspace schema")}
 
       ;; Within a workspace, we defer blocking on conflicts outside the workspace
