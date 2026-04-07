@@ -123,6 +123,27 @@ export type CreateDefineSetting<
 
   widget: W;
 
+  /**
+   * Determines whether the stored value for this setting is still valid given
+   * the current data and resolved settings. Called during the settings
+   * resolution pass before the visualization renders.
+   *
+   * When `isValid` returns `false`, the stored value is discarded and
+   * `getDefault` is used instead. This keeps settings coherent when the
+   * underlying query changes — for example, when a saved column reference no
+   * longer exists in the result set.
+   *
+   * @param series  - The current query result (rows + column metadata).
+   * @param settings - All settings resolved so far, respecting
+   *   `readDependencies` ordering.
+   * @returns `true` to keep the stored value, `false` to fall back to
+   *   `getDefault`.
+   *
+   * @example
+   * // Invalidate a saved column name when it no longer exists in the data
+   * isValid: (series, settings) =>
+   *   series[0].data.cols.some(col => col.name === settings.xColumn),
+   */
   isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
   getDefault?: (
     series: Series,
