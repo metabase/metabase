@@ -7,13 +7,12 @@ import {
   useListAllCustomVizPluginsQuery,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
 import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import { CustomVizListItem } from "./CustomVizListItem";
 import S from "./CustomVizPage.module.css";
-
-const BASE_PATH = "/admin/settings/custom-visualizations";
 
 export function CustomVizPage() {
   const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
@@ -39,7 +38,7 @@ export function CustomVizPage() {
       <Flex justify="flex-end">
         <Button
           component={Link}
-          to={`${BASE_PATH}/new`}
+          to={Urls.customVizAdd()}
           variant="filled"
           leftSection={<Icon name="add" />}
         >

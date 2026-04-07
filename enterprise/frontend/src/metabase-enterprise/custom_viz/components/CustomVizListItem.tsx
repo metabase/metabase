@@ -6,6 +6,7 @@ import {
   useUpdateCustomVizPluginMutation,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import * as Urls from "metabase/lib/urls";
 import {
   ActionIcon,
   Box,
@@ -20,8 +21,6 @@ import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 
 import { CustomVizIcon } from "./CustomVizIcon";
 import S from "./CustomVizListItem.module.css";
-
-const BASE_PATH = "/admin/settings/custom-visualizations";
 
 type Props = {
   plugin: CustomVizPlugin;
@@ -54,7 +53,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
   return (
     <Flex
       component={Link}
-      to={`${BASE_PATH}/edit/${plugin.id}`}
+      to={Urls.customVizEdit(plugin.id)}
       justify="space-between"
       align="center"
       p="md"

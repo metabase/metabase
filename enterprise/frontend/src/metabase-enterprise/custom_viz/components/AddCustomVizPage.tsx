@@ -19,9 +19,8 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { Box, Button, Group, Stack, Text } from "metabase/ui";
-
-const BASE_PATH = "/admin/settings/custom-visualizations";
 
 type Props = {
   params?: {
@@ -69,13 +68,13 @@ export function AddCustomVizPage({ params }: Props) {
           pinned_version: values.pinnedVersion || null,
         }).unwrap();
       }
-      dispatch(push(BASE_PATH));
+      dispatch(push(Urls.customViz()));
     },
     [createPlugin, updatePlugin, plugin, isEdit, dispatch],
   );
 
   const handleCancel = useCallback(() => {
-    dispatch(push(BASE_PATH));
+    dispatch(push(Urls.customViz()));
   }, [dispatch]);
 
   const shouldRedirectToList = isEdit && !plugin && !!plugins;
@@ -83,13 +82,13 @@ export function AddCustomVizPage({ params }: Props) {
 
   useEffect(() => {
     if (shouldRedirectToList) {
-      dispatch(push(BASE_PATH));
+      dispatch(push(Urls.customViz()));
     }
   }, [shouldRedirectToList, dispatch]);
 
   useEffect(() => {
     if (shouldRedirectToDev) {
-      dispatch(push(`${BASE_PATH}/development`));
+      dispatch(push(Urls.customVizDev()));
     }
   }, [shouldRedirectToDev, dispatch]);
 
