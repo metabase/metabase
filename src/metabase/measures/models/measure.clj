@@ -196,7 +196,7 @@
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]
   (let [table-path (or (:table_id measure)
-                       (get-in measure [:definition :stages 0 :source-table]))]
+                       (-> measure :definition serdes/serialized-query-source-table))]
     (into (serdes/storage-path-prefixes (serdes/table->path table-path))
           [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
 
@@ -212,12 +212,21 @@
   {:copy [:name :archived :description :entity_id]
    :skip [:dependency_analysis_version
           ;; dimensions are computed from the query and reconciled on read, not serialized
-          :dimensions :dimension_mappings
-          ;; derived from definition by before-insert via lib/primary-source-table-id
-          :table_id]
+          :dimensions :dimension_mappings]
    :transform {:created_at (serdes/date)
                :creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import import-measure-definition}}
+               :definition {:export serdes/export-mbql :import import-measure-definition}
+               ;; table_id is usually derivable from definition, but must be kept when the
+               ;; definition is broken/empty and table_id is the only reference.
+               :table_id   (let [{:keys [import]} (serdes/fk :model/Table)]
+                             {::serdes/fk true
+                              :export-with-context
+                              (fn [{:keys [definition table_id]} _k _v]
+                                (if (lib/primary-source-table-id definition)
+                                  ::serdes/skip
+                                  (when table_id
+                                    (serdes/*export-table-fk* table_id))))
+                              :import import})}
    :defaults {:archived false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
