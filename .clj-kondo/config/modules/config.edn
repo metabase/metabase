@@ -1154,8 +1154,8 @@
            metabase.mcp.init}
    :uses #{agent-api
            api
-           app-db
            api-scope
+           app-db
            config
            oauth-server
            request
