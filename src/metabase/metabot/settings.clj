@@ -21,6 +21,66 @@
   :export?    true
   :doc        false)
 
+(defsetting metabot-name
+  (deferred-tru "The display name for Metabot.")
+  :type       :string
+  :default    "Metabot"
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-icon
+  (deferred-tru "The icon for Metabot.")
+  :type       :string
+  :default    "metabot"
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-show-illustrations
+  (deferred-tru "Whether to show Metabot illustrations in the UI.")
+  :type       :boolean
+  :default    true
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-chat-system-prompt
+  (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-nlq-system-prompt
+  (deferred-tru "Custom system prompt for the natural language query (AI exploration) experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-sql-system-prompt
+  (deferred-tru "Custom system prompt for the SQL generation experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
   :type       :boolean

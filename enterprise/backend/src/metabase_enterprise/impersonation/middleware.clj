@@ -1,6 +1,7 @@
 (ns metabase-enterprise.impersonation.middleware
   (:require
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
+   [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.interface :as qp.i]
@@ -19,7 +20,8 @@
                    (lib.metadata/database (qp.store/metadata-provider))))]
     (do
       (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
-      (assoc query :impersonation/role role))
+      (-> (driver/validate-impersonated-query driver/*driver* query)
+          (assoc :impersonation/role role)))
     query))
 
 (defenterprise apply-impersonation-postprocessing

@@ -1,6 +1,6 @@
 import { SignJWT } from "jose";
 
-import { extractResourceIdFromJwtToken } from "metabase/lib/utils";
+import { extractResourceIdFromJwtToken } from "metabase/lib/jwt";
 
 const SECRET = new TextEncoder().encode("test-secret-key-for-jwt-signing");
 
@@ -54,7 +54,7 @@ describe("extractResourceIdFromJwtToken", () => {
       resource: { other: "value" },
     });
 
-    expect(extractResourceIdFromJwtToken(token)).toBeUndefined();
+    expect(extractResourceIdFromJwtToken(token)).toBeNull();
   });
 
   it("should return null for invalid base64 payload", () => {
