@@ -391,3 +391,26 @@
                      (get-in response [:headers "Content-Disposition"])
                      (str expected-slug "_"))
                     (str "Expected filename to contain: " expected-slug))))))))))
+
+(deftest combined-parameters-and-template-tags-preserves-parameter-order-test
+  (testing "combined-parameters-and-template-tags should preserve the order of card.parameters (#62079)"
+    ;; Use enough parameters (9) so that Clojure's PersistentHashMap doesn't coincidentally preserve insertion order.
+    ;; PersistentArrayMap (used for <= 8 entries) preserves insertion order, but PersistentHashMap (>= 9) does not.
+    (let [tag-names  ["zeta" "alpha" "mu" "beta" "omega" "gamma" "theta" "delta" "epsilon"]
+          tag-ids    (mapv #(str "_" (str/upper-case %) "_") tag-names)
+          tags       (into {} (map (fn [n id] [n {:id id :name n :display-name (str n " param") :type :text}])
+                                   tag-names tag-ids))
+          params     (mapv (fn [n id] {:id id :type :string/= :slug n :name (str n " param")
+                                       :target [:variable [:template-tag n]]})
+                           tag-names tag-ids)
+          placeholders (str/join " AND " (map #(str % " = {{" % "}}") tag-names))
+          query      (str "SELECT * FROM t WHERE " placeholders)]
+      (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:template-tags tags
+                                                                  :query         query}}
+                                       :parameters    params}]
+        (let [result (qp.card/combined-parameters-and-template-tags card)]
+          (is (= tag-ids
+                 (mapv :id result))
+              "Parameters should be returned in the same order as card.parameters"))))))
