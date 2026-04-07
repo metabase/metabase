@@ -147,6 +147,20 @@
                            :uncompiled sql-args-or-honey-sql-map}
                           e)))))))
 
+(defn streaming-reducible-query
+  "Like `t2/reducible-query` but uses a transaction (autoCommit=false) and a fetch-size
+  to enable server-side cursor streaming on PostgreSQL. Returns a reducible."
+  ([sql-args-or-honey-sql-map]
+   (streaming-reducible-query sql-args-or-honey-sql-map 500))
+  ([sql-args-or-honey-sql-map fetch-size]
+   (let [compiled (compile sql-args-or-honey-sql-map)]
+     (reify clojure.lang.IReduceInit
+       (reduce [_ f init]
+         (t2/with-transaction [conn]
+           (binding [t2.jdbc.options/*options* (merge t2.jdbc.options/*options*
+                                                      {:fetch-size fetch-size})]
+             (reduce f init (t2/reducible-query conn compiled)))))))))
+
 (defmacro with-conflict-retry
   "Retry a database mutation a single time if it fails due to concurrent insertions.
    May retry for other reasons."
