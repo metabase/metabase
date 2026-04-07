@@ -29,12 +29,9 @@
   "Top-level structured program operators keyed as symbols."
   capabilities/query-transform-symbols)
 
-(def ^:private structured-helper-symbols
-  capabilities/helper-symbols)
-
 (def recognized-operator-symbols
   "All recognized operator symbols, including the synthetic `query` helper."
-  (conj structured-helper-symbols 'query))
+  (conj capabilities/helper-symbols 'query))
 
 (def repairable-operator-names
   "Operator names that should be normalized by the repair pass."
