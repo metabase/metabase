@@ -657,26 +657,28 @@
   (let [query  (lib.tu/venues-query)
         column (-> (m/filter-vals some? (meta/field-metadata :checkins :date))
                    (assoc :base-type :type/DateTime :effective-type :type/DateTime))]
+    (testing "= with temporal bucketing returns between filter where range is a single day"
+      (let [date        "2024-11-28"
+            bucketed-col (lib/with-temporal-bucket column :day)
+            clause       (lib.filter/= bucketed-col date)
+            result       (lib.fe-util/specific-date-filter-parts query -1 clause)]
+        (is (=? {:operator   :=
+                 :values     [date]
+                 :with-time? false}
+                (format-date-filter-parts result)))))
+
     (testing "= with temporal bucketing returns between filter"
       (doseq [[unit date expected-end]
-              [[:day     "2024-11-28" "2024-11-29"]
-               [:week    "2024-11-25" "2024-12-02"]
-               [:month   "2024-11-01" "2024-12-01"]
-               [:quarter "2024-10-01" "2025-01-01"]
-               [:year    "2024-01-01" "2025-01-01"]]]
+              [[:week    "2024-11-24" "2024-11-30"]
+               [:month   "2024-11-01" "2024-11-30"]
+               [:quarter "2024-10-01" "2024-12-31"]
+               [:year    "2024-01-01" "2024-12-31"]]]
         (testing (str "unit=" unit)
           (let [bucketed-col (lib/with-temporal-bucket column unit)
                 clause       (lib.filter/= bucketed-col date)
                 result       (lib.fe-util/specific-date-filter-parts query -1 clause)]
             (is (=? {:operator   :between
-                     :values     [(u.time/local-date
-                                   (parse-long (subs date 0 4))
-                                   (parse-long (subs date 5 7))
-                                   (parse-long (subs date 8 10)))
-                                  (u.time/local-date
-                                   (parse-long (subs expected-end 0 4))
-                                   (parse-long (subs expected-end 5 7))
-                                   (parse-long (subs expected-end 8 10)))]
+                     :values     [date expected-end]
                      :with-time? false}
                     (format-date-filter-parts result)))))))))
 

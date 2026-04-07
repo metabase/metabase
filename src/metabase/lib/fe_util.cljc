@@ -528,12 +528,14 @@
     (lib.util.match/match-lite filter-clause
       ;; exactly 1 argument, but the column has a temporal bucketing
       [(op :guard #{:=}) _ (col-ref :guard date-col-with-bucketing?) & (args :len 1 :guard (every? string? args))]
-      (let [unit   (:temporal-unit (second col-ref))
-            start  (u.time/coerce-to-timestamp (first args))
-            values (u.time/to-range start {:unit unit})]
-        {:operator :between
-         :column   (ref->col col-ref)
-         :values   values})
+      (let [unit       (:temporal-unit (second col-ref))
+            with-time? (not (u.time/matches-date? (first args)))
+            start      (u.time/coerce-to-timestamp (first args))
+            date-range (u.time/to-range start {:unit unit})
+            values     (mapv #(u.time/format-date-for-filter % with-time?) date-range)]
+        (if (= (first values) (second values))
+          (result := col-ref [(first values)])
+          (result :between col-ref values)))
 
       (:or
        ;; exactly 1 argument
