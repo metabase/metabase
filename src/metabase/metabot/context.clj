@@ -81,13 +81,11 @@
   "Schema viewing context item with query and charts."
   [:map
    [:type (into [:enum] item-types-qc)]
-   ;; I _think_ following should not be optional
    [:query
     {:optional true}
     [:or
      ::lib.schema/query
      ::mbql.s/Query]]
-   ;; The chart_configs capture only the query for now. For purposes of
    [:chart_configs
     {:optional true}
     [:vector

@@ -6,6 +6,7 @@
    [compojure.response]
    [medley.core :as m]
    [metabase.config.core :as config]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -533,10 +534,10 @@
       (is (nil? (:chart_configs result))))))
 
 (deftest upgrade-viewing-queries-mixed-items-test
-  (let [lq     (legacy-query)
-        items  [{:type "adhoc" :query lq}
-                {:type "dashboard"}
-                {:type "model" :query lq :chart_configs [{:query lq}]}]
+  (let [lq (legacy-query)
+        items [{:type "adhoc" :query lq}
+               {:type "dashboard"}
+               {:type "model" :query lq :chart_configs [{:query lq}]}]
         result (#'api/upgrade-viewing-queries items)]
     (is (=? [{:query {:lib/type :mbql/query}}
              {}
@@ -546,12 +547,26 @@
 
 (deftest upgrade-viewing-queries-idempotence-test
   (let [mp meta/metadata-provider
-        lq     (lib/query mp (lib.metadata/table mp (meta/id :orders)))
-        items  [{:type "adhoc" :query lq}
-                {:type "dashboard"}
-                {:type "model" :query lq :chart_configs [{:query lq}]}]
+        q (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+        items [{:type "adhoc" :query q}
+               {:type "dashboard"}
+               {:type "model" :query q :chart_configs [{:query q}]}]
         result (#'api/upgrade-viewing-queries items)]
-    (is (=? [{:type "adhoc" :query lq}
+    (is (=? [{:type "adhoc" :query q}
              {:type "dashboard"}
-             {:type "model" :query lq :chart_configs [{:query lq}]}]
+             {:type "model" :query q :chart_configs [{:query q}]}]
             result))))
+
+(deftest ^:parallel upgrade-viewing-queries-native-test
+  (testing "Native queries are properly adjusted"
+    (let [mp (mt/metadata-provider)
+          native (lib/native-query mp "select * from orders")
+          legacy (lib.convert/->legacy-MBQL native)
+          items  [{:type "adhoc" :query legacy}
+                  {:type "dashboard"}
+                  {:type "model" :query legacy :chart_configs [{:query legacy}]}]
+          result (#'api/upgrade-viewing-queries items)]
+      (is (=? [{:type "adhoc" :query native}
+               {:type "dashboard"}
+               {:type "model" :query native :chart_configs [{:query native}]}]
+              result)))))
