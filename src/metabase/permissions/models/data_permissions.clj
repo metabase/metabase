@@ -1023,7 +1023,8 @@
                                    :perms/create-queries        :no
                                    :perms/download-results      :one-million-rows
                                    :perms/manage-table-metadata :no
-                                   :perms/manage-database       :no}
+                                   :perms/manage-database       :no
+                                   :perms/transforms            :no}
 
                                   ;; Normal: compute based on group's lowest existing perm level
                                   :else
