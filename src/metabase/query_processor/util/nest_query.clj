@@ -147,6 +147,12 @@
   (let [filter-clause (:filter inner-query)
         keep-filter? (and filter-clause
                           (nil? (lib.util.match/match-one filter-clause :expression)))
+        ;; The nested preprocess call below strips QP keys like :qp/stage-is-from-source-card (via
+        ;; remove-source-card-keys) and :qp/skip-persisted-cache from the source-query. We need to preserve these so
+        ;; that resolve-persisted-source-sql and the persistence middleware can function correctly after nesting.
+        preserved-source-query-keys (select-keys (:source-query inner-query)
+                                                 [:qp/stage-is-from-source-card
+                                                  :qp/skip-persisted-cache])
         source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
                  ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in the
                  ;; first place we already had to do perms checks to make sure the query we're transforming is itself
@@ -163,6 +169,8 @@
                  (dissoc source :limit)
                  (append-join-fields-to-fields source (joined-fields inner-query))
                  (remove-unused-fields inner-query source)
+                 ;; Restore QP keys stripped by the nested preprocess middleware
+                 (m/update-existing source :source-query merge preserved-source-query-keys)
                  (cond-> source
                    keep-filter? (assoc :filter filter-clause)))]
     (-> inner-query
