@@ -8,9 +8,9 @@
    #?@(:cljs [[metabase.lib.cache :as lib.cache]])
    [clojure.string :as str]
    [metabase.lib-metric.hierarchy :as hierarchy]
+   [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib-metric.operators :as operators]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]))
@@ -176,9 +176,7 @@
   "Look up a dimension by UUID from the metadata provider in the definition."
   [definition dimension-id]
   (when-let [mp (:metadata-provider definition)]
-    (first (lib.metadata.protocols/metadatas
-            mp
-            {:lib/type :metadata/dimension :id #{dimension-id}}))))
+    (lib-metric.provider/dimension mp dimension-id)))
 
 (defn- dimension-display-name
   "Get the display name for a dimension reference, falling back to UUID if not found."

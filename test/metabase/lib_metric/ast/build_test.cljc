@@ -4,8 +4,8 @@
    [malli.error :as me]
    [metabase.lib-metric.ast.build :as ast.build]
    [metabase.lib-metric.ast.schema :as ast.schema]
+   [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
    [metabase.util.malli.registry :as mr]))
 
@@ -55,23 +55,22 @@
   "Create a metadata provider that delegates to meta/metadata-provider for table/column queries
    and returns test metric/measure metadata for metric/measure queries."
   [metric-metadata measure-metadata]
-  (reify lib.metadata.protocols/MetadataProvider
-    (metadatas [_this metadata-spec]
-      (case (:lib/type metadata-spec)
-        :metadata/metric
-        (if (contains? (:id metadata-spec) (:id metric-metadata))
-          [metric-metadata]
-          [])
-        :metadata/measure
-        (if (and measure-metadata (contains? (:id metadata-spec) (:id measure-metadata)))
-          [measure-metadata]
-          [])
-        ;; Delegate to base provider for everything else
-        (lib.metadata.protocols/metadatas meta/metadata-provider metadata-spec)))
-    (database [_this]
-      (lib.metadata.protocols/database meta/metadata-provider))
-    (setting [_this setting-key]
-      (lib.metadata.protocols/setting meta/metadata-provider setting-key))))
+  (lib-metric.provider/metric-context-metadata-provider
+   {:metric-fn           (fn [metric-id]
+                           (when (= metric-id (:id metric-metadata))
+                             metric-metadata))
+    :measure-fn          (fn [measure-id]
+                           (when (and measure-metadata (= measure-id (:id measure-metadata)))
+                             measure-metadata))
+    :dimension-fn        (constantly nil)
+    :dims-for-metric-fn  (constantly [])
+    :dims-for-measure-fn (constantly [])
+    :dims-for-table-fn   (constantly [])
+    :cols-for-table-fn   (constantly [])
+    :col-fn              (constantly nil)
+    :table-fn            (constantly nil)
+    :setting-fn          (constantly nil)
+    :db-provider-fn      (constantly meta/metadata-provider)}))
 
 (defn- sample-definition []
   {:lib/type          :metric/definition

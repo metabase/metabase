@@ -5,7 +5,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.metrics.dimension :as metrics.dimension]
    [metabase.metrics.permissions :as metrics.perms]
    [metabase.metrics.transforms :as metrics.transforms]
@@ -63,9 +62,10 @@
    This function only handles the side-effect of syncing dimensions to the database.
    Callers should fetch the entity separately after calling this function."
   [metadata-type id]
-  (when-let [entity (first (lib.metadata.protocols/metadatas
-                            (lib-metric/metadata-provider)
-                            {:lib/type metadata-type :id #{id}}))]
+  (when-let [entity (let [mp (lib-metric/metadata-provider)]
+                      (case metadata-type
+                        :metadata/metric  (lib-metric/metric mp id)
+                        :metadata/measure (lib-metric/measure mp id)))]
     (when-let [query (lib-metric/dimensionable-query entity)]
       (let [mp                 (lib-metric/metadata-provider)
             computed-pairs     (lib-metric/compute-dimension-pairs mp query)

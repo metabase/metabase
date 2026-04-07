@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-metric.js :as lib-metric.js]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.lib-metric.metadata.provider :as lib-metric.provider]))
 
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
 
@@ -25,23 +25,20 @@
 
 (def ^:private mock-provider
   "A mock metadata provider that returns test metric/measure metadata."
-  (reify lib.metadata.protocols/MetadataProvider
-    (database [_this]
-      nil)
-    (metadatas [_this spec]
-      (let [lib-type (:lib/type spec)
-            ids      (:id spec)]
-        (cond
-          (and (= lib-type :metadata/metric) (contains? ids 42))
-          [sample-metric-metadata]
-
-          (and (= lib-type :metadata/measure) (contains? ids 99))
-          [sample-measure-metadata]
-
-          :else
-          [])))
-    (setting [_this _setting-name]
-      nil)))
+  (lib-metric.provider/metric-context-metadata-provider
+   {:metric-fn           (fn [metric-id]
+                           (when (= metric-id 42) sample-metric-metadata))
+    :measure-fn          (fn [measure-id]
+                           (when (= measure-id 99) sample-measure-metadata))
+    :dimension-fn        (constantly nil)
+    :dims-for-metric-fn  (constantly [])
+    :dims-for-measure-fn (constantly [])
+    :dims-for-table-fn   (constantly [])
+    :cols-for-table-fn   (constantly [])
+    :col-fn              (constantly nil)
+    :table-fn            (constantly nil)
+    :setting-fn          (constantly nil)
+    :db-provider-fn      (constantly nil)}))
 
 ;;; -------------------------------------------------- toJsMetricDefinition --------------------------------------------------
 

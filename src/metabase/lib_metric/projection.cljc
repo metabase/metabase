@@ -4,10 +4,11 @@
   (:require
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
+   [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
@@ -330,14 +331,15 @@
         leaf-id   (lib-metric.definition/expression-leaf-id expression)]
     (if-not leaf-type
       []
-      (let [metadata-type (case leaf-type :metric :metadata/metric :measure :metadata/measure)
-            metadata      (first (lib.metadata.protocols/metadatas
-                                  metadata-provider
-                                  {:lib/type metadata-type :id #{leaf-id}}))
+      (let [metadata      (case leaf-type
+                            :metric  (lib-metric.provider/metric metadata-provider leaf-id)
+                            :measure (lib-metric.provider/measure metadata-provider leaf-id))
             raw-query     (lib-metric.dimension/dimensionable-query metadata)]
         (if-not raw-query
           []
-          (let [pmbql-query        (lib/query metadata-provider raw-query)
+          (let [table-id           (or (:table-id metadata) (lib.util/source-table-id raw-query))
+                db-provider        (lib-metric.provider/database-provider-for-table metadata-provider table-id)
+                pmbql-query        (lib/query db-provider raw-query)
                 breakout-clauses   (lib/breakouts pmbql-query)
                 breakout-field-ids (into #{}
                                          (keep lib-metric.dimension/dimension-target->field-id)

@@ -68,6 +68,8 @@
      compute-dimension-pairs]
     [lib-metric.metadata.provider
      database-provider-for-table
+     metric
+     measure
      metric-context-metadata-provider]
     [lib-metric.metadata.jvm
      metadata-provider]
@@ -100,6 +102,8 @@
      (def get-persisted-dimension-mappings "See [[lib-metric.dimension/get-persisted-dimension-mappings]]." lib-metric.dimension/get-persisted-dimension-mappings)
      (def resolve-dimension-to-field-id "See [[lib-metric.dimension/resolve-dimension-to-field-id]]." lib-metric.dimension/resolve-dimension-to-field-id)
      (def database-provider-for-table "See [[lib-metric.metadata.provider/database-provider-for-table]]." lib-metric.metadata.provider/database-provider-for-table)
+     (def metric "See [[lib-metric.metadata.provider/metric]]." lib-metric.metadata.provider/metric)
+     (def measure "See [[lib-metric.metadata.provider/measure]]." lib-metric.metadata.provider/measure)
      (def metric-context-metadata-provider "See [[lib-metric.metadata.provider/metric-context-metadata-provider]]." lib-metric.metadata.provider/metric-context-metadata-provider)
      (def metadata-provider "See [[lib-metric.metadata.js/metadata-provider]]." lib-metric.metadata.js/metadata-provider)
      (def add-projection-positions "See [[lib-metric.projection/add-projection-positions]]." lib-metric.projection/add-projection-positions)

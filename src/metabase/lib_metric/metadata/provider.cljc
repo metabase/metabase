@@ -1,183 +1,129 @@
 (ns metabase.lib-metric.metadata.provider
-  "MetadataProvider for metric-based queries with no single database context.
+  "MetadataProvider protocol and implementation for lib-metric.
 
-   This provider enables building metric queries that can span multiple databases.
-   It has no single database context - instead, it routes metadata requests to
-   database-specific providers based on `table-id`.
+   lib-metric has its own metadata provider protocol rather than using
+   `lib.metadata.protocols/MetadataProvider`. This gives lib-metric a focused API
+   that directly expresses what it needs (metrics, measures, dimensions) without
+   forcing everything through a generic `metadatas` dispatch.
 
-   The provider delegates to underlying database-specific providers for table/column
-   metadata, while managing metric metadata centrally."
+   For operations that require `lib/query`, `lib/visible-columns`, etc., the
+   `database-provider-for-table` method returns a standard `MetadataProvider`
+   scoped to a specific database."
   (:require
    #?@(:clj [[potemkin :as p]])
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli.registry :as mr]))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) MetricMetadataProvider
-  "Protocol extension for metric-specific operations on a MetadataProvider."
+  "Protocol for fetching metadata needed by lib-metric.
+
+   Unlike `lib.metadata.protocols/MetadataProvider`, this protocol has specific
+   methods for each type of metadata lib-metric needs, rather than a single
+   generic `metadatas` method."
+  (metric [this metric-id]
+    "Fetch a single metric by ID. Returns nil if not found.")
+  (measure [this measure-id]
+    "Fetch a single measure by ID. Returns nil if not found.")
+  (dimension [this dimension-uuid]
+    "Fetch a single dimension by UUID. Returns nil if not found.")
+  (dimensions-for-metric [this metric-id]
+    "Fetch all dimensions for a metric. Returns a sequence.")
+  (dimensions-for-measure [this measure-id]
+    "Fetch all dimensions for a measure. Returns a sequence.")
+  (dimensions-for-table [this table-id]
+    "Fetch all dimensions mapped to a table (from both metrics and measures). Returns a sequence.")
+  (columns-for-table [this table-id]
+    "Fetch columns for a table. Returns a sequence.")
+  (column [this table-id field-id]
+    "Fetch a single column by table-id and field-id. Returns nil if not found.")
+  (metric-table [this table-id]
+    "Fetch table metadata by ID. Returns nil if not found.")
+  (metric-setting [this setting-key]
+    "Fetch a Metabase setting value by key.")
   (database-provider-for-table [this table-id]
-    "Get the database-specific MetadataProvider for a given table-id.
-     Returns nil if the table cannot be found."))
+    "Get a standard `lib.metadata.protocols/MetadataProvider` for the database
+     that owns the given table. Used when lib-metric needs to call `lib/query`,
+     `lib/visible-columns`, etc. Returns nil if the table cannot be found."))
 
-(defn- route-table-metadata
-  "Route table metadata request to the appropriate database provider."
-  [table->db-fn db-provider-fn {id-set :id, :as metadata-spec}]
-  (if-not id-set
-    ;; Without specific table IDs, we can't route - return empty
-    []
-    ;; Group table IDs by their database and fetch from each
-    (let [tables-by-db (group-by table->db-fn id-set)]
-      (into []
-            (mapcat (fn [[db-id table-ids]]
-                      (when-let [provider (db-provider-fn db-id)]
-                        (lib.metadata.protocols/metadatas
-                         provider
-                         (assoc metadata-spec :id (set table-ids))))))
-            tables-by-db))))
+(defn metric-metadata-provider?
+  "Whether `x` satisfies the [[MetricMetadataProvider]] protocol."
+  [x]
+  (satisfies? MetricMetadataProvider x))
 
-(defn- route-metadata-by-table
-  "Route a metadata request to the appropriate database provider based on table-id."
-  [table->db-fn db-provider-fn {:keys [table-id], :as metadata-spec}]
-  (when table-id
-    (when-let [db-id (table->db-fn table-id)]
-      (when-let [provider (db-provider-fn db-id)]
-        (lib.metadata.protocols/metadatas provider metadata-spec)))))
+(mr/def ::metric-metadata-provider
+  "Schema for something that satisfies the [[MetricMetadataProvider]] protocol."
+  [:fn
+   {:error/message "Valid MetricMetadataProvider"}
+   #'metric-metadata-provider?])
 
-(defn- route-card-metadata
-  "Route card metadata request. Cards can span databases, so we need to handle this specially."
-  [_table->db-fn _db-provider-fn {_id-set :id, :as _metadata-spec}]
-  ;; Cards are trickier - they have database_id, not table_id
-  ;; For now, if we have specific card IDs, try to fetch from each known database
-  ;; This is a limitation - we'd need a card->database mapping to do this efficiently
-  ;; Return empty for now - callers should use a database-specific provider for cards
-  [])
-
-;; The main provider type that routes requests to database-specific providers
+;; Implementation that delegates to fetcher functions.
+;; This is the primary implementation — both JVM and JS create instances via
+;; the constructor below, passing in platform-specific fetcher fns.
 (deftype MetricContextMetadataProvider
-         [metric-fetcher-fn     ;; (fn [metadata-spec] ...) returns metrics
-          measure-fetcher-fn    ;; (fn [metadata-spec] ...) returns measures (optional, can be nil)
-          dimension-fetcher-fn  ;; (fn [metadata-spec] ...) returns dimensions (optional, can be nil)
-          table->db-fn          ;; (fn [table-id] ...) returns database-id
-          db-provider-fn        ;; (fn [db-id] ...) returns MetadataProvider for that database
-          setting-fn            ;; (fn [setting-key] ...) returns setting value
-          cache                 ;; atom for caching metric, measure, and dimension metadata
-          column-post-process-fn ;; (fn [cols] ...) optional post-processing for columns (can be nil)
+         [metric-fn          ;; (fn [metric-id] ...) returns a single metric or nil
+          measure-fn         ;; (fn [measure-id] ...) returns a single measure or nil
+          dimension-fn       ;; (fn [dimension-uuid] ...) returns a single dimension or nil
+          dims-for-metric-fn ;; (fn [metric-id] ...) returns seq of dimensions
+          dims-for-measure-fn ;; (fn [measure-id] ...) returns seq of dimensions
+          dims-for-table-fn  ;; (fn [table-id] ...) returns seq of dimensions
+          cols-for-table-fn  ;; (fn [table-id] ...) returns seq of columns
+          col-fn             ;; (fn [table-id field-id] ...) returns a single column or nil
+          table-fn           ;; (fn [table-id] ...) returns table metadata or nil
+          setting-fn         ;; (fn [setting-key] ...) returns setting value
+          db-provider-fn     ;; (fn [table-id] ...) returns MetadataProvider or nil
           ]
-  lib.metadata.protocols/MetadataProvider
-  (database [_this]
-    ;; No single database context for metric provider
-    nil)
+  MetricMetadataProvider
+  (metric [_this metric-id]
+    (metric-fn metric-id))
 
-  (metadatas [_this {metadata-type :lib/type, :as metadata-spec}]
-    (case metadata-type
-      :metadata/metric
-      (metric-fetcher-fn metadata-spec)
+  (measure [_this measure-id]
+    (measure-fn measure-id))
 
-      :metadata/table
-      (route-table-metadata table->db-fn db-provider-fn metadata-spec)
+  (dimension [_this dimension-uuid]
+    (dimension-fn dimension-uuid))
 
-      :metadata/column
-      (let [cols (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])]
-        (if column-post-process-fn
-          (column-post-process-fn cols)
-          cols))
+  (dimensions-for-metric [_this metric-id]
+    (dims-for-metric-fn metric-id))
 
-      :metadata/measure
-      (if measure-fetcher-fn
-        (measure-fetcher-fn metadata-spec)
-        (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) []))
+  (dimensions-for-measure [_this measure-id]
+    (dims-for-measure-fn measure-id))
 
-      :metadata/dimension
-      (if dimension-fetcher-fn
-        (dimension-fetcher-fn metadata-spec)
-        [])
+  (dimensions-for-table [_this table-id]
+    (dims-for-table-fn table-id))
 
-      :metadata/segment
-      (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])
+  (columns-for-table [_this table-id]
+    (cols-for-table-fn table-id))
 
-      :metadata/card
-      (route-card-metadata table->db-fn db-provider-fn metadata-spec)
+  (column [_this table-id field-id]
+    (col-fn table-id field-id))
 
-      ;; For other types (native-query-snippet, transform), return empty
-      []))
+  (metric-table [_this table-id]
+    (table-fn table-id))
 
-  (setting [_this setting-key]
+  (metric-setting [_this setting-key]
     (setting-fn setting-key))
 
-  lib.metadata.protocols/CachedMetadataProvider
-  (cached-metadatas [_this metadata-type metadata-ids]
-    (when (#{:metadata/metric :metadata/measure :metadata/dimension} metadata-type)
-      (let [c @cache]
-        (into []
-              (keep #(get c [metadata-type %]))
-              metadata-ids))))
-
-  (store-metadata! [_this object]
-    (when-let [obj-type (:lib/type object)]
-      (when (#{:metadata/metric :metadata/measure :metadata/dimension} obj-type)
-        (swap! cache assoc [obj-type (:id object)] object)))
-    true)
-
-  (cached-value [_this k not-found]
-    (get @cache [::cached-value k] not-found))
-
-  (cache-value! [_this k v]
-    (swap! cache assoc [::cached-value k] v)
-    nil)
-
-  (has-cache? [_this]
-    true)
-
-  (clear-cache! [_this]
-    (reset! cache {})
-    nil)
-
-  MetricMetadataProvider
   (database-provider-for-table [_this table-id]
-    (when-let [db-id (table->db-fn table-id)]
-      (db-provider-fn db-id)))
+    (db-provider-fn table-id)))
 
-  #?(:clj Object :cljs IEquiv)
-  (#?(:clj equals :cljs -equiv) [_this another]
-    (and (instance? MetricContextMetadataProvider another)
-         (= metric-fetcher-fn (.-metric-fetcher-fn ^MetricContextMetadataProvider another))
-         (= measure-fetcher-fn (.-measure-fetcher-fn ^MetricContextMetadataProvider another))
-         (= dimension-fetcher-fn (.-dimension-fetcher-fn ^MetricContextMetadataProvider another))
-         (= table->db-fn (.-table->db-fn ^MetricContextMetadataProvider another))
-         (= db-provider-fn (.-db-provider-fn ^MetricContextMetadataProvider another))
-         (= setting-fn (.-setting-fn ^MetricContextMetadataProvider another))
-         (= column-post-process-fn (.-column-post-process-fn ^MetricContextMetadataProvider another)))))
+(defn metric-context-metadata-provider
+  "Create a [[MetricMetadataProvider]] backed by the given fetcher functions.
 
-(mu/defn metric-context-metadata-provider
-  "Create a MetricMetadataProvider for queries that span multiple databases.
-
-   Arguments:
-   - `metric-fetcher-fn` - `(fn [metadata-spec] ...)` returns metrics matching the spec
-   - `measure-fetcher-fn` (optional) - `(fn [metadata-spec] ...)` returns measures matching the spec
-   - `dimension-fetcher-fn` (optional) - `(fn [metadata-spec] ...)` returns dimensions matching the spec
-   - `table->db-fn` - `(fn [table-id] ...)` returns database-id for a table
-   - `db-provider-fn` - `(fn [db-id] ...)` returns MetadataProvider for that database
-   - `setting-fn` - `(fn [setting-key] ...)` returns setting value
-
-   The returned provider:
-   - Returns nil for `(database provider)` since there's no single database context
-   - Routes metric requests to the metric-fetcher-fn
-   - Routes measure requests to measure-fetcher-fn if provided, otherwise to database provider
-   - Routes dimension requests to dimension-fetcher-fn if provided
-   - Routes table/column/segment requests to the appropriate database provider
-   - Caches metric, measure, and dimension metadata internally"
-  ([metric-fetcher-fn table->db-fn db-provider-fn setting-fn]
-   (metric-context-metadata-provider metric-fetcher-fn nil nil table->db-fn db-provider-fn setting-fn nil))
-  ([metric-fetcher-fn measure-fetcher-fn table->db-fn db-provider-fn setting-fn]
-   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn nil table->db-fn db-provider-fn setting-fn nil))
-  ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn]
-   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn nil))
-  ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn column-post-process-fn]
-   (->MetricContextMetadataProvider
-    metric-fetcher-fn
-    measure-fetcher-fn
-    dimension-fetcher-fn
-    table->db-fn
-    db-provider-fn
-    setting-fn
-    (atom {})
-    column-post-process-fn)))
+   Takes a map with the following keys (all functions):
+   - `:metric-fn`           - `(fn [metric-id])` returns a single metric or nil
+   - `:measure-fn`          - `(fn [measure-id])` returns a single measure or nil
+   - `:dimension-fn`        - `(fn [dimension-uuid])` returns a single dimension or nil
+   - `:dims-for-metric-fn`  - `(fn [metric-id])` returns seq of dimensions
+   - `:dims-for-measure-fn` - `(fn [measure-id])` returns seq of dimensions
+   - `:dims-for-table-fn`   - `(fn [table-id])` returns seq of dimensions
+   - `:cols-for-table-fn`   - `(fn [table-id])` returns seq of columns
+   - `:col-fn`              - `(fn [table-id field-id])` returns a single column or nil
+   - `:table-fn`            - `(fn [table-id])` returns table metadata or nil
+   - `:setting-fn`          - `(fn [setting-key])` returns setting value
+   - `:db-provider-fn`      - `(fn [table-id])` returns a standard MetadataProvider or nil"
+  [{:keys [metric-fn measure-fn dimension-fn
+           dims-for-metric-fn dims-for-measure-fn dims-for-table-fn
+           cols-for-table-fn col-fn table-fn setting-fn db-provider-fn]}]
+  (->MetricContextMetadataProvider
+   metric-fn measure-fn dimension-fn
+   dims-for-metric-fn dims-for-measure-fn dims-for-table-fn
+   cols-for-table-fn col-fn table-fn setting-fn db-provider-fn))

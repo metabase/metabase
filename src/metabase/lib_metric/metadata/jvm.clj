@@ -1,11 +1,10 @@
 (ns metabase.lib-metric.metadata.jvm
-  "JVM implementation of MetricMetadataProvider.
+  "JVM implementation of [[metabase.lib-metric.metadata.provider/MetricMetadataProvider]].
 
-   This provider enables building metric queries that span multiple databases.
-   It fetches metrics from the Card table (type='metric') without database scoping,
-   and routes table/column metadata requests to database-specific providers."
+   Fetches metrics from the Card table (type='metric') without database scoping,
+   measures from the Measure table, and dimensions extracted from both.
+   Table/column metadata is fetched via database-specific providers."
   (:require
-   [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
@@ -27,31 +26,19 @@
      (t2/select-one-fn :db_id :model/Table table-id))
    :lru/threshold 1000))
 
-(defn- metric-spec->honey-sql
-  "Build HoneySQL WHERE clause for fetching metrics.
-   Metrics are Cards with type='metric' - not scoped to any database."
-  [{id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec}]
-  (let [active-only? (not (or id-set name-set))
-        where-clauses (cond-> [[:= :type [:inline "metric"]]]
-                        id-set       (conj [:in :id id-set])
-                        name-set     (conj [:in :name name-set])
-                        table-id     (conj [:= :table_id table-id])
-                        table-id     (conj [:= :source_card_id nil])
-                        card-id      (conj [:= :source_card_id card-id])
-                        active-only? (conj [:= :archived false]))]
-    (reduce sql.helpers/where {} where-clauses)))
+;;; ------------------------------------------------- Metric Fetching -------------------------------------------------
 
-(defn- fetch-metrics
-  "Fetch metrics matching spec, not scoped to any database.
-   Returns metrics as metadata objects with :lib/type :metadata/metric."
-  [metadata-spec]
-  (let [query (metric-spec->honey-sql metadata-spec)]
-    (try
-      (t2/select :metadata/metric query)
-      (catch Throwable e
-        (throw (ex-info "Error fetching metrics with spec"
-                        {:metadata-spec metadata-spec, :query query}
-                        e))))))
+(defn- fetch-metric
+  "Fetch a single metric by ID. Metrics are Cards with type='metric'."
+  [metric-id]
+  (t2/select-one :metadata/metric {:where [:and [:= :type [:inline "metric"]] [:= :id metric-id]]}))
+
+;;; ------------------------------------------------- Measure Fetching -------------------------------------------------
+
+(defn- fetch-measure
+  "Fetch a single measure by ID."
+  [measure-id]
+  (t2/select-one :metadata/measure :measure/id measure-id))
 
 ;;; ------------------------------------------------- Dimension Fetching -------------------------------------------------
 
@@ -61,8 +48,8 @@
    Dimensions are normalized after DB read to fix JSON round-trip artifacts
    (e.g. string enum values for :has-field-values, :status, :sources)."
   [entity source-type]
-  (let [dims         (:dimensions entity)
-        mappings     (:dimension-mappings entity)
+  (let [dims               (:dimensions entity)
+        mappings           (:dimension-mappings entity)
         mappings-by-dim-id (m/index-by :dimension-id mappings)]
     (for [dim dims]
       (-> dim
@@ -74,56 +61,60 @@
            (get mappings-by-dim-id (:id dim))
             (assoc :dimension-mapping (get mappings-by-dim-id (:id dim))))))))
 
-(defn- measure-spec->honey-sql
-  "Build HoneySQL WHERE clause for fetching measures."
-  [{id-set :id, name-set :name, :keys [table-id], :as _metadata-spec}]
-  (let [active-only? (not (or id-set name-set))
-        where-clauses (cond-> []
-                        id-set       (conj [:in :measure/id id-set])
-                        name-set     (conj [:in :measure/name name-set])
-                        table-id     (conj [:= :measure/table_id table-id])
-                        active-only? (conj [:= :measure/archived false]))]
-    (reduce sql.helpers/where {} where-clauses)))
+(defn- fetch-dimensions-for-metric
+  "Fetch all dimensions for a metric by extracting from the metric entity."
+  [metric-id]
+  (when-let [metric (fetch-metric metric-id)]
+    (vec (extract-dimensions-from-entity metric :metric))))
 
-(defn- fetch-measures-for-dimensions
-  "Fetch measures matching spec for dimension extraction."
-  [metadata-spec]
-  (let [query (measure-spec->honey-sql metadata-spec)]
-    (try
-      (t2/select :metadata/measure query)
-      (catch Throwable e
-        (throw (ex-info "Error fetching measures for dimensions"
-                        {:metadata-spec metadata-spec, :query query}
-                        e))))))
+(defn- fetch-dimensions-for-measure
+  "Fetch all dimensions for a measure by extracting from the measure entity."
+  [measure-id]
+  (when-let [measure (fetch-measure measure-id)]
+    (vec (extract-dimensions-from-entity measure :measure))))
 
-(defn- fetch-dimensions
-  "Fetch dimensions by aggregating from metrics and measures.
-   Dimensions are extracted from their parent entities and annotated with source info."
-  [{id-set :id, :keys [metric-id measure-id table-id]}]
-  (let [;; Fetch from metrics if not a measure-specific query
-        metric-dims (when-not measure-id
-                      (let [metric-spec (cond-> {:lib/type :metadata/metric}
-                                          metric-id (assoc :id #{metric-id})
-                                          table-id  (assoc :table-id table-id))
-                            metrics (fetch-metrics metric-spec)]
-                        (mapcat #(extract-dimensions-from-entity % :metric) metrics)))
-        ;; Fetch from measures if not a metric-specific query
-        measure-dims (when-not metric-id
-                       (let [measure-spec (cond-> {:lib/type :metadata/measure}
-                                            measure-id (assoc :id #{measure-id})
-                                            table-id   (assoc :table-id table-id))
-                             measures (fetch-measures-for-dimensions measure-spec)]
-                         (mapcat #(extract-dimensions-from-entity % :measure) measures)))
-        all-dims (concat metric-dims measure-dims)]
-    (cond->> all-dims
-      id-set (filter #(contains? id-set (:id %)))
-      true   vec)))
+(defn- fetch-dimensions-for-table
+  "Fetch all dimensions mapped to a table, from both metrics and measures."
+  [table-id]
+  (let [metrics  (t2/select :metadata/metric {:where [:and
+                                                      [:= :type [:inline "metric"]]
+                                                      [:= :table_id table-id]
+                                                      [:= :source_card_id nil]
+                                                      [:= :archived false]]})
+        measures (t2/select :metadata/measure {:where [:and
+                                                       [:= :measure/table_id table-id]
+                                                       [:= :measure/archived false]]})]
+    (vec (concat (mapcat #(extract-dimensions-from-entity % :metric) metrics)
+                 (mapcat #(extract-dimensions-from-entity % :measure) measures)))))
 
-(mu/defn metadata-provider :- ::lib.metadata.protocols/metadata-provider
-  "Create a MetricMetadataProvider for the JVM.
+;;; ------------------------------------------------- Table/Column Fetching -------------------------------------------------
+
+(defn- make-db-provider-for-table
+  "Create a function that returns a standard MetadataProvider for a given table-id."
+  [table->db db-provider-fn]
+  (fn [table-id]
+    (when-let [db-id (table->db table-id)]
+      (db-provider-fn db-id))))
+
+(defn- fetch-table
+  "Fetch table metadata by ID via the appropriate database provider."
+  [db-provider-for-table-fn table-id]
+  (when-let [provider (db-provider-for-table-fn table-id)]
+    (lib.metadata.protocols/table provider table-id)))
+
+(defn- fetch-columns-for-table
+  "Fetch columns for a table via the appropriate database provider, with optional enrichment."
+  [db-provider-for-table-fn table-id]
+  (when-let [provider (db-provider-for-table-fn table-id)]
+    (let [cols (lib.metadata.protocols/fields provider table-id)]
+      (lib-metric.dimension.jvm/enrich-columns-with-has-field-values cols))))
+
+;;; ------------------------------------------------- Provider Construction -------------------------------------------------
+
+(mu/defn metadata-provider :- ::provider/metric-metadata-provider
+  "Create a [[provider/MetricMetadataProvider]] for the JVM.
 
    This provider:
-   - Has no single database context (database returns nil)
    - Fetches metrics from the Card table across all databases
    - Fetches measures from the Measure table across all databases
    - Fetches dimensions extracted from metrics and measures
@@ -134,28 +125,53 @@
    ```clojure
    (def mp (metadata-provider))
 
-   ;; Returns nil - no single database
-   (lib.metadata.protocols/database mp)
+   ;; Fetch a metric by ID
+   (provider/metric mp 42)
 
-   ;; Fetches metrics across all databases
-   (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric})
+   ;; Fetch dimensions for a metric
+   (provider/dimensions-for-metric mp 42)
 
-   ;; Fetches dimensions from metrics/measures
-   (lib.metadata.protocols/metadatas mp {:lib/type :metadata/dimension :metric-id 1})
+   ;; Fetch columns for a table
+   (provider/columns-for-table mp 1)
 
-   ;; Routes to correct database provider for table 1
-   (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id 1})
+   ;; Get a standard MetadataProvider for lib/* calls
+   (provider/database-provider-for-table mp 1)
    ```"
   []
-  (let [table->db (table->database-id)
-        db-provider-fn (memoize/lru
-                        lib-be/application-database-metadata-provider
-                        :lru/threshold 50)]
+  (let [table->db              (table->database-id)
+        db-provider-fn         (memoize/lru lib-be/application-database-metadata-provider :lru/threshold 50)
+        db-provider-for-table  (make-db-provider-for-table table->db db-provider-fn)
+        ;; Memoize entity fetchers — these are called multiple times for the same ID
+        ;; during AST build, projection, and display-info.
+        memo-metric            (memoize/lru fetch-metric :lru/threshold 200)
+        memo-measure           (memoize/lru fetch-measure :lru/threshold 200)
+        memo-dims-for-metric   (memoize/lru fetch-dimensions-for-metric :lru/threshold 200)
+        memo-dims-for-measure  (memoize/lru fetch-dimensions-for-measure :lru/threshold 200)
+        ;; Lazy index: loads all dimensions on first single-UUID lookup, then O(1).
+        all-dims-by-uuid       (delay
+                                 (let [metrics  (t2/select :metadata/metric
+                                                           {:where [:and
+                                                                    [:= :type [:inline "metric"]]
+                                                                    [:= :archived false]]})
+                                       measures (t2/select :metadata/measure
+                                                           {:where [:= :measure/archived false]})]
+                                   (m/index-by :id
+                                               (concat
+                                                (mapcat #(extract-dimensions-from-entity % :metric) metrics)
+                                                (mapcat #(extract-dimensions-from-entity % :measure) measures)))))]
     (provider/metric-context-metadata-provider
-     fetch-metrics
-     fetch-measures-for-dimensions  ; measure-fetcher-fn - direct fetching by ID
-     fetch-dimensions               ; dimension-fetcher-fn
-     table->db
-     db-provider-fn
-     setting/get
-     lib-metric.dimension.jvm/enrich-columns-with-has-field-values)))
+     {:metric-fn           memo-metric
+      :measure-fn          memo-measure
+      :dimension-fn        (fn [dimension-uuid] (get @all-dims-by-uuid dimension-uuid))
+      :dims-for-metric-fn  memo-dims-for-metric
+      :dims-for-measure-fn memo-dims-for-measure
+      :dims-for-table-fn   fetch-dimensions-for-table
+      :cols-for-table-fn   (partial fetch-columns-for-table db-provider-for-table)
+      :col-fn              (fn [table-id field-id]
+                             (when-let [provider (db-provider-for-table table-id)]
+                               (first (lib.metadata.protocols/metadatas provider {:lib/type :metadata/column
+                                                                                  :table-id table-id
+                                                                                  :id       #{field-id}}))))
+      :table-fn            (partial fetch-table db-provider-for-table)
+      :setting-fn          setting/get
+      :db-provider-fn      db-provider-for-table})))

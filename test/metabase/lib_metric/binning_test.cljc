@@ -82,23 +82,20 @@
   "Create a mock metadata provider that returns the given dimensions for metric-id queries."
   [dimensions]
   (lib-metric.metadata.provider/metric-context-metadata-provider
-   ;; metric-fetcher-fn
-   (fn [_metadata-spec] [])
-   ;; measure-fetcher-fn
-   nil
-   ;; dimension-fetcher-fn
-   (fn [{:keys [metric-id]}]
-     (if metric-id
-       (filterv #(and (= :metric (:source-type %))
-                      (= metric-id (:source-id %)))
-                dimensions)
-       dimensions))
-   ;; table->db-fn
-   (constantly nil)
-   ;; db-provider-fn
-   (constantly nil)
-   ;; setting-fn
-   (constantly nil)))
+   {:metric-fn           (constantly nil)
+    :measure-fn          (constantly nil)
+    :dimension-fn        (fn [uuid] (some #(when (= uuid (:id %)) %) dimensions))
+    :dims-for-metric-fn  (fn [metric-id]
+                           (filterv #(and (= :metric (:source-type %))
+                                          (= metric-id (:source-id %)))
+                                    dimensions))
+    :dims-for-measure-fn (constantly [])
+    :dims-for-table-fn   (constantly dimensions)
+    :cols-for-table-fn   (constantly [])
+    :col-fn              (constantly nil)
+    :table-fn            (constantly nil)
+    :setting-fn          (constantly nil)
+    :db-provider-fn      (constantly nil)}))
 
 (def ^:private sample-dimensions
   [numeric-dimension latitude-dimension longitude-dimension no-sources-dimension text-dimension fk-dimension])

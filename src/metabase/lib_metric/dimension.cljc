@@ -4,9 +4,9 @@
    and reconciled with persisted dimensions on each read."
   (:require
    [medley.core :as m]
+   [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -184,36 +184,28 @@
 (mu/defn dimension :- [:maybe ::lib-metric.schema/metadata-dimension]
   "Fetch a single dimension by UUID from the metadata provider.
    Returns nil if not found."
-  [metadata-provider :- ::lib.metadata.protocols/metadata-provider
+  [metadata-provider :- ::lib-metric.provider/metric-metadata-provider
    dimension-id      :- ::lib-metric.schema/dimension-id]
-  (first (lib.metadata.protocols/metadatas
-          metadata-provider
-          {:lib/type :metadata/dimension :id #{dimension-id}})))
+  (lib-metric.provider/dimension metadata-provider dimension-id))
 
 (mu/defn dimensions-for-metric :- [:sequential ::lib-metric.schema/metadata-dimension]
   "Fetch all dimensions for a metric by metric ID."
-  [metadata-provider :- ::lib.metadata.protocols/metadata-provider
+  [metadata-provider :- ::lib-metric.provider/metric-metadata-provider
    metric-id         :- pos-int?]
-  (lib.metadata.protocols/metadatas
-   metadata-provider
-   {:lib/type :metadata/dimension :metric-id metric-id}))
+  (or (lib-metric.provider/dimensions-for-metric metadata-provider metric-id) []))
 
 (mu/defn dimensions-for-measure :- [:sequential ::lib-metric.schema/metadata-dimension]
   "Fetch all dimensions for a measure by measure ID."
-  [metadata-provider :- ::lib.metadata.protocols/metadata-provider
+  [metadata-provider :- ::lib-metric.provider/metric-metadata-provider
    measure-id        :- pos-int?]
-  (lib.metadata.protocols/metadatas
-   metadata-provider
-   {:lib/type :metadata/dimension :measure-id measure-id}))
+  (or (lib-metric.provider/dimensions-for-measure metadata-provider measure-id) []))
 
 (mu/defn dimensions-for-table :- [:sequential ::lib-metric.schema/metadata-dimension]
   "Fetch all dimensions mapped to a table by table ID.
    This returns dimensions from both metrics and measures that have mappings to the table."
-  [metadata-provider :- ::lib.metadata.protocols/metadata-provider
+  [metadata-provider :- ::lib-metric.provider/metric-metadata-provider
    table-id          :- pos-int?]
-  (lib.metadata.protocols/metadatas
-   metadata-provider
-   {:lib/type :metadata/dimension :table-id table-id}))
+  (or (lib-metric.provider/dimensions-for-table metadata-provider table-id) []))
 
 ;;; ------------------------------------------------- Dimension Resolution -------------------------------------------------
 ;;; Functions for resolving dimension UUIDs to field IDs through dimension mappings.
