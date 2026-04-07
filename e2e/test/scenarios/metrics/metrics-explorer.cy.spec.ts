@@ -119,32 +119,14 @@ const SNAPSHOT_NAME = "metrics-explorer-snapshot";
 /**
  * Add a metric or measure to the explorer via the search panel
  */
-const addMetric = (name: string, waitForRequest: boolean = false) => {
+const addMetric = (name: string) => {
   // for some reason `type` clicks in the middle of the input first
   // so we use `{end}` to make sure we type at the end
   H.MetricsViewer.searchInput().type(`{end}, ${name}`);
   H.MetricsViewer.searchResults().findByText(name).click();
 
-  if (waitForRequest) {
-    cy.wait("@getMetric");
-  }
-
   H.MetricsViewer.runButton().click();
 };
-
-const addMeasure = (name: string, waitForRequest: boolean = false) => {
-  // for some reason `type` clicks in the middle of the input first
-  // so we use `{end}` to make sure we type at the end
-  H.MetricsViewer.searchInput().type(`{end}, ${name}`);
-  H.MetricsViewer.searchResults().findByText(name).click();
-
-  if (waitForRequest) {
-    cy.wait("@getMeasure");
-  }
-
-  H.MetricsViewer.runButton().click();
-};
-
 const addMetricMath = (expression: ({ metricName: string } | string)[]) => {
   H.MetricsViewer.searchInput().type("{end}, ");
   for (const item of expression) {
@@ -328,7 +310,7 @@ describe("scenarios > metrics > explorer", () => {
     it("should not show Edit in Data Studio for users without data studio access", () => {
       cy.signInAsNormalUser();
       H.MetricsViewer.goToViewer();
-      addMetric("Count of orders", true);
+      addMetric("Count of orders");
 
       H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
       H.popover().should("not.contain", "Edit in Data Studio");
@@ -347,7 +329,7 @@ describe("scenarios > metrics > explorer", () => {
         },
       ]);
       H.MetricsViewer.goToViewer();
-      addMetric("Empty Metric", true);
+      addMetric("Empty Metric");
 
       H.MetricsViewer.getMetricVisualization()
         .findByText(/No dice/)
@@ -362,9 +344,9 @@ describe("scenarios > metrics > explorer", () => {
   describe("Adding metrics and measures", () => {
     it("should add multiple metrics", () => {
       H.MetricsViewer.goToViewer();
-      addMetric("Count of products", true);
+      addMetric("Count of products");
       cy.wait("@dataset");
-      addMetric("Count of orders", true);
+      addMetric("Count of orders");
       cy.wait("@dataset");
       verifyMetricCount(2);
 
@@ -372,7 +354,7 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Count of products");
 
       cy.log("Should allow me to add measures");
-      addMeasure("Test Measure", true);
+      addMetric("Test Measure");
 
       cy.log("no results");
       H.MetricsViewer.searchInput().type("{end}, xyznonexistent");
