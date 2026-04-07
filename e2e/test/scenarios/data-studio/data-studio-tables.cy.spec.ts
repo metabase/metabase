@@ -161,6 +161,11 @@ describe("scenarios > data studio > library > tables", () => {
         query: { "source-table": ORDERS_ID },
       });
 
+      H.waitForGraphDependencies(
+        ORDERS_ID,
+        "table",
+        (graph) => graph.edges.length > 0,
+      );
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.DataStudio.Tables.dependenciesTab().click();
       H.DependencyGraph.graph().within(() => {

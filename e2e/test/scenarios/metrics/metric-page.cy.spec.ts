@@ -364,6 +364,11 @@ describe("scenarios > metrics > metric page", () => {
 
     it("should show the Dependencies tab with dependency graph in EE", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+        H.waitForGraphDependencies(
+          metric.id,
+          "card",
+          (graph) => graph.edges.length > 0,
+        );
         H.visitMetric(metric.id);
       });
 

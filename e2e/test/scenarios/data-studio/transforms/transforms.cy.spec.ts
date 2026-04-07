@@ -1924,6 +1924,14 @@ LIMIT
         visitTransform: true,
       });
 
+      cy.url().then((url) => {
+        const transformId = Number(url.match(/transforms\/(\d+)/)?.[1]);
+        H.waitForGraphDependencies(
+          transformId,
+          "transform",
+          (graph) => graph.edges.length > 0,
+        );
+      });
       H.DataStudio.Transforms.dependenciesTab().click();
       H.DataStudio.Dependencies.content()
         .should("contain", "Transform B")
