@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import type { Column, Series } from "./data";
 import type { BaseWidgetProps } from "./viz";
@@ -97,14 +97,14 @@ type OmitBaseWidgetProps<P> = keyof BaseWidgetProps<
 
 type PropsFromWidget<W> = W extends WidgetName
   ? Widgets[W]
-  : W extends (props: infer P) => any
+  : W extends ComponentType<infer P>
     ? OmitBaseWidgetProps<P>
     : never;
 
 export type CreateDefineSetting<
   CustomVisualizationSettings extends Record<string, unknown>,
 > = () => <
-  W extends WidgetName | ((props: any) => any),
+  W extends WidgetName | ComponentType<any>,
   Key extends keyof CustomVisualizationSettings,
 >(settingDefinition: {
   id: Key;
