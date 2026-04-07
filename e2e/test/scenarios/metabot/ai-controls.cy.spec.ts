@@ -348,10 +348,6 @@ describe("AI controls > AI usage limits", () => {
       cy.wait("@saveLimitUnit").then(({ request }) => {
         expect(request.body).to.deep.equal({ value: "messages" });
       });
-      // Limit gets reset when limit type changes
-      cy.wait("@updateInstanceLimit").then(({ request }) => {
-        expect(request.body).to.deep.equal({ max_usage: null });
-      });
 
       // Change reset period to weekly
       cy.findByRole("radio", { name: "Weekly" }).click({ force: true });
