@@ -11,6 +11,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
@@ -62,11 +63,20 @@
 ;; - Use :encode/api transformers to convert kebab-case data from internal functions
 ;; - Convert keyword enum values (like :table, :metric) to strings for JSON
 
+(mr/def ::field-type
+  "A data type for a field derived from Metabase's type hierarchy."
+  [:enum :boolean :date :datetime :time :number :string])
+
+(mr/def ::field-id
+  "Field id as accepted by agent_api endpoints — either a real app-DB field id (positive integer)
+  or a string alias for expression/aggregation columns."
+  [:or ::lib.schema.id/field :string])
+
 (mr/def ::field
   "A field from a table or metric. field_id is the real database field ID (integer) for concrete fields,
   or a string alias for expression/aggregation columns."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:field_id [:or :int :string]]
+   [:field_id ::field-id]
    [:name :string]
    [:display_name :string]
    [:description {:optional true} [:maybe :string]]
@@ -88,7 +98,7 @@
    [:type [:= :metric]]
    [:name :string]
    [:description {:optional true} [:maybe :string]]
-   [:default_time_dimension_field_id {:optional true} [:maybe [:or :int :string]]]])
+   [:default_time_dimension_field_id {:optional true} [:maybe ::field-id]]])
 
 (mr/def ::segment
   "A predefined filter condition that can be applied to queries via the segment_id in filters."
@@ -144,7 +154,7 @@
    [:type [:= :metric]]
    [:name :string]
    [:description {:optional true} [:maybe :string]]
-   [:default_time_dimension_field_id {:optional true} [:maybe [:or :int :string]]]
+   [:default_time_dimension_field_id {:optional true} [:maybe ::field-id]]
    [:verified {:optional true} [:maybe :boolean]]
    [:queryable_dimensions {:optional true} [:maybe [:sequential ::field]]]
    [:segments {:optional true} [:maybe [:sequential ::segment]]]])
@@ -171,7 +181,7 @@
 (mr/def ::field-values
   "Statistics and sample values for a specific field."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:field_id {:optional true} [:maybe [:or :int :string]]]
+   [:field_id {:optional true} [:maybe ::field-id]]
    [:statistics {:optional true} [:maybe ::statistics]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
@@ -323,7 +333,7 @@
 (mr/def ::existence-filter
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "is-null"         "is-not-null"
                  "string-is-empty" "string-is-not-empty"
@@ -333,7 +343,7 @@
 (mr/def ::temporal-extraction-filter
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "year-equals"        "year-not-equals"
                  "quarter-equals"     "quarter-not-equals"
@@ -348,7 +358,7 @@
 (mr/def ::disjunctive-temporal-extraction-filter
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "year-equals"        "year-not-equals"
                  "quarter-equals"     "quarter-not-equals"
@@ -363,7 +373,7 @@
 (mr/def ::temporal-filter
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:bucket {:optional true} ::bucket]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"       "not-equals"
@@ -375,7 +385,7 @@
 (mr/def ::disjunctive-temporal-filter
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:bucket {:optional true} ::bucket]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"       "not-equals"
@@ -387,7 +397,7 @@
 (mr/def ::string-filter
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"             "not-equals"
                  "string-contains"    "string-not-contains"
@@ -398,7 +408,7 @@
 (mr/def ::disjunctive-string-date-filter
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"             "not-equals"
                  "string-contains"    "string-not-contains"
@@ -409,7 +419,7 @@
 (mr/def ::numeric-filter
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"       "not-equals"
                  "greater-than" "greater-than-or-equal"
@@ -420,7 +430,7 @@
 (mr/def ::disjunctive-numeric-filter
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals" "not-equals"]]
     [:values [:sequential [:or :int :double]]]]
@@ -445,7 +455,7 @@
 (mr/def ::group-by
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:field_granularity {:optional true}
      [:maybe [:enum {:encode/tool-api-request keyword}
               "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
@@ -466,7 +476,7 @@
    Use sort_order to order results by this aggregation ('asc' or 'desc')."
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:bucket {:optional true} ::bucket]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
     [:function [:enum {:encode/tool-api-request keyword}
@@ -488,7 +498,7 @@
 (mr/def ::field
   [:and
    [:map
-    [:field_id [:or :int :string]]
+    [:field_id ::field-id]
     [:bucket {:optional true} ::bucket]]
    [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
 
@@ -562,7 +572,7 @@
   unified program format with source and operations."
   [body]
   (let [ops (cond-> []
-                 ;; filters → ["filter", clause] for each
+              ;; filters → ["filter", clause] for each
               (seq (:filters body))
               (into (map (fn [{:keys [field_id operation value values segment_id bucket]}]
                            (if segment_id
@@ -575,8 +585,7 @@
                                  (some? value) ["filter" [operation field-ref value]]
                                  :else         ["filter" [operation field-ref]])))))
                     (:filters body))
-
-                 ;; aggregations
+              ;; aggregations
               (seq (:aggregations body))
               (into (map (fn [{:keys [field_id function measure_id]}]
                            (if measure_id
@@ -585,22 +594,19 @@
                                ["aggregate" [function ["field" (->long field_id)]]]
                                ["aggregate" [function]]))))
                     (:aggregations body))
-
-                 ;; group_by → breakout
+              ;; group_by → breakout
               (seq (:group_by body))
               (into (map (fn [{:keys [field_id field_granularity]}]
                            (if field_granularity
                              ["breakout" ["with-temporal-bucket" ["field" (->long field_id)] field_granularity]]
                              ["breakout" ["field" (->long field_id)]])))
                     (:group_by body))
-
-                 ;; fields → with-fields
+              ;; fields → with-fields
               (seq (:fields body))
               (conj ["with-fields" (mapv (fn [{:keys [field_id]}]
                                            ["field" (->long field_id)])
                                          (:fields body))])
-
-                 ;; order_by
+              ;; order_by
               (seq (:order_by body))
               (into (map (fn [{:keys [field direction]}]
                            (let [field-ref ["field" (->long (:field_id field))]]
@@ -608,14 +614,13 @@
                                ["order-by" field-ref "desc"]
                                ["order-by" field-ref]))))
                     (:order_by body))
-
-                 ;; limit
+              ;; limit
               (:limit body)
               (conj ["limit" (:limit body)]))]
     {:source {:type "context" :ref "source"} :operations ops}))
 
 (defn- construct-query*
-  "Shared query construction: converts body to program, evaluates via agent-lib, returns the raw pMBQL query."
+  "Shared query construction: converts body to program, evaluates via agent-lib, returns the raw MBQL 5 query."
   [body]
   (let [source-entity (cond
                         (:table_id body)  {:type "table"  :id (:table_id body)}
