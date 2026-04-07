@@ -570,3 +570,27 @@
                {:type "dashboard"}
                {:type "model" :query native :chart_configs [{:query native}]}]
               result)))))
+
+(deftest streaming-request-passes-metabot-id-test
+  (testing "streaming-request passes metabot-id to native-agent-streaming-request"
+    (let [captured-args (atom nil)
+          test-metabot-id metabot.config/embedded-metabot-id]
+      (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                    api/store-aiservice-messages!         (constantly nil)
+                    api/native-agent-streaming-request    (fn [args]
+                                                            (reset! captured-args args)
+                                                            ;; Return a minimal streaming response
+                                                            nil)]
+        (api/streaming-request {:metabot_id      test-metabot-id
+                                :profile_id      nil
+                                :message         "test message"
+                                :context         {}
+                                :history         []
+                                :conversation_id (str (random-uuid))
+                                :state           {}
+                                :debug           false})
+        (testing "metabot-id is included in the arguments"
+          (is (some? (:metabot-id @captured-args))
+              "metabot-id should not be nil")
+          (is (= test-metabot-id (:metabot-id @captured-args))
+              "metabot-id should match the input metabot_id"))))))
