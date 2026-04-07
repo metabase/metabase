@@ -11,12 +11,13 @@
 (defn quarter-label->number
   "Convert quarter labels such as `Q1` into the corresponding integer."
   [value]
-  (some->> value
-           str/trim
-           u/upper-case-en
-           (re-matches #"Q([1-4])")
-           second
-           parse-long))
+  (when (string? value)
+    (case (u/upper-case-en (str/trim value))
+      "Q1" 1
+      "Q2" 2
+      "Q3" 3
+      "Q4" 4
+      nil)))
 
 (defn parse-int-string
   "Parse an integer string, returning nil when parsing fails."
@@ -49,7 +50,7 @@
 (defn direction-string?
   "True when `value` is an order direction string or keyword."
   [value]
-  (#{"asc" "desc"} (some-> value syntax/raw-op-name u/lower-case-en)))
+  (boolean (#{"asc" "desc"} (some-> value syntax/raw-op-name u/lower-case-en))))
 
 (defn normalize-direction
   "Normalize a direction enum to its lowercase string form."

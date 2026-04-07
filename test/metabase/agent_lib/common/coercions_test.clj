@@ -53,13 +53,13 @@
 
 (deftest ^:parallel direction-string-test
   (testing "recognizes direction strings"
-    (is (some? (coercions/direction-string? "asc")))
-    (is (some? (coercions/direction-string? "desc")))
-    (is (some? (coercions/direction-string? "ASC")))
-    (is (some? (coercions/direction-string? :desc))))
+    (is (true? (coercions/direction-string? "asc")))
+    (is (true? (coercions/direction-string? "desc")))
+    (is (true? (coercions/direction-string? "ASC")))
+    (is (true? (coercions/direction-string? :desc))))
   (testing "rejects non-direction values"
-    (is (nil? (coercions/direction-string? "up")))
-    (is (nil? (coercions/direction-string? nil)))))
+    (is (false? (coercions/direction-string? "up")))
+    (is (false? (coercions/direction-string? nil)))))
 
 (deftest ^:parallel normalize-direction-test
   (testing "normalizes to lowercase string"
