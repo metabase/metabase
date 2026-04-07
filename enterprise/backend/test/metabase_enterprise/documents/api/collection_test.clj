@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]))
 
 (deftest document-cards-do-not-appear-in-collection-items
@@ -292,3 +293,24 @@
             ;; Verify all pinned docs have non-nil collection_position
             (is (every? #(some? (:collection_position %)) pinned-docs))
             (is (= #{doc1-id doc3-id} (set (map :id pinned-docs))))))))))
+
+(deftest trashed-documents-respect-collection-permissions-test
+  (testing "GET /api/collection/<trash-id>/items does not show trashed documents from collections the user can't access"
+    (mt/with-premium-features #{:documents}
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Restricted Collection"}
+                     :model/Document {item-id :id} {:name            "Secret Document"
+                                                    :collection_id     coll-id
+                                                    :archived          true
+                                                    :archived_directly true}]
+        (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
+        (testing "User without collection access does NOT see the trashed document"
+          (let [items (mt/user-http-request :rasta :get 200
+                                            (format "collection/%d/items" (collection/trash-collection-id)))
+                ids   (set (map :id (filter #(= "document" (:model %)) (:data items))))]
+            (is (not (contains? ids item-id)))))
+        (testing "User WITH collection access DOES see the trashed document"
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (let [items (mt/user-http-request :rasta :get 200
+                                            (format "collection/%d/items" (collection/trash-collection-id)))
+                ids   (set (map :id (filter #(= "document" (:model %)) (:data items))))]
+            (is (contains? ids item-id))))))))
