@@ -4,6 +4,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
@@ -375,7 +376,7 @@
                       (fn [_]
                         (let [n (swap! call-count inc)]
                           (case (int n)
-                          ;; Iteration 1: tool call with usage
+                            ;; Iteration 1: tool call with usage
                             1 (mut/mock-llm-response
                                [{:type :start :id "msg-1"}
                                 {:type      :tool-input
@@ -384,7 +385,7 @@
                                  :arguments {:query "test"}}
                                 {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                  :model "gpt-4" :id "msg-1"}])
-                          ;; Iteration 2: text response with usage
+                            ;; Iteration 2: text response with usage
                             (mut/mock-llm-response
                              [{:type :start :id "msg-2"}
                               {:type :text :text "Done"}
@@ -432,12 +433,13 @@
                                     :profile-id :embedding_next
                                     :context    {}})))
                 usages (filterv #(= :usage (:type %)) result)]
-            (testing "different models accumulate independently"
-              (is (= "model-a" (:model (first usages))))
+            (testing "model is always the canonical provider-and-model from the profile"
+              (is (= test-provider (:model (first usages))))
+              (is (= test-provider (:model (second usages)))))
+            (testing "usage accumulates under the single provider key"
               (is (= {:promptTokens 100 :completionTokens 20}
                      (:usage (first usages))))
-              (is (= "model-b" (:model (second usages))))
-              (is (= {:promptTokens 200 :completionTokens 40}
+              (is (= {:promptTokens 300 :completionTokens 60}
                      (:usage (second usages)))))))))))
 
 (deftest run-agent-loop-retries-on-rate-limit-test
@@ -746,11 +748,11 @@
             (run-agent-loop! opts)
             (is (zero? @classify-called))))
         (testing "does not call classify-and-track-user-intent-async! when api key is not configured"
-          (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
-                                             llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"
-                                             llm-anthropic-api-key               nil]
-            (run-agent-loop! opts)
-            (is (zero? @classify-called))))
+          (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+            (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
+                                               llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"]
+              (run-agent-loop! opts)
+              (is (zero? @classify-called)))))
         (testing "calls classify-and-track-user-intent-async! when llm-metabot-internal-tasks-enabled? is true"
           (mt/with-temporary-setting-values [llm-metabot-internal-tasks-enabled? true
                                              llm-metabot-provider-lite           "anthropic/claude-haiku-4-5"

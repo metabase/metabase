@@ -20,6 +20,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
@@ -51,7 +52,8 @@
                                (= (:type %) "state"))
                          messages)
         messages (-> (remove #(or (= % state) (= % finish)) messages)
-                     vec)]
+                     vec)
+        ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                               (constantly (cond-> {:user_id    api/*current-user-id*}
                                             state (assoc :state state))))
@@ -67,7 +69,8 @@
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
                                        (filter map?)
                                        (map #(+ (:prompt %) (:completion %)))
-                                       (apply +))})))
+                                       (apply +))
+                 :ai_proxied      (boolean ai-proxy?)})))
 
 (defn- extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
@@ -99,6 +102,7 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
+        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
         ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
         ;; :data is like `:navigate_to`
         content    (->> parts
@@ -117,7 +121,8 @@
                    :profile_id      profile-id
                    :total_tokens    (->> (vals usage)
                                          (map #(+ (:prompt %) (:completion %)))
-                                         (reduce + 0))}))))
+                                         (reduce + 0))
+                   :ai_proxied      (boolean ai-proxy?)}))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
@@ -281,7 +286,7 @@
       (throw e))))
 
 (def ^:private metabot-provider-schema
-  [:enum "anthropic" "openai" "openrouter"])
+  (into [:enum] metabot.settings/supported-metabot-providers))
 
 (def ^:private llm-model-response-schema
   [:map
@@ -403,9 +408,7 @@
 
 (defn- current-provider
   []
-  (some-> (metabot.settings/llm-metabot-provider)
-          (str/split #"/" 2)
-          first))
+  (provider-util/provider-and-model->provider (metabot.settings/llm-metabot-provider)))
 
 (defn- api-error->status-code
   [error]
