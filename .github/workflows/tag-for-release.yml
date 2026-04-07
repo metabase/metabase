@@ -19,8 +19,9 @@ on:
 permissions:
   id-token: write
   contents: write
-  actions: read
   checks: write
+  issues: write
+  actions: read
 
 jobs:
   start-message:
