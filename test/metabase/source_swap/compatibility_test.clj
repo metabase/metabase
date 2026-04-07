@@ -106,4 +106,3 @@
     (testing "same effective_type with different base_type via coercion should be compatible"
       (is (= []
              (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
-
