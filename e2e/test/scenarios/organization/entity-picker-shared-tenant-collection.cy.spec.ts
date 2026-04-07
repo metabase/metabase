@@ -1,5 +1,8 @@
 const { H } = cy;
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const TENANT_ROOT_NAME = "Shared collections";
 const TENANT_NAMESPACE = "shared-tenant-collection";
@@ -345,6 +348,79 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
         H.entityPickerModal().within(() => {
           cy.findByText(TENANT_ROOT_NAME).click();
           cy.button(/New dashboard/).should("be.disabled");
+        });
+      });
+    });
+  });
+
+  describe("dashboard edit question picker sidebar", () => {
+    it("should allow admins to browse shared collections and add questions", () => {
+      setupTenantCollections().then(({ tenantCollectionId }) => {
+        H.createQuestion({
+          name: "Tenant Orders Question",
+          collection_id: tenantCollectionId,
+          query: { "source-table": ORDERS_ID },
+        });
+
+        H.createDashboard({
+          name: "Test Dashboard",
+        }).then(({ body: dashboard }) => {
+          H.visitDashboard(dashboard.id);
+          H.editDashboard();
+          H.openQuestionsSidebar();
+
+          H.sidebar().findByText(TENANT_ROOT_NAME).click();
+          H.sidebar().findByText("Test Tenant Collection").click();
+          H.sidebar().findByText("Tenant Orders Question").click();
+
+          H.getDashboardCards().should("have.length", 1);
+        });
+      });
+    });
+
+    it("should show correct breadcrumbs when browsing shared collections", () => {
+      setupTenantCollections().then(({ tenantCollectionId }) => {
+        H.createQuestion({
+          name: "Nested Tenant Question",
+          collection_id: tenantCollectionId,
+          query: { "source-table": ORDERS_ID },
+        });
+
+        H.createDashboard({
+          name: "Test Dashboard",
+        }).then(({ body: dashboard }) => {
+          H.visitDashboard(dashboard.id);
+          H.editDashboard();
+          H.openQuestionsSidebar();
+
+          H.sidebar().findByText(TENANT_ROOT_NAME).click();
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("contain", "Our analytics")
+            .and("contain", TENANT_ROOT_NAME);
+
+          H.sidebar().findByText("Test Tenant Collection").click();
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("contain", "Our analytics")
+            .and("contain", TENANT_ROOT_NAME)
+            .and("contain", "Test Tenant Collection");
+        });
+      });
+    });
+
+    it("should not show shared collections when tenants are disabled", () => {
+      setupTenantCollections().then(() => {
+        H.updateSetting("use-tenants", false);
+
+        H.createDashboard({
+          name: "Test Dashboard",
+        }).then(({ body: dashboard }) => {
+          H.visitDashboard(dashboard.id);
+          H.editDashboard();
+          H.openQuestionsSidebar();
+
+          H.sidebar().findByText(TENANT_ROOT_NAME).should("not.exist");
         });
       });
     });
