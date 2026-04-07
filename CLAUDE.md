@@ -6,9 +6,15 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 ## Clojure
 
+### clojure-mcp tools
+
 - **[clojure-eval](.claude/skills/clojure-eval/SKILL.md)** - Always use this to evaluate Clojure code, **run tests**, and verify edits/compile. Prefer this over shell commands.
 - **[clojure-write](.claude/skills/clojure-write/SKILL.md)** - Clojure/ClojureScript development with REPL-driven workflow and coding conventions
 - **[clojure-review](.claude/skills/clojure-review/SKILL.md)** - Clojure/ClojureScript code review guidelines and style enforcement
+
+### clojure-mcp-lite tools
+
+- **clj-nrepl-eval** - This is another good mechanism for running Clojure code on an nrepl server.
 
 ## TypeScript
 
@@ -28,7 +34,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 ## Running Backend Tests
 
-Use `./bin/test-agent` to run Clojure tests. It produces clean, plain-text output with no progress bars or ANSI codes.
+If you do not have `clojure-eval` available to you or `clj-nrepl-eval`, do not fall back to `clj -X:dev:test` directly. Instead, use `./bin/test-agent`. It produces clean, plain-text output with no progress bars or ANSI codes.
 
 ```bash
 ./bin/test-agent :only '[metabase.foo-test]'              # run a namespace
@@ -36,7 +42,7 @@ Use `./bin/test-agent` to run Clojure tests. It produces clean, plain-text outpu
 ./bin/test-agent :only '[metabase.foo-test metabase.bar-test]'  # multiple namespaces
 ```
 
-Do not use `clj -X:dev:test` directly — its progress-bar output is hard to parse.
+Once again, do not use `clj -X:dev:test` directly — its progress-bar output is hard to parse.
 
 ## Tool Preferences
 
