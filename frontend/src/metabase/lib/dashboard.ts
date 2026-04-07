@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isJWT } from "metabase/lib/utils";
+import { isJWT } from "metabase/lib/jwt";
 import { isUuid } from "metabase/lib/uuid";
 import type {
   ActionDashboardCard,

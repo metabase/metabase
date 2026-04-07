@@ -187,6 +187,22 @@ function useTouchBrush({
     };
 
     const onPointerDown = (event: PointerEvent) => {
+      // A second finger means pinch-to-zoom, not a long press.
+      // Cancel whether the timer is still pending or brush is already active.
+      if (!event.isPrimary) {
+        cancel();
+
+        if (activeRef.current) {
+          activeRef.current = false;
+          // Defer so ECharts finishes processing the current pointer event
+          // before we yank brush mode away. Without this, ECharts can get
+          // stuck with brush enabled after both fingers are released.
+          setTimeout(disableBrush, 0);
+        }
+
+        return;
+      }
+
       if (activeRef.current) {
         return;
       }
