@@ -8,7 +8,7 @@ redirect_from:
 
 # Full app embedding
 
-{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embedding=true %}
 
 {% include shared/in-page-promo-embedding-workshop.html %}
 
