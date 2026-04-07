@@ -16,10 +16,11 @@ import {
 import type { MetricDefinition } from "metabase-lib/metric";
 
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerFormulaEntity,
 } from "../../../types/viewer-state";
-import type { MetricIdentityEntry, MetricNames } from "../utils";
+import type { MetricIdentityEntry } from "../utils";
 import { parseFullTextWithPositions, traverseMetricTokens } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
@@ -45,13 +46,13 @@ class MetricTokenWidget extends WidgetType {
   }
 }
 
-export const setMetricNames = StateEffect.define<MetricNames>();
+export const setMetricEntries = StateEffect.define<MetricDefinitionEntry[]>();
 
-const metricNamesField = StateField.define<MetricNames>({
-  create: () => ({}),
+const metricEntriesField = StateField.define<MetricDefinitionEntry[]>({
+  create: () => [],
   update(entries, tr) {
     for (const effect of tr.effects) {
-      if (effect.is(setMetricNames)) {
+      if (effect.is(setMetricEntries)) {
         return effect.value;
       }
     }
@@ -102,12 +103,12 @@ export const metricIdentityField = StateField.define<RangeSet<MetricIdentity>>({
 
 export function buildMetricIdentities(
   text: string,
-  metricNames: MetricNames,
+  metricEntries: MetricDefinitionEntry[],
   entities: MetricsViewerFormulaEntity[],
 ): RangeSet<MetricIdentity> {
   const ranges: ReturnType<MetricIdentity["range"]>[] = [];
 
-  traverseMetricTokens(text, metricNames, entities, (visit) => {
+  traverseMetricTokens(text, metricEntries, entities, (visit) => {
     const sourceId =
       visit.kind === "standalone" ? visit.entity.id : visit.exprToken.sourceId;
     const definition =
@@ -152,13 +153,13 @@ type MetricRange = { from: number; to: number; name: string };
 function computeMetricTokenRanges(
   docText: string,
   docLength: number,
-  metricNames: MetricNames,
+  metricEntries: MetricDefinitionEntry[],
 ): MetricRange[] {
-  if (Object.keys(metricNames).length === 0) {
+  if (metricEntries.length === 0) {
     return [];
   }
 
-  const tokens = parseFullTextWithPositions(docText, metricNames);
+  const tokens = parseFullTextWithPositions(docText, metricEntries);
   return tokens
     .filter(
       (t) =>
@@ -191,13 +192,13 @@ function rangesToDecorations(ranges: MetricRange[]): DecorationSet {
 const metricTokenRangesField = StateField.define<MetricRange[]>({
   create: () => [],
   update(ranges, tr) {
-    const metricNames = tr.state.field(metricNamesField);
-    const metricNamesChanged = tr.effects.some((e) => e.is(setMetricNames));
-    if (tr.docChanged || metricNamesChanged) {
+    const entries = tr.state.field(metricEntriesField);
+    const entriesChanged = tr.effects.some((e) => e.is(setMetricEntries));
+    if (tr.docChanged || entriesChanged) {
       return computeMetricTokenRanges(
         tr.newDoc.toString(),
         tr.newDoc.length,
-        metricNames,
+        entries,
       );
     }
     return ranges;
@@ -208,8 +209,8 @@ const metricTokenRangesField = StateField.define<MetricRange[]>({
 const metricDecorationsField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
   update(deco, tr) {
-    const metricNamesChanged = tr.effects.some((e) => e.is(setMetricNames));
-    if (tr.docChanged || metricNamesChanged) {
+    const entriesChanged = tr.effects.some((e) => e.is(setMetricEntries));
+    if (tr.docChanged || entriesChanged) {
       return rangesToDecorations(tr.state.field(metricTokenRangesField));
     }
     return deco;
@@ -288,7 +289,7 @@ const metricTokenKeymap = keymap.of([
 ]);
 
 export const metricTokenHighlight = [
-  metricNamesField,
+  metricEntriesField,
   metricIdentityField,
   metricTokenRangesField,
   metricDecorationsField,

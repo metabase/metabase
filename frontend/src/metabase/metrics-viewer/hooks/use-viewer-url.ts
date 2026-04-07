@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { push, replace } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -35,101 +35,90 @@ export function useViewerUrl(
   onLoadSources: (request: LoadSourcesRequest) => void,
   location: Location,
   setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void,
-): { initialLoadComplete: boolean } {
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+): void {
   const dispatch = useDispatch();
   const lastHashRef = useRef<string | null>(null);
 
   // sync URL to state
   useEffect(() => {
-    try {
-      let hash = location.hash.slice(1);
-      let serializedState: SerializedMetricsViewerPageState;
+    let hash = location.hash.slice(1);
+    let serializedState: SerializedMetricsViewerPageState;
 
-      if (!hash) {
-        const params = new URLSearchParams(location.search);
-        const metricId = params.get("metricId");
-        if (metricId) {
-          serializedState = {
-            formulaEntities: [{ type: "metric", id: parseInt(metricId, 10) }],
-            tabs: [],
-            selectedTabId: null,
-          };
-          const encodedHash = encodeState(serializedState);
-          if (encodedHash === undefined) {
-            setInitialLoadComplete(true);
-            return;
-          }
-          hash = encodedHash;
-        } else {
-          serializedState = decodeState(hash);
+    if (!hash) {
+      const params = new URLSearchParams(location.search);
+      const metricId = params.get("metricId");
+      if (metricId) {
+        serializedState = {
+          formulaEntities: [{ type: "metric", id: parseInt(metricId, 10) }],
+          tabs: [],
+          selectedTabId: null,
+        };
+        const encodedHash = encodeState(serializedState);
+        if (encodedHash === undefined) {
+          return;
         }
+        hash = encodedHash;
       } else {
         serializedState = decodeState(hash);
       }
+    } else {
+      serializedState = decodeState(hash);
+    }
 
-      if (hash === lastHashRef.current) {
-        setInitialLoadComplete(true);
-        return;
-      }
-      lastHashRef.current = hash;
+    if (hash === lastHashRef.current) {
+      return;
+    }
+    lastHashRef.current = hash;
 
-      if (serializedState.tabs.length > 0) {
-        const tabs: MetricsViewerTabState[] =
-          serializedState.tabs.map(deserializeTab);
+    if (serializedState.tabs.length > 0) {
+      const tabs: MetricsViewerTabState[] =
+        serializedState.tabs.map(deserializeTab);
 
-        initialize({
-          definitions: {},
-          formulaEntities: [],
-          tabs,
-          selectedTabId: serializedState.selectedTabId,
-        });
-      }
-
-      const metricIds: MetricId[] = [];
-      const measureIds: MeasureId[] = [];
-
-      const restoredFormulaEntities =
-        deserializeFormulaEntities(serializedState);
-
-      restoredFormulaEntities.forEach((entity) => {
-        if (isMetricEntry(entity)) {
-          const { type, id } = parseSourceId(entity.id);
-          if (type === "metric") {
-            metricIds.push(id);
-          } else if (type === "measure") {
-            measureIds.push(id);
-          }
-        }
-        if (isExpressionEntry(entity)) {
-          entity.tokens.forEach((token) => {
-            if (token.type === "metric") {
-              const { type, id } = parseSourceId(token.sourceId);
-              if (type === "metric") {
-                metricIds.push(id);
-              } else if (type === "measure") {
-                measureIds.push(id);
-              }
-            }
-          });
-        }
+      initialize({
+        definitions: {},
+        formulaEntities: [],
+        tabs,
+        selectedTabId: serializedState.selectedTabId,
       });
+    }
 
-      if (metricIds.length > 0 || measureIds.length > 0) {
-        onLoadSources({
-          metricIds,
-          measureIds,
+    const metricIds: MetricId[] = [];
+    const measureIds: MeasureId[] = [];
+
+    const restoredFormulaEntities = deserializeFormulaEntities(serializedState);
+
+    restoredFormulaEntities.forEach((entity) => {
+      if (isMetricEntry(entity)) {
+        const { type, id } = parseSourceId(entity.id);
+        if (type === "metric") {
+          metricIds.push(id);
+        } else if (type === "measure") {
+          measureIds.push(id);
+        }
+      }
+      if (isExpressionEntry(entity)) {
+        entity.tokens.forEach((token) => {
+          if (token.type === "metric") {
+            const { type, id } = parseSourceId(token.sourceId);
+            if (type === "metric") {
+              metricIds.push(id);
+            } else if (type === "measure") {
+              measureIds.push(id);
+            }
+          }
         });
-      } else {
-        setInitialLoadComplete(true);
       }
+    });
 
-      if (restoredFormulaEntities.length > 0) {
-        setFormulaEntities(restoredFormulaEntities);
-      }
-    } catch (error) {
-      console.error(error);
-      setInitialLoadComplete(true);
+    if (metricIds.length > 0 || measureIds.length > 0) {
+      onLoadSources({
+        metricIds,
+        measureIds,
+      });
+    }
+
+    if (restoredFormulaEntities.length > 0) {
+      setFormulaEntities(restoredFormulaEntities);
     }
   }, [location, dispatch, initialize, onLoadSources, setFormulaEntities]);
 
@@ -157,8 +146,6 @@ export function useViewerUrl(
       return;
     }
 
-    setInitialLoadComplete(true);
-
     const serializedState = stateToSerializedState(state);
     const hash = encodeState(serializedState);
     if (hash !== undefined && hash !== lastHashRef.current) {
@@ -171,6 +158,4 @@ export function useViewerUrl(
       }
     }
   }, [state, dispatch]);
-
-  return { initialLoadComplete };
 }

@@ -3,14 +3,17 @@ import { t } from "ttag";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { Badge, Flex, Pill } from "metabase/ui";
 
-import type { ExpressionDefinitionEntry } from "../../../types/viewer-state";
-import { type MetricNames, buildExpressionForPill } from "../utils";
+import type {
+  ExpressionDefinitionEntry,
+  MetricsViewerDefinitionEntry,
+} from "../../../types/viewer-state";
+import { buildExpressionForPill } from "../utils";
 
 import S from "./MetricExpressionPill.module.css";
 
 type MetricExpressionPillProps = {
   expressionEntry: ExpressionDefinitionEntry;
-  metricNames: MetricNames;
+  metricEntries: MetricsViewerDefinitionEntry[];
   colors?: string[];
   onClick: (e: React.MouseEvent) => void;
   onRemove: () => void;
@@ -18,14 +21,14 @@ type MetricExpressionPillProps = {
 
 export function MetricExpressionPill({
   expressionEntry,
-  metricNames,
+  metricEntries,
   colors,
   onClick,
   onRemove,
 }: MetricExpressionPillProps) {
   const expression = buildExpressionForPill(
     expressionEntry.tokens,
-    metricNames,
+    metricEntries,
   );
   return (
     <Pill
