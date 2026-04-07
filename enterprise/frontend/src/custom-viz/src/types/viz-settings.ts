@@ -107,11 +107,33 @@ export type CreateDefineSetting<
   W extends WidgetName | ComponentType<any>,
   Key extends keyof CustomVisualizationSettings,
 >(settingDefinition: {
+  /** Unique key that identifies this setting. Must match the key used in your
+   *  `CustomVisualizationSettings` type and in the `settings` map passed to
+   *  `createCustomVisualization`. */
   id: Key;
+
+  /** Top-level tab that this setting appears under in the settings sidebar
+   *  (e.g. `"Data"`, `"Display"`, `"Axes"`). Settings with the same
+   *  `section` value are grouped under the same tab. Omit to place the
+   *  setting outside of any section. */
   section?: string;
+
+  /** Human-readable label rendered above the widget in the sidebar. */
   title?: string;
+
+  /** Sub-heading within a `section` used to cluster related settings
+   *  visually (e.g. `"X-axis"`, `"Y-axis"`). Settings sharing the same
+   *  `group` within a section are rendered under a common sub-heading. */
   group?: string;
+
+  /** Controls the display order of settings within a section/group.
+   *  Lower numbers appear first. Settings without an `index` are ordered
+   *  by declaration order as a fallback. */
   index?: number;
+
+  /** When `true`, the widget is rendered on the same line as its `title`
+   *  label rather than below it. Best suited for compact widgets like
+   *  `"toggle"`. */
   inline?: boolean;
 
   persistDefault?: boolean;

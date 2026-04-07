@@ -50,7 +50,11 @@ export const createMyViz: CreateCustomVisualization<MyVizSettings> = ({
       }),
       metricsColumn: defineSetting({
         id: "metricsColumn",
+        title: "Metrics column",
         widget: "field",
+        index: 0,
+        group: "Metrics",
+        section: "Data",
         getDefault: (series) => series[0]?.data.cols[0]?.name,
         isValid: (series, settings) =>
           series[0]?.data.cols.some(
