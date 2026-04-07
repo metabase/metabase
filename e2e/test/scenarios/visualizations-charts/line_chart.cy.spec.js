@@ -820,7 +820,7 @@ describe("scenarios > visualizations > line chart", () => {
     H.openVizSettingsSidebar();
     H.leftSidebar().within(() => {
       cy.findByText("Display").click();
-      cy.findByText("Split series into panels").click();
+      cy.findByText("Stack series").click();
     });
 
     H.echartsContainer().within(() => {

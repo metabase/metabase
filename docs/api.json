@@ -6556,12 +6556,15 @@
         } ]
       },
       "metabase.lib-metric.schema.typed-projection" : {
-        "description" : "A projection associated with a specific source type and ID.",
+        "description" : "A projection associated with a specific expression leaf instance via :lib/uuid.\n   The :type and :id identify the source metric/measure for metadata resolution.\n   The :lib/uuid disambiguates multiple references to the same metric/measure in an expression.",
         "type" : "object",
         "properties" : {
           "id" : {
             "type" : "integer",
             "minimum" : 1
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "projection" : {
             "type" : "array",
@@ -6574,7 +6577,7 @@
             "enum" : [ "metric", "measure" ]
           }
         },
-        "required" : [ "type", "id", "projection" ]
+        "required" : [ "type", "id", "lib/uuid", "projection" ]
       },
       "metabase.lib-metric.schema.typed-projections" : {
         "description" : "A sequence of typed projections.",
@@ -9780,8 +9783,30 @@
         "required" : [ "id", "name", "table_id", "definition", "archived", "creator_id", "created_at", "updated_at" ]
       },
       "metabase.metabot.context.context" : {
-        "type" : "object",
-        "additionalProperties" : { }
+        "allOf" : [ {
+          "type" : "object",
+          "additionalProperties" : { }
+        }, {
+          "type" : "object",
+          "properties" : {
+            "user_is_viewing" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "query" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.query"
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "enum" : [ "dashboard", "model", "transform", "code_editor", "document", "question", "metric", "adhoc" ]
+                  }
+                },
+                "required" : [ "type" ]
+              }
+            }
+          }
+        } ]
       },
       "metabase.metabot.schema.message" : {
         "type" : "object",
@@ -12942,7 +12967,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-execute",
         "summary" : "POST /api/agent/v1/execute",
-        "description" : "Execute an MBQL query and return results.\n\n  Accepts a base64-encoded MBQL query (as returned by /v1/construct-query) and executes it,\n  returning results with column metadata.\n\n  Response format:\n  - On success: {:data {:cols [...] :rows [...]} :row_count N :status :completed :running_time M}\n  - On failure: {:status :failed :error \"message\" ...}\n\n  Agent query row limits are enforced (200 rows per request).",
+        "description" : "Execute an MBQL query and return results.\n\n  Accepts a base64-encoded MBQL query (as returned by /v1/construct-query) and executes it,\n  returning results with column metadata.\n\n  Response format:\n  - On success: {:data {:cols [...] :rows [...]} :row_count N :status :completed :running_time M}\n  - On failure: {:status :failed :error \"message\" ...}\n\n  Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated).",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -23575,6 +23600,139 @@
         "tags" : [ "/api/ee/advanced-permissions/impersonation" ]
       }
     },
+    "/api/ee/ai-controls/permissions" : {
+      "get" : {
+        "operationId" : "get-api-ee-ai-controls-permissions",
+        "summary" : "GET /api/ee/ai-controls/permissions",
+        "description" : "List all metabot permissions for all groups, filling in defaults for missing entries.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "permissions" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "group_id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "perm_type" : {
+                            "type" : "string",
+                            "enum" : [ "permission/metabot", "permission/metabot-nlq", "permission/metabot-other-tools", "permission/metabot-sql-generation" ]
+                          },
+                          "perm_value" : {
+                            "type" : "string",
+                            "enum" : [ "yes", "no" ]
+                          }
+                        },
+                        "required" : [ "group_id", "perm_type", "perm_value" ]
+                      }
+                    }
+                  },
+                  "required" : [ "permissions" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/permissions" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-ai-controls-permissions",
+        "summary" : "PUT /api/ee/ai-controls/permissions",
+        "description" : "Update metabot permissions for all groups. Upserts each permission entry and returns the full\n   permissions list with defaults filled in.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "permissions" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : {
+                          "group_id" : {
+                            "type" : "integer",
+                            "minimum" : 1
+                          },
+                          "perm_type" : {
+                            "type" : "string",
+                            "enum" : [ "permission/metabot", "permission/metabot-nlq", "permission/metabot-other-tools", "permission/metabot-sql-generation" ]
+                          },
+                          "perm_value" : {
+                            "type" : "string",
+                            "enum" : [ "yes", "no" ]
+                          }
+                        },
+                        "required" : [ "group_id", "perm_type", "perm_value" ]
+                      }
+                    }
+                  },
+                  "required" : [ "permissions" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "permissions" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "group_id" : {
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "perm_type" : {
+                          "type" : "string",
+                          "enum" : [ "permission/metabot-nlq", "permission/metabot-sql-generation", "permission/metabot-other-tools", "permission/metabot" ]
+                        },
+                        "perm_value" : {
+                          "type" : "string",
+                          "enum" : [ "yes", "no" ]
+                        }
+                      },
+                      "required" : [ "group_id", "perm_type", "perm_value" ]
+                    }
+                  }
+                },
+                "required" : [ "permissions" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/permissions" ]
+      }
+    },
     "/api/ee/audit-app/analytics-dev/export" : {
       "post" : {
         "operationId" : "post-api-ee-audit-app-analytics-dev-export",
@@ -23726,7 +23884,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution", "transforms", "transforms-basic", "transforms-advanced" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
           }
         } ],
         "responses" : {
@@ -33466,150 +33624,6 @@
         "tags" : [ "/api/metabot" ]
       }
     },
-    "/api/metabot/describe/card" : {
-      "post" : {
-        "operationId" : "post-api-metabot-describe-card",
-        "summary" : "POST /api/metabot/describe/card",
-        "description" : "Summarize a question.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "visualization_settings" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "dataset" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "dataset_query" : {
-                    "description" : "Value must be a map.",
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "parameter_mappings" : {
-                    "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mapping"
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "collection_position" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "result_metadata" : {
-                    "oneOf" : [ {
-                      "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "collection_id" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "cache_ttl" : {
-                    "oneOf" : [ {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "display" : {
-                    "type" : "string",
-                    "minLength" : 1
-                  },
-                  "parameters" : {
-                    "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "#/components/schemas/metabase.parameters.schema.parameter"
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "description" : {
-                    "oneOf" : [ {
-                      "type" : "string",
-                      "minLength" : 1
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "required" : [ "dataset_query", "display", "visualization_settings" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/metabot" ]
-      }
-    },
-    "/api/metabot/describe/dashboard/{id}" : {
-      "post" : {
-        "operationId" : "post-api-metabot-describe-dashboard-id",
-        "summary" : "POST /api/metabot/describe/dashboard/{id}",
-        "description" : "Provide a summary of a dashboard.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/metabot" ]
-      }
-    },
     "/api/metabot/document/generate-content" : {
       "post" : {
         "operationId" : "post-api-metabot-document-generate-content",
@@ -33984,6 +33998,58 @@
           }
         },
         "tags" : [ "/api/metabot/metabot" ]
+      }
+    },
+    "/api/metabot/permissions/user-permissions" : {
+      "get" : {
+        "operationId" : "get-api-metabot-permissions-user-permissions",
+        "summary" : "GET /api/metabot/permissions/user-permissions",
+        "description" : "Return the current user's resolved metabot permissions, taking the most\n  permissive value across all their groups.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "permissions" : {
+                      "type" : "object",
+                      "properties" : {
+                        "metabot" : {
+                          "type" : "string",
+                          "enum" : [ "yes", "no" ]
+                        },
+                        "metabot-nlq" : {
+                          "type" : "string",
+                          "enum" : [ "yes", "no" ]
+                        },
+                        "metabot-other-tools" : {
+                          "type" : "string",
+                          "enum" : [ "yes", "no" ]
+                        },
+                        "metabot-sql-generation" : {
+                          "type" : "string",
+                          "enum" : [ "yes", "no" ]
+                        }
+                      },
+                      "required" : [ "metabot", "metabot-sql-generation", "metabot-nlq", "metabot-other-tools" ]
+                    }
+                  },
+                  "required" : [ "permissions" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metabot/permissions" ]
       }
     },
     "/api/metabot/settings" : {

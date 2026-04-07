@@ -314,6 +314,12 @@ describe("scenarios > dependencies > unreferenced list", () => {
   describe("selecting entities", () => {
     it("should show the sidebar for supported entities and trigger snowplow event", () => {
       setupEntities();
+      H.waitForUnreferencedEntities((entities) =>
+        entities.some(
+          (e) =>
+            e.type === "table" && e.data.display_name === TABLE_DISPLAY_NAME,
+        ),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
 
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
@@ -399,19 +405,30 @@ describe("scenarios > dependencies > unreferenced list", () => {
 function setupEntities({
   withReferences = false,
 }: { withReferences?: boolean } = {}) {
-  setupTableContent();
+  setupTableContent({ withReferences });
   setupModelContent({ withReferences });
   setupSegmentContent({ withReferences });
   setupMetricContent({ withReferences });
   setupSnippetContent({ withReferences });
 }
 
-function setupTableContent() {
+function setupTableContent({
+  withReferences = false,
+}: {
+  withReferences?: boolean;
+}) {
   H.getTableId({ name: TABLE_NAME }).then((tableId) => {
     cy.request("PUT", `/api/table/${tableId}`, {
       display_name: TABLE_DISPLAY_NAME,
       description: TABLE_DESCRIPTION,
       owner_user_id: ADMIN_USER_ID,
+    }).then(() => {
+      if (withReferences) {
+        createQuestionWithTableDataSource({
+          name: `${TABLE_DISPLAY_NAME} -> Question`,
+          tableId,
+        });
+      }
     });
   });
 }
@@ -670,6 +687,22 @@ function createQuestionWithModelDataSource({
     type: "question",
     query: {
       "source-table": `card__${modelId}`,
+    },
+  });
+}
+
+function createQuestionWithTableDataSource({
+  name,
+  tableId,
+}: {
+  name: string;
+  tableId: TableId;
+}) {
+  return H.createQuestion({
+    name,
+    type: "question",
+    query: {
+      "source-table": tableId,
     },
   });
 }

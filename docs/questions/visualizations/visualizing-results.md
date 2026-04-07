@@ -12,7 +12,7 @@ While tables are useful for looking up information or finding specific numbers, 
 
 ## Visualize query results
 
-The query builder will automatically select an appropriate chart to visual your results. With native queries, however, you'll need to manually select a chart type.
+The query builder will automatically select an appropriate chart to visualize your results. With native queries, however, you'll need to manually select a chart type.
 
 ### Visualizing questions in the query builder
 

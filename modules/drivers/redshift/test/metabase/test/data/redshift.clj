@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -33,11 +34,6 @@
 
 ;;; need to load this so we can properly override the implementation of `describe-database` below
 (comment metabase.driver.redshift/keep-me)
-
-(def ^:private workspace-isolation-prefix (or
-                                           @(requiring-resolve 'metabase-enterprise.workspaces.util/isolated-prefix)
-                                           ;; OSS might not be able to require it
-                                           "mb__isolation"))
 
 (defmethod driver/database-supports? [:redshift :test/time-type]
   [_driver _feature _database]
@@ -211,15 +207,14 @@
   left behind by workspace tests. Only deletes isolation schemas older than [[hours-before-expired-threshold]]
   to avoid interfering with parallel test runs."
   [^java.sql.Connection conn]
-  (let [isolation-pattern (str workspace-isolation-prefix "_")
-        {old-convention   :old
+  (let [{old-convention   :old
          caches-with-info :cache
          isolation        :isolation} (reduce (fn [acc s]
                                                 (cond (sql.tu.unique-prefix/old-dataset-name? s)
                                                       (update acc :old conj s)
                                                       (str/starts-with? s "metabase_cache_")
                                                       (update acc :cache conj s)
-                                                      (str/starts-with? s isolation-pattern)
+                                                      (driver.u/workspace-isolated-schema? s)
                                                       (update acc :isolation conj s)
                                                       :else acc))
                                               {:old [] :cache [] :isolation []}

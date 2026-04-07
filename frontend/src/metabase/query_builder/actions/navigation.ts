@@ -2,6 +2,7 @@ import type { Location } from "history";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
+import { resetUIControls } from "metabase/redux/query-builder";
 import { getLocation } from "metabase/selectors/routing";
 import type { Dispatch } from "metabase-types/store";
 
@@ -18,7 +19,7 @@ import { type QueryParams, initializeQB } from "./core/initializeQB";
 import { resetRowZoom } from "./object-detail";
 import { cancelQuery } from "./querying";
 import { setCurrentState } from "./state";
-import { resetUIControls, setQueryBuilderMode } from "./ui";
+import { setQueryBuilderMode } from "./ui";
 import { zoomInRow } from "./zoom";
 
 export const POP_STATE = "metabase/qb/POP_STATE";

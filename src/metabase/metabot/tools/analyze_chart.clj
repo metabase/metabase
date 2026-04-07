@@ -5,6 +5,7 @@
   series data in chart_configs, which is seeded into agent memory during
   initialization. This avoids re-executing queries."
   (:require
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.stats.core :as stats.core]
    [metabase.metabot.stats.repr :as stats.repr]
    [metabase.metabot.tools.shared :as shared]
@@ -50,7 +51,8 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
           stringify-series-keys))
 
 (mu/defn ^{:tool-name "analyze_chart"
-           :prompt    "analyze_chart"}
+           :prompt    "analyze_chart"
+           :scope     scope/agent-viz-read}
   analyze-chart-tool
   "Compute statistics and generate analysis context for a chart.
   Use this to analyze trends, outliers, volatility, and patterns in chart data.

@@ -292,8 +292,8 @@
                                    :breakout     [[:expression "My Date" {:base-type "type/DateTime"}]
                                                   [:field 101 {:base-type "type/Text"}]]
                                    :aggregation  [[:cum-count]]}}
-          pmbql         (lib/query mp legacy-query)
-          pmbql-with-meta (assoc-in pmbql [:stages 0 :lib/stage-metadata]
+          mbql5         (lib/query mp legacy-query)
+          mbql5-with-meta (assoc-in mbql5 [:stages 0 :lib/stage-metadata]
                                     {:lib/type :metadata/results
                                      :columns  [{:lib/type  :metadata/column
                                                  :name      "DATE_COL"
@@ -305,7 +305,7 @@
                                                  :base-type :type/Text
                                                  :id        101
                                                  :table-id  10}]})
-          result (fix-bad-field-id-refs/fix-bad-field-id-refs pmbql-with-meta)]
+          result (fix-bad-field-id-refs/fix-bad-field-id-refs mbql5-with-meta)]
       (testing "expression definition must retain :lib/expression-name after fix-bad-field-id-refs"
         (is (=? {:stages [{} {:expressions [[:field {:lib/expression-name "My Date"} "DATE_COL"]]}]}
                 result)))

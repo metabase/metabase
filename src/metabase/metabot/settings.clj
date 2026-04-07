@@ -21,6 +21,66 @@
   :export?    true
   :doc        false)
 
+(defsetting metabot-name
+  (deferred-tru "The display name for Metabot.")
+  :type       :string
+  :default    "Metabot"
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-icon
+  (deferred-tru "The icon for Metabot.")
+  :type       :string
+  :default    "metabot"
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-show-illustrations
+  (deferred-tru "Whether to show Metabot illustrations in the UI.")
+  :type       :boolean
+  :default    true
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-chat-system-prompt
+  (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-nlq-system-prompt
+  (deferred-tru "Custom system prompt for the natural language query (AI exploration) experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-sql-system-prompt
+  (deferred-tru "Custom system prompt for the SQL generation experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
   :type       :boolean
@@ -82,15 +142,6 @@
                         (validate-metabot-provider! new-value))
                       (setting/set-value-of-type! :string :llm-metabot-provider-lite new-value)))
 
-(defsetting llm-metabot-internal-tasks-enabled?
-  (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")
-  :type             :boolean
-  :visibility       :settings-manager
-  :default          true
-  :export?          false
-  :deprecated-name  :ee-ai-metabot-internal-tasks-enabled?
-  :doc              false)
-
 (defn- token-configured?
   [token]
   (boolean (and (string? token)
@@ -105,16 +156,27 @@
     "openrouter" (llm.settings/llm-openrouter-api-key)
     nil))
 
-(defn- metabot-provider-prefix []
-  (some-> (llm-metabot-provider)
+(defn- provider-prefix [provider-and-model]
+  (some-> provider-and-model
           (str/split #"/" 2)
           first))
 
-(defn- -llm-metabot-configured? []
-  (some-> (metabot-provider-prefix)
-          configured-provider-api-key
-          token-configured?
-          boolean))
+(defn- llm-provider-configured? [provider-and-model]
+  (boolean (some-> provider-and-model
+                   provider-prefix
+                   configured-provider-api-key
+                   token-configured?)))
+
+(defsetting llm-metabot-internal-tasks-enabled?
+  (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")
+  :type             :boolean
+  :visibility       :settings-manager
+  :default          false
+  :export?          false
+  :deprecated-name  :ee-ai-metabot-internal-tasks-enabled?
+  :doc              false
+  :getter           #(and (setting/get-value-of-type :boolean :llm-metabot-internal-tasks-enabled?)
+                          (llm-provider-configured? (llm-metabot-provider-lite))))
 
 (defsetting llm-metabot-configured?
   "Whether the API key for the selected Metabot provider is configured."
@@ -122,5 +184,5 @@
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #'-llm-metabot-configured?
+  :getter     #(llm-provider-configured? (llm-metabot-provider))
   :doc        false)

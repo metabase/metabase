@@ -387,7 +387,7 @@ export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Display`;
     },
     get title() {
-      return t`Split series into panels`;
+      return t`Stack series`;
     },
     widget: "toggle",
     getDefault: () => false,

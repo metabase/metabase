@@ -2,13 +2,13 @@ import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import { setUIControls } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnExtractViaPlusModal } from "metabase/querying/analytics";
 import {
   ExtractColumn,
   hasExtractions,
 } from "metabase/querying/components/expressions";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Box, rem } from "metabase/ui";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
