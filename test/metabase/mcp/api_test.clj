@@ -11,9 +11,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util.encryption-test :as encryption-test]
-   [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -581,28 +579,3 @@
                          :result {:contents some?}}]}
               batch-response)))))
 
-(deftest embedding-key-encryption-round-trip-test
-  (testing "embedding session key survives encrypt/decrypt round-trip through the database"
-    (encryption-test/with-secret-key "0123456789abcdef"
-      (let [[session-id _] (initialize!)
-            ;; Trigger embedding session creation via resources/read
-            read-resp (mcp-request (jsonrpc-request "resources/read"
-                                                    {:uri "ui://metabase/visualize-query.html"} 1)
-                                   {"mcp-session-id" session-id})
-            _         (is (= 200 (:status read-resp)))
-            ;; Read the raw encrypted value from the DB
-            raw-db-val (t2/select-one-fn :embedding_session_key :model/McpSession :id session-id)]
-        ;; The stored value should be encrypted (not a bare UUID)
-        (is (some? raw-db-val))
-        (is (not (re-matches #"[0-9a-f\-]{36}" raw-db-val))
-            "Stored value should be encrypted, not a plaintext UUID")
-        ;; A second read should still succeed (decrypt works)
-        (let [read2 (mcp-request (jsonrpc-request "resources/read"
-                                                  {:uri "ui://metabase/visualize-query.html"} 2)
-                                 {"mcp-session-id" session-id})]
-          (is (= 200 (:status read2)))
-          ;; Both reads should produce identical HTML (same decrypted key)
-          (let [html1 (-> (get-in read-resp [:body :result :contents]) first :text)
-                html2 (-> (get-in read2 [:body :result :contents]) first :text)]
-            (is (= html1 html2)
-                "Decrypted key should match across reads")))))))

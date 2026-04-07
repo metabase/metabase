@@ -23,6 +23,7 @@
   :encryption :when-encryption-key-set
   :visibility :internal
   :base       setting/uuid-nonce-base
+  :export?    false
   :doc        false)
 
 (defsetting mcp-apps-cors-enabled-clients

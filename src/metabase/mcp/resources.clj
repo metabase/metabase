@@ -2,6 +2,7 @@
   "MCP resource handlers. Provides the visualize-query HTML resource
    that renders interactive Metabase visualizations via the Embedding SDK."
   (:require
+   [clojure.java.io :as io]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
@@ -96,9 +97,15 @@
   :description "Interactive Metabase SDK visualization for a query"
   :render-fn   (fn [opts]
                  (let [site-url    (system/site-url)
-                       session-key (:session-key opts)]
+                       session-key (:session-key opts)
+                       ;; In production the rspack build emits frontend_client/embed-mcp.html
+                       ;; (with bundle <script> tags injected); fall back to the source
+                       ;; mcp_apps_template.html when running tests without a frontend build.
+                       template    (if (io/resource "frontend_client/embed-mcp.html")
+                                     "frontend_client/embed-mcp.html"
+                                     "frontend_client/mcp_apps_template.html")]
                    (stencil/render-file
-                    "frontend_client/embed-mcp.html"
+                    template
                     {:instanceUrl    (json/encode site-url)
                      :instanceUrlRaw site-url
                      :sessionToken   (when session-key (json/encode session-key))})))})
