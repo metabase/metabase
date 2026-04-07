@@ -324,7 +324,7 @@
   [provider model]
   (cond
     (nil? model) nil
-    (and (= provider "metabase") (str/blank? model)) metabase-default-model
+    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabase-default-model
     :else (non-blank-string model)))
 
 (def ^:private invalid-api-key-statuses
@@ -384,7 +384,7 @@
 
 (defn- decorate-provider-models
   [provider models]
-  (let [models           (if (= provider "metabase")
+  (let [models           (if (= provider provider-util/metabase-provider-prefix)
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
@@ -401,7 +401,7 @@
   ([provider]
    (provider-models-response provider nil))
   ([provider api-key-override]
-   (if (= provider "metabase")
+   (if (= provider provider-util/metabase-provider-prefix)
      {:models (decorate-provider-models
                provider
                (:models (metabot.self/list-models "anthropic" {:ai-proxy? true})))}
