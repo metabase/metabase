@@ -28,6 +28,7 @@ import type { SlackAppInfo } from "metabase-types/api/slack";
 
 import {
   EncryptionRequiredAlert,
+  MetabotSetupRequiredAlert,
   MissingScopesAlert,
 } from "./MetabotSlackSetupAlerts";
 
@@ -116,6 +117,7 @@ const MetabotSlackSettingsForm = ({
 };
 
 export function MetabotSlackSetup() {
+  const isMetabotSetup = !!useSetting("llm-metabot-configured?");
   const isSlackTokenValid = useSetting("slack-token-valid?") ?? false;
   const isEncryptionEnabled = useSetting("encryption-enabled");
 
@@ -151,7 +153,12 @@ export function MetabotSlackSetup() {
   });
 
   const hasMissingScopes = (appInfo?.scopes?.missing?.length ?? 0) > 0;
-  const notification = match({ isEncryptionEnabled, hasMissingScopes })
+  const notification = match({
+    isMetabotSetup,
+    isEncryptionEnabled,
+    hasMissingScopes,
+  })
+    .with({ isMetabotSetup: false }, () => "setup" as const)
     .with({ isEncryptionEnabled: false }, () => "encryption" as const)
     .with({ hasMissingScopes: true }, () => "scopes" as const)
     .otherwise(() => null);
@@ -176,6 +183,8 @@ export function MetabotSlackSetup() {
         description={t`Add a few more details to unlock the full power of Metabot in Slack.`}
       >
         <Stack gap="lg">
+          {notification === "setup" && <MetabotSetupRequiredAlert />}
+
           {notification === "encryption" && (
             <EncryptionRequiredAlert docsUrl={encryptionDocsUrl} />
           )}

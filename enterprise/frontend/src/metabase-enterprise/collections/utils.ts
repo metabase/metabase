@@ -1,3 +1,7 @@
+import type {
+  CollectionAuthorityLevelConfig,
+  CollectionInstanceAnaltyicsConfig,
+} from "metabase/collections/types";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import type { IconData, ObjectWithModel } from "metabase/lib/icon";
 import { getIconBase } from "metabase/lib/icon";
@@ -5,9 +9,7 @@ import type { ItemWithCollection } from "metabase/plugins";
 import type {
   Bookmark,
   Collection,
-  CollectionAuthorityLevelConfig,
   CollectionId,
-  CollectionInstanceAnaltyicsConfig,
   CollectionType,
 } from "metabase-types/api";
 

@@ -54,7 +54,7 @@ interface ViewTitleHeaderProps {
   }) => void;
   cancelQuery: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
-  onEditSummary: () => void;
+  editSummary: () => void;
   onCloseSummary: () => void;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
@@ -98,7 +98,7 @@ export function ViewTitleHeader({
   isActionListVisible,
   runQuestionQuery,
   cancelQuery,
-  onEditSummary,
+  editSummary,
   onCloseSummary,
   setQueryBuilderMode,
   isShowingQuestionInfoSidebar,
@@ -191,7 +191,7 @@ export function ViewTitleHeader({
           runQuestionQuery={runQuestionQuery}
           cancelQuery={cancelQuery}
           onOpenModal={onOpenModal}
-          onEditSummary={onEditSummary}
+          editSummary={editSummary}
           onCloseSummary={onCloseSummary}
           setQueryBuilderMode={setQueryBuilderMode}
           toggleBookmark={toggleBookmark}

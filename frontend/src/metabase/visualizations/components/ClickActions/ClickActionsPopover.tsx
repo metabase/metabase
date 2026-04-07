@@ -1,3 +1,4 @@
+import type { LocationDescriptorObject } from "history";
 import { Component } from "react";
 import type * as tippy from "tippy.js";
 
@@ -29,6 +30,7 @@ interface ChartClickActionsProps {
     question?: Question,
   ) => void;
   onUpdateQuestion?: (question: Question) => void;
+  onSameOriginNavigation?: (location: LocationDescriptorObject) => void;
   onClose?: () => void;
 }
 
@@ -64,7 +66,12 @@ export class ClickActionsPopover extends Component<
   };
 
   handleClickAction = (action: RegularClickAction) => {
-    const { dispatch, onChangeCardAndRun, onUpdateQuestion } = this.props;
+    const {
+      dispatch,
+      onChangeCardAndRun,
+      onUpdateQuestion,
+      onSameOriginNavigation,
+    } = this.props;
     if (isPopoverClickAction(action)) {
       this.setState({ popoverAction: action });
     } else {
@@ -72,6 +79,7 @@ export class ClickActionsPopover extends Component<
         dispatch,
         onChangeCardAndRun,
         onUpdateQuestion,
+        onSameOriginNavigation,
       });
       if (didPerform) {
         this.close();

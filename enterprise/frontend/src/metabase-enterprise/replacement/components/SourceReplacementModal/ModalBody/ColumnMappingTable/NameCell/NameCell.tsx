@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { FixedSizeIcon, Group } from "metabase/ui";
+import { Ellipsified, FixedSizeIcon, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { SourceReplacementColumnInfo } from "metabase-types/api";
 

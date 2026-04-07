@@ -59,7 +59,7 @@
         (t2/query-one {:insert-into [:metabase_cluster_lock]
                        :columns [:lock_name]
                        :values [[lock-name-str]]})))
-    (log/debug "Obtained cluster lock")
+    (log/debugf "Obtained cluster lock: %s" lock-name-str)
     (thunk)))
 
 (mu/defn do-with-cluster-lock
@@ -85,8 +85,9 @@
                 (do-with-cluster-lock* lock-name-str timeout-seconds thunk))
               (catch Throwable e
                 (if (retryable? e)
-                  (throw (ex-info "Failed to run statement with cluster lock"
-                                  {:retries (:max-retries config)}
+                  (throw (ex-info (str "Failed to obtain cluster lock: " lock-name-str)
+                                  {:lock-name lock-name
+                                   :retries (:max-retries config)}
                                   e))
                   (throw e)))))))
 

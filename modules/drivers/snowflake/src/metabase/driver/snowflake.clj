@@ -404,10 +404,11 @@
 
 (defn- date-trunc
   [unit expr]
-  (let [acceptable-types (case unit
-                           (:millisecond :second :minute :hour) #{"time" "timestampltz" "timestampntz" "timestamptz"}
-                           (:day :week :month :quarter :year)   #{"date" "timestampltz" "timestampntz" "timestamptz"})
-        expr             (h2x/cast-unless-type-in "timestampntz" acceptable-types expr)]
+  (let [[acceptable-types effective-supertype]
+        (case unit
+          (:millisecond :second :minute :hour) [#{"time" "timestampltz" "timestampntz" "timestamptz"} :type/Temporal]
+          (:day :week :month :quarter :year)   [#{"date" "timestampltz" "timestampntz" "timestamptz"} :type/HasDate])
+        expr (h2x/cast-unless-type-in "timestampntz" acceptable-types effective-supertype expr)]
     (-> [:date_trunc (h2x/literal unit) (in-report-timezone expr)]
         (h2x/with-database-type-info (h2x/database-type expr)))))
 
@@ -1098,4 +1099,4 @@
                                           qr)])))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
-  "llm/prompts/dialects/snowflake.md")
+  "metabot/prompts/dialects/snowflake.md")

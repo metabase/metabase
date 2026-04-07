@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
+   [metabase.llm.anthropic :as anthropic]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
@@ -117,9 +118,10 @@
 (defn- ->content-blocks
   "Coerce content into a sequence of Claude content blocks."
   [content]
-  (if (and (string? content) (not (str/blank? content)))
-    [{:type "text" :text content}]
-    content))
+  (cond
+    (and (string? content) (str/blank? content)) []
+    (string? content) [{:type "text" :text content}]
+    :else content))
 
 (defn- merge-consecutive
   "Merge consecutive assistant messages into a single message with combined content.
@@ -152,7 +154,7 @@
                                :content [{:type  "tool_use"
                                           :id    (:id part)
                                           :name  (:function part)
-                                          :input (:arguments part)}]}
+                                          :input (or (:arguments part) {})}]}
                  :tool-output {:role    "user"
                                :content [{:type        "tool_result"
                                           :tool_use_id (:id part)
@@ -183,6 +185,30 @@
     {:name         (or tool-name "unknown")
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
+
+(defn list-models
+  "List available Anthropic models using the configured API key."
+  ([]
+   (list-models (llm/llm-anthropic-api-key)))
+  ([api-key]
+   (when (str/blank? api-key)
+     (throw (ex-info "No Anthropic API key is set" {:api-error true})))
+   (try
+     (anthropic/list-models {:api-key     api-key
+                             :api-url     (llm/llm-anthropic-api-base-url)
+                             :api-version "2023-06-01"})
+     (catch Exception e
+       (if-let [status (some-> e ex-data :status)]
+         (let [msg (case (int status)
+                     401 "Anthropic API key expired or invalid"
+                     403 "Anthropic API key has not enough permissions"
+                     404 "Anthropic API is telling us we cannot access this URL anymore?"
+                     429 "Anthropic API has rate limited us"
+                     500 "Anthropic API is not working but not saying why"
+                     529 "Anthropic API is overloaded and is asking us to wait"
+                     "Unhandled error accessing Anthropic API")]
+           (throw (ex-info msg (assoc (ex-data e) :api-error true) e)))
+         (throw e))))))
 
 (mu/defn claude-raw
   "Perform a streaming request to Claude API."

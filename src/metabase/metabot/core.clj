@@ -2,20 +2,26 @@
   "API namespace for the `metabase.metabot` module."
   (:require
    [metabase.metabot.api]
-   [metabase.metabot.client]
-   [metabase.metabot.table-utils]
-   [metabase.metabot.util]
+   [metabase.metabot.scope]
    [potemkin :as p]))
 
 (p/import-vars
  [metabase.metabot.api
   routes]
- [metabase.metabot.client
-  analyze-chart
-  analyze-dashboard
-  fix-sql
-  generate-sql]
- [metabase.metabot.table-utils
-  database-tables
-  used-tables
-  schema-sample])
+ [metabase.metabot.scope
+  agent-metric-read
+  agent-query-construct
+  agent-query-execute
+  agent-search
+  agent-table-read])
+
+;; TODO: Port analyze-chart to use the native LLM infrastructure
+;; instead of the deleted `metabase.metabot.client`.
+;; The frontend (`AIQuestionAnalysisSidebar`, `useDashCardAnalysis`) actively calls
+;; `POST /api/ai-entity-analysis/analyze-chart` which hits this function.
+(defn analyze-chart
+  "Stub for legacy analyze-chart"
+  [_chart-data]
+  (throw (ex-info "Legacy Metabot AI-service function is no longer available: analyze-chart"
+                  {:status-code 501
+                   :function    :analyze-chart})))

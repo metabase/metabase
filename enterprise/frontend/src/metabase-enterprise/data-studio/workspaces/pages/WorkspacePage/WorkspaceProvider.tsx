@@ -779,7 +779,3 @@ export const useWorkspace = (): WorkspaceContextValue => {
 
   return context;
 };
-
-export const useOptionalWorkspace = (): WorkspaceContextValue | undefined => {
-  return useContext(WorkspaceContext);
-};

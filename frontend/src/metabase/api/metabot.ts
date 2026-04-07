@@ -5,9 +5,15 @@ import type {
   MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
+  MetabotPermissionsResponse,
+  MetabotProvider,
+  MetabotSettingsResponse,
   MetabotSlackSettings,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
+  UpdateMetabotPermissionsRequest,
+  UpdateMetabotSettingsRequest,
+  UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -24,6 +30,29 @@ export const metabotApi = Api.injectEndpoints({
         listTag("metabot"),
         ...(result?.items || []).map((metabot) => idTag("metabot", metabot.id)),
       ],
+    }),
+    getMetabotSettings: builder.query<
+      MetabotSettingsResponse,
+      { provider: MetabotProvider }
+    >({
+      query: ({ provider }) => ({
+        method: "GET",
+        url: "/api/metabot/settings",
+        params: { provider },
+      }),
+      providesTags: () => [listTag("llm-models"), "session-properties"],
+    }),
+    updateMetabotSettings: builder.mutation<
+      MetabotSettingsResponse,
+      UpdateMetabotSettingsRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/metabot/settings",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("llm-models"), "session-properties"]),
     }),
     updateMetabot: builder.mutation<
       MetabotInfo,
@@ -107,11 +136,41 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: ["session-properties"],
     }),
+    getMetabotPermissions: builder.query<MetabotPermissionsResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/ai-controls/permissions",
+      }),
+      providesTags: () => [listTag("metabot-permissions")],
+    }),
+    getUserMetabotPermissions: builder.query<
+      UserMetabotPermissionsResponse,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/metabot/permissions/user-permissions",
+      }),
+      providesTags: () => [listTag("metabot-permissions")],
+    }),
+    updateMetabotPermissions: builder.mutation<
+      void,
+      UpdateMetabotPermissionsRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/ee/ai-controls/permissions",
+        body,
+      }),
+      invalidatesTags: [listTag("metabot-permissions")],
+    }),
   }),
 });
 
 export const {
+  useGetMetabotSettingsQuery,
   useListMetabotsQuery,
+  useUpdateMetabotSettingsMutation,
   useUpdateMetabotMutation,
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,
@@ -119,4 +178,7 @@ export const {
   useLazyMetabotGenerateContentQuery,
   useSubmitMetabotFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
+  useGetMetabotPermissionsQuery,
+  useGetUserMetabotPermissionsQuery,
+  useUpdateMetabotPermissionsMutation,
 } = metabotApi;

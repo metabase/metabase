@@ -1,50 +1,12 @@
 (ns metabase.metabot.settings
   (:require
    [clojure.string :as str]
+   [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
-;; TODO: these three settings support the external AI service, which is being removed.
-;; Remove these (and the functions in metabase.metabot.client that use them) once
-;; all code paths use the native Clojure agent.
-
-(defsetting ai-service-base-url
-  (deferred-tru "URL for the AI Service")
-  :type       :string
-  :encryption :no
-  :default    "http://localhost:8000"
-  :visibility :internal
-  :export?    false
-  :doc        false)
-
-(defsetting site-uuid-for-metabot-tools
-  "UUID that we use for encrypting JWT tokens given to the AI service to make callbacks with."
-  :encryption :when-encryption-key-set
-  :visibility :internal
-  :sensitive? true
-  :doc        false
-  :export?    false
-  :base       setting/uuid-nonce-base)
-
-(defsetting metabot-ai-service-token-ttl
-  (deferred-tru "The number of seconds the tokens passed to AI service should be valid.")
-  :type       :integer
-  :visibility :settings-manager
-  :default    180
-  :doc        false
-  :export?    true
-  :audit      :never)
-
 (defsetting metabot-id
   (deferred-tru "Override Metabot ID for agent streaming requests.")
-  :type       :string
-  :visibility :internal
-  :encryption :no
-  :export?    false
-  :doc        false)
-
-(defsetting ai-service-profile-id
-  (deferred-tru "Override Metabot profile ID for agent streaming requests.")
   :type       :string
   :visibility :internal
   :encryption :no
@@ -59,20 +21,72 @@
   :export?    true
   :doc        false)
 
+(defsetting metabot-name
+  (deferred-tru "The display name for Metabot.")
+  :type       :string
+  :default    "Metabot"
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-icon
+  (deferred-tru "The icon for Metabot.")
+  :type       :string
+  :default    "metabot"
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-show-illustrations
+  (deferred-tru "Whether to show Metabot illustrations in the UI.")
+  :type       :boolean
+  :default    true
+  :visibility :public
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-chat-system-prompt
+  (deferred-tru "Custom system prompt for the Metabot chat (sidebar AI chat) experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-nlq-system-prompt
+  (deferred-tru "Custom system prompt for the natural language query (AI exploration) experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
+(defsetting metabot-sql-system-prompt
+  (deferred-tru "Custom system prompt for the SQL generation experience.")
+  :type       :string
+  :default    ""
+  :visibility :admin
+  :encryption :no
+  :export?    true
+  :feature    :ai-controls
+  :doc        false)
+
 (defsetting embedded-metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for embedding.")
   :type       :boolean
   :visibility :public
   :default    true
   :export?    true
-  :doc        false)
-
-(defsetting use-native-agent
-  (deferred-tru "Enable native Clojure agent instead of external Python AI Service.")
-  :type       :boolean
-  :default    true
-  :visibility :internal
-  :export?    false
   :doc        false)
 
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
@@ -104,7 +118,7 @@
   (deferred-tru "The AI provider and model for Metabot. Format: provider/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-4.1-mini`, `openrouter/anthropic/claude-haiku-4-5`.")
   :type             :string
   :encryption       :no
-  :default          "openrouter/anthropic/claude-haiku-4-5"
+  :default          "anthropic/claude-sonnet-4-6"
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
@@ -118,7 +132,7 @@
   (deferred-tru "The AI provider and model for lightweight Metabot tasks (e.g. user intent classification).")
   :type             :string
   :encryption       :no
-  :default          "openrouter/openai/gpt-oss-20b"
+  :default          "anthropic/claude-haiku-4-5"
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider-lite
@@ -128,11 +142,47 @@
                         (validate-metabot-provider! new-value))
                       (setting/set-value-of-type! :string :llm-metabot-provider-lite new-value)))
 
+(defn- token-configured?
+  [token]
+  (boolean (and (string? token)
+                (not (str/blank? token)))))
+
+(defn configured-provider-api-key
+  "Returns the configured API key for the given provider, or nil if unrecognized."
+  [provider]
+  (case provider
+    "anthropic"  (llm.settings/llm-anthropic-api-key)
+    "openai"     (llm.settings/llm-openai-api-key)
+    "openrouter" (llm.settings/llm-openrouter-api-key)
+    nil))
+
+(defn- provider-prefix [provider-and-model]
+  (some-> provider-and-model
+          (str/split #"/" 2)
+          first))
+
+(defn- llm-provider-configured? [provider-and-model]
+  (boolean (some-> provider-and-model
+                   provider-prefix
+                   configured-provider-api-key
+                   token-configured?)))
+
 (defsetting llm-metabot-internal-tasks-enabled?
   (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")
   :type             :boolean
   :visibility       :settings-manager
-  :default          true
+  :default          false
   :export?          false
   :deprecated-name  :ee-ai-metabot-internal-tasks-enabled?
-  :doc              false)
+  :doc              false
+  :getter           #(and (setting/get-value-of-type :boolean :llm-metabot-internal-tasks-enabled?)
+                          (llm-provider-configured? (llm-metabot-provider-lite))))
+
+(defsetting llm-metabot-configured?
+  "Whether the API key for the selected Metabot provider is configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(llm-provider-configured? (llm-metabot-provider))
+  :doc        false)

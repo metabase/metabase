@@ -4,6 +4,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.metabot.agent.analytics :as agent-analytics]
    [metabase.metabot.agent.links :as links]
@@ -11,9 +13,10 @@
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.agent.tools :as agent-tools]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -227,7 +230,7 @@
   [memory context profile tools iteration tracking-opts link-registry-atom]
   (let [model        (:model profile)
         system-msg   (messages/build-system-message context profile tools)
-        input-parts  (-> (messages/build-message-history memory)
+        input-parts  (-> (messages/build-message-history context memory)
                          (invert-links @link-registry-atom))
         llm-opts     (cond-> {}
                        (:required-tool-call? profile) (assoc :tool-choice "required"))]
@@ -356,6 +359,37 @@
           state
           (:user_is_viewing context)))
 
+(defn chart-config->chart
+  "Create chart structure from chart-config"
+  [id {:keys [query timeline_events image_base_64] :as chart-config}]
+  {:chart_id id
+   :queries [query]
+   :image_base_64 image_base_64
+   :timeline_events (or timeline_events [])
+   ;; TODO (lbrdnk 2026-03-25): Viz settings seem to be redundant wrt fix this PR is implementing. Figure out
+   ;;                           what is the reason behind that if any and either add it or drop.
+   :visualization_settings nil
+   :chart_config chart-config})
+
+(defn seed-charts
+  "Reduce the chart-configs from context into charts."
+  [state context]
+  (reduce
+   ;; This logic is flawed for items with more than 1 chart config. It expects at most 1 chart config per viewing item.
+   ;; TODO (lbrdnk 2026-03-24): Figure out what is reasonable solution here. (ie no overwriting single config)
+   (fn [acc {:keys [id chart_configs] :as _item}]
+     ;; TODO (lbrdnk 2026-03-24): This is developed against adhoc queries. Ensure other cases work too!
+     (if-not (seq chart_configs)
+       acc
+       (update acc :charts merge
+               (into {}
+                     (map (comp
+                           (juxt :chart_id identity)
+                           (partial chart-config->chart id)))
+                     chart_configs))))
+   state
+   (:user_is_viewing context)))
+
 ;;; Main loop
 
 (defn- init-agent
@@ -368,7 +402,8 @@
         base-tools   (profiles/get-tools-for-profile profile-id capabilities)
         seeded       (-> (or state {})
                          (seed-state context)
-                         (seed-chart-configs context))
+                         (seed-chart-configs context)
+                         (seed-charts context))
         memory       (-> (memory/initialize messages seeded context)
                          (memory/load-queries-from-state seeded)
                          (memory/load-charts-from-state seeded)
@@ -376,7 +411,7 @@
                          (memory/load-todos-from-state seeded)
                          (memory/load-link-registry-from-state seeded))
         memory-atom  (atom memory)
-        tools        (agent-tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
+        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)
@@ -435,14 +470,14 @@
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
           llm-call           (call-llm memory context profile tools iteration tracking-opts link-registry-atom)
-          xf         (comp (accumulate-usage-xf usage-atom)
-                           (u/tee-xf parts-atom))
+          xf                 (comp (accumulate-usage-xf usage-atom)
+                                   (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
           ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
-          result'    (reduce (xf rf) result llm-call)
-          parts      @parts-atom]
+          result'            (reduce (xf rf) result llm-call)
+          parts              @parts-atom]
       ;; Sync link registry back to memory after streaming completes
       (swap! memory-atom assoc-in [:state :link-registry] @link-registry-atom)
       ;; Capture response for debug log
@@ -502,6 +537,27 @@
    :version   1
    :data      debug-log})
 
+(def ^:private profile-id->required-permission
+  "Map from profile-id to the metabot permission that must be `:yes` for a user
+  to use that profile. Profiles not listed here have no profile-level permission gate."
+  {:sql                       :permission/metabot-sql-generation
+   :nlq                       :permission/metabot-nlq
+   :transforms_codegen        :permission/metabot-sql-generation
+   :document-generate-content :permission/metabot-other-tools})
+
+(defn- check-metabot-access!
+  "Throw a 403 if the user's metabot permissions do not grant access to the
+  requested profile. First checks the base metabot on/off permission, then
+  the profile-specific permission."
+  [profile-id perms]
+  ;; Base metabot on/off check — blocks ALL profiles when metabot is disabled
+  (api/check (= :yes (:permission/metabot perms))
+             [403 "You do not have permission to use the AI assistant."])
+  ;; Profile-specific permission check
+  (when-let [required-perm (profile-id->required-permission profile-id)]
+    (api/check (= :yes (get perms required-perm))
+               [403 (format "You do not have permission to use the %s assistant." (name profile-id))])))
+
 (mu/defn run-agent-loop
   "Run agent loop, returning a reducible of parts.
 
@@ -525,7 +581,15 @@
         debug?             (:debug? opts)
         labels             {:profile-id (name profile-id)}
         track-user-intent? (and (metabot.settings/llm-metabot-internal-tasks-enabled?)
-                                (some-> opts :tracking-opts :track-user-intent?))]
+                                (some-> opts :tracking-opts :track-user-intent?))
+        perms              (or scope/*current-user-metabot-permissions*
+                               (if api/*is-superuser?*
+                                 scope/all-yes-permissions
+                                 (scope/resolve-user-permissions api/*current-user-id*)))
+        scopes             (if api/*is-superuser?*
+                             api-scope/unrestricted
+                             (scope/user-metabot-perms->scopes perms))]
+    (check-metabot-access! profile-id perms)
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot.agent/run-agent-loop
@@ -533,7 +597,9 @@
                           :msg-count  (count (:messages opts))}
           (prometheus/inc! :metabase-metabot/agent-requests labels)
           (let [start-ms (u/start-timer)]
-            (binding [*debug-log* (when debug? (atom []))]
+            (binding [*debug-log*                              (when debug? (atom []))
+                      scope/*current-user-scope*               scopes
+                      scope/*current-user-metabot-permissions* perms]
               (try
                 (let [agent              (init-agent opts)
                       _                  (when track-user-intent?
@@ -552,6 +618,10 @@
                     result))
                 (catch Exception e
                   (prometheus/inc! :metabase-metabot/agent-errors labels)
+                  (when (:api-error (ex-data e))
+                    (log/debugf "API error details: status=%s body=%s"
+                                (:status (ex-data e))
+                                (pr-str (:body (ex-data e)))))
                   (if (:api-error (ex-data e))
                     (log/errorf "Agent loop API error: %s" (ex-message e))
                     (log/error e "Agent loop error"))

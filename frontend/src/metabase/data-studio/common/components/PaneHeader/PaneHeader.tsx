@@ -31,6 +31,7 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   actions?: ReactNode;
   breadcrumbs: ReactNode;
   showMetabotButton?: boolean;
+  showAppSwitcher?: boolean;
 }
 
 export const PaneHeader = ({
@@ -42,6 +43,7 @@ export const PaneHeader = ({
   actions,
   breadcrumbs,
   showMetabotButton,
+  showAppSwitcher = true,
   ...rest
 }: PaneHeaderProps) => {
   return (
@@ -51,13 +53,14 @@ export const PaneHeader = ({
 
         <Group ml="auto" gap="md">
           {showMetabotButton && <MetabotDataStudioButton />}
-          <AppSwitcher className={S.ProfileLink} />
+          {showAppSwitcher && <AppSwitcher className={S.ProfileLink} />}
         </Group>
       </Flex>
       <Group
         className={className}
         gap="sm"
         justify="space-between"
+        align="flex-start"
         wrap="nowrap"
       >
         <Stack gap="md">

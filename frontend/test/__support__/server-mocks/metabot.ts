@@ -1,11 +1,16 @@
 import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
+  MetabotGroupPermission,
   MetabotId,
   MetabotInfo,
+  MetabotSettingsResponse,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
+  UpdateMetabotSettingsRequest,
+  UserMetabotPermissionsResponse,
 } from "metabase-types/api";
+import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
 
 export function setupMetabotsEndpoints(
   metabots: MetabotInfo[],
@@ -120,5 +125,69 @@ export function setupMetabotSlackSettingsEndpointWithError(
     {
       name: SLACK_SETTINGS_ROUTE_NAME,
     },
+  );
+}
+
+export function setupMetabotSettingsEndpoint({
+  provider,
+  response,
+}: {
+  provider: UpdateMetabotSettingsRequest["provider"];
+  response: MetabotSettingsResponse;
+}) {
+  fetchMock.get(`path:/api/metabot/settings?provider=${provider}`, response);
+}
+
+export function setupUpdateMetabotSettingsEndpoint(
+  response: MetabotSettingsResponse,
+) {
+  fetchMock.put("path:/api/metabot/settings", response);
+}
+
+export function setupUpdateMetabotSettingsEndpointWithError(
+  status: number,
+  body: string,
+) {
+  fetchMock.put("path:/api/metabot/settings", { status, body });
+}
+
+const METABOT_GROUP_PERMISSIONS_ROUTE_NAME = "metabot-group-permissions";
+
+export function setupMetabotGroupPermissionsEndpoint(
+  permissions: MetabotGroupPermission[] = [],
+) {
+  fetchMock.removeRoute(METABOT_GROUP_PERMISSIONS_ROUTE_NAME);
+  fetchMock.get(
+    "path:/api/ee/ai-controls/permissions",
+    {
+      permissions,
+      limit: 50,
+      offset: 0,
+      total: permissions.length,
+    },
+    { name: METABOT_GROUP_PERMISSIONS_ROUTE_NAME },
+  );
+}
+
+const UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME =
+  "update-metabot-group-permissions";
+
+export function setupUpdateMetabotGroupPermissionsEndpoint() {
+  fetchMock.removeRoute(UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME);
+  fetchMock.put("path:/api/ee/ai-controls/permissions", 200, {
+    name: UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME,
+  });
+}
+
+const USER_METABOT_PERMISSIONS_ROUTE_NAME = "metabot-user-permissions";
+
+export function setupUserMetabotPermissionsEndpoint(
+  response?: UserMetabotPermissionsResponse,
+) {
+  fetchMock.removeRoute(USER_METABOT_PERMISSIONS_ROUTE_NAME);
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    response ?? createMockUserMetabotPermissions(),
+    { name: USER_METABOT_PERMISSIONS_ROUTE_NAME },
   );
 }
