@@ -174,7 +174,10 @@
     false :type/String   :type/Text      :type/DateTime :type/DateTime
     false :type/Boolean  :type/Boolean   :type/String   :type/Text
     false :type/DateTime :type/DateTime  :type/Time     :type/Time
-    false :type/Time     :type/Time      :type/Date     :type/Date))
+    false :type/Time     :type/Time      :type/Date     :type/Date
+
+    false :type/PostgresEnum      :type/PostgresEnum      :type/PostgresBitString :type/PostgresBitString
+    false :type/PostgresBitString :type/PostgresBitString :type/PostgresEnum      :type/PostgresEnum))
 
 (deftest ^:parallel effective-type-fallback-test
   (are [expected predicate column] (= expected (predicate column))
