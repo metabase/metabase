@@ -9,7 +9,7 @@ export function CustomVisualizationsManagePage() {
     return <UpsellCustomViz source="settings-custom-viz" />;
   }
 
-  return <PLUGIN_CUSTOM_VIZ.CustomVizPage />;
+  return <PLUGIN_CUSTOM_VIZ.ManageCustomVizPage />;
 }
 
 export function CustomVisualizationsFormPage({
@@ -23,7 +23,7 @@ export function CustomVisualizationsFormPage({
     return <UpsellCustomViz source="settings-custom-viz" />;
   }
 
-  return <PLUGIN_CUSTOM_VIZ.AddCustomVizPage params={params} />;
+  return <PLUGIN_CUSTOM_VIZ.CustomVizPage params={params} />;
 }
 
 export function CustomVisualizationsDevelopmentPage() {

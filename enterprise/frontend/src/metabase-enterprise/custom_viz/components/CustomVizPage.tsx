@@ -1,91 +1,154 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
-  useDeleteCustomVizPluginMutation,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import {
+  useCreateCustomVizPluginMutation,
   useListAllCustomVizPluginsQuery,
+  useUpdateCustomVizPluginMutation,
 } from "metabase/api";
-import { Link } from "metabase/common/components/Link";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
-import type { CustomVizPluginId } from "metabase-types/api";
+import { Box, Button, Group, Stack, Text } from "metabase/ui";
 
-import { CustomVizListItem } from "./CustomVizListItem";
-import S from "./CustomVizPage.module.css";
+type Props = {
+  params?: {
+    id?: string;
+  };
+};
 
-export function CustomVizPage() {
-  const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
-  const [deletePlugin] = useDeleteCustomVizPluginMutation();
+type FormState = {
+  repoUrl: string;
+  accessToken: string;
+  pinnedVersion: string;
+};
 
-  const repoPlugins = useMemo(
-    () => plugins?.filter((p) => !p.dev_only),
-    [plugins],
+export function CustomVizPage({ params }: Props) {
+  const dispatch = useDispatch();
+  const pluginId = params?.id ? parseInt(params.id, 10) : undefined;
+  const { data: plugins } = useListAllCustomVizPluginsQuery();
+  const plugin = pluginId ? plugins?.find((p) => p.id === pluginId) : undefined;
+  const isEdit = pluginId != null;
+
+  const [createPlugin] = useCreateCustomVizPluginMutation();
+  const [updatePlugin] = useUpdateCustomVizPluginMutation();
+
+  const initialValues = useMemo<FormState>(
+    () => ({
+      repoUrl: plugin?.repo_url ?? "",
+      accessToken: "",
+      pinnedVersion: plugin?.pinned_version ?? "",
+    }),
+    [plugin],
   );
 
-  const handleDelete = useCallback(
-    async (id: CustomVizPluginId) => {
-      await deletePlugin(id).unwrap();
+  const handleSubmit = useCallback(
+    async (values: FormState) => {
+      if (isEdit && plugin) {
+        await updatePlugin({
+          id: plugin.id,
+          access_token: values.accessToken || undefined,
+          pinned_version: values.pinnedVersion || null,
+        }).unwrap();
+      } else {
+        await createPlugin({
+          repo_url: values.repoUrl,
+          access_token: values.accessToken || undefined,
+          pinned_version: values.pinnedVersion || null,
+        }).unwrap();
+      }
+      dispatch(push(Urls.customViz()));
     },
-    [deletePlugin],
+    [createPlugin, updatePlugin, plugin, isEdit, dispatch],
   );
+
+  const handleCancel = useCallback(() => {
+    dispatch(push(Urls.customViz()));
+  }, [dispatch]);
+
+  const shouldRedirectToList = isEdit && !plugin && !!plugins;
+  const shouldRedirectToDev = isEdit && !!plugin?.dev_only;
+
+  useEffect(() => {
+    if (shouldRedirectToList) {
+      dispatch(push(Urls.customViz()));
+    }
+  }, [shouldRedirectToList, dispatch]);
+
+  useEffect(() => {
+    if (shouldRedirectToDev) {
+      dispatch(push(Urls.customVizDev()));
+    }
+  }, [shouldRedirectToDev, dispatch]);
+
+  if (shouldRedirectToList || shouldRedirectToDev) {
+    return null;
+  }
 
   return (
     <SettingsPageWrapper
       title={t`Manage custom visualizations`}
       description={t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
     >
-      <Flex justify="flex-end">
-        <Button
-          component={Link}
-          to={Urls.customVizAdd()}
-          variant="filled"
-          leftSection={<Icon name="add" />}
-        >
-          {t`Add visualization`}
-        </Button>
-      </Flex>
-
-      {isLoading && (
-        <Flex justify="center" p="xl">
-          <Loader />
-        </Flex>
-      )}
-
-      {repoPlugins && repoPlugins.length === 0 && !isLoading && (
-        <Box
-          bdrs="md"
-          bg="background-primary"
-          p="xl"
-          style={{
-            minHeight: "20rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text c="text-tertiary">{t`You don't have any custom visualizations.`}</Text>
+      <SettingsSection>
+        <Box bdrs="md" bg="background-primary">
+          <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
+            {({ dirty }) => (
+              <Form>
+                <Stack gap="lg">
+                  <Text fw={700} fz="xl">
+                    {isEdit
+                      ? t`Edit visualization`
+                      : t`Add a new visualization`}
+                  </Text>
+                  <FormTextInput
+                    name="repo_url"
+                    label={t`Repository URL`}
+                    description={t`The location of the git repository where your visualization bundle is.`}
+                    placeholder="https://github.com/user/custom-viz-plugin"
+                    disabled={isEdit}
+                    autoFocus={!isEdit}
+                  />
+                  <FormTextInput
+                    name="access_token"
+                    label={t`Repository access token (optional)`}
+                    description={t`Personal access token for private repositories.`}
+                    type="password"
+                  />
+                  <FormTextInput
+                    name="pinned_version"
+                    label={t`Pinned version (optional)`}
+                    description={t`Branch, tag, or commit SHA to pin to.`}
+                    placeholder="main"
+                  />
+                  <FormErrorMessage />
+                  <Group gap="sm" justify="flex-end">
+                    <Button variant="default" onClick={handleCancel}>
+                      {t`Cancel`}
+                    </Button>
+                    <FormSubmitButton
+                      label={t`Save`}
+                      disabled={!dirty}
+                      variant="filled"
+                    />
+                  </Group>
+                </Stack>
+              </Form>
+            )}
+          </FormProvider>
         </Box>
-      )}
-
-      {repoPlugins && repoPlugins.length > 0 && (
-        <Box
-          bdrs="md"
-          bg="background-primary"
-          className={S.pluginList}
-          style={{
-            overflow: "hidden",
-          }}
-        >
-          {repoPlugins.map((plugin) => (
-            <CustomVizListItem
-              key={plugin.id}
-              plugin={plugin}
-              onDelete={handleDelete}
-            />
-          ))}
-        </Box>
-      )}
+      </SettingsSection>
     </SettingsPageWrapper>
   );
 }

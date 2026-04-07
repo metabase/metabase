@@ -6,8 +6,8 @@ import { isCustomVizDisplay } from "metabase-types/guards";
 
 const getDefaultPluginCustomViz = () => ({
   // Admin settings pages
+  ManageCustomVizPage: PluginPlaceholder as ComponentType<any>,
   CustomVizPage: PluginPlaceholder as ComponentType<any>,
-  AddCustomVizPage: PluginPlaceholder as ComponentType<any>,
   CustomVizDevPage: PluginPlaceholder as ComponentType<any>,
 
   // Hooks & functions
