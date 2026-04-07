@@ -55,6 +55,27 @@ databaseChangeLog:
             tableName: mcp_session
 
   - changeSet:
+      id: v60.mcp-session-user-id-idx
+      author: christruter
+      comment: Add index on mcp_session.user_id (FK to core_user)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                indexName: idx_mcp_session_user_id
+      changes:
+        - createIndex:
+            tableName: mcp_session
+            indexName: idx_mcp_session_user_id
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - dropIndex:
+            tableName: mcp_session
+            indexName: idx_mcp_session_user_id
+
+  - changeSet:
       id: v60.mcp-session-user-fk
       author: christruter
       comment: Add foreign key from mcp_session.user_id to core_user.id
@@ -96,27 +117,6 @@ databaseChangeLog:
         - dropIndex:
             tableName: mcp_session
             indexName: idx_mcp_session_created_at
-
-  - changeSet:
-      id: v60.mcp-session-user-id-idx
-      author: christruter
-      comment: Add index on mcp_session.user_id (FK to core_user)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                indexName: idx_mcp_session_user_id
-      changes:
-        - createIndex:
-            tableName: mcp_session
-            indexName: idx_mcp_session_user_id
-            columns:
-              - column:
-                  name: user_id
-      rollback:
-        - dropIndex:
-            tableName: mcp_session
-            indexName: idx_mcp_session_user_id
 
   - changeSet:
       id: v60.mcp-session-embedding-session-id-idx
