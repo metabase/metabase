@@ -254,6 +254,25 @@ export type CreateDefineSetting<
         object: Series,
         vizSettings: CustomVisualizationSettings,
       ) => PropsFromWidget<W>;
+  /**
+   * Computes a derived value for this setting on every render, overriding both
+   * the stored value and the result of `getDefault`.
+   *
+   * Use this when the setting's effective value must always be derived from the
+   * current query result or other resolved settings, and storing a user-chosen
+   * value makes no sense. Unlike `getDefault`, `getValue` is always called —
+   * the stored value is never used.
+   *
+   * @param series   - The current query result (rows + column metadata).
+   * @param settings - All settings resolved so far, respecting
+   *   `readDependencies` ordering.
+   * @returns The computed value for this setting, typed as
+   *   `CustomVisualizationSettings[Key]`.
+   *
+   * @example
+   * // Always reflect the number of series currently in the result
+   * getValue: (series, _settings) => series.length,
+   */
   getValue?: (
     series: Series,
     settings: CustomVisualizationSettings,
