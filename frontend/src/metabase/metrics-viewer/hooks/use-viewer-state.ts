@@ -422,9 +422,14 @@ export function useViewerState(): UseViewerStateResult {
         if (prev.tabs.some((existing) => existing.id === tab.id)) {
           return prev;
         }
+        const newTabs = assignDimensionsForUnmappedSlots(
+          [...prev.tabs, tab],
+          prev.definitions,
+          prev.formulaEntities,
+        );
         return {
           ...prev,
-          tabs: [...prev.tabs, tab],
+          tabs: newTabs,
           selectedTabId:
             prev.selectedTabId == null ? tab.id : prev.selectedTabId,
         };
