@@ -226,13 +226,6 @@
                   (api-scope/scope-matches? scope/*current-user-scope* required-scope))))
           tool-vars))
 
-(defn- ee-feature-available?
-  "Check if a tool's :ee-feature is available (or if the tool has no :ee-feature gate)."
-  [tool-var]
-  (if-let [feature (:ee-feature (meta tool-var))]
-    (premium-features/has-feature? feature)
-    true))
-
 (defn- tool-map
   "Create a map of tool-name -> tool-var from a sequence of tool vars."
   [tool-vars]
@@ -256,7 +249,6 @@
   [profile-id capabilities]
   (some-> (get-profile profile-id)
           :tools
-          (->> (filter ee-feature-available?))
           (filter-by-capabilities capabilities)
           filter-by-scope
           tool-map))
