@@ -14,7 +14,7 @@ import type {
 import { isExpressionEntry, isMetricEntry } from "../../types/viewer-state";
 import { stampMetricCounts } from "../../utils/expression";
 
-export type MetricNames = Partial<Record<MetricSourceId, string>>;
+export type MetricNameMap = Partial<Record<MetricSourceId, string>>;
 
 /**
  * Returns an array of human-readable expression strings interleaved with numbers
@@ -22,7 +22,7 @@ export type MetricNames = Partial<Record<MetricSourceId, string>>;
  */
 export function buildExpressionForPill(
   tokens: ExpressionSubToken[],
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
 ): (string | number)[] {
   const result: (string | number)[] = [];
   let curr = "";
@@ -61,7 +61,7 @@ export function buildExpressionForPill(
  */
 export function buildExpressionText(
   tokens: ExpressionSubToken[],
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
 ): string {
   return buildExpressionForPill(tokens, metricNames)
     .filter((x) => typeof x === "string")
@@ -70,7 +70,7 @@ export function buildExpressionText(
 
 export function buildFullText(
   formulaEntities: MetricsViewerFormulaEntity[],
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
 ): string {
   return formulaEntities
     .map((entity) => {
@@ -115,7 +115,7 @@ function isWordChar(ch: string): boolean {
 export function getWordAtCursor(
   text: string,
   cursorPos: number,
-  metricNames?: MetricNames,
+  metricNames?: MetricNameMap,
 ): { word: string; start: number; end: number } {
   // Build a set of metric names (lowercased) for quick lookup.
   let metricNamesLower: Set<string> | null = null;
@@ -282,7 +282,7 @@ export type MetricTokenVisit =
  */
 export function traverseMetricTokens(
   text: string,
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
   entities: MetricsViewerFormulaEntity[],
   visitor: (visit: MetricTokenVisit) => void,
 ): void {
@@ -370,7 +370,7 @@ function stripPositions(token: PositionedToken): ExpressionSubToken | null {
  */
 export function parseFullText(
   text: string,
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
 ): MetricsViewerFormulaEntity[] {
   const allTokens = parseFullTextWithPositions(text, metricNames);
   const separators = findSeparatorCommaPositions(text, allTokens);
@@ -617,7 +617,7 @@ function consumeNumber(text: string, startIndex: number): number | null {
 /** Same as the main parser but records character positions for each token. */
 export function parseFullTextWithPositions(
   text: string,
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
 ): PositionedToken[] {
   const sortedMetrics = Object.entries(metricNames)
     .map(([id, name]) => ({ id, name: (name ?? "").toLowerCase() }))
@@ -782,7 +782,7 @@ export type ErrorRange = { from: number; to: number; message: string };
  */
 export function findInvalidRanges(
   text: string,
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
 ): ErrorRange[] {
   const allTokens = parseFullTextWithPositions(text, metricNames);
   const separators = findSeparatorCommaPositions(text, allTokens);
@@ -947,7 +947,7 @@ export function applyTrackedDefinitions(
   newEntities: MetricsViewerFormulaEntity[],
   trackedIdentities: MetricIdentityEntry[],
   text: string,
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
 ): ApplyTrackedDefinitionsResult {
   const identityByPosition = new Map<
     string,

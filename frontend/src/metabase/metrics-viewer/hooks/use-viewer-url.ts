@@ -1,7 +1,9 @@
 import type { Location } from "history";
 import { useEffect, useRef } from "react";
 import { push, replace } from "react-router-redux";
+import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { MeasureId } from "metabase-types/api";
@@ -41,6 +43,7 @@ export function useViewerUrl(
   setInitialLoadComplete: (initialLoadComplete: boolean) => void,
 ): void {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
   const lastHashRef = useRef<string | null>(null);
 
   // sync URL to state
@@ -133,6 +136,11 @@ export function useViewerUrl(
     } catch (error) {
       console.error(error);
       setInitialLoadComplete(true);
+      sendToast({
+        icon: "warning_triangle_filled",
+        iconColor: "warning",
+        message: t`There was a problem restoring the page state`,
+      });
     }
   }, [
     location,
@@ -141,6 +149,7 @@ export function useViewerUrl(
     onLoadSources,
     setFormulaEntities,
     setInitialLoadComplete,
+    sendToast,
   ]);
 
   // sync state to URL

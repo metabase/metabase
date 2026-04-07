@@ -19,7 +19,7 @@ import type {
   MetricSourceId,
   MetricsViewerFormulaEntity,
 } from "../../../types/viewer-state";
-import type { MetricIdentityEntry, MetricNames } from "../utils";
+import type { MetricIdentityEntry, MetricNameMap } from "../utils";
 import { parseFullTextWithPositions, traverseMetricTokens } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
@@ -45,9 +45,9 @@ class MetricTokenWidget extends WidgetType {
   }
 }
 
-export const setMetricNames = StateEffect.define<MetricNames>();
+export const setMetricNames = StateEffect.define<MetricNameMap>();
 
-const metricNamesField = StateField.define<MetricNames>({
+const metricNamesField = StateField.define<MetricNameMap>({
   create: () => ({}),
   update(entries, tr) {
     for (const effect of tr.effects) {
@@ -105,7 +105,7 @@ export const metricIdentityField = StateField.define<RangeSet<MetricIdentity>>({
 
 export function buildMetricIdentities(
   text: string,
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
   entities: MetricsViewerFormulaEntity[],
 ): RangeSet<MetricIdentity> {
   const ranges: ReturnType<MetricIdentity["range"]>[] = [];
@@ -158,7 +158,7 @@ type MetricRange = { from: number; to: number; name: string };
 function computeMetricTokenRanges(
   docText: string,
   docLength: number,
-  metricNames: MetricNames,
+  metricNames: MetricNameMap,
 ): MetricRange[] {
   if (Object.keys(metricNames).length === 0) {
     return [];

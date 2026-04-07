@@ -30,7 +30,7 @@ import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 import {
-  type MetricNames,
+  type MetricNameMap,
   applyTrackedDefinitions,
   buildFullText,
   cleanupParens,
@@ -129,8 +129,8 @@ export function MetricSearchInput({
   // issues with comparing editText vs textAtFocus across async state updates.
   const [isExpressionDirty, setIsExpressionDirty] = useState(false);
 
-  const [localMetricNames, setLocalMetricNames] = useState<MetricNames>({});
-  const metricNames: MetricNames = useMemo(
+  const [localMetricNames, setLocalMetricNames] = useState<MetricNameMap>({});
+  const metricNames: MetricNameMap = useMemo(
     () => ({
       ...localMetricNames,
       ...Object.fromEntries(
@@ -146,8 +146,50 @@ export function MetricSearchInput({
     [localMetricNames, definitions],
   );
 
-  const metricNamesRef = useRef<MetricNames>(metricNames);
+  const metricNamesRef = useRef<MetricNameMap>(metricNames);
   metricNamesRef.current = metricNames;
+
+  const handleAddMetric = useCallback(
+    (metric: SelectedMetric) => {
+      onAddMetric(metric);
+      if (metric.name != null) {
+        setLocalMetricNames((prev) => ({
+          ...prev,
+          [createSourceId(metric.id, metric.sourceType)]: metric.name!,
+        }));
+      }
+    },
+    [onAddMetric],
+  );
+
+  const handleRemoveMetric = useCallback(
+    (metricId: number, sourceType: "metric" | "measure") => {
+      onRemoveMetric(metricId, sourceType);
+      const sourceId = createSourceId(metricId, sourceType);
+      setLocalMetricNames((prev) => {
+        const next = { ...prev };
+        delete next[sourceId];
+        return next;
+      });
+    },
+    [onRemoveMetric],
+  );
+
+  const handleSwapMetric = useCallback(
+    (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
+      onSwapMetric(oldMetric, newMetric);
+      setLocalMetricNames((prev) => {
+        const next = { ...prev };
+        delete next[createSourceId(oldMetric.id, oldMetric.sourceType)];
+        if (newMetric.name != null) {
+          next[createSourceId(newMetric.id, newMetric.sourceType)] =
+            newMetric.name;
+        }
+        return next;
+      });
+    },
+    [onSwapMetric],
+  );
 
   // Clean up parens per expression entry (only when not actively editing)
   useEffect(() => {
@@ -269,7 +311,7 @@ export function MetricSearchInput({
           return sid === entry.id;
         });
         if (metricId) {
-          onRemoveMetric(metricId.id, metricId.sourceType);
+          handleRemoveMetric(metricId.id, metricId.sourceType);
         }
       }
     }
@@ -282,7 +324,7 @@ export function MetricSearchInput({
     setEditText("");
     setValidationError(null);
     setIsExpressionDirty(false);
-  }, [onRemoveMetric, onFormulaEntitiesChange, selectedMetrics]);
+  }, [handleRemoveMetric, onFormulaEntitiesChange, selectedMetrics]);
 
   const handleInputBlur = useCallback(() => {
     // If the text hasn't changed since focus, collapse back to pills view
@@ -400,11 +442,7 @@ export function MetricSearchInput({
       });
 
       setIsExpressionDirty(true);
-      onAddMetric(metric);
-      setLocalMetricNames((prev) => ({
-        ...prev,
-        [createSourceId(metric.id, metric.sourceType)]: metric.name,
-      }));
+      handleAddMetric(metric);
 
       setCurrentWord("");
       setIsOpen(false);
@@ -415,7 +453,7 @@ export function MetricSearchInput({
         editorRef.current?.view?.focus();
       }, 0);
     },
-    [onAddMetric],
+    [handleAddMetric],
   );
 
   // Remove one formula entity by index
@@ -463,7 +501,7 @@ export function MetricSearchInput({
             return sid === sourceId;
           });
           if (metric) {
-            onRemoveMetric(metric.id, metric.sourceType);
+            handleRemoveMetric(metric.id, metric.sourceType);
           }
         }
       }
@@ -482,7 +520,12 @@ export function MetricSearchInput({
 
       onFormulaEntitiesChange(newFormulaEntities, slotMapping);
     },
-    [formulaEntities, selectedMetrics, onRemoveMetric, onFormulaEntitiesChange],
+    [
+      formulaEntities,
+      selectedMetrics,
+      handleRemoveMetric,
+      onFormulaEntitiesChange,
+    ],
   );
 
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
@@ -685,7 +728,7 @@ export function MetricSearchInput({
                       metric={metric}
                       colors={metricColors[entryIndex]}
                       definitionEntry={definition}
-                      onSwap={onSwapMetric}
+                      onSwap={handleSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)
                       }

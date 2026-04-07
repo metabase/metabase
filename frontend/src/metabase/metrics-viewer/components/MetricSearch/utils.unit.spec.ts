@@ -16,7 +16,7 @@ import {
   setupDefinitionWithBreakout,
 } from "../../utils/__tests__/test-helpers";
 
-import type { MetricIdentityEntry, MetricNames } from "./utils";
+import type { MetricIdentityEntry, MetricNameMap } from "./utils";
 import {
   applyTrackedDefinitions,
   buildExpressionText,
@@ -206,7 +206,7 @@ describe("cleanupParens", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildExpressionText", () => {
-  const metricNames: MetricNames = {
+  const metricNames: MetricNameMap = {
     "metric:1": "Revenue",
     "metric:2": "Costs",
   };
@@ -261,7 +261,7 @@ describe("buildExpressionText", () => {
 // ---------------------------------------------------------------------------
 
 describe("parseFullText — numeric literal parsing", () => {
-  const metricNames: MetricNames = {
+  const metricNames: MetricNameMap = {
     "metric:1": "Revenue",
     "metric:2": "Costs",
   };
@@ -424,7 +424,7 @@ describe("parseFullText — numeric literal parsing", () => {
 // ---------------------------------------------------------------------------
 
 describe("parseFullText — negative numbers", () => {
-  const metricNames: MetricNames = {
+  const metricNames: MetricNameMap = {
     "metric:1": "Revenue",
     "metric:2": "Costs",
   };
@@ -613,7 +613,7 @@ describe("parseFullText — metric names with commas", () => {
   });
 
   it("parses a single metric whose name contains a comma", () => {
-    const names: MetricNames = {
+    const names: MetricNameMap = {
       "metric:10": "Revenue, Total",
       "metric:2": "Costs",
     };
@@ -623,7 +623,7 @@ describe("parseFullText — metric names with commas", () => {
   });
 
   it("parses metric-with-comma followed by another metric", () => {
-    const names: MetricNames = {
+    const names: MetricNameMap = {
       "metric:10": "Revenue, Total",
       "metric:2": "Costs",
     };
@@ -634,7 +634,7 @@ describe("parseFullText — metric names with commas", () => {
   });
 
   it("parses metric-with-comma in an expression", () => {
-    const names: MetricNames = {
+    const names: MetricNameMap = {
       "metric:10": "Revenue, Total",
       "metric:2": "Costs",
     };
@@ -647,7 +647,7 @@ describe("parseFullText — metric names with commas", () => {
   });
 
   it("parses two metrics whose names each contain commas", () => {
-    const names: MetricNames = {
+    const names: MetricNameMap = {
       "metric:10": "Revenue, Total",
       "metric:11": "Costs, Annual",
     };
@@ -659,7 +659,7 @@ describe("parseFullText — metric names with commas", () => {
 
   it("prefers longer metric name over shorter one when both match", () => {
     // "Revenue, Total" should match as one metric, not "Revenue" + separator
-    const names: MetricNames = {
+    const names: MetricNameMap = {
       "metric:10": "Revenue, Total",
       "metric:1": "Revenue",
       "metric:2": "Costs",
@@ -672,7 +672,7 @@ describe("parseFullText — metric names with commas", () => {
 
   it("falls back to shorter metric when longer does not match", () => {
     // Only "Revenue" is known, not "Revenue, Total"
-    const names: MetricNames = { "metric:1": "Revenue", "metric:2": "Costs" };
+    const names: MetricNameMap = { "metric:1": "Revenue", "metric:2": "Costs" };
     const result = parseFullText("Revenue, Costs", names);
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: "metric", id: "metric:1" });
@@ -680,7 +680,7 @@ describe("parseFullText — metric names with commas", () => {
   });
 
   it("handles metric-with-comma multiplied by a constant", () => {
-    const names: MetricNames = { "metric:10": "Revenue, Total" };
+    const names: MetricNameMap = { "metric:10": "Revenue, Total" };
     const result = parseFullText("Revenue, Total * 0.85", names);
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -695,7 +695,7 @@ describe("parseFullText — metric names with commas", () => {
 // ---------------------------------------------------------------------------
 
 describe("findInvalidRanges — unknown token detection", () => {
-  const metricNames: MetricNames = {
+  const metricNames: MetricNameMap = {
     "metric:1": "Revenue",
     "metric:2": "Costs",
   };
@@ -773,7 +773,7 @@ describe("findInvalidRanges — unknown token detection", () => {
   });
 
   it("flags trailing characters after a metric name with special chars", () => {
-    const names: MetricNames = { "metric:99": "People Q H2 Orders, Count!" };
+    const names: MetricNameMap = { "metric:99": "People Q H2 Orders, Count!" };
     const errors = findInvalidRanges("People Q H2 Orders, Count!!!!", names);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
@@ -785,7 +785,7 @@ describe("findInvalidRanges — unknown token detection", () => {
 });
 
 describe("getWordAtCursor — comma handling with metric entries", () => {
-  const commaMetricNames: MetricNames = { "metric:99": "Revenue, Total" };
+  const commaMetricNames: MetricNameMap = { "metric:99": "Revenue, Total" };
 
   it("without entries, comma is always a delimiter", () => {
     const text = "Revenue, Total";
@@ -869,7 +869,7 @@ describe("applyTrackedDefinitions", () => {
     nextSlotIndex = 0;
   });
 
-  const metricNames: MetricNames = {
+  const metricNames: MetricNameMap = {
     [sourceId(1)]: "Revenue",
     [sourceId(2)]: "Geo Revenue",
   };

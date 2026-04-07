@@ -4,13 +4,13 @@ import { SourceColorIndicator } from "metabase/common/components/SourceColorIndi
 import { Badge, Flex, Pill } from "metabase/ui";
 
 import type { ExpressionDefinitionEntry } from "../../../types/viewer-state";
-import { type MetricNames, buildExpressionForPill } from "../utils";
+import { type MetricNameMap, buildExpressionForPill } from "../utils";
 
 import S from "./MetricExpressionPill.module.css";
 
 type MetricExpressionPillProps = {
   expressionEntry: ExpressionDefinitionEntry;
-  metricNames: MetricNames;
+  metricNames: MetricNameMap;
   colors?: string[];
   onClick: (e: React.MouseEvent) => void;
   onRemove: () => void;
