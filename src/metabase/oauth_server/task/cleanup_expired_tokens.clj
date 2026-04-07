@@ -29,11 +29,11 @@
 (task/defjob ^{:doc "Delete expired and revoked OAuth tokens and authorization codes."}
   CleanupExpiredOAuthTokens [_]
   (log/debug "Cleaning up expired/revoked OAuth tokens")
-  (tracing/with-span :tasks "task.oauth-cleanup-expired-tokens.delete" {}
+  (tracing/with-span :tasks "task.oauth-server.cleanup-expired-tokens.delete" {}
     (cleanup-expired-tokens!)))
 
-(def ^:private job-key     (jobs/key "metabase.task.oauth-cleanup-expired-tokens.job"))
-(def ^:private trigger-key (triggers/key "metabase.task.oauth-cleanup-expired-tokens.trigger"))
+(def ^:private job-key     (jobs/key "metabase.task.oauth-server.cleanup-expired-tokens.job"))
+(def ^:private trigger-key (triggers/key "metabase.task.oauth-server.cleanup-expired-tokens.trigger"))
 
 (defmethod task/init! ::CleanupExpiredOAuthTokens [_]
   (let [job     (jobs/build
