@@ -17,9 +17,7 @@ describe("Security Center > Snowplow tracking", { tags: "@enterprise" }, () => {
     H.restore();
     cy.signInAsAdmin();
     H.enableTracking();
-    H.mockSessionPropertiesTokenFeatures({
-      admin_security_center: true,
-    });
+    H.activateToken("pro-self-hosted");
     // Stub the API so the page renders without a real EE backend
     cy.intercept("GET", "/api/ee/security-center", {
       last_checked_at: null,
