@@ -67,7 +67,7 @@
   (when (seq user-ids)
     (let [users (t2/select [:model/User :id :email :first_name :last_name]
                            :id [:in user-ids])]
-      (into {} (map (juxt :id identity) users)))))
+      (into {} (map (juxt :id #(select-keys % [:id :email :first_name :last_name]))) users))))
 
 (defn- enrich-conversations-with-users
   "Add user info to conversations using batch loading."
@@ -98,13 +98,15 @@
   [_route-params
    {:keys [limit offset user-id sort-by sort-dir]}
    :- [:map
-       [:limit {:optional true :default 50} ms/PositiveInt]
-       [:offset {:optional true :default 0} ms/IntGreaterThanOrEqualToZero]
+       [:limit {:optional true} [:maybe ms/PositiveInt]]
+       [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
        [:user-id {:optional true} [:maybe ms/PositiveInt]]
-       [:sort-by {:optional true :default "created_at"} [:enum "created_at" "message_count" "total_tokens"]]
-       [:sort-dir {:optional true :default "desc"} [:enum "asc" "desc"]]]]
+       [:sort-by {:optional true} [:maybe [:enum "created_at" "message_count" "total_tokens"]]]
+       [:sort-dir {:optional true} [:maybe [:enum "asc" "desc"]]]]]
   (api/check-superuser)
-  (let [sort-by-kw   (keyword sort-by)
+  (let [limit        (or limit 50)
+        offset       (or offset 0)
+        sort-by-kw   (keyword (or sort-by "created_at"))
         sort-dir-kw  (if (= sort-dir "asc") :asc :desc)
         where-clause (when user-id [:= :c.user_id user-id])
         base-query   {:select    [[:c.id :conversation_id]

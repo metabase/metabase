@@ -175,7 +175,7 @@
                             :role            "assistant"
                             :profile-id      "gpt-5"
                             :total-tokens    8
-                            :data            [{:role "assistant" :content "hi there"}]})
+                            :data            [{:type "text" :text "hi there"}]})
 
           (let [response (mt/user-http-request :crowberto :get 200
                                                (format "ee/metabot-analytics/conversations/%s" conversation-id))]
