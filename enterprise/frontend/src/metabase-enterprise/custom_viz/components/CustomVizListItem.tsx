@@ -114,7 +114,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
               {t`Re-fetch`}
             </Menu.Item>
             <Menu.Item
-              leftSection={<Icon name={plugin.enabled ? "stop" : "play"} />}
+              leftSection={<Icon name={plugin.enabled ? "pause" : "play"} />}
               onClick={handleToggleEnabled}
             >
               {plugin.enabled ? t`Disable` : t`Enable`}
