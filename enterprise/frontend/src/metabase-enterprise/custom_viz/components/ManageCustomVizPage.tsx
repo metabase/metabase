@@ -40,6 +40,7 @@ export function ManageCustomVizPage() {
           component={Link}
           to={Urls.customVizAdd()}
           leftSection={<Icon name="add" />}
+          variant="filled"
         >
           {t`Add`}
         </Button>
