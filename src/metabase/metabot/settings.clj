@@ -92,7 +92,7 @@
 
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
-(def ^:private supported-metabot-providers
+(def supported-metabot-providers
   "Set of supported LLM provider prefixes for the `llm-metabot-provider` setting."
   #{"anthropic" "openai" "openrouter" provider-util/metabase-provider-prefix})
 

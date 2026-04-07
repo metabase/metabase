@@ -282,7 +282,7 @@
       (throw e))))
 
 (def ^:private metabot-provider-schema
-  [:enum "anthropic" "openai" "openrouter"])
+  (into [:enum] metabot.settings/supported-metabot-providers))
 
 (def ^:private llm-model-response-schema
   [:map
