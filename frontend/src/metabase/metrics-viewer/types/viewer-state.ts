@@ -28,23 +28,25 @@ export interface StoredMetricsViewerTab {
   id: string;
   type: MetricsViewerTabType;
   label: string;
-  dimensionsBySource: Record<MetricSourceId, DimensionId>;
+  dimensionBySlotIndex: Record<number, DimensionId>;
 }
 
 // ── Expression sub-tokens ──
+
+export type ExpressionMetricSubToken = {
+  type: "metric";
+  sourceId: MetricSourceId;
+  count: number;
+  definition?: MetricDefinition;
+  serializedDefinitionInfo?: SerializedDefinitionInfo;
+};
 
 /**
  * Tokens that appear inside a single expression formula.
  * These are the building blocks of an expression definition entry.
  */
 export type ExpressionSubToken =
-  | {
-      type: "metric";
-      sourceId: MetricSourceId;
-      count: number;
-      definition?: MetricDefinition;
-      serializedDefinitionInfo?: SerializedDefinitionInfo;
-    }
+  | ExpressionMetricSubToken
   | { type: "constant"; value: number }
   | { type: "operator"; op: MathOperator }
   | { type: "open-paren" }
@@ -108,16 +110,16 @@ export interface MetricsViewerTabState {
   type: MetricsViewerTabType;
   label: string | null;
   display: MetricsViewerDisplayType;
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>;
+  dimensionMapping: Record<number, DimensionId | null>;
   projectionConfig: MetricsViewerTabProjectionConfig;
 }
 
 // ── Page state ──
 
 export interface MetricsViewerPageState {
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  formulaEntities: MetricsViewerFormulaEntity[];
-  tabs: MetricsViewerTabState[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>; // pristine definitions for unique metrics used in formula
+  formulaEntities: MetricsViewerFormulaEntity[]; // specific items used in formula, definitions there contains filters
+  tabs: MetricsViewerTabState[]; // visualization settings for a tab
   selectedTabId: string | null;
 }
 
@@ -156,7 +158,7 @@ export type ExpressionItemResult = {
   /** The expression definition entry. */
   entry: ExpressionDefinitionEntry;
   /** Per-source modified definitions used by this expression. */
-  modifiedDefinitions: Record<MetricSourceId, MetricDefinition>;
+  modifiedDefinitions: Record<number, MetricDefinition>;
   result: Dataset | null;
   isExecuting: boolean;
   requestError: string | null; // error from http request

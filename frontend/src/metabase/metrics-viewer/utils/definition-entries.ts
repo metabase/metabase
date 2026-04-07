@@ -1,7 +1,7 @@
 import * as LibMetric from "metabase-lib/metric";
 
 import type {
-  ExpressionSubToken,
+  ExpressionMetricSubToken,
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -37,7 +37,7 @@ export function getEffectiveDefinitionEntry(
 }
 
 export function getEffectiveTokenDefinitionEntry(
-  token: Extract<ExpressionSubToken, { type: "metric" }>,
+  token: ExpressionMetricSubToken,
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
 ): MetricsViewerDefinitionEntry {
   return {

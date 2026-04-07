@@ -30,6 +30,8 @@ import {
 } from "../types/viewer-state";
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
 import { getEffectiveDefinitionEntry } from "../utils/definition-entries";
+import { computeMetricSlots } from "../utils/metric-slots";
+import { remapDimensionMappings } from "../utils/remap-dimension-mappings";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -85,52 +87,111 @@ function getValidSelectedTabId(
   return selectedTabExists ? currentSelectedId : (newTabs[0]?.id ?? null);
 }
 
-function addDefinitionToTabs(
+/**
+ * For each tab, find slots that have no dimension assigned yet but whose
+ * definition IS loaded, and try to smart-match a dimension using the same
+ * logic as `addDefinitionToTabs`.  This handles both timing orderings:
+ *  - definition loaded before formula committed (called from setFormulaEntities)
+ *  - formula committed before definition loaded (called from updateDefinition)
+ */
+function assignDimensionsForUnmappedSlots(
   tabs: MetricsViewerTabState[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  newDefId: MetricSourceId,
-  newDef: MetricDefinition,
+  formulaEntities: MetricsViewerFormulaEntity[],
 ): MetricsViewerTabState[] {
-  const existingDefinitions = objectFromEntries(
-    Object.values(definitions)
-      .filter((entry) => entry.id !== newDefId)
-      .map((entry) => [entry.id, entry.definition] as const),
-  );
+  const slots = computeMetricSlots(formulaEntities);
+  if (slots.length === 0) {
+    return tabs;
+  }
+
+  const slotIndexToSourceId = new Map<number, MetricSourceId>();
+  for (const slot of slots) {
+    slotIndexToSourceId.set(slot.slotIndex, slot.sourceId);
+  }
 
   return tabs.map((tab) => {
-    if (newDefId in tab.dimensionMapping || tab.label == null) {
+    if (tab.label == null) {
       return tab;
     }
 
-    const activeMappings = objectFromEntries(
-      getObjectEntries(tab.dimensionMapping).filter(
-        (entry): entry is [MetricSourceId, string] => entry[1] != null,
-      ),
-    );
+    // Collect unmapped slots grouped by sourceId.
+    const unmappedBySource = new Map<
+      MetricSourceId,
+      { slotIndices: number[]; definition: MetricDefinition }
+    >();
+
+    for (const slot of slots) {
+      const existing = tab.dimensionMapping[slot.slotIndex];
+      if (existing !== undefined) {
+        continue; // already mapped (even if null — that's an explicit clear)
+      }
+      const defEntry = definitions[slot.sourceId];
+      if (!defEntry?.definition) {
+        continue; // definition not loaded yet
+      }
+      let group = unmappedBySource.get(slot.sourceId);
+      if (!group) {
+        group = { slotIndices: [], definition: defEntry.definition };
+        unmappedBySource.set(slot.sourceId, group);
+      }
+      group.slotIndices.push(slot.slotIndex);
+    }
+
+    if (unmappedBySource.size === 0) {
+      return tab;
+    }
+
+    // Build stored-tab representation for matching.
+    const activeMappings: Record<number, string> = {};
+    for (const [key, value] of getObjectEntries(tab.dimensionMapping)) {
+      if (value != null) {
+        activeMappings[Number(key)] = value;
+      }
+    }
     const storedTab: StoredMetricsViewerTab = {
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      dimensionsBySource: activeMappings,
+      dimensionBySlotIndex: activeMappings,
     };
 
-    const matchingDimension = findMatchingDimensionForTab(
-      newDef,
-      storedTab,
-      existingDefinitions,
-    );
+    let newMappings: Record<number, string> | null = null;
 
-    if (matchingDimension) {
-      return {
-        ...tab,
-        dimensionMapping: {
-          ...tab.dimensionMapping,
-          [newDefId]: matchingDimension,
-        },
-      };
+    for (const [sourceId, { slotIndices, definition }] of unmappedBySource) {
+      const existingDefinitions = objectFromEntries(
+        Object.values(definitions)
+          .filter((entry) => entry.id !== sourceId && entry.definition != null)
+          .map((entry) => [entry.id, entry.definition] as const),
+      );
+
+      const matchingDimension = findMatchingDimensionForTab(
+        definition,
+        storedTab,
+        existingDefinitions,
+        slotIndexToSourceId,
+      );
+
+      if (matchingDimension) {
+        if (!newMappings) {
+          newMappings = {};
+        }
+        for (const idx of slotIndices) {
+          newMappings[idx] = matchingDimension;
+        }
+      }
     }
 
-    return tab;
+    if (!newMappings) {
+      return tab;
+    }
+
+    return {
+      ...tab,
+      dimensionMapping: {
+        ...tab.dimensionMapping,
+        ...newMappings,
+      },
+    };
   });
 }
 
@@ -148,7 +209,10 @@ export interface UseViewerStateResult {
 
   removeDefinition: (id: MetricSourceId) => void;
   updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
-  setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void;
+  setFormulaEntities: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
 
   selectTab: (tabId: string) => void;
   addTab: (tab: MetricsViewerTabState) => void;
@@ -156,13 +220,10 @@ export interface UseViewerStateResult {
   updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
   setDefinitionDimension: (
     tabId: string,
-    definitionId: MetricSourceId,
+    slotIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  removeDefinitionDimension: (
-    tabId: string,
-    definitionId: MetricSourceId,
-  ) => void;
+  removeDefinitionDimension: (tabId: string, slotIndex: number) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
@@ -209,27 +270,12 @@ export function useViewerState(): UseViewerStateResult {
           return prev;
         }
 
-        const newDefinitions = {
-          ...prev.definitions,
-          [entry.id]: entry,
-        };
-
-        if (prev.tabs.length === 0 || !entry.definition) {
-          return {
-            ...prev,
-            definitions: newDefinitions,
-          };
-        }
-
         return {
           ...prev,
-          definitions: newDefinitions,
-          tabs: addDefinitionToTabs(
-            prev.tabs,
-            newDefinitions,
-            entry.id,
-            entry.definition,
-          ),
+          definitions: {
+            ...prev.definitions,
+            [entry.id]: entry,
+          },
         };
       }),
     [],
@@ -239,6 +285,13 @@ export function useViewerState(): UseViewerStateResult {
     (id: MetricSourceId) =>
       setState((prev) => {
         const { [id]: _, ...newDefinitions } = prev.definitions;
+
+        // Find slot indices being removed (slots for this sourceId)
+        const slots = computeMetricSlots(prev.formulaEntities);
+        const removedSlotIndices = new Set(
+          slots.filter((s) => s.sourceId === id).map((s) => s.slotIndex),
+        );
+
         const newTabs =
           // scalar tab is always valid, but we want to remove it if there are no definitions
           // so that adding a new definition triggers computeDefaultTabs
@@ -246,8 +299,19 @@ export function useViewerState(): UseViewerStateResult {
             ? []
             : prev.tabs
                 .map((tab) => {
-                  const { [id]: __, ...rest } = tab.dimensionMapping;
-                  return { ...tab, dimensionMapping: rest };
+                  // Remove entries for removed slot indices.
+                  // Don't shift — remapDimensionMappings handles that
+                  // when formulaEntities are updated separately.
+                  const newMapping: Record<number, string | null> = {};
+                  for (const [key, value] of getObjectEntries(
+                    tab.dimensionMapping,
+                  )) {
+                    const idx = Number(key);
+                    if (!removedSlotIndices.has(idx)) {
+                      newMapping[idx] = value;
+                    }
+                  }
+                  return { ...tab, dimensionMapping: newMapping };
                 })
                 .filter((tab) => areTabDimensionsValid(tab));
 
@@ -278,11 +342,10 @@ export function useViewerState(): UseViewerStateResult {
           return { ...prev, definitions: newDefinitions };
         }
 
-        const updatedTabs = addDefinitionToTabs(
+        const updatedTabs = assignDimensionsForUnmappedSlots(
           prev.tabs,
           newDefinitions,
-          id,
-          definition,
+          prev.formulaEntities,
         );
 
         const newTabs = updatedTabs.filter((tab) => areTabDimensionsValid(tab));
@@ -326,12 +389,19 @@ export function useViewerState(): UseViewerStateResult {
           return fe;
         });
 
+        // Find slot indices that were replaced
+        const slots = computeMetricSlots(prev.formulaEntities);
+        const replacedSlotIndices = new Set(
+          slots.filter((s) => s.sourceId === oldId).map((s) => s.slotIndex),
+        );
+
+        // Remove dimension mappings for replaced slot indices (new metric has different dimensions)
         const newTabs = prev.tabs.map((tab) => {
-          if (!(oldId in tab.dimensionMapping)) {
-            return tab;
+          const newMapping = { ...tab.dimensionMapping };
+          for (const idx of replacedSlotIndices) {
+            delete newMapping[idx];
           }
-          const { [oldId]: __, ...tabRest } = tab.dimensionMapping;
-          return { ...tab, dimensionMapping: tabRest };
+          return { ...tab, dimensionMapping: newMapping };
         });
 
         return {
@@ -355,9 +425,14 @@ export function useViewerState(): UseViewerStateResult {
         if (prev.tabs.some((existing) => existing.id === tab.id)) {
           return prev;
         }
+        const newTabs = assignDimensionsForUnmappedSlots(
+          [...prev.tabs, tab],
+          prev.definitions,
+          prev.formulaEntities,
+        );
         return {
           ...prev,
-          tabs: [...prev.tabs, tab],
+          tabs: newTabs,
           selectedTabId:
             prev.selectedTabId == null ? tab.id : prev.selectedTabId,
         };
@@ -394,13 +469,15 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const setDefinitionDimension = useCallback(
-    (
-      tabId: string,
-      definitionId: MetricSourceId,
-      dimension: DimensionMetadata,
-    ) =>
+    (tabId: string, slotIndex: number, dimension: DimensionMetadata) =>
       setState((prev) => {
-        const entry = prev.definitions[definitionId];
+        const slots = computeMetricSlots(prev.formulaEntities);
+        const slot = slots[slotIndex];
+        if (!slot) {
+          return prev;
+        }
+
+        const entry = prev.definitions[slot.sourceId];
         const def = entry?.definition;
         const dimId = def
           ? LibMetric.dimensionValuesInfo(def, dimension).id
@@ -420,7 +497,7 @@ export function useViewerState(): UseViewerStateResult {
               ...tab,
               dimensionMapping: {
                 ...tab.dimensionMapping,
-                [definitionId]: dimId,
+                [slotIndex]: dimId,
               },
             };
           }),
@@ -430,7 +507,7 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const removeDefinitionDimension = useCallback(
-    (tabId: string, definitionId: MetricSourceId) =>
+    (tabId: string, slotIndex: number) =>
       setState((prev) => ({
         ...prev,
         tabs: prev.tabs.map((tab) => {
@@ -439,7 +516,7 @@ export function useViewerState(): UseViewerStateResult {
           }
           return {
             ...tab,
-            dimensionMapping: { ...tab.dimensionMapping, [definitionId]: null },
+            dimensionMapping: { ...tab.dimensionMapping, [slotIndex]: null },
           };
         }),
       })),
@@ -447,8 +524,48 @@ export function useViewerState(): UseViewerStateResult {
   );
 
   const setFormulaEntities = useCallback(
-    (formulaEntities: MetricsViewerFormulaEntity[]) =>
-      setState((prev) => ({ ...prev, formulaEntities })),
+    (
+      formulaEntities: MetricsViewerFormulaEntity[],
+      slotMapping?: Map<number, number>,
+    ) =>
+      setState((prev) => {
+        // When a slotMapping is provided (from commitAndCollapse or
+        // handleRemoveItem), use it to remap dimension mappings efficiently.
+        // Otherwise the caller is not changing entity structure (paren cleanup,
+        // filter/breakout changes, URL restore) so tabs are kept as-is.
+        const reconciledTabs = slotMapping
+          ? remapDimensionMappings(prev.tabs, slotMapping, formulaEntities)
+          : prev.tabs;
+        let tabs = assignDimensionsForUnmappedSlots(
+          reconciledTabs,
+          prev.definitions,
+          formulaEntities,
+        );
+
+        // When tabs are empty (e.g. all metrics were removed then one was
+        // added back), generate default tabs now that formulaEntities includes
+        // the new metric and its definition may already be loaded.
+        if (tabs.length === 0) {
+          const metricSlots = computeMetricSlots(formulaEntities);
+          if (metricSlots.length > 0) {
+            const definitionsBySourceId: Record<
+              MetricSourceId,
+              MetricDefinition | null
+            > = {};
+            for (const [id, entry] of Object.entries(prev.definitions)) {
+              definitionsBySourceId[id as MetricSourceId] =
+                entry.definition ?? null;
+            }
+            tabs = computeDefaultTabs(definitionsBySourceId, metricSlots);
+          }
+        }
+
+        return {
+          ...prev,
+          formulaEntities,
+          tabs,
+        };
+      }),
     [],
   );
 
@@ -533,7 +650,10 @@ export function useViewerState(): UseViewerStateResult {
               > = {
                 [id]: definition,
               };
-              const tabs = computeDefaultTabs(definitions, [id]);
+              const metricSlots = computeMetricSlots(
+                stateRef.current.formulaEntities,
+              );
+              const tabs = computeDefaultTabs(definitions, metricSlots);
               for (const tab of tabs) {
                 addTab(tab);
               }

@@ -34,7 +34,10 @@ export function useViewerUrl(
   initialize: (state: MetricsViewerPageState) => void,
   onLoadSources: (request: LoadSourcesRequest) => void,
   location: Location,
-  setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void,
+  setFormulaEntities: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void,
 ): void {
   const dispatch = useDispatch();
   const lastHashRef = useRef<string | null>(null);

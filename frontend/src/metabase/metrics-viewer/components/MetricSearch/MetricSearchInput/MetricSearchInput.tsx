@@ -19,6 +19,7 @@ import type {
 } from "../../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
 import { getEffectiveDefinitionEntry } from "../../../utils/definition-entries";
+import { computeMetricSlots } from "../../../utils/metric-slots";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -54,7 +55,10 @@ const EMPTY_SET = new Set<number>();
 type MetricSearchInputProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
-  onFormulaEntitiesChange: (entities: MetricsViewerFormulaEntity[]) => void;
+  onFormulaEntitiesChange: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
   onAddMetric: (metric: SelectedMetric) => void;
@@ -220,12 +224,13 @@ export function MetricSearchInput({
     const view = editorRef.current?.view;
     const trackedIdentities = view ? readMetricIdentities(view) : [];
 
-    const reconciledEntities = applyTrackedDefinitions(
-      parsedEntities,
-      trackedIdentities,
-      newText,
-      metricEntriesRef.current,
-    );
+    const { entities: reconciledEntities, slotMapping } =
+      applyTrackedDefinitions(
+        parsedEntities,
+        trackedIdentities,
+        newText,
+        metricEntriesRef.current,
+      );
 
     // Find which metric sourceIds are referenced in the parsed entities
     const referencedSourceIds = new Set<MetricSourceId>();
@@ -257,7 +262,7 @@ export function MetricSearchInput({
       }
     }
 
-    onFormulaEntitiesChange(reconciledEntities);
+    onFormulaEntitiesChange(reconciledEntities, slotMapping);
     isEditingSessionActiveRef.current = false;
     setIsFocused(false);
     setIsOpen(false);
@@ -447,7 +452,19 @@ export function MetricSearchInput({
         }
       }
 
-      onFormulaEntitiesChange(newFormulaEntities);
+      // Build slot mapping for the removal: surviving old slots map to their
+      // new (shifted) indices.  Slots from the removed entity are absent.
+      const oldSlots = computeMetricSlots(formulaEntities);
+      const slotMapping = new Map<number, number>();
+      let newIdx = 0;
+      for (const slot of oldSlots) {
+        if (slot.entityIndex === itemIndex) {
+          continue; // removed
+        }
+        slotMapping.set(slot.slotIndex, newIdx++);
+      }
+
+      onFormulaEntitiesChange(newFormulaEntities, slotMapping);
     },
     [formulaEntities, selectedMetrics, onRemoveMetric, onFormulaEntitiesChange],
   );

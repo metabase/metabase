@@ -55,16 +55,18 @@ jest.mock("../MetricExpressionPill", () => ({
     colors?: string[];
     onClick: (e: React.MouseEvent) => void;
     onRemove: () => void;
-  }) => (
-    <div
-      data-testid="metric-expression-pill"
-      data-expression-text={expressionEntry.name}
-      onClick={onClick}
-    >
-      <span>{expressionEntry.name}</span>
-      <button onClick={onRemove}>remove</button>
-    </div>
-  ),
+  }) => {
+    return (
+      <div
+        data-testid="metric-expression-pill"
+        data-expression-text={expressionEntry.name}
+        onClick={onClick}
+      >
+        <span>{expressionEntry.name}</span>
+        <button onClick={onRemove}>remove</button>
+      </div>
+    );
+  },
 }));
 
 jest.mock("../MetricSearchDropdown", () => ({
@@ -476,7 +478,10 @@ describe("removing pills", () => {
     await user.click(screen.getByRole("button", { name: "remove" }));
 
     expect(onRemoveMetric).toHaveBeenCalledWith(1, "metric");
-    expect(onFormulaEntitiesChange).toHaveBeenCalledWith([]);
+    expect(onFormulaEntitiesChange).toHaveBeenCalledWith(
+      [],
+      new Map(), // slot mapping: no slots remain
+    );
   });
 
   it("removes a MetricPill from a two-item list, keeping the other metric", async () => {
@@ -494,7 +499,10 @@ describe("removing pills", () => {
     await user.click(removeButtons[0]);
 
     expect(onRemoveMetric).toHaveBeenCalledWith(1, "metric");
-    expect(onFormulaEntitiesChange).toHaveBeenCalledWith([costsEntry]);
+    expect(onFormulaEntitiesChange).toHaveBeenCalledWith(
+      [costsEntry],
+      new Map([[1, 0]]), // slot mapping: Costs moved from slot 1 → 0
+    );
   });
 
   it("calls onRemoveMetric for all metrics in an expression pill when removed", async () => {
@@ -556,7 +564,9 @@ describe("expression pill display after committing a formula", () => {
     // Type the expression formula
     const input = screen.getByTestId("metrics-viewer-search-input");
     fireEvent.change(input, {
-      target: { value: "(MetricA + MetricB) / MetricC" },
+      target: {
+        value: `${[metricA, metricB, metricC].map((m) => m.name).join(", ")}, (MetricA + MetricB) / MetricC`,
+      },
     });
 
     // Run button should appear (formula is dirty)
@@ -577,7 +587,11 @@ describe("expression pill display after committing a formula", () => {
       onFormulaEntitiesChange.mock.calls.length - 1
     ][0] as MetricsViewerFormulaEntity[];
 
+    // Must contain the 3 metric entries plus the expression entry
+    const metricDefs = committedEntities.filter(isMetricEntry);
     const exprDefs = committedEntities.filter(isExpressionEntry);
+
+    expect(metricDefs).toHaveLength(3);
     expect(exprDefs).toHaveLength(1);
 
     // The expression entry should have the correct tokens

@@ -3,13 +3,14 @@ import { t } from "ttag";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type {
-  ExpressionSubToken,
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerFormulaEntity,
+import {
+  type ExpressionMetricSubToken,
+  type MetricSourceId,
+  type MetricsViewerDefinitionEntry,
+  type MetricsViewerFormulaEntity,
+  isExpressionEntry,
+  isMetricEntry,
 } from "../types/viewer-state";
-import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
 
 import {
   getEffectiveDefinitionEntry,
@@ -22,7 +23,7 @@ export type DefinitionSource = {
   definition: MetricDefinition;
   entity: MetricsViewerFormulaEntity;
   entityIndex: number;
-  token?: Extract<ExpressionSubToken, { type: "metric" }>;
+  token?: ExpressionMetricSubToken;
 };
 
 export function getDefinitionSources(

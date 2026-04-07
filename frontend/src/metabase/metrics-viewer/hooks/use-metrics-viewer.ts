@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
+import { objectFromEntries } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import type {
   DimensionMetadata,
@@ -28,13 +28,13 @@ import type {
   SourceDisplayInfo,
 } from "../utils/dimension-picker";
 import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
+import { computeMetricSlots } from "../utils/metric-slots";
 import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
 import { createSourceId } from "../utils/source-ids";
 import {
   type TabInfo,
   createTabFromTabInfo,
-  getDimensionsByType,
-  resolveCommonTabLabel,
+  recomputeTabLabels,
 } from "../utils/tabs";
 
 import { useDefinitionQueries } from "./use-definition-queries";
@@ -42,7 +42,7 @@ import { useViewerState } from "./use-viewer-state";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
 export interface UseMetricsViewerResult {
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>; // TODO: most likely we don't need this anymore - it was needed only to understand which metric names should be identified as metrics when we parse formula bar text. This could be just local state for MetricSearchInput
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
   tabs: MetricsViewerTabState[];
   activeTab: MetricsViewerTabState | null;
@@ -71,15 +71,18 @@ export interface UseMetricsViewerResult {
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
   changeTabDimension: (
     tabId: string,
-    definitionId: MetricSourceId,
+    slotIndex: number,
     dimension: DimensionMetadata,
   ) => void;
-  removeTabDimension: (tabId: string, definitionId: MetricSourceId) => void;
+  removeTabDimension: (tabId: string, slotIndex: number) => void;
   setBreakoutDimension: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
-  setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void;
+  setFormulaEntities: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
 }
 
 export function useMetricsViewer({
@@ -190,6 +193,11 @@ export function useMetricsViewer({
     return out;
   }, [state.formulaEntities]);
 
+  const metricSlots = useMemo(
+    () => computeMetricSlots(state.formulaEntities),
+    [state.formulaEntities],
+  );
+
   const sourceDataById = useMemo((): Record<
     MetricSourceId,
     SourceDisplayInfo
@@ -223,43 +231,19 @@ export function useMetricsViewer({
     [state.tabs],
   );
 
-  const effectiveTabs = useMemo(() => {
-    const dimsBySource = new Map(
-      definitionValues
-        .filter((entry) => entry.definition != null)
-        .map(
-          (entry) =>
-            [entry.id, getDimensionsByType(entry.definition!)] as const,
-        ),
-    );
-
-    return state.tabs.map((tab) => {
-      const names: string[] = [];
-      for (const [sourceId, dimensionId] of getObjectEntries(
-        tab.dimensionMapping,
-      )) {
-        if (dimensionId == null) {
-          continue;
-        }
-        const sourceDimensions = dimsBySource.get(sourceId);
-        const dimensionInfo = sourceDimensions?.get(dimensionId);
-        if (dimensionInfo) {
-          names.push(dimensionInfo.displayName);
-        }
-      }
-      const label = resolveCommonTabLabel(names);
-      return label != null && label !== tab.label ? { ...tab, label } : tab;
-    });
-  }, [state.tabs, definitionValues]);
+  const effectiveTabs = useMemo(
+    () => recomputeTabLabels(state.tabs, state.definitions, metricSlots),
+    [state.tabs, metricSlots, state.definitions],
+  );
 
   const availableDimensions = useMemo(
     () =>
       getAvailableDimensionsForPicker(
         definitionsBySourceId,
-        sourceOrder,
+        metricSlots,
         existingTabDimensionIds,
       ),
-    [definitionsBySourceId, sourceOrder, existingTabDimensionIds],
+    [definitionsBySourceId, metricSlots, existingTabDimensionIds],
   );
 
   const addMetric = useCallback(

@@ -16,26 +16,31 @@ import type {
 
 import type { DimensionFilterValue } from "./dimension-filters";
 import { findDimensionById } from "./dimension-lookup";
+import type { MetricSlot } from "./metric-slots";
 
 type MetricsViewerClickActionParams = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  metricSlots: MetricSlot[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToDimensionId: Record<CardId, number>;
 };
 
 export class MetricsViewerClickActionsMode implements ClickActionsMode {
   private definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  private metricSlots: MetricSlot[];
   private tab: MetricsViewerTabState;
   private onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  private cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  private cardIdToDimensionId: Record<CardId, number>;
   constructor({
     definitions,
+    metricSlots,
     tab,
     onTabUpdate,
     cardIdToDimensionId,
   }: MetricsViewerClickActionParams) {
     this.definitions = definitions;
+    this.metricSlots = metricSlots;
     this.tab = tab;
     this.onTabUpdate = onTabUpdate;
     this.cardIdToDimensionId = cardIdToDimensionId;
@@ -45,10 +50,13 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
     if (cardId == null) {
       return [];
     }
-    const sourceId = this.cardIdToDimensionId[cardId];
-    const definition = sourceId ? this.definitions[sourceId] : undefined;
+    // cardIdToDimensionId now maps card ID → slot index
+    const slotIndex = this.cardIdToDimensionId[cardId];
+    const slot = slotIndex != null ? this.metricSlots[slotIndex] : undefined;
+    const definition = slot ? this.definitions[slot.sourceId] : undefined;
     const params = {
       definition,
+      slotIndex,
       tab: this.tab,
       onTabUpdate: this.onTabUpdate,
       clickObject,
@@ -61,6 +69,7 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
 
 type GetActionParams = {
   definition: MetricsViewerDefinitionEntry | undefined; //definition that was clicked on
+  slotIndex: number | undefined;
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   clickObject: ClickObject;
@@ -68,11 +77,12 @@ type GetActionParams = {
 
 function getZoomInTimeSeriesAction({
   definition,
+  slotIndex,
   tab,
   onTabUpdate,
   clickObject,
 }: GetActionParams): ClickAction | undefined {
-  if (!definition || !definition.definition) {
+  if (!definition || !definition.definition || slotIndex == null) {
     return;
   }
   const dimension = clickObject.dimensions?.[0];
@@ -85,6 +95,7 @@ function getZoomInTimeSeriesAction({
   }
   const nextTemporalUnit = getNextTemporalUnit(
     definition,
+    slotIndex,
     tab,
     currentTemporalUnit,
   );
@@ -161,11 +172,12 @@ const nextTemporalUnitMap: Partial<Record<TemporalUnit, TemporalUnit>> = {
 
 function getNextTemporalUnit(
   entry: MetricsViewerDefinitionEntry,
+  slotIndex: number,
   tab: MetricsViewerTabState,
   currentUnit: TemporalUnit,
 ): TemporalUnit | undefined {
   const definition = entry.definition;
-  const dimensionId = tab.dimensionMapping[entry.id];
+  const dimensionId = tab.dimensionMapping[slotIndex];
   if (!definition || !dimensionId) {
     return undefined;
   }

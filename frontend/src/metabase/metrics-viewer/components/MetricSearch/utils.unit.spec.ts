@@ -875,16 +875,23 @@ const metricEntryWithDef = (
   definition: mockDef(name),
 });
 
+let nextSlotIndex = 0;
+
 function identity(
   metricSourceId: MetricSourceId,
   from: number,
   to: number,
   definition: MetricDefinitionEntry["definition"] = null,
+  slotIndex: number = nextSlotIndex++,
 ): MetricIdentityEntry {
-  return { sourceId: metricSourceId, from, to, definition };
+  return { sourceId: metricSourceId, from, to, definition, slotIndex };
 }
 
 describe("applyTrackedDefinitions", () => {
+  beforeEach(() => {
+    nextSlotIndex = 0;
+  });
+
   const entries = [
     metricEntryWithDef(sourceId(1), "Revenue"),
     metricEntryWithDef(sourceId(2), "Geo Revenue"),
@@ -903,16 +910,23 @@ describe("applyTrackedDefinitions", () => {
   );
 
   it("returns empty array for empty inputs", () => {
-    expect(applyTrackedDefinitions([], [], "", entries)).toEqual([]);
+    const result = applyTrackedDefinitions([], [], "", entries);
+    expect(result.entities).toEqual([]);
+    expect(result.slotMapping.size).toBe(0);
   });
 
   it("applies tracked definition to a standalone metric by position", () => {
     const text = "Revenue";
     const parsed = parseFullText(text, entries);
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    expect(result).toHaveLength(1);
-    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    expect(entities).toHaveLength(1);
+    expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
   });
@@ -921,15 +935,20 @@ describe("applyTrackedDefinitions", () => {
     const text = "Revenue";
     const parsed = parseFullText(text, entries);
     const tracked = [identity(sourceId(1), 0, 7, null)];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    expect((result[0] as MetricDefinitionEntry).definition).toBeNull();
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    expect((entities[0] as MetricDefinitionEntry).definition).toBeNull();
   });
 
   it("leaves entity unchanged when no tracked identity matches its position", () => {
     const text = "Revenue";
     const parsed = parseFullText(text, entries);
-    const result = applyTrackedDefinitions(parsed, [], text, entries);
-    expect(result).toEqual(parsed);
+    const { entities } = applyTrackedDefinitions(parsed, [], text, entries);
+    expect(entities).toEqual(parsed);
   });
 
   it("matches definitions by exact position for comma-separated metrics", () => {
@@ -939,11 +958,16 @@ describe("applyTrackedDefinitions", () => {
       identity(sourceId(1), 0, 7, revenueBreakoutDef),
       identity(sourceId(2), 9, 20, geoBreakoutDef),
     ];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
-    expect((result[1] as MetricDefinitionEntry).definition).toBe(
+    expect((entities[1] as MetricDefinitionEntry).definition).toBe(
       geoBreakoutDef,
     );
   });
@@ -952,8 +976,13 @@ describe("applyTrackedDefinitions", () => {
     const text = "Revenue + 5";
     const parsed = parseFullText(text, entries);
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    const [tokenDef] = getExprTokenDefinitions(result, 0);
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    const [tokenDef] = getExprTokenDefinitions(entities, 0);
     expect(tokenDef).toBeDefined();
     expect(LibMetric.projections(tokenDef!)).toEqual([]);
   });
@@ -962,24 +991,34 @@ describe("applyTrackedDefinitions", () => {
     const text = "Revenue + 5";
     const parsed = parseFullText(text, entries);
     const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    const [tokenDef] = getExprTokenDefinitions(result, 0);
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    const [tokenDef] = getExprTokenDefinitions(entities, 0);
     expect(tokenDef).toBe(revenueDef);
   });
 
   it("preserves reference identity for expression entries when no tokens change", () => {
     const text = "Revenue + 5";
     const parsed = parseFullText(text, entries);
-    const result = applyTrackedDefinitions(parsed, [], text, entries);
-    expect(result[0]).toBe(parsed[0]);
+    const { entities } = applyTrackedDefinitions(parsed, [], text, entries);
+    expect(entities[0]).toBe(parsed[0]);
   });
 
   it("does not touch non-metric tokens inside expressions", () => {
     const text = "Revenue + 5";
     const parsed = parseFullText(text, entries);
     const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    const resultExpr = result[0] as ExpressionDefinitionEntry;
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    const resultExpr = entities[0] as ExpressionDefinitionEntry;
     const parsedExpr = parsed[0] as ExpressionDefinitionEntry;
     expect(resultExpr.tokens[1]).toBe(parsedExpr.tokens[1]);
     expect(resultExpr.tokens[2]).toBe(parsedExpr.tokens[2]);
@@ -990,11 +1029,16 @@ describe("applyTrackedDefinitions", () => {
     const parsed = parseFullText(text, entries);
     // Only the standalone Revenue (0-7) has a tracked identity
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
-    const [tokenDef] = getExprTokenDefinitions(result, 1);
+    const [tokenDef] = getExprTokenDefinitions(entities, 1);
     expect(tokenDef).toBeUndefined();
   });
 
@@ -1004,8 +1048,13 @@ describe("applyTrackedDefinitions", () => {
     const text = "Revenue";
     const parsed = parseFullText(text, entries);
     const tracked = [identity(sourceId(1), 100, 107, revenueDef)];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    expect((result[0] as MetricDefinitionEntry).definition).not.toBe(
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    expect((entities[0] as MetricDefinitionEntry).definition).not.toBe(
       revenueDef,
     );
   });
@@ -1015,13 +1064,18 @@ describe("applyTrackedDefinitions", () => {
     const parsed = parseFullText(text, entries);
     // Only one tracked identity at position [0,7]
     const tracked = [identity(sourceId(1), 0, 7, revenueBreakoutDef)];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
     // First Revenue at [0,7] — exact position match
-    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+    expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
     // Second Revenue at [9,16] — no match, independent new instance
-    expect((result[1] as MetricDefinitionEntry).definition).not.toBe(
+    expect((entities[1] as MetricDefinitionEntry).definition).not.toBe(
       revenueBreakoutDef,
     );
   });
@@ -1031,8 +1085,13 @@ describe("applyTrackedDefinitions", () => {
     const text = "Revenue + 5";
     const parsed = parseFullText(text, entries);
     const tracked = [identity(sourceId(1), 0, 7, revenueDef)];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    const [tokenDef] = getExprTokenDefinitions(result, 0);
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    const [tokenDef] = getExprTokenDefinitions(entities, 0);
     expect(tokenDef).toBe(revenueDef);
   });
 
@@ -1040,13 +1099,18 @@ describe("applyTrackedDefinitions", () => {
     const text = "Revenue, Revenue";
     const parsed = parseFullText(text, entries);
     const tracked = [
-      identity(sourceId(1), 0, 7, revenueBreakoutDef),
-      identity(sourceId(1), 9, 16, revenueDef),
+      identity(sourceId(1), 0, 7, revenueBreakoutDef, 0),
+      identity(sourceId(1), 9, 16, revenueDef, 1),
     ];
-    const result = applyTrackedDefinitions(parsed, tracked, text, entries);
-    expect((result[0] as MetricDefinitionEntry).definition).toBe(
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      entries,
+    );
+    expect((entities[0] as MetricDefinitionEntry).definition).toBe(
       revenueBreakoutDef,
     );
-    expect((result[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
+    expect((entities[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
   });
 });

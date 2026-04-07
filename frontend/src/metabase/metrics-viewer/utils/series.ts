@@ -1,8 +1,15 @@
+import { t } from "ttag";
+
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
-import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
+import type {
+  DimensionPillBarItem,
+  ExpressionDimensionItem,
+  ExpressionMetricSource,
+  MetricDimensionItem,
+} from "metabase/metrics-viewer/components/DimensionPillBar";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
@@ -18,11 +25,13 @@ import type {
   RowValue,
   RowValues,
   SingleSeries,
+  TemporalUnit,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import {
+  type ExpressionDefinitionEntry,
   type MetricDefinitionEntry,
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
@@ -35,38 +44,46 @@ import {
 } from "../types/viewer-state";
 
 import { getDefinitionName } from "./definition-builder";
+import { getModifiedDefinition } from "./definition-cache";
 import {
   entryHasBreakout,
   getEffectiveDefinitionEntry,
+  getEffectiveTokenDefinitionEntry,
   getEntryBreakout,
 } from "./definition-entries";
 import { findDimensionById } from "./dimension-lookup";
+import {
+  type MetricSlot,
+  findExpressionTokenSlot,
+  findStandaloneSlot,
+  slotsForEntity,
+} from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
 export function buildArithmeticSeriesFromResult(
+  entry: ExpressionDefinitionEntry,
+  entryIndex: number,
+  metricSlots: MetricSlot[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  dimensionMapping: Record<number, DimensionId | null>,
   display: MetricsViewerDisplayType,
   arithmeticResult: Dataset,
-  modifiedDefinitions: Record<MetricSourceId, MetricDefinition>,
-  expressionName: string,
+  modifiedDefinitions: Record<number, MetricDefinition>,
   sourceColors: string[] | undefined,
 ): SingleSeries[] {
   if (!arithmeticResult.data?.cols?.length) {
     return [];
   }
 
-  const modDefMap = new Map(Object.entries(modifiedDefinitions)) as Map<
-    MetricSourceId,
-    MetricDefinition
-  >;
   const vizSettings = getVizSettingsBySourceId(
     display,
-    Object.values(definitions),
+    entry,
+    entryIndex,
+    metricSlots,
     definitions,
-    modDefMap,
+    modifiedDefinitions,
     dimensionMapping,
   );
   if (!vizSettings) {
@@ -82,12 +99,12 @@ export function buildArithmeticSeriesFromResult(
     true,
     1,
     null,
-    expressionName,
+    entry.name,
   );
 
   return [
     {
-      card: createSeriesCard(cardId, expressionName, display, {
+      card: createSeriesCard(cardId, entry.name, display, {
         ...vizSettings,
         ...computeColorVizSettings({
           displayType: display,
@@ -106,43 +123,64 @@ export function buildArithmeticSeriesFromResult(
  */
 function getVizSettingsBySourceId(
   display: MetricsViewerDisplayType,
-  entries: MetricsViewerDefinitionEntry[],
+  entry: ExpressionDefinitionEntry,
+  entryIndex: number,
+  metricSlots: MetricSlot[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  modifiedDefinitions: Record<number, MetricDefinition>,
+  dimensionMapping: Record<number, DimensionId | null>,
 ): VisualizationSettings | null {
   const displayConfig = DISPLAY_TYPE_REGISTRY[display];
 
-  return entries.reduce<VisualizationSettings | null>((found, entry) => {
-    if (found) {
-      return found;
-    }
-    const definition = definitions[entry.id]?.definition;
-    const modifiedDefinition = modifiedDefinitions.get(entry.id);
-    if (!definition || !modifiedDefinition) {
-      return null;
-    }
+  return entry.tokens.reduce<VisualizationSettings | null>(
+    (found, token, tokenIndex) => {
+      if (found) {
+        return found;
+      }
 
-    const dimensionId = dimensionMapping[entry.id];
-
-    if (displayConfig.dimensionRequired) {
-      if (!dimensionId) {
+      if (token.type !== "metric") {
         return null;
       }
-      const dimension = findDimensionById(definition, dimensionId);
-      if (!dimension) {
+
+      const entry = getEffectiveTokenDefinitionEntry(token, definitions);
+      const definition = entry.definition;
+      const modifiedDefinition = modifiedDefinitions[tokenIndex];
+
+      if (!definition || !modifiedDefinition) {
         return null;
       }
-      return displayConfig.getSettings(modifiedDefinition, dimension);
-    }
 
-    return displayConfig.getSettings(modifiedDefinition);
-  }, null);
+      const tokenSlot = findExpressionTokenSlot(
+        metricSlots,
+        entryIndex,
+        tokenIndex,
+      );
+      const slotIndex = tokenSlot?.slotIndex ?? -1;
+      const dimensionId = dimensionMapping[slotIndex];
+
+      if (displayConfig.dimensionRequired) {
+        if (!dimensionId) {
+          return null;
+        }
+        const dimension = findDimensionById(definition, dimensionId);
+        if (!dimension) {
+          return null;
+        }
+        return displayConfig.getSettings(modifiedDefinition, dimension);
+      }
+
+      return displayConfig.getSettings(modifiedDefinition);
+    },
+    null,
+  );
 }
 
 /**
  * Resolve viz settings from entity-index-keyed modified definitions.
  * Used by the individual metric series path.
+ *
+ * `dimensionMapping` is keyed by slot index (not entity index), so we use
+ * `metricSlots` to find the correct slot for each standalone metric entity.
  */
 function getVizSettingsByEntityIndex(
   display: MetricsViewerDisplayType,
@@ -152,7 +190,8 @@ function getVizSettingsByEntityIndex(
   }[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   modifiedDefinitions: Map<number, MetricDefinition>,
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  dimensionMapping: Record<number, DimensionId | null>,
+  metricSlots?: MetricSlot[],
 ): VisualizationSettings | null {
   const displayConfig = DISPLAY_TYPE_REGISTRY[display];
 
@@ -167,7 +206,10 @@ function getVizSettingsByEntityIndex(
         return null;
       }
 
-      const dimensionId = dimensionMapping[entry.id];
+      const slot = metricSlots
+        ? findStandaloneSlot(metricSlots, entityIndex)
+        : undefined;
+      const dimensionId = dimensionMapping[slot?.slotIndex ?? entityIndex];
 
       if (displayConfig.dimensionRequired) {
         if (!dimensionId) {
@@ -413,7 +455,7 @@ function createSeriesCard(
 
 export function buildRawSeriesFromDefinitions(
   indexedMetrics: { entry: MetricDefinitionEntry; entityIndex: number }[],
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  dimensionMapping: Record<number, DimensionId | null>,
   display: MetricsViewerDisplayType,
   resultsByEntityIndex: Map<number, Dataset>,
   modifiedDefinitions: Map<number, MetricDefinition>,
@@ -421,9 +463,10 @@ export function buildRawSeriesFromDefinitions(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   uniqueNames: Map<number, string>,
   totalEntityCount: number,
+  metricSlots?: MetricSlot[],
 ): {
   series: SingleSeries[];
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToDimensionId: Record<CardId, number>;
 } {
   const vizSettings = getVizSettingsByEntityIndex(
     display,
@@ -431,13 +474,14 @@ export function buildRawSeriesFromDefinitions(
     definitions,
     modifiedDefinitions,
     dimensionMapping,
+    metricSlots,
   );
 
   if (!vizSettings) {
     return { series: [], cardIdToDimensionId: {} };
   }
 
-  const cardIdToDimensionId: Record<CardId, MetricSourceId> = {};
+  const cardIdToDimensionId: Record<CardId, number> = {};
 
   const series = indexedMetrics.flatMap(({ entry, entityIndex }) => {
     const definition = definitions[entry.id]?.definition;
@@ -498,7 +542,10 @@ export function buildRawSeriesFromDefinitions(
     }
 
     for (const s of entrySeries) {
-      cardIdToDimensionId[s.card.id] = entry.id;
+      const slot = metricSlots
+        ? findStandaloneSlot(metricSlots, entityIndex)
+        : undefined;
+      cardIdToDimensionId[s.card.id] = slot?.slotIndex ?? entityIndex;
     }
 
     return entrySeries;
@@ -580,89 +627,239 @@ function computeAvailableOptions(
   });
 }
 
+/**
+ * Builds dimension items for the pill bar. Standalone metrics produce one
+ * `DimensionItem` each. Expression entities produce one
+ * `ExpressionDimensionItem` that groups all constituent metric-token slots
+ * into a single pill with per-metric accordion sections.
+ */
 export function buildDimensionItemsFromDefinitions(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
-  modifiedDefinitions: Map<number, MetricDefinition>,
+  dimensionMapping: Record<number, DimensionId | null>,
+  modifiedDefinitionsByEntityIndex: Map<number, MetricDefinition>,
   sourceColors: SourceColorMap,
+  metricSlots: MetricSlot[],
   formulaEntities: MetricsViewerFormulaEntity[],
+  projectionConfig: { temporalUnit?: TemporalUnit; binningStrategy?: string },
   dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
-): DimensionItem[] {
-  // Build quick lookups: sourceId → first entity-index colour set & modified def.
-  // Dimension items are per-source, so we just need a representative.
-  const colorsBySourceId: Partial<Record<MetricSourceId, string[]>> = {};
-  const modDefBySourceId = new Map<MetricSourceId, MetricDefinition>();
+): DimensionPillBarItem[] {
+  const items: DimensionPillBarItem[] = [];
 
-  formulaEntities.forEach((entity, index) => {
+  // Track which entity indices we've already emitted items for.
+  const processedEntityIndices = new Set<number>();
+
+  for (const slot of metricSlots) {
+    // Skip if we already processed this entity index.
+    if (processedEntityIndices.has(slot.entityIndex)) {
+      continue;
+    }
+
+    const entity = formulaEntities[slot.entityIndex];
+
+    if (isExpressionEntry(entity)) {
+      // Expression entity — gather all token slots for this entity and
+      // produce a single ExpressionDimensionItem.
+      processedEntityIndices.add(slot.entityIndex);
+
+      const entitySlots = slotsForEntity(metricSlots, slot.entityIndex);
+      const metricSources = buildExpressionMetricSources(
+        entitySlots,
+        definitions,
+        dimensionMapping,
+        sourceColors,
+        projectionConfig,
+        entity,
+        dimensionFilter,
+      );
+
+      // Derive aggregate label from selected dimensions.
+      const selectedLabels = metricSources
+        .map((s) => s.currentDimensionLabel)
+        .filter(Boolean);
+      const uniqueLabels = [...new Set(selectedLabels)];
+      const label =
+        uniqueLabels.length === 1
+          ? uniqueLabels[0]
+          : uniqueLabels.length > 1
+            ? t`Multiple dimensions`
+            : undefined;
+
+      // Merge colors from all token slots for the pill indicator.
+      const expressionColors = sourceColors[slot.entityIndex];
+
+      items.push({
+        type: "expression",
+        id: slot.entityIndex,
+        colors: expressionColors,
+        label,
+        metricSources,
+      } satisfies ExpressionDimensionItem);
+    }
+
     if (isMetricEntry(entity)) {
-      if (!(entity.id in colorsBySourceId) && sourceColors[index]) {
-        colorsBySourceId[entity.id] = sourceColors[index];
-      }
-      if (!modDefBySourceId.has(entity.id)) {
-        const md = modifiedDefinitions.get(index);
-        if (md) {
-          modDefBySourceId.set(entity.id, md);
-        }
+      processedEntityIndices.add(slot.entityIndex);
+
+      const item = buildStandaloneDimensionItem(
+        entity,
+        slot,
+        definitions,
+        dimensionMapping,
+        modifiedDefinitionsByEntityIndex,
+        sourceColors,
+        dimensionFilter,
+      );
+      if (item) {
+        items.push(item);
       }
     }
-  });
+  }
 
-  return Object.values(definitions).flatMap((entry): DimensionItem[] => {
-    if (!entry.definition) {
+  return items;
+}
+
+function buildStandaloneDimensionItem(
+  entity: MetricDefinitionEntry,
+  slot: MetricSlot,
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  dimensionMapping: Record<number, DimensionId | null>,
+  modifiedDefinitionsByEntityIndex: Map<number, MetricDefinition>,
+  sourceColors: SourceColorMap,
+  dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
+): MetricDimensionItem | null {
+  const defEntry = getEffectiveDefinitionEntry(entity, definitions);
+  if (!defEntry?.definition) {
+    return null;
+  }
+
+  const effectiveEntry: MetricsViewerDefinitionEntry = {
+    id: slot.sourceId,
+    definition: defEntry.definition,
+  };
+
+  const dimensionId = dimensionMapping[slot.slotIndex];
+  const entryColors = sourceColors[slot.entityIndex];
+  const modifiedDefinition = modifiedDefinitionsByEntityIndex.get(
+    slot.entityIndex,
+  );
+
+  if (dimensionId != null && modifiedDefinition) {
+    const projections = LibMetric.projections(modifiedDefinition);
+    if (projections.length === 0) {
+      return null;
+    }
+
+    const projectionDimension = LibMetric.projectionDimension(
+      modifiedDefinition,
+      projections[0],
+    );
+    if (!projectionDimension) {
+      return null;
+    }
+
+    const dimensionInfo = LibMetric.displayInfo(
+      modifiedDefinition,
+      projectionDimension,
+    );
+
+    return {
+      id: slot.slotIndex,
+      type: "metric",
+      label: dimensionInfo.longDisplayName,
+      icon: getDimensionIcon(projectionDimension),
+      colors: entryColors,
+      availableOptions: computeAvailableOptions(
+        effectiveEntry,
+        modifiedDefinition,
+        dimensionFilter,
+      ),
+    };
+  }
+
+  return {
+    id: slot.slotIndex,
+    type: "metric",
+    label: undefined,
+    icon: undefined,
+    colors: entryColors,
+    availableOptions: computeAvailableOptions(
+      effectiveEntry,
+      undefined,
+      dimensionFilter,
+    ),
+  };
+}
+
+function buildExpressionMetricSources(
+  entitySlots: MetricSlot[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  dimensionMapping: Record<number, DimensionId | null>,
+  sourceColors: SourceColorMap,
+  projectionConfig: { temporalUnit?: TemporalUnit; binningStrategy?: string },
+  entity: ExpressionDefinitionEntry,
+  dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
+): ExpressionMetricSource[] {
+  return entitySlots.flatMap((slot): ExpressionMetricSource[] => {
+    const defEntry = definitions[slot.sourceId];
+    if (!defEntry?.definition) {
       return [];
     }
 
-    const dimensionId = dimensionMapping[entry.id];
-    const entryColors = colorsBySourceId[entry.id];
-    const modifiedDefinition = modDefBySourceId.get(entry.id);
+    const effectiveEntry: MetricsViewerDefinitionEntry = {
+      id: slot.sourceId,
+      definition: defEntry.definition,
+    };
 
-    if (dimensionId != null && modifiedDefinition) {
-      const projections = LibMetric.projections(modifiedDefinition);
-      if (projections.length === 0) {
-        return [];
-      }
+    const dimensionId = dimensionMapping[slot.slotIndex];
+    const entryColors = sourceColors[slot.entityIndex];
+    const metricName = getDefinitionName(defEntry.definition) ?? slot.sourceId;
 
-      const projectionDimension = LibMetric.projectionDimension(
-        modifiedDefinition,
-        projections[0],
-      );
-      if (!projectionDimension) {
-        return [];
-      }
-
-      const dimensionInfo = LibMetric.displayInfo(
-        modifiedDefinition,
-        projectionDimension,
-      );
-
-      return [
-        {
-          id: entry.id,
-          label: dimensionInfo.longDisplayName,
-          icon: getDimensionIcon(projectionDimension),
-          colors: entryColors,
-          availableOptions: computeAvailableOptions(
-            entry,
-            modifiedDefinition,
-            dimensionFilter,
-          ),
-        },
-      ];
+    // Compute modified definition on the fly for expression token slots.
+    let modifiedDefinition: MetricDefinition | undefined;
+    if (dimensionId) {
+      modifiedDefinition =
+        getModifiedDefinition(
+          defEntry.definition,
+          dimensionId,
+          projectionConfig,
+        ) ?? undefined;
     }
 
-    const availableOptions = computeAvailableOptions(
-      entry,
-      undefined,
-      dimensionFilter,
-    );
+    let currentDimensionLabel: string | undefined;
+    if (dimensionId != null && modifiedDefinition) {
+      const projections = LibMetric.projections(modifiedDefinition);
+      if (projections.length > 0) {
+        const projDim = LibMetric.projectionDimension(
+          modifiedDefinition,
+          projections[0],
+        );
+        if (projDim) {
+          currentDimensionLabel = LibMetric.displayInfo(
+            modifiedDefinition,
+            projDim,
+          ).longDisplayName;
+        }
+      }
+    }
 
     return [
       {
-        id: entry.id,
-        label: undefined,
-        icon: undefined,
+        slotIndex: slot.slotIndex,
+        sourceId: slot.sourceId,
+        metricName,
+        metricCount: (() => {
+          if (slot.tokenPosition == null) {
+            return undefined;
+          }
+          const token = entity.tokens[slot.tokenPosition];
+          return token?.type === "metric" ? token.count : undefined;
+        })(),
         colors: entryColors,
-        availableOptions,
+        currentDimensionLabel,
+        availableOptions: computeAvailableOptions(
+          effectiveEntry,
+          modifiedDefinition,
+          dimensionFilter,
+        ),
       },
     ];
   });

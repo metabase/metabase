@@ -30,9 +30,12 @@ export function isMathOperator(key: string): key is MathOperator {
   return (MATH_OPERATORS as readonly string[]).includes(key);
 }
 
-export type ExpressionRef =
+export type JsExpressionRef =
   | ["metric", { "lib/uuid": string }, number]
-  | ["measure", { "lib/uuid": string }, number]
+  | ["measure", { "lib/uuid": string }, number];
+
+export type ExpressionRef =
+  | JsExpressionRef
   | [
       MathOperator,
       Record<string, never>,
@@ -53,7 +56,7 @@ export type TypedProjection = {
 };
 
 export type JsMetricDefinition = {
-  expression: ExpressionRef | unknown[];
+  expression: JsExpressionRef | unknown[];
   filters?: InstanceFilter[];
   projections?: TypedProjection[];
 };

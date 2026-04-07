@@ -28,9 +28,7 @@ describe("url-serialization", () => {
             type: "time",
             label: "By Month",
             display: "bar",
-            definitions: [
-              { definitionId: "metric:1", dimensionId: "created_at" },
-            ],
+            definitions: [{ slotIndex: 0, dimensionId: "created_at" }],
             projectionConfig: {
               temporalUnit: "month",
             },
@@ -480,6 +478,178 @@ describe("url-serialization", () => {
         throw new Error("Expected metric entity");
       }
       expect(entity.filters![0].value).toEqual(filter);
+    });
+  });
+
+  describe("expression with duplicate metrics and different breakouts", () => {
+    it("round-trips an expression where the same metric appears twice with different dimension mappings", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [
+          {
+            type: "expression",
+            id: "expression:Revenue + Revenue",
+            name: "Revenue + Revenue",
+            tokens: [
+              { type: "metric", sourceId: "metric:1" },
+              { type: "operator", op: "+" },
+              { type: "metric", sourceId: "metric:1" },
+            ],
+          },
+        ],
+        tabs: [
+          {
+            id: "tab-time",
+            type: "time",
+            label: "By Time",
+            display: "line",
+            definitions: [
+              { slotIndex: 0, dimensionId: "created_at" },
+              { slotIndex: 1, dimensionId: "updated_at" },
+            ],
+          },
+        ],
+        selectedTabId: "tab-time",
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips an expression where the same metric appears twice with different filters on each token", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [
+          {
+            type: "expression",
+            id: "expression:Revenue filtered",
+            name: "Revenue filtered",
+            tokens: [
+              {
+                type: "metric",
+                sourceId: "metric:1",
+                filters: [
+                  {
+                    dimensionId: "category",
+                    value: {
+                      type: "string",
+                      operator: "=",
+                      values: ["Gadget"],
+                      options: {},
+                    },
+                  },
+                ],
+              },
+              { type: "operator", op: "-" },
+              {
+                type: "metric",
+                sourceId: "metric:1",
+                filters: [
+                  {
+                    dimensionId: "category",
+                    value: {
+                      type: "string",
+                      operator: "=",
+                      values: ["Widget"],
+                      options: {},
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        tabs: [],
+        selectedTabId: null,
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("preserves per-slot dimension mappings when same metric has different breakouts across multiple tabs", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [
+          {
+            type: "expression",
+            id: "expression:A + A",
+            name: "A + A",
+            tokens: [
+              { type: "metric", sourceId: "metric:5" },
+              { type: "operator", op: "+" },
+              { type: "metric", sourceId: "metric:5" },
+            ],
+          },
+        ],
+        tabs: [
+          {
+            id: "tab-time",
+            type: "time",
+            label: "By Time",
+            display: "line",
+            definitions: [
+              { slotIndex: 0, dimensionId: "created_at" },
+              { slotIndex: 1, dimensionId: "shipped_at" },
+            ],
+          },
+          {
+            id: "tab-cat",
+            type: "category",
+            label: "By Category",
+            display: "bar",
+            definitions: [
+              { slotIndex: 0, dimensionId: "product_category" },
+              { slotIndex: 1, dimensionId: "user_state" },
+            ],
+          },
+        ],
+        selectedTabId: "tab-cat",
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips a mix of standalone metric and expression with a duplicate of that metric", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [
+          {
+            type: "metric",
+            id: 1,
+            breakout: "created_at",
+            breakoutTemporalUnit: "month",
+          },
+          {
+            type: "expression",
+            id: "expression:A + A",
+            name: "A + A",
+            tokens: [
+              { type: "metric", sourceId: "metric:1" },
+              { type: "operator", op: "+" },
+              { type: "metric", sourceId: "metric:1" },
+            ],
+          },
+        ],
+        tabs: [
+          {
+            id: "tab-time",
+            type: "time",
+            label: "By Month",
+            display: "line",
+            definitions: [
+              { slotIndex: 0, dimensionId: "created_at" },
+              { slotIndex: 1, dimensionId: "created_at" },
+              { slotIndex: 2, dimensionId: "updated_at" },
+            ],
+          },
+        ],
+        selectedTabId: "tab-time",
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
     });
   });
 
