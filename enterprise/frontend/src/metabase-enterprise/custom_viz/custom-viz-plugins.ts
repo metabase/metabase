@@ -307,7 +307,7 @@ export async function loadCustomVizPlugin(
       settings: vizDef.settings,
       hidden: false,
       noHeader: false,
-      canSavePng: false,
+      canSavePng: vizDef.canSavePng,
     } satisfies Partial<Record<keyof Visualization, unknown>>);
 
     // Use registerVisualization for first load; overwrite directly for updates
