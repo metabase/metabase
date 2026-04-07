@@ -487,14 +487,14 @@
                 qe   (latest-qe (:id card))]
             (is (= "password" (:auth_method view)))
             (is (= "password" (:auth_method qe))))))
-      (testing "unauthenticated public request has nil auth_method"
+      (testing "unauthenticated public request records auth_method as 'public'"
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (public-test/with-temp-public-card [card]
             (client/client :get 202 (str "public/card/" (:public_uuid card) "/query"))
             (let [view (latest-view nil (:id card))
                   qe   (latest-qe (:id card))]
-              (is (nil? (:auth_method view)))
-              (is (nil? (:auth_method qe))))))))))
+              (is (= "public" (:auth_method view)))
+              (is (= "public" (:auth_method qe))))))))))
 
 (deftest route-surface-test
   (testing "route-surface returns the correct surface for known prefixes"

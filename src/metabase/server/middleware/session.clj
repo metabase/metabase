@@ -280,7 +280,9 @@
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
-    (analytics/with-auth-method! [(:auth-method request)]
+    (analytics/with-auth-method! [(or (:auth-method request)
+                                      ({"guest-embed" "guest"} (analytics/get-route))
+                                      (analytics/get-route))]
       (with-current-user-for-request request
         (handler request respond raise)))))
 
