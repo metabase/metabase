@@ -362,7 +362,7 @@ export const moveDnDKitListElement = (
  * @param {Object} options
  * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
- * @param {boolean} [options.usePointerEvents=false] - Use pointer events instead of mouse events (for components using PointerSensor)
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 export const moveDnDKitElementByAlias = (alias, options) => {
@@ -379,7 +379,7 @@ export const moveDnDKitElementByAlias = (alias, options) => {
  * @param {Object} options
  * @param {number} [options.horizontal=0] - Horizontal distance to move in pixels
  * @param {number} [options.vertical=0] - Vertical distance to move in pixels
- * @param {boolean} [options.usePointerEvents=false] - Use pointer events instead of mouse events (for components using PointerSensor)
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 const moveDnDKitElementByGetter = (
@@ -387,16 +387,16 @@ const moveDnDKitElementByGetter = (
   {
     horizontal = 0,
     vertical = 0,
-    usePointerEvents = false,
+    useMouseEvents = false,
     onBeforeDragEnd = () => {},
   } = {},
 ) => {
-  const down = usePointerEvents ? "pointerdown" : "mousedown";
-  const move = usePointerEvents ? "pointermove" : "mousemove";
-  const up = usePointerEvents ? "pointerup" : "mouseup";
-  const extraProps = usePointerEvents
-    ? { isPrimary: true }
-    : { eventConstructor: "MouseEvent" };
+  const down = useMouseEvents ? "mousedown" : "pointerdown";
+  const move = useMouseEvents ? "mousemove" : "pointermove";
+  const up = useMouseEvents ? "mouseup" : "pointerup";
+  const extraProps = useMouseEvents
+    ? { eventConstructor: "MouseEvent" }
+    : { isPrimary: true };
 
   getElement()
     .trigger(down, 0, 0, {
