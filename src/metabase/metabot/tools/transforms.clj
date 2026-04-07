@@ -97,7 +97,7 @@
 (defenterprise ^{:tool-name  "get_transform_python_library_details"
                  :schema     [:=> [:cat python-lib-schema] :map]
                  :scope      scope/agent-transforms-read
-                 :ee-feature :transforms}
+                 :capabilities #{:feature-transforms-python}}
   get-transform-python-library-details-tool
   "Get Python library details. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.tools.transforms
@@ -151,7 +151,7 @@
 
 (mu/defn ^{:tool-name "write_transform_sql"
            :scope scope/agent-transforms-write
-           :capabilities #{:feature-transforms :permission-write-transforms}}
+           :capabilities #{:permission-write-transforms}}
   write-transform-sql-tool
   "Write new SQL queries or edit existing queries for transforms.
 
@@ -257,8 +257,7 @@
 (defenterprise ^{:tool-name    "write_transform_python"
                  :schema       [:=> [:cat write-transform-python-schema] :map]
                  :scope        scope/agent-transforms-write
-                 :capabilities #{:feature-transforms :feature-transforms-python :permission-write-transforms}
-                 :ee-feature   :transforms}
+                 :capabilities #{:feature-transforms-python :permission-write-transforms}}
   write-transform-python-tool
   "Write Python transforms. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.tools.transforms
