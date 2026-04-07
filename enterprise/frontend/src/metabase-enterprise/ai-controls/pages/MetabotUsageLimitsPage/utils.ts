@@ -62,37 +62,47 @@ export const resetPeriodOptions: PeriodOption[] = [
   },
 ];
 
+const instanceLimitLabelMap: Record<
+  MetabotLimitType,
+  Record<MetabotLimitPeriod, string>
+> = {
+  get tokens() {
+    return {
+      daily: t`Total daily instance limit (millions of tokens)`,
+      weekly: t`Total weekly instance limit (millions of tokens)`,
+      monthly: t`Total monthly instance limit (millions of tokens)`,
+    };
+  },
+  get messages() {
+    return {
+      daily: t`Total daily instance limit (message count)`,
+      weekly: t`Total weekly instance limit (message count)`,
+      monthly: t`Total monthly instance limit (message count)`,
+    };
+  },
+};
+
 export function getInstanceLimitInputLabel(
   limitType: MetabotLimitType = "tokens",
   limitPeriod: MetabotLimitPeriod = "monthly",
 ) {
-  const instanceLimitLabelMap: Record<
-    MetabotLimitType,
-    Record<MetabotLimitPeriod, string>
-  > = {
-    tokens: {
-      daily: t`Total daily instance limit (millions of tokens)`,
-      weekly: t`Total weekly instance limit (millions of tokens)`,
-      monthly: t`Total monthly instance limit (millions of tokens)`,
-    },
-    messages: {
-      daily: t`Total daily instance limit (message count)`,
-      weekly: t`Total weekly instance limit (message count)`,
-      monthly: t`Total monthly instance limit (message count)`,
-    },
-  };
-
   return instanceLimitLabelMap[limitType][limitPeriod];
 }
+
+const messageDescriptionMap: Record<MetabotLimitPeriod, string> = {
+  get daily() {
+    return t`The message shown to users when they reach their daily quota.`;
+  },
+  get weekly() {
+    return t`The message shown to users when they reach their weekly quota.`;
+  },
+  get monthly() {
+    return t`The message shown to users when they reach their monthly quota.`;
+  },
+};
 
 export function getQuotaMessageInputDescription(
   limitPeriod: MetabotLimitPeriod = "monthly",
 ) {
-  const messageDescriptionMap: Record<MetabotLimitPeriod, string> = {
-    daily: t`The message shown to users when they reach their daily quota.`,
-    weekly: t`The message shown to users when they reach their weekly quota.`,
-    monthly: t`The message shown to users when they reach their monthly quota.`,
-  };
-
   return messageDescriptionMap[limitPeriod];
 }

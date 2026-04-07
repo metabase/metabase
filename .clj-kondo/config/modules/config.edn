@@ -1184,19 +1184,18 @@
    :friends #{agent-api
               enterprise/metabot
               slackbot}
-   :uses    #{activity-feed
-              analytics
-              api
-              api-scope
-              app-db
-              audit-app
-              channel
-              collections
-              config
-              documents
-              driver
-              internal-stats
-              legacy-mbql
+    :uses    #{activity-feed
+               analytics
+               api
+               api-scope
+               app-db
+               audit-app
+               channel
+               collections
+               config
+               documents
+               driver
+               legacy-mbql
               lib
               lib-be
               llm

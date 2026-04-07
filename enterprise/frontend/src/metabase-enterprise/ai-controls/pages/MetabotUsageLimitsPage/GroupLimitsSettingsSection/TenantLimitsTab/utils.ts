@@ -51,26 +51,30 @@ export function getInputLabel(
   return inputLabelMap[limitType][limitPeriod];
 }
 
+const columnNameMap: Record<
+  MetabotLimitType,
+  Record<MetabotLimitPeriod, string>
+> = {
+  get tokens() {
+    return {
+      daily: t`Max total daily token usage (millions)`,
+      weekly: t`Max total weekly token usage (millions)`,
+      monthly: t`Max total monthly token usage (millions)`,
+    };
+  },
+  get messages() {
+    return {
+      daily: t`Max total daily messages`,
+      weekly: t`Max total weekly messages`,
+      monthly: t`Max total monthly messages`,
+    };
+  },
+};
+
 export function getColumnName(
   limitType: MetabotLimitType,
   limitPeriod: MetabotLimitPeriod,
 ) {
-  const columnNameMap: Record<
-    MetabotLimitType,
-    Record<MetabotLimitPeriod, string>
-  > = {
-    tokens: {
-      daily: t`Max total daily token usage (millions)`,
-      weekly: t`Max total weekly token usage (millions)`,
-      monthly: t`Max total monthly token usage (millions)`,
-    },
-    messages: {
-      daily: t`Max total daily messages`,
-      weekly: t`Max total weekly messages`,
-      monthly: t`Max total monthly messages`,
-    },
-  };
-
   return columnNameMap[limitType][limitPeriod];
 }
 

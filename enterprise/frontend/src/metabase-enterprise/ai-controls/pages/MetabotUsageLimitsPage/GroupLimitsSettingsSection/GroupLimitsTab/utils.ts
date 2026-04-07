@@ -33,48 +33,57 @@ export function getGroupLimitAriaLabel(
   return c("{0} is the group name").t`Max messages per user for ${groupName}`;
 }
 
+const columnNameMap: Record<
+  MetabotLimitType,
+  Record<MetabotLimitPeriod, string>
+> = {
+  get tokens() {
+    return {
+      daily: t`Max tokens per user each day (millions)`,
+      weekly: t`Max tokens per user each week (millions)`,
+      monthly: t`Max tokens per user each month (millions)`,
+    };
+  },
+  get messages() {
+    return {
+      daily: t`Max messages per user each day`,
+      weekly: t`Max messages per user each week`,
+      monthly: t`Max messages per user each month`,
+    };
+  },
+};
+
 export function getColumnName(
   limitType: MetabotLimitType,
   limitPeriod: MetabotLimitPeriod,
 ): string {
-  const columnNameMap: Record<
-    MetabotLimitType,
-    Record<MetabotLimitPeriod, string>
-  > = {
-    tokens: {
-      daily: t`Max tokens per user each day (millions)`,
-      weekly: t`Max tokens per user each week (millions)`,
-      monthly: t`Max tokens per user each month (millions)`,
-    },
-    messages: {
-      daily: t`Max messages per user each day`,
-      weekly: t`Max messages per user each week`,
-      monthly: t`Max messages per user each month`,
-    },
-  };
-
   return columnNameMap[limitType][limitPeriod];
 }
+
+const descriptionMap: Record<
+  GroupLimitsTabProps["variant"],
+  Record<MetabotLimitPeriod, string>
+> = {
+  get ["tenant-groups"]() {
+    return {
+      daily: t`Daily limits for each individual user in each tenant group.`,
+      weekly: t`Weekly limits for each individual user in each tenant group.`,
+      monthly: t`Monthly limits for each individual user in each tenant group.`,
+    };
+  },
+  get ["regular-groups"]() {
+    return {
+      daily: t`Daily limits for each individual user in each group.`,
+      weekly: t`Weekly limits for each individual user in each group.`,
+      monthly: t`Monthly limits for each individual user in each group.`,
+    };
+  },
+};
 
 export function getDescription(
   variant: GroupLimitsTabProps["variant"],
   limitPeriod: MetabotLimitPeriod,
 ): string {
-  const descriptionMap: Record<
-    GroupLimitsTabProps["variant"],
-    Record<MetabotLimitPeriod, string>
-  > = {
-    "tenant-groups": {
-      daily: t`Daily limits for each individual user in each tenant group.`,
-      weekly: t`Weekly limits for each individual user in each tenant group.`,
-      monthly: t`Monthly limits for each individual user in each tenant group.`,
-    },
-    "regular-groups": {
-      daily: t`Daily limits for each individual user in each group.`,
-      weekly: t`Weekly limits for each individual user in each group.`,
-      monthly: t`Monthly limits for each individual user in each group.`,
-    },
-  };
   const additionalDesc = t`If a user belongs to more than one group, they'll be given the highest limit among all the groups they belong to.`;
 
   return `${descriptionMap[variant][limitPeriod]} ${additionalDesc}`;
