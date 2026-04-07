@@ -41,6 +41,7 @@
   define-premium-feature
   development-mode?
   enable-tenants?
+  enable-ai-controls?
   enable-advanced-permissions?
   enable-any-sso?
   enable-audit-app?

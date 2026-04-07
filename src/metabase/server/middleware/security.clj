@@ -8,6 +8,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
+   [metabase.mcp.core :as mcp]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
 
@@ -258,20 +259,24 @@
     (when (and (seq raw-origin) (seq approved-origins-raw))
       (let [approved-list (parse-approved-origins approved-origins-raw)
             origin        (parse-url raw-origin)]
-        (some (fn [approved-origin]
-                (and
-                 (approved-domain? (:domain origin) (:domain approved-origin))
-                 (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                 (approved-port? (:port origin) (:port approved-origin))))
-              approved-list))))))
+        (when origin
+          (some (fn [approved-origin]
+                  (and
+                   (approved-domain? (:domain origin) (:domain approved-origin))
+                   (approved-protocol? (:protocol origin) (:protocol approved-origin))
+                   (approved-port? (:port origin) (:port approved-origin))))
+                approved-list)))))))
 
 (defn access-control-headers
-  "Returns headers for CORS requests"
-  [origin enabled? approved-origins]
-  (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))]
-    (when (or enabled? localhost-allowed?)
+  "Returns headers for CORS requests. Merges embedding SDK origins and MCP app origins."
+  [origin approved-origins]
+  (let [mcp-origins       (mcp/cors-origins)
+        all-origins       (str/trim (str approved-origins " " mcp-origins))
+        localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
+        mcp-sandbox?       (mcp/sandbox-origin? origin)]
+    (when (or (seq all-origins) localhost-allowed? mcp-sandbox?)
       (merge
-       (when (approved-origin? origin approved-origins)
+       (when (or (approved-origin? origin all-origins) mcp-sandbox?)
          {"Access-Control-Allow-Origin" origin
           "Vary"                        "Origin"})
        {"Access-Control-Allow-Headers"  "*"
@@ -288,11 +293,7 @@
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (access-control-headers origin
-                           (or
-                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
-                            (setting/get-value-of-type :boolean :enable-embedding-simple))
-                           (embedding.settings/embedding-app-origins-sdk))
+   (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)

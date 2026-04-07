@@ -23,6 +23,7 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -242,6 +243,7 @@ export const setup = async ({
         : `#${serializeCardForUrl(card)}`
   }`,
 }: SetupOpts) => {
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
   setupCardDataset({ dataset });
   setupSearchEndpoints([]);

@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   ActionIcon,
@@ -134,8 +135,11 @@ export const EmbedQuestionSettingsSidebar = ({
                   disabled={!selectedElem}
                   rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
                   leftSection={
-                    selectedElem?.iconName ? (
-                      <Icon name={selectedElem.iconName} />
+                    selectedElem?.iconName || selectedElem?.iconUrl ? (
+                      <EntityIcon
+                        name={selectedElem.iconName ?? undefined}
+                        iconUrl={selectedElem.iconUrl}
+                      />
                     ) : null
                   }
                   justify="space-between"
@@ -144,26 +148,40 @@ export const EmbedQuestionSettingsSidebar = ({
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>
-                {sensibleItems.map(({ iconName, label, value }, index) => (
-                  <Menu.Item
-                    key={`${value}/${index}`}
-                    onClick={() => handleVisualizationTypeChange(value)}
-                    leftSection={iconName ? <Icon name={iconName} /> : null}
-                  >
-                    {label}
-                  </Menu.Item>
-                ))}
+                {sensibleItems.map(
+                  ({ iconName, iconUrl, label, value }, index) => (
+                    <Menu.Item
+                      key={`${value}/${index}`}
+                      onClick={() => handleVisualizationTypeChange(value)}
+                      leftSection={
+                        iconName || iconUrl ? (
+                          <EntityIcon
+                            name={iconName ?? undefined}
+                            iconUrl={iconUrl}
+                          />
+                        ) : null
+                      }
+                    >
+                      {label}
+                    </Menu.Item>
+                  ),
+                )}
 
                 {nonsensibleItems.length > 0 && (
                   <>
                     <Menu.Label>{t`More charts`}</Menu.Label>
                     {nonsensibleItems.map(
-                      ({ iconName, label, value }, index) => (
+                      ({ iconName, iconUrl, label, value }, index) => (
                         <Menu.Item
                           key={`${value}/${index}`}
                           onClick={() => handleVisualizationTypeChange(value)}
                           leftSection={
-                            iconName ? <Icon name={iconName} /> : null
+                            iconName || iconUrl ? (
+                              <EntityIcon
+                                name={iconName ?? undefined}
+                                iconUrl={iconUrl}
+                              />
+                            ) : null
                           }
                         >
                           {label}

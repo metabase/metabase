@@ -188,6 +188,7 @@ export const useCommandPalette = ({
             name: result.name,
             subtitle: result.description || "",
             icon: icon.name,
+            iconUrl: icon.iconUrl,
             section: "search",
             keywords: debouncedSearchText,
             priority: Priority.NORMAL - index,
@@ -251,6 +252,7 @@ export const useCommandPalette = ({
           id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
           name: getName(item),
           icon: icon.name,
+          iconUrl: icon.iconUrl,
           section: "recent",
           perform: () => {},
           extra: {

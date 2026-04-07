@@ -32,6 +32,7 @@ export function buildSearchMenuItems(
     const href = modelToUrl(urlableModel);
     return {
       icon: iconData.name,
+      iconUrl: iconData.iconUrl,
       label: result.name,
       id: result.id,
       model: result.model,
@@ -51,6 +52,7 @@ export function buildRecentsMenuItems(
     const href = modelToUrl(urlableModel);
     return {
       icon: iconData.name,
+      iconUrl: iconData.iconUrl,
       label: getName(recent),
       id: recent.id,
       model: recent.model as SuggestionModel,

@@ -7,6 +7,7 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
@@ -27,7 +28,6 @@ import {
   Description,
   Header,
   ItemCard,
-  ItemIcon,
   ItemLink,
   Title,
 } from "./PinnedItemCard.styled";
@@ -94,12 +94,13 @@ function PinnedItemCard({
   iconForSkeleton,
 }: PinnedItemCardProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
-  const icon =
-    iconForSkeleton ??
-    getIcon({
-      model: item.model,
-      moderated_status: item.moderated_status,
-    }).name;
+  const iconData = iconForSkeleton
+    ? { name: iconForSkeleton }
+    : getIcon({
+        model: item.model,
+        display: item.display,
+        moderated_status: item.moderated_status,
+      });
 
   const maybeEnableTooltip = (
     event: MouseEvent<HTMLDivElement>,
@@ -126,7 +127,7 @@ function PinnedItemCard({
       <ItemCard flat>
         <Body>
           <Header>
-            <ItemIcon name={icon as unknown as IconName} />
+            <EntityIcon {...iconData} size="1.5rem" color="brand" />
             <ActionsContainer h={item ? undefined : "2rem"}>
               {hasActions && (
                 // This component is used within a `<Link>` component,

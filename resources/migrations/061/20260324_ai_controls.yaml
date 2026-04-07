@@ -1,0 +1,102 @@
+## AI controls
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.gasgewas
+      author: nvoxland
+      comment: Create metabot_permissions table for AI feature permissions per group
+      changes:
+        - createTable:
+            tableName: metabot_permissions
+            remarks: A table to store metabot permissions per permissions group
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: int
+                  remarks: The ID of the associated permissions group
+                  constraints:
+                    nullable: false
+              - column:
+                  name: perm_type
+                  type: varchar(254)
+                  remarks: The type of permission
+                  constraints:
+                    nullable: false
+              - column:
+                  name: perm_value
+                  type: varchar(254)
+                  remarks: The value of the permission
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v61.rr32dasd
+      author: nvoxland
+      comment: Add index on metabot_permissions.group_id
+      changes:
+        - createIndex:
+            tableName: metabot_permissions
+            indexName: idx_metabot_permissions_group_id
+            columns:
+              - column:
+                  name: group_id
+
+  - changeSet:
+      id: v61.gasgewas-fk
+      author: nvoxland
+      comment: Add foreign key on metabot_permissions.group_id referencing permissions_group
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_permissions
+            baseColumnNames: group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_metabot_permissions_ref_permissions_group
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v61.g24da211
+      author: nvoxland
+      comment: Add unique constraint on metabot_permissions group_id and perm_type
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_permissions
+            columnNames: group_id, perm_type
+            constraintName: unique_metabot_permissions_group_id_perm_type
+
+  - changeSet:
+      id: v61.98kjjhf
+      author: edpaget
+      comment: Insert default metabot permissions (all yes) for magic user groups
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabot_permissions (group_id, perm_type, perm_value)
+              SELECT pg.id, d.perm_type, d.perm_value
+              FROM permissions_group pg
+              CROSS JOIN (
+                SELECT 'permission/metabot' AS perm_type, 'yes' AS perm_value
+                UNION ALL SELECT 'permission/metabot-sql-generation', 'yes'
+                UNION ALL SELECT 'permission/metabot-nlq', 'yes'
+                UNION ALL SELECT 'permission/metabot-other-tools', 'yes'
+              ) AS d
+              WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+                AND NOT EXISTS (
+                  SELECT 1 FROM metabot_permissions mp
+                  WHERE mp.group_id = pg.id AND mp.perm_type = d.perm_type
+                )
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM metabot_permissions
+              WHERE group_id IN (
+                SELECT id FROM permissions_group
+                WHERE magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+              )

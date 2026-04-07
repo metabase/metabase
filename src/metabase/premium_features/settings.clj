@@ -308,6 +308,10 @@
   "Should we allow admins to configure separate write connection credentials?"
   :writable-connection)
 
+(define-premium-feature ^{:added "0.61.0"} enable-ai-controls?
+  "Should we enable AI controls (metabot permissions, scope management)?"
+  :ai-controls)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :attached_dwh                   (has-attached-dwh?)
@@ -357,7 +361,8 @@
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
    :workspaces                     (enable-workspaces?)
-   :writable_connection            (enable-writable-connection?)})
+   :writable_connection            (enable-writable-connection?)
+   :ai_controls                    (enable-ai-controls?)})
 
 (defsetting token-features
   "Features registered for this instance's token"

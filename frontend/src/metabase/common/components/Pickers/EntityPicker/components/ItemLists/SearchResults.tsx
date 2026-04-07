@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
@@ -97,9 +98,9 @@ export const SearchResults = ({
               }
               active={isSelected}
               leftSection={
-                <Icon
+                <EntityIcon
                   {...getEntityPickerIcon(item, { isSelected })}
-                  size={16}
+                  size="1rem"
                 />
               }
               onClick={(e: React.MouseEvent) => {
