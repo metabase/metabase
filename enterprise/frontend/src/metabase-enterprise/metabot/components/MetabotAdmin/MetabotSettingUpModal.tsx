@@ -15,7 +15,7 @@ import {
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-const METABASE_AI_PROVIDER_FEATURE = "metabase-ai-managed";
+import { METABASE_MANAGED_AI_FEATURE } from "../../constants";
 
 export function MetabotSettingUpModal({
   isSavingConfiguration = false,
@@ -26,14 +26,14 @@ export function MetabotSettingUpModal({
   isSavingConfiguration?: boolean;
   onActivated?: () => void | Promise<void>;
 }) {
-  useTokenRefreshUntil(METABASE_AI_PROVIDER_FEATURE, {
+  const isSettingUp =
+    isSavingConfiguration || !hasPremiumFeature(METABASE_MANAGED_AI_FEATURE);
+
+  useTokenRefreshUntil(METABASE_MANAGED_AI_FEATURE, {
     intervalMs: 1000,
     onSatisfied: onActivated,
-    skip: !opened,
+    skip: !opened || !isSettingUp,
   });
-
-  const isSettingUp =
-    isSavingConfiguration || !hasPremiumFeature(METABASE_AI_PROVIDER_FEATURE);
 
   return (
     <Modal

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -10,11 +11,11 @@ import {
   Anchor,
   Box,
   Button,
-  Card,
   Checkbox,
   Flex,
   Group,
   Icon,
+  Skeleton,
   Stack,
   Text,
   Title,
@@ -24,14 +25,18 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { useGetMetabotUsageQuery } from "../../../api";
+import {
+  METABASE_MANAGED_AI_FEATURE,
+  METABASE_MANAGED_AI_TERMS_URL,
+} from "../../constants";
 import { formatMetabaseCost } from "../../format";
-import { useMetabotAiPricing } from "../../useMetabotAiPricing";
-import { usePurchaseMetabotAi } from "../../usePurchaseMetabotAi";
+import {
+  type MetabaseManagedAiPricing,
+  useMetabaseManagedAiPricing,
+} from "../../useMetabaseManagedAiPricing";
+import { usePurchaseMetabaseManagedAi } from "../../usePurchaseMetabaseManagedAi";
 
 import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
-
-const METABASE_AI_PROVIDER_FEATURE = "metabase-ai-managed";
-const METABASE_HOSTING_TERMS_URL = "https://www.metabase.com/license/hosting";
 
 type MetabaseAIProviderSetupProps = {
   isMetabaseProviderConnected: boolean;
@@ -47,21 +52,26 @@ export function MetabaseAIProviderSetup({
   const isHosted = useSetting("is-hosted?");
   const llmProxyConfigured = useSetting("llm-proxy-configured?");
   const shouldLoadMetabaseBilling = !!llmProxyConfigured && isHosted;
-  const hasMetabaseAiProviderFeature = !!hasPremiumFeature(
-    METABASE_AI_PROVIDER_FEATURE,
+  const hasMetabaseManagedAiProviderFeature = !!hasPremiumFeature(
+    METABASE_MANAGED_AI_FEATURE,
   );
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
 
-  const metabasePricing = useMetabotAiPricing(shouldLoadMetabaseBilling);
+  const {
+    pricing: metabaseManagedAiPricing,
+    isLoading: isLoadingMetabaseManagedAiPricing,
+  } = useMetabaseManagedAiPricing(shouldLoadMetabaseBilling);
 
-  const metabotAiPurchase = usePurchaseMetabotAi(shouldLoadMetabaseBilling);
+  const metabaseManagedAiPurchase = usePurchaseMetabaseManagedAi(
+    shouldLoadMetabaseBilling,
+  );
 
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isSettingUpModalOpen, setIsSettingUpModalOpen] = useState(false);
 
-  const metabotPurchaseError = metabotAiPurchase.error
+  const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
-        metabotAiPurchase.error,
+        metabaseManagedAiPurchase.error,
         t`Unable to connect to this AI provider.`,
       )
     : undefined;
@@ -70,7 +80,9 @@ export function MetabaseAIProviderSetup({
     setIsSettingUpModalOpen(true);
 
     try {
-      await metabotAiPurchase.purchaseMetabotAi(hasAcceptedTerms);
+      await metabaseManagedAiPurchase.purchaseMetabaseManagedAi(
+        hasAcceptedTerms,
+      );
     } catch {
       setIsSettingUpModalOpen(false);
     }
@@ -79,7 +91,10 @@ export function MetabaseAIProviderSetup({
   return (
     <>
       {isMetabaseProviderConnected ? (
-        <MetabaseManagedProviderCard metabasePricing={metabasePricing} />
+        <MetabaseManagedProviderCard
+          isLoadingPricing={isLoadingMetabaseManagedAiPricing}
+          pricing={metabaseManagedAiPricing}
+        />
       ) : (
         <>
           <Stack gap="md">
@@ -91,60 +106,65 @@ export function MetabaseAIProviderSetup({
               // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
               t`The simplest way to get started with AI in Metabase. We pick a benchmarked, cost effective model for you, and billing is managed through your Metabase account.`
             }</Text>
-            {metabasePricing && (
-              <MetabasePricingText metabasePricing={metabasePricing} />
-            )}
+            {isLoadingMetabaseManagedAiPricing ? (
+              <Group gap="xs" align="center">
+                <Skeleton h="1rem" w="14rem" />
+                <Skeleton h={14} w={14} circle />
+              </Group>
+            ) : metabaseManagedAiPricing ? (
+              <MetabasePricingText pricing={metabaseManagedAiPricing} />
+            ) : null}
           </Stack>
 
-          {!hasMetabaseAiProviderFeature ? (
-            !isStoreUser ? (
+          {match({
+            hasMetabaseManagedAiProviderFeature,
+            isStoreUser,
+          })
+            .with({ hasMetabaseManagedAiProviderFeature: true }, () => (
+              <Button
+                loading={isSavingMetabaseConnection}
+                onClick={onConnect}
+              >{t`Connect`}</Button>
+            ))
+            .with({ isStoreUser: false }, () => (
               <Text fw="bold">
                 {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins. */}
                 {t`Please ask a Metabase Store Admin${anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`} of your organization to enable this for you.`}
               </Text>
-            ) : (
-              <>
-                <Card
-                  bg="background-secondary"
-                  p="sm"
-                  radius="md"
-                  shadow="none"
-                >
-                  <Checkbox
-                    checked={hasAcceptedTerms}
-                    onChange={(event) =>
-                      setHasAcceptedTerms(event.currentTarget.checked)
-                    }
-                    label={jt`I agree with the Metabot AI add-on ${(
-                      <Anchor
-                        key="metabot-ai-terms-link"
-                        href={METABASE_HOSTING_TERMS_URL}
-                        target="_blank"
-                      >
-                        {t`Terms of Service`}
-                      </Anchor>
-                    )}`}
-                  />
-                </Card>
+            ))
+            .otherwise(() => (
+              <Stack gap="sm">
+                <Checkbox
+                  checked={hasAcceptedTerms}
+                  onChange={(event) =>
+                    setHasAcceptedTerms(event.currentTarget.checked)
+                  }
+                  // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
+                  label={jt`I agree with the Metabase AI add-on ${(
+                    <Anchor
+                      key="metabase-ai-terms-link"
+                      href={METABASE_MANAGED_AI_TERMS_URL}
+                      target="_blank"
+                    >
+                      {t`Terms of Service`}
+                    </Anchor>
+                  )}`}
+                />
                 <Button
                   disabled={!hasAcceptedTerms}
-                  loading={metabotAiPurchase.isLoading || isSettingUpModalOpen}
+                  loading={
+                    metabaseManagedAiPurchase.isLoading || isSettingUpModalOpen
+                  }
                   onClick={handleMetabasePurchase}
                 >{t`Connect`}</Button>
-              </>
-            )
-          ) : (
-            <Button
-              loading={isSavingMetabaseConnection}
-              onClick={onConnect}
-            >{t`Connect`}</Button>
-          )}
+              </Stack>
+            ))}
         </>
       )}
 
-      {metabotPurchaseError && (
+      {metabaseManagedAiPurchaseError && (
         <Text size="sm" c="error">
-          {metabotPurchaseError}
+          {metabaseManagedAiPurchaseError}
         </Text>
       )}
 
@@ -161,17 +181,14 @@ export function MetabaseAIProviderSetup({
 }
 
 function MetabaseManagedProviderCard({
-  metabasePricing,
+  isLoadingPricing,
+  pricing,
 }: {
-  metabasePricing: {
-    price: string;
-    unit: string;
-    pricePerUnit: number;
-    unitCount: number;
-  } | null;
+  isLoadingPricing: boolean;
+  pricing: MetabaseManagedAiPricing | null;
 }) {
   const { data: metabotUsage } = useGetMetabotUsageQuery();
-  const totalCost = getMetabaseUsageCost(metabotUsage?.tokens, metabasePricing);
+  const totalCost = getMetabaseUsageCost(metabotUsage?.tokens, pricing);
 
   return (
     <Stack gap="lg">
@@ -190,9 +207,15 @@ function MetabaseManagedProviderCard({
           value={formatNumber(metabotUsage?.tokens ?? 0)}
         />
 
-        {metabasePricing && (
-          <MetabasePricingRow metabasePricing={metabasePricing} />
-        )}
+        {isLoadingPricing ? (
+          <Flex align="center" justify="space-between" gap="md">
+            <Skeleton h="1rem" w="7rem" />
+            <Box flex={1} h={1} bg="border" />
+            <Skeleton h="1rem" w="8rem" />
+          </Flex>
+        ) : pricing ? (
+          <MetabasePricingRow pricing={pricing} />
+        ) : null}
 
         <MetabaseUsageRow
           label={t`Total cost`}
@@ -223,14 +246,9 @@ function MetabaseUsageRow({ label, value }: { label: string; value: string }) {
 }
 
 function MetabasePricingRow({
-  metabasePricing,
+  pricing,
 }: {
-  metabasePricing: {
-    price: string;
-    unit: string;
-    pricePerUnit: number;
-    unitCount: number;
-  };
+  pricing: MetabaseManagedAiPricing;
 }) {
   return (
     <Flex align="center" justify="space-between" gap="md">
@@ -261,25 +279,20 @@ function MetabasePricingRow({
         }}
       />
       <Text lh={1} fw="500">
-        {t`${metabasePricing.price} per ${metabasePricing.unit} tokens`}
+        {t`${pricing.price} per ${pricing.unit} tokens`}
       </Text>
     </Flex>
   );
 }
 
 function MetabasePricingText({
-  metabasePricing,
+  pricing,
 }: {
-  metabasePricing: {
-    price: string;
-    unit: string;
-    pricePerUnit: number;
-    unitCount: number;
-  };
+  pricing: MetabaseManagedAiPricing;
 }) {
   return (
     <Group gap="xs" align="center">
-      <Text lh="1">{t`Price per token - ${metabasePricing.price} per ${metabasePricing.unit} tokens`}</Text>
+      <Text lh="1">{t`Price per token - ${pricing.price} per ${pricing.unit} tokens`}</Text>
       <Tooltip
         label={t`Tokens are chunks of text used by AI models. Usage includes both prompts and responses.`}
         multiline
@@ -299,12 +312,7 @@ function MetabasePricingText({
 
 function getMetabaseUsageCost(
   tokens: number | null | undefined,
-  pricing: {
-    price: string;
-    unit: string;
-    pricePerUnit: number;
-    unitCount: number;
-  } | null,
+  pricing: MetabaseManagedAiPricing | null,
 ) {
   if (!tokens || !pricing) {
     return 0;

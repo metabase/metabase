@@ -4,6 +4,8 @@ import { Route } from "react-router";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupBillingEndpoints,
+  setupMetabaseManagedAiEndpoints,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -202,46 +204,19 @@ async function setup({
   const responseMap = { ...DEFAULT_RESPONSES, ...responses };
 
   if (isHosted) {
-    fetchMock.get("path:/api/ee/billing", {
-      version: "v1",
-      content: null,
-      data: {
-        billing_period_months: metabaseBillingPeriodMonths,
-        previous_add_ons: null,
-      },
+    setupBillingEndpoints({
+      billingPeriodMonths: metabaseBillingPeriodMonths,
+      hasBasicTransformsAddOn: false,
+      hasAdvancedTransformsAddOn: false,
+      skipCloudAddOns: true,
     });
-    fetchMock.get("path:/api/ee/metabot/usage", {
-      tokens: metabotUsageQuotas?.[0]?.tokens ?? null,
-      updated_at: metabotUsageQuotas?.[0]?.updated_at ?? null,
-    });
-
-    fetchMock.get("path:/api/ee/cloud-add-ons/addons", [
-      {
-        id: 1,
-        active: true,
-        self_service: true,
-        deployment: "cloud",
-        billing_period_months: metabaseBillingPeriodMonths,
-        default_base_fee: 0,
-        default_included_units: 0,
-        default_prepaid_units: 1_000_000,
-        default_price_per_unit: metabasePricePerUnit,
-        default_total_units: 1_000_000,
-        description: null,
-        is_metered: true,
-        name: "Metabase AI",
-        product_tiers: [],
-        product_type: "metabase-ai-managed",
-        short_name: "Metabase AI",
-        token_features: [],
-        trial_days: null,
-      },
-    ]);
-
-    fetchMock.post(
-      "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+    setupMetabaseManagedAiEndpoints({
+      billingPeriodMonths: metabaseBillingPeriodMonths,
+      metabasePricePerUnit,
+      metabotUsageQuota: metabotUsageQuotas?.[0] ?? null,
       purchaseCloudAddOnResponse,
-    );
+    });
+
     fetchMock.post("path:/api/premium-features/token/refresh", () => {
       sessionProperties["token-features"] = createMockTokenFeatures({
         hosting: isHosted,
@@ -552,7 +527,7 @@ describe("MetabotSetup", () => {
 
     expect(
       screen.queryByRole("checkbox", {
-        name: /I agree with the Metabot AI add-on/i,
+        name: /I agree with the Metabase AI add-on/i,
       }),
     ).not.toBeInTheDocument();
 
@@ -600,7 +575,7 @@ describe("MetabotSetup", () => {
       });
 
       const termsCheckbox = await screen.findByRole("checkbox", {
-        name: /I agree with the Metabot AI add-on/i,
+        name: /I agree with the Metabase AI add-on/i,
       });
       const connectButton = await screen.findByRole("button", {
         name: "Connect",

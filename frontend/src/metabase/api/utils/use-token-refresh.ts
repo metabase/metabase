@@ -76,7 +76,7 @@ export function useTokenRefreshUntil(
         status.features?.includes(tokenFeature)
       ) {
         hasCalledOnSatisfied.current = true;
-        await onSatisfied();
+        onSatisfied();
       }
     } finally {
       dispatch(Api.util.invalidateTags(["session-properties"]));
