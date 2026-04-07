@@ -55,6 +55,7 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/McpSession
     :model/FieldValues
     :model/MetabotConversation
     :model/MetabotMessage

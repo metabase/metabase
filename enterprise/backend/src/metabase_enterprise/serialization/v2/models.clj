@@ -82,6 +82,7 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "McpSession"
    "MetabotConversation"
    "MetabotMessage"
    "ModelIndex"
