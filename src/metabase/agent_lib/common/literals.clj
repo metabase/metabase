@@ -3,29 +3,22 @@
   (:require
    [clojure.string :as str]
    [metabase.agent-lib.syntax :as syntax]
+   [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema.aggregation]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private aggregation-operator-names
-  #{"count"
-    "sum"
-    "avg"
-    "min"
-    "max"
-    "distinct"
-    "median"
-    "stddev"
-    "var"
-    "count-where"
-    "sum-where"
-    "distinct-where"
-    "share"
-    "percentile"
-    "cum-count"
-    "cum-sum"
-    "metric"
-    "measure"})
+  ;; Derived from the lib schema hierarchy so new aggregation helpers are picked up automatically.
+  ;; `:aggregation` is the abstract wrapper clause and `:offset` is a windowed aggregation that
+  ;; behaves like an expression in some contexts — neither should be recognized as a plain
+  ;; aggregation helper name.
+  (into #{}
+        (comp (remove #{:aggregation :offset})
+              (map name))
+        (descendants @lib.hierarchy/hierarchy
+                     :metabase.lib.schema.aggregation/aggregation-clause-tag)))
 
 (defn scalar-literal?
   "True when `value` is a scalar JSON-like literal accepted by the structured format."
