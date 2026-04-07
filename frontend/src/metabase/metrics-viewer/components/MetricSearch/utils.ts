@@ -9,12 +9,12 @@ import type {
   ExpressionSubToken,
   MetricDefinitionEntry,
   MetricSourceId,
-  MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
 } from "../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../types/viewer-state";
-import { getDefinitionName } from "../../utils/definition-builder";
 import { stampMetricCounts } from "../../utils/expression";
+
+export type MetricNames = Partial<Record<MetricSourceId, string>>;
 
 /**
  * Returns an array of human-readable expression strings interleaved with numbers
@@ -22,7 +22,7 @@ import { stampMetricCounts } from "../../utils/expression";
  */
 export function buildExpressionForPill(
   tokens: ExpressionSubToken[],
-  metricEntries: MetricsViewerDefinitionEntry[],
+  metricNames: MetricNames,
 ): (string | number)[] {
   const result: (string | number)[] = [];
   let curr = "";
@@ -41,10 +41,7 @@ export function buildExpressionForPill(
     } else if (token.type === "operator") {
       curr += token.op;
     } else if (token.type === "metric") {
-      const entry = metricEntries.find((e) => e.id === token.sourceId);
-      const name = entry?.definition
-        ? getDefinitionName(entry.definition)
-        : null;
+      const name = metricNames[token.sourceId];
       curr += name ?? "";
       if (token.count > 1) {
         result.push(curr);
@@ -64,32 +61,24 @@ export function buildExpressionForPill(
  */
 export function buildExpressionText(
   tokens: ExpressionSubToken[],
-  metricEntries: MetricsViewerDefinitionEntry[],
+  metricNames: MetricNames,
 ): string {
-  return buildExpressionForPill(tokens, metricEntries)
+  return buildExpressionForPill(tokens, metricNames)
     .filter((x) => typeof x === "string")
     .join("");
 }
 
-/**
- * Builds the full editable text for all formula entities, joined by ", ".
- * Metric entries become their display name (looked up from definitions map);
- * expression entries are reconstructed from their sub-tokens.
- */
 export function buildFullText(
   formulaEntities: MetricsViewerFormulaEntity[],
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  metricNames: MetricNames,
 ): string {
-  const definitionEntries = Object.values(definitions);
   return formulaEntities
     .map((entity) => {
       if (isExpressionEntry(entity)) {
-        return buildExpressionText(entity.tokens, definitionEntries);
+        return buildExpressionText(entity.tokens, metricNames);
       }
       if (isMetricEntry(entity)) {
-        const def = definitions[entity.id];
-        const name = def?.definition ? getDefinitionName(def.definition) : null;
-        return name ?? "";
+        return metricNames[entity.id] ?? "";
       }
       return "";
     })
@@ -126,18 +115,14 @@ function isWordChar(ch: string): boolean {
 export function getWordAtCursor(
   text: string,
   cursorPos: number,
-  metricEntries?: MetricDefinitionEntry[],
+  metricNames?: MetricNames,
 ): { word: string; start: number; end: number } {
   // Build a set of metric names (lowercased) for quick lookup.
   let metricNamesLower: Set<string> | null = null;
-  if (metricEntries && metricEntries.length > 0) {
+  if (metricNames && Object.values(metricNames).length > 0) {
     metricNamesLower = new Set(
-      metricEntries
-        .map((e) =>
-          (
-            (e.definition ? getDefinitionName(e.definition) : null) ?? ""
-          ).toLowerCase(),
-        )
+      Object.values(metricNames)
+        .map((name) => name?.toLowerCase() ?? "")
         .filter((n) => n.length > 0),
     );
   }
@@ -297,11 +282,11 @@ export type MetricTokenVisit =
  */
 export function traverseMetricTokens(
   text: string,
-  metricEntries: MetricDefinitionEntry[],
+  metricNames: MetricNames,
   entities: MetricsViewerFormulaEntity[],
   visitor: (visit: MetricTokenVisit) => void,
 ): void {
-  const allTokens = parseFullTextWithPositions(text, metricEntries);
+  const allTokens = parseFullTextWithPositions(text, metricNames);
   const separators = findSeparatorCommaPositions(text, allTokens);
   const segments = groupTokensBySegment(allTokens, separators);
 
@@ -385,9 +370,9 @@ function stripPositions(token: PositionedToken): ExpressionSubToken | null {
  */
 export function parseFullText(
   text: string,
-  metricEntries: MetricDefinitionEntry[],
+  metricNames: MetricNames,
 ): MetricsViewerFormulaEntity[] {
-  const allTokens = parseFullTextWithPositions(text, metricEntries);
+  const allTokens = parseFullTextWithPositions(text, metricNames);
   const separators = findSeparatorCommaPositions(text, allTokens);
   const segments = groupTokensBySegment(allTokens, separators);
   const result: MetricsViewerFormulaEntity[] = [];
@@ -406,15 +391,19 @@ export function parseFullText(
     // Single metric reference without operators → standalone metric entry
     const firstToken = subTokens[0];
     if (subTokens.length === 1 && firstToken.type === "metric") {
-      const existing = metricEntries.find((e) => e.id === firstToken.sourceId);
-      if (existing) {
-        result.push({ ...existing }); // each formulaEntity should be a unique object
+      const name = metricNames[firstToken.sourceId];
+      if (name) {
+        result.push({
+          id: firstToken.sourceId,
+          type: "metric",
+          definition: null,
+        });
         continue;
       }
     }
 
     // Multiple tokens or operators → expression entry
-    const name = buildExpressionText(subTokens, metricEntries);
+    const name = buildExpressionText(subTokens, metricNames);
     result.push({
       id: `expression:${name}`,
       type: "expression",
@@ -628,16 +617,14 @@ function consumeNumber(text: string, startIndex: number): number | null {
 /** Same as the main parser but records character positions for each token. */
 export function parseFullTextWithPositions(
   text: string,
-  metricEntries: MetricDefinitionEntry[],
+  metricNames: MetricNames,
 ): PositionedToken[] {
-  const sortedMetrics = metricEntries
-    .map((entry) => ({
-      name: (
-        (entry.definition ? getDefinitionName(entry.definition) : null) ?? ""
-      ).toLowerCase(),
-      sourceId: entry.id,
-    }))
-    .filter((m) => m.name.length > 0)
+  const sortedMetrics = Object.entries(metricNames)
+    .map(([id, name]) => ({ id, name }))
+    .filter(
+      (m): m is { id: MetricSourceId; name: string } =>
+        (m.name?.length ?? 0) > 0,
+    )
     .sort((a, b) => b.name.length - a.name.length);
 
   const lower = text.toLowerCase();
@@ -717,7 +704,7 @@ export function parseFullTextWithPositions(
     }
 
     let matched = false;
-    for (const { name, sourceId } of sortedMetrics) {
+    for (const { name, id } of sortedMetrics) {
       if (lower.startsWith(name, i)) {
         const nextI = i + name.length;
         const nextCh = text[nextI];
@@ -728,7 +715,7 @@ export function parseFullTextWithPositions(
         if (isWordBoundary) {
           tokens.push({
             type: "metric",
-            sourceId,
+            sourceId: id,
             count: 0,
             from: i,
             to: nextI,
@@ -795,9 +782,9 @@ export type ErrorRange = { from: number; to: number; message: string };
  */
 export function findInvalidRanges(
   text: string,
-  metricEntries: MetricDefinitionEntry[],
+  metricNames: MetricNames,
 ): ErrorRange[] {
-  const allTokens = parseFullTextWithPositions(text, metricEntries);
+  const allTokens = parseFullTextWithPositions(text, metricNames);
   const separators = findSeparatorCommaPositions(text, allTokens);
   const segments = groupTokensBySegment(allTokens, separators);
 
@@ -953,7 +940,7 @@ export function applyTrackedDefinitions(
   newEntities: MetricsViewerFormulaEntity[],
   trackedIdentities: MetricIdentityEntry[],
   text: string,
-  metricEntries: MetricDefinitionEntry[],
+  metricNames: MetricNames,
 ): MetricsViewerFormulaEntity[] {
   const identityByPosition = new Map<string, MetricDefinition | null>();
   for (const identity of trackedIdentities) {
@@ -972,7 +959,7 @@ export function applyTrackedDefinitions(
     Map<number, MetricDefinition | undefined>
   >();
 
-  traverseMetricTokens(text, metricEntries, newEntities, (visit) => {
+  traverseMetricTokens(text, metricNames, newEntities, (visit) => {
     const key = getPositionKey(visit.positioned.from, visit.positioned.to);
     if (!identityByPosition.has(key)) {
       return;
