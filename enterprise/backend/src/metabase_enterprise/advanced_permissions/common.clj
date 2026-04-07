@@ -163,53 +163,6 @@
      []
      dbs)))
 
-(defenterprise new-database-view-data-permission-level
-  "Returns the default view-data permission level for a new database for a given group. This is `blocked` if the
-  group has block permissions for any existing database, or if any connection impersonation policies or sandboxes
-  exist. Otherwise, it is `unrestricted`."
-  :feature :advanced-permissions
-  [group-id]
-  (if (or
-       (t2/exists? :model/DataPermissions
-                   :perm_type :perms/view-data
-                   :perm_value :blocked
-                   :group_id group-id)
-       (t2/exists? :model/ConnectionImpersonation
-                   :group_id group-id)
-       (and
-        (premium-features/enable-sandboxes?)
-        (t2/exists? :model/Sandbox
-                    :group_id group-id)))
-    :blocked
-    :unrestricted))
-
-(defenterprise new-table-view-data-permission-level
-  "Returns the view-data permission level to set for a new table in a given group and database. This is `blocked`
-  if the group has `blocked` for the database or any table in the DB, if any connection impersonation policies or
-  sandboxes exist for the database and group. otherwise it is `unrestricted`."
-  :feature :advanced-permissions
-  [db-id group-id]
-  ;; We don't check for connection impersonations here, because impersonations are set at the DB-level, so a new table
-  ;; should get `:unrestricted` permissions and then inherit the DB-level impersonation policy.
-  (if (or
-       (t2/exists? :model/DataPermissions
-                   :db_id db-id
-                   :perm_type :perms/view-data
-                   :perm_value :blocked
-                   :group_id group-id)
-       (and
-        (premium-features/enable-sandboxes?)
-        (t2/exists?
-         :model/Sandbox
-         {:select [:s.id]
-          :from [[(t2/table-name :model/Sandbox) :s]]
-          :join [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
-          :where [:and
-                  [:= :s.group_id group-id]
-                  [:= :t.db_id db-id]]})))
-    :blocked
-    :unrestricted))
-
 (defenterprise new-group-view-data-permission-levels
   "Batch variant: returns a map of {db-id → permission-level} for multiple databases."
   :feature :advanced-permissions

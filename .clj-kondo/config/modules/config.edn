@@ -1424,6 +1424,7 @@
   {:team "UX West"
    :api  #{metabase.permissions.core
            metabase.permissions.init
+           metabase.permissions.models.data-permissions
            metabase.permissions.schema}
    :uses #{api
            app-db
@@ -1455,7 +1456,6 @@
   {:team "UX West"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
-           app-db
            audit-app
            events
            permissions

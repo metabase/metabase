@@ -53,8 +53,6 @@
   schema-permission-for-user
   set-database-permission!
   set-external-group-permissions!
-  set-new-database-permissions!
-  set-new-table-permissions!
   set-table-permission!
   set-table-permissions!
   table-permission-for-user
