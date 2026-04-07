@@ -1,4 +1,4 @@
-(ns metabase.models.transforms.transform-run-cancelation
+(ns metabase.transforms.models.transform-run-cancelation
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

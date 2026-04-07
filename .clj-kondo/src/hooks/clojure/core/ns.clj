@@ -3,7 +3,8 @@
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]
    [hooks.common]
-   [hooks.common.modules :as modules]))
+   [hooks.common.modules :as modules]
+   [hooks.metabase.toucan.table-name :as toucan.table-name]))
 
 (defn- ns-form-node->require-node [ns-form-node]
   (some (fn [node]
@@ -135,12 +136,14 @@
                                      :type    :metabase/no-jsqlparser-imports)))))))
 
 (defn lint-ns [x]
-  (doto (:node x)
-    lint-require-shapes
-    lint-requires-on-new-lines
-    (lint-modules (modules/config x))
-    lint-namespace-name
-    lint-jsqlparser-imports)
+  (let [ns-node (:node x)]
+    (toucan.table-name/capture-current-ns! (ns-form-node->ns-symb ns-node))
+    (doto ns-node
+      lint-require-shapes
+      lint-requires-on-new-lines
+      (lint-modules (modules/config x))
+      lint-namespace-name
+      lint-jsqlparser-imports))
   x)
 
 (comment

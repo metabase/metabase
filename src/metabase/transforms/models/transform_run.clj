@@ -1,12 +1,12 @@
-(ns metabase.models.transforms.transform-run
+(ns metabase.transforms.models.transform-run
   (:require
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform-run-cancelation :as cancel]
    [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
