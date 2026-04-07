@@ -487,7 +487,7 @@
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
-  [:question :dataset :metric :segment]) ; TODO -- rename `:dataset` to `:model`?
+  [:question :dataset :metric :segment :transform]) ; TODO -- rename `:dataset` to `:model`?
 
 (defmulti ^:private database-usage-query
   "Query that will returns the number of `model` that use the database with id `database-id`.
@@ -522,6 +522,14 @@
    :where  [:in :table_id {:select [:id]
                            :from   [:metabase_table]
                            :where  [:= :db_id db-id]}]})
+
+(defmethod database-usage-query :transform
+  [_ db-id _table-ids]
+  {:select [[:%count.* :transform]]
+   :from   [(t2/table-name :model/Transform)]
+   :where  [:or
+            [:= :source_db_id db-id]
+            [:= :target_db_id db-id]]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

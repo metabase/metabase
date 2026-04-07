@@ -1850,7 +1850,7 @@
                         :query (get-in parsed-source [:query :database])
                         :python (parsed-source :source-database)
                         nil)]
-      (t2/update! :transform (:id transform) {:source_database_id db-id}))))
+      (t2/update! :transform (:id transform) {:source_database_id db-id})))) ;; This is ran before source_database_id is renamed to source_db_id.
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))

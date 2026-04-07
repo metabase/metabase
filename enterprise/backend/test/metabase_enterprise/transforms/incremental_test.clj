@@ -119,7 +119,7 @@
   (let [{:keys [field-name]} checkpoint-config
         checkpoint-filter-field (fn [] (t2/select-one-pk :model/Field :name field-name :table_id (mt/id :transforms_products)))]
     {:name transform-name
-     :source_database_id (mt/id)
+     :source_db_id (mt/id)
      :source (case transform-type
                ;; Native queries now use table tags with checkpoint-filter-field-id
                :native {:type "query"

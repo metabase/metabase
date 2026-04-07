@@ -41,7 +41,7 @@ export const RemoveDestinationDatabaseModal = ({
     <DeleteDatabaseModal
       opened
       title={t`Delete the ${db.name} destination database?`}
-      defaultDatabaseRemovalMessage={t`Users routed to this database will lose access to every question, model, metric, and segment if you continue.`}
+      defaultDatabaseRemovalMessage={t`Users routed to this database will lose access to every question, model, metric, and segment if you continue. Transforms that use this database won’t be deleted, but they will stop working.`}
       onClose={handleCloseModal}
       onDelete={handleDelete}
       database={db}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useLazyGetAdhocQueryMetadataQuery } from "metabase/api";
@@ -6,7 +7,8 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 export function useQueryMetadata(question: Question) {
-  const [loadMetadata, { error }] = useLazyGetAdhocQueryMetadataQuery();
+  const [loadMetadata, { error, isFetching }] =
+    useLazyGetAdhocQueryMetadataQuery();
   const dependenciesRef = useRef<Lib.DependentItem[]>([]);
 
   const isSourceTableLoaded = useMemo(() => {
@@ -31,8 +33,14 @@ export function useQueryMetadata(question: Question) {
     }
   }, [question, loadMetadata]);
 
+  const metadataError =
+    error ??
+    (!isFetching && !isSourceTableLoaded
+      ? t`The source database for this query is not available`
+      : undefined);
+
   return {
-    isLoading: !isSourceTableLoaded,
-    error,
+    isLoading: !isSourceTableLoaded && isFetching,
+    error: metadataError,
   };
 }

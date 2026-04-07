@@ -4,6 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
 
+import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useTransformWithPolling } from "../../hooks/use-transform-with-polling";
 
@@ -40,6 +41,7 @@ export const TransformSettingsPage = ({ params }: TransformTargetPageProps) => {
   return (
     <PageContainer data-testid="transforms-target-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
+      <TransformDisconnectedDatabaseBanner transform={transform} />
       <TransformSettingsSection transform={transform} readOnly={readOnly} />
     </PageContainer>
   );

@@ -36,6 +36,11 @@ export type Transform = {
   created_at: string;
   updated_at: string;
   source_readable: boolean;
+  can_read?: boolean;
+  can_write?: boolean;
+  can_execute?: boolean;
+
+  source_db_id?: number | null;
 
   // true when transform was deleted but still referenced by runs
   deleted?: boolean;

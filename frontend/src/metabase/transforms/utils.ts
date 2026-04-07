@@ -273,3 +273,7 @@ export const getRootCollectionItem = ({
   }
   return null;
 };
+
+export function isMissingSourceDatabase(transform: Transform) {
+  return transform.source_db_id == null;
+}

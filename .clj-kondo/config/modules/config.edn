@@ -2537,7 +2537,7 @@
                     :model/Collection
                     :model/Database
                     :model/Field
-                    :model/Table}}
+                    :model/Table :model/Transform}}
 
   workspaces
   {:team "Metabot"

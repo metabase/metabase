@@ -77,7 +77,7 @@
    [:source :any]
    [:target :any]
    [:source_type :keyword]
-   [:source_database_id {:optional true} [:maybe pos-int?]]
+   [:source_db_id {:optional true} [:maybe pos-int?]]
    [:source_readable {:optional true} [:maybe :boolean]]
    [:entity_id [:maybe :string]]
    [:created_at :any]
@@ -94,8 +94,11 @@
    [:target_table_id {:optional true} [:maybe pos-int?]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
+   [:last_checkpoint_value {:optional true} [:maybe :string]]
    [:owner {:optional true} [:maybe OwnerResponse]]
-   [:last_checkpoint_value {:optional true} [:maybe :string]]])
+   [:can_read {:optional true} :boolean]
+   [:can_write {:optional true} :boolean]
+   [:can_execute {:optional true} :boolean]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
@@ -163,9 +166,9 @@
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
+  (transforms.core/check-feature-enabled! body)
   (api/create-check :model/Transform body)
   (transforms.core/check-database-feature body)
-  (transforms.core/check-feature-enabled! body)
   (transforms.core/validate-incremental-column-type! body)
 
   (api/check (not (transforms-base.u/target-table-exists? body))
@@ -189,7 +192,7 @@
         global-ordering (transforms.core/transform-ordering (vals id->transform))
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
-    (->> (t2/hydrate dependencies :creator :owner)
+    (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
          transforms.u/add-source-readable)))
 
 (def ^:private MergeHistoryEntry
