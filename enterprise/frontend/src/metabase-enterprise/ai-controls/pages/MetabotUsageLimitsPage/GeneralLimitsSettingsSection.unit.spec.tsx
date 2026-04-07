@@ -94,7 +94,7 @@ describe("GeneralLimitsSettingsSection", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/instance limit \(messages\)/),
+        screen.getByText(/instance limit \(message count\)/),
       ).toBeInTheDocument();
     });
   });
@@ -132,7 +132,9 @@ describe("GeneralLimitsSettingsSection", () => {
 
     await userEvent.click(screen.getByText("By message count"));
 
-    expect(screen.getByText(/instance limit \(messages\)/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/instance limit \(message count\)/),
+    ).toBeInTheDocument();
   });
 
   it("updates reset period setting when user clicks a different option", async () => {

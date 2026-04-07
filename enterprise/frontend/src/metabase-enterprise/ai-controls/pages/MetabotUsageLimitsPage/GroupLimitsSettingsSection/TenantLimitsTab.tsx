@@ -14,11 +14,7 @@ import type {
   Tenant,
 } from "metabase-types/api";
 
-import {
-  SAVE_DEBOUNCE_MS,
-  getLimitPeriodLabel,
-  sanitizeUsageLimitValue,
-} from "../utils";
+import { SAVE_DEBOUNCE_MS, sanitizeUsageLimitValue } from "../utils";
 
 import S from "./GroupLimitsSettingsSection.module.css";
 
@@ -113,16 +109,12 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
 
   const noTenantsToShow =
     tenants?.length === 0 && !hasTenantsError && !isLoading;
-  const { adjective: periodAdjective, i18nContext: periodI18nContext } =
-    getLimitPeriodLabel(limitPeriod);
   const placeholder =
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
   return (
     <Stack gap="xl" data-testid="tenant-limits-tab">
-      <Text c="text-secondary">
-        {t`Here you can set total token usage limits for specific tenants. Anything you set here will override the limits set on the instance level.`}
-      </Text>
+      <Text c="text-secondary">{getDescription(limitType)}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
         error={hasTenantsError ? t`Error loading tenants` : null}
@@ -139,18 +131,14 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
               onChange={(e) => setSearch(e.target.value)}
               leftSection={<Icon name="search" />}
             />
-            {tenants && (
+            {tenants.length > 0 && (
               <Box className={S.TableContainer}>
                 <table className={S.Table}>
                   <thead>
                     <tr>
                       <th className={S.HeaderCell}>{t`Tenant`}</th>
                       <th className={S.HeaderCell}>
-                        {limitType === "tokens"
-                          ? periodI18nContext.adjective
-                              .t`Max total ${periodAdjective} token usage (millions)`
-                          : periodI18nContext.adjective
-                              .t`Max total ${periodAdjective} message count`}
+                        {getColumnName(limitType, limitPeriod)}
                       </th>
                     </tr>
                   </thead>
@@ -168,13 +156,11 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
                             classNames={{ input: S.LimitInput }}
                             type="number"
                             min={1}
-                            aria-label={
-                              limitType === "tokens"
-                                ? periodI18nContext.adjective
-                                    .t`Max total ${periodAdjective} tokens for ${tenant.name} (millions)`
-                                : c("{0} is the tenant name")
-                                    .t`Max total ${periodAdjective} messages for ${tenant.name}`
-                            }
+                            aria-label={getInputLabel(
+                              tenant.name,
+                              limitType,
+                              limitPeriod,
+                            )}
                           />
                         </td>
                       </tr>
@@ -188,4 +174,66 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
       </LoadingAndErrorWrapper>
     </Stack>
   );
+}
+
+function getInputLabel(
+  tenantName: string,
+  limitType: MetabotLimitType,
+  limitPeriod: MetabotLimitPeriod,
+): string {
+  const inputLabelMap: Record<
+    MetabotLimitType,
+    Record<MetabotLimitPeriod, string>
+  > = {
+    tokens: {
+      daily: c("{0} is the tenant name")
+        .t`Max total daily tokens for ${tenantName} (millions)`,
+      weekly: c("{0} is the tenant name")
+        .t`Max total weekly tokens for ${tenantName} (millions)`,
+      monthly: c("{0} is the tenant name")
+        .t`Max total monthly tokens for ${tenantName} (millions)`,
+    },
+    messages: {
+      daily: c("{0} is the tenant name")
+        .t`Max total daily messages for ${tenantName}`,
+      weekly: c("{0} is the tenant name")
+        .t`Max total weekly messages for ${tenantName}`,
+      monthly: c("{0} is the tenant name")
+        .t`Max total monthly messages for ${tenantName}`,
+    },
+  };
+
+  return inputLabelMap[limitType][limitPeriod];
+}
+
+function getColumnName(
+  limitType: MetabotLimitType,
+  limitPeriod: MetabotLimitPeriod,
+) {
+  const columnNameMap: Record<
+    MetabotLimitType,
+    Record<MetabotLimitPeriod, string>
+  > = {
+    tokens: {
+      daily: t`Max total daily token usage (millions)`,
+      weekly: t`Max total weekly token usage (millions)`,
+      monthly: t`Max total monthly token usage (millions)`,
+    },
+    messages: {
+      daily: t`Max total daily messages`,
+      weekly: t`Max total weekly messages`,
+      monthly: t`Max total monthly messages`,
+    },
+  };
+
+  return columnNameMap[limitType][limitPeriod];
+}
+
+function getDescription(limitType: MetabotLimitType) {
+  const descriptionMap: Record<MetabotLimitType, string> = {
+    tokens: t`Here you can set total token usage limits for specific tenants.`,
+    messages: t`Here you can set total message count limits for specific tenants.`,
+  };
+
+  return descriptionMap[limitType];
 }

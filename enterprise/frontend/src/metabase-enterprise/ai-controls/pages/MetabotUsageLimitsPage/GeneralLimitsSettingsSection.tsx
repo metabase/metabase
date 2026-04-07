@@ -1,10 +1,8 @@
-import { useDebouncedCallback } from "@mantine/hooks";
-import { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { useAdminSetting } from "metabase/api/utils";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   SegmentedControl,
   type SegmentedControlItem,
@@ -12,151 +10,44 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import {
-  useGetAIControlsInstanceLimitQuery,
-  useUpdateAIControlsInstanceLimitMutation,
-} from "metabase-enterprise/api";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import S from "./GeneralLimitsSettingsSection.module.css";
-import {
-  SAVE_DEBOUNCE_MS,
-  getLimitPeriodLabel,
-  sanitizeUsageLimitValue,
-} from "./utils";
+import { useAdminSettingWithDebouncedInput } from "./hooks/useAdminSettingWithDebouncedInput";
+import { useInstanceLimitDebouncedInput } from "./hooks/useInstanceLimitDebouncedInput";
+import { sanitizeUsageLimitValue } from "./utils";
 
 type LimitTypeOption = SegmentedControlItem<MetabotLimitType>;
 type PeriodOption = SegmentedControlItem<MetabotLimitPeriod>;
 
 export function GeneralLimitsSettingsSection() {
-  // Settings
-  const { value: initialLimitType, updateSetting: updateLimitTypeSetting } =
-    useAdminSetting("metabot-limit-unit");
-  const { value: initialLimitPeriod, updateSetting: updateLimitPeriodSetting } =
-    useAdminSetting("metabot-limit-reset-rate");
+  const { instanceLimit, handleInstanceLimitInputChange } =
+    useInstanceLimitDebouncedInput();
+  const { handleInputChange: handleLimitTypeChange, inputValue: limitType } =
+    useAdminSettingWithDebouncedInput<MetabotLimitType>(
+      "metabot-limit-unit",
+      "tokens",
+    );
   const {
-    value: initialQuotaMessage,
-    updateSetting: updateQuotaMessageSetting,
-  } = useAdminSetting("metabot-quota-reached-message");
-
-  // Instance limit
-  const { data: instanceLimitData } = useGetAIControlsInstanceLimitQuery();
-  const [updateInstanceLimit] = useUpdateAIControlsInstanceLimitMutation();
-  const initialInstanceLimit = instanceLimitData?.max_usage;
-
-  // Local state
-  const [instanceLimitInput, setInstanceLimitInput] = useState<number | null>();
-  const [limitType, setLimitType] = useState<MetabotLimitType>();
-  const [limitPeriod, setLimitPeriod] = useState<MetabotLimitPeriod>();
-  const [quotaMessage, setQuotaMessage] = useState<string>();
-  const { sendErrorToast } = useMetadataToasts();
-
-  useEffect(() => {
-    if (limitType === undefined && initialLimitType !== undefined) {
-      setLimitType(initialLimitType ?? "tokens");
-    }
-  }, [initialLimitType, limitType]);
-
-  useEffect(() => {
-    if (limitPeriod === undefined && initialLimitPeriod !== undefined) {
-      setLimitPeriod(initialLimitPeriod ?? "monthly");
-    }
-  }, [initialLimitPeriod, limitPeriod]);
-
-  useEffect(() => {
-    if (quotaMessage === undefined && initialQuotaMessage !== undefined) {
-      setQuotaMessage(initialQuotaMessage ?? "");
-    }
-  }, [initialQuotaMessage, quotaMessage]);
-
-  useEffect(() => {
-    if (
-      instanceLimitInput === undefined &&
-      initialInstanceLimit !== undefined
-    ) {
-      setInstanceLimitInput(initialInstanceLimit);
-    }
-  }, [initialInstanceLimit, instanceLimitInput]);
-
-  // Debounced save functions
-  const debouncedSaveInstanceLimit = useDebouncedCallback(
-    async (maxUsage: number | null) => {
-      try {
-        await updateInstanceLimit({ max_usage: maxUsage }).unwrap();
-      } catch {
-        sendErrorToast(t`Failed to update instance limit`);
-      }
-    },
-    SAVE_DEBOUNCE_MS,
+    inputValue: limitPeriod,
+    handleInputChange: handleLimitPeriodChange,
+  } = useAdminSettingWithDebouncedInput<MetabotLimitPeriod>(
+    "metabot-limit-reset-rate",
+    "monthly",
   );
-
-  const debouncedSaveQuotaMessage = useDebouncedCallback(
-    async (value: string) => {
-      const response = await updateQuotaMessageSetting({
-        key: "metabot-quota-reached-message",
-        value: value || null,
-        toast: false,
-      });
-      if (response.error) {
-        sendErrorToast(t`Failed to update quota-reached message`);
-      }
-    },
-    SAVE_DEBOUNCE_MS,
+  const {
+    inputValue: quotaMessage,
+    handleInputChange: handleQuotaMessageChange,
+  } = useAdminSettingWithDebouncedInput<string | null>(
+    "metabot-quota-reached-message",
   );
+  const prevLimitType = usePrevious(limitType);
 
-  const limitTypeOptions: LimitTypeOption[] = useMemo(() => {
-    return [
-      { value: "tokens", label: t`By token usage` },
-      { value: "messages", label: t`By message count` },
-    ];
-  }, []);
-
-  const resetPeriodOptions: PeriodOption[] = useMemo(() => {
-    return [
-      { value: "daily", label: t`Daily` },
-      { value: "weekly", label: t`Weekly` },
-      { value: "monthly", label: t`Monthly` },
-    ];
-  }, []);
-
-  const handleLimitTypeChange = async (value: MetabotLimitType) => {
-    setLimitType(value);
-    const response = await updateLimitTypeSetting({
-      key: "metabot-limit-unit",
-      value,
-      toast: false,
-    });
-    if (response.error) {
-      sendErrorToast(t`Failed to update limit type`);
+  useEffect(() => {
+    if (prevLimitType && limitType && limitType !== prevLimitType) {
+      handleInstanceLimitInputChange(null);
     }
-  };
-
-  const handleLimitPeriodChange = async (value: MetabotLimitPeriod) => {
-    setLimitPeriod(value);
-    const response = await updateLimitPeriodSetting({
-      key: "metabot-limit-reset-rate",
-      value,
-      toast: false,
-    });
-    if (response.error) {
-      sendErrorToast(t`Failed to update limits reset rate`);
-    }
-  };
-
-  const handleInstanceLimitChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const maxUsage = sanitizeUsageLimitValue(e.target.value);
-    setInstanceLimitInput(maxUsage);
-    debouncedSaveInstanceLimit(maxUsage);
-  };
-
-  const handleQuotaMessageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setQuotaMessage(value);
-    debouncedSaveQuotaMessage(value);
-  };
-
-  const { i18nContext, adjective: periodAdjective } =
-    getLimitPeriodLabel(limitPeriod);
+  }, [prevLimitType, limitType, handleInstanceLimitInputChange]);
 
   return (
     <SettingsSection title={t`Settings and general limits`}>
@@ -186,13 +77,10 @@ export function GeneralLimitsSettingsSection() {
           />
         </Stack>
         <TextInput
-          label={
-            limitType === "tokens"
-              ? i18nContext.adjective
-                  .t`Total ${periodAdjective.toLowerCase()} instance limit (millions of tokens)`
-              : i18nContext.adjective
-                  .t`Total ${periodAdjective.toLowerCase()} instance limit (messages)`
-          }
+          label={getInstanceLimitInputLabel(
+            limitType || "tokens",
+            limitPeriod || "monthly",
+          )}
           description={t`This is the maximum amount all users should be able to use in total.`}
           placeholder={t`Unlimited`}
           classNames={{
@@ -201,22 +89,96 @@ export function GeneralLimitsSettingsSection() {
           }}
           type="number"
           min={1}
-          value={instanceLimitInput || ""}
-          onChange={handleInstanceLimitChange}
+          value={instanceLimit != null ? instanceLimit : ""}
+          onChange={(e) =>
+            handleInstanceLimitInputChange(
+              sanitizeUsageLimitValue(e.target.value),
+            )
+          }
         />
         <TextInput
           label={t`Quota-reached message`}
-          description={i18nContext.adjective
-            .t`The message shown to users when they reach their ${periodAdjective.toLowerCase()} quota.`}
-          placeholder={t`You've reached your limit for the month.`}
+          description={getQuotaMessageInputDescription(limitPeriod)}
+          placeholder={t`You have reached your AI usage limit for the current period. Please contact your administrator.`}
           classNames={{
             input: S.QuotaMessageInput,
             description: S.InputDescription,
           }}
           value={quotaMessage || ""}
-          onChange={handleQuotaMessageChange}
+          onChange={(e) => handleQuotaMessageChange(e.target.value)}
         />
       </Stack>
     </SettingsSection>
   );
+}
+
+const limitTypeOptions: LimitTypeOption[] = [
+  {
+    value: "tokens",
+    get label() {
+      return t`By token usage`;
+    },
+  },
+  {
+    value: "messages",
+    get label() {
+      return t`By message count`;
+    },
+  },
+];
+
+const resetPeriodOptions: PeriodOption[] = [
+  {
+    value: "daily",
+    get label() {
+      return t`Daily`;
+    },
+  },
+  {
+    value: "weekly",
+    get label() {
+      return t`Weekly`;
+    },
+  },
+  {
+    value: "monthly",
+    get label() {
+      return t`Monthly`;
+    },
+  },
+];
+
+function getInstanceLimitInputLabel(
+  limitType: MetabotLimitType = "tokens",
+  limitPeriod: MetabotLimitPeriod = "monthly",
+) {
+  const instanceLimitLabelMap: Record<
+    MetabotLimitType,
+    Record<MetabotLimitPeriod, string>
+  > = {
+    tokens: {
+      daily: t`Total daily instance limit (millions of tokens)`,
+      weekly: t`Total weekly instance limit (millions of tokens)`,
+      monthly: t`Total monthly instance limit (millions of tokens)`,
+    },
+    messages: {
+      daily: t`Total daily instance limit (message count)`,
+      weekly: t`Total weekly instance limit (message count)`,
+      monthly: t`Total monthly instance limit (message count)`,
+    },
+  };
+
+  return instanceLimitLabelMap[limitType][limitPeriod];
+}
+
+function getQuotaMessageInputDescription(
+  limitPeriod: MetabotLimitPeriod = "monthly",
+) {
+  const messageDescriptionMap: Record<MetabotLimitPeriod, string> = {
+    daily: t`The message shown to users when they reach their daily quota.`,
+    weekly: t`The message shown to users when they reach their weekly quota.`,
+    monthly: t`The message shown to users when they reach their monthly quota.`,
+  };
+
+  return messageDescriptionMap[limitPeriod];
 }

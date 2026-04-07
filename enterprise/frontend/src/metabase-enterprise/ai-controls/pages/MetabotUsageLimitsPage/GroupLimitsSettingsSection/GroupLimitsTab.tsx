@@ -4,7 +4,6 @@ import { c, t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { capitalize } from "metabase/lib/formatting/strings";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Stack, Text, TextInput } from "metabase/ui";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
@@ -15,18 +14,14 @@ import type {
   MetabotLimitType,
 } from "metabase-types/api";
 
-import {
-  SAVE_DEBOUNCE_MS,
-  getLimitPeriodLabel,
-  sanitizeUsageLimitValue,
-} from "../utils";
+import { SAVE_DEBOUNCE_MS, sanitizeUsageLimitValue } from "../utils";
 
 import S from "./GroupLimitsSettingsSection.module.css";
 
 type GroupLimitsTabProps = {
   groupLimits: MetabotGroupLimit[];
   groups: GroupInfo[];
-  hasGroupsError: unknown;
+  hasGroupsError: boolean;
   instanceLimit: number | null;
   isLoading: boolean;
   limitPeriod: MetabotLimitPeriod;
@@ -95,33 +90,23 @@ export function GroupLimitsTab({
     debouncedSaveGroupLimit(group, maxUsage);
   };
 
-  const {
-    periodNoun,
-    periodI18nContext,
-    columnHeader,
-    description,
-    errorMessage,
-  } = getLabels(limitPeriod, variant);
-
   return (
     <Stack gap="xl" data-testid="group-limits-tab">
-      <Text c="text-secondary">{description}</Text>
+      <Text c="text-secondary">{getDescription(variant, limitPeriod)}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
-        error={hasGroupsError ? errorMessage : null}
+        error={getErrorMessage(hasGroupsError, variant)}
       >
         {groups.length > 0 && (
           <Box className={S.TableContainer}>
             <table className={S.Table}>
               <thead>
                 <tr>
-                  <th className={S.HeaderCell}>{columnHeader}</th>
                   <th className={S.HeaderCell}>
-                    {limitType === "tokens"
-                      ? periodI18nContext.noun
-                          .t`Max tokens per user each ${periodNoun} (millions)`
-                      : periodI18nContext.noun
-                          .t`Max messages per user each ${periodNoun}`}
+                    {variant === "tenant-groups" ? t`Tenant group` : t`Group`}
+                  </th>
+                  <th className={S.HeaderCell}>
+                    {getColumnName(limitType, limitPeriod)}
                   </th>
                 </tr>
               </thead>
@@ -157,35 +142,62 @@ export function GroupLimitsTab({
   );
 }
 
-function getLabels(
+function getColumnName(
+  limitType: MetabotLimitType,
   limitPeriod: MetabotLimitPeriod,
+): string {
+  const columnNameMap: Record<
+    MetabotLimitType,
+    Record<MetabotLimitPeriod, string>
+  > = {
+    tokens: {
+      daily: t`Max tokens per user each day (millions)`,
+      weekly: t`Max tokens per user each week (millions)`,
+      monthly: t`Max tokens per user each month (millions)`,
+    },
+    messages: {
+      daily: t`Max messages per user each day`,
+      weekly: t`Max messages per user each week`,
+      monthly: t`Max messages per user each month`,
+    },
+  };
+
+  return columnNameMap[limitType][limitPeriod];
+}
+
+function getDescription(
+  variant: GroupLimitsTabProps["variant"],
+  limitPeriod: MetabotLimitPeriod,
+): string {
+  const descriptionMap: Record<
+    GroupLimitsTabProps["variant"],
+    Record<MetabotLimitPeriod, string>
+  > = {
+    "tenant-groups": {
+      daily: t`Daily limits for each individual user in each tenant group.`,
+      weekly: t`Weekly limits for each individual user in each tenant group.`,
+      monthly: t`Monthly limits for each individual user in each tenant group.`,
+    },
+    "regular-groups": {
+      daily: t`Daily limits for each individual user in each group.`,
+      weekly: t`Weekly limits for each individual user in each group.`,
+      monthly: t`Monthly limits for each individual user in each group.`,
+    },
+  };
+  const additionalDesc = t`If a user belongs to more than one group, they'll be given the highest limit among all the groups they belong to.`;
+
+  return `${descriptionMap[variant][limitPeriod]} ${additionalDesc}`;
+}
+
+function getErrorMessage(
+  hasError: boolean,
   variant: GroupLimitsTabProps["variant"],
 ) {
-  const {
-    noun: periodNoun,
-    adjective: periodAdjective,
-    i18nContext,
-  } = getLimitPeriodLabel(limitPeriod);
-
-  const description =
-    variant === "tenant-groups"
-      ? i18nContext.adjective
-          .t`${capitalize(periodAdjective)} limits for each individual user in each tenant group.`
-      : i18nContext.adjective
-          .t`${capitalize(periodAdjective)} limits for each individual user in each group. If a user belongs to more than one group, they'll be given the highest limit among all the groups they belong to.`;
-
-  const errorMessage =
-    variant === "tenant-groups"
+  if (hasError) {
+    return variant === "tenant-groups"
       ? t`Error loading tenant groups`
       : t`Error loading groups`;
+  }
 
-  const columnHeader = variant === "tenant-groups" ? t`Tenant group` : t`Group`;
-
-  return {
-    columnHeader,
-    description,
-    errorMessage,
-    periodNoun,
-    periodI18nContext: i18nContext,
-  };
+  return null;
 }
