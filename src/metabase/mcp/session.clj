@@ -10,7 +10,7 @@
    its own TTL and will be reaped independently; if a subsequent resource read
    finds it missing, `get-or-create-session-key!` will re-insert it."
   (:require
-   [metabase.app-db.query :as app-db.query]
+   [metabase.app-db.core :as app-db]
    [metabase.session.core :as session]
    [toucan2.core :as t2])
   (:import
@@ -51,7 +51,7 @@
     ;;
     ;; Raw :core_session (not :model/Session) to bypass the after-insert hook, which
     ;; would publish spurious :event/user-login events.
-    (app-db.query/select-or-insert!
+    (app-db/select-or-insert!
      :core_session
      {:key_hashed key-hashed
       :user_id    user-id}

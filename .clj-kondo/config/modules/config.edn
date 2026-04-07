@@ -1144,6 +1144,7 @@
            metabase.mcp.init}
    :uses #{agent-api
            api
+           app-db
            config
            oauth-server
            request
