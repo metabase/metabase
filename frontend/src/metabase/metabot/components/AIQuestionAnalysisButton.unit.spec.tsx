@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { mockStreamedEndpoint } from "metabase/api/ai-streaming/test-utils";
@@ -26,6 +27,7 @@ function setup({
     "metabot-enabled?": isMetabotEnabled,
   });
 
+  setupUserMetabotPermissionsEndpoint();
   setupEnterprisePlugins();
 
   const metabotState = getMetabotInitialState();
@@ -44,10 +46,10 @@ function setup({
 }
 
 describe("AIQuestionAnalysisButton", () => {
-  it("should render the button when metabot is enabled", () => {
+  it("should render the button when metabot is enabled", async () => {
     setup({ isMetabotEnabled: true });
     expect(
-      screen.getByRole("button", { name: "Explain this chart" }),
+      await screen.findByRole("button", { name: "Explain this chart" }),
     ).toBeInTheDocument();
   });
 
@@ -63,7 +65,7 @@ describe("AIQuestionAnalysisButton", () => {
     setup({ isMetabotEnabled: true });
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Explain this chart" }),
+      await screen.findByRole("button", { name: "Explain this chart" }),
     );
 
     await waitFor(() => expect(agentSpy).toHaveBeenCalled());

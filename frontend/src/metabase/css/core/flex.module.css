@@ -80,6 +80,10 @@
   align-items: stretch;
 }
 
+.alignSelfStart {
+  align-self: flex-start;
+}
+
 .alignSelfEnd {
   align-self: flex-end;
 }

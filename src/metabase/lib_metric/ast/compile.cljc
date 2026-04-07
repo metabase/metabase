@@ -168,9 +168,15 @@
   (seq (:joins source)))
 
 (defn- compile-join-nodes
-  "Compile AST join nodes to pMBQL join clauses."
+  "Compile AST join nodes to pMBQL join clauses.
+   Forces `:fields :all` so that all joined columns are visible in stage 1 of
+   two-stage queries (the only context that calls this function). The dimension
+   system advertises all joined columns regardless of the original `:fields`
+   setting, so the compile phase must match."
   [join-nodes]
-  (perf/mapv :mbql-join join-nodes))
+  (perf/mapv (fn [join-node]
+               (assoc (:mbql-join join-node) :fields :all))
+             join-nodes))
 
 ;;; -------------------- Main Compilation --------------------
 
