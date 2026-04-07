@@ -262,7 +262,7 @@ export interface MetabaseBrowserAttributes {
   "data-picker-entity-types"?: ("model" | "table")[];
 
   /**
-   * Whether to show the "New exploration" button.
+   * Whether to show the "New question" button.
    *
    * @defaultValue true
    */
