@@ -204,7 +204,8 @@
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
-     {:profile-id      profile-id
+     {:metabot-id      metabot-id
+      :profile-id      profile-id
       :message         message
       :context         context
       :history         history
