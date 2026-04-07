@@ -325,11 +325,17 @@ export const moveColumnDown = (column, distance) => {
  * @param {Object} options
  * @param {number} options.startIndex - The index of the element to drag
  * @param {number} options.dropIndex - The index where the element should be dropped
+ * @param {boolean} [options.useMouseEvents=false] - Use mouse events instead of pointer events (for components using MouseSensor)
  * @param {Function} [options.onBeforeDragEnd] - Optional callback executed before releasing the drag
  */
 export const moveDnDKitListElement = (
   dataTestId,
-  { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
+  {
+    startIndex,
+    dropIndex,
+    onBeforeDragEnd = () => {},
+    useMouseEvents = false,
+  } = {},
 ) => {
   const selector = new RegExp(dataTestId);
   const getElement = () =>
@@ -350,6 +356,7 @@ export const moveDnDKitListElement = (
     moveDnDKitElementByGetter(getElement, {
       vertical: dropPoint.clientY - dragPoint.clientY,
       horizontal: dropPoint.clientX - dragPoint.clientX,
+      useMouseEvents,
       onBeforeDragEnd,
     });
   });
