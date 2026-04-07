@@ -39,10 +39,9 @@ export function ManageCustomVizPage() {
         <Button
           component={Link}
           to={Urls.customVizAdd()}
-          variant="filled"
           leftSection={<Icon name="add" />}
         >
-          {t`Add visualization`}
+          {t`Add`}
         </Button>
       </Flex>
 
