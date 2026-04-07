@@ -10,6 +10,7 @@
    its own TTL and will be reaped independently; if a subsequent resource read
    finds it missing, `get-or-create-session-key!` will re-insert it."
   (:require
+   [metabase.app-db.query :as app-db.query]
    [metabase.session.core :as session]
    [toucan2.core :as t2])
   (:import
@@ -36,21 +37,19 @@
    (which is the MCP session UUID itself). Auditing is skipped for these sessions."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key session-id)]
-    (when-not (t2/exists? :core_session :key_hashed key-hashed)
-      ;; Raw insert into :core_session instead of :model/Session to bypass
-      ;; the after-insert hook, which would publish spurious :event/user-login events.
-      ;; anti_csrf_token is nil — MCP sessions are not cookie-based, so there is no
-      ;; cross-site request forgery vector.
-      ;;
-      ;; NOTE: There is no unique constraint on key_hashed, so concurrent calls may
-      ;; insert duplicate rows. This is harmless — either row will satisfy session
-      ;; lookups, and both will expire via the normal core_session TTL reaper.
-      (t2/query {:insert-into :core_session
-                 :values      [{:id              (session/generate-session-id)
-                                :user_id         user-id
-                                :key_hashed      key-hashed
-                                :anti_csrf_token nil
-                                :created_at      :%now}]}))
+    ;; Uses select-or-insert! which handles the race condition: if a concurrent call
+    ;; inserts first (violating the unique constraint on key_hashed), the retry will
+    ;; pick up the existing row. We use raw :core_session instead of :model/Session
+    ;; to bypass the after-insert hook, which would publish spurious :event/user-login
+    ;; events.
+    (app-db.query/select-or-insert!
+     :core_session
+     {:key_hashed key-hashed}
+     (fn []
+       {:id              (session/generate-session-id)
+        :user_id         user-id
+        :anti_csrf_token nil
+        :created_at      :%now}))
     ;; The MCP session UUID *is* the session key.
     session-id))
 
