@@ -1,14 +1,11 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
+import { Metabot } from "metabase/metabot/components/Metabot";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  aiStreamingQuery,
-  findMatchingInflightAiStreamingRequests,
-} from "metabase/api/ai-streaming";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -19,21 +16,35 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { MetabotProvider } from "../context";
-import { sendAgentRequest } from "../state/actions";
-import { metabotReducer } from "../state/reducer";
 import { getMetabotInitialState } from "../state/reducer-utils";
 
-jest.mock("metabase/api/ai-streaming", () => ({
-  aiStreamingQuery: jest.fn(),
-  findMatchingInflightAiStreamingRequests: jest.fn(() => []),
-}));
-
-const mockedAiStreamingQuery = jest.mocked(aiStreamingQuery);
+import {
+  enterChatMessage,
+  lastReqBody,
+  mockAgentEndpoint,
+  setup,
+} from "./utils";
 
 const TEST_DB = createSampleDatabase();
 const INITIAL_SQL = "SELECT 1";
 const SUGGESTED_SQL = "SELECT * FROM ORDERS";
+const QUERY_REWRITE_RESPONSE = [
+  `2:${JSON.stringify({
+    type: "code_edit",
+    version: 1,
+    value: {
+      buffer_id: "qb",
+      mode: "rewrite",
+      value: SUGGESTED_SQL,
+    },
+  })}`,
+  `2:${JSON.stringify({
+    type: "state",
+    version: 1,
+    value: { queries: {} },
+  })}`,
+  `d:${JSON.stringify({ finishReason: "stop", usage: {} })}`,
+];
 
 const TEST_NATIVE_CARD = createMockCard({
   id: 101,
@@ -57,31 +68,10 @@ const QuerySuggestionProbe = ({ question }: { question: Question }) => {
 describe("query builder code edits from omnibot", () => {
   beforeEach(() => {
     setupEnterprisePlugins();
-    mockedAiStreamingQuery.mockReset();
-    jest.mocked(findMatchingInflightAiStreamingRequests).mockReturnValue([]);
   });
 
   it("updates the proposed SQL in query builder when omnibot streams a code_edit", async () => {
-    mockedAiStreamingQuery.mockImplementation(async (_request, callbacks) => {
-      callbacks?.onDataPart?.({
-        type: "code_edit",
-        version: 1,
-        value: {
-          buffer_id: "qb",
-          mode: "rewrite",
-          value: SUGGESTED_SQL,
-        },
-      });
-
-      return {
-        aborted: false,
-        toolCalls: [],
-        data: [],
-        text: null,
-        parts: [],
-        history: [],
-      };
-    });
+    const agentSpy = mockAgentEndpoint({ textChunks: QUERY_REWRITE_RESPONSE });
 
     const storeInitialState = createMockState({
       settings: mockSettings({
@@ -99,55 +89,20 @@ describe("query builder code edits from omnibot", () => {
     const metadata = getMetadata(storeInitialState);
     const question = checkNotNull(metadata.question(TEST_NATIVE_CARD.id));
 
-    const { store } = renderWithProviders(
-      <MetabotProvider>
-        <QuerySuggestionProbe question={question} />
-      </MetabotProvider>,
-      {
-        storeInitialState: storeInitialState as any,
-        customReducers: {
-          metabot: metabotReducer,
-        },
-      },
-    );
+    const { store } = setup({
+      ui: (
+        <>
+          <Metabot />
+          <QuerySuggestionProbe question={question} />
+        </>
+      ),
+      storeInitialState: storeInitialState as any,
+    });
 
-    const metabotStore = store as any;
+    await enterChatMessage("Please rewrite this query");
 
-    const conversationId =
-      metabotStore.getState().metabot.conversations.omnibot?.conversationId;
-
-    expect(conversationId).toBeDefined();
-
-    await act(async () => {
-      await metabotStore.dispatch(
-        sendAgentRequest({
-          agentId: "omnibot",
-          message: "Please rewrite this query",
-          conversation_id: conversationId as string,
-          context: {
-            user_is_viewing: [
-              {
-                type: "code_editor",
-                buffers: [
-                  {
-                    id: "qb",
-                    source: {
-                      language: "sql",
-                      database_id: TEST_DB.id,
-                      value: INITIAL_SQL,
-                    },
-                    cursor: { line: 1, column: 1 },
-                  },
-                ],
-              },
-            ],
-            current_time_with_timezone: "2026-03-04T00:00:00Z",
-            capabilities: [],
-          },
-          history: [],
-          state: {},
-        }),
-      );
+    await waitFor(() => {
+      expect(store.getState().qb.uiControls.isNativeEditorOpen).toBe(true);
     });
 
     await waitFor(() => {
@@ -155,5 +110,24 @@ describe("query builder code edits from omnibot", () => {
         SUGGESTED_SQL,
       );
     });
+
+    expect((await lastReqBody(agentSpy))?.context).toEqual(
+      expect.objectContaining({
+        user_is_viewing: expect.arrayContaining([
+          expect.objectContaining({
+            type: "code_editor",
+            buffers: [
+              expect.objectContaining({
+                id: "qb",
+                source: expect.objectContaining({
+                  language: "sql",
+                  database_id: TEST_DB.id,
+                }),
+              }),
+            ],
+          }),
+        ]),
+      }),
+    );
   });
 });
