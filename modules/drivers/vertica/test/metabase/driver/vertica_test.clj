@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.vertica-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -97,3 +98,37 @@
           (let [orders (filter (fn [priv] (str/includes? (u/lower-case-en (:table priv)) "orders")) privileges)]
             (is (seq orders) "ORDERS table should be found in privileges")
             (is (every? :select orders))))))))
+
+(deftest table-privileges-role-grants-test
+  (mt/test-driver :vertica
+    (testing "Privileges granted via roles and schema-level grants are resolved correctly"
+      (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            test-role  "mb_test_priv_role"
+            test-user  "mb_test_priv_user"
+            test-pw    "TestPass123!"
+            cleanup!   (fn []
+                         (doseq [sql [(str "DROP USER IF EXISTS " test-user)
+                                      (str "DROP ROLE IF EXISTS " test-role)]]
+                           (try (jdbc/execute! admin-spec [sql])
+                                (catch Exception _))))]
+        (try
+          ;; Setup: create role, user, grant schema-level SELECT via role
+          (cleanup!)
+          (jdbc/execute! admin-spec [(str "CREATE ROLE " test-role)])
+          (jdbc/execute! admin-spec [(str "GRANT SELECT ON ALL TABLES IN SCHEMA public TO " test-role)])
+          (jdbc/execute! admin-spec [(str "CREATE USER " test-user " IDENTIFIED BY '" test-pw "'")])
+          (jdbc/execute! admin-spec [(str "GRANT " test-role " TO " test-user)])
+          ;; Connect as test user and check privileges
+          (let [user-spec (sql-jdbc.conn/connection-details->spec
+                           :vertica
+                           (assoc (tx/dbdef->connection-details :vertica nil nil)
+                                  :user test-user
+                                  :password test-pw))
+                privileges (sql-jdbc.sync/current-user-table-privileges :vertica user-spec)
+                orders     (filter (fn [priv] (str/includes? (u/lower-case-en (:table priv)) "orders")) privileges)]
+            (is (seq privileges) "Non-superuser with role grant should see tables")
+            (is (seq orders) "ORDERS table should be visible via role grant")
+            (is (every? :select orders) "Should have SELECT via schema-level role grant")
+            (is (not-any? :insert orders) "Should NOT have INSERT (only SELECT was granted)"))
+          (finally
+            (cleanup!)))))))
