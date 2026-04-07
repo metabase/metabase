@@ -9,7 +9,7 @@ import {
 import { Banner } from "metabase/common/components/Banner";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
-import { Anchor, Flex, Text } from "metabase/ui";
+import { Anchor, Text } from "metabase/ui";
 
 import { isAffected } from "../../utils";
 
@@ -75,14 +75,13 @@ export function SecurityCenterBanner() {
   if (hasActiveAdvisory) {
     return (
       <Banner
+        contentGroupProps={{ wrap: "nowrap" }}
         icon="warning_round_filled"
         bg="error"
         body={
-          <Flex align="center" gap="xs">
-            <Text lh="inherit">
-              {jt`Active security advisories require attention, but no notification channels are configured. ${settingsLink}`}
-            </Text>
-          </Flex>
+          <Text lh="inherit">
+            {jt`Active security advisories require attention, but no notification channels are configured. ${settingsLink}`}
+          </Text>
         }
         py="md"
       />
@@ -91,14 +90,13 @@ export function SecurityCenterBanner() {
 
   return (
     <Banner
+      contentGroupProps={{ wrap: "nowrap" }}
       icon="warning_round_filled"
       bg="warning"
       body={
-        <Flex align="center" gap="xs">
-          <Text lh="inherit">
-            {jt`No notification channels are configured for security alerts. ${settingsLink}`}
-          </Text>
-        </Flex>
+        <Text lh="inherit">
+          {jt`No notification channels are configured for security alerts. ${settingsLink}`}
+        </Text>
       }
       closable
       onClose={dismiss}

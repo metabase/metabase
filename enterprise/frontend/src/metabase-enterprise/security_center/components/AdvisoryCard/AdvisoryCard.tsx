@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import {
   Anchor,
   Badge,
   Button,
   Card,
-  Flex,
   Group,
   Stack,
   Text,
@@ -42,6 +42,38 @@ interface AdvisoryCardProps {
 export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
   const affected = isAffected(advisory);
   const acknowledged = isAcknowledged(advisory);
+  const isSmallScreen = useIsSmallScreen();
+
+  const badges = (
+    <>
+      <Badge className={SEVERITY_CLASS[advisory.severity]}>
+        {advisory.severity}
+      </Badge>
+      <Badge
+        variant="outline"
+        className={affected ? S.statusAffected : S.statusNotAffected}
+        data-testid="affected-status"
+      >
+        {affected ? t`Affected` : t`Not affected`}
+      </Badge>
+      {acknowledged && (
+        <Badge color="brand" variant="light" data-testid="acknowledged-badge">
+          {t`Acknowledged`}
+        </Badge>
+      )}
+    </>
+  );
+
+  const acknowledgeButton = !acknowledged && onAcknowledge && (
+    <Button
+      variant="subtle"
+      size="compact-sm"
+      onClick={() => onAcknowledge(advisory.advisory_id)}
+      data-testid="acknowledge-button"
+    >
+      {t`Acknowledge`}
+    </Button>
+  );
 
   return (
     <Card
@@ -52,38 +84,24 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
       mih={184}
     >
       <Stack gap="sm">
-        <Flex justify="space-between" align="center" wrap="wrap" gap="sm">
-          <Group gap="sm">
-            <Badge className={SEVERITY_CLASS[advisory.severity]}>
-              {advisory.severity}
-            </Badge>
-            <Title order={4}>{advisory.title}</Title>
+        {isSmallScreen && (
+          <Group gap="sm" justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="wrap">
+              {badges}
+            </Group>
+            {acknowledgeButton}
           </Group>
-          <Group gap="sm">
-            {acknowledged && (
-              <Badge
-                color="brand"
-                variant="light"
-                data-testid="acknowledged-badge"
-              >
-                {t`Acknowledged`}
-              </Badge>
-            )}
-            <Badge
-              variant="outline"
-              className={affected ? S.statusAffected : S.statusNotAffected}
-              data-testid="affected-status"
-            >
-              {affected ? t`Affected` : t`Not affected`}
-            </Badge>
-          </Group>
-        </Flex>
+        )}
+        <Group gap="sm" align="center" wrap="wrap">
+          {!isSmallScreen && badges}
+          <Title order={4}>{advisory.title}</Title>
+        </Group>
 
         <Text lineClamp={2} c="text-secondary">
           {advisory.description}
         </Text>
 
-        <Group gap="lg">
+        <Stack gap="xs">
           {advisory.affected_versions.length > 0 && (
             <Text size="sm" c="text-secondary">
               {t`Affected versions: ${formatVersionRange(advisory)}`}
@@ -92,30 +110,23 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
           <Text size="sm" c="text-secondary">
             {t`Remediation: ${advisory.remediation}`}
           </Text>
-        </Group>
+        </Stack>
 
-        <Group gap="md" h={28}>
-          {advisory.advisory_url && (
-            <Anchor
-              href={advisory.advisory_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="sm"
-            >
-              {t`View advisory`}
-            </Anchor>
-          )}
-          {!acknowledged && onAcknowledge && (
-            <Button
-              variant="subtle"
-              size="compact-sm"
-              onClick={() => onAcknowledge(advisory.advisory_id)}
-              data-testid="acknowledge-button"
-            >
-              {t`Acknowledge`}
-            </Button>
-          )}
-        </Group>
+        {(advisory.advisory_url || !isSmallScreen) && (
+          <Group gap="md" h={28}>
+            {advisory.advisory_url && (
+              <Anchor
+                href={advisory.advisory_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="sm"
+              >
+                {t`View advisory`}
+              </Anchor>
+            )}
+            {!isSmallScreen && acknowledgeButton}
+          </Group>
+        )}
       </Stack>
     </Card>
   );

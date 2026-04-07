@@ -1,7 +1,8 @@
 import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { Anchor, Group, Icon, Text } from "metabase/ui";
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import { Anchor, Flex, Icon, Text } from "metabase/ui";
 
 import S from "./UpgradeBanner.module.css";
 
@@ -14,18 +15,23 @@ interface UpgradeBannerProps {
 }
 
 export function UpgradeBanner({ targetVersion }: UpgradeBannerProps) {
+  const isSmallScreen = useIsSmallScreen();
+
   return (
-    <Group
+    <Flex
       className={S.root}
       gap="sm"
       wrap="nowrap"
       data-testid="upgrade-banner"
+      direction={isSmallScreen ? "column" : "row"}
     >
-      <Icon name="warning" className={S.icon} />
-      <Text fw="bold" size="md" className={S.text}>
-        {c("{0} is a version number like v0.59.4")
-          .t`A security update is available. Update to ${targetVersion} or later to resolve known issues.`}
-      </Text>
+      <Flex gap="md" align="center">
+        <Icon name="warning" className={S.icon} />
+        <Text fw="bold" size="md" className={S.text}>
+          {c("{0} is a version number like v0.59.4")
+            .t`A security update is available. Update to ${targetVersion} or later to resolve known issues.`}
+        </Text>
+      </Flex>
       <Anchor
         component={ExternalLink}
         href={UPGRADE_DOCS_URL}
@@ -35,6 +41,6 @@ export function UpgradeBanner({ targetVersion }: UpgradeBannerProps) {
       >
         {t`View upgrade instructions`}
       </Anchor>
-    </Group>
+    </Flex>
   );
 }

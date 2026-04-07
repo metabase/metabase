@@ -21,6 +21,10 @@
   .root {
     padding-inline: 1rem;
   }
+
+  .content {
+    flex-direction: column;
+  }
 }
 
 @keyframes spin {
