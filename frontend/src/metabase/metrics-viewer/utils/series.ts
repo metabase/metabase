@@ -5,10 +5,10 @@ import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
 import type {
-  DimensionItem,
   DimensionPillBarItem,
   ExpressionDimensionItem,
   ExpressionMetricSource,
+  MetricDimensionItem,
 } from "metabase/metrics-viewer/components/DimensionPillBar";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
@@ -725,7 +725,7 @@ function buildStandaloneDimensionItem(
   modifiedDefinitionsByEntityIndex: Map<number, MetricDefinition>,
   sourceColors: SourceColorMap,
   dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
-): DimensionItem | null {
+): MetricDimensionItem | null {
   const defEntry = getEffectiveDefinitionEntry(entity, definitions);
   if (!defEntry?.definition) {
     return null;
@@ -763,6 +763,7 @@ function buildStandaloneDimensionItem(
 
     return {
       id: slot.slotIndex,
+      type: "metric",
       label: dimensionInfo.longDisplayName,
       icon: getDimensionIcon(projectionDimension),
       colors: entryColors,
@@ -776,6 +777,7 @@ function buildStandaloneDimensionItem(
 
   return {
     id: slot.slotIndex,
+    type: "metric",
     label: undefined,
     icon: undefined,
     colors: entryColors,

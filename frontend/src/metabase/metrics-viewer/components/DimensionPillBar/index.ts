@@ -1,7 +1,7 @@
 export { DimensionPillBar } from "./DimensionPillBar";
 export type {
   DimensionPillBarProps,
-  DimensionItem,
+  MetricDimensionItem,
   DimensionPillBarItem,
   ExpressionDimensionItem,
   ExpressionMetricSource,

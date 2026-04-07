@@ -10,8 +10,8 @@ import { ExpressionDimensionPill } from "./ExpressionDimensionPill";
 
 // ── Standalone metric pill item ──
 
-export interface DimensionItem {
-  type?: "metric";
+export interface MetricDimensionItem {
+  type: "metric";
   id: number;
   label?: string;
   icon?: IconName;
@@ -42,7 +42,9 @@ export interface ExpressionDimensionItem {
   metricSources: ExpressionMetricSource[];
 }
 
-export type DimensionPillBarItem = DimensionItem | ExpressionDimensionItem;
+export type DimensionPillBarItem =
+  | MetricDimensionItem
+  | ExpressionDimensionItem;
 
 // ── Component ──
 

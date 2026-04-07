@@ -119,11 +119,29 @@ const SNAPSHOT_NAME = "metrics-explorer-snapshot";
 /**
  * Add a metric or measure to the explorer via the search panel
  */
-const addMetric = (name: string) => {
+const addMetric = (name: string, waitForRequest: boolean = false) => {
   // for some reason `type` clicks in the middle of the input first
   // so we use `{end}` to make sure we type at the end
   H.MetricsViewer.searchInput().type(`{end}, ${name}`);
   H.MetricsViewer.searchResults().findByText(name).click();
+
+  if (waitForRequest) {
+    cy.wait("@getMetric");
+  }
+
+  H.MetricsViewer.runButton().click();
+};
+
+const addMeasure = (name: string, waitForRequest: boolean = false) => {
+  // for some reason `type` clicks in the middle of the input first
+  // so we use `{end}` to make sure we type at the end
+  H.MetricsViewer.searchInput().type(`{end}, ${name}`);
+  H.MetricsViewer.searchResults().findByText(name).click();
+
+  if (waitForRequest) {
+    cy.wait("@getMeasure");
+  }
+
   H.MetricsViewer.runButton().click();
 };
 
@@ -267,6 +285,10 @@ describe("scenarios > metrics > explorer", () => {
   beforeEach(() => {
     H.restore(SNAPSHOT_NAME as any);
     cy.signInAsAdmin();
+
+    interceptDatasetQuery();
+    cy.intercept("GET", "/api/metric/*").as("getMetric");
+    cy.intercept("GET", "/api/measure/*").as("getMeasure");
   });
 
   // ============================================================================
@@ -306,7 +328,7 @@ describe("scenarios > metrics > explorer", () => {
     it("should not show Edit in Data Studio for users without data studio access", () => {
       cy.signInAsNormalUser();
       H.MetricsViewer.goToViewer();
-      addMetric("Count of orders");
+      addMetric("Count of orders", true);
 
       H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
       H.popover().should("not.contain", "Edit in Data Studio");
@@ -325,7 +347,7 @@ describe("scenarios > metrics > explorer", () => {
         },
       ]);
       H.MetricsViewer.goToViewer();
-      addMetric("Empty Metric");
+      addMetric("Empty Metric", true);
 
       H.MetricsViewer.getMetricVisualization()
         .findByText(/No dice/)
@@ -338,17 +360,11 @@ describe("scenarios > metrics > explorer", () => {
   // ============================================================================
 
   describe("Adding metrics and measures", () => {
-    beforeEach(() => {
-      interceptDatasetQuery();
-      cy.intercept("GET", "/api/metric/*").as("getMetric");
-      cy.intercept("GET", "/api/measure/*").as("getMeasure");
-    });
-
     it("should add multiple metrics", () => {
       H.MetricsViewer.goToViewer();
-      addMetric("Count of products");
+      addMetric("Count of products", true);
       cy.wait("@dataset");
-      addMetric("Count of orders");
+      addMetric("Count of orders", true);
       cy.wait("@dataset");
       verifyMetricCount(2);
 
@@ -356,7 +372,7 @@ describe("scenarios > metrics > explorer", () => {
       addMetric("Count of products");
 
       cy.log("Should allow me to add measures");
-      addMetric("Test Measure");
+      addMeasure("Test Measure", true);
 
       cy.log("no results");
       H.MetricsViewer.searchInput().type("{end}, xyznonexistent");
