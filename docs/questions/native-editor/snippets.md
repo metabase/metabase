@@ -65,7 +65,7 @@ To add a snippet to your native code, start typing `{% raw %}{{snippet: }}{% end
 
 Metabase is sensitive to whitespace in snippet references, so you should type `{% raw %}{{snippet: Products}}{% endraw %}`, with no space between `{% raw %}{{{% endraw %}` and `snippet`, and with a space between `:` and snippet's name.
 
-When you execute the query, behind the scenes Metabase replace the snippet reference with the snippet's SQL.
+When you execute the query, behind the scenes Metabase replaces the snippet reference with the snippet's SQL.
 
 You can also just pick a snippet to insert from the snippet sidebar:
 

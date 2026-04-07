@@ -42,7 +42,7 @@ This email address will be displayed in various messages throughout Metabase whe
 
 ## Anonymous tracking
 
-On self-hosted Metabases, this option turns determines whether or not you allow [anonymous data about your usage of Metabase](../installation-and-operation/information-collection.md) to be sent back to us to help us improve the product. [Your database’s data is never tracked or sent](https://www.metabase.com/security).
+On self-hosted Metabases, this option determines whether or not you allow [anonymous data about your usage of Metabase](../installation-and-operation/information-collection.md) to be sent back to us to help us improve the product. [Your database’s data is never tracked or sent](https://www.metabase.com/security).
 
 ## Friendly table and field names
 

@@ -27,7 +27,7 @@ If a person has the wrong level of access to the data that's returned by a quest
 1. Ensure scripts are loading by disabling browser extensions and refreshing the browser.
 2. Go to **Admin** > **Permissions** and select the relevant group.
 3. Find the database that you want to grant SQL access to.
-4. From the **View data** dropdown.elect **Can view**.
+4. From the **View data** dropdown, select **Can view**.
 5. From the **Create queries** dropdown, select **Query builder and native**.
 6. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
