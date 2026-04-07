@@ -11,10 +11,7 @@ import {
   DatabaseInfoSectionDivider,
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
-import {
-  skipToken,
-  useListUserAttributesQuery,
-} from "metabase/api";
+import { skipToken, useListUserAttributesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
