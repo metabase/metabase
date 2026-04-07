@@ -1219,6 +1219,7 @@ databaseChangeLog:
             referencedTableName: core_user
             referencedColumnNames: id
             constraintName: fk_security_advisory_acknowledged_by
+            onDelete: SET NULL
 
   - changeSet:
       id: v45.2026-03-30T00:00:04
