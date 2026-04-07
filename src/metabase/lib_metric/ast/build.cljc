@@ -388,7 +388,7 @@
         ;; Convert filters and projections to AST nodes
         ast-filter         (when (seq leaf-filters) (mbql-filters->ast-filter leaf-filters))
         ast-group-by       (when (seq leaf-projections) (perf/mapv dimension-ref->ast-dimension-ref leaf-projections))]
-    {:node/type         :ast/root
+    {:node/type         :ast/source-query
      :source            (mbql5-query->source-node source-type leaf-id metadata mbql5-query)
      :dimensions        (perf/mapv dimension-node (or dimensions []))
      :mappings          (perf/mapv dimension-mapping-node (or dimension-mappings []))

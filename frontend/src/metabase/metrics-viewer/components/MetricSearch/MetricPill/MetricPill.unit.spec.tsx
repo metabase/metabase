@@ -33,8 +33,6 @@ function setup({
     <MetricPill
       metric={metric}
       definitionEntry={defaultDefinitionEntry}
-      selectedMetricIds={new Set()}
-      selectedMeasureIds={new Set()}
       onSwap={jest.fn()}
       onRemove={jest.fn()}
       onSetBreakout={jest.fn()}
