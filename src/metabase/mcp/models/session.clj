@@ -11,11 +11,9 @@
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
-   [metabase.settings.core :refer [defsetting]]
-   [metabase.settings.models.setting :as setting]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -37,13 +35,6 @@
 (def ^:private session-ttl-hours
   "MCP sessions expire 1 hour after creation."
   1)
-
-(defsetting mcp-embedding-signing-secret
-  (deferred-tru "Instance-wide secret used to derive embedding session keys for MCP sessions.")
-  :encryption :when-encryption-key-set
-  :visibility :internal
-  :base       setting/uuid-nonce-base
-  :doc        false)
 
 ;;; -------------------------------------------- Embedding Sessions -----------------------------------------------
 
@@ -67,7 +58,7 @@
    secret lets every webserver recompute the same value on demand without any per-session
    plaintext sitting at rest."
   [mcp-session-id]
-  (hmac-sha256-hex (mcp-embedding-signing-secret) mcp-session-id))
+  (hmac-sha256-hex (mcp.settings/mcp-embedding-signing-secret) mcp-session-id))
 
 (defn- create-embedding-session!
   "Create a `core_session` row for the derived embedding key.

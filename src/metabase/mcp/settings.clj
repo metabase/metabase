@@ -1,8 +1,8 @@
 (ns metabase.mcp.settings
-  "Settings for MCP Apps CORS origins."
+  "Settings for MCP Apps CORS origins and MCP session key derivation."
   (:require
    [clojure.string :as str]
-   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 ;;; ------------------------------------------------ Client → Domain Mapping --------------------------------
@@ -17,6 +17,13 @@
    "cursor-vscode"  []})
 
 ;;; ------------------------------------------------ Settings ------------------------------------------------
+
+(defsetting mcp-embedding-signing-secret
+  (deferred-tru "Instance-wide secret used to derive embedding session keys for MCP sessions.")
+  :encryption :when-encryption-key-set
+  :visibility :internal
+  :base       setting/uuid-nonce-base
+  :doc        false)
 
 (defsetting mcp-apps-cors-enabled-clients
   (deferred-tru "Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).")
