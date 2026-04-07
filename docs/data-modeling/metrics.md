@@ -83,7 +83,7 @@ To edit a metric:
 
    ![Metric definition](./images/metric-definition.png)
 
-   If you edit metric's definition, all questions that use the metric will immediately start using the new definition.
+   If you edit the metric's definition, all questions that use the metric will immediately start using the new definition.
 
 3. Save your changes.
 
