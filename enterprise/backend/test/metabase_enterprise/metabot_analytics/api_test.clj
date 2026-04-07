@@ -199,3 +199,76 @@
               (is (= 2 (count (:chat_messages response)))))
             (finally
               (delete-conversations! [conversation-id]))))))))
+
+(deftest get-conversation-detail-queries-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id returns generated queries"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)
+            jan-1           (java.time.OffsetDateTime/parse "2026-01-01T00:00:00Z")
+            jan-2           (java.time.OffsetDateTime/parse "2026-01-02T00:00:00Z")
+            jan-3           (java.time.OffsetDateTime/parse "2026-01-03T00:00:00Z")
+            sql             "SELECT * FROM orders"]
+        (try
+          (insert-conversation! {:conversation-id conversation-id
+                                 :user-id         user-id
+                                 :created-at      jan-1
+                                 :summary         "Conversation with queries"})
+          ;; user prompt
+          (insert-message! {:conversation-id conversation-id
+                            :created-at      jan-1
+                            :role            "user"
+                            :profile-id      "ignored-user-model"
+                            :total-tokens    3
+                            :data            [{:role "user" :content "show me orders"}]})
+          ;; successful create_sql_query — should appear in :queries
+          (insert-message! {:conversation-id conversation-id
+                            :created-at      jan-2
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    20
+                            :data            [{:type "text" :text "Sure, here it is."}
+                                              {:type     "tool-input"
+                                               :id       "call-success"
+                                               :function "create_sql_query"
+                                               :arguments {:database_id (mt/id) :sql_query sql}}
+                                              {:type   "tool-output"
+                                               :id     "call-success"
+                                               :result {:output "<result>...</result>"
+                                                        :structured-output {:query-id      "qid-success"
+                                                                            :query-content sql
+                                                                            :query         {:database (mt/id)
+                                                                                            :type     :native
+                                                                                            :native   {:query sql}}
+                                                                            :database      (mt/id)}}}]})
+          ;; failed create_sql_query (only :output, no :structured-output) — should NOT appear in :queries
+          (insert-message! {:conversation-id conversation-id
+                            :created-at      jan-3
+                            :role            "assistant"
+                            :profile-id      "gpt-5"
+                            :total-tokens    10
+                            :data            [{:type     "tool-input"
+                                               :id       "call-failed"
+                                               :function "create_sql_query"
+                                               :arguments {:database_id (mt/id) :sql_query "SELEKT bad"}}
+                                              {:type   "tool-output"
+                                               :id     "call-failed"
+                                               :result {:output "<result>SQL query construction failed.</result>"}}]})
+
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations/%s" conversation-id))
+                queries  (:queries response)]
+            (is (= 1 (count queries))
+                "errored tool call should be filtered out")
+            (let [q (first queries)]
+              (is (= "create_sql_query" (:tool q)))
+              (is (= "sql"               (:query_type q)))
+              (is (= "qid-success"       (:query_id q)))
+              (is (= sql                 (:sql q)))
+              (is (nil?                  (:mbql q)))
+              (is (= (mt/id)             (:database_id q)))
+              ;; Tables extraction goes through the real Macaw path — sample data has an "orders" table.
+              (is (contains? (set (:tables q)) "orders"))))
+          (finally
+            (delete-conversations! [conversation-id])))))))
+

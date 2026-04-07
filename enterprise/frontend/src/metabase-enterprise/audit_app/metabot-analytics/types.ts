@@ -1,4 +1,5 @@
 import type { MetabotChatMessage } from "metabase/metabot/state";
+import type { DatasetQuery } from "metabase-types/api";
 
 export type MetabotUserInfo = {
   id: number;
@@ -50,6 +51,18 @@ export type MessageDetail = {
   data: unknown;
 };
 
+export type GeneratedQuery = {
+  tool: string;
+  call_id: string | null;
+  message_id: number;
+  query_id: string | null;
+  query_type: "sql" | "notebook";
+  sql: string | null;
+  mbql: DatasetQuery | null;
+  database_id: number | null;
+  tables: string[];
+};
+
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;
@@ -59,4 +72,5 @@ export type ConversationDetail = {
   user: MetabotUserInfo | null;
   messages: MessageDetail[];
   chat_messages: MetabotChatMessage[];
+  queries: GeneratedQuery[];
 };
