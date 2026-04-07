@@ -356,25 +356,28 @@
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :vertica
   [_driver conn-spec & {:as _options}]
+  ;; Use HAS_TABLE_PRIVILEGE() instead of v_catalog.grants - it resolves all privilege paths
+  ;; (superuser, roles, PUBLIC, direct grants) which the grants table may not reflect.
   (->> (jdbc/query
         conn-spec
         (str/join
          "\n"
          ["SELECT"
           "  NULL AS role,"
-          "  g.object_schema AS schema,"
-          "  g.object_name AS table,"
-          "  MAX(CASE WHEN g.privileges_description ILIKE '%SELECT%' THEN 1 ELSE 0 END) AS \"select\","
-          "  MAX(CASE WHEN g.privileges_description ILIKE '%UPDATE%' THEN 1 ELSE 0 END) AS \"update\","
-          "  MAX(CASE WHEN g.privileges_description ILIKE '%INSERT%' THEN 1 ELSE 0 END) AS \"insert\","
-          "  MAX(CASE WHEN g.privileges_description ILIKE '%DELETE%' THEN 1 ELSE 0 END) AS \"delete\""
-          "FROM v_catalog.grants g"
-          "WHERE g.grantee = CURRENT_USER"
-          "  AND g.object_type IN ('TABLE', 'VIEW')"
-          "GROUP BY g.object_schema, g.object_name"]))
-       (map (fn [row]
-              (-> row
-                  (update :select pos?)
-                  (update :update pos?)
-                  (update :insert pos?)
-                  (update :delete pos?))))))
+          "  t.schema_name AS schema,"
+          "  t.table_name AS table,"
+          "  HAS_TABLE_PRIVILEGE(CURRENT_USER,"
+          "    '\"' || REPLACE(t.schema_name, '\"', '\"\"') || '\".\"' || REPLACE(t.table_name, '\"', '\"\"') || '\"',"
+          "    'SELECT') AS \"select\","
+          "  HAS_TABLE_PRIVILEGE(CURRENT_USER,"
+          "    '\"' || REPLACE(t.schema_name, '\"', '\"\"') || '\".\"' || REPLACE(t.table_name, '\"', '\"\"') || '\"',"
+          "    'UPDATE') AS \"update\","
+          "  HAS_TABLE_PRIVILEGE(CURRENT_USER,"
+          "    '\"' || REPLACE(t.schema_name, '\"', '\"\"') || '\".\"' || REPLACE(t.table_name, '\"', '\"\"') || '\"',"
+          "    'INSERT') AS \"insert\","
+          "  HAS_TABLE_PRIVILEGE(CURRENT_USER,"
+          "    '\"' || REPLACE(t.schema_name, '\"', '\"\"') || '\".\"' || REPLACE(t.table_name, '\"', '\"\"') || '\"',"
+          "    'DELETE') AS \"delete\""
+          "FROM v_catalog.all_tables t"
+          "WHERE t.table_type IN ('TABLE', 'VIEW')"]))
+       (filter #(or (:select %) (:update %) (:insert %) (:delete %)))))

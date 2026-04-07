@@ -764,36 +764,46 @@
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :oracle
   [_driver conn-spec & {:as _options}]
+  ;; ALL_TABLES/ALL_VIEWS are user-scoped views that only show objects accessible to the current user.
+  ;; Write privileges come from three sources: ownership, ALL_TAB_PRIVS (includes role/PUBLIC grants),
+  ;; and system privileges (e.g. INSERT ANY TABLE) via SESSION_PRIVS.
   (->> (jdbc/query
         conn-spec
         (str/join
          "\n"
-         [;; Tables/views owned by the current user have implicit full privileges.
+         ["WITH accessible_objects AS ("
+          "  SELECT owner, table_name FROM all_tables"
+          "  UNION ALL"
+          "  SELECT owner, view_name AS table_name FROM all_views"
+          "),"
+          "sys_privs AS ("
+          "  SELECT privilege FROM session_privs"
+          "  WHERE privilege IN ('INSERT ANY TABLE', 'UPDATE ANY TABLE', 'DELETE ANY TABLE')"
+          ")"
           "SELECT"
           "  NULL AS \"role\","
-          "  o.owner AS \"schema\","
-          "  o.object_name AS \"table\","
+          "  ao.owner AS \"schema\","
+          "  ao.table_name AS \"table\","
           "  1 AS \"select\","
-          "  1 AS \"update\","
-          "  1 AS \"insert\","
-          "  1 AS \"delete\""
-          "FROM all_objects o"
-          "WHERE o.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
-          "  AND o.object_type IN ('TABLE', 'VIEW')"
-          "UNION ALL"
-          ;; Tables/views granted to the current user via ALL_TAB_PRIVS.
-          "SELECT"
-          "  NULL AS \"role\","
-          "  p.table_schema AS \"schema\","
-          "  p.table_name AS \"table\","
-          "  MAX(CASE WHEN p.privilege = 'SELECT' THEN 1 ELSE 0 END) AS \"select\","
-          "  MAX(CASE WHEN p.privilege = 'UPDATE' THEN 1 ELSE 0 END) AS \"update\","
-          "  MAX(CASE WHEN p.privilege = 'INSERT' THEN 1 ELSE 0 END) AS \"insert\","
-          "  MAX(CASE WHEN p.privilege = 'DELETE' THEN 1 ELSE 0 END) AS \"delete\""
-          "FROM all_tab_privs p"
-          "WHERE p.grantee = SYS_CONTEXT('USERENV', 'CURRENT_USER')"
-          "  AND p.table_schema <> SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
-          "GROUP BY p.table_schema, p.table_name"]))
+          "  CASE WHEN ao.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
+          "       OR EXISTS (SELECT 1 FROM sys_privs WHERE privilege = 'INSERT ANY TABLE')"
+          "       OR EXISTS (SELECT 1 FROM all_tab_privs p"
+          "                  WHERE p.table_schema = ao.owner AND p.table_name = ao.table_name"
+          "                    AND p.privilege = 'INSERT')"
+          "       THEN 1 ELSE 0 END AS \"insert\","
+          "  CASE WHEN ao.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
+          "       OR EXISTS (SELECT 1 FROM sys_privs WHERE privilege = 'UPDATE ANY TABLE')"
+          "       OR EXISTS (SELECT 1 FROM all_tab_privs p"
+          "                  WHERE p.table_schema = ao.owner AND p.table_name = ao.table_name"
+          "                    AND p.privilege = 'UPDATE')"
+          "       THEN 1 ELSE 0 END AS \"update\","
+          "  CASE WHEN ao.owner = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
+          "       OR EXISTS (SELECT 1 FROM sys_privs WHERE privilege = 'DELETE ANY TABLE')"
+          "       OR EXISTS (SELECT 1 FROM all_tab_privs p"
+          "                  WHERE p.table_schema = ao.owner AND p.table_name = ao.table_name"
+          "                    AND p.privilege = 'DELETE')"
+          "       THEN 1 ELSE 0 END AS \"delete\""
+          "FROM accessible_objects ao"]))
        (map (fn [row]
               (-> row
                   (update :select pos?)
