@@ -213,7 +213,7 @@
 ;;; -------------------- Join Nodes --------------------
 
 (mr/def ::join-node
-  "A join from the source metric's query, preserved as raw pMBQL."
+  "A join from the source metric's query, preserved as raw MBQL 5."
   [:map
    [:node/type [:= :ast/join]]
    [:mbql-join :any]])

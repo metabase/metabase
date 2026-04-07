@@ -243,11 +243,11 @@
   (testing "POST /api/metric/dataset with measure expression"
     (let [mp               (mt/metadata-provider)
           table-metadata   (lib.metadata/table mp (mt/id :venues))
-          pmbql-definition (-> (lib/query mp table-metadata)
+          mbql5-definition (-> (lib/query mp table-metadata)
                                (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Test Measure"
                                              :table_id   (mt/id :venues)
-                                             :definition pmbql-definition}]
+                                             :definition mbql5-definition}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
                                                {:definition {:expression [:measure {:lib/uuid "a"} (:id measure)]}})]
