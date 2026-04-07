@@ -83,7 +83,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
           {advisory.description}
         </Text>
 
-        <Group gap="lg">
+        <Stack gap="xs">
           {advisory.affected_versions.length > 0 && (
             <Text size="sm" c="text-secondary">
               {t`Affected versions: ${formatVersionRange(advisory)}`}
@@ -92,7 +92,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
           <Text size="sm" c="text-secondary">
             {t`Remediation: ${advisory.remediation}`}
           </Text>
-        </Group>
+        </Stack>
 
         <Group gap="md" h={28}>
           {advisory.advisory_url && (
