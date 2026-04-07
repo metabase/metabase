@@ -1,7 +1,6 @@
 (ns metabase-enterprise.replacement.runner-test
   "Tests for bulk metadata loading in the replacement runner."
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
@@ -13,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-user-settings]
    [toucan2.core :as t2]))
 
