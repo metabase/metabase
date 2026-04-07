@@ -128,7 +128,9 @@ describe("EmbeddingHub", () => {
 
     await userEvent.click(within(dialog).getByText("Foo Bar Table"));
 
-    expect(mockPush).toHaveBeenCalledWith("/auto/dashboard/table/10");
+    expect(mockPush).toHaveBeenCalledWith(
+      "/auto/dashboard/table/10?returnTo=%2Fadmin%2Fembedding%2Fsetup-guide",
+    );
   });
 
   it("shows success banner when first 3 steps are completed", async () => {

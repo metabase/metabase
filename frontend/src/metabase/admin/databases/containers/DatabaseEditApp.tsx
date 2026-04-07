@@ -13,6 +13,7 @@ import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { ReturnToSetupGuideButton } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideButton";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
 import {
@@ -56,6 +57,7 @@ function DatabaseEditAppInner({
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
   const databaseId = parseInt(params.databaseId, 10);
+  const returnTo = new URLSearchParams(window.location.search).get("returnTo");
 
   const [pollingInterval, setPollingInterval] = useState<number>();
   const {
@@ -146,6 +148,7 @@ function DatabaseEditAppInner({
         </Box>
       </ErrorBoundary>
       {children}
+      {returnTo && <ReturnToSetupGuideButton returnTo={returnTo} />}
     </>
   );
 }

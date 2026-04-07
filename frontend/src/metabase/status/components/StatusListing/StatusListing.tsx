@@ -33,7 +33,10 @@ export const StatusListing = () => {
 
   return (
     <>
-      <StatusListingRoot data-testid="status-root-container">
+      <StatusListingRoot
+        id="status-listing"
+        data-testid="status-root-container"
+      >
         {isAdmin && <DatabaseStatus />}
         {isAdmin && <PLUGIN_REPLACEMENT.SourceReplacementStatus />}
         <FileUploadStatus />

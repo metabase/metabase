@@ -20,6 +20,7 @@ export const useDatabaseConnection = ({
   const queryParams = new URLSearchParams(location.search);
   const preselectedEngine =
     queryParams.get("engine") ?? getDefaultEngineKey(engines || {});
+  const returnTo = queryParams.get("returnTo");
   const addingNewDatabase = databaseId === undefined;
 
   const databaseReq = useGetDatabaseQuery(
@@ -43,7 +44,10 @@ export const useDatabaseConnection = ({
 
   const handleOnSubmit = (savedDB: { id: DatabaseId }) => {
     if (addingNewDatabase) {
-      dispatch(push(`/admin/databases/${savedDB.id}`));
+      const returnToParam = returnTo
+        ? `?returnTo=${encodeURIComponent(returnTo)}`
+        : "";
+      dispatch(push(`/admin/databases/${savedDB.id}${returnToParam}`));
     } else {
       handleCancel();
     }

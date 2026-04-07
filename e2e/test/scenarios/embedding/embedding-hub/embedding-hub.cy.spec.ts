@@ -27,7 +27,7 @@ describe("scenarios - embedding hub", () => {
         .should("exist");
     });
 
-    it('"Create a dashboard" card should work correctly', () => {
+    it('"Create a dashboard" card should show return toast after saving x-ray', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Create a dashboard' card");
@@ -43,11 +43,24 @@ describe("scenarios - embedding hub", () => {
         H.pickEntity({ path: ["Databases", "Sample Database", "Accounts"] });
       });
 
-      cy.log("Should navigate to auto dashboard creation");
+      cy.log("Should navigate to auto dashboard with from param");
       cy.url().should("include", "/auto/dashboard/table/");
+      cy.url().should("include", "returnTo=");
+
+      cy.log("Wait for x-ray dashboard to load and save it");
+      cy.findByRole("button", { name: "Save this", timeout: 30_000 }).click();
+
+      cy.log("Should show 'Back to setup guide' card after saving");
+      cy.findByTestId("status-root-container")
+        .findByText("Back to setup guide")
+        .should("be.visible")
+        .click();
+
+      cy.log("Should navigate back to the setup guide");
+      cy.url().should("include", "/admin/embedding/setup-guide");
     });
 
-    it('"Connect a database" card should work correctly', () => {
+    it('"Connect a database" card should pass from param in navigation URL', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Connect a database' card");
@@ -59,6 +72,13 @@ describe("scenarios - embedding hub", () => {
       cy.findByRole("dialog").within(() => {
         cy.findByRole("heading", { name: "Add data" }).should("be.visible");
       });
+
+      cy.log("Select a database engine");
+      cy.findByRole("dialog").findByText("PostgreSQL").click();
+
+      cy.log("Should navigate with from param");
+      cy.url().should("include", "/admin/databases/create");
+      cy.url().should("include", "returnTo=");
     });
 
     it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {

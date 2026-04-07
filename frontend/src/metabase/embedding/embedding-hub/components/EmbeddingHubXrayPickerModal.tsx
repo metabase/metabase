@@ -8,16 +8,19 @@ import type { TableId } from "metabase-types/api";
 interface EmbeddingHubXrayPickerModalProps {
   opened: boolean;
   onClose: () => void;
+  returnTo?: string;
 }
 
 export const EmbeddingHubXrayPickerModal = ({
   opened,
   onClose,
+  returnTo,
 }: EmbeddingHubXrayPickerModalProps) => {
   const dispatch = useDispatch();
 
   function handleTableSelect(tableId: TableId) {
-    dispatch(push(`/auto/dashboard/table/${tableId}`));
+    const params = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : "";
+    dispatch(push(`/auto/dashboard/table/${tableId}${params}`));
   }
 
   if (!opened) {
