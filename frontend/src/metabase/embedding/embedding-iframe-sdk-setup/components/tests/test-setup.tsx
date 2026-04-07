@@ -29,6 +29,7 @@ export const setup = (options?: {
   showSimpleEmbedTerms?: boolean;
   jwtReady?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
+  hasEmailSetup?: boolean;
 }) => {
   const { enterprisePlugins } = options ?? {};
 
@@ -65,7 +66,9 @@ export const setup = (options?: {
   );
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
-  setupNotificationChannelsEndpoints({});
+  setupNotificationChannelsEndpoints(
+    options?.hasEmailSetup ? { email: { configured: true } as any } : {},
+  );
 
   renderWithProviders(
     <SdkIframeEmbedSetupModal

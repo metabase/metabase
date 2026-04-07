@@ -10,12 +10,14 @@ import { renderWithProviders } from "__support__/ui";
 import type { RouteParams } from "metabase/data-studio/data-model/pages/DataModel/types";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls";
 import type {
+  Database,
   EnterpriseSettings,
   Segment,
   Table,
   TokenFeatures,
 } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockTable,
   createMockTokenFeatures,
   createMockUser,
@@ -25,6 +27,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import { TableSection } from "../TableSection";
 
 export type SetupOpts = {
+  database?: Database;
   table?: Table;
   params?: RouteParams;
   activeTab?: DataStudioTableMetadataTab;
@@ -37,8 +40,9 @@ export type SetupOpts = {
 };
 
 export function setup({
-  table = createMockTable(),
-  activeTab = "field",
+  database = createMockDatabase(),
+  table = createMockTable({ db: database }),
+  activeTab = "details",
   segments,
   isAdmin = false,
   isDataAnalyst = false,
@@ -83,6 +87,7 @@ export function setup({
           hasLibrary
           canPublish
           onSyncOptionsClick={onSyncOptionsClick}
+          onUpdate={jest.fn()}
         />
       )}
     />,

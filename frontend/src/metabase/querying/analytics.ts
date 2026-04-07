@@ -31,3 +31,63 @@ export const trackColumnExtractViaHeader = (
     question_id: question?.id() ?? 0,
   });
 };
+
+export const trackColumnCombineViaShortcut = (
+  query: Lib.Query,
+  question?: Question,
+) => {
+  trackSchemaEvent("question", {
+    event: "column_combine_via_shortcut",
+    custom_expressions_used: ["concat"],
+    database_id: Lib.databaseID(query),
+    question_id: question?.id() ?? 0,
+  });
+};
+
+export const trackColumnCombineViaPlusModal = (
+  query: Lib.Query,
+  question?: Question,
+) => {
+  trackSchemaEvent("question", {
+    event: "column_combine_via_plus_modal",
+    custom_expressions_used: ["concat"],
+    database_id: Lib.databaseID(query),
+    question_id: question?.id() ?? 0,
+  });
+};
+
+export const trackColumnExtractViaShortcut = (
+  query: Lib.Query,
+  stageIndex: number,
+  extraction: Lib.ColumnExtraction,
+  question?: Question,
+) => {
+  trackSchemaEvent("question", {
+    event: "column_extract_via_shortcut",
+    custom_expressions_used: Lib.functionsUsedByExtraction(
+      query,
+      stageIndex,
+      extraction,
+    ),
+    database_id: Lib.databaseID(query),
+    question_id: question?.id() ?? 0,
+  });
+};
+
+export const trackColumnExtractViaPlusModal = (
+  query: Lib.Query,
+  stageIndex: number,
+  extraction: Lib.ColumnExtraction,
+  question?: Question,
+) => {
+  trackSchemaEvent("question", {
+    event: "column_extract_via_plus_modal",
+    custom_expressions_used: Lib.functionsUsedByExtraction(
+      query,
+      stageIndex,
+      extraction,
+    ),
+    database_id: Lib.databaseID(query),
+    question_id: question?.id() ?? 0,
+  });
+};

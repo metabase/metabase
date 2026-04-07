@@ -383,12 +383,14 @@ jobs:
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
+          echo //registry.npmjs.org/:_authToken="${NPM_RELEASE_TOKEN}" > .npmrc
 
           TAG="${{ steps.compute-tag.outputs.masterTag }}"
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
 
+        env:
+          NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
       # ⚠️ This step should only be executed on the latest stable (gold) release branch.
       # Only uncomment this when the new release branch becomes stable (gold).
       # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment

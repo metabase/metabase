@@ -12,7 +12,10 @@ import {
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
-export const getDisabledFeatureMessage = (database: Database) => {
+export const getDisabledFeatureMessage = (
+  database: Database,
+  { hasTransforms = false }: { hasTransforms?: boolean } = {},
+) => {
   return match({
     hasActionsEnabled: hasActionsEnabled(database),
     hasWorkspacesEnabled: hasWorkspacesEnabled(database),
@@ -21,6 +24,7 @@ export const getDisabledFeatureMessage = (database: Database) => {
     isUploadDb: database.uploads_enabled,
     supportsRouting: !!database.features?.includes("database-routing"),
     hasWritableConnection: hasWritableConnectionDetails(database),
+    hasTransforms,
   })
     .with(
       { supportsRouting: false },
@@ -57,6 +61,10 @@ export const getDisabledFeatureMessage = (database: Database) => {
     .with(
       { hasTableEditingEnabled: true },
       () => t`Database routing can't be enabled when table editing is enabled.`,
+    )
+    .with(
+      { hasTransforms: true },
+      () => t`Database routing can't be enabled when transforms exist.`,
     )
     .otherwise(() => undefined);
 };

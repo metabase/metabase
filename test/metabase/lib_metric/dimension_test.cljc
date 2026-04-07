@@ -429,3 +429,27 @@
       (is (some? orphaned) "dimension without :status should appear in results")
       (is (= :status/orphaned (:status orphaned)))
       (is (string? (:status-message orphaned))))))
+
+;;; -------------------------------------------------- Normalization --------------------------------------------------
+
+(deftest ^:parallel normalize-persisted-dimension-test
+  (testing "normalizes string enum values from JSON round-trip"
+    (let [raw        {:id               "dim-1"
+                      :name             "category"
+                      :status           "status/active"
+                      :has-field-values "search"
+                      :sources          [{:type "field" :field-id 42}]}
+          normalized (lib-metric.dimension/normalize-persisted-dimension raw)]
+      (is (= :status/active (:status normalized)))
+      (is (= :search (:has-field-values normalized)))
+      (is (= :field (get-in normalized [:sources 0 :type])))))
+
+  (testing "leaves already-keywordized values unchanged"
+    (let [dim        {:id "dim-2" :name "col" :status :status/active :has-field-values :list}
+          normalized (lib-metric.dimension/normalize-persisted-dimension dim)]
+      (is (= :status/active (:status normalized)))
+      (is (= :list (:has-field-values normalized)))))
+
+  (testing "no-op when optional fields are absent"
+    (let [dim {:id "dim-3" :name "col"}]
+      (is (= dim (lib-metric.dimension/normalize-persisted-dimension dim))))))

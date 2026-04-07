@@ -221,7 +221,7 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
 
 interface TagEditorHelpProps {
   database?: Database | null;
-  sampleDatabaseId: DatabaseId;
+  sampleDatabaseId?: DatabaseId;
   setDatasetQuery: (datasetQuery: NativeDatasetQuery, run?: boolean) => void;
   switchToSettings: () => void;
 }

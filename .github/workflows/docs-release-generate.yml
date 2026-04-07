@@ -2,7 +2,7 @@ name: Auto-update documentation (release)
 
 on:
   schedule:
-    - cron: "0 2 * * 1-5" # Every Monday through Friday at 2 AM UTC
+    - cron: "0 22 * * 1-5" # Every Monday through Friday at 10 PM UTC
   workflow_dispatch:
     inputs:
       target_branch:
@@ -13,6 +13,7 @@ on:
 
 jobs:
   update-release-docs:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: Call documentation update for release branch
     uses: ./.github/workflows/docs-generate-base.yml
     with:

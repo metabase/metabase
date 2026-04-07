@@ -6,15 +6,14 @@ import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
+import { canDownloadResults } from "metabase/lib/downloads";
 import { useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { DashCardId, Dataset } from "metabase-types/api";
 
 import type { DashCardMenuItem } from "./dashcard-menu";
-import { canDownloadResults, canEditQuestion } from "./utils";
+import { canEditQuestion } from "./utils";
 
 type DashCardMenuItemsProps = {
   question: Question;
@@ -31,7 +30,6 @@ export const DashCardMenuItems = ({
   isDownloadingData,
   onDownload,
   onEditVisualization,
-  dashcardId,
   canEdit,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
@@ -105,12 +103,6 @@ export const DashCardMenuItems = ({
       });
     }
 
-    items.push(
-      ...PLUGIN_DASHCARD_MENU.dashcardMenuItemGetters
-        .map((itemGetter) => itemGetter(question, dashcardId, dispatch))
-        .filter(isNotNull),
-    );
-
     if (customItems) {
       items.push(
         ...customItems.map((item) => {
@@ -138,8 +130,6 @@ export const DashCardMenuItems = ({
     withDownloads,
     withEditLink,
     onEditVisualization,
-    dashcardId,
-    dispatch,
     canEdit,
   ]);
 

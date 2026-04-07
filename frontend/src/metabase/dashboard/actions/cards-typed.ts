@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { Questions } from "metabase/entities/questions";
+import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
@@ -51,8 +52,6 @@ import {
   createVirtualCard,
   generateTemporaryDashcardId,
   hasInlineParameters,
-  isQuestionDashCard,
-  isVirtualDashCard,
 } from "../utils";
 
 import { showAutoWireToastNewCard } from "./auto-wire-parameters/actions";

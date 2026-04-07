@@ -17,7 +17,7 @@ type TransformsSectionLayoutProps = {
 export function TransformsSectionLayout({
   children,
 }: TransformsSectionLayoutProps) {
-  usePageTitle(t`Transforms`);
+  usePageTitle(t`Transforms`, { titleIndex: 1 });
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
   const isTransformsEnabled = useSetting("transforms-enabled");
   const isHosted = useSetting("is-hosted?");

@@ -95,6 +95,37 @@ describe("Text", () => {
         "noreferrer",
       );
     });
+
+    it("should render a clickable base64 encoded image", () => {
+      const base64Src =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+      const options = {
+        settings: getSettingsWithText(
+          `[![alt](${base64Src})](https://example.com)`,
+        ),
+      };
+      setup(options);
+
+      const img = screen.getByRole("img", { name: "alt" });
+      expect(img).toBeInTheDocument();
+      expect(img).toHaveAttribute("src", base64Src);
+
+      const link = screen.getByRole("link");
+      expect(link).toHaveAttribute("href", "https://example.com");
+    });
+
+    it("should not render data URIs that are not images", () => {
+      const options = {
+        settings: getSettingsWithText(
+          `![alt](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)`,
+        ),
+      };
+      setup(options);
+
+      const img = screen.getByRole("img", { name: "alt" });
+      expect(img).toBeInTheDocument();
+      expect(img).toHaveAttribute("src", "");
+    });
   });
 
   describe("Editing", () => {
