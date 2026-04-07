@@ -278,7 +278,7 @@
   (when (str/blank? collection-name)
     (throw (ex-info (tru "Collection name cannot be blank!")
                     {:status-code 400, :errors {:name (tru "cannot be blank")}})))
-  (u/slugify collection-name collection-slug-max-length))
+  (u/slugify collection-name {:max-length collection-slug-max-length}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Nested Collections: Location Paths                                       |
