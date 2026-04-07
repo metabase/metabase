@@ -207,6 +207,27 @@ export type CreateDefineSetting<
    *   series[0].data.cols.some(col => col.name === settings.xColumn),
    */
   isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
+  /**
+   * Computes the default value for this setting when no stored value exists,
+   * or when `isValid` returns `false` for the stored value.
+   *
+   * Called during the settings resolution pass before the visualization renders.
+   * The returned value is used transiently unless `persistDefault` is `true`,
+   * in which case it is written into the card's stored `visualization_settings`
+   * on the first query run.
+   *
+   * @param series   - The current query result (rows + column metadata).
+   * @param settings - All settings resolved so far, respecting
+   *   `readDependencies` ordering. Dependencies listed in `readDependencies`
+   *   are guaranteed to be resolved before this is called.
+   * @returns The default value for this setting, typed as
+   *   `CustomVisualizationSettings[Key]`.
+   *
+   * @example
+   * // Default to the name of the first numeric column
+   * getDefault: (series, _settings) =>
+   *   series[0].data.cols.find(col => col.base_type === "type/Number")?.name ?? null,
+   */
   getDefault?: (
     series: Series,
     settings: CustomVisualizationSettings,
