@@ -104,9 +104,7 @@
        [:sort-by {:optional true :default "created_at"} [:enum "created_at" "message_count" "total_tokens"]]
        [:sort-dir {:optional true :default "desc"} [:enum "asc" "desc"]]]]
   (api/check-superuser)
-  (let [limit        (or limit 50)
-        offset       (or offset 0)
-        sort-by-kw   (keyword (or sort-by "created_at"))
+  (let [sort-by-kw   (keyword sort-by)
         sort-dir-kw  (if (= sort-dir "asc") :asc :desc)
         where-clause (when user-id [:= :c.user_id user-id])
         base-query   {:select    [[:c.id :conversation_id]
@@ -126,14 +124,15 @@
                       :group-by  [:c.id :c.created_at :c.user_id :c.summary]}
         query        (cond-> base-query
                        where-clause (assoc :where where-clause))
-        ;; Count query must include the same join to count only conversations with messages
-        count-query  (cond-> {:select [[[:count [:distinct :c.id]] :count]]
+        ;; Count all conversations (including those with no messages, which the LEFT JOIN below also returns).
+        count-query  (cond-> {:select [[[:count :*] :count]]
                               :from   [[:metabot_conversation :c]]}
                        where-clause (assoc :where where-clause))
         total        (or (:count (t2/query-one count-query)) 0)
-        ;; Fetch paginated results
+        ;; Fetch paginated results. Add :c.id as a stable tiebreaker so pagination is deterministic
+        ;; even when the primary sort key has duplicates (e.g. message_count = 0).
         results      (t2/query (-> query
-                                   (assoc :order-by [[sort-by-kw sort-dir-kw]])
+                                   (assoc :order-by [[sort-by-kw sort-dir-kw] [:c.id :asc]])
                                    (assoc :limit limit)
                                    (assoc :offset offset)))]
     {:data   (enrich-conversations-with-users results)

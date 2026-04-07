@@ -315,9 +315,9 @@
              (filter #(str/ends-with? (str (.getFileName ^Path %)) ".sql"))
              ;; Keep the checksum stable across filesystems with different directory iteration order.
              (sort-by str)
-             (pmap (fn [^Path path]
-                     (with-open [in (Files/newInputStream path (u/varargs OpenOption))]
-                       (hash (slurp in)))))
+             (map (fn [^Path path]
+                    (with-open [in (Files/newInputStream path (u/varargs OpenOption))]
+                      (hash (slurp in)))))
              (reduce + 0))))))
 
 (defn- maybe-sync-audit-views!
@@ -350,5 +350,5 @@
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db
         (fn []
-          (maybe-load-analytics-content! audit-db))))
-      (maybe-sync-audit-views! audit-db))))
+          (maybe-load-analytics-content! audit-db)
+          (maybe-sync-audit-views! audit-db)))))))
