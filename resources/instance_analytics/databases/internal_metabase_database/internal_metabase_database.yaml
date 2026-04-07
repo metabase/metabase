@@ -1,6 +1,0 @@
-name: internal_metabase_database
-creator_id: internal@metabase.com
-serdes/meta:
-- {id: internal_metabase_database, model: Database}
-initial_sync_status: complete
-is_audit: true
