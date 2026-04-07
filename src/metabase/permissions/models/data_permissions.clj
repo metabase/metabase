@@ -69,9 +69,13 @@
   [perm-type :- ::permissions.schema/data-permission-type
    value1    :- ::permissions.schema/data-permission-value
    value2    :- ::permissions.schema/data-permission-value]
-  (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
-    (<= (.indexOf values value1)
-        (.indexOf values value2))))
+  (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)
+        idx1 (.indexOf values value1)
+        idx2 (.indexOf values value2)]
+    (when (or (neg? idx1) (neg? idx2))
+      (throw (ex-info "Invalid permission value"
+                      {:perm-type perm-type :value1 value1 :value2 value2})))
+    (<= idx1 idx2)))
 
 (def ^:private model-by-perm-type
   "A map from permission types directly to model identifiers (or `nil`)."
