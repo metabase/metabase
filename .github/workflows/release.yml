@@ -48,7 +48,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
   actions: read
   checks: write
 
@@ -453,7 +453,6 @@ jobs:
     needs: add-extra-tags
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
-    permissions: write-all
     env:
       AWS_S3_DOWNLOADS_BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
       DOCKERHUB_OWNER: ${{ vars.DOCKERHUB_OWNER }}
