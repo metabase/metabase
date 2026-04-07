@@ -9,7 +9,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.models.session :as mcp.session]
    [metabase.task.core :as task]))
 
 (set! *warn-on-reflection* true)

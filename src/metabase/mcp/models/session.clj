@@ -1,21 +1,27 @@
-(ns metabase.mcp.session
+(ns metabase.mcp.models.session
   "Durable MCP session management. Sessions are stored in the `mcp_session` database table
    so they survive server restarts and work across multiple webservers.
 
    Each MCP session tracks:
    - The authenticated user
    - Whether the MCP handshake is complete (initialized)
-   - An optional embedding session key, reused across resource reads within the same MCP session"
+   - An optional embedding session (via FK to `core_session`), reused across resource reads
+     within the same MCP session."
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.session.core :as session]
+   [metabase.settings.core :refer [defsetting]]
+   [metabase.settings.models.setting :as setting]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
+   [metabase.util.i18n :refer [deferred-tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.util UUID)))
+   (java.util UUID)
+   (javax.crypto Mac)
+   (javax.crypto.spec SecretKeySpec)))
 
 (set! *warn-on-reflection* true)
 
@@ -32,43 +38,51 @@
   "MCP sessions expire 1 hour after creation."
   1)
 
+(defsetting mcp-embedding-signing-secret
+  (deferred-tru "Instance-wide secret used to derive embedding session keys for MCP sessions.")
+  :encryption :when-encryption-key-set
+  :visibility :internal
+  :base       setting/uuid-nonce-base
+  :doc        false)
+
 ;;; -------------------------------------------- Embedding Sessions -----------------------------------------------
 
-(defn- encrypt-embedding-key
-  "Encrypt an embedding session key for storage. Returns the plaintext key when no
-   encryption secret is configured."
-  [session-key]
-  {:pre [(seq session-key)]}
-  (encryption/maybe-encrypt session-key))
+(defn- hmac-sha256-hex
+  [^String secret ^String message]
+  (let [mac (Mac/getInstance "HmacSHA256")]
+    (.init mac (SecretKeySpec. (.getBytes secret "UTF-8") "HmacSHA256"))
+    (codecs/bytes->hex (.doFinal mac (.getBytes message "UTF-8")))))
 
-(defn- decrypt-embedding-key
-  "Decrypt an embedding session key read from the database."
-  [encrypted-key]
-  (when encrypted-key
-    (encryption/maybe-decrypt encrypted-key)))
+(defn- derive-embedding-session-key
+  "Deterministically derive the embedding session key for `mcp-session-id` from the
+   instance-wide signing secret.
 
-(defn- get-embedding-key
-  "Fetch and decrypt the embedding session key for `session-id`, or nil if unset."
-  [session-id]
-  (some-> (t2/select-one-fn :embedding_session_key [:model/McpSession :embedding_session_key] :id session-id)
-          decrypt-embedding-key))
+   Why we can't just store a hash like `core_session.key_hashed`: unlike a normal session
+   where the client logs in and brings its own key, here the MCP server is minting the
+   embedding session *on the client's behalf* and rendering the resulting token into the
+   `embed-mcp.html` template (see [[metabase.mcp.resources]]), so that the embedded SDK
+   iframe can authenticate back to Metabase. The browser needs the plaintext token, and it
+   needs the *same* token on every resource read within one MCP session (so each read
+   doesn't mint a fresh `core_session` row). Deriving the token from a stable signing
+   secret lets every webserver recompute the same value on demand without any per-session
+   plaintext sitting at rest."
+  [mcp-session-id]
+  (hmac-sha256-hex (mcp-embedding-signing-secret) mcp-session-id))
 
 (defn- create-embedding-session!
-  "Create a Metabase session for embedding SDK auth.
+  "Create a `core_session` row for the derived embedding key.
    Uses a raw insert to bypass the `after-insert` hook on `:model/Session`,
    which would otherwise publish spurious `:event/user-login` audit events.
-   Returns `{:session-key <string> :session-id <string>}`."
-  [user-id]
-  (let [session-key (session/generate-session-key)
-        session-id  (session/generate-session-id)
-        key-hashed  (session/hash-session-key session-key)]
+   Returns the new `core_session.id`."
+  [user-id session-key]
+  (let [session-id (session/generate-session-id)
+        key-hashed (session/hash-session-key session-key)]
     (t2/query {:insert-into :core_session
                :values      [{:id         session-id
                               :user_id    user-id
                               :key_hashed key-hashed
                               :created_at :%now}]})
-    {:session-key session-key
-     :session-id  session-id}))
+    session-id))
 
 ;;; ------------------------------------------- Cleanup (background task) -------------------------------------------
 
@@ -117,7 +131,6 @@
 
 (defn delete!
   "Delete an MCP session and its associated embedding session.
-   Uses the FK to delete the embedding session without decryption.
    Wrapped in a transaction so both rows are removed atomically.
    The mcp_session is deleted before core_session to avoid a
    needless SET NULL cascade on the `embedding_session_id` FK."
@@ -145,26 +158,22 @@
   (t2/update! :model/McpSession :id session-id {:initialized true}))
 
 (defn get-or-create-embedding-session-key!
-  "Return the embedding session key for this MCP session, creating one if needed.
-   This ensures a single embedding session is reused across all resource reads
-   within the same MCP session. Uses an atomic compare-and-set to avoid races
-   in multi-server deployments. The key is stored encrypted at rest, and the
-   core_session PK is stored in `embedding_session_id` for efficient join-deletes."
+  "Return the embedding session key for this MCP session, creating the backing
+   `core_session` row on first call. Ensures a single embedding session is reused across
+   all resource reads within the same MCP session, using an atomic CAS on
+   `embedding_session_id` to handle races in multi-server deployments."
   [session-id user-id]
-  (or (get-embedding-key session-id)
-      (let [{:keys [session-key]
-             emb-id :session-id} (create-embedding-session! user-id)
-            encrypted            (encrypt-embedding-key session-key)]
-        ;; Atomic CAS: only set the key if no other thread has set it yet
-        (t2/query {:update :mcp_session
-                   :set    {:embedding_session_key encrypted
-                            :embedding_session_id  emb-id}
-                   :where  [:and
-                            [:= :id session-id]
-                            [:= :embedding_session_key nil]]})
-        ;; Re-read and decrypt to see which key won
-        (u/prog1 (get-embedding-key session-id)
-          ;; If another thread won the race, or the session has already been deleted,
-          ;; clean up our orphaned embedding session.
-          (when (not= session-key <>)
-            (t2/delete! :model/Session :id emb-id))))))
+  (let [session-key (derive-embedding-session-key session-id)]
+    (when (t2/exists? :model/McpSession :id session-id)
+      (or (when (:embedding_session_id (t2/select-one [:model/McpSession :embedding_session_id] :id session-id))
+            session-key)
+          ;; No row yet — mint one and try to claim the slot.
+          (let [emb-id  (create-embedding-session! user-id session-key)
+                claimed (pos? (t2/update! :model/McpSession
+                                          {:id                   session-id
+                                           :embedding_session_id nil}
+                                          {:embedding_session_id emb-id}))]
+            (when-not claimed
+              ;; Lost the race (or session was deleted mid-flight) — drop the orphan.
+              (t2/delete! :model/Session :id emb-id))
+            session-key)))))

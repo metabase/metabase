@@ -1,9 +1,9 @@
-(ns metabase.mcp.session-test
+(ns metabase.mcp.models.session-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.events.core :as events]
-   [metabase.mcp.session :as mcp.session]
+   [metabase.mcp.models.session :as mcp.session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -27,9 +27,8 @@
       (is (string? session-id))
       (is (= {:user_id              user-id
               :initialized          false
-              :embedding_session_key nil
               :embedding_session_id  nil}
-             (select-keys session [:user_id :initialized :embedding_session_key :embedding_session_id]))))))
+             (select-keys session [:user_id :initialized :embedding_session_id]))))))
 
 (deftest delete-test
   (testing "delete! removes the session"
@@ -56,7 +55,7 @@
       (is (true? (:initialized (mcp.session/get-valid session-id)))))))
 
 (deftest get-or-create-embedding-session-key-test
-  (testing "first call creates an embedding session key and stores the FK"
+  (testing "first call creates an embedding session and stores the FK"
     (let [user-id    (mt/user->id :crowberto)
           session-id (mcp.session/create! user-id)
           key        (mcp.session/get-or-create-embedding-session-key! session-id user-id)]

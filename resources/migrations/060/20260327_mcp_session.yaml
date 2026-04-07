@@ -31,21 +31,9 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: embedding_session_key
-                  type: ${text.type}
-                  remarks: >-
-                    The embedding SDK session key, encrypted at the application level using
-                    MB_ENCRYPTION_SECRET_KEY (AES-256-CBC with HMAC-SHA512). Stored as text
-                    to accommodate the base64-encoded ciphertext. Falls back to plaintext
-                    when no encryption key is configured.
-                  constraints:
-                    nullable: true
-              - column:
                   name: embedding_session_id
                   type: varchar(254)
-                  remarks: >-
-                    Foreign key to core_session.id for the embedding session. Stored alongside
-                    the encrypted key so that cleanup can join-delete without decryption.
+                  remarks: Foreign key to core_session.id for the embedding session.
                   constraints:
                     nullable: true
               - column:
