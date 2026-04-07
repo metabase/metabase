@@ -34,12 +34,11 @@
 (def ^:private canonical-db-name
   audit-ee/default-db-name)
 
-(def ^:private canonical-db-id
-  "The serdes ID used in YAMLs for the audit database."
-  (serialization/slugify-name audit-ee/default-db-name))
+(def ^:private canonical-db-filename
+  (serialization/slugify-name canonical-db-name))
 
-(def ^:private legacy-canonical-db-id
-  audit-ee/default-db-name)
+(def ^:private legacy-canonical-db-filename
+  canonical-db-name)
 
 (def ^:private canonical-creator-id
   "The creator email used in YAMLs for all analytics content."
@@ -120,8 +119,8 @@
                            canonical-creator-id
                            node)))
                      yaml-data)
-        is-database? (or (= file-name (str canonical-db-id ".yaml"))
-                         (= file-name (str legacy-canonical-db-id ".yaml")))]
+        is-database? (or (= file-name (str canonical-db-filename ".yaml"))
+                         (= file-name (str legacy-canonical-db-filename ".yaml")))]
     (if is-database?
       (-> (select-keys transformed [:name :creator_id :is_sample :is_on_demand :serdes/meta
                                     :initial_sync_status :entity_id])
@@ -145,8 +144,8 @@
     (doseq [^File file (file-seq (io/file source-dir))
             :when (and (.isFile file)
                        (.endsWith (.getName file) ".yaml")
-                       (not (or (= (.getName file) (str canonical-db-id ".yaml"))
-                                (= (.getName file) (str legacy-canonical-db-id ".yaml")))))]
+                       (not (or (= (.getName file) (str canonical-db-filename ".yaml"))
+                                (= (.getName file) (str legacy-canonical-db-filename ".yaml")))))]
       (let [relative-path (.relativize (.toPath (io/file source-dir)) (.toPath file))
             target-file (io/file temp-path (.toFile relative-path))]
         (.mkdirs (.getParentFile target-file))
@@ -222,8 +221,8 @@
                      (not (.endsWith (.getName file) "___fieldusersettings.yaml"))
                      (not (.contains (.getPath file) "/channels/"))
                      (or (not (.contains (.getPath file) "/databases/"))
-                         (and (.contains (.getPath file) (str "/databases/" canonical-db-id "/"))
-                              (or (= (.getName file) (str canonical-db-id ".yaml"))
+                         (and (.contains (.getPath file) (str "/databases/" canonical-db-filename "/"))
+                              (or (= (.getName file) (str canonical-db-filename ".yaml"))
                                   (some #(.contains (.getPath file) (str "/tables/" %))
                                         audit-ee.permissions/audit-db-view-names)))))]
     (let [relative-path (str/replace (.getPath file)
