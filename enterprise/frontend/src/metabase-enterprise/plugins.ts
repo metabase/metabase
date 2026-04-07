@@ -10,8 +10,7 @@ import "./license";
 
 // PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeAdvancedPermissions } from "./advanced_permissions";
-import { initializePlugin as initializeAiEntityAnalysis } from "./ai-entity-analysis";
-import { initializePlugin as initializeAiSqlFixer } from "./ai-sql-fixer";
+import { initializePlugin as initializeAiControls } from "./ai-controls";
 import { initializePlugin as initializeApplicationPermissions } from "./application_permissions";
 import { initializePlugin as initializeAuditApp } from "./audit_app";
 import { initializePlugin as initializeAuth } from "./auth";
@@ -31,7 +30,6 @@ import { initializePlugin as initializeEmbeddingIframeSdk } from "./embedding_if
 import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embedding_iframe_sdk_setup";
 import { initializePlugin as initializeFeatureLevelPermissions } from "./feature_level_permissions";
 import { initializePlugin as initializeGroupManagers } from "./group_managers";
-import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
 import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
@@ -79,8 +77,6 @@ export function initializePlugins() {
   initializeSharing();
   initializeModeration();
   initializeAdvancedPermissions();
-  initializeAiSqlFixer();
-  initializeAiEntityAnalysis();
   initializeAuditApp();
   initializeModelPersistence();
   initializeFeatureLevelPermissions();
@@ -91,7 +87,6 @@ export function initializePlugins() {
   initializeResourceDownloads();
   initializeUserProvisioning();
   initializeCleanUp();
-  initializeMetabot();
   initializeDatabaseReplication();
   initializeTableEditing();
   initializeDependencies();
@@ -103,4 +98,5 @@ export function initializePlugins() {
   initializeTenants?.();
   initializeWorkspaces();
   initializeWritableConnection();
+  initializeAiControls();
 }

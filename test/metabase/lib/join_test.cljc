@@ -1263,7 +1263,7 @@
                             {:lib/type :metadata/column, :name "LATITUDE"}
                             {:lib/type :metadata/column, :name "LONGITUDE"}
                             {:lib/type :metadata/column, :name "PRICE"}]
-                           (lib/joinable-columns (lib.tu/venues-query) -1 table-or-card))
+                           (lib/join-fieldable-columns (lib.tu/venues-query) -1 table-or-card))
     (meta/table-metadata :venues)
     (:venues (lib.tu/mock-cards))))
 
@@ -1291,7 +1291,7 @@
               ;; FIXME -- joins replacement broken -- #32026
               ;; query (lib/replace-clause query original-join join)
               query (assoc-in query [:stages 0 :joins] [join])
-              cols  (lib/joinable-columns query -1 join)]
+              cols  (lib/join-fieldable-columns query -1 join)]
           (is (=? [{:name                         "ID"
                     :lib/join-alias "Cat"
                     :lib/source                   :source/joins

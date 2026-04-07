@@ -52,11 +52,11 @@
 ;;; a legacy Segment has one or more filter clauses.
 
 (mu/defn- segment-definition->stage :- ::lib.schema/stage.mbql
-  "Extract the pMBQL stage from a segment definition. Segment definitions are always MBQL 5 queries at this point
+  "Extract the MBQL 5 stage from a segment definition. Segment definitions are always MBQL 5 queries at this point
   (converted by the segment model's after-select hook), so we just extract the first stage."
   [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    {:keys [definition], :as _legacy-macro} :- ::legacy-macro]
-  (log/tracef "Extracting pMBQL stage from segment definition:\n%s" (u/pprint-to-str definition))
+  (log/tracef "Extracting MBQL 5 stage from segment definition:\n%s" (u/pprint-to-str definition))
   (u/prog1 (first (:stages definition))
     (log/tracef "Extracted stage:\n%s" (u/pprint-to-str <>))))
 

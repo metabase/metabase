@@ -90,6 +90,7 @@
   "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
   '#{analytics
      api
+     api-scope
      api-keys
      appearance
      audit-app
@@ -102,6 +103,7 @@
      config
      content-verification
      dashboards
+     documents
      eid-translation
      embedding
      enterprise/api
@@ -114,8 +116,12 @@
      formatter
      initialization-status
      internal-stats
+     llm
      login-history
+     mcp
+     metabot
      notification
+     oauth-server
      permissions
      premium-features
      public-sharing
@@ -128,6 +134,7 @@
      session
      settings
      setup
+     slackbot
      sso
      startup
      system
@@ -140,7 +147,8 @@
      util
      version
      view-log
-     warehouse-schema})
+     warehouse-schema
+     workspaces})
 
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them.

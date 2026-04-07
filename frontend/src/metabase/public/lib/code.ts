@@ -89,6 +89,3 @@ export const getEmbedServerCodeExampleOptions = (
     embedOption: "pug",
   },
 ];
-
-export const getPublicEmbedHTML = (iframeUrl: string): string =>
-  getHtmlSource({ iframeUrl: JSON.stringify(iframeUrl) });

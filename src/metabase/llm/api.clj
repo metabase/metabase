@@ -1,5 +1,5 @@
 (ns metabase.llm.api
-  "API endpoints for LLM-powered SQL generation (OSS)."
+  "API endpoints for OSS BYOK SQL generation."
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -53,7 +53,7 @@
          (when-let [resource (io/resource resource-path)]
            (slurp resource)))))))
 
-(def ^:private sql-generation-prompt-template "llm/prompts/sql-generation-system.mustache")
+(def ^:private sql-generation-prompt-template "metabot/prompts/system/one-shot-sql-generation.mustache")
 
 (def ^:private datetime-formatter
   (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss"))

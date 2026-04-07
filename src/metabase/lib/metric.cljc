@@ -30,7 +30,7 @@
     (let [normalized-definition (case (lib.util/normalized-mbql-version dataset-query)
                                   ;; TODO (Cam 10/7/25) -- not sure we'll ever see legacy queries here anymore since
                                   ;; they get normalized to MBQL 5 coming out of the app DB
-                                  :mbql-version/legacy (-> dataset-query mbql.normalize/normalize lib.convert/->pMBQL)
+                                  :mbql-version/legacy (-> dataset-query mbql.normalize/normalize lib.convert/->mbql5)
                                   :mbql-version/mbql5  (lib.normalize/normalize ::lib.schema/query dataset-query))]
       (lib.util/query-stage normalized-definition -1))))
 

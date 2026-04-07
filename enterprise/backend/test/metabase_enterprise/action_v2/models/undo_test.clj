@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase-enterprise.action-v2.test-util :as action-v2.tu]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))

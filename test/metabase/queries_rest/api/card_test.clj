@@ -104,9 +104,9 @@
     :query    {:source-table (u/the-id table-or-id)
                :aggregation  [[:count]]}}))
 
-(defn pmbql-count-query
+(defn mbql5-count-query
   ([]
-   (pmbql-count-query (mt/id) (mt/id :venues)))
+   (mbql5-count-query (mt/id) (mt/id :venues)))
 
   ([db-or-id table-or-id]
    (let [metadata-provider (lib-be/application-database-metadata-provider (u/the-id db-or-id))
@@ -732,7 +732,7 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-model-cleanup [:model/Card]
               (doseq [[mbql-version query] {"MBQL" (mbql-count-query)
-                                            "pMBQL" (pmbql-count-query)}]
+                                            "MBQL 5" (mbql5-count-query)}]
                 (testing mbql-version
                   (let [card (assoc (card-with-name-and-query (mt/random-name) query)
                                     :collection_id (u/the-id collection)
@@ -846,7 +846,7 @@
 
 (deftest create-and-update-metric-card-validation-test
   (testing "POST /api/card"
-    (let [query (pmbql-count-query)
+    (let [query (mbql5-count-query)
           card-name (mt/random-name)
           card (-> (card-with-name-and-query card-name query)
                    (assoc :type :metric))
@@ -3523,38 +3523,34 @@
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
 (deftest field-filter-values-without-create-queries-permission-test
-  (testing "Users with view-data but without create-queries permission can still get field filter values (#70767)"
-    (let [param-key "name_param_id"]
-      (mt/with-temp [:model/Card field-filter-card
-                     {:dataset_query {:database (mt/id)
-                                      :type     :native
-                                      :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{NAME}}"
-                                                 :template-tags {"NAME" {:id           param-key
-                                                                         :name         "NAME"
-                                                                         :display_name "Name"
-                                                                         :type         :dimension
-                                                                         :dimension    [:field (mt/id :venues :name) nil]
-                                                                         :required     true}}}}
-                      :name       "native card with field filter"
-                      :parameters [{:id     param-key
-                                    :type   :string/=
-                                    :target [:dimension [:template-tag "NAME"]]
-                                    :name   "Name"
-                                    :slug   "NAME"}]}]
-        (mt/with-no-data-perms-for-all-users!
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
-          (testing "GET /api/card/:card-id/params/:param-key/values"
-            (let [response (mt/user-http-request :rasta :get 200
-                                                 (param-values-url field-filter-card param-key))]
-              (is (false? (:has_more_values response)))
-              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
-                               (-> response :values set)))))
-          (testing "GET /api/card/:card-id/params/:param-key/search/:query"
-            (let [response (mt/user-http-request :rasta :get 200
-                                                 (param-values-url field-filter-card param-key "bar"))]
-              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
-                               (-> response :values set))))))))))
+  (testing "Users without create-queries permission can still get field filter values for saved cards (#GHY-1605)"
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (testing "GET /api/card/:card-id/params/:param-key/values"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card (:field-values param-keys)))]
+            (is (false? (:has_more_values response)))
+            (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                             (-> response :values set)))))
+        (testing "GET /api/card/:card-id/params/:param-key/search/:query"
+          (let [response (mt/user-http-request :rasta :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 "bar"))]
+            (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                             (-> response :values set)))))))))
+
+(deftest param-fields-excluded-without-view-data-permission-test
+  (testing "param_fields should not include fields for tables where the user lacks view-data permission"
+    (with-card-param-values-fixtures [{:keys [field-filter-card]}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+        (let [response (mt/user-http-request :rasta :get 200
+                                             (format "card/%d" (:id field-filter-card)))]
+          (is (every? empty? (vals (:param_fields response)))))))))
 
 (deftest parameters-with-field-to-field-remapping-test
   (let [param-key "id/param"]
@@ -3742,7 +3738,7 @@
               venues            (lib.metadata/table metadata-provider (mt/id :venues))
               query             (lib/query metadata-provider venues)
               response          (mt/user-http-request :crowberto :post 200 "card"
-                                                      {:name                   "pMBQL Card"
+                                                      {:name                   "MBQL 5 Card"
                                                        :dataset_query          (dissoc query :lib/metadata)
                                                        :display                :table
                                                        :visualization_settings {}})]

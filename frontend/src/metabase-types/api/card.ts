@@ -74,6 +74,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   parameter_usage_count?: number | null;
 
   result_metadata: Field[] | null;
+  param_fields?: Record<ParameterId, Field[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
 
@@ -406,7 +407,7 @@ export interface ListCardsRequest {
 }
 
 export interface GetCardRequest {
-  id: CardId;
+  id: CardId | EntityToken;
   context?: "collection";
   ignore_view?: boolean;
   ignore_error?: boolean;

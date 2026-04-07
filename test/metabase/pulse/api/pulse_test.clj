@@ -16,7 +16,7 @@
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.queries-rest.api.card-test :as api.card-test]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -1295,6 +1295,36 @@
                  :options ["#foo" "#general" "@user1"], :required true}]
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields]))))))
+
+    (testing "Duplicate Slack channel display names are deduplicated"
+      (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
+                                         (t/zoned-date-time)
+
+                                         channel.settings/slack-app-token "test-token"
+
+                                         channel.settings/slack-cached-channels-and-usernames
+                                         {:channels [{:type "channel"
+                                                      :name "channel"
+                                                      :display-name "#channel"
+                                                      :id "C001"}
+                                                     {:type "channel"
+                                                      :name "channel"
+                                                      :display-name "#channel"
+                                                      :id "C002"}
+                                                     {:type "channel"
+                                                      :name "general"
+                                                      :display-name "#general"
+                                                      :id "C003"}]}]
+        (is (= ["#channel" "#general"]
+               (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                   (get-in [:channels :slack :fields])
+                   first
+                   :options)))
+        (is (apply distinct?
+                   (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                       (get-in [:channels :slack :fields])
+                       first
+                       :options)))))
 
     (testing "When slack is not configured, `form_input` returns no channels"
       (mt/with-temporary-setting-values [channel.settings/slack-app-token nil]

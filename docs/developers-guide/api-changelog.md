@@ -4,6 +4,12 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.61.0
+
+- `POST /api/metabot/describe/card` and `POST /api/metabot/describe/dashboard/:id` have been removed. These endpoints
+  provided LLM-powered autodescription of cards and dashboards using the legacy OpenAI client. This functionality has
+  been superseded by the Metabot agent.
+
 ## Metabase 0.57.0
 
 - MBQL queries (in Cards and elsewhere) are now serialized as MBQL 5 as opposed to MBQL 4 (aka legacy MBQL) in the
@@ -14,7 +20,7 @@ title: API changelog
 ## Metabase 0.56.13
 
 - `/api/collection/graph` endpoints now no longer return 'none' permissions in the returned graph. Missing fields in
-  between group ids and collection id indicate that that the group provides no permissions for the collection. For
+  between group ids and collection id indicate that the group provides no permissions for the collection. For
   example, what was returned in versions before 0.56.13:
   ```json
   {"revision": 2, "groups": {"1": {"root": "write", "1": "read", "2": "none"}}}
