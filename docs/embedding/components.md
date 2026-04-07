@@ -112,7 +112,7 @@ To render the AI chat interface:
 
 ## Customizing loader and error components
 
-{% include plans-blockquote.html feature="Customizing loader and error componentst" convert_pro_link_to_embbedding=true%}
+{% include plans-blockquote.html feature="Customizing loader and error components" convert_pro_link_to_embbedding=true%}
 
 If you're using the [modular embedding SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
