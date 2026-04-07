@@ -8,11 +8,9 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-import {
-  CustomVizDevelopmentPage,
-  CustomVizFormPage,
-  ManageCustomVisualizationsPage,
-} from "./components/CustomVizPluginsSettingsPage";
+import { CustomVizDevelopmentPage } from "./components/CustomVizDevelopmentPage";
+import { CustomVizFormPage } from "./components/CustomVizFormPage";
+import { ManageCustomVisualizationsPage } from "./components/ManageCustomVisualizationsPage";
 import {
   loadCustomVizPlugin,
   useAutoLoadCustomVizPlugin,
