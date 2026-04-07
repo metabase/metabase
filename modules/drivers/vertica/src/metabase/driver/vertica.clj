@@ -356,28 +356,47 @@
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :vertica
   [_driver conn-spec & {:as _options}]
-  ;; Use HAS_TABLE_PRIVILEGE() instead of v_catalog.grants - it resolves all privilege paths
-  ;; (superuser, roles, PUBLIC, direct grants) which the grants table may not reflect.
-  (->> (jdbc/query
-        conn-spec
-        (str/join
-         "\n"
-         ["SELECT"
-          "  NULL AS role,"
-          "  t.schema_name AS schema,"
-          "  t.table_name AS table,"
-          "  HAS_TABLE_PRIVILEGE(CURRENT_USER,"
-          "    '\"' || REPLACE(t.schema_name, '\"', '\"\"') || '\".\"' || REPLACE(t.table_name, '\"', '\"\"') || '\"',"
-          "    'SELECT') AS \"select\","
-          "  HAS_TABLE_PRIVILEGE(CURRENT_USER,"
-          "    '\"' || REPLACE(t.schema_name, '\"', '\"\"') || '\".\"' || REPLACE(t.table_name, '\"', '\"\"') || '\"',"
-          "    'UPDATE') AS \"update\","
-          "  HAS_TABLE_PRIVILEGE(CURRENT_USER,"
-          "    '\"' || REPLACE(t.schema_name, '\"', '\"\"') || '\".\"' || REPLACE(t.table_name, '\"', '\"\"') || '\"',"
-          "    'INSERT') AS \"insert\","
-          "  HAS_TABLE_PRIVILEGE(CURRENT_USER,"
-          "    '\"' || REPLACE(t.schema_name, '\"', '\"\"') || '\".\"' || REPLACE(t.table_name, '\"', '\"\"') || '\"',"
-          "    'DELETE') AS \"delete\""
-          "FROM v_catalog.all_tables t"
-          "WHERE t.table_type IN ('TABLE', 'VIEW')"]))
-       (filter #(or (:select %) (:update %) (:insert %) (:delete %)))))
+  ;; HAS_TABLE_PRIVILEGE() is a Vertica meta-function that can't be used in SELECT...FROM queries.
+  ;; Instead, query v_catalog.grants with an expanded grantee set: the current user, PUBLIC,
+  ;; and all roles granted to the user (from v_catalog.users.all_roles).
+  (let [user-info (first (jdbc/query conn-spec
+                                     ["SELECT user_name, all_roles, is_super_user FROM v_catalog.users WHERE user_name = CURRENT_USER"]))]
+    (if (:is_super_user user-info)
+      ;; Superusers have all privileges on all tables - query all_tables directly
+      (jdbc/query conn-spec
+                  (str/join "\n"
+                            ["SELECT NULL AS role, t.schema_name AS schema, t.table_name AS table,"
+                             "  true AS \"select\", true AS \"update\", true AS \"insert\", true AS \"delete\""
+                             "FROM v_catalog.all_tables t"
+                             "WHERE t.table_type IN ('TABLE', 'VIEW')"]))
+      ;; Normal user: expand grantee set to include user + PUBLIC + all granted roles
+      (let [effective-grantees
+            (cond-> #{(:user_name user-info) "PUBLIC"}
+              (:all_roles user-info)
+              ;; all_roles is comma-separated, may have asterisks for WITH GRANT OPTION (e.g. "role1*, role2")
+              (into (comp (map #(str/replace % #"\*$" ""))
+                          (map str/trim)
+                          (remove str/blank?))
+                    (str/split (:all_roles user-info) #",")))]
+        (->> (jdbc/query
+              conn-spec
+              (str/join
+               "\n"
+               ["SELECT"
+                "  NULL AS role,"
+                "  g.object_schema AS schema,"
+                "  g.object_name AS table,"
+                "  MAX(CASE WHEN g.privileges_description ILIKE '%SELECT%' THEN 1 ELSE 0 END) AS \"select\","
+                "  MAX(CASE WHEN g.privileges_description ILIKE '%UPDATE%' THEN 1 ELSE 0 END) AS \"update\","
+                "  MAX(CASE WHEN g.privileges_description ILIKE '%INSERT%' THEN 1 ELSE 0 END) AS \"insert\","
+                "  MAX(CASE WHEN g.privileges_description ILIKE '%DELETE%' THEN 1 ELSE 0 END) AS \"delete\""
+                "FROM v_catalog.grants g"
+                (str "WHERE g.grantee IN (" (str/join ", " (map #(str "'" (str/replace % "'" "''") "'") effective-grantees)) ")")
+                "  AND g.object_type IN ('TABLE', 'VIEW')"
+                "GROUP BY g.object_schema, g.object_name"]))
+             (map (fn [row]
+                    (-> row
+                        (update :select pos?)
+                        (update :update pos?)
+                        (update :insert pos?)
+                        (update :delete pos?)))))))))
