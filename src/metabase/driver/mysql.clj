@@ -1310,22 +1310,22 @@
                       (let [init-result (try
                                           (driver/init-workspace-isolation! driver database test-workspace)
                                           (catch Exception e
-                                            (throw (ex-info (format "Failed to initialize workspace isolation (CREATE DATABASE/USER): %s"
-                                                                    (ex-message e))
+                                            (throw (ex-info (str (deferred-tru "Failed to initialize workspace isolation (CREATE DATABASE/USER): {0}"
+                                                                               (ex-message e)))
                                                             {:step :init} e))))
                             workspace-with-details (merge test-workspace init-result)]
                         (when test-table
                           (try
                             (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
                             (catch Exception e
-                              (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
-                                                      (:schema test-table) (:name test-table) (ex-message e))
+                              (throw (ex-info (str (deferred-tru "Failed to grant read access to table {0}.{1}: {2}"
+                                                                 (:schema test-table) (:name test-table) (ex-message e)))
                                               {:step :grant :table test-table} e)))))
                         (try
                           (driver/destroy-workspace-isolation! driver database workspace-with-details)
                           (catch Exception e
-                            (throw (ex-info (format "Failed to destroy workspace isolation (DROP DATABASE/USER): %s"
-                                                    (ex-message e))
+                            (throw (ex-info (str (deferred-tru "Failed to destroy workspace isolation (DROP DATABASE/USER): {0}"
+                                                               (ex-message e)))
                                             {:step :destroy} e))))
                         nil)
                       (catch Exception e
