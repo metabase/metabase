@@ -1195,6 +1195,8 @@
               config
               documents
               driver
+              internal-stats
+              legacy-mbql
               lib
               lib-be
               llm
@@ -1640,6 +1642,7 @@
                     :model/Field
                     :model/ModerationReview
                     :model/NativeQuerySnippet
+                    :model/Notification
                     :model/Revision
                     :model/Table
                     :model/User}}

@@ -1094,6 +1094,114 @@
   join-fields-to-add-to-parent-stage ;; TODO: Unexport this; it's only used from tests and QP.
   raw-join-strategy])                ;; TODO: Unexport this; it's only used from tests.
 
+;;; ## Column selection
+;;; These functions control what subset of the available columns are returned from a given stage of a query. This is
+;;; the final "step" in a stage - it does not limit what columns are available to use on this stage, only what columns
+;;; get returned to the user or passed to the next stage. (This is similar to how `SELECT` clauses work in SQL.)
+
+;;; These functions use the word "fields" since the MBQL clause is the `:fields` list, but this actually conflicts
+;;; somewhat with the glossary above. A "field" should be the specific kind of "column" that comes right out of the
+;;; user's DWH. We have to live with this inconsistency for now.
+
+;;; Note that if the stage is *summarized* - that is, it contains aggregations, breakouts or both - then any previous
+;;; *fields* selection is ignored and functions like `add-field` and `remove-field` become no-ops. A summarized stage
+;;; always returns exactly the breakouts in order, followed by the aggregations in order.
+;;;
+;;; The subset of columns is specified as an **explicit allow-list**: it lists each of the columns to return. There is
+;;; no way in present MBQL to say "everything but these two columns".
+;;;
+;;; The default with no explicit list is to return everything: the columns of the main source, any expressions, and any
+;;; explicitly joined columns, in that order. Summarized queries return their breakouts and aggregations. It is not
+;;; supported to define an expression and not return it; the expressions are always implicitly returned from
+;;; non-summarized queries.
+
+;; TODO: (bshepherdson, 2026-03-11) It's awkward that the split of `:fields` lists between one for the stage and one
+;; for each join is exposed to users of lib. However that's represented internally, users should see and update a single
+;; list.
+(mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
+  "Returns the selected subset of columns on the target stage of `a-query`. If there is no explicit selection applied,
+  this returns nil, which should be understood to mean \"the default fields\" and not \"nothing\".
+
+  It is illegal for this to be an empty list.
+
+  This list **does not include joined columns**; each join clause tracks its list of returned columns separately. See
+  [[join-fields]].
+
+  This list can be adjusted with (preferably) [[add-field]] and [[remove-field]], or you can fully replace it with
+  [[with-fields]]. [[fieldable-columns]] gives the list of columns which are valid to list here.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (fields a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.field/fields a-query stage-number)))
+
+(mu/defn fieldable-columns :- ::lib.metadata.calculation/visible-columns
+  "Returns a sequence of column metadata for columns that can be listed as [[fields]] on the target stage of `a-query`.
+  These are the fields which are valid to pass to [[add-field]], [[remove-field]] and [[with-fields]].
+
+  These are just the columns of the main source, in practice. Expressions are always returned from a query stage, and
+  each join clause has a separate list of columns it should return. (See [[join-fields]] and [[with-join-fields]].)
+
+  Each column returned has a `:selected?` key to indicate whether it is currently selected or not. Note that no explicit
+  list is specified, then *all columns* are marked `:selected?`.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (fieldable-columns a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.field/fieldable-columns a-query stage-number)))
+
+(mu/defn add-field :- ::lib.schema/query
+  "Adds the given `column` to the explicit list of columns returned from the target stage of `a-query`, **or** the join
+  clause the column comes from.
+
+  If adding this field to the list makes it match the default behavior (return everything) then this function will
+  remove the explicit list altogether.
+
+  **Code Health:** Healthy. This is a core API."
+  [a-query      :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.metadata.calculation/column-metadata-with-source]
+  (lib.field/add-field a-query stage-number column))
+
+(mu/defn remove-field :- ::lib.schema/query
+  "Removes the given `column` to the explicit list of columns returned from the target stage of `a-query`, **or** the
+  join clause the column comes from.
+
+  If an explicit list exists, but this column is not in it, this function does nothing.
+
+  **Code Health:** Healthy. This is a core API."
+  [a-query      :- ::lib.schema/query
+   stage-number :- :int
+   column       :- ::lib.metadata.calculation/column-metadata-with-source]
+  (lib.field/remove-field a-query stage-number column))
+
+;; FIXME: The docstrings in different places are inconsistent about whether expressions are included in the `:fields`
+;; lists or not. Figure out what the code really does and make sure the docs are up to date. I would have said that they
+;; are included implicitly, but I'm not 100% sure.
+
+(mu/defn with-fields :- ::lib.schema/query
+  "Replaces the explicit allow-list of fields on the target stage of `a-query` with the provided `fields-list`. If the
+  input list is nil or empty, the explicit allow-list is removed from the stage, which has the effect of making the
+  stage return *everything* again.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query xs] (with-fields a-query -1 xs))
+  ([a-query :- ::lib.schema/query
+    stage-number :- :int
+    xs :- [:maybe [:sequential [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]]]
+   (lib.field/with-fields a-query stage-number xs)))
+
+(shared.ns/import-fns
+ [lib.field
+  find-visible-column-for-ref
+  infer-has-field-values ; Single-use
+  json-field? ; Single-use
+  ]
+ [metabase.lib.field.util
+  update-keys-for-col-from-previous-stage])
+
 ;;; # Details of columns and metadata
 ;;; A key part of working with queries is knowing what columns are available to use in clauses at any point in the
 ;;; query. Functions like [[experssionable-columns]] and [[filterable-columns]] are the main entry points for that.
@@ -1272,7 +1380,7 @@
   external-op]
  [lib.convert
   ->legacy-MBQL
-  ->pMBQL
+  ->mbql5
   legacy-default-join-alias
   with-aggregation-list
   without-cleaning]
@@ -1323,18 +1431,6 @@
   default-filter-clause
   default-filter-parts
   filter-args-display-name]
- [lib.field
-  add-field
-  fieldable-columns
-  fields
-  find-visible-column-for-ref
-  infer-has-field-values ; Single-use
-  json-field? ; Single-use
-  remove-field
-  with-fields]
- [metabase.lib.field.util
-  update-keys-for-col-from-previous-stage]
-
  [metabase.lib.filter.desugar
   desugar-filter-clause]
  [metabase.lib.filter.negate

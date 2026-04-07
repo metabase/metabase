@@ -29,6 +29,7 @@ export interface InsightsMenuItemProps {
 }
 
 const getDefaultPluginAudit = () => ({
+  isEnabled: false,
   isAuditDb: (_db: DatabaseType) => false,
   InsightsLink: PluginPlaceholder as ComponentType<InsightsLinkProps>,
   InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,

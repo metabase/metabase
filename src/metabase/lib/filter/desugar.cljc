@@ -209,7 +209,7 @@
 
   Note that the optional options map is in different positions for `:contains`, `:does-not-contain`, `:starts-with` and
   `:ends-with` depending on the number of arguments. 2-argument forms use the legacy style `[:contains field x opts]`.
-  Multi-argument forms use pMBQL style with the options at index 1, **even if there are no options**:
+  Multi-argument forms use MBQL 5 style with the options at index 1, **even if there are no options**:
   `[:contains {} field x y z]`."
   [expr :- ::clause]
   (lib.util.match/replace-lite expr
