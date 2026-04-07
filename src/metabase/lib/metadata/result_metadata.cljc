@@ -388,8 +388,14 @@
             ;; query stage itself is native.
             native-model? (if (contains? last-stage :source-query/native-model?)
                             (:source-query/native-model? last-stage)
-                            (lib.util/native-stage? last-stage))]
-        (lib.card/merge-model-metadata cols model-metadata native-model?)))))
+                            (lib.util/native-stage? last-stage))
+            ;; Set explicitly by [[metabase.query-processor.card]] when the card is run
+            ;; directly. When true, aggregation columns are merged and temporal/binning
+            ;; suffixes are NOT re-appended (preserving user-customized names).
+            ;; When absent/false, this is an outer query using the model as source.
+            own-model-query? (boolean (get-in query [:info :metadata/own-model-query?]))]
+        (lib.card/merge-model-metadata cols model-metadata {:native-model?    native-model?
+                                                            :own-model-query? own-model-query?})))))
 
 (defn- add-source-and-desired-aliases [query cols]
   (into []
