@@ -478,7 +478,10 @@ describe("removing pills", () => {
     await user.click(screen.getByRole("button", { name: "remove" }));
 
     expect(onRemoveMetric).toHaveBeenCalledWith(1, "metric");
-    expect(onFormulaEntitiesChange).toHaveBeenCalledWith([]);
+    expect(onFormulaEntitiesChange).toHaveBeenCalledWith(
+      [],
+      new Map(), // slot mapping: no slots remain
+    );
   });
 
   it("removes a MetricPill from a two-item list, keeping the other metric", async () => {
@@ -496,7 +499,10 @@ describe("removing pills", () => {
     await user.click(removeButtons[0]);
 
     expect(onRemoveMetric).toHaveBeenCalledWith(1, "metric");
-    expect(onFormulaEntitiesChange).toHaveBeenCalledWith([costsEntry]);
+    expect(onFormulaEntitiesChange).toHaveBeenCalledWith(
+      [costsEntry],
+      new Map([[1, 0]]), // slot mapping: Costs moved from slot 1 → 0
+    );
   });
 
   it("calls onRemoveMetric for all metrics in an expression pill when removed", async () => {

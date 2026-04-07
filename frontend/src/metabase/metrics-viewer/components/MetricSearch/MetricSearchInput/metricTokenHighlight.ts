@@ -72,13 +72,16 @@ class MetricIdentity extends RangeValue {
   constructor(
     readonly sourceId: MetricSourceId,
     readonly definition: MetricDefinition | null,
+    readonly slotIndex: number,
   ) {
     super();
   }
 
   override eq(other: MetricIdentity) {
     return (
-      this.sourceId === other.sourceId && this.definition === other.definition
+      this.sourceId === other.sourceId &&
+      this.definition === other.definition &&
+      this.slotIndex === other.slotIndex
     );
   }
 }
@@ -107,8 +110,10 @@ export function buildMetricIdentities(
   entities: MetricsViewerFormulaEntity[],
 ): RangeSet<MetricIdentity> {
   const ranges: ReturnType<MetricIdentity["range"]>[] = [];
+  let slotCounter = 0;
 
   traverseMetricTokens(text, metricEntries, entities, (visit) => {
+    const slotIndex = slotCounter++;
     const sourceId =
       visit.kind === "standalone" ? visit.entity.id : visit.exprToken.sourceId;
     const definition =
@@ -117,7 +122,7 @@ export function buildMetricIdentities(
         : (visit.exprToken.definition ?? null);
 
     ranges.push(
-      new MetricIdentity(sourceId, definition).range(
+      new MetricIdentity(sourceId, definition, slotIndex).range(
         visit.positioned.from,
         visit.positioned.to,
       ),
@@ -141,6 +146,7 @@ export function readMetricIdentities(view: EditorView): MetricIdentityEntry[] {
       from,
       to,
       definition: value.definition,
+      slotIndex: value.slotIndex,
     });
   });
   return result;

@@ -79,7 +79,10 @@ export interface UseMetricsViewerResult {
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
-  setFormulaEntities: (entities: MetricsViewerFormulaEntity[]) => void;
+  setFormulaEntities: (
+    entities: MetricsViewerFormulaEntity[],
+    slotMapping?: Map<number, number>,
+  ) => void;
 }
 
 export function useMetricsViewer({
