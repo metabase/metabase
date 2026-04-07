@@ -707,5 +707,9 @@
           (is (boolean? (:delete priv))))
         (testing "Test tables should appear with at least SELECT privilege"
           (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
-            (when (seq test-tables)
-              (is (every? :select test-tables)))))))))
+            (is (seq test-tables) "ORDERS table should be found in privileges")
+            (is (every? :select test-tables))))
+        (testing "Owned tables should have full DML privileges"
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
+            (is (every? (fn [priv] (and (:insert priv) (:update priv) (:delete priv))) test-tables)
+                "Owner should have insert, update, and delete on owned tables")))))))

@@ -95,5 +95,5 @@
           (is (boolean? (:delete priv))))
         (testing "Test tables should appear with at least SELECT privilege"
           (let [orders (filter (fn [priv] (str/includes? (u/lower-case-en (:table priv)) "orders")) privileges)]
-            (when (seq orders)
-              (is (every? :select orders)))))))))
+            (is (seq orders) "ORDERS table should be found in privileges")
+            (is (every? :select orders))))))))
