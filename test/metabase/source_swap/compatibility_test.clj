@@ -98,11 +98,11 @@
             {:database {:id 1 :name "db" :engine :h2}
              :tables [{:id 100 :name "orders" :db-id 1}
                       {:id 200 :name "transactions" :db-id 1}]
-             :fields [{:id 1 :table-id 100 :name "amount"
-                       :base-type :type/Integer :effective-type :type/Integer}
-                      {:id 2 :table-id 200 :name "amount"
-                       :base-type :type/Text :effective-type :type/Integer
-                       :coercion-strategy :Coercion/UNIXMicroSeconds->DateTime}]})]
-    (testing "same effective_type with different base_type via coercion should be compatible"
+             :fields [{:id 1 :table-id 100 :name "created_at"
+                       :base-type :type/DateTime :effective-type :type/DateTime}
+                      {:id 2 :table-id 200 :name "created_at"
+                       :base-type :type/Text :effective-type :type/DateTime
+                       :coercion-strategy :Coercion/ISO8601->DateTime}]})]
+    (testing "text column coerced to DateTime should be compatible with native DateTime"
       (is (= []
              (source-swap.compatibility/column-errors (field mp 1) (field mp 2) :table :table))))))
