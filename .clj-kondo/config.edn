@@ -472,8 +472,8 @@
   metabase.premium-features.settings/define-premium-feature                             clojure.core/def
   metabase.pulse.dashboard-subscription-test/with-dashboard-sub-for-card                clojure.core/let
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
-  metabase.query-processor.pipeline-queries-test/pmbql-query                       clojure.core/->
-  metabase.query-processor.pipeline-queries-test/run-pmbql-query                   clojure.core/->
+  metabase.query-processor.pipeline-queries-test/mbql5-query                            clojure.core/->
+  metabase.query-processor.pipeline-queries-test/run-mbql5-query                        clojure.core/->
   metabase.query-processor.error-type/deferror                                          clojure.core/def
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let

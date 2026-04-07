@@ -610,15 +610,15 @@
   (-> token u/decode-base64 json/decode+kw))
 
 (defn- build-query-for-execution
-  "Construct a pMBQL query map from table_id or metric_id params. Returns {:query <map> :limit <int>}.
-   The JSON round-trip strips lib metadata so the query is a plain pMBQL map suitable for token serialization."
+  "Construct a MBQL 5 query map from table_id or metric_id params. Returns {:query <map> :limit <int>}.
+   The JSON round-trip strips lib metadata so the query is a plain MBQL 5 map suitable for token serialization."
   [body]
   (let [limit (min (or (:limit body) default-query-row-limit) max-query-row-limit)
         query (construct-query* (assoc body :limit limit))]
     {:query (json/decode+kw (json/encode query)) :limit limit}))
 
 (defn- apply-page-to-query
-  "Apply :page clause to the last stage of a pMBQL query map."
+  "Apply :page clause to the last stage of a MBQL 5 query map."
   [query-map page items]
   (let [stages   (:stages query-map)
         last-idx (dec (count stages))]
@@ -667,11 +667,11 @@
             {:query query :limit (:limit pagination) :page (:page pagination)})
           (let [{:keys [query limit]} (build-query-for-execution body)]
             {:query query :limit limit :page 1}))
-        pmbql-with-page (apply-page-to-query query page limit)]
+        mbql5-with-page (apply-page-to-query query page limit)]
     (qp.streaming/streaming-response
      [rff :api]
       (qp/process-query
-       (prepare-combined-query pmbql-with-page)
+       (prepare-combined-query mbql5-with-page)
        (qp.streaming/transforming-query-response
         rff
         (fn [result]

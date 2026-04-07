@@ -246,8 +246,10 @@ export function MetricPill({
               >
                 {breakoutDimension ? t`Change breakout` : t`Break out`}
               </Menu.Item>
-              <Menu.Divider />
             </>
+          )}
+          {(hasDataStudioAccess || metric.sourceType === "metric") && (
+            <Menu.Divider role="separator" />
           )}
           {hasDataStudioAccess && (
             <Menu.Item
