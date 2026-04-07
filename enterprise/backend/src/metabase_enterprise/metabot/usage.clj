@@ -24,16 +24,16 @@
     (try
       (let [total-tokens (+ prompt-tokens completion-tokens)]
         (t2/insert! :model/AiUsageLog
-                    {:source             source
-                     :model              model
-                     :prompt_tokens      prompt-tokens
-                     :completion_tokens  completion-tokens
-                     :total_tokens       total-tokens
-                     :user_id            (or user-id api/*current-user-id*)
-                     :tenant_id          (or tenant-id (some-> api/*current-user* deref :tenant_id))
-                     :conversation_id    conversation-id
-                     :profile_id         (some-> profile-id name)
-                     :request_id         request-id}))
+                    {:source            source
+                     :model             model
+                     :prompt_tokens     prompt-tokens
+                     :completion_tokens completion-tokens
+                     :total_tokens      total-tokens
+                     :user_id           (or user-id api/*current-user-id*)
+                     :tenant_id         (or tenant-id (some-> api/*current-user* deref :tenant_id))
+                     :conversation_id   conversation-id
+                     :profile_id        (some-> profile-id name)
+                     :request_id        request-id}))
       (catch Exception e
         (log/warn e "Failed to log LLM usage to ai_usage_log")))))
 

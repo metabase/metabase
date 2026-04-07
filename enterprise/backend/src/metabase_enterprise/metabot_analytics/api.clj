@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.persistence :as metabot-persistence]
+   [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -58,6 +59,26 @@
    [:messages [:sequential MessageDetail]]
    [:chat_messages [:sequential :map]]])
 
+(def ^:private ListConversationsParams
+  "Query-param schema for `GET /conversations`. `limit` and `offset` are handled by the
+   offset-paging middleware and are read via `metabase.request.core`."
+  [:map
+   [:user-id {:optional true} [:maybe ms/PositiveInt]]
+   [:sort-by {:optional true} [:maybe [:enum "created_at" "message_count" "total_tokens"]]]
+   [:sort-dir {:optional true} [:maybe [:enum "asc" "desc"]]]])
+
+(def ^:private ListConversationsResponse
+  "Response schema for `GET /conversations`."
+  [:map
+   [:data [:sequential ConversationSummary]]
+   [:total :int]
+   [:limit [:maybe :int]]
+   [:offset [:maybe :int]]])
+
+(def ^:private ConversationIdParams
+  "Route-param schema for endpoints addressing a single conversation by id."
+  [:map [:id ms/UUIDString]])
+
 ;;; -------------------------------------------------- Helpers --------------------------------------------------
 
 (defn- batch-load-users
@@ -76,7 +97,11 @@
         users-by-id (batch-load-users user-ids)]
     (mapv #(assoc % :user (get users-by-id (:user_id %))) conversations)))
 
+;;; -------------------------------------------------- Endpoints --------------------------------------------------
+
 (def ^:private first-assistant-model-subquery
+  "Correlated subquery selecting the `profile_id` of the earliest non-deleted assistant message
+   for the outer `metabot_conversation` row aliased as `c`."
   {:select   [:mm.profile_id]
    :from     [[:metabot_message :mm]]
    :where    [:and
@@ -86,26 +111,13 @@
    :order-by [[:mm.created_at :asc]]
    :limit    1})
 
-;;; -------------------------------------------------- Endpoints --------------------------------------------------
-
-(api.macros/defendpoint :get "/conversations"
-  :- [:map
-      [:data [:sequential ConversationSummary]]
-      [:total :int]
-      [:limit :int]
-      [:offset :int]]
+(api.macros/defendpoint :get "/conversations" :- ListConversationsResponse
   "Return paginated list of AI conversations with summary statistics."
   [_route-params
-   {:keys [limit offset user-id sort-by sort-dir]}
-   :- [:map
-       [:limit {:optional true} [:maybe ms/PositiveInt]]
-       [:offset {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
-       [:user-id {:optional true} [:maybe ms/PositiveInt]]
-       [:sort-by {:optional true} [:maybe [:enum "created_at" "message_count" "total_tokens"]]]
-       [:sort-dir {:optional true} [:maybe [:enum "asc" "desc"]]]]]
+   {:keys [user-id sort-by sort-dir]} :- ListConversationsParams]
   (api/check-superuser)
-  (let [limit        (or limit 50)
-        offset       (or offset 0)
+  (let [limit        (or (request/limit) 50)
+        offset       (or (request/offset) 0)
         sort-by-kw   (keyword (or sort-by "created_at"))
         sort-dir-kw  (if (= sort-dir "asc") :asc :desc)
         where-clause (when user-id [:= :c.user_id user-id])
@@ -139,8 +151,8 @@
                                    (assoc :offset offset)))]
     {:data   (enrich-conversations-with-users results)
      :total  total
-     :limit  limit
-     :offset offset}))
+     :limit  (request/limit)
+     :offset (request/offset)}))
 
 (defn- fetch-conversation-detail
   "Fetch a conversation with all its messages, user info, and frontend-ready chat messages."
@@ -172,7 +184,7 @@
 (api.macros/defendpoint :get "/conversations/:id"
   :- ConversationDetail
   "Return full details for a specific conversation including all messages."
-  [{:keys [id]} :- [:map [:id ms/UUIDString]]]
+  [{:keys [id]} :- ConversationIdParams]
   (api/check-superuser)
   (fetch-conversation-detail id))
 
