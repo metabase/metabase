@@ -12,7 +12,7 @@ import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 import { CustomVizListItem } from "./CustomVizListItem";
-import S from "./CustomVizPage.module.css";
+import S from "./ManageCustomVizPage.module.css";
 
 export function ManageCustomVizPage() {
   const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
