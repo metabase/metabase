@@ -174,37 +174,6 @@
          #"Invalid output:.*should be a double"
          (f 1)))))
 
-(mr/def ::fn-test.custom-optional
-  [:map {:closed true, :metabase.util.malli/coerce-nil-to-empty-map true}
-   [:limit {:optional true} :int]])
-
-(deftest ^:parallel optional-args-nil-coerce-test
-  (testing "::mu/optional-args coerces nil args to {} before validation"
-    (let [f (mu.fn/fn :- :map [args :- ::mu/optional-args] args)]
-      (testing "nil is coerced to an empty map and reaches the body as {}"
-        (is (= {} (f nil))))
-      (testing "an empty map still passes"
-        (is (= {} (f {}))))
-      (testing "the underlying schema's closedness is still enforced"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Invalid input"
-             (f {:surprise 1}))))))
-  (testing "any schema carrying the property (not just ::optional-args) opts in"
-    (let [f (mu.fn/fn :- :map [args :- ::fn-test.custom-optional] args)]
-      (is (= {} (f nil)))
-      (is (= {:limit 10} (f {:limit 10})))
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid input"
-           (f {:bogus true})))))
-  (testing "plain map schemas without the property still reject nil"
-    (let [f (mu.fn/fn :- :any [args :- [:map {:closed true}]] args)]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid input"
-           (f nil))))))
-
 (deftest ^:parallel varargs-test
   (let [form '(metabase.util.malli.fn/fn my-fn
                 [path

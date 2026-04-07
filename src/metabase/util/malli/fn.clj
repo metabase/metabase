@@ -5,6 +5,7 @@
    [malli.core :as mc]
    [malli.destructure :as md]
    [malli.error :as me]
+   [malli.transform :as mtx]
    [metabase.config.core :as config]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -285,27 +286,42 @@
         (.setStackTrace cleaned)))
     e))
 
-(defn- coerce-nil-to-empty-map?
-  "True if `arg-schema` opts into the `nil` → `{}` input coercion via the
-  `:metabase.util.malli/coerce-nil-to-empty-map` property on its (resolved)
-  schema properties. See [[metabase.util.malli/optional-args]]."
+(def ^:private default-value-transformer
+  "Cached instance of malli's `default-value-transformer`, used to apply any
+  `:default` declared on a fn arg schema (e.g. `::mu/optional-args` uses it to
+  turn a `nil` argument into `{}`)."
+  (mtx/default-value-transformer))
+
+(defn decode-input
+  "Decode fn arg `value` against `schema` using [[default-value-transformer]],
+  with the decoder cached per-schema. For schemas without a `:default` this is
+  effectively an identity — malli compiles a no-op walker — so it is cheap
+  enough to apply to every instrumented arg."
+  [schema value]
+  ((mr/cached ::decoder schema #(mc/decoder schema default-value-transformer)) value))
+
+(defn- schema-has-default?
+  "True if `arg-schema` (resolved through the registry) carries a `:default`
+  property — i.e. opts into pre-validation decoding via the
+  `default-value-transformer`. See [[metabase.util.malli/optional-args]]."
   [arg-schema]
   (boolean
    (try
-     (-> arg-schema mr/resolve-schema mc/properties :metabase.util.malli/coerce-nil-to-empty-map)
+     (-> arg-schema mr/resolve-schema mc/properties (contains? :default))
      (catch Throwable _ false))))
 
-(defn- nil->empty-map-coerce-bindings
-  "Returns a `let` binding vector that rebinds any args whose schema properties
-  opt into [[coerce-nil-to-empty-map?]] from `nil` to `{}`. Returns `nil` if no
-  args need coercion."
-  [[_cat & arg-schemas :as input-schema]]
+(defn- input-schema->decode-bindings
+  "Returns a `let` binding vector that rebinds each arg whose schema carries a
+  `:default` property through [[decode-input]], or `nil` if no arg opts in. We
+  only emit bindings when at least one arg needs decoding, so the generated fn
+  form is unchanged for the common case."
+  [[_cat & schemas :as input-schema]]
   (let [arg-names (input-schema-arg-names input-schema)
-        bindings  (vec (mapcat (core/fn [arg-name arg-schema]
-                                 (when (coerce-nil-to-empty-map? arg-schema)
-                                   [arg-name `(or ~arg-name {})]))
+        bindings  (vec (mapcat (core/fn [arg-name schema]
+                                 (when (schema-has-default? schema)
+                                   [arg-name `(decode-input ~schema ~arg-name)]))
                                arg-names
-                               arg-schemas))]
+                               schemas))]
     (when (seq bindings) bindings)))
 
 (defn- instrumented-arity [error-context [_=> input-schema output-schema]]
@@ -313,7 +329,7 @@
                                  [:cat]
                                  input-schema)
         arglist                (input-schema->arglist input-schema)
-        coerce-bindings        (nil->empty-map-coerce-bindings input-schema)
+        decode-bindings        (input-schema->decode-bindings input-schema)
         input-validation-forms (input-schema->validation-forms error-context input-schema)
         result-form            (input-schema->application-form input-schema)
         result-form            (if (and output-schema
@@ -321,8 +337,8 @@
                                  `(->> ~result-form
                                        (validate-output ~error-context ~output-schema))
                                  result-form)
-        body                   (if coerce-bindings
-                                 [`(let ~coerce-bindings
+        body                   (if decode-bindings
+                                 [`(let ~decode-bindings
                                      ~@input-validation-forms
                                      ~result-form)]
                                  (concat input-validation-forms [result-form]))]

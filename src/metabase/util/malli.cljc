@@ -33,18 +33,14 @@
       (me/humanize {:wrap humanize-include-value})))
 
 (mr/def ::optional-args
-  "Schema marker for an optional map of fn arguments. Validates the same as
-  `[:map {:closed true}]`, but [[metabase.util.malli/defn]] additionally coerces
-  `nil` to `{}` for the marked argument before validation runs.
+  "Closed empty map with `:default {}`, so a `nil` arg is decoded to `{}` before
+  validation runs (via malli's `default-value-transformer`).
 
-  Useful for things like LLM tool functions whose JSON Schema must be a
-  top-level object (so `[:maybe ...]` is not acceptable) but where callers may
-  legitimately pass `nil` for a zero-arity tool.
-
-  The `::coerce-nil-to-empty-map` property is what opts the fn arg into the
-  nil→`{}` coercion; any schema with that property (not just this one) gets the
-  same treatment."
-  [:map {:closed true, ::coerce-nil-to-empty-map true}])
+  Useful for LLM tool fns: their JSON Schema must be a top-level object, so
+  wrapping the arg in `[:maybe ...]` (which would generate a `oneOf` / nullable
+  schema) isn't an option, but zero-arity tools still need to accept a `nil`
+  argument from the caller."
+  [:map {:closed true, :default {}}])
 
 (def ^:private Schema
   [:and any?
