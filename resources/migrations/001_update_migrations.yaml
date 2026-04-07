@@ -1163,6 +1163,18 @@ databaseChangeLog:
                   remarks: When the advisory was acknowledged
                   constraints:
                     nullable: true
+              - column:
+                  name: last_notified_at
+                  type: ${timestamp_type}
+                  remarks: When the last notification was sent for this advisory
+                  constraints:
+                    nullable: true
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the advisory was last updated upstream (used as sync cursor)
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v45.2026-03-30T00:00:01
@@ -1224,67 +1236,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: match_status
-
-  - changeSet:
-      id: v45.2026-04-01T00:00:00
-      author: bronsa
-      comment: Add last_notified_at column to security_advisory for repeat notification cadence
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: security_advisory
-                columnName: last_notified_at
-      changes:
-        - addColumn:
-            tableName: security_advisory
-            columns:
-              - column:
-                  name: last_notified_at
-                  type: ${timestamp_type}
-                  remarks: When the last notification was sent for this advisory
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v45.2026-04-03T00:00:00
-      author: bronsa
-      comment: Add updated_at column to security_advisory for incremental sync cursor
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: security_advisory
-                columnName: updated_at
-      changes:
-        - addColumn:
-            tableName: security_advisory
-            columns:
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  remarks: When the advisory was last updated upstream (used as sync cursor)
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v45.2026-04-03T00:00:01
-      author: bronsa
-      comment: Backfill updated_at from published_at for existing security advisories
-      changes:
-        - sql:
-            sql: UPDATE security_advisory SET updated_at = published_at WHERE updated_at IS NULL
-      rollback:
-
-  - changeSet:
-      id: v45.2026-04-03T00:00:02
-      author: bronsa
-      comment: Make updated_at non-nullable on security_advisory
-      changes:
-        - addNotNullConstraint:
-            tableName: security_advisory
-            columnName: updated_at
-            columnDataType: ${timestamp_type}
 
   - changeSet:
       id: v46.00-000
