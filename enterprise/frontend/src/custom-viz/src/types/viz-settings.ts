@@ -232,6 +232,25 @@ export type CreateDefineSetting<
     series: Series,
     settings: CustomVisualizationSettings,
   ) => CustomVisualizationSettings[Key];
+  /**
+   * Returns additional props passed to the setting's `widget` component,
+   * beyond the base props the engine always provides.
+   *
+   * Called on every render. Use it to derive widget configuration from the
+   * current query result or resolved settings — for example, populating a
+   * dropdown's `options` list from the available columns.
+   *
+   * The return type is inferred from the `widget` value: props of the named
+   * built-in widget when `widget` is a `WidgetName`, or the component's own
+   * props (minus the base props the engine injects) when `widget` is a custom
+   * React component. Omit `getProps` entirely when the widget has no
+   * configurable props (`ToggleProps` is `never`).
+   *
+   * @param series      - The current query result (rows + column metadata).
+   * @param vizSettings - All settings resolved so far, respecting
+   *   `readDependencies` ordering.
+   * @returns Props object merged into the widget component's props.
+   */
   getProps?: PropsFromWidget<W> extends never
     ? never
     : (
