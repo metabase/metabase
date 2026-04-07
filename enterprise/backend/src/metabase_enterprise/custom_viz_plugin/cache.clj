@@ -114,7 +114,7 @@
                     :manifest          manifest-str
                     :display_name      (or (:name parsed) identifier)
                     :icon              (:icon parsed)
-                    :icon_dark         (:iconDark parsed)
+                    :icon_dark         (:icon_dark parsed)
                     :metabase_version  version-str})
        (swap! local-snapshots assoc id snapshot)
        commit-sha)

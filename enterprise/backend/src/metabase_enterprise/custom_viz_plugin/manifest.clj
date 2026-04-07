@@ -107,7 +107,7 @@
   (let [declared       (get manifest :assets [])
         icon-name      (when-let [icon (:icon manifest)]
                          (when (image-file? icon) icon))
-        icon-dark-name (when-let [icon (:iconDark manifest)]
+        icon-dark-name (when-let [icon (:icon_dark manifest)]
                          (when (image-file? icon) icon))]
     (distinct (concat declared
                       (when icon-name [icon-name])
