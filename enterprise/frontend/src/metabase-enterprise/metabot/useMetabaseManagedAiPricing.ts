@@ -7,7 +7,10 @@ import {
 import { useListAddOnsQuery } from "metabase-enterprise/api";
 import type { GetCloudAddOnsResponse } from "metabase-types/api";
 
-import { METABASE_MANAGED_AI_PRODUCT_TYPE } from "./constants";
+import {
+  METABASE_MANAGED_AI_PRODUCT_TYPE,
+  METABASE_MANAGED_AI_UNIT_MULTIPLIER,
+} from "./constants";
 import { formatMetabaseCost } from "./format";
 
 export type MetabaseManagedAiPricing = {
@@ -56,7 +59,8 @@ function getMetabaseManagedAiPricing(
     return null;
   }
 
-  const unitCount = addOn.default_total_units;
+  const unitCount =
+    addOn.default_total_units * METABASE_MANAGED_AI_UNIT_MULTIPLIER;
   const pricePerUnit = addOn.default_price_per_unit;
 
   return {

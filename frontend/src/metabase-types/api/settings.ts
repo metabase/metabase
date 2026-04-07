@@ -328,6 +328,7 @@ export const tokenFeatures = [
   "embedding_sdk",
   "embedding_simple",
   "hosting",
+  "offer-metabase-ai-managed",
   "metabase-ai-managed",
   "official_collections",
   "sandboxes",

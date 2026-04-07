@@ -55,10 +55,8 @@ function getModelDescription(provider: MetabotProvider | undefined) {
 }
 
 export function MetabotSetup() {
-  const isHosted = useSetting("is-hosted?");
-  const llmProxyBaseUrl = useSetting("llm-proxy-configured?");
-  const canUseLlmProxy = !!llmProxyBaseUrl && isHosted;
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
+  const offerMetabaseAiManaged = PLUGIN_METABOT.isEnabled;
 
   const { value, settingDetails } = useAdminSetting("llm-metabot-provider");
   const isEnvSetting =
@@ -99,12 +97,12 @@ export function MetabotSetup() {
   ] as const);
 
   const providerOptions = useMemo(() => {
-    const options = Object.values(getProviderOptions(canUseLlmProxy));
+    const options = Object.values(getProviderOptions(offerMetabaseAiManaged));
     return options.map((o) => ({
       ...o,
       disabled: !isAvailableProvider(o.value),
     }));
-  }, [canUseLlmProxy]);
+  }, [offerMetabaseAiManaged]);
 
   const modelOptions = useMemo(
     () => getLlmModelOptions(metabotSettingsQuery.currentData?.models ?? []),

@@ -188,9 +188,9 @@ export function setupMetabaseManagedAiEndpoints({
       billing_period_months: billingPeriodMonths,
       default_base_fee: 0,
       default_included_units: 0,
-      default_prepaid_units: 1_000_000,
+      default_prepaid_units: 1,
       default_price_per_unit: metabasePricePerUnit,
-      default_total_units: 1_000_000,
+      default_total_units: 1,
       description: null,
       is_metered: true,
       // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used for fetch mock only

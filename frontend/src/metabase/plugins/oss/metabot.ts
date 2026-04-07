@@ -9,11 +9,13 @@ type MetabaseAIProviderSetupProps = {
 };
 
 const getDefaultPluginMetabot = () => ({
+  isEnabled: false,
   MetabaseAIProviderSetup:
     PluginPlaceholder as ComponentType<MetabaseAIProviderSetupProps>,
 });
 
 export const PLUGIN_METABOT: {
+  isEnabled: boolean;
   MetabaseAIProviderSetup: ComponentType<MetabaseAIProviderSetupProps>;
 } = getDefaultPluginMetabot();
 
