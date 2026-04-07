@@ -1,16 +1,14 @@
 (ns metabase.mq.publish
   "Publishing pipeline: buffering, transaction support, and the `with-buffer` macro."
   (:require
+   [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
-   [metabase.mq.analytics :as mq.analytics]
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private last-activity*
-  (delay (requiring-resolve 'metabase.mq.impl/last-activity*)))
 
 (def ^:dynamic *defer-in-transaction?*
   "When true (the default), messages published inside a transaction are deferred
@@ -31,15 +29,15 @@
         before-count (count messages)
         messages     (if dedup-fn (dedup-fn messages) messages)]
     (when (and dedup-fn (< (count messages) before-count))
-      (mq.analytics/inc! :metabase-mq/dedup-messages-dropped
-                         {:channel (name channel)}
-                         (- before-count (count messages))))
+      (analytics/inc! :metabase-mq/dedup-messages-dropped
+                      {:channel (name channel)}
+                      (- before-count (count messages))))
     (when (seq messages)
-      (swap! @@last-activity* assoc channel (System/nanoTime))
+      (mq.impl/record-publish-activity! channel)
       (publish-buffer/buffered-publish! channel messages)
-      (mq.analytics/inc! :metabase-mq/messages-published
-                         {:transport (namespace channel) :channel (name channel)}
-                         (count messages)))))
+      (analytics/inc! :metabase-mq/messages-published
+                      {:transport (namespace channel) :channel (name channel)}
+                      (count messages)))))
 
 (defn flush-deferred-messages!
   "Flushes all deferred messages accumulated during a transaction.

@@ -1,10 +1,9 @@
 (ns metabase.mq.test-util
   (:require
+   [metabase.mq.init :as mq.init]
    [metabase.mq.listener :as listener]
    [metabase.mq.publish-buffer :as publish-buffer]
-   [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.sync]
-   [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.sync]))
 
 (defmacro with-sync-mq
@@ -18,25 +17,25 @@
   (let [[listeners & body] (if (map? (first body))
                              body
                              (cons {} body))]
-    `(binding [q.backend/*backend*              :queue.backend/sync
-               listener/*listeners*              (atom {})
+    `(binding [listener/*listeners*              (atom {})
                publish-buffer/*publish-buffer*    (atom {})
-               publish-buffer/*publish-buffer-ms* 0
-               topic.backend/*backend*            :topic.backend/sync]
-       ;; Register all listen!/batch-listen! implementations into the fresh test atoms
-       (listener/register-listeners!)
-       ;; Merge any explicitly-provided listeners on top
-       (let [listeners# ~listeners]
-         (when (seq listeners#)
-           (swap! listener/*listeners*
-                  (fn [current#]
-                    (reduce-kv (fn [m# k# v#]
-                                 (assoc m# k# (if (fn? v#)
-                                                (if-let [existing# (get current# k#)]
-                                                  (assoc existing# :listener v#)
-                                                  {:listener           v#
-                                                   :max-batch-messages 1})
-                                                v#)))
-                               current#
-                               listeners#)))))
-       ~@body)))
+               publish-buffer/*publish-buffer-ms* 0]
+       (let [handle# (mq.init/start! :queue.backend/sync :topic.backend/sync)]
+         (try
+           ;; Merge any explicitly-provided listeners on top
+           (let [listeners# ~listeners]
+             (when (seq listeners#)
+               (swap! listener/*listeners*
+                      (fn [current#]
+                        (reduce-kv (fn [m# k# v#]
+                                     (assoc m# k# (if (fn? v#)
+                                                    (if-let [existing# (get current# k#)]
+                                                      (assoc existing# :listener v#)
+                                                      {:listener           v#
+                                                       :max-batch-messages 1})
+                                                    v#)))
+                                   current#
+                                   listeners#)))))
+           ~@body
+           (finally
+             (mq.init/stop! handle#)))))))

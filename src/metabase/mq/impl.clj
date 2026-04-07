@@ -1,11 +1,12 @@
 (ns metabase.mq.impl
   "Backend coordination: message delivery, analytics helpers, and lifecycle management."
   (:require
-   [metabase.mq.analytics :as mq.analytics]
+   [metabase.analytics.core :as analytics]
    [metabase.mq.listener :as listener]
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.publish-buffer :as publish-buffer]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.transport :as transport]
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent Callable ExecutorService Executors Future)))
@@ -29,6 +30,11 @@
   "Returns the nanoTime of the last publish or handler completion for the given channel, or nil."
   [channel]
   (get @last-activity* channel))
+
+(defn record-publish-activity!
+  "Records a publish event for the given channel. Called by the publishing pipeline."
+  [channel]
+  (swap! last-activity* assoc channel (System/nanoTime)))
 
 (defn channel-busy?
   "Returns true if the given channel has an active handler running."
@@ -62,14 +68,14 @@
         (do
           (invoke-fn listener)
           (when on-success (on-success))
-          (mq.analytics/inc! :metabase-mq/batches-handled (assoc labels :status "success"))))
+          (analytics/inc! :metabase-mq/batches-handled (assoc labels :status "success"))))
       (catch Exception e
         (log/error e (str "Error handling " transport " message") labels)
         (when on-error (on-error e))
-        (mq.analytics/inc! :metabase-mq/batches-handled (assoc labels :status "error")))
+        (analytics/inc! :metabase-mq/batches-handled (assoc labels :status "error")))
       (finally
-        (mq.analytics/observe! :metabase-mq/handle-duration-ms labels
-                               (/ (double (- (System/nanoTime) start)) 1e6))))))
+        (analytics/observe! :metabase-mq/handle-duration-ms labels
+                            (/ (double (- (System/nanoTime) start)) 1e6))))))
 
 (defn handle!
   "Handles accumulated messages for a channel by invoking the registered listener.
@@ -80,9 +86,9 @@
    The :dedup-fn option on listeners helps mitigate duplicate processing on retry."
   [channel message-bundles messages]
   (swap! last-activity* assoc channel (System/nanoTime))
-  (mq.analytics/inc! :metabase-mq/messages-received
-                     {:transport (namespace channel) :channel (name channel)}
-                     (count messages))
+  (analytics/inc! :metabase-mq/messages-received
+                  {:transport (namespace channel) :channel (name channel)}
+                  (count messages))
   (let [{:keys [max-batch-messages]} (listener/get-listener channel)]
     (invoke-listener!
      {:channel      channel
@@ -180,16 +186,14 @@
 (defn start-transports
   "Starts the queue/topic backends."
   []
-  (let [transport-start! (requiring-resolve 'metabase.mq.transport/start!)]
-    (transport-start! :queue)
-    (transport-start! :topic)))
+  (transport/start! :queue)
+  (transport/start! :topic))
 
 (defn shutdown-transports
   "Shuts down all queue/topic backends."
   []
-  (let [transport-shutdown! (requiring-resolve 'metabase.mq.transport/shutdown!)]
-    (transport-shutdown! :queue)
-    (transport-shutdown! :topic)))
+  (transport/shutdown! :queue)
+  (transport/shutdown! :topic))
 
 (defn shutdown!
   "Shuts down all mq infrastructure: publish buffer, worker pool, backends, and listener state."

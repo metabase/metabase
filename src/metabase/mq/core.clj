@@ -34,6 +34,7 @@
         (put t payload))"
   (:require
    [metabase.mq.impl :as mq.impl]
+   [metabase.mq.init :as mq.init]
    [metabase.mq.listener :as mq.listener]
    [metabase.mq.publish :as mq.publish]
    [metabase.mq.queue.appdb :as q.appdb]
@@ -52,6 +53,7 @@
 
 (comment
   mq.impl/keep-me
+  mq.init/keep-me
   mq.listener/keep-me
   mq.publish/keep-me
   q.appdb/keep-me
@@ -77,8 +79,11 @@
   put]
 
  [mq.impl
-  last-activity
-  shutdown!]
+  last-activity]
+
+ [mq.init
+  start!
+  stop!]
 
  [q.impl
   with-queue]

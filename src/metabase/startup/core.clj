@@ -1,5 +1,5 @@
 (ns metabase.startup.core
-  "Defines the `def-startup-logic!` multimethod, which is used to run initialization logic when the server starts up."
+  "Defines the `def-startup-logic!` and `def-shutdown-logic!` multimethods for server lifecycle hooks."
   (:require
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -29,3 +29,21 @@
       (f k)
       (catch Throwable e
         (log/errorf e "Error initializing startup logic %s" k)))))
+
+(defmulti def-shutdown-logic!
+  "Runs shutdown logic with a given name. All implementations are called during graceful server
+  shutdown. Counterpart to [[def-startup-logic!]].
+
+  The dispatch value can be any unique keyword and is used for logging."
+  {:arglists '([job-name-string])}
+  keyword)
+
+(defn run-shutdown-logic!
+  "Call all implementations of `def-shutdown-logic!`. Called during graceful server shutdown."
+  []
+  (doseq [[k f] (methods def-shutdown-logic!)]
+    (try
+      (log/infof "Running shutdown logic %s" (name k))
+      (f k)
+      (catch Throwable e
+        (log/errorf e "Error running shutdown logic %s" k)))))

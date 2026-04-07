@@ -1,14 +1,15 @@
 (ns metabase.mq.queue.appdb
   "Database-backed implementation of the message queue using the application database."
   (:require
+   [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
-   [metabase.mq.analytics :as mq.analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.listener :as listener]
    [metabase.mq.polling :as mq.polling]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
+   [metabase.mq.settings :as mq.settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -86,7 +87,7 @@
   "Recovers processing batches whose heartbeat is older than the stale timeout.
   Returns the number of batches recovered."
   []
-  (let [max-retries (@@q.impl/queue-max-retries)
+  (let [max-retries (mq.settings/queue-max-retries)
         threshold   (Timestamp/from (.minusMillis (Instant/now) stale-processing-timeout-ms))
         recovered   (atom 0)]
     (doseq [row (t2/select :queue_message_batch :status "processing" :status_heartbeat [:< threshold])]
@@ -95,13 +96,13 @@
           (do
             (log/warnf "Processing batch %d on queue '%s' has reached max failures (%d), marking as failed"
                        (:id row) (:queue_name row) max-retries)
-            (mq.analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (:queue_name row)})
+            (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (:queue_name row)})
             (t2/update! :queue_message_batch (:id row)
                         {:status "failed" :failures new-failures :status_heartbeat (mi/now) :owner nil}))
           (do
             (log/warnf "Recovering processing batch %d on queue '%s' (failures: %d -> %d)"
                        (:id row) (:queue_name row) (:failures row) new-failures)
-            (mq.analytics/inc! :metabase-mq/batch-stale-recoveries {:transport "queue" :channel (:queue_name row)})
+            (analytics/inc! :metabase-mq/batch-stale-recoveries {:transport "queue" :channel (:queue_name row)})
             (t2/update! :queue_message_batch (:id row)
                         {:status "pending" :failures new-failures :status_heartbeat (mi/now) :owner nil})))
         (swap! recovered inc)))
@@ -115,7 +116,7 @@
         deleted   (t2/delete! :queue_message_batch :status "failed" :status_heartbeat [:< threshold])]
     (when (pos? deleted)
       (log/infof "Cleaned up %d failed queue batches" deleted)
-      (mq.analytics/inc! :metabase-mq/appdb-cleanup-deleted {:transport "queue" :channel "all"} deleted))))
+      (analytics/inc! :metabase-mq/appdb-cleanup-deleted {:transport "queue" :channel "all"} deleted))))
 
 ;; Queue depth gauge
 (def ^:private last-depth-gauge-ms (atom 0))
@@ -125,7 +126,7 @@
           (t2/query {:select   [:queue_name :status [[:count :*] :cnt]]
                      :from     [:queue_message_batch]
                      :group-by [:queue_name :status]})]
-    (mq.analytics/set! :metabase-mq/appdb-queue-depth {:channel queue_name :status status} cnt)))
+    (analytics/set! :metabase-mq/appdb-queue-depth {:channel queue_name :status status} cnt)))
 
 ;; Heartbeat
 (def ^:private last-heartbeat-ms (atom 0))
@@ -182,15 +183,15 @@
   [_ queue-name bundle-id]
   (let [row     (t2/select-one :queue_message_batch :id bundle-id :owner owner-id)
         updated (when row
-                  (if (>= (inc (:failures row)) (@@q.impl/queue-max-retries))
+                  (if (>= (inc (:failures row)) (mq.settings/queue-max-retries))
                     (do
-                      (log/warnf "Message %d has reached max failures (%d), marking as failed" bundle-id (@@q.impl/queue-max-retries))
-                      (mq.analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)})
+                      (log/warnf "Message %d has reached max failures (%d), marking as failed" bundle-id (mq.settings/queue-max-retries))
+                      (analytics/inc! :metabase-mq/queue-batch-permanent-failures {:channel (name queue-name)})
                       (t2/update! :queue_message_batch
                                   {:id bundle-id :owner owner-id}
                                   {:status "failed" :failures [:+ :failures 1] :status_heartbeat (mi/now) :owner nil}))
                     (do
-                      (mq.analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
+                      (analytics/inc! :metabase-mq/queue-batch-retries {:channel (name queue-name)})
                       (t2/update! :queue_message_batch
                                   {:id bundle-id :owner owner-id}
                                   {:status "pending" :failures [:+ :failures 1] :status_heartbeat (mi/now) :owner nil}))))]

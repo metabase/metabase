@@ -1,7 +1,7 @@
 (ns metabase.mq.listener
   "Listener registry: registration, lookup, instrumentation, and the `def-listener!` macro."
   (:require
-   [metabase.mq.analytics :as mq.analytics]
+   [metabase.analytics.core :as analytics]
    [metabase.mq.transport :as transport]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
@@ -48,9 +48,9 @@
     (fn [msg]
       (try
         (listener msg)
-        (mq.analytics/inc! received labels)
+        (analytics/inc! received labels)
         (catch Exception e
-          (mq.analytics/inc! errors labels)
+          (analytics/inc! errors labels)
           (throw e))))))
 
 (defn listen!
