@@ -1,0 +1,15 @@
+{
+  "name": "metabase-mcpb-installer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "bin": {
+    "metabase-mcpb-install": "bin/install.mjs",
+    "metabase-mcpb-uninstall": "bin/uninstall.mjs"
+  },
+  "scripts": {
+    "install-metabase": "node bin/install.mjs",
+    "uninstall-metabase": "node bin/uninstall.mjs"
+  }
+}
