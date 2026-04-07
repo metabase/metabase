@@ -354,34 +354,10 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
   });
 
   describe("dashboard edit question picker sidebar", () => {
-    it("should allow admins to browse shared collections and add questions", () => {
+    it("should allow admins to browse shared collections with correct breadcrumbs and add questions", () => {
       setupTenantCollections().then(({ tenantCollectionId }) => {
         H.createQuestion({
           name: "Tenant Orders Question",
-          collection_id: tenantCollectionId,
-          query: { "source-table": ORDERS_ID },
-        });
-
-        H.createDashboard({
-          name: "Test Dashboard",
-        }).then(({ body: dashboard }) => {
-          H.visitDashboard(dashboard.id);
-          H.editDashboard();
-          H.openQuestionsSidebar();
-
-          H.sidebar().findByText(TENANT_ROOT_NAME).click();
-          H.sidebar().findByText("Test Tenant Collection").click();
-          H.sidebar().findByText("Tenant Orders Question").click();
-
-          H.getDashboardCards().should("have.length", 1);
-        });
-      });
-    });
-
-    it("should show correct breadcrumbs when browsing shared collections", () => {
-      setupTenantCollections().then(({ tenantCollectionId }) => {
-        H.createQuestion({
-          name: "Nested Tenant Question",
           collection_id: tenantCollectionId,
           query: { "source-table": ORDERS_ID },
         });
@@ -405,6 +381,9 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
             .should("contain", "Our analytics")
             .and("contain", TENANT_ROOT_NAME)
             .and("contain", "Test Tenant Collection");
+
+          H.sidebar().findByText("Tenant Orders Question").click();
+          H.getDashboardCards().should("have.length", 1);
         });
       });
     });
