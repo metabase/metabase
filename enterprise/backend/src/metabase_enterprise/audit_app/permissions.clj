@@ -29,7 +29,6 @@
     "v_tasks"
     "v_task_runs"
     "v_view_log"
-    ;; AI/Metabot analytics views
     "v_metabot_conversations"
     "v_metabot_messages"
     "v_metabot_usage"})
