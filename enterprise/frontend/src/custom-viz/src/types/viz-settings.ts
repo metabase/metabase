@@ -200,11 +200,6 @@ export type CreateDefineSetting<
    *   `readDependencies` ordering.
    * @returns `true` to keep the stored value, `false` to fall back to
    *   `getDefault`.
-   *
-   * @example
-   * // Invalidate a saved column name when it no longer exists in the data
-   * isValid: (series, settings) =>
-   *   series[0].data.cols.some(col => col.name === settings.xColumn),
    */
   isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
   /**
@@ -222,11 +217,6 @@ export type CreateDefineSetting<
    *   are guaranteed to be resolved before this is called.
    * @returns The default value for this setting, typed as
    *   `CustomVisualizationSettings[Key]`.
-   *
-   * @example
-   * // Default to the name of the first numeric column
-   * getDefault: (series, _settings) =>
-   *   series[0].data.cols.find(col => col.base_type === "type/Number")?.name ?? null,
    */
   getDefault?: (
     series: Series,
