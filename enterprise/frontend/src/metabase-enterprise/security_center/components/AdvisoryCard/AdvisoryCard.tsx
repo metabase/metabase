@@ -44,6 +44,26 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
   const acknowledged = isAcknowledged(advisory);
   const isSmallScreen = useIsSmallScreen();
 
+  const badges = (
+    <>
+      <Badge className={SEVERITY_CLASS[advisory.severity]}>
+        {advisory.severity}
+      </Badge>
+      <Badge
+        variant="outline"
+        className={affected ? S.statusAffected : S.statusNotAffected}
+        data-testid="affected-status"
+      >
+        {affected ? t`Affected` : t`Not affected`}
+      </Badge>
+      {acknowledged && (
+        <Badge color="brand" variant="light" data-testid="acknowledged-badge">
+          {t`Acknowledged`}
+        </Badge>
+      )}
+    </>
+  );
+
   const acknowledgeButton = !acknowledged && onAcknowledge && (
     <Button
       variant="subtle"
@@ -64,31 +84,18 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
       mih={184}
     >
       <Stack gap="sm">
-        <Group gap="sm" justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="wrap">
-            <Badge className={SEVERITY_CLASS[advisory.severity]}>
-              {advisory.severity}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={affected ? S.statusAffected : S.statusNotAffected}
-              data-testid="affected-status"
-            >
-              {affected ? t`Affected` : t`Not affected`}
-            </Badge>
-            {acknowledged && (
-              <Badge
-                color="brand"
-                variant="light"
-                data-testid="acknowledged-badge"
-              >
-                {t`Acknowledged`}
-              </Badge>
-            )}
+        {isSmallScreen && (
+          <Group gap="sm" justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="wrap">
+              {badges}
+            </Group>
+            {acknowledgeButton}
           </Group>
-          {isSmallScreen && acknowledgeButton}
+        )}
+        <Group gap="sm" align="center" wrap="wrap">
+          {!isSmallScreen && badges}
+          <Title order={4}>{advisory.title}</Title>
         </Group>
-        <Title order={4}>{advisory.title}</Title>
 
         <Text lineClamp={2} c="text-secondary">
           {advisory.description}
@@ -105,19 +112,21 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
           </Text>
         </Stack>
 
-        <Group gap="md" h={28}>
-          {advisory.advisory_url && (
-            <Anchor
-              href={advisory.advisory_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="sm"
-            >
-              {t`View advisory`}
-            </Anchor>
-          )}
-          {!isSmallScreen && acknowledgeButton}
-        </Group>
+        {(advisory.advisory_url || !isSmallScreen) && (
+          <Group gap="md" h={28}>
+            {advisory.advisory_url && (
+              <Anchor
+                href={advisory.advisory_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="sm"
+              >
+                {t`View advisory`}
+              </Anchor>
+            )}
+            {!isSmallScreen && acknowledgeButton}
+          </Group>
+        )}
       </Stack>
     </Card>
   );
