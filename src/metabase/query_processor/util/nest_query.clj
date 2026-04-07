@@ -135,8 +135,8 @@
                  (dissoc source :limit)
                  (qp.middleware.resolve-joins/append-join-fields-to-fields source (joined-fields inner-query))
                  (remove-unused-fields inner-query source)
-                 ;; Restore QP keys stripped by the nested preprocess security middleware
-                 (update source :source-query merge preserved-source-query-keys)
+                 ;; Restore QP keys stripped by the nested preprocess middleware
+                 (m/update-existing source :source-query merge preserved-source-query-keys)
                  (cond-> source
                    keep-filter? (assoc :filter filter-clause)))]
     (-> inner-query
