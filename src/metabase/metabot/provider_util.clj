@@ -56,5 +56,5 @@
   Returns the input unchanged if no prefix is present."
   [provider-and-model]
   (if (metabase-provider? provider-and-model)
-    (subs provider-and-model (inc (count metabase-provider-prefix)))
+    (str/replace-first provider-and-model (str metabase-provider-prefix "/") "")
     provider-and-model))
