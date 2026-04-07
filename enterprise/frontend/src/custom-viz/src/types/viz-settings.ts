@@ -153,8 +153,34 @@ export type CreateDefineSetting<
    */
   persistDefault?: boolean;
 
+  /**
+   * Setting IDs that must be computed before this setting.
+   *
+   * The settings engine resolves each listed ID first so their values are
+   * available in the `settings` argument passed to `getDefault`, `getValue`,
+   * `isValid`, and `getProps`. Required because computed settings are memoized —
+   * without an explicit ordering a dependency may still be `undefined` when
+   * this setting tries to read it.
+   */
   readDependencies?: string[];
+  /**
+   * Setting IDs whose current computed values are persisted alongside this
+   * setting whenever it changes.
+   *
+   * On change, the engine snapshots each listed setting's current computed
+   * value into the write payload. Use this to "lock in" dynamic defaults of
+   * related settings so they aren't silently recalculated under the new
+   * context and lose user intent.
+   */
   writeDependencies?: string[];
+  /**
+   * Setting IDs that are reset to `null` whenever this setting changes.
+   *
+   * On change, each listed setting is set to `null` in the persisted payload,
+   * forcing it to recompute from scratch on the next render. Use this to
+   * invalidate derived settings whose stored value becomes stale or meaningless
+   * after the change.
+   */
   eraseDependencies?: string[];
 
   widget: W;
