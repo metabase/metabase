@@ -519,14 +519,14 @@
         date-col-with-bucketing? #(clojure.core/and
                                    (date-col? %)
                                    (lib.util/clause? %)
-                                   (clojure.core/contains? lib.schema.temporal-bucketing/datetime-truncation-units (:temporal-unit (second %))))
+                                   (clojure.core/contains? #{:week :month :quarter :year} (:temporal-unit (second %))))
         result    (fn [op col-ref args]
                     (let [date? (some u.time/matches-date? args)
                           values (mapv u.time/coerce-to-timestamp args)]
                       (when (every? u.time/valid? values)
                         {:operator op, :column (ref->col col-ref), :values values, :with-time? (not date?)})))]
     (lib.util.match/match-lite filter-clause
-      ;; exactly 1 argument, but the column has a temporal bucketing
+      ; exactly 1 argument, but the column has a temporal bucketing
       [(op :guard #{:=}) _ (col-ref :guard date-col-with-bucketing?) & (args :len 1 :guard (every? string? args))]
       (let [unit       (:temporal-unit (second col-ref))
             with-time? (not (u.time/matches-date? (first args)))
