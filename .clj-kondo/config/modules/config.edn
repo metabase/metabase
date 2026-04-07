@@ -746,8 +746,7 @@
 
   lib
   {:team "Querying"
-   :api  #{metabase.lib.binning
-           metabase.lib.convert  ; Only so [[metabase.queries.models.card]] can set dynamic vars.
+   :api  #{metabase.lib.convert  ; Only so [[metabase.queries.models.card]] can set dynamic vars.
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
@@ -789,7 +788,6 @@
            metabase.lib.schema.test-spec
            metabase.lib.schema.util
            metabase.lib.schema.validate
-           metabase.lib.temporal-bucket
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.util.match
@@ -2091,7 +2089,10 @@
            settings
            util
            warehouse-schema
-           warehouses-rest}}
+           warehouses-rest}
+   :model-exports #{:model/DatabaseRouter}
+   :model-imports #{:model/Database
+                    :model/Transform}}
 
   enterprise/dependencies
   {:team "Graphy"
@@ -2240,7 +2241,8 @@
               util
               warehouses-rest
               enterprise/dependencies
-              enterprise/transforms-python}}
+              enterprise/transforms-python}
+   :model-imports #{:model/Card :model/Transform}}
 
   enterprise/permission-debug
   {:team "UX West"
