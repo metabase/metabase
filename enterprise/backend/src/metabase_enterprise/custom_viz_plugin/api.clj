@@ -32,6 +32,7 @@
    [:status          [:enum "pending" "active" "error"]]
    [:enabled         :boolean]
    [:icon            {:optional true} [:maybe :string]]
+   [:icon_dark       {:optional true} [:maybe :string]]
    [:error_message   {:optional true} [:maybe :string]]
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
@@ -48,6 +49,7 @@
    [:identifier      ms/NonBlankString]
    [:display_name    ms/NonBlankString]
    [:icon            {:optional true} [:maybe :string]]
+   [:icon_dark       {:optional true} [:maybe :string]]
    [:bundle_url      ms/NonBlankString]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
@@ -96,12 +98,13 @@
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon resolved_commit manifest]}]
+  [{:keys [id identifier display_name icon icon_dark resolved_commit manifest]}]
   (let [dev-url (cache/resolve-dev-bundle id)]
     (cond-> {:id              id
              :identifier      identifier
              :display_name    display_name
              :icon            icon
+             :icon_dark       icon_dark
              :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
              :resolved_commit resolved_commit
              :manifest        (parse-manifest-json manifest)}
@@ -159,6 +162,7 @@
         manifest-str (when manifest (json/encode manifest))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
+        icon-dark    (:icon_dark manifest)
         version-str  (get-in manifest [:metabase :version])
         plugin       (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                             :repo_url        sentinel-url
@@ -168,6 +172,7 @@
                                                             :enabled         true
                                                             :dev_bundle_url  dev_bundle_url
                                                             :icon            icon
+                                                            :icon_dark       icon-dark
                                                             :manifest        manifest-str
                                                             :metabase_version version-str))]
     (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
@@ -184,7 +189,7 @@
    Plugins with incompatible Metabase version requirements are excluded."
   []
   (let [plugins (t2/select [:model/CustomVizPlugin
-                            :id :identifier :display_name :icon :resolved_commit
+                            :id :identifier :display_name :icon :icon_dark :resolved_commit
                             :manifest :metabase_version]
                            :status :active
                            :enabled true

@@ -301,6 +301,7 @@ export async function loadCustomVizPlugin(
       identifier,
       getUiName: () => plugin.display_name,
       iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
+      iconDarkUrl: getPluginAssetUrl(plugin.id, plugin.icon_dark),
       minSize: vizDef.minSize,
       defaultSize: vizDef.defaultSize,
       checkRenderable: vizDef.checkRenderable,

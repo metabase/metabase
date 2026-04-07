@@ -68,6 +68,7 @@ export type IconData = {
   name: IconName;
   color?: ColorName;
   iconUrl?: string;
+  iconDarkUrl?: string;
 };
 
 /** get an Icon for any entity object, doesn't depend on the entity system */
