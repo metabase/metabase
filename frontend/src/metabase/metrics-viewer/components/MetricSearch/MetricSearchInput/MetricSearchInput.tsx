@@ -185,29 +185,41 @@ export function MetricSearchInput({
     // to the undo history, so without isolateHistory("before"), a quick
     // Cmd+Z after deleting a metric token would undo both the deletion
     // AND the initial text insertion (they'd be grouped together).
-    setTimeout(() => {
+    let retries = 0;
+    function dispatchInitialSetup() {
       const view = editorRef.current?.view;
-      if (view) {
-        const endPos = view.state.doc.length;
-        const identities = buildMetricIdentities(
-          fullText,
-          metricEntriesRef.current,
-          formulaEntitiesRef.current,
-        );
-        view.dispatch({
-          selection: EditorSelection.cursor(endPos),
-          effects: [
-            setMetricEntries.of(metricEntriesRef.current),
-            setMetricIdentities.of(identities),
-          ],
-          annotations: isolateHistory.of("full"),
-        });
-        const coords = view.coordsAtPos(endPos);
-        if (coords) {
-          setAnchorRect({ left: coords.left, top: coords.bottom });
-        }
+      if (!view) {
+        return;
       }
-    }, 0);
+      // wait for CodeMirror to sync the value prop into the doc
+      // otherwise the sync will destroy the metric identities
+      // retry until sync, with a guard against infinite loop
+      if (fullText.length > 0 && view.state.doc.length === 0 && retries < 10) {
+        retries++;
+        setTimeout(dispatchInitialSetup, 0);
+        return;
+      }
+      const docText = view.state.doc.toString();
+      const endPos = view.state.doc.length;
+      const identities = buildMetricIdentities(
+        docText,
+        metricEntriesRef.current,
+        formulaEntitiesRef.current,
+      );
+      view.dispatch({
+        selection: EditorSelection.cursor(endPos),
+        effects: [
+          setMetricEntries.of(metricEntriesRef.current),
+          setMetricIdentities.of(identities),
+        ],
+        annotations: isolateHistory.of("full"),
+      });
+      const coords = view.coordsAtPos(endPos);
+      if (coords) {
+        setAnchorRect({ left: coords.left, top: coords.bottom });
+      }
+    }
+    setTimeout(dispatchInitialSetup, 0);
   }, []);
 
   /** Commits the current text: parses formula entities, removes unreferenced metrics, and collapses. */

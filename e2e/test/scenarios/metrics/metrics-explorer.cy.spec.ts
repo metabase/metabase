@@ -1067,7 +1067,7 @@ describe("scenarios > metrics > explorer", () => {
       });
       H.MetricsViewer.getDimensionPillContainer().within(() => {
         cy.findByText("User → Source").should("exist");
-        cy.findByText("Select a dimension").click();
+        cy.findByText("Account → Source").click();
       });
 
       H.popover().findByText("Plan").click();
