@@ -42,6 +42,12 @@ describe("scenarios > metrics > metric page", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should display scalar metric, edit name and description, explore link, and more menu actions", () => {
@@ -195,6 +201,11 @@ describe("scenarios > metrics > metric page", () => {
   it("should render dimension charts on the overview tab and show more", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
       H.visitMetric(metric.id);
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_page_viewed",
+        target_id: metric.id,
+      });
     });
 
     H.MetricPage.overviewTab().click();
@@ -208,7 +219,13 @@ describe("scenarios > metrics > metric page", () => {
       cy.findAllByText(/^By /).should("have.length", 4);
 
       cy.findByText("Show more").scrollIntoView().click();
+    });
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_page_show_more_clicked",
+    });
+
+    H.MetricPage.overviewPage().within(() => {
       cy.findByText("By Name").should("exist");
       cy.findByText("By Source").should("exist");
       cy.findByText("By Title").should("exist");
