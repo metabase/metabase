@@ -715,7 +715,7 @@
         (batch-insert-permissions! to-insert)))))
 
 (defenterprise new-group-view-data-permission-levels
-  "Batch variant: returns a map of {db-id → permission-level} for multiple databases. On OSS, all are `:unrestricted`."
+  "Returns a map of {db-id → permission-level} for multiple databases. On OSS, all are `:unrestricted`."
   metabase-enterprise.advanced-permissions.common
   [db-ids]
   (zipmap db-ids (repeat :unrestricted)))
@@ -727,7 +727,7 @@
     (set-database-permission! group-or-id db-id perm-type perm-value)))
 
 (defenterprise new-database-view-data-permission-levels
-  "Batch variant: returns a map of {group-id → permission-level} for multiple groups. On OSS, all are `:unrestricted`."
+  "Returns a map of {group-id → permission-level} for multiple groups. On OSS, all are `:unrestricted`."
   metabase-enterprise.advanced-permissions.common
   [group-ids]
   (zipmap group-ids (repeat :unrestricted)))
@@ -916,7 +916,7 @@
   (set-table-permissions! group-or-id perm-type {table-or-id value}))
 
 (defenterprise new-table-view-data-permission-levels
-  "Batch variant: returns a map of {group-id → permission-level} for multiple groups and a single DB.
+  "Returns a map of {group-id → permission-level} for multiple groups and a single DB.
    On OSS, all are `:unrestricted`."
   metabase-enterprise.advanced-permissions.common
   [_db-id group-ids]

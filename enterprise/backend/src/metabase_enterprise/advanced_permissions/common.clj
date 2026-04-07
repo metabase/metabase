@@ -164,7 +164,7 @@
      dbs)))
 
 (defenterprise new-group-view-data-permission-levels
-  "Batch variant: returns a map of {db-id → permission-level} for multiple databases."
+  "Returns a map of {db-id → permission-level} for multiple databases."
   :feature :advanced-permissions
   [db-ids]
   (if (empty? db-ids)
@@ -192,7 +192,7 @@
       (zipmap db-ids (map #(if (blocked-dbs %) :blocked :unrestricted) db-ids)))))
 
 (defenterprise new-database-view-data-permission-levels
-  "Batch variant: returns a map of {group-id → permission-level} for multiple groups."
+  "Returns a map of {group-id → permission-level} for multiple groups."
   :feature :advanced-permissions
   [group-ids]
   (if (empty? group-ids)
@@ -211,13 +211,13 @@
       (zipmap group-ids (map #(if (blocked-groups %) :blocked :unrestricted) group-ids)))))
 
 (defenterprise new-table-view-data-permission-levels
-  "Batch variant: returns a map of {group-id → permission-level} for multiple groups and a single DB."
+  "Returns a map of {group-id → permission-level} for multiple groups and a single DB."
   :feature :advanced-permissions
   [db-id group-ids]
   (if (empty? group-ids)
     {}
-    ;; We don't check for connection impersonations here (same as singular variant), because impersonations are
-    ;; set at the DB-level, so a new table should get `:unrestricted` and inherit the DB-level impersonation policy.
+    ;; We don't check for connection impersonations here, because impersonations are set at the
+    ;; DB-level, so a new table should get `:unrestricted` and inherit the DB-level impersonation policy.
     (let [blocked-group-ids (t2/select-fn-set :group_id :model/DataPermissions
                                               :db_id db-id
                                               :perm_type :perms/view-data
