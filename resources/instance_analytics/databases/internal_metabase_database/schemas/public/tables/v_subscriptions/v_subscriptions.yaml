@@ -1,0 +1,15 @@
+name: v_subscriptions
+display_name: V Subscriptions
+created_at: '2026-04-06T21:55:44.948924Z'
+db_id: internal_metabase_database
+schema: public
+entity_type: entity/SubscriptionTable
+active: true
+field_order: database
+initial_sync_status: complete
+serdes/meta:
+- {id: internal_metabase_database, model: Database}
+- {id: public, model: Schema}
+- {id: v_subscriptions, model: Table}
+data_authority: unconfigured
+data_layer: internal

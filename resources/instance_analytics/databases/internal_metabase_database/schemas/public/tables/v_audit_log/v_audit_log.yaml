@@ -1,0 +1,15 @@
+name: v_audit_log
+display_name: V Audit Log
+created_at: '2026-04-06T21:55:44.859462Z'
+db_id: internal_metabase_database
+schema: public
+entity_type: entity/EventTable
+active: true
+field_order: database
+initial_sync_status: complete
+serdes/meta:
+- {id: internal_metabase_database, model: Database}
+- {id: public, model: Schema}
+- {id: v_audit_log, model: Table}
+data_authority: unconfigured
+data_layer: internal

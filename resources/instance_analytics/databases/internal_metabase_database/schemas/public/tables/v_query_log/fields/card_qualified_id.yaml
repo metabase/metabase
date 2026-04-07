@@ -1,0 +1,21 @@
+name: card_qualified_id
+display_name: Card Qualified ID
+created_at: '2026-04-06T21:55:47.299047Z'
+visibility_type: normal
+table_id: [internal_metabase_database, public, v_query_log]
+database_type: text
+base_type: type/Text
+effective_type: type/Text
+dimensions: []
+position: 9
+custom_position: 0
+database_position: 9
+has_field_values: auto-list
+serdes/meta:
+- {id: internal_metabase_database, model: Database}
+- {id: public, model: Schema}
+- {id: v_query_log, model: Table}
+- {id: card_qualified_id, model: Field}
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
