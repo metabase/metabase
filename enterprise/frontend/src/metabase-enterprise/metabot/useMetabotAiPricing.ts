@@ -1,11 +1,8 @@
 import { useMemo } from "react";
 
 import { formatNumber } from "metabase/lib/formatting";
-import {
-  useGetBillingInfoQuery,
-  useListAddOnsQuery,
-} from "metabase-enterprise/api";
-import type { BillingInfo, GetCloudAddOnsResponse } from "metabase-types/api";
+import { useListAddOnsQuery } from "metabase-enterprise/api";
+import type { GetCloudAddOnsResponse } from "metabase-types/api";
 
 import { formatMetabaseCost } from "./format";
 
@@ -16,6 +13,7 @@ type MetabotAiPricing = {
   unitCount: number;
 };
 
+const UNIT_MULTIPLIER = 1_000_000;
 const METABASE_AI_PRODUCT_TYPE = "metabase-ai-managed";
 
 export function useMetabotAiPricing(
@@ -24,50 +22,29 @@ export function useMetabotAiPricing(
   const { data: addOns } = useListAddOnsQuery(undefined, {
     skip: !shouldLoadMetabaseBilling,
   });
-  const { data: billingInfo } = useGetBillingInfoQuery(undefined, {
-    skip: !shouldLoadMetabaseBilling,
-  });
 
-  return useMemo(
-    () => getMetabaseAiPricing(addOns, billingInfo),
-    [addOns, billingInfo],
-  );
+  return useMemo(() => getMetabaseAiPricing(addOns), [addOns]);
 }
 
-function getMetabaseAiPricing(
-  addOns: GetCloudAddOnsResponse | undefined,
-  billingInfo: BillingInfo | undefined,
-) {
-  const billingPeriodMonths = billingInfo?.data?.billing_period_months;
-
-  const addOn =
-    addOns?.find(
-      ({ active, billing_period_months, product_type, self_service }) =>
-        active &&
-        self_service &&
-        product_type === METABASE_AI_PRODUCT_TYPE &&
-        billingPeriodMonths != null &&
-        billing_period_months === billingPeriodMonths,
-    ) ??
-    addOns?.find(
-      ({ active, product_type, self_service }) =>
-        active && self_service && product_type === METABASE_AI_PRODUCT_TYPE,
-    );
+function getMetabaseAiPricing(addOns: GetCloudAddOnsResponse | undefined) {
+  const addOn = addOns?.find(
+    ({ active, product_type, self_service }) =>
+      active && self_service && product_type === METABASE_AI_PRODUCT_TYPE,
+  );
 
   if (addOn?.default_price_per_unit == null) {
     return null;
   }
 
-  const unitCount =
-    addOn.default_total_units || addOn.default_prepaid_units || 1_000_000;
+  const unitCount = addOn.default_total_units * UNIT_MULTIPLIER;
 
   return {
-    price: formatMetabaseCost(addOn.default_price_per_unit),
+    price: formatMetabaseCost(addOn.default_price_per_unit * UNIT_MULTIPLIER),
     unit: formatNumber(unitCount, {
       compact: true,
       maximumFractionDigits: 0,
     }) as string,
-    pricePerUnit: addOn.default_price_per_unit,
+    pricePerUnit: addOn.default_price_per_unit * UNIT_MULTIPLIER,
     unitCount,
   };
 }
