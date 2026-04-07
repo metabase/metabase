@@ -206,6 +206,8 @@ function areTabDimensionsValid(tab: MetricsViewerTabState): boolean {
 export interface UseViewerStateResult {
   state: MetricsViewerPageState;
   loadingIds: Set<MetricSourceId>;
+  initialLoadComplete: boolean;
+  setInitialLoadComplete: (initialLoadComplete: boolean) => void;
 
   removeDefinition: (id: MetricSourceId) => void;
   updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
@@ -260,6 +262,8 @@ export function useViewerState(): UseViewerStateResult {
 
   const loadingRef = useRef<Set<MetricSourceId>>(new Set());
   const [loadingIds, setLoadingIds] = useState<Set<MetricSourceId>>(new Set());
+
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   const initialize: (newState: MetricsViewerPageState) => void = setState;
 
@@ -609,6 +613,9 @@ export function useViewerState(): UseViewerStateResult {
 
   const clearLoading = useCallback((id: MetricSourceId) => {
     loadingRef.current.delete(id);
+    if (loadingRef.current.size === 0) {
+      setInitialLoadComplete(true);
+    }
     setLoadingIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
@@ -805,6 +812,8 @@ export function useViewerState(): UseViewerStateResult {
   return {
     state,
     loadingIds,
+    initialLoadComplete,
+    setInitialLoadComplete,
 
     removeDefinition,
     updateDefinition,

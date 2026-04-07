@@ -1,12 +1,10 @@
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
-import { buildExpressionText } from "metabase/metrics-viewer/components/MetricSearch/utils";
 import * as LibMetric from "metabase-lib/metric";
 import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
 import {
-  type MetricDefinitionEntry,
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
   type MetricsViewerFormulaEntity,
@@ -51,10 +49,6 @@ export function buildLegendGroups(
     return [];
   }
 
-  const metricEntries = Object.values(definitions).map(
-    (e): MetricDefinitionEntry => ({ ...e, type: "metric" as const }),
-  );
-
   const groups: LegendGroup[] = [];
 
   formulaEntities.forEach((entity, entityIndex) => {
@@ -64,14 +58,11 @@ export function buildLegendGroups(
     }
 
     if (isExpressionEntry(entity)) {
-      const definitionName = buildExpressionText(entity.tokens, metricEntries);
-
       groups.push({
         key: entityIndex,
-        header: definitionName,
-        items: [{ label: definitionName, color: colors[0] }],
+        header: entity.name,
+        items: [{ label: entity.name, color: colors[0] }],
       });
-
       return;
     }
 

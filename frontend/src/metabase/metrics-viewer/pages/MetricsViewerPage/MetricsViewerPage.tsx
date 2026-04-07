@@ -1,6 +1,7 @@
 import type { Location } from "history";
 
-import { Box, Flex, Stack } from "metabase/ui";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Box, Center, Flex, Stack } from "metabase/ui";
 
 import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
 import {
@@ -29,6 +30,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     tabs,
     activeTab,
     activeTabId,
+    initialLoadComplete,
     resultsByEntityIndex,
     errorsByDefinitionId,
     modifiedDefinitionsByIndex,
@@ -52,6 +54,15 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     setBreakoutDimension,
     setFormulaEntities,
   } = useMetricsViewerResult;
+
+  if (!initialLoadComplete) {
+    // parsing formulas won't work until the initial set of definitions are loaded
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading />
+      </Center>
+    );
+  }
 
   const hasDefinitions = Object.keys(definitions).length > 0;
   const hasLoadedDefinitions = Object.values(definitions).some(

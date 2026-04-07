@@ -7,7 +7,7 @@ import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { Button, Flex, Icon, Popover } from "metabase/ui";
-import type { ProjectionClause } from "metabase-lib/metric";
+import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 
 import type {
   MetricDefinitionEntry,
@@ -18,16 +18,19 @@ import type {
   SourceColorMap,
 } from "../../../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
+import { getDefinitionName } from "../../../utils/definition-builder";
 import { getEffectiveDefinitionEntry } from "../../../utils/definition-entries";
 import { computeMetricSlots } from "../../../utils/metric-slots";
 import {
   createMeasureSourceId,
   createMetricSourceId,
+  createSourceId,
 } from "../../../utils/source-ids";
 import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 import {
+  type MetricNames,
   applyTrackedDefinitions,
   buildFullText,
   cleanupParens,
@@ -44,8 +47,8 @@ import {
   buildMetricIdentities,
   metricTokenHighlight,
   readMetricIdentities,
-  setMetricEntries,
   setMetricIdentities,
+  setMetricNames,
 } from "./metricTokenHighlight";
 import { operatorHighlight } from "./operatorHighlight";
 
@@ -126,16 +129,25 @@ export function MetricSearchInput({
   // issues with comparing editText vs textAtFocus across async state updates.
   const [isExpressionDirty, setIsExpressionDirty] = useState(false);
 
-  const metricEntries = useMemo(
-    () =>
-      Object.values(definitions).map(
-        (e): MetricDefinitionEntry => ({ ...e, type: "metric" as const }),
+  const [localMetricNames, setLocalMetricNames] = useState<MetricNames>({});
+  const metricNames: MetricNames = useMemo(
+    () => ({
+      ...localMetricNames,
+      ...Object.fromEntries(
+        Object.values(definitions)
+          .filter(
+            (e): e is { id: MetricSourceId; definition: MetricDefinition } =>
+              e.definition !== null,
+          )
+          .map((e) => [e.id, getDefinitionName(e.definition)])
+          .filter(([, name]) => name !== null),
       ),
-    [definitions],
+    }),
+    [localMetricNames, definitions],
   );
 
-  const metricEntriesRef = useRef(metricEntries);
-  metricEntriesRef.current = metricEntries;
+  const metricNamesRef = useRef<MetricNames>(metricNames);
+  metricNamesRef.current = metricNames;
 
   // Clean up parens per expression entry (only when not actively editing)
   useEffect(() => {
@@ -177,7 +189,7 @@ export function MetricSearchInput({
     isEditingSessionActiveRef.current = true;
     const fullText = buildFullText(
       formulaEntitiesRef.current,
-      definitionsRef.current,
+      metricNamesRef.current,
     );
     setTextAtFocus(fullText);
     setIsFocused(true);
@@ -195,13 +207,13 @@ export function MetricSearchInput({
         const endPos = view.state.doc.length;
         const identities = buildMetricIdentities(
           fullText,
-          metricEntriesRef.current,
+          metricNamesRef.current,
           formulaEntitiesRef.current,
         );
         view.dispatch({
           selection: EditorSelection.cursor(endPos),
           effects: [
-            setMetricEntries.of(metricEntriesRef.current),
+            setMetricNames.of(metricNamesRef.current),
             setMetricIdentities.of(identities),
           ],
           annotations: isolateHistory.of("full"),
@@ -217,7 +229,7 @@ export function MetricSearchInput({
   /** Commits the current text: parses formula entities, removes unreferenced metrics, and collapses. */
   const commitAndCollapse = useCallback(() => {
     const newText = editTextRef.current;
-    const parsedEntities = parseFullText(newText, metricEntriesRef.current);
+    const parsedEntities = parseFullText(newText, metricNamesRef.current);
 
     // Read tracked identities from the CodeMirror StateField —
     // positions are already mapped through all edits automatically.
@@ -229,7 +241,7 @@ export function MetricSearchInput({
         parsedEntities,
         trackedIdentities,
         newText,
-        metricEntriesRef.current,
+        metricNamesRef.current,
       );
 
     // Find which metric sourceIds are referenced in the parsed entities
@@ -293,7 +305,7 @@ export function MetricSearchInput({
     // The expression is only executed when the user explicitly clicks "Run".
     const invalidRanges = findInvalidRanges(
       editTextRef.current,
-      metricEntriesRef.current,
+      metricNamesRef.current,
     );
     if (invalidRanges.length > 0) {
       setValidationError(invalidRanges[0].message);
@@ -302,7 +314,7 @@ export function MetricSearchInput({
 
     const newEntities = parseFullText(
       editTextRef.current,
-      metricEntriesRef.current,
+      metricNamesRef.current,
     );
     // Validate each expression entry
     for (const entry of newEntities) {
@@ -330,7 +342,7 @@ export function MetricSearchInput({
     const { word, start: wordStart } = getWordAtCursor(
       newText,
       cursorPos,
-      metricEntriesRef.current,
+      metricNamesRef.current,
     );
     // Anchor the dropdown at the word's left edge / line bottom in the viewport
     if (view) {
@@ -354,7 +366,7 @@ export function MetricSearchInput({
       const { start, end } = getWordAtCursor(
         docText,
         cursorPos,
-        metricEntriesRef.current,
+        metricNamesRef.current,
       );
 
       const metricName = metric.name ?? "";
@@ -389,6 +401,10 @@ export function MetricSearchInput({
 
       setIsExpressionDirty(true);
       onAddMetric(metric);
+      setLocalMetricNames((prev) => ({
+        ...prev,
+        [createSourceId(metric.id, metric.sourceType)]: metric.name,
+      }));
 
       setCurrentWord("");
       setIsOpen(false);
@@ -501,7 +517,7 @@ export function MetricSearchInput({
     const { word, start: wordStart } = getWordAtCursor(
       text,
       cursorPos,
-      metricEntriesRef.current,
+      metricNamesRef.current,
     );
     // Update the anchor position so the dropdown is correctly placed
     const coords = view.coordsAtPos(wordStart);
@@ -532,7 +548,7 @@ export function MetricSearchInput({
     // that would otherwise be silently dropped.
     const invalidRanges = findInvalidRanges(
       editTextRef.current,
-      metricEntriesRef.current,
+      metricNamesRef.current,
     );
     if (invalidRanges.length > 0) {
       setValidationError(invalidRanges[0].message);
@@ -541,7 +557,7 @@ export function MetricSearchInput({
 
     const newEntities = parseFullText(
       editTextRef.current,
-      metricEntriesRef.current,
+      metricNamesRef.current,
     );
     // Validate each expression entry
     for (const entry of newEntities) {
@@ -566,7 +582,7 @@ export function MetricSearchInput({
     }
     const ranges =
       validationError !== null
-        ? findInvalidRanges(editTextRef.current, metricEntriesRef.current)
+        ? findInvalidRanges(editTextRef.current, metricNamesRef.current)
         : [];
     view.dispatch({ effects: setErrorDecoration.of(ranges) });
   }, [validationError]);
@@ -577,8 +593,8 @@ export function MetricSearchInput({
     if (!view || !isFocused) {
       return;
     }
-    view.dispatch({ effects: setMetricEntries.of(metricEntries) });
-  }, [metricEntries, isFocused]);
+    view.dispatch({ effects: setMetricNames.of(metricNames) });
+  }, [metricNames, isFocused]);
 
   // CodeMirror extensions for the formula editor.
   // basicSetup is disabled, so we add history() explicitly for undo/redo.
@@ -690,7 +706,7 @@ export function MetricSearchInput({
                   <span key={`${entry.id}-${entryIndex}`}>
                     <MetricExpressionPill
                       expressionEntry={entry}
-                      metricEntries={metricEntries}
+                      metricNames={metricNames}
                       colors={expressionColors}
                       onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
