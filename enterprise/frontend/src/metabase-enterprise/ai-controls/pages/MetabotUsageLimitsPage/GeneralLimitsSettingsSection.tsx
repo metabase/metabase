@@ -3,22 +3,21 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import {
-  SegmentedControl,
-  type SegmentedControlItem,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
+import { SegmentedControl, Stack, Text, TextInput } from "metabase/ui";
 import type { MetabotLimitPeriod, MetabotLimitType } from "metabase-types/api";
 
 import S from "./GeneralLimitsSettingsSection.module.css";
-import { useAdminSettingWithDebouncedInput } from "./hooks/useAdminSettingWithDebouncedInput";
-import { useInstanceLimitDebouncedInput } from "./hooks/useInstanceLimitDebouncedInput";
-import { sanitizeUsageLimitValue } from "./utils";
-
-type LimitTypeOption = SegmentedControlItem<MetabotLimitType>;
-type PeriodOption = SegmentedControlItem<MetabotLimitPeriod>;
+import {
+  useAdminSettingWithDebouncedInput,
+  useInstanceLimitDebouncedInput,
+} from "./hooks";
+import {
+  getInstanceLimitInputLabel,
+  getQuotaMessageInputDescription,
+  limitTypeOptions,
+  resetPeriodOptions,
+  sanitizeUsageLimitValue,
+} from "./utils";
 
 export function GeneralLimitsSettingsSection() {
   const { instanceLimit, handleInstanceLimitInputChange } =
@@ -110,75 +109,4 @@ export function GeneralLimitsSettingsSection() {
       </Stack>
     </SettingsSection>
   );
-}
-
-const limitTypeOptions: LimitTypeOption[] = [
-  {
-    value: "tokens",
-    get label() {
-      return t`By token usage`;
-    },
-  },
-  {
-    value: "messages",
-    get label() {
-      return t`By message count`;
-    },
-  },
-];
-
-const resetPeriodOptions: PeriodOption[] = [
-  {
-    value: "daily",
-    get label() {
-      return t`Daily`;
-    },
-  },
-  {
-    value: "weekly",
-    get label() {
-      return t`Weekly`;
-    },
-  },
-  {
-    value: "monthly",
-    get label() {
-      return t`Monthly`;
-    },
-  },
-];
-
-function getInstanceLimitInputLabel(
-  limitType: MetabotLimitType = "tokens",
-  limitPeriod: MetabotLimitPeriod = "monthly",
-) {
-  const instanceLimitLabelMap: Record<
-    MetabotLimitType,
-    Record<MetabotLimitPeriod, string>
-  > = {
-    tokens: {
-      daily: t`Total daily instance limit (millions of tokens)`,
-      weekly: t`Total weekly instance limit (millions of tokens)`,
-      monthly: t`Total monthly instance limit (millions of tokens)`,
-    },
-    messages: {
-      daily: t`Total daily instance limit (message count)`,
-      weekly: t`Total weekly instance limit (message count)`,
-      monthly: t`Total monthly instance limit (message count)`,
-    },
-  };
-
-  return instanceLimitLabelMap[limitType][limitPeriod];
-}
-
-function getQuotaMessageInputDescription(
-  limitPeriod: MetabotLimitPeriod = "monthly",
-) {
-  const messageDescriptionMap: Record<MetabotLimitPeriod, string> = {
-    daily: t`The message shown to users when they reach their daily quota.`,
-    weekly: t`The message shown to users when they reach their weekly quota.`,
-    monthly: t`The message shown to users when they reach their monthly quota.`,
-  };
-
-  return messageDescriptionMap[limitPeriod];
 }

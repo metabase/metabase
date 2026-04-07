@@ -7,28 +7,19 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Alert, Box, Icon, Stack, Text, TextInput } from "metabase/ui";
 import { useUpdateAIControlsTenantLimitMutation } from "metabase-enterprise/api";
-import type {
-  MetabotLimitPeriod,
-  MetabotLimitType,
-  MetabotTenantLimit,
-  Tenant,
-} from "metabase-types/api";
+import type { Tenant } from "metabase-types/api";
 
-import { SAVE_DEBOUNCE_MS, sanitizeUsageLimitValue } from "../utils";
+import S from "../GroupLimitsTab/GroupLimitsTab.module.css";
 
-import S from "./GroupLimitsSettingsSection.module.css";
-
-type SpecificTenantsTabProps = {
-  hasTenantsError: boolean;
-  instanceLimit: number | null;
-  isLoading: boolean;
-  limitPeriod: MetabotLimitPeriod;
-  limitType: MetabotLimitType;
-  tenantLimits: MetabotTenantLimit[];
-  tenants: Tenant[];
-};
-
-type TenantLimitsMap = Record<number, number | null>;
+import {
+  SAVE_DEBOUNCE_MS,
+  type SpecificTenantsTabProps,
+  type TenantLimitsMap,
+  getColumnName,
+  getDescription,
+  getInputLabel,
+  sanitizeUsageLimitValue,
+} from "./utils";
 
 export function TenantLimitsTab(props: SpecificTenantsTabProps) {
   const {
@@ -174,66 +165,4 @@ export function TenantLimitsTab(props: SpecificTenantsTabProps) {
       </LoadingAndErrorWrapper>
     </Stack>
   );
-}
-
-function getInputLabel(
-  tenantName: string,
-  limitType: MetabotLimitType,
-  limitPeriod: MetabotLimitPeriod,
-): string {
-  const inputLabelMap: Record<
-    MetabotLimitType,
-    Record<MetabotLimitPeriod, string>
-  > = {
-    tokens: {
-      daily: c("{0} is the tenant name")
-        .t`Max total daily tokens for ${tenantName} (millions)`,
-      weekly: c("{0} is the tenant name")
-        .t`Max total weekly tokens for ${tenantName} (millions)`,
-      monthly: c("{0} is the tenant name")
-        .t`Max total monthly tokens for ${tenantName} (millions)`,
-    },
-    messages: {
-      daily: c("{0} is the tenant name")
-        .t`Max total daily messages for ${tenantName}`,
-      weekly: c("{0} is the tenant name")
-        .t`Max total weekly messages for ${tenantName}`,
-      monthly: c("{0} is the tenant name")
-        .t`Max total monthly messages for ${tenantName}`,
-    },
-  };
-
-  return inputLabelMap[limitType][limitPeriod];
-}
-
-function getColumnName(
-  limitType: MetabotLimitType,
-  limitPeriod: MetabotLimitPeriod,
-) {
-  const columnNameMap: Record<
-    MetabotLimitType,
-    Record<MetabotLimitPeriod, string>
-  > = {
-    tokens: {
-      daily: t`Max total daily token usage (millions)`,
-      weekly: t`Max total weekly token usage (millions)`,
-      monthly: t`Max total monthly token usage (millions)`,
-    },
-    messages: {
-      daily: t`Max total daily messages`,
-      weekly: t`Max total weekly messages`,
-      monthly: t`Max total monthly messages`,
-    },
-  };
-
-  return columnNameMap[limitType][limitPeriod];
-}
-
-function getDescription(limitType: MetabotLimitType) {
-  const descriptionMap: Record<MetabotLimitType, string> = {
-    tokens: t`Here you can set total token usage limits for specific tenants.`,
-    messages: t`Here you can set total message count limits for specific tenants.`,
-  };
-
-  return descriptionMap[limitType];
 }

@@ -9,14 +9,14 @@ import type {
   EnterpriseSettingValue,
 } from "metabase-types/api";
 
-import { SAVE_DEBOUNCE_MS } from "../utils";
+export const SAVE_DEBOUNCE_MS = 500;
 
 export function useAdminSettingWithDebouncedInput<T>(
   settingName: EnterpriseSettingKey,
   defaultValue: T | null = null,
 ) {
   const { value: settingValue, updateSetting } = useAdminSetting(settingName);
-  const [inputValue, setInputValue] = useState<T>();
+  const [inputValue, setInputValue] = useState<T>(settingValue as T);
   const { sendErrorToast } = useMetadataToasts();
 
   // Local input state initialization
