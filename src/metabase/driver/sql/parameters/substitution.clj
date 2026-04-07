@@ -331,7 +331,9 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod desugar-filter-clause :default [_driver filter-clause] (driver-api/desugar-filter-clause filter-clause))
+(defmethod desugar-filter-clause :default [_driver filter-clause]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (driver-api/desugar-filter-clause filter-clause))
 
 (defmulti wrap-value-literals-in-mbql
   "Helper to dispatch to `driver-api/wrap-value-literals-in-mbql` for `:sql`

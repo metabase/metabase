@@ -183,7 +183,7 @@
   (sql.qp/mbql-clause-with-opts driver :field
                                 (merge {:base-type                     (:base-type field)
                                         driver-api/qp.add.source-table (:table-id field)
-                                        ::compiling-field-filter?      true}
+                                        ::sql.params.substitution/compiling-field-filter?      true}
                                        other-opts)
                                 (:id field)))
 
