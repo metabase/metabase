@@ -10,8 +10,7 @@
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.malli.fn :as mu.fn])
+   [metabase.util :as u])
   (:import
    (clojure.lang ExceptionInfo)))
 

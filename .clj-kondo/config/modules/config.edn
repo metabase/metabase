@@ -450,6 +450,8 @@
           metabase.driver.sync
           metabase.driver.util}
    :uses #{driver-api
+           lib
+           query-processor
            util}}
 
   driver-api
