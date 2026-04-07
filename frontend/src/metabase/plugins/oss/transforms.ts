@@ -74,9 +74,9 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
   getPythonTransformsRoutes: () => null,
   getInspectorRoutes: () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const {
       getDefaultInspectorRoutes,
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
     } = require("metabase/transforms/pages/TransformInspectorUpsellPage/routes");
     return getDefaultInspectorRoutes();
   },
