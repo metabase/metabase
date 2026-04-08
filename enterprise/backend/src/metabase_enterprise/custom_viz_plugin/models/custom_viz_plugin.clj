@@ -50,6 +50,11 @@
                                         (constantly ::serdes/skip))
                               :import identity}}})
 
+(defmethod serdes/generate-path "CustomVizPlugin" [_ entity]
+  [{:model "CustomVizPlugin"
+    :id    (:identifier entity)
+    :label (:identifier entity)}])
+
 (defmethod serdes/hash-fields :model/CustomVizPlugin
   [_model]
   [:identifier])
