@@ -13,7 +13,6 @@ export function applyDefaultVisualizationProps(
 ) {
   Object.assign(Component, {
     settings: vizDef.settings ?? {},
-    isSensible: vizDef.isSensible,
     checkRenderable: vizDef.checkRenderable,
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
