@@ -24,31 +24,6 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest basic-deps-test
-  (let [ordering {1 #{2 3}
-                  2 #{3 4}
-                  3 #{}
-                  4 #{5}
-                  5 #{}
-                  6 #{7 8}
-                  7 #{}
-                  8 #{}}]
-    (is (= #{1 2 3 4 5}
-           (#'jobs/get-deps ordering [1])))
-    (is (= #{1 2 3 4 5 6 7 8}
-           (#'jobs/get-deps ordering [1 6])))
-    (is (= #{2 3 4 5 6 7 8}
-           (#'jobs/get-deps ordering [2 6])))
-    (is (= #{1 2 3 4 5}
-           (#'jobs/get-deps ordering [1 2 3])))))
-
-(deftest cycle-deps-test
-  (let [ordering {1 #{2}
-                  2 #{3}
-                  3 #{1}}]
-    (is (= #{1 2 3}
-           (#'jobs/get-deps ordering [1])))))
-
 (deftest job-transform-ids-test
   (testing "single tag, single transform"
     (mt/with-temp [:model/TransformTag tag {:name "tag-a"}

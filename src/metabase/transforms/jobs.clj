@@ -12,7 +12,6 @@
    [metabase.revisions.core :as revisions]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
-   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
@@ -24,16 +23,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- get-deps [ordering transform-ids]
-  (loop [found                                 #{}
-         [current-transform & more-transforms] transform-ids]
-    (if current-transform
-      (recur (conj found current-transform)
-             (if (found current-transform)
-               more-transforms
-               (into more-transforms (get ordering current-transform))))
-      found)))
 
 (defn- next-transform [ordering transforms-by-id complete]
   (-> (transforms-base.ordering/available-transforms ordering #{} complete)
@@ -55,39 +44,28 @@
 (defn- get-plan [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
     (let [all-transforms   (t2/select :model/Transform)
-          ;; Scope the ordering computation to transforms on the same target databases as the ones
-          ;; we're being asked to run. Dependencies don't cross database boundaries, so this is
-          ;; semantically equivalent to computing the global ordering for relevant databases.
-          ;; Importantly, this prevents `table-dependencies` from being called on unrelated
-          ;; transforms — e.g. a zombie transform on a routing-enabled database which would throw
-          ;; during query preprocessing and take down the whole scheduler.
-          initial-db-ids   (into #{}
-                                 (keep (fn [{:keys [id] :as t}]
-                                         (when (contains? transform-ids id)
-                                           (transforms-base.i/target-db-id t))))
-                                 all-transforms)
-          relevant-transforms (filter (fn [t]
-                                        (contains? initial-db-ids
-                                                   (transforms-base.i/target-db-id t)))
-                                      all-transforms)
-          global-ordering  (transforms-base.ordering/transform-ordering relevant-transforms)
-          relevant-ids     (get-deps global-ordering transform-ids)
+          ;; Walk only the dependency closure of the transforms we're asked to run.
+          ;; `table-dependencies` (and the QP preprocessing it triggers) is therefore called
+          ;; only on transforms in that closure — never on unrelated transforms elsewhere in
+          ;; the system. This is what prevents a single broken transform (e.g. one on a
+          ;; routing-enabled database) from poisoning the scheduler when no job has asked for it.
+          ordering         (transforms-base.ordering/transform-ordering transform-ids all-transforms)
           transforms-by-id (into {}
                                  (keep (fn [{:keys [id] :as transform}]
-                                         (when (relevant-ids id)
+                                         (when (contains? ordering id)
                                            [id transform])))
-                                 relevant-transforms)
-          ordering         (sorted-ordering (select-keys global-ordering relevant-ids) transforms-by-id)]
-      (when-let [cycle (transforms-base.ordering/find-cycle ordering)]
-        (let [id->name (into {} (map (juxt :id :name)) relevant-transforms)]
+                                 all-transforms)
+          sorted-ord       (sorted-ordering ordering transforms-by-id)]
+      (when-let [cycle (transforms-base.ordering/find-cycle sorted-ord)]
+        (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
           (throw (ex-info (str "Cyclic transform definitions detected: "
                                (str/join " → " (map id->name cycle)))
                           {:cycle cycle}))))
       (loop [complete (ordered-set/ordered-set)]
-        (if-let [current-transform (next-transform ordering transforms-by-id complete)]
+        (if-let [current-transform (next-transform sorted-ord transforms-by-id complete)]
           (recur (conj complete (:id current-transform)))
           {:order (map transforms-by-id complete)
-           :deps global-ordering})))))
+           :deps ordering})))))
 
 (defn- block-until-not-already-running [transform-id]
   (when-let [active-run (transform-run/running-run-for-transform-id transform-id)]
