@@ -2014,7 +2014,8 @@
   source-swap
   {:team "Graphy"
    :api  #{metabase.source-swap.core
-           metabase.source-swap.schema}
+           metabase.source-swap.schema
+           metabase.source-swap.util}
    :uses #{driver
            lib
            sql-tools
