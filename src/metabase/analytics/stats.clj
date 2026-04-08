@@ -851,7 +851,9 @@
     :enabled   (whitelabeling-in-use?)}
    {:name      :custom-viz
     :available (premium-features/enable-custom-viz?)
-    :enabled   (t2/exists? :model/CustomVizPlugin)}
+    :enabled   (and config/ee-available?
+                    (premium-features/enable-custom-viz?)
+                    (t2/exists? :model/CustomVizPlugin))}
    {:name      :csv-upload
     :available (csv-upload-available?)
     :enabled   (t2/exists? :model/Database :uploads_enabled true)}

@@ -12,9 +12,11 @@
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
+   [metabase.config.core :as config]
    [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
@@ -404,7 +406,9 @@
    can resolve `getAssetUrl` calls without HTTP."
   [card]
   (let [display-type (some-> card :display name)]
-    (when (and display-type (str/starts-with? display-type "custom:"))
+    (when (and config/ee-available?
+               (premium-features/enable-custom-viz?)
+               display-type (str/starts-with? display-type "custom:"))
       (let [identifier (subs display-type (count "custom:"))
             plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
         (when-let [content (some-> plugin

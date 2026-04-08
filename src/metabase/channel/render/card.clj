@@ -8,8 +8,10 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
+   [metabase.config.core :as config]
    [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -110,7 +112,9 @@
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
 
-        (and (str/starts-with? (name display-type) "custom:")
+        (and config/ee-available?
+             (premium-features/enable-custom-viz?)
+             (str/starts-with? (name display-type) "custom:")
              (let [identifier (subs (name display-type) (count "custom:"))
                    plugin-id     (t2/select-one-pk :model/CustomVizPlugin :identifier identifier :enabled true)]
                (some-> plugin-id custom-viz-plugin/resolve-bundle :content)))
