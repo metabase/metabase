@@ -107,33 +107,44 @@ export type CreateDefineSetting<
   W extends WidgetName | ComponentType<any>,
   Key extends keyof CustomVisualizationSettings,
 >(settingDefinition: {
-  /** Unique key that identifies this setting. Must match the key used in your
-   *  `CustomVisualizationSettings` type and in the `settings` map passed to
-   *  `createCustomVisualization`. */
+  /**
+   * Unique key that identifies this setting. Must match the key used in your
+   * `CustomVisualizationSettings` type and in the `settings` map passed to
+   * `createCustomVisualization`.
+   */
   id: Key;
 
-  /** Top-level tab that this setting appears under in the settings sidebar
-   *  (e.g. `"Data"`, `"Display"`, `"Axes"`). Settings with the same
-   *  `section` value are grouped under the same tab. Omit to place the
-   *  setting outside of any section. */
+  /**
+   * Top-level tab that this setting appears under in the settings sidebar
+   * (e.g. `"Data"`, `"Display"`, `"Axes"`). Settings with the same
+   * `section` value are grouped under the same tab. Omit to place the
+   * setting outside of any section.
+   */
   section?: string;
 
   /** Human-readable label rendered above the widget in the sidebar. */
   title?: string;
 
-  /** Sub-heading within a `section` used to cluster related settings
-   *  visually (e.g. `"X-axis"`, `"Y-axis"`). Settings sharing the same
-   *  `group` within a section are rendered under a common sub-heading. */
+  /**
+   * Sub-heading within a `section` used to cluster related settings
+   * visually (e.g. `"X-axis"`, `"Y-axis"`). Settings sharing the same
+   * `group` within a section are rendered under a common sub-heading.
+   */
   group?: string;
 
-  /** Controls the display order of settings within a section/group.
-   *  Lower numbers appear first. Settings without an `index` are ordered
-   *  by declaration order as a fallback. */
+  /**
+   * Controls the display order of settings. Within a `section`, lower `index`
+   * values appear first. When settings also share the same `group`, `index`
+   * controls order within that group. Settings without an `index` fall back
+   * to declaration order.
+   */
   index?: number;
 
-  /** When `true`, the widget is rendered on the same line as its `title`
-   *  label rather than below it. Best suited for compact widgets like
-   *  `"toggle"`. */
+  /**
+   * When `true`, the widget is rendered on the same line as its `title`
+   * label rather than below it. Best suited for compact widgets like
+   * `"toggle"`.
+   */
   inline?: boolean;
 
   /**
@@ -163,6 +174,7 @@ export type CreateDefineSetting<
    * this setting tries to read it.
    */
   readDependencies?: string[];
+
   /**
    * Setting IDs whose current computed values are persisted alongside this
    * setting whenever it changes.
@@ -173,6 +185,7 @@ export type CreateDefineSetting<
    * context and lose user intent.
    */
   writeDependencies?: string[];
+
   /**
    * Setting IDs that are reset to `null` whenever this setting changes.
    *
@@ -202,13 +215,14 @@ export type CreateDefineSetting<
    * underlying query changes — for example, when a saved column reference no
    * longer exists in the result set.
    *
-   * @param series  - The current query result (rows + column metadata).
+   * @param series - The current query result (rows + column metadata).
    * @param settings - All settings resolved so far, respecting
    *   `readDependencies` ordering.
    * @returns `true` to keep the stored value, `false` to fall back to
    *   `getDefault`.
    */
   isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
+
   /**
    * Computes the default value for this setting when no stored value exists,
    * or when `isValid` returns `false` for the stored value.
@@ -218,17 +232,17 @@ export type CreateDefineSetting<
    * in which case it is written into the card's stored `visualization_settings`
    * on the first query run.
    *
-   * @param series   - The current query result (rows + column metadata).
+   * @param series - The current query result (rows + column metadata).
    * @param settings - All settings resolved so far, respecting
    *   `readDependencies` ordering. Dependencies listed in `readDependencies`
    *   are guaranteed to be resolved before this is called.
-   * @returns The default value for this setting, typed as
-   *   `CustomVisualizationSettings[Key]`.
+   * @returns The default value for this setting.
    */
   getDefault?: (
     series: Series,
     settings: CustomVisualizationSettings,
   ) => CustomVisualizationSettings[Key];
+
   /**
    * Returns additional props passed to the setting's `widget` component,
    * beyond the base props the engine always provides.
@@ -243,7 +257,7 @@ export type CreateDefineSetting<
    * React component. Omit `getProps` entirely when the widget has no
    * configurable props (`ToggleProps` is `never`).
    *
-   * @param series      - The current query result (rows + column metadata).
+   * @param series - The current query result (rows + column metadata).
    * @param vizSettings - All settings resolved so far, respecting
    *   `readDependencies` ordering.
    * @returns Props object merged into the widget component's props.
@@ -254,6 +268,7 @@ export type CreateDefineSetting<
         object: Series,
         vizSettings: CustomVisualizationSettings,
       ) => PropsFromWidget<W>;
+
   /**
    * Computes a derived value for this setting on every render, overriding both
    * the stored value and the result of `getDefault`.
@@ -263,11 +278,10 @@ export type CreateDefineSetting<
    * value makes no sense. Unlike `getDefault`, `getValue` is always called —
    * the stored value is never used.
    *
-   * @param series   - The current query result (rows + column metadata).
+   * @param series - The current query result (rows + column metadata).
    * @param settings - All settings resolved so far, respecting
    *   `readDependencies` ordering.
-   * @returns The computed value for this setting, typed as
-   *   `CustomVisualizationSettings[Key]`.
+   * @returns The computed value for this setting.
    *
    * @example
    * // Always reflect the number of series currently in the result
