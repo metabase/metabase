@@ -1179,25 +1179,25 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-               metabase.metabot.core
-               metabase.metabot.init
-               metabase.metabot.self
-               metabase.metabot.settings}
+              metabase.metabot.core
+              metabase.metabot.init
+              metabase.metabot.self
+              metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
               slackbot}
-    :uses    #{activity-feed
-               analytics
-               api
-               api-scope
-               app-db
-               audit-app
-               channel
-               collections
-               config
-               documents
-               driver
-               legacy-mbql
+   :uses    #{activity-feed
+              analytics
+              api
+              api-scope
+              app-db
+              audit-app
+              channel
+              collections
+              config
+              documents
+              driver
+              legacy-mbql
               lib
               lib-be
               llm
@@ -2142,10 +2142,10 @@
            premium-features
            search
            util}
-  :model-imports #{:model/AiUsageLog
-                   :model/Card
-                   :model/Dashboard
-                   :model/SecurityAdvisory}}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
+                    :model/Dashboard
+                    :model/SecurityAdvisory}}
 
   tiles
   {:team "UX West"
