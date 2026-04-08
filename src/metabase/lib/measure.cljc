@@ -88,8 +88,10 @@
      opts-to-merge)))
 
 (defmethod lib.metadata.calculation/column-name-method :measure
-  [_query _stage-number _clause]
-  "measure")
+  [query stage-number [_tag _opts measure-id-or-name]]
+  (or (when-let [measure-metadata (resolve-measure query measure-id-or-name)]
+        (lib.metadata.calculation/column-name query stage-number measure-metadata))
+      "measure"))
 
 (defmethod lib.metadata.calculation/metadata-method :measure
   [query _stage-number [_ opts measure-id]]
