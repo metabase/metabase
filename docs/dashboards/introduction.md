@@ -175,7 +175,7 @@ You can add multiple tabs to a dashboard to keep your cards organized.
 
 ### Duplicate a tab
 
-When in dashboard edit mode, you can duplicate a tab and all the its cards by clicking on the down arrow next to the tab that you want to copy.
+When in dashboard edit mode, you can duplicate a tab and all its cards by clicking on the down arrow next to the tab that you want to copy.
 
 ### Moving cards between tabs
 
