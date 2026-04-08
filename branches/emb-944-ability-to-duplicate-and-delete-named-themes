@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-956-integration-branch-for-named-theme-editor-for-embedding",
     "hash": "0d0cc7450bc92e251673df10228c52211e1bdfa6"
+  },
+  "upstream": {
+    "branch": "emb-944-ability-to-duplicate-and-delete-named-themes"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 72151,
+        "gqlID": "PR_kwDOAczgH87QvcSm"
+      }
+    }
   }
 }
