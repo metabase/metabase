@@ -27,9 +27,9 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- comparable-metadata
+(mu/defn- comparable-metadata
   "Smooth out any unimportant differences in metadata so we can do an easy equality check."
-  [metadata]
+  [metadata :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
   (letfn [(remove-underscore-nil-keys
             ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
             ;; dash. Remove the nil value
@@ -68,12 +68,12 @@
       (when (and actual-metadata
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
+                 (not= actual-metadata :none)
                  ;; Don't persist result_metadata for parameterized queries with non-default values.
                  ;; MBQL queries with any parameters are skipped because filters change fingerprints.
                  ;; Native queries are only skipped when parameter values differ from template tag defaults.
                  ;; See QUE2-502 for details.
                  (not (:qp/skip-result-metadata-persistence query))
-                 (not= actual-metadata :none)
                  (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database query))
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.

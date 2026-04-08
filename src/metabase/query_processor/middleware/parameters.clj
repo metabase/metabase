@@ -84,52 +84,41 @@
    query
    parameters))
 
-(defn- param-template-tag-name
-  "Extract the template tag name or ID from a parameter's `:target`.
-   Targets look like `[:variable [:template-tag \"name\"]]` or `[:dimension [:template-tag {:id \"...\"}]]`."
-  [param]
-  (when-let [[_ [tag-type tag-ref]] (:target param)]
-    (when (= tag-type :template-tag)
-      tag-ref)))
-
-(defn- find-tag-for-param
+(defn- tag-for-param
   "Find the template tag in `template-tags` that matches `param`'s target."
   [template-tags param]
-  (when-let [tag-ref (param-template-tag-name param)]
-    (if (map? tag-ref)
-      ;; ID-based reference — find the tag whose :id matches
-      (some (fn [[_ tag]]
-              (when (= (:id tag) (:id tag-ref))
-                tag))
-            template-tags)
-      ;; Name-based reference
-      (get template-tags (name tag-ref)))))
+  (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
+    (or (get template-tags name-or-id) ; handle name
+        (some (fn [[_ tag]] ; handle id (defensive, may be unnecessary)
+                (when (= (:id tag) name-or-id)
+                  tag))
+              template-tags))))
 
 (defn- stage-has-non-default-params?
-  "Check whether a stage has parameters with non-default values.
-   For MBQL stages, any parameters means non-default (MBQL cards don't need persisted result_metadata).
-   For native stages, compares each parameter's value against its template tag's default."
+  "True if a stage has parameters with non-default values.
+   For MBQL stages, any parameters count as non-default.
+   For native stages, only parameters whose value differs from the template tag default."
   [stage]
   (when-let [params (seq (:parameters stage))]
     (if-not (lib/native-stage? stage)
-      ;; MBQL: any parameters → non-default
       true
       ;; Native: check if any parameter value differs from its template tag default
-      (let [template-tags (:template-tags stage)]
-        (boolean
-         (some (fn [param]
-                 (when-let [value (:value param)]
-                   (let [tag     (find-tag-for-param template-tags param)
-                         default (:default tag)]
-                     (or (nil? default)
-                         (not= value default)))))
-               params))))))
+      (let [template-tags      (:template-tags stage)
+            non-default-param? (fn [param]
+                                 (when-let [value (:value param)]
+                                   (let [tag     (tag-for-param template-tags param)
+                                         default (:default tag)]
+                                     (or (nil? default)
+                                         (not= value default)))))]
+        (some non-default-param? params)))))
 
-(defn- should-skip-result-metadata-persistence?
-  "After parameters have been distributed to stages, determine whether result_metadata persistence
-   should be skipped. Returns true if any stage has parameters with non-default values."
+(defn- determine-result-metadata-persistence
+  "Sets :qp/skip-result-metadata-persistence to true/false."
   [query]
-  (boolean (some stage-has-non-default-params? (:stages query))))
+  (->> (:stages query)
+       (some stage-has-non-default-params?)
+       boolean
+       (assoc query :qp/skip-result-metadata-persistence)))
 
 (mu/defn- move-top-level-params-to-stage :- ::lib.schema/query
   "Move any top-level parameters to the stage they affect."
@@ -137,23 +126,19 @@
   ;; TODO (Cam 8/8/25) -- as far as I can tell the only reason why we keep parameters around is that `:user-parameters`
   ;; is used in one single place, by [[metabase.driver.redshift/field->parameter-value]] for some nefarious purposes.
   ;; Seems icky to have a driver be digging into the query like that. Maybe we can fix that usage and remove this.
-  (let [query (cond-> (set/rename-keys query {:parameters :user-parameters})
-                ;; TODO: Native models should be within scope of dashboard filters, by applying the filter on an
-                ;; outer stage. That doesn't work, so the logic below requires MBQL queries only to fix the
-                ;; regression. Native models don't actual get filtered even when linked to dashboard filters, but
-                ;; that's not a regression. This can be fixed properly once this middleware is powered by MLv2.
-                ;; See #40011.
-                (and (seq parameters)
-                     (:metadata/model-metadata info)
-                     (not (lib/native-stage? (lib/query-stage query -1))))
-                lib/append-stage
+  (cond-> (set/rename-keys query {:parameters :user-parameters})
+    ;; TODO: Native models should be within scope of dashboard filters, by applying the filter on an outer stage.
+    ;; That doesn't work, so the logic below requires MBQL queries only to fix the regression.
+    ;; Native models don't actual get filtered even when linked to dashboard filters, but that's not a regression.
+    ;; This can be fixed properly once this middleware is powered by MLv2. See #40011.
+    (and (seq parameters)
+         (:metadata/model-metadata info)
+         (not (lib/native-stage? (lib/query-stage query -1))))
+    lib/append-stage
 
-                (seq parameters)
-                (move-top-level-params-to-stage* parameters))]
-    (cond-> query
-      (seq parameters)
-      (assoc :qp/skip-result-metadata-persistence
-             (should-skip-result-metadata-persistence? query)))))
+    (seq parameters)
+    (-> (move-top-level-params-to-stage* parameters)
+        determine-result-metadata-persistence)))
 
 (mu/defn- expand-parameters :- ::lib.schema/query
   "If any parameters were supplied then substitute them into the query."
