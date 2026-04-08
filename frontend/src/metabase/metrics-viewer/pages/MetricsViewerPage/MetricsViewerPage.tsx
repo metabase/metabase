@@ -31,17 +31,18 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     activeTab,
     activeTabId,
     initialLoadComplete,
-    resultsByEntityIndex,
-    errorsByDefinitionId,
-    modifiedDefinitionsByIndex,
+    queriesAreLoading,
+    queriesError,
+    modifiedDefinitionsBySlotIndex,
+    metricSlots,
+    series,
+    cardIdToEntityIndex,
+    activeBreakoutColors,
     sourceColors,
-    breakoutValuesByEntityIndex,
     selectedMetrics,
     sourceOrder,
     sourceDataById,
     availableDimensions,
-    isExecuting,
-    expressionItems,
     addMetric,
     swapMetric,
     removeMetric,
@@ -118,12 +119,15 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   definitions={definitions}
                   formulaEntities={formulaEntities}
                   tab={activeTab}
-                  resultsByEntityIndex={resultsByEntityIndex}
-                  errorsByDefinitionId={errorsByDefinitionId}
-                  modifiedDefinitionsByIndex={modifiedDefinitionsByIndex}
+                  queriesAreLoading={queriesAreLoading}
+                  queriesError={queriesError}
+                  modifiedDefinitionsBySlotIndex={
+                    modifiedDefinitionsBySlotIndex
+                  }
+                  metricSlots={metricSlots}
+                  series={series}
+                  cardIdToEntityIndex={cardIdToEntityIndex}
                   sourceColors={sourceColors}
-                  isExecuting={isExecuting}
-                  expressionItems={expressionItems}
                   onTabUpdate={updateActiveTab}
                   onDimensionChange={(slotIndex, dim) =>
                     changeTabDimension(activeTab.id, slotIndex, dim)
@@ -139,8 +143,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
             <BreakoutLegend
               formulaEntities={formulaEntities}
               definitions={definitions}
-              breakoutValuesByEntityIndex={breakoutValuesByEntityIndex}
-              sourceColors={sourceColors}
+              activeBreakoutColors={activeBreakoutColors}
             />
           </Flex>
         </Stack>

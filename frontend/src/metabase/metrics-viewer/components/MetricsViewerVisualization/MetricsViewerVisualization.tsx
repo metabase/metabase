@@ -17,8 +17,7 @@ import type { DimensionMetadata } from "metabase-lib/metric";
 import type { CardId, SingleSeries } from "metabase-types/api";
 
 import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
+  MetricsViewerFormulaEntity,
   MetricsViewerTabState,
 } from "../../types/viewer-state";
 
@@ -31,11 +30,11 @@ type MetricsViewerVisualizationProps = {
   onDimensionRemove?: (slotIndex: number) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  formulaEntities: MetricsViewerFormulaEntity[];
   metricSlots: MetricSlot[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, number>;
+  cardIdToEntityIndex: Record<CardId, number>;
   interactive?: boolean;
 };
 
@@ -46,11 +45,11 @@ export function MetricsViewerVisualization({
   onDimensionRemove,
   onBrush,
   className,
-  definitions,
+  formulaEntities,
   metricSlots,
   tab,
   onTabUpdate,
-  cardIdToDimensionId,
+  cardIdToEntityIndex,
   interactive = true,
 }: MetricsViewerVisualizationProps) {
   const { ref, width } = useElementSize();
@@ -60,16 +59,16 @@ export function MetricsViewerVisualization({
     () =>
       interactive
         ? new MetricsViewerClickActionsMode({
-            definitions,
+            formulaEntities,
             metricSlots,
             tab,
             onTabUpdate,
-            cardIdToDimensionId,
+            cardIdToEntityIndex,
           })
         : undefined,
     [
-      cardIdToDimensionId,
-      definitions,
+      cardIdToEntityIndex,
+      formulaEntities,
       metricSlots,
       interactive,
       onTabUpdate,

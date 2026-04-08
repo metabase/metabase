@@ -3,7 +3,6 @@ import type { MetricDefinition } from "metabase-lib/metric";
 import type {
   CardDisplayType,
   ConcreteTableId,
-  Dataset,
   DimensionId,
   MathOperator,
   TemporalUnit,
@@ -16,7 +15,7 @@ import type { SerializedDefinitionInfo } from "../utils/url-serialization";
 
 export type MetricsViewerDisplayType = Extract<
   CardDisplayType,
-  "line" | "area" | "bar" | "map" | "row" | "pie" | "scatter" | "scalar"
+  "line" | "area" | "bar" | "map" | "scatter" | "scalar"
 >;
 
 export type MetricSourceId = `metric:${number}` | `measure:${number}`;
@@ -135,9 +134,20 @@ export function getInitialMetricsViewerPageState(): MetricsViewerPageState {
 // ── Color mapping ──
 
 /**
- * Maps each formula-entity index to its assigned colour(s).
- * Keyed by position in `formulaEntities[]` so that two instances of the same
- * metric get independent colour assignments.
+ * A map of breakout display values to colors.
+ */
+export type BreakoutColorMap = Map<string, string>;
+
+/**
+ * Values are either BreakoutColorMap or a single color for non-breakout sources.
+ */
+export type SourceBreakoutColorMap = Record<
+  number,
+  BreakoutColorMap | string | undefined
+>;
+
+/**
+ * For consumers that expect an array of colors and don't care about breakout values.
  */
 export type SourceColorMap = Record<number, string[]>;
 
@@ -149,18 +159,4 @@ export type SelectedMetric = {
   sourceType: "metric" | "measure";
   tableId?: ConcreteTableId;
   isLoading?: boolean;
-};
-
-/**
- * One entry per expression definition in the formulaEntities list.
- */
-export type ExpressionItemResult = {
-  /** The expression definition entry. */
-  entry: ExpressionDefinitionEntry;
-  /** Per-source modified definitions used by this expression. */
-  modifiedDefinitions: Record<number, MetricDefinition>;
-  result: Dataset | null;
-  isExecuting: boolean;
-  requestError: string | null; // error from http request
-  expressionError: string | null; // error building the expression
 };

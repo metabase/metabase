@@ -1,13 +1,12 @@
 import { useMemo } from "react";
 
 import { Box, Flex, Paper, Stack, Text, Title } from "metabase/ui";
-import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
-  SourceColorMap,
+  SourceBreakoutColorMap,
 } from "../../types/viewer-state";
 import { buildLegendGroups } from "../../utils/legend";
 
@@ -16,25 +15,17 @@ import S from "./BreakoutLegend.module.css";
 type BreakoutLegendProps = {
   formulaEntities: MetricsViewerFormulaEntity[];
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
-  sourceColors: SourceColorMap;
+  activeBreakoutColors: SourceBreakoutColorMap;
 };
 
 export function BreakoutLegend({
   formulaEntities,
   definitions,
-  breakoutValuesByEntityIndex,
-  sourceColors,
+  activeBreakoutColors,
 }: BreakoutLegendProps) {
   const groups = useMemo(
-    () =>
-      buildLegendGroups(
-        formulaEntities,
-        definitions,
-        breakoutValuesByEntityIndex,
-        sourceColors,
-      ),
-    [formulaEntities, definitions, breakoutValuesByEntityIndex, sourceColors],
+    () => buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    [formulaEntities, definitions, activeBreakoutColors],
   );
 
   if (groups.length === 0) {
