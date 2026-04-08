@@ -323,25 +323,31 @@
   "Request body for /v2/construct-query and /v2/query.
   An agent-lib structured program with `:source` and `:operations`. The top-level
   `:source` must reference a database entity (`table`, `card`, `dataset`, or
-  `metric`) — `context` and nested `program` sources are rejected at the HTTP
-  boundary because they require an in-process evaluation context."
-  [:and
-   agent-lib/program-schema
-   [:fn {:error/message "top-level program source must be one of: table, card, dataset, metric"}
-    (fn [program]
-      (contains? #{"table" "card" "dataset" "metric"}
-                 (get-in program [:source :type])))]])
+  `metric`); `context` and nested `program` sources are rejected at the HTTP
+  boundary by [[evaluate-program-for-execution]] because they require an
+  in-process evaluation context."
+  agent-lib/program-schema)
 
 (mr/def ::construct-query-response
   "Response containing a base64-encoded MBQL query for use with /v1/execute."
   [:map
    [:query ms/NonBlankString]])
 
+(def ^:private allowed-program-source-types
+  "Top-level program source types that the HTTP boundary accepts. `context` and
+  nested `program` sources require an in-process evaluation context and are
+  rejected here."
+  #{"table" "card" "dataset" "metric"})
+
 (defn- evaluate-program-for-execution
   "Resolve a program's source entity, evaluate the program via agent-lib, and return a
   plain MBQL 5 query map. The JSON round-trip strips lib metadata so the query can be
   serialized into a continuation token."
   [program]
+  (let [source-type (get-in program [:source :type])]
+    (api/check (contains? allowed-program-source-types source-type)
+               [400 (str "top-level program source must be one of: "
+                         (str/join ", " (sort allowed-program-source-types)))]))
   (let [source-entity (metabot-construct/program-source->source-entity (:source program))
         result        (metabot-construct/execute-program source-entity nil program)
         pmbql         (get-in result [:structured-output :query])]
