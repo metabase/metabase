@@ -69,7 +69,7 @@ type ExpressionItemConfig = {
   entry: ExpressionDefinitionEntry;
   request: { definition: JsMetricDefinition };
   modifiedDefinitions: {
-    [slotIndex: number]: MetricDefinition;
+    [tokenPosition: number]: MetricDefinition;
   };
 };
 
@@ -111,7 +111,7 @@ function buildArithmeticRequest(
   | {
       definition: JsMetricDefinition;
       modifiedDefinitions: {
-        [slotIndex: number]: MetricDefinition;
+        [tokenPosition: number]: MetricDefinition;
       };
     }
   | { error: string }
@@ -125,7 +125,7 @@ function buildArithmeticRequest(
   const projections: TypedProjection[] = [];
   const filters: InstanceFilter[] = [];
   const modifiedDefinitions: {
-    [slotIndex: number]: MetricDefinition;
+    [tokenPosition: number]: MetricDefinition;
   } = {};
 
   for (let i = 0; i < tokens.length; i++) {
@@ -150,7 +150,7 @@ function buildArithmeticRequest(
       return { error: t`No compatible dimensions` };
     }
 
-    modifiedDefinitions[slotIndex] = modifiedDefinition;
+    modifiedDefinitions[i] = modifiedDefinition;
 
     const uuid = `leaf-${i}`;
     const metricId = LibMetric.sourceMetricId(modifiedDefinition);
