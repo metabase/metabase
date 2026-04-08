@@ -18,17 +18,13 @@
    [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
    [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]])
 
-(api.macros/defendpoint :get "/" :- [:sequential
-                                     [:map
-                                      [:id          ms/PositiveInt]
-                                      [:entity_id ms/NonBlankString]
-                                      [:name        ms/NonBlankString]
-                                      [:created_at  (ms/InstanceOfClass java.time.temporal.Temporal)]
-                                      [:updated_at  (ms/InstanceOfClass java.time.temporal.Temporal)]]]
+(api.macros/defendpoint :get "/" :- [:sequential ::EmbeddingTheme]
   "Fetch a list of all embedding themes."
   []
+  ; settings field is used for theme card previews.
+  ; we can optimize this by only selecting the preview colors needed.
   (t2/select :model/EmbeddingTheme {:order-by [[:created_at :desc]]
-                                    :select [:id :entity_id :name :created_at :updated_at]}))
+                                    :select [:id :entity_id :name :settings :created_at :updated_at]}))
 
 (api.macros/defendpoint :get "/:id" :- ::EmbeddingTheme
   "Fetch a single embedding theme by ID."

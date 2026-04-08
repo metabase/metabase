@@ -53,7 +53,8 @@
                                :settings {:color {:brand "#00FF00"}}})
         (let [themes (mt/user-http-request :crowberto :get 200 "embed-theme")]
           (is (= 2 (count themes)))
-          (is (= #{:id :entity_id :name :created_at :updated_at}
+          ; settings is used for theme card previews
+          (is (= #{:id :entity_id :name :settings :created_at :updated_at}
                  (set (keys (first themes)))))
           (testing "themes are ordered by newest first"
             (is (= ["Theme 2" "Theme 1"]

@@ -9,10 +9,7 @@ import { idTag, invalidateTags, listTag } from "./tags";
 
 export const embeddingThemeApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listEmbeddingThemes: builder.query<
-      Omit<EmbeddingTheme, "settings">[],
-      void
-    >({
+    listEmbeddingThemes: builder.query<EmbeddingTheme[], void>({
       query: () => `/api/embed-theme`,
       providesTags: (themes) =>
         themes
