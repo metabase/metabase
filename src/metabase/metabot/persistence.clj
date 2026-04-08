@@ -160,7 +160,8 @@
                                                             (filter map?)
                                                             (map #(+ (:prompt %) (:completion %)))
                                                             (apply +))
-                                      :ai_proxied      (boolean ai-proxy?)}
+                                      :ai_proxied      (boolean ai-proxy?)
+                                      :data_version    2}
                                channel-id   (assoc :channel_id channel-id)
                                slack-msg-id (assoc :slack_msg_id slack-msg-id)
                                user-id      (assoc :user_id user-id)))))

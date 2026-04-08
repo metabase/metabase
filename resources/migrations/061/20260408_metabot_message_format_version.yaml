@@ -1,0 +1,17 @@
+## Add data_version to metabot_message
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-04-08T00:00:00
+      author: sloansparger
+      comment: Add data_version to metabot_message for explicit format tracking
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: data_version
+                  type: integer
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false

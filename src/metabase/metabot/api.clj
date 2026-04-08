@@ -119,7 +119,8 @@
                    :total_tokens    (->> (vals usage)
                                          (map #(+ (:prompt %) (:completion %)))
                                          (reduce + 0))
-                   :ai_proxied      (boolean ai-proxy?)}))))
+                   :ai_proxied      (boolean ai-proxy?)
+                   :data_version    2}))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
