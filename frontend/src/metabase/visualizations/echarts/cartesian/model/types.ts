@@ -36,6 +36,7 @@ export type DataKey =
 export type LegacySeriesSettingsObjectKey = {
   card: Partial<Card> & {
     _seriesKey?: VisualizationSettingKey;
+    _seriesName?: string;
   };
 };
 

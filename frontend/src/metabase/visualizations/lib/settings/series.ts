@@ -38,6 +38,14 @@ export function keyForSingleSeries(single: SingleSeries): string {
   return String(single.card.name);
 }
 
+export function nameForSingleSeries(single: SingleSeries): string {
+  if (isLegacySeriesCard(single.card)) {
+    return single.card._seriesName || String(single.card.name);
+  }
+
+  return String(single.card.name);
+}
+
 function hasSingleSeriesKey(single: SingleSeries): boolean {
   if (isLegacySeriesCard(single.card)) {
     return Boolean(single.card._seriesKey || single.card.name);
@@ -309,11 +317,14 @@ export function getColors(
 
   for (const s of series.filter(hasSingleSeriesKey)) {
     const key = keyForSingleSeries(s);
+    const name = nameForSingleSeries(s);
     const mappedValue = s.columnValuesMapping?.[key]?.[0];
 
     keys.push(key);
     defaultKeys.push(
-      typeof mappedValue === "string" ? mappedValue : mappedValue?.originalName,
+      (typeof mappedValue === "string"
+        ? mappedValue
+        : mappedValue?.originalName) ?? name,
     );
   }
 
