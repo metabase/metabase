@@ -5,7 +5,7 @@
         "vendor": "com.metabase",
         "name": "serialization",
         "format": "jsonschema",
-        "version": "1-0-1"
+        "version": "1-0-2"
     },
     "type": "object",
     "required": [
@@ -121,6 +121,13 @@
         },
         "secrets": {
             "description": "If database secrets were included in export",
+            "type": [
+                "boolean",
+                "null"
+            ]
+        },
+        "custom_viz_token": {
+            "description": "If custom visualization plugin access tokens were included in export",
             "type": [
                 "boolean",
                 "null"

@@ -11,23 +11,9 @@
   [_plugin]
   nil)
 
-(defenterprise get-bundle
-  "Get the cached JS bundle for a plugin. Returns {:content str :hash str} or nil.
-   OSS: always returns nil."
-  metabase-enterprise.custom-viz-plugin.core
-  [_plugin-id]
-  nil)
-
-(defenterprise get-asset
-  "Get a cached static asset for a plugin. Returns a byte array or nil.
-   OSS: always returns nil."
-  metabase-enterprise.custom-viz-plugin.core
-  [_plugin-id _asset-path]
-  nil)
-
 (defenterprise resolve-asset
-  "Resolve a static asset for a plugin, respecting dev bundle URL if set.
-   Returns a byte array or nil. OSS: always returns nil."
+  "Resolve a static asset for a plugin. Returns a byte array or nil.
+   OSS: always returns nil."
   metabase-enterprise.custom-viz-plugin.core
   [_plugin-id _asset-path]
   nil)

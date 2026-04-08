@@ -195,6 +195,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
@@ -612,12 +613,6 @@
    :model-exports #{:model/Comment}
    :model-imports #{:model/Document :model/User}}
 
-  custom-viz-plugin
-  {:team "Gadget"
-   :api  #{metabase.custom-viz-plugin.core}
-   :uses #{premium-features}
-   :friends #{enterprise/custom-viz-plugin}}
-
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
   ;; if EE/test code is available; however we can ignore them since they're not real usages.
   config
@@ -652,6 +647,12 @@
   {:team "UX West"
    :api  #{}
    :uses :any}
+
+  custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase.custom-viz-plugin.core}
+   :uses #{premium-features}
+   :friends #{enterprise/custom-viz-plugin}}
 
   dashboards
   {:team "UX West"
@@ -1187,25 +1188,25 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-               metabase.metabot.core
-               metabase.metabot.init
-               metabase.metabot.self
-               metabase.metabot.settings}
+              metabase.metabot.core
+              metabase.metabot.init
+              metabase.metabot.self
+              metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
               slackbot}
-    :uses    #{activity-feed
-               analytics
-               api
-               api-scope
-               app-db
-               audit-app
-               channel
-               collections
-               config
-               documents
-               driver
-               legacy-mbql
+   :uses    #{activity-feed
+              analytics
+              api
+              api-scope
+              app-db
+              audit-app
+              channel
+              collections
+              config
+              documents
+              driver
+              legacy-mbql
               lib
               lib-be
               llm
@@ -2787,25 +2788,23 @@
            util
            enterprise/api}}
 
+  enterprise/core
+  {:team "DevEx"
+   :api  #{metabase-enterprise.core.init}
+   :uses :any}
+
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
-           metabase-enterprise.custom-viz-plugin.core
            metabase-enterprise.custom-viz-plugin.init}
    :uses #{api
            config
            models
            premium-features
+           server
            util
-           enterprise/api
            enterprise/remote-sync}
-   :model-exports #{:model/CustomVizPlugin}
-   :model-imports #{:model/CustomVizPlugin}}
-
-  enterprise/core
-  {:team "DevEx"
-   :api  #{metabase-enterprise.core.init}
-   :uses :any}
+   :model-exports #{:model/CustomVizPlugin}}
 
   enterprise/dashboard-subscription-filters
   {:team "Graphy"
