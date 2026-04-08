@@ -4,35 +4,16 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]))
 
-(defn- taken-names
-  "Build a set of names already in use by existing aggregation `clauses`. All clauses are fed through the
-  unique-name-generator — named clauses register their explicit `:name`, unnamed clauses register their
-  computed column name. This ensures the generator's internal counter stays consistent."
-  [query stage-number clauses]
-  (let [unique-name-fn (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
-    (into #{}
-          (map (fn [clause]
-                 (unique-name-fn
-                  (or (lib.options/clause-name clause)
-                      (lib.metadata.calculation/column-name query stage-number clause)))))
-          clauses)))
-
-(defn- next-available-name
-  "Given a set of `taken` names and a `default-name`, return `default-name` if available, otherwise
-  `default-name_2`, `default-name_3`, etc."
-  [taken default-name]
-  (if-not (contains? taken default-name)
-    default-name
-    (loop [i 2]
-      (let [candidate (str default-name "_" i)]
-        (if-not (contains? taken candidate)
-          candidate
-          (recur (inc i)))))))
-
 (defn unique-aggregation-name
   "Given existing aggregation `clauses` and a `new-clause`, compute a unique `:name` for `new-clause` based on its
   column name, deduplicated against existing clause names."
   [query stage-number clauses new-clause]
-  (next-available-name
-   (taken-names query stage-number clauses)
-   (lib.metadata.calculation/column-name query stage-number new-clause)))
+  (let [base-name-fn  (lib.util.unique-name-generator/non-truncating-unique-name-generator)
+        taken-name-fn (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
+    (doseq [clause clauses
+            :let [base-name (lib.metadata.calculation/column-name-method query stage-number clause)]
+            clause-name (lib.options/clause-name clause)]
+      (base-name-fn base-name)
+      (taken-name-fn (or clause-name base-name)))
+    (let [new-name (base-name-fn (lib.metadata.calculation/column-name-method query stage-number new-clause))]
+      (taken-name-fn new-name))))
