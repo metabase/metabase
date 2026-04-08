@@ -334,4 +334,39 @@
 
           (is (some? fus-2))
           (is (= "Order Date" (:display_name fus-2)))
-          (is (= :type/CreationTimestamp (:semantic_type fus-2))))))))
+          (is (= :type/CreationTimestamp (:semantic_type fus-2)))))))
+
+  (testing "matches joined columns using :lib/desired-column-alias instead of :name"
+    (mt/with-temp [:model/Table {table-id :id} {:name   "transform_joined_output"
+                                                :db_id  (mt/id)
+                                                :active true}
+                   ;; The output table has a field named Products__ID (from the join)
+                   :model/Field {field-id :id} {:name         "Products__ID"
+                                                :table_id     table-id
+                                                :base_type    :type/Integer
+                                                :display_name "Products  ID"
+                                                :description  nil
+                                                :semantic_type nil}
+                   :model/Card {card-id :id} {:type          :model
+                                              :database_id   (mt/id)
+                                              :dataset_query (mt/mbql-query orders)}]
+      ;; result_metadata has :name "ID" but :lib/desired-column-alias "Products__ID"
+      (t2/query-one {:update :report_card
+                     :set    {:result_metadata
+                              (json/encode [{:name                      "ID"
+                                             :lib/desired-column-alias  "Products__ID"
+                                             :display_name              "Product ID"
+                                             :description               "The product identifier"
+                                             :base_type                 "type/Integer"}])}
+                     :where  [:= :id card-id]})
+
+      (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
+
+      (let [field (t2/select-one :model/Field :id field-id)]
+        (is (= "Product ID" (:display_name field)))
+        (is (= "The product identifier" (:description field))))
+
+      (let [fus (t2/select-one :model/FieldUserSettings :field_id field-id)]
+        (is (some? fus))
+        (is (= "Product ID" (:display_name fus)))
+        (is (= "The product identifier" (:description fus)))))))
