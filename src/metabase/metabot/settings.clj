@@ -148,20 +148,6 @@
                         (validate-metabot-provider! new-value))
                       (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
 
-(defsetting llm-metabot-provider-lite
-  (deferred-tru "The AI provider and model for lightweight Metabot tasks (e.g. user intent classification).")
-  :type             :string
-  :encryption       :no
-  :default          "anthropic/claude-haiku-4-5"
-  :visibility       :settings-manager
-  :export?          false
-  :deprecated-name  :ee-ai-metabot-provider-lite
-  :doc              false
-  :setter           (fn [new-value]
-                      (when new-value
-                        (validate-metabot-provider! new-value))
-                      (setting/set-value-of-type! :string :llm-metabot-provider-lite new-value)))
-
 (defn- token-configured?
   [token]
   (boolean (and (string? token)
@@ -188,17 +174,6 @@
              provider-util/provider-and-model->provider
              configured-provider-api-key
              token-configured?))))
-
-(defsetting llm-metabot-internal-tasks-enabled?
-  (deferred-tru "Controls whether Metabot performs internal tasks that might require background tasks or additional LLM calls (e.g. user intent classification).")
-  :type             :boolean
-  :visibility       :settings-manager
-  :default          false
-  :export?          false
-  :deprecated-name  :ee-ai-metabot-internal-tasks-enabled?
-  :doc              false
-  :getter           #(and (setting/get-value-of-type :boolean :llm-metabot-internal-tasks-enabled?)
-                          (llm-provider-configured? (llm-metabot-provider-lite))))
 
 (defsetting llm-metabot-configured?
   "Whether the API key for the selected Metabot provider is configured."
