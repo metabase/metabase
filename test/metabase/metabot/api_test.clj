@@ -431,11 +431,13 @@
                          :model    "claude-haiku-4-5"}))
 
 (deftest metabot-provider-without-api-key-is-configured-test
-  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"
-                                     llm.settings/llm-anthropic-api-key    nil
-                                     llm.settings/llm-openai-api-key       nil
-                                     llm.settings/llm-openrouter-api-key   nil]
-    (is (true? (metabot.settings/llm-metabot-configured?)))))
+  (mt/with-premium-features #{:metabase-ai-managed}
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"
+                                       llm.settings/llm-proxy-base-url      "https://proxy.example.com"
+                                       llm.settings/llm-anthropic-api-key    nil
+                                       llm.settings/llm-openai-api-key       nil
+                                       llm.settings/llm-openrouter-api-key   nil]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
 
 (deftest endpoints-require-authentication-test
   (testing "Metabot v3 endpoints require authentication"
