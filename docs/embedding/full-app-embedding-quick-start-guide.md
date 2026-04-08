@@ -73,7 +73,7 @@ We'll set up group synchronization later, but for now, be sure to click the **Sa
 
 Here you'll need to input some values for your SSO to work.
 
-You'll want to declare up two constants in your app:
+You'll want to declare up to two constants in your app:
 
 - `METABASE_JWT_SHARED_SECRET`, paste the JWT signing key that you got from your Metabase here.
 - `METABASE_SITE_URL`, which points to your Metabase instance's root path.
