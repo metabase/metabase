@@ -21,6 +21,7 @@ import type {
 import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
+import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 
 // ---------------------------------------------------------------------------
@@ -297,19 +298,12 @@ export async function loadCustomVizPlugin(
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
       Wrapper,
     ) as Visualization;
-    Object.assign(Component, {
+    applyDefaultVisualizationProps(Component, vizDef, {
       identifier,
       getUiName: () => plugin.display_name,
       iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
       iconDarkUrl: getPluginAssetUrl(plugin.id, plugin.icon_dark),
-      minSize: vizDef.minSize,
-      defaultSize: vizDef.defaultSize,
-      checkRenderable: vizDef.checkRenderable,
-      settings: vizDef.settings,
-      hidden: false,
-      noHeader: false,
-      canSavePng: false,
-    } satisfies Partial<Record<keyof Visualization, unknown>>);
+    });
 
     // Use registerVisualization for first load; overwrite directly for updates
     // (registerVisualization throws on duplicate identifiers).
