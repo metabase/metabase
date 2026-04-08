@@ -12,6 +12,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -514,17 +515,17 @@
                   :result_metadata nil}]
     (let [run-with-filter!
           (fn [product-id]
-            (let [card (t2/select-one :model/Card :id card-id)]
-              (qp.store/with-metadata-provider (:database_id card)
-                (middleware.results-metadata/store-previous-result-metadata! card)
-                (let [query (assoc (mt/mbql-query orders
-                                     {:aggregation [[:count] [:sum $total]]
-                                      :breakout    [$product_id]
-                                      :filter      [:= $product_id product-id]})
-                                   :info {:executed-by (mt/user->id :rasta)
-                                          :context     :question
-                                          :card-id     card-id})]
-                  (qp/process-query (qp/userland-query query)))))
+            (t2/update! :model/Card card-id
+                        {:dataset_query (mt/mbql-query orders
+                                          {:aggregation [[:count] [:sum $total]]
+                                           :breakout    [$product_id]
+                                           :filter      [:= $product_id product-id]})})
+            (mt/as-admin
+              (qp/process-query-for-card
+               card-id :api
+               :make-run (constantly
+                          (fn [query info]
+                            (qp/process-query (assoc query :info info))))))
             (t2/select-one-fn :result_metadata :model/Card :id card-id))]
       ;; First run establishes baseline metadata
       (run-with-filter! 1)
@@ -551,19 +552,19 @@
                   :result_metadata nil}]
     (let [run-with-parameters!
           (fn [product-id]
-            (let [card (t2/select-one :model/Card :id card-id)]
-              (qp.store/with-metadata-provider (:database_id card)
-                (middleware.results-metadata/store-previous-result-metadata! card)
-                (let [query (-> (mt/mbql-query orders
-                                  {:aggregation [[:count] [:sum $total]]
-                                   :breakout    [$product_id]})
-                                (assoc :parameters [{:type   :id
-                                                     :target [:dimension (mt/$ids orders $product_id)]
-                                                     :value  [product-id]}])
-                                (assoc :info {:executed-by (mt/user->id :rasta)
-                                              :context     :question
-                                              :card-id     card-id}))]
-                  (qp/process-query (qp/userland-query query))))))
+            ;; Bind *allow-arbitrary-mbql-parameters* as the dashboard code path does.
+            (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
+              (mt/as-admin
+                (qp/process-query-for-card
+                 card-id :api
+                 :parameters [{:id     "product-id-param"
+                               :type   :id
+                               :target [:dimension (mt/$ids orders $product_id)]
+                               :value  [product-id]}]
+                 :make-run (constantly
+                            (fn [query info]
+                              (qp/process-query (assoc query :info info)))))))
+            (t2/select-one-fn :result_metadata :model/Card :id card-id))
           ;; First run establishes baseline metadata
           _           (run-with-parameters! 1)
           meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
