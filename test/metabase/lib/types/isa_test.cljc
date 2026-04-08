@@ -162,7 +162,9 @@
     true  :type/Integer :type/Quantity  :type/Float :type/Number
     true  :type/Float   :type/Number    :type/Float :type/Price
 
-    true  :type/DateTime :type/DateTime :type/Date     :type/Date
+    true  :type/Date     :type/Date     :type/Date     :type/Date
+    true  :type/Date     :type/Date     :type/DateTime :type/DateTime
+    false :type/DateTime :type/DateTime :type/Date     :type/Date
     true  :type/DateTime :type/DateTime :type/DateTime :type/DateTimeWithTZ
     true  :type/Time     :type/Time     :type/Time     :type/TimeWithTZ
 
@@ -197,6 +199,12 @@
     false lib.types.isa/date-without-time? {:base-type :type/DateTime}
     false lib.types.isa/date-without-time? {:effective-type :type/String :base-type :type/String}
     false lib.types.isa/date-without-time? {:effective-type :type/DateTime :base-type :type/String}
+
+    true  lib.types.isa/date-with-time? {:base-type :type/DateTime}
+    true  lib.types.isa/date-with-time? {:effective-type :type/DateTime :base-type :type/String}
+    false lib.types.isa/date-with-time? {:base-type :type/Date}
+    false lib.types.isa/date-with-time? {:base-type :type/String}
+    false lib.types.isa/date-with-time? {:effective-type :type/Date :base-type :type/String}
 
     true lib.types.isa/time? {:base-type :type/Time}
     true lib.types.isa/time? {:effective-type :type/Time :base-type :type/String}
