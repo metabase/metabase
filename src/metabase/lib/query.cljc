@@ -268,11 +268,11 @@
                     base-query
                     (:breakout metric-first-stage))
         agg-clause (lib.options/ensure-uuid [:metric {} card-id])
-        existing   (:aggregation (lib.util/query-stage base-query 0))
         agg-clause (cond-> agg-clause
                      (not (lib.options/clause-name agg-clause))
                      (lib.options/with-clause-name
-                       (lib.aggregation.util/unique-aggregation-name base-query 0 existing agg-clause)))]
+                       (lib.aggregation.util/unique-aggregation-name
+                        (:aggregation (lib.util/query-stage base-query 0)))))]
     (lib.util/add-summary-clause base-query 0 :aggregation agg-clause)))
 
 (defmethod query-method :metadata/card

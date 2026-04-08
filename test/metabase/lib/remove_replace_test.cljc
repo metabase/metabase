@@ -1420,8 +1420,8 @@
         (lib/aggregate q (lib/sum (lib/expression-ref q "double price"))))
       lib/append-stage
       (as-> q
-            (lib/filter q (lib/> (by-name (lib/filterable-columns q) "sum") 20))
-        (lib/order-by q (by-name (lib/orderable-columns q) "sum") :desc)
+            (lib/filter q (lib/> (by-name (lib/filterable-columns q) "aggregation") 20))
+        (lib/order-by q (by-name (lib/orderable-columns q) "aggregation") :desc)
         (lib/order-by q (by-name (lib/orderable-columns q) "name length")))
       lib/append-stage
       (as-> q
