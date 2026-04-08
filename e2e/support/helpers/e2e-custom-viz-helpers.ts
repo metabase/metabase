@@ -15,6 +15,13 @@ export const CUSTOM_VIZ_IDENTIFIER = "custom-viz-repo";
 // Frontend display type: "custom:{identifier}"
 export const CUSTOM_VIZ_DISPLAY = `custom:${CUSTOM_VIZ_IDENTIFIER}`;
 
+// Second repo for multi-plugin tests
+export const CUSTOM_VIZ_REPO_PATH_2 =
+  Cypress.config("projectRoot") + "/e2e/tmp/custom-viz-repo-2";
+
+export const CUSTOM_VIZ_REPO_URL_2 =
+  "file://" + CUSTOM_VIZ_REPO_PATH_2 + "/.git";
+
 /**
  * Initialize a local git repo with the plugin fixture committed.
  * Creates a fresh repo each time, copies the fixture, and commits.
@@ -32,6 +39,34 @@ export function setupCustomVizRepo() {
   });
   cy.exec(
     `git -C ${CUSTOM_VIZ_REPO_PATH} add . && git -C ${CUSTOM_VIZ_REPO_PATH} commit -m 'Initial plugin commit'`,
+  );
+}
+
+/**
+ * Initialize a second local git repo for multi-plugin tests.
+ * Uses a different path so the backend derives a different identifier.
+ */
+export function setupCustomVizRepo2() {
+  cy.exec("rm -rf " + CUSTOM_VIZ_REPO_PATH_2);
+  cy.exec("git init " + CUSTOM_VIZ_REPO_PATH_2);
+  cy.exec(
+    `git -C ${CUSTOM_VIZ_REPO_PATH_2} config user.email 'toucan@metabase.com'; git -C ${CUSTOM_VIZ_REPO_PATH_2} config user.name 'Toucan Cam'`,
+  );
+  cy.task("copyDirectory", {
+    source: CUSTOM_VIZ_FIXTURE_PATH,
+    destination: CUSTOM_VIZ_REPO_PATH_2,
+  });
+  // Override the name in the manifest so we can distinguish the two plugins
+  cy.readFile(`${CUSTOM_VIZ_REPO_PATH_2}/metabase-plugin.json`).then(
+    (manifest) => {
+      cy.writeFile(
+        `${CUSTOM_VIZ_REPO_PATH_2}/metabase-plugin.json`,
+        JSON.stringify({ ...manifest, name: "demo-viz-2" }),
+      );
+    },
+  );
+  cy.exec(
+    `git -C ${CUSTOM_VIZ_REPO_PATH_2} add . && git -C ${CUSTOM_VIZ_REPO_PATH_2} commit -m 'Initial plugin commit'`,
   );
 }
 
@@ -134,4 +169,8 @@ export function visitCustomVizNewForm() {
 
 export function visitCustomVizDevelopment() {
   cy.visit("/admin/settings/custom-visualizations/development");
+}
+
+export function visitCustomVizEditForm(id: number) {
+  cy.visit(`/admin/settings/custom-visualizations/edit/${id}`);
 }
