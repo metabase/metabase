@@ -127,6 +127,41 @@
         (is (not= #t "2026-03-24T00:00:00Z"
                   (:updated_at (t2/select-one :model/SecurityAdvisory :advisory_id "SC-UPD-003"))))))))
 
+(deftest fetch-rejects-non-select-matching-query-test
+  (testing "matching_query with mutation keys is rejected during sync"
+    (doseq [[label query-edn] [["insert"       "{:insert-into :core_user :values [{:email \"x\"}]}"]
+                               ["delete"       "{:delete-from :core_user :where [:= :id 1]}"]
+                               ["update"       "{:update :core_user :set {:email \"x\"} :where [:= :id 1]}"]
+                               ["truncate"     "{:truncate :core_user}"]
+                               ["drop-table"   "{:drop-table :core_user}"]
+                               ["no-select"    "{:from [:core_user]}"]
+                               ["not-a-map"    "[:select 1]"]]]
+      (testing label
+        (let [advisory (make-json-advisory (str "SC-BAD-" label)
+                                           "matching_query" {"default" query-edn})]
+          (mt/with-model-cleanup [:model/SecurityAdvisory]
+            (with-redefs [http/get                                                    (constantly (fake-store-response [advisory]))
+                          premium-features/premium-embedding-token                    (constantly "fake-token")
+                          premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
+              ;; sync should not throw — error is caught per-advisory
+              (fetch/sync-advisories!)
+              (testing "advisory was NOT inserted"
+                (is (nil? (t2/select-one :model/SecurityAdvisory :advisory_id (str "SC-BAD-" label))))))))))))
+
+(deftest fetch-allows-valid-select-queries-test
+  (doseq [[label query-edn] [["subquery"  "{:select [1] :from [{:select [:id] :from [:core_user]}] :limit 1}"]
+                             ["cte"       "{:with [[:active_users {:select [:id] :from [:core_user]
+                                             :where [:= :is_active true]}]] :select [1] :from [:active_users] :limit 1}"]]]
+    (testing label
+      (let [advisory (make-json-advisory (str "SC-OK-" label)
+                                         "matching_query" {"default" query-edn})]
+        (mt/with-model-cleanup [:model/SecurityAdvisory]
+          (with-redefs [http/get                                                    (constantly (fake-store-response [advisory]))
+                        premium-features/premium-embedding-token                    (constantly "fake-token")
+                        premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
+            (fetch/sync-advisories!)
+            (is (some? (t2/select-one :model/SecurityAdvisory :advisory_id (str "SC-OK-" label))))))))))
+
 (deftest sync-advisories-handles-fetch-error-test
   (testing "network error doesn't throw"
     (with-redefs [fetch/fetch-advisories-from-store (fn [] (throw (Exception. "connection refused")))]

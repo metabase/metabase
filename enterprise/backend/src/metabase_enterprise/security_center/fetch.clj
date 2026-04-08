@@ -3,6 +3,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.edn :as edn]
+   [clojure.set :as set]
    [java-time.api :as t]
    [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase.app-db.core :as mdb]
@@ -66,11 +67,27 @@
           t/instant
           t/format))
 
+(defn- validate-select-query
+  "Validate that a parsed HoneySQL map is a SELECT-only query (has :select but no mutation keys)."
+  [query driver-key]
+  (when-not (map? query)
+    (throw (ex-info "Matching query must be a map" {:driver driver-key :query query})))
+  (when-not (contains? query :select)
+    (throw (ex-info "Matching query must contain :select" {:driver driver-key :query query})))
+  (let [mutation-keys #{:insert-into :update :delete :delete-from :truncate :drop-table :alter-table :create-table}
+        found         (set/intersection mutation-keys (set (keys query)))]
+    (when (seq found)
+      (throw (ex-info "Matching query must be SELECT-only, found mutation keys" {:driver driver-key :keys found}))))
+  query)
+
 (defn- parse-matching-query
-  "Parse each EDN string value in a matching_query map into Clojure data."
+  "Parse each EDN string value in a matching_query map into Clojure data, validating each is a SELECT query."
   [matching-query]
   (when matching-query
-    (update-vals matching-query edn/read-string)))
+    (reduce-kv (fn [m driver-key edn-str]
+                 (assoc m driver-key (validate-select-query (edn/read-string edn-str) driver-key)))
+               {}
+               matching-query)))
 
 (defn- parse-advisory
   "Parse matching_query EDN strings, convert temporal strings, and rename :id to :advisory_id."
