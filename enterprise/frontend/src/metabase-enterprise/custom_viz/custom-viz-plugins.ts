@@ -21,7 +21,7 @@ import type {
 import type { CustomVizPluginRuntime } from "metabase-types/api";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-import { applyDefaultVisualizationPrps } from "./custom-viz-common";
+import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
 
 // ---------------------------------------------------------------------------
@@ -298,7 +298,7 @@ export async function loadCustomVizPlugin(
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
       Wrapper,
     ) as Visualization;
-    applyDefaultVisualizationPrps(Component, vizDef, {
+    applyDefaultVisualizationProps(Component, vizDef, {
       identifier,
       getUiName: () => plugin.display_name,
       iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),

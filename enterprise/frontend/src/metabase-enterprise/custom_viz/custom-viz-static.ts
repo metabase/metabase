@@ -4,7 +4,7 @@ import {
   getCustomPluginIdentifier,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 
-import { applyDefaultVisualizationPrps } from "./custom-viz-common";
+import { applyDefaultVisualizationProps } from "./custom-viz-common";
 
 // Registry for custom viz plugins in the GraalJS static-viz context.
 export const customVizRegistry: Map<string, any> = new Map();
@@ -24,7 +24,7 @@ export function registerCustomVizPlugin(
   // the plugin's settings for getComputedSettingsForSeries()
   const Component = (vizDef.StaticVisualizationComponent ??
     (() => null)) as any;
-  applyDefaultVisualizationPrps(Component, vizDef, {
+  applyDefaultVisualizationProps(Component, vizDef, {
     identifier: display,
     getUiName: () => identifier,
     iconName: "area",

@@ -6,7 +6,7 @@ import type { Visualization } from "metabase/visualizations/types/visualization"
  * Assign properties derived from a vizDef onto a Visualization component
  * and merge in caller-specific overrides.
  */
-export function applyDefaultVisualizationPrps(
+export function applyDefaultVisualizationProps(
   Component: Visualization,
   vizDef: CustomVisualization<Record<string, unknown>>,
   overrides: Partial<Record<keyof Visualization, unknown>>,
