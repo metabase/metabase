@@ -143,19 +143,17 @@ describe("MetabotUsageIndicator", () => {
           instance_limit: null,
         }),
       });
-      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("AI usage")).not.toBeInTheDocument();
     });
 
-    it("renders progress bar when limits are configured", async () => {
+    it("renders ring progress when limits are configured", async () => {
       setupCompact({
         usage: createMockMetabotUsage({
           user_usage: 50,
           user_limit: 100,
         }),
       });
-      expect(
-        await screen.findByRole("progressbar", { name: "AI usage" }),
-      ).toBeInTheDocument();
+      expect(await screen.findByLabelText("AI usage")).toBeInTheDocument();
     });
   });
 });

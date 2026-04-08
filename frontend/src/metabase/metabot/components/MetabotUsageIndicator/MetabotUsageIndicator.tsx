@@ -10,6 +10,7 @@ import {
   Group,
   Indicator,
   Progress,
+  RingProgress,
   Stack,
   Text,
   Tooltip,
@@ -102,14 +103,19 @@ export function MetabotUsageIndicator({ variant }: MetabotUsageIndicatorProps) {
           size={6}
           offset={-2}
         >
-          <Box className={S.compactRoot}>
-            <Progress
-              value={mostConstrained.percent}
-              size={4}
-              color={getColor(mostConstrained)}
-              aria-label={t`AI usage`}
-            />
-          </Box>
+          <RingProgress
+            size={28}
+            thickness={4}
+            roundCaps
+            rootColor="border"
+            sections={[
+              {
+                value: mostConstrained.percent,
+                color: getColor(mostConstrained),
+              },
+            ]}
+            aria-label={t`AI usage`}
+          />
         </Indicator>
       </Tooltip>
     );
