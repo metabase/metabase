@@ -153,7 +153,7 @@ function MetricToolbarButtons({
             </Menu.Item>
           )}
 
-          <Menu.Divider />
+          <Menu.Divider role="separator" />
 
           <Menu.Item
             leftSection={<Icon name="add_to_dash" />}
@@ -173,7 +173,9 @@ function MetricToolbarButtons({
             </Menu.Item>
           )}
 
-          {(canManageSubscriptions || isInLibrary) && <Menu.Divider />}
+          {(PLUGIN_AUDIT.isEnabled || isInLibrary) && (
+            <Menu.Divider role="separator" />
+          )}
 
           {isInLibrary && (
             <Menu.Item
@@ -191,7 +193,7 @@ function MetricToolbarButtons({
 
           {card.can_write && (
             <>
-              <Menu.Divider />
+              <Menu.Divider role="separator" />
               <Menu.Item
                 leftSection={<Icon name="trash" />}
                 onClick={() => onOpenModal("archive")}

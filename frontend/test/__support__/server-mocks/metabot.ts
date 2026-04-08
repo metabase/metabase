@@ -1,10 +1,13 @@
 import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
+  MetabotGroupLimit,
   MetabotGroupPermission,
   MetabotId,
   MetabotInfo,
+  MetabotInstanceLimit,
   MetabotSettingsResponse,
+  MetabotTenantLimit,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
@@ -177,6 +180,51 @@ export function setupUpdateMetabotGroupPermissionsEndpoint() {
   fetchMock.put("path:/api/ee/ai-controls/permissions", 200, {
     name: UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME,
   });
+}
+
+const AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME = "ai-controls-instance-limit";
+
+export function setupAIControlsInstanceLimitEndpoint(
+  response: MetabotInstanceLimit = { max_usage: null },
+) {
+  fetchMock.removeRoute(AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/usage/instance", response, {
+    name: AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME,
+  });
+}
+
+export function setupUpdateAIControlsInstanceLimitEndpoint() {
+  fetchMock.put("path:/api/ee/ai-controls/usage/instance", 200);
+}
+
+const AI_CONTROLS_GROUP_LIMITS_ROUTE_NAME = "ai-controls-group-limits";
+
+export function setupAIControlsGroupLimitsEndpoint(
+  response: MetabotGroupLimit[] = [],
+) {
+  fetchMock.removeRoute(AI_CONTROLS_GROUP_LIMITS_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/usage/group", response, {
+    name: AI_CONTROLS_GROUP_LIMITS_ROUTE_NAME,
+  });
+}
+
+export function setupUpdateAIControlsGroupLimitEndpoint() {
+  fetchMock.put("express:/api/ee/ai-controls/usage/group/:id", 200);
+}
+
+const AI_CONTROLS_TENANT_LIMITS_ROUTE_NAME = "ai-controls-tenant-limits";
+
+export function setupAIControlsTenantLimitsEndpoint(
+  response: MetabotTenantLimit[] = [],
+) {
+  fetchMock.removeRoute(AI_CONTROLS_TENANT_LIMITS_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/usage/tenant", response, {
+    name: AI_CONTROLS_TENANT_LIMITS_ROUTE_NAME,
+  });
+}
+
+export function setupUpdateAIControlsTenantLimitEndpoint() {
+  fetchMock.put("express:/api/ee/ai-controls/usage/tenant/:id", 200);
 }
 
 const USER_METABOT_PERMISSIONS_ROUTE_NAME = "metabot-user-permissions";

@@ -116,7 +116,7 @@ export function getNodeIconWithType(
     case "segment":
       return "segment";
     case "measure":
-      return "sum";
+      return "ruler";
   }
 }
 

@@ -42,8 +42,11 @@ login-page-illustration-custom: null
 metabot-chat-system-prompt: null
 metabot-enabled?: null
 metabot-icon: null
+metabot-limit-reset-rate: null
+metabot-limit-unit: null
 metabot-name: null
 metabot-nlq-system-prompt: null
+metabot-quota-reached-message: null
 metabot-show-illustrations: null
 metabot-sql-system-prompt: null
 native-query-autocomplete-match-style: null

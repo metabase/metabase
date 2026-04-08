@@ -68,7 +68,7 @@ For each series on the chart, you can:
 - Line shape
 - Line style
 - Line size: Small, Medium, or Large
-- Whether to show docs on the lines (the dots represent the actual data points plotted on the chart)
+- Whether to show dots on the lines (the dots represent the actual data points plotted on the chart)
 - Whether to show values for the series. This option is only available if you've toggled on [Show value on data points](#values-on-data-points).
 - How to replace missing values: Zero, Nothing (just a break in the line), or Linear interpolated
 

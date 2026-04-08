@@ -7,6 +7,7 @@ import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
+import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { UserId } from "./user";
 
 export interface OidcAuthProvider {
@@ -510,6 +511,7 @@ interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
   "llm-openai-api-key"?: string;
   "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-api-base-url"?: string | null;
   "llm-openrouter-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
@@ -594,6 +596,9 @@ interface PublicSettings {
   "metabot-name": string;
   "metabot-icon": string | null;
   "metabot-show-illustrations": boolean;
+  "metabot-limit-unit": MetabotLimitType;
+  "metabot-limit-reset-rate": MetabotLimitPeriod;
+  "metabot-quota-reached-message": string | null;
   "metabot-chat-system-prompt": string | null;
   "metabot-nlq-system-prompt": string | null;
   "metabot-sql-system-prompt": string | null;

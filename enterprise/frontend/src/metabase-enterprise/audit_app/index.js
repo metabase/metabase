@@ -37,6 +37,7 @@ export function initializePlugin() {
 
     PLUGIN_ADMIN_USER_MENU_ITEMS.push(menuItemFunction);
     PLUGIN_ADMIN_USER_MENU_ROUTES.push(getUserMenuRotes);
+    PLUGIN_AUDIT.isEnabled = true;
     PLUGIN_AUDIT.isAuditDb = isAuditDb;
     PLUGIN_AUDIT.InsightsLink = InsightsLink;
     PLUGIN_AUDIT.InsightsMenuItem = InsightsMenuItem;
