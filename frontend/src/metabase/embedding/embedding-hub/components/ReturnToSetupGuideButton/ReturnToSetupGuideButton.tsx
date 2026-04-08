@@ -1,12 +1,8 @@
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Card, Icon, Text } from "metabase/ui";
-
-import S from "./ReturnToSetupGuideButton.module.css";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
 /**
  * Only allow relative paths to prevent open redirect via ?returnTo=.
@@ -18,52 +14,45 @@ function getSafeReturnTo(returnTo: string): string | null {
   return null;
 }
 
-/**
- * Renders inside the StatusListingRoot (bottom-right fixed container)
- * via a portal, so it stacks naturally with other status items
- * (e.g. database sync progress) instead of overlapping.
- * Falls back to inline rendering if the container is not found.
- */
-export const ReturnToSetupGuideButton = ({
-  returnTo,
-}: {
+interface ReturnToSetupGuideModalProps {
   returnTo: string;
-}) => {
+  opened: boolean;
+  onClose: () => void;
+  title?: string;
+  message?: string;
+}
+
+/**
+ * Modal that prompts the user to return to the embedding setup guide
+ * after completing an action (e.g. adding a database, saving an x-ray dashboard).
+ */
+export const ReturnToSetupGuideModal = ({
+  returnTo,
+  opened,
+  onClose,
+  title = t`You're all set!`,
+  message = t`Go back to the setup guide to continue setting up embedding.`,
+}: ReturnToSetupGuideModalProps) => {
   const dispatch = useDispatch();
   const safePath = getSafeReturnTo(returnTo);
-  const [container, setContainer] = useState<Element | null>(null);
-
-  useEffect(() => {
-    setContainer(document.getElementById("status-listing"));
-  }, []);
 
   if (!safePath) {
     return null;
   }
 
-  const card = (
-    <Card
-      className={S.root}
-      shadow="md"
-      p="md"
-      radius="md"
-      withBorder
-      w="16rem"
-    >
-      <Text size="md" fw={700} mb="md">
-        {t`Done here?`}
-      </Text>
-      <Button
-        leftSection={<Icon name="chevronleft" />}
-        variant="filled"
-        fullWidth
-        size="md"
-        onClick={() => dispatch(push(safePath))}
-      >
-        {t`Back to setup guide`}
-      </Button>
-    </Card>
+  return (
+    <Modal opened={opened} onClose={onClose} title={title} size="md">
+      <Stack>
+        <Text>{message}</Text>
+        <Group justify="flex-end">
+          <Button variant="subtle" onClick={onClose}>
+            {t`Stay here`}
+          </Button>
+          <Button variant="filled" onClick={() => dispatch(push(safePath))}>
+            {t`Return to the setup guide`}
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
   );
-
-  return container ? createPortal(card, container) : card;
 };

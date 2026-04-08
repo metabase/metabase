@@ -50,11 +50,11 @@ describe("scenarios - embedding hub", () => {
       cy.log("Wait for x-ray dashboard to load and save it");
       cy.findByRole("button", { name: "Save this", timeout: 30_000 }).click();
 
-      cy.log("Should show 'Back to setup guide' card after saving");
-      cy.findByTestId("status-root-container")
-        .findByText("Back to setup guide")
-        .should("be.visible")
-        .click();
+      cy.log("Should show modal prompting to return to setup guide");
+      H.modal().within(() => {
+        cy.findByText("Dashboard saved!").should("be.visible");
+        cy.findByText("Return to the setup guide").click();
+      });
 
       cy.log("Should navigate back to the setup guide");
       cy.url().should("include", "/admin/embedding/setup-guide");

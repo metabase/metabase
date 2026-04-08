@@ -1,1 +1,1 @@
-export { ReturnToSetupGuideButton } from "./ReturnToSetupGuideButton";
+export { ReturnToSetupGuideModal } from "./ReturnToSetupGuideButton";

@@ -13,7 +13,7 @@ import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { ReturnToSetupGuideButton } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideButton";
+import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideButton";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
 import {
@@ -59,6 +59,7 @@ function DatabaseEditAppInner({
   const databaseId = parseInt(params.databaseId, 10);
   const returnTo = new URLSearchParams(window.location.search).get("returnTo");
 
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<number>();
   const {
     currentData: database,
@@ -73,8 +74,12 @@ function DatabaseEditAppInner({
     function pollDatabaseWhileSyncing() {
       const isSyncing = database?.initial_sync_status === "incomplete";
       setPollingInterval(isSyncing ? 2000 : undefined);
+
+      if (returnTo && database?.initial_sync_status === "complete") {
+        setShowReturnModal(true);
+      }
     },
-    [database?.initial_sync_status],
+    [database?.initial_sync_status, returnTo],
   );
 
   const crumbs = _.compact([
@@ -148,7 +153,15 @@ function DatabaseEditAppInner({
         </Box>
       </ErrorBoundary>
       {children}
-      {returnTo && <ReturnToSetupGuideButton returnTo={returnTo} />}
+      {returnTo && (
+        <ReturnToSetupGuideModal
+          returnTo={returnTo}
+          opened={showReturnModal}
+          onClose={() => setShowReturnModal(false)}
+          title={t`Database connected!`}
+          message={t`Your database has been added and synced. Go back to the setup guide to continue.`}
+        />
+      )}
     </>
   );
 }

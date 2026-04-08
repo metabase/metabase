@@ -18,7 +18,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
-import { ReturnToSetupGuideButton } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideButton";
+import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideButton";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -211,8 +211,14 @@ const AutomaticDashboardAppInner = () => {
           </Box>
         )}
       </div>
-      {savedDashboardUrl && returnTo && (
-        <ReturnToSetupGuideButton returnTo={returnTo} />
+      {returnTo && (
+        <ReturnToSetupGuideModal
+          returnTo={returnTo}
+          opened={!!savedDashboardUrl}
+          onClose={() => setSavedDashboardUrl(undefined)}
+          title={t`Dashboard saved!`}
+          message={t`Your dashboard has been saved. Go back to the setup guide to continue.`}
+        />
       )}
     </div>
   );
