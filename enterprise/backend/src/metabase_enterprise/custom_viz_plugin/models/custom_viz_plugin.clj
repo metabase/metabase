@@ -41,6 +41,7 @@
                :pinned_version :resolved_commit :enabled :icon :icon_dark
                :manifest :metabase_version]
    :skip      [:dev_bundle_url :error_message]
+   :defaults  {:enabled true}
    :transform {:created_at   (serdes/date)
                :status       {:export (constantly ::serdes/skip)
                               :import (constantly "pending")}
