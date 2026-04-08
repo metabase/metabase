@@ -264,33 +264,36 @@
       [last-checksum (analytics-checksum)])))
 
 (defn- maybe-load-analytics-content!
-  "Loads serialized audit content from the classpath if its checksum has changed. Returns
-   `::engine-changed` when loading required swapping the audit DB engine type back to the host
-   engine — that condition is what `maybe-sync-audit-db!` keys off to refresh field metadata
-   for the new dialect."
+  "Loads serialized audit content from the classpath if its checksum has changed.
+
+   Returns true iff loading required swapping the audit DB engine type to match the host
+   (i.e. the host is not postgres and we just rewrote the engine row from postgres back to
+   h2/mysql). The boolean tells `maybe-sync-audit-db!` whether field metadata needs to be
+   re-scanned for the new dialect — this transient swap isn't visible from outside the
+   function, which is why it has to be returned explicitly."
   [audit-db]
-  (when analytics-dir-resource
-    (ia-content->plugins (plugins/plugins-dir))
-    (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
-      (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
-        (adjust-audit-db-to-source! audit-db)
-        (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
-        ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
-        (let [report (log/with-no-logs
-                       (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
-                                                            {:backfill? false}
-                                                            :token-check? false
-                                                            :require-initialized-db? false))]
-          (if (not-empty (:errors report))
-            (log/info (str "Error Loading Analytics Content: " (pr-str report)))
-            (do
-              (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
-              (audit/last-analytics-checksum! current-checksum))))
-        (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
-          (let [original-engine engine]
-            (adjust-audit-db-to-host! audit-db)
-            (when (not= original-engine (mdb/db-type))
-              ::engine-changed)))))))
+  (boolean
+   (when analytics-dir-resource
+     (ia-content->plugins (plugins/plugins-dir))
+     (let [[last-checksum current-checksum] (get-last-and-current-checksum)]
+       (when (should-load-audit? (audit-app.settings/load-analytics-content) last-checksum current-checksum)
+         (adjust-audit-db-to-source! audit-db)
+         (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir (plugins/plugins-dir))))
+         ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
+         (let [report (log/with-no-logs
+                        (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
+                                                             {:backfill? false}
+                                                             :token-check? false
+                                                             :require-initialized-db? false))]
+           (if (not-empty (:errors report))
+             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
+             (do
+               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
+               (audit/last-analytics-checksum! current-checksum))))
+         (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
+           (let [original-engine engine]
+             (adjust-audit-db-to-host! audit-db)
+             (not= original-engine (mdb/db-type)))))))))
 
 (defn- maybe-install-audit-db!
   []
@@ -359,7 +362,7 @@
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db
         (fn []
-          (let [engine-changed? (= ::engine-changed (maybe-load-analytics-content! audit-db))]
+          (let [engine-changed? (maybe-load-analytics-content! audit-db)]
             ;; re-fetch in case the load path swapped the engine row
             (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
               (maybe-sync-audit-db! audit-db engine-changed?)))))))))

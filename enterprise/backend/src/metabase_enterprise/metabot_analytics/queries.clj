@@ -22,7 +22,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private query-generation-tool-names
+(def query-generation-tool-names
   "Tool names that produce a runnable query inside a Metabot conversation.
   Both the in-app and slackbot variants of `construct_notebook_query`
   register under the same `:tool-name`, so a single string covers both."
