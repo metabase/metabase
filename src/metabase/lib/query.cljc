@@ -266,12 +266,12 @@
         base-query (reduce
                     #(lib.util/add-summary-clause %1 0 :breakout %2)
                     base-query
-                    (:breakout metric-first-stage))]
-    (let [agg-clause (lib.options/ensure-uuid [:metric {} card-id])
-          existing   (:aggregation (lib.util/query-stage base-query 0))
-          agg-name   (lib.aggregation.util/unique-aggregation-name base-query 0 existing agg-clause)
-          agg-clause (lib.options/with-clause-name agg-clause agg-name)]
-      (lib.util/add-summary-clause base-query 0 :aggregation agg-clause))))
+                    (:breakout metric-first-stage))
+        agg-clause (lib.options/ensure-uuid [:metric {} card-id])
+        existing   (:aggregation (lib.util/query-stage base-query 0))
+        agg-name   (lib.aggregation.util/unique-aggregation-name base-query 0 existing agg-clause)
+        agg-clause (lib.options/with-clause-name agg-clause agg-name)]
+    (lib.util/add-summary-clause base-query 0 :aggregation agg-clause)))
 
 (defmethod query-method :metadata/card
   [metadata-providerable card-metadata]

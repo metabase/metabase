@@ -644,7 +644,8 @@
                     "lib/type" "mbql/query"
                     "stages"   #js [#js {"source-table" (meta/id :orders)
                                          "lib/type"     "mbql.stage/mbql"
-                                         "aggregation"  #js [#js ["count" #js {"lib/uuid" ag-uuid}]]}
+                                         "aggregation"  #js [#js ["count" #js {"lib/uuid" ag-uuid
+                                                                               "name"     "count"}]]}
                                     #js {"lib/type" "mbql.stage/mbql"
                                          "filters"  #js [#js [">"
                                                               #js {"lib/uuid" filter-uuid}
