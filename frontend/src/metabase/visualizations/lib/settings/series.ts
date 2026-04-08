@@ -1,6 +1,7 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
+import { getPreferredColor } from "metabase/ui/colors/groups";
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -319,13 +320,14 @@ export function getColors(
     const key = keyForSingleSeries(s);
     const name = nameForSingleSeries(s);
     const mappedValue = s.columnValuesMapping?.[key]?.[0];
+    const mappedKey =
+      typeof mappedValue === "string" ? mappedValue : mappedValue?.originalName;
+    const preferredColor = getPreferredColor(name);
+    const preferredKey = preferredColor ? name : undefined;
+    const defaultKey = mappedKey ?? preferredKey;
 
     keys.push(key);
-    defaultKeys.push(
-      (typeof mappedValue === "string"
-        ? mappedValue
-        : mappedValue?.originalName) ?? name,
-    );
+    defaultKeys.push(defaultKey);
   }
 
   return getSeriesColors(keys, settings, defaultKeys);
