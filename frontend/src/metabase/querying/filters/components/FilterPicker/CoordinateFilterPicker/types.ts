@@ -7,6 +7,7 @@ export type CoordinatePickerOperator =
   | ">"
   | "<"
   | "between"
+  | "not-between"
   | "inside"
   | ">="
   | "<=";

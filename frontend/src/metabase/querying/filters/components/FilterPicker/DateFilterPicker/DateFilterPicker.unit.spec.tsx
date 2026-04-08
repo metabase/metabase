@@ -161,6 +161,36 @@ describe("DateFilterPicker", () => {
     });
   });
 
+  it("should update a not between specific date filter", async () => {
+    const { query, filter } = createQueryWithSpecificDateFilter({
+      query: initialQuery,
+      operator: "between",
+      isNot: true,
+      values: [new Date(2020, 1, 10), new Date(2020, 1, 15)],
+    });
+    const { getNextFilterColumnName, getNextSpecificFilterParts } = setup({
+      query,
+      column,
+      filter,
+    });
+
+    expect(screen.getByText("Not between")).toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Start date"));
+    await userEvent.type(screen.getByLabelText("Start date"), "Feb 20, 2020");
+    await userEvent.clear(screen.getByLabelText("End date"));
+    await userEvent.type(screen.getByLabelText("End date"), "Feb 5, 2020");
+    await userEvent.click(screen.getByText("Update filter"));
+
+    expect(getNextFilterColumnName()).toBe(COLUMN_NAME);
+    expect(getNextSpecificFilterParts()).toMatchObject({
+      operator: "between",
+      isNot: true,
+      column: expect.anything(),
+      values: [new Date(2020, 1, 5), new Date(2020, 1, 20)],
+    });
+  });
+
   it("should add a relative date filter", async () => {
     const { getNextFilterColumnName, getNextRelativeFilterParts } = setup({
       query: initialQuery,

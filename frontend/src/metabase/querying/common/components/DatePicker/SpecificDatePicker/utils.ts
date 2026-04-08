@@ -33,6 +33,7 @@ export function getOperatorDefaultValue(
 
   switch (operator) {
     case "between":
+    case "not-between":
       return {
         type: "specific",
         operator,
@@ -75,6 +76,7 @@ export function setOperator(
     case ">":
       return { ...value, operator, values: [date] };
     case "between":
+    case "not-between":
       return value.operator === ">"
         ? { ...value, operator, values: [date, next30Days] }
         : { ...value, operator, values: [past30Days, date] };
@@ -125,7 +127,7 @@ export function coerceValue(
   value: SpecificDatePickerValue,
 ): SpecificDatePickerValue {
   const { type, operator, values, hasTime } = value;
-  if (operator === "between") {
+  if (operator === "between" || operator === "not-between") {
     const [startDate, endDate] = values;
 
     return {

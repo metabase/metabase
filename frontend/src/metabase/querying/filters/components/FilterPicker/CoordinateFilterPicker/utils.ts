@@ -1,24 +1,30 @@
+import { t } from "ttag";
+
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 import { OPERATORS } from "./constants";
 import type {
   CoordinateFilterOperatorOption,
+  CoordinatePickerOperator,
   NumberOrEmptyValue,
 } from "./types";
 
 export function getAvailableOptions(): CoordinateFilterOperatorOption[] {
   return Object.values(OPERATORS).map(({ operator }) => ({
     operator,
-    displayName: Lib.describeFilterOperator(operator),
+    displayName:
+      operator === "not-between"
+        ? t`Not between`
+        : Lib.describeFilterOperator(operator),
   }));
 }
 
-export function getOptionByOperator(operator: Lib.CoordinateFilterOperator) {
+export function getOptionByOperator(operator: CoordinatePickerOperator) {
   return OPERATORS[operator];
 }
 
-export function getDefaultOperator(): Lib.CoordinateFilterOperator {
+export function getDefaultOperator(): CoordinatePickerOperator {
   return "between";
 }
 
@@ -44,14 +50,14 @@ export function getDefaultSecondColumn(
 }
 
 export function canPickColumns(
-  operator: Lib.CoordinateFilterOperator,
+  operator: CoordinatePickerOperator,
   columns: Lib.ColumnMetadata[],
 ) {
   return operator === "inside" && columns.length > 1;
 }
 
 export function getDefaultValues(
-  operator: Lib.CoordinateFilterOperator,
+  operator: CoordinatePickerOperator,
   values: NumberOrEmptyValue[],
 ): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATORS[operator];
@@ -65,7 +71,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.CoordinateFilterOperator,
+  operator: CoordinatePickerOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
@@ -74,7 +80,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: Lib.CoordinateFilterOperator,
+  operator: CoordinatePickerOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
@@ -86,13 +92,14 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.CoordinateFilterOperator,
+  operator: CoordinatePickerOperator,
   column: Lib.ColumnMetadata,
   secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
   switch (operator) {
     case "between":
+    case "not-between":
       return getBetweenFilterParts(operator, column, values);
     case "inside":
       return getInsideFilterParts(operator, column, secondColumn, values);
@@ -123,7 +130,7 @@ function getSimpleFilterParts(
 }
 
 function getBetweenFilterParts(
-  operator: Lib.CoordinateFilterOperator,
+  operator: Extract<CoordinatePickerOperator, "between" | "not-between">,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ): Lib.CoordinateFilterParts | undefined {
@@ -133,11 +140,14 @@ function getBetweenFilterParts(
     const maxValue = startValue < endValue ? endValue : startValue;
 
     return {
-      operator,
+      operator: "between",
       column,
       longitudeColumn: null,
+      isNot: operator === "not-between",
       values: [minValue, maxValue],
     };
+  } else if (operator === "not-between") {
+    return undefined;
   } else if (isNotNull(startValue)) {
     return {
       operator: ">=",

@@ -1,8 +1,14 @@
+import { t } from "ttag";
+
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
 import { OPERATORS } from "./constants";
-import type { NumberFilterOperatorOption, NumberOrEmptyValue } from "./types";
+import type {
+  NumberFilterOperatorOption,
+  NumberOrEmptyValue,
+  NumberPickerOperator,
+} from "./types";
 
 export function getAvailableOptions(
   column: Lib.ColumnMetadata,
@@ -12,18 +18,21 @@ export function getAvailableOptions(
 
   return Object.values(OPERATORS).map(({ operator }) => ({
     operator,
-    displayName: Lib.describeFilterOperator(operator, variant),
+    displayName:
+      operator === "not-between"
+        ? t`Not between`
+        : Lib.describeFilterOperator(operator, variant),
   }));
 }
 
-export function getOptionByOperator(operator: Lib.NumberFilterOperator) {
+export function getOptionByOperator(operator: NumberPickerOperator) {
   return OPERATORS[operator];
 }
 
 export function getDefaultOperator(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
-): Lib.NumberFilterOperator {
+): NumberPickerOperator {
   const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
 
   return Lib.isPrimaryKey(column) ||
@@ -34,7 +43,7 @@ export function getDefaultOperator(
 }
 
 export function getDefaultValues(
-  operator: Lib.NumberFilterOperator,
+  operator: NumberPickerOperator,
   values: NumberOrEmptyValue[],
 ): NumberOrEmptyValue[] {
   const { valueCount, hasMultipleValues } = OPERATORS[operator];
@@ -48,7 +57,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.NumberFilterOperator,
+  operator: NumberPickerOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ) {
@@ -56,7 +65,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: Lib.NumberFilterOperator,
+  operator: NumberPickerOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ) {
@@ -65,12 +74,13 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: Lib.NumberFilterOperator,
+  operator: NumberPickerOperator,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
   switch (operator) {
     case "between":
+    case "not-between":
       return getBetweenFilterParts(operator, column, values);
     default:
       return getSimpleFilterParts(operator, column, values);
@@ -98,7 +108,7 @@ function getSimpleFilterParts(
 }
 
 function getBetweenFilterParts(
-  operator: Lib.NumberFilterOperator,
+  operator: Extract<NumberPickerOperator, "between" | "not-between">,
   column: Lib.ColumnMetadata,
   values: NumberOrEmptyValue[],
 ): Lib.NumberFilterParts | undefined {
@@ -108,10 +118,13 @@ function getBetweenFilterParts(
     const maxValue = startValue < endValue ? endValue : startValue;
 
     return {
-      operator,
+      operator: "between",
       column,
+      isNot: operator === "not-between",
       values: [minValue, maxValue],
     };
+  } else if (operator === "not-between") {
+    return undefined;
   } else if (isNotNull(startValue)) {
     return {
       operator: ">=",

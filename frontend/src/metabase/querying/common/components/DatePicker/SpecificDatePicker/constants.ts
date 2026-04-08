@@ -17,6 +17,12 @@ export const TABS: Tab[] = [
   },
   {
     get label() {
+      return t`Not between`;
+    },
+    operator: "not-between",
+  },
+  {
+    get label() {
       return t`On`;
     },
     operator: "=",

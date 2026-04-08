@@ -12,7 +12,7 @@ import { WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 import { useTimeFilter } from "./hooks";
-import type { TimeValue } from "./types";
+import type { TimePickerOperator, TimeValue } from "./types";
 
 export function TimeFilterPicker({
   autoFocus,
@@ -48,7 +48,7 @@ export function TimeFilterPicker({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.TimeFilterOperator) => {
+  const handleOperatorChange = (newOperator: TimePickerOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };

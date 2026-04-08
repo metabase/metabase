@@ -17,6 +17,7 @@ const EXPECTED_OPERATORS = [
   "Before",
   "After",
   "Between",
+  "Not between",
   "Is empty",
   "Not empty",
 ];
@@ -242,6 +243,30 @@ describe("TimeFilterPicker", () => {
       expect(getNextFilterColumnName()).toBe("Time");
     });
 
+    it("should add a not between filter", async () => {
+      const { getNextFilterParts, getNextFilterColumnName } = setup();
+
+      await setOperator("Not between");
+
+      const [leftInput, rightInput] = screen.getAllByDisplayValue(
+        "00:00",
+      ) as HTMLInputElement[];
+      await typeTime(leftInput, "12:30");
+      await typeTime(rightInput, "11:15");
+      await userEvent.click(screen.getByText("Add filter"));
+
+      expect(getNextFilterParts()).toMatchObject({
+        operator: "between",
+        isNot: true,
+        column: expect.anything(),
+        values: [
+          dayjs("11:15", "HH:mm").toDate(),
+          dayjs("12:30", "HH:mm").toDate(),
+        ],
+      });
+      expect(getNextFilterColumnName()).toBe("Time");
+    });
+
     it("should add a filter with no values", async () => {
       const { getNextFilterParts, getNextFilterColumnName } = setup();
 
@@ -348,6 +373,23 @@ describe("TimeFilterPicker", () => {
         expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
         expect(screen.getByDisplayValue("13:00")).toBeInTheDocument();
         expect(screen.getByText("Update filter")).toBeEnabled();
+      });
+
+      it("should render a not between filter", () => {
+        setup(
+          createQueryWithTimeFilter({
+            operator: "between",
+            isNot: true,
+            values: [
+              dayjs("11:15", "HH:mm").toDate(),
+              dayjs("13:00", "HH:mm").toDate(),
+            ],
+          }),
+        );
+
+        expect(screen.getByText("Not between")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("11:15")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("13:00")).toBeInTheDocument();
       });
 
       it("should update a filter", async () => {

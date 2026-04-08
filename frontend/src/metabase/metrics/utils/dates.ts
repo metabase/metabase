@@ -144,8 +144,9 @@ function getSpecificFilterClause(
   value: SpecificDatePickerValue,
 ): LibMetric.FilterClause {
   return LibMetric.specificDateFilterClause({
-    operator: value.operator,
+    operator: value.operator === "not-between" ? "between" : value.operator,
     dimension,
+    isNot: value.operator === "not-between",
     values: value.values,
     hasTime: value.hasTime,
   });

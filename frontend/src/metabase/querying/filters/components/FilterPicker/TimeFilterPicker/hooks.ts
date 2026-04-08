@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
-import type { TimeValue } from "./types";
+import type { TimePickerOperator, TimeValue } from "./types";
 import {
   getAvailableOptions,
   getDefaultOperator,
@@ -31,8 +31,12 @@ export function useTimeFilter({
 
   const availableOptions = useMemo(() => getAvailableOptions(), []);
 
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : getDefaultOperator(),
+  const [operator, setOperator] = useState<TimePickerOperator>(
+    filterParts
+      ? filterParts.operator === "between" && filterParts.isNot
+        ? "not-between"
+        : filterParts.operator
+      : getDefaultOperator(),
   );
   const [values, setValues] = useState(() =>
     getDefaultValues(operator, filterParts ? filterParts.values : []),
@@ -47,7 +51,7 @@ export function useTimeFilter({
     availableOptions,
     isValid,
     getDefaultValues,
-    getFilterClause: (operator: Lib.TimeFilterOperator, values: TimeValue[]) =>
+    getFilterClause: (operator: TimePickerOperator, values: TimeValue[]) =>
       getFilterClause(operator, column, values),
     setOperator,
     setValues,

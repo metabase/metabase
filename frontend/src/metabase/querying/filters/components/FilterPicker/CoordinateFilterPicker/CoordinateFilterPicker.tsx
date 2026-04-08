@@ -16,7 +16,7 @@ import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
 import { useCoordinateFilter } from "./hooks";
-import type { NumberOrEmptyValue } from "./types";
+import type { CoordinatePickerOperator, NumberOrEmptyValue } from "./types";
 
 export function CoordinateFilterPicker({
   autoFocus,
@@ -58,7 +58,7 @@ export function CoordinateFilterPicker({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.CoordinateFilterOperator) => {
+  const handleOperatorChange = (newOperator: CoordinatePickerOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };

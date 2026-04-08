@@ -14,7 +14,11 @@ import { NumberFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
-import { type NumberOrEmptyValue, useNumberFilter } from "./hooks";
+import {
+  type NumberOrEmptyValue,
+  type NumberPickerOperator,
+  useNumberFilter,
+} from "./hooks";
 
 export function NumberFilterPicker({
   autoFocus,
@@ -52,7 +56,7 @@ export function NumberFilterPicker({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
+  const handleOperatorChange = (newOperator: NumberPickerOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };

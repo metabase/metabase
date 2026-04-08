@@ -2,17 +2,16 @@ import { t } from "ttag";
 
 import type { FilterOperatorOption } from "metabase/querying/filters/types";
 import { Button, Icon, Menu } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 
 import S from "./FilterOperatorPicker.module.css";
 
-interface FilterOperatorPickerProps<T extends Lib.FilterOperator> {
+interface FilterOperatorPickerProps<T extends string> {
   value: T;
   options: FilterOperatorOption<T>[];
   onChange: (operator: T) => void;
 }
 
-export function FilterOperatorPicker<T extends Lib.FilterOperator>({
+export function FilterOperatorPicker<T extends string>({
   value,
   options,
   onChange,

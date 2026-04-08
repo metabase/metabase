@@ -48,6 +48,12 @@ export function getDateFilterDisplayName(
       },
     )
     .with(
+      { type: "specific", operator: "not-between" },
+      ({ values: [startDate, endDate], hasTime }) => {
+        return t`Not ${formatDate(startDate, hasTime, formattingSettings)} - ${formatDate(endDate, hasTime, formattingSettings)}`;
+      },
+    )
+    .with(
       { type: "relative" },
       ({ value, unit, offsetValue, offsetUnit, options }) => {
         if (offsetValue != null && offsetUnit != null) {

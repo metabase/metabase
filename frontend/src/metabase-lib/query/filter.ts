@@ -86,9 +86,10 @@ export function stringFilterParts(
 export function numberFilterClause({
   operator,
   column,
+  isNot,
   values,
 }: NumberFilterParts): ExpressionClause {
-  return ML.number_filter_clause(operator, column, values);
+  return ML.number_filter_clause(operator, column, values, isNot ?? false);
 }
 
 export function numberFilterParts(
@@ -103,9 +104,16 @@ export function coordinateFilterClause({
   operator,
   column,
   longitudeColumn,
+  isNot,
   values,
 }: CoordinateFilterParts): ExpressionClause {
-  return ML.coordinate_filter_clause(operator, column, longitudeColumn, values);
+  return ML.coordinate_filter_clause(
+    operator,
+    column,
+    longitudeColumn,
+    values,
+    isNot ?? false,
+  );
 }
 
 export function coordinateFilterParts(
@@ -136,9 +144,16 @@ export function specificDateFilterClause({
   operator,
   column,
   values,
+  isNot,
   hasTime,
 }: SpecificDateFilterParts): ExpressionClause {
-  return ML.specific_date_filter_clause(operator, column, values, hasTime);
+  return ML.specific_date_filter_clause(
+    operator,
+    column,
+    values,
+    isNot ?? false,
+    hasTime,
+  );
 }
 
 export function specificDateFilterParts(
@@ -195,12 +210,14 @@ export function excludeDateFilterParts(
 export function timeFilterClause({
   operator,
   column,
+  isNot,
   values,
 }: TimeFilterParts): ExpressionClause {
   return ML.time_filter_clause(
     operator,
     column,
     values.map((value) => dayjs(value)),
+    isNot ?? false,
   );
 }
 
