@@ -6,14 +6,16 @@
    [metabase.agent-lib.runtime.lookup :as runtime.lookup]
    [metabase.agent-lib.test-util :as agent-lib.tu]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]))
 
 (defn- lookup-env
   []
   (let [metadata-provider meta/metadata-provider
-        tables-by-name    (runtime.fields/build-table-lookup metadata-provider)
-        fields-by-table   (runtime.fields/build-field-lookup metadata-provider tables-by-name)
-        fields-by-id      (runtime.fields/build-field-id-lookup metadata-provider tables-by-name)]
+        all-table-ids     (map :id (lib.metadata/tables metadata-provider))
+        tables-by-name    (runtime.fields/build-table-lookup metadata-provider all-table-ids)
+        {:keys [fields-by-table fields-by-id]}
+        (runtime.fields/build-field-lookups metadata-provider tables-by-name)]
     {:metadata-provider metadata-provider
      :tables-by-name    tables-by-name
      :fields-by-table   fields-by-table

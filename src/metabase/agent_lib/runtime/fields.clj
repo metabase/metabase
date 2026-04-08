@@ -9,31 +9,40 @@
 (set! *warn-on-reflection* true)
 
 (defn build-table-lookup
-  "Build a lowercase table-name lookup from metadata."
-  [metadata-provider]
-  (into {}
-        (map (fn [table] [(u/lower-case-en (:name table)) table]))
-        (lib.metadata/tables metadata-provider)))
+  "Build a lowercase table-name lookup for `table-ids`.
 
-(defn build-field-lookup
-  "Build a lowercase field-name lookup keyed by lowercase table name."
-  [metadata-provider tables-by-name]
+  Only the explicitly-requested tables are loaded — the runtime is scoped to entities the program
+  actually references (source + referenced + surrounding), not every table in the database.
+  Unknown tables are silently dropped; out-of-scope lookups will surface as nice errors at use time."
+  [metadata-provider table-ids]
   (into {}
-        (map (fn [[table-name table-meta]]
-               [table-name
-                (into {}
-                      (map (fn [field] [(u/lower-case-en (:name field)) field]))
-                      (lib.metadata/fields metadata-provider (:id table-meta)))]))
-        tables-by-name))
+        (keep (fn [tid]
+                (when-let [table (lib.metadata/table metadata-provider tid)]
+                  [(u/lower-case-en (:name table)) table])))
+        table-ids))
 
-(defn build-field-id-lookup
-  "Build a field-id lookup from metadata."
+(defn build-field-lookups
+  "Build both the `fields-by-table` and `fields-by-id` lookups for the tables in `tables-by-name`.
+
+  `fields-by-table` is a `{lower-case-table-name {lower-case-field-name field}}` map.
+  `fields-by-id` is a `{field-id field}` map.
+
+  Both maps are scoped to the tables passed in — typically the in-scope set computed from the
+  evaluation context, not every table in the database."
   [metadata-provider tables-by-name]
-  (into {}
-        (mapcat (fn [[_table-name table-meta]]
-                  (map (fn [field] [(:id field) field])
-                       (lib.metadata/fields metadata-provider (:id table-meta)))))
-        tables-by-name))
+  (reduce-kv (fn [acc table-name table-meta]
+               (let [fields (lib.metadata/fields metadata-provider (:id table-meta))]
+                 (-> acc
+                     (assoc-in [:fields-by-table table-name]
+                               (into {}
+                                     (map (fn [field]
+                                            [(u/lower-case-en (:name field)) field]))
+                                     fields))
+                     (update :fields-by-id
+                             (fn [m]
+                               (reduce (fn [m field] (assoc m (:id field) field)) m fields))))))
+             {:fields-by-table {} :fields-by-id {}}
+             tables-by-name))
 
 (defn- table-name-for-field-lookup
   [metadata-provider tables-by-name table-name-or-id]

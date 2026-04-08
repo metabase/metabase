@@ -48,15 +48,30 @@
   [op]
   (syntax/op-symbol op))
 
+(defn- resolve-in-scope-table-ids
+  "Default fallback when no in-scope table set is provided: load every table in the database.
+  Used by tests and any code path that hasn't yet plumbed in a scoped runtime."
+  [metadata-provider]
+  (into #{} (map :id) (lib.metadata/tables metadata-provider)))
+
 (defn build-runtime
-  "Build the trusted structured-program runtime for a metadata provider and optional extra bindings."
+  "Build the trusted structured-program runtime for a metadata provider.
+
+  Options:
+    :in-scope-table-ids — set of table-ids the runtime should expose for name-based lookups
+                           and FK chain resolution. Defaults to every table in the database
+                           (used by tests and legacy callers); production should always pass
+                           the scoped set derived from the program references.
+    :extra-bindings     — additional runtime bindings merged on top of the standard ones."
   ([metadata-providerable]
    (build-runtime metadata-providerable nil))
-  ([metadata-providerable extra-bindings]
+  ([metadata-providerable {:keys [in-scope-table-ids extra-bindings]}]
    (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-         tables-by-name    (runtime.fields/build-table-lookup metadata-provider)
-         fields-by-table   (runtime.fields/build-field-lookup metadata-provider tables-by-name)
-         fields-by-id      (runtime.fields/build-field-id-lookup metadata-provider tables-by-name)
+         table-ids         (or in-scope-table-ids
+                               (resolve-in-scope-table-ids metadata-provider))
+         tables-by-name    (runtime.fields/build-table-lookup metadata-provider table-ids)
+         {:keys [fields-by-table fields-by-id]}
+         (runtime.fields/build-field-lookups metadata-provider tables-by-name)
          bindings          (merge (assoc trusted-helper-bindings
                                          'expression-ref mbql/expression-ref-or-current-stage-column
                                          'aggregation-ref mbql/aggregation-ref-or-current-stage-column

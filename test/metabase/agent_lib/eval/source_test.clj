@@ -9,7 +9,7 @@
 (deftest ^:parallel resolve-source-context-test
   (testing "context source returns the source from runtime bindings"
     (let [base-query (tu/query-for-table :orders)
-          rt         (runtime/build-runtime meta/metadata-provider {'source base-query})
+          rt         (runtime/build-runtime meta/metadata-provider {:extra-bindings {'source base-query}})
           result     (source/resolve-source identity rt [:source] {:type "context" :ref "source"})]
       (is (= base-query result)))))
 

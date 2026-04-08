@@ -6,10 +6,12 @@
    [metabase.agent-lib.eval.source :as eval.source]
    [metabase.agent-lib.eval.walker :as eval.walker]
    [metabase.agent-lib.mbql-integration :as mbql]
+   [metabase.agent-lib.refs :as refs]
    [metabase.agent-lib.runtime :as runtime]
    [metabase.agent-lib.validate :as validate]
    [metabase.agent-lib.validate.walker :as walker]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -75,6 +77,51 @@
                                 (map-indexed vector (:operations program)))]
     (eval.invoke/ensure-query-result! final-query)))
 
+(defn- card-underlying-table-ids
+  "For a sequence of card metadata records, return the distinct underlying table-ids reachable
+  from each card's visible columns. Cards/metrics may unfold into one or more tables, so we
+  resolve them lazily through `lib/visible-columns`."
+  [metadata-provider cards]
+  (into #{}
+        (mapcat (fn [card]
+                  (try
+                    (->> (lib/query metadata-provider card)
+                         lib/visible-columns
+                         (keep :table-id))
+                    (catch Exception _ nil))))
+        cards))
+
+(defn- in-scope-table-ids
+  "Resolve the set of table-ids whose metadata the runtime needs in order to evaluate `program`.
+
+  Walks the program for explicitly-referenced metadata IDs, then expands them:
+   * field-ids → bulk-fetched in one query, contribute their `:table-id`;
+   * card/metric-ids → bulk-fetched, expanded via `lib/visible-columns` to underlying tables;
+   * measure-ids → bulk-fetched, contribute their `:table-id`;
+   * source-entity from the context, when it's a table.
+
+  We deliberately ignore the LLM-supplied `:referenced-entities` and `:surrounding-tables` —
+  the operations and source declared by the program are the ground truth for what metadata
+  needs to be loaded. If the agent references a table or field it forgot to declare, the
+  walker still picks it up."
+  [metadata-provider context program]
+  (let [{:keys [table-ids field-ids card-ids metric-ids measure-ids]}
+        (refs/collect-program-refs program)
+        source-table-id (when (= "table" (some-> context :source-entity :model))
+                          (some-> context :source-entity :id))
+        fields  (when (seq field-ids)
+                  (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids))
+        cards   (when (or (seq card-ids) (seq metric-ids))
+                  (lib.metadata/bulk-metadata metadata-provider :metadata/card
+                                              (into #{} cat [card-ids metric-ids])))
+        measures (when (seq measure-ids)
+                   (lib.metadata/bulk-metadata metadata-provider :metadata/measure measure-ids))]
+    (cond-> (set table-ids)
+      source-table-id  (conj source-table-id)
+      (seq fields)     (into (keep :table-id) fields)
+      (seq cards)      (into (card-underlying-table-ids metadata-provider cards))
+      (seq measures)   (into (keep :table-id) measures))))
+
 (mu/defn evaluate-program :- :map
   "Validate and interpret a structured MBQL program."
   [program              :- :map
@@ -82,5 +129,8 @@
    context               :- validate/EvaluationContext]
   (log/debugf "Evaluating structured program with %d operations" (count (:operations program)))
   (let [program (validate/validated-program program context)
-        runtime (runtime/build-runtime metadata-providerable {'source (:source-metadata context)})]
+        mp      (lib.metadata/->metadata-provider metadata-providerable)
+        scope   (in-scope-table-ids mp context program)
+        runtime (runtime/build-runtime mp {:in-scope-table-ids scope
+                                           :extra-bindings     {'source (:source-metadata context)}})]
     (evaluate-program* runtime context [] program 0)))
