@@ -739,7 +739,7 @@
                                                                           {:type  :literal
                                                                            :value 10}]}]}]}]
 
-                            :aggregations [{:name  "total-count"
+                            :aggregations [{:name  "aggregation"
                                             :value {:type     :operator
                                                     :operator :count
                                                     :args     []}}
@@ -819,7 +819,7 @@
                  [:< {} [:expression {} "double-discount"] 10]]]]
               (lib/filters query 0)))
 
-      (is (=? [[:count {:display-name "total-count"}]
+      (is (=? [[:count {:display-name "aggregation"}]
                [:sum {:display-name "aggregation_2"} [:field {} (meta/id :orders :total)]]
                [:avg {} [:field {:join-alias "Products"} (meta/id :products :price)]]]
               (lib/aggregations query 0)))
@@ -833,7 +833,7 @@
 
       ;; Stage 1
       (is (=? [[:* {:lib/expression-name "doubled-count"}
-                [:field {} "total-count"]
+                [:field {} "aggregation"]
                 2]]
               (lib/expressions query 1)))
 
