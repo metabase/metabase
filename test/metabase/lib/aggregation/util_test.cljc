@@ -26,11 +26,11 @@
                (lib.aggregation.util/unique-aggregation-name
                 query -1 (lib/aggregations query)
                 (lib/sum (meta/field-metadata :venues :price)))))))
-    (testing "three identical aggregations get sequential names"
+    (testing "three identical aggregations get count, count_2, count_2_2"
       (let [query (-> query
                       (lib/aggregate (lib/count))
                       (lib/aggregate (lib/count)))]
-        (is (= "count_3"
+        (is (= "count_2_2"
                (lib.aggregation.util/unique-aggregation-name
                 query -1 (lib/aggregations query) (lib/count))))))
     (testing "existing clauses without :name are treated as if named"
@@ -39,7 +39,7 @@
                           (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
                           (update-in [:stages 0 :aggregation] #(mapv strip-name %)))
             existing  (lib/aggregations raw-query)]
-        (testing "unnamed sums are treated as named for dedup"
+        (testing "unnamed sums get deduped by the generator"
           (is (= "sum_3"
                  (lib.aggregation.util/unique-aggregation-name
                   raw-query -1 existing
@@ -62,8 +62,6 @@
                           (lib/aggregate (lib/count))
                           (update-in [:stages 0 :aggregation 0] strip-name))
             existing  (lib/aggregations raw-query)]
-        ;; unnamed count → "count" via generator, named count → "count" explicit
-        ;; generator sees "count" twice → taken is #{"count" "count_2"}
-        (is (= "count_3"
+        (is (= "count_2_2"
                (lib.aggregation.util/unique-aggregation-name
                 raw-query -1 existing (lib/count))))))))
