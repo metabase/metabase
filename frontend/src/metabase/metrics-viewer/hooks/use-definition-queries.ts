@@ -185,7 +185,7 @@ function buildArithmeticRequest(
 
   const expr = parseExpression(tokens, leafRefs);
   if (!expr) {
-    return null;
+    return { error: t`Invalid expression` };
   }
 
   return {

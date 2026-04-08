@@ -222,6 +222,25 @@ describe("parseExpression", () => {
     ]);
   });
 
+  it("should return null when tokens are not fully consumed", () => {
+    // "Metric1 2" — two operands with no operator
+    const tokens: ExpressionSubToken[] = [
+      { type: "metric", sourceId: "metric:1", count: 1 },
+      { type: "constant", value: 2 },
+    ];
+    const expr = parseExpression(tokens, createLeafRefs(tokens));
+    expect(expr).toBeNull();
+  });
+
+  it("should return null for metric followed by another metric without operator", () => {
+    const tokens: ExpressionSubToken[] = [
+      { type: "metric", sourceId: "metric:1", count: 1 },
+      { type: "metric", sourceId: "metric:2", count: 1 },
+    ];
+    const expr = parseExpression(tokens, createLeafRefs(tokens));
+    expect(expr).toBeNull();
+  });
+
   // 6 / 2 * 3  =>  (6 / 2) * 3 = 9, not 6 / (2 * 3) = 1
   it("should associate mixed * and / left-to-right", () => {
     const tokens: ExpressionSubToken[] = [

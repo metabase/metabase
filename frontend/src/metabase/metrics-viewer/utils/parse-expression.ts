@@ -103,5 +103,10 @@ export function parseExpression(
   tokens: ExpressionSubToken[],
   leafRefs: Map<number, ExpressionRef>,
 ): ExpressionRef | null {
-  return parseExpressionWithContext({ tokens, pos: 0, leafRefs });
+  const ctx: ParseCtx = { tokens, pos: 0, leafRefs };
+  const result = parseExpressionWithContext(ctx);
+  if (ctx.pos < tokens.length) {
+    return null;
+  }
+  return result;
 }
