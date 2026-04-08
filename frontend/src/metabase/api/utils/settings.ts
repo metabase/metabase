@@ -94,7 +94,9 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     [updateSettings, sendToast],
   );
 
-  const settingValue = settings?.[settingName];
+  const settingValue = settings?.[
+    settingName
+  ] as EnterpriseSettingValue<SettingName>;
 
   return {
     value: settingValue,

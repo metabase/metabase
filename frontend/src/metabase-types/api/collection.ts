@@ -1,5 +1,3 @@
-import type { IconName } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
 import type {
   BaseEntityId,
   CollectionEssentials,
@@ -54,22 +52,6 @@ export type LastEditInfo = Pick<
   "id" | "email" | "first_name" | "last_name"
 > & {
   timestamp: string;
-};
-
-export type CollectionAuthorityLevelConfig = {
-  type: CollectionAuthorityLevel;
-  name: string;
-  icon: IconName;
-  color?: ColorName;
-  tooltips?: Record<string, string>;
-};
-
-export type CollectionInstanceAnaltyicsConfig = {
-  type: CollectionType;
-  name?: string;
-  icon: IconName;
-  color?: ColorName;
-  tooltips?: Record<string, string>;
 };
 
 export interface Collection {

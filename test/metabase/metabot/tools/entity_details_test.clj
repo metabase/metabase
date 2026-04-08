@@ -199,6 +199,7 @@
               (let [measure (first measures)]
                 (is (= measure-id (:id measure)))
                 (is (= "Total Revenue" (:name measure)))
+                (is (string? (:definition-description measure)))
                 (is (map? (:definition measure)))))))))))
 
 (deftest get-table-details-with-segments-test
@@ -223,6 +224,7 @@
               (let [segment (first segments)]
                 (is (= segment-id (:id segment)))
                 (is (= "High Value Orders" (:name segment)))
+                (is (string? (:definition-description segment)))
                 (is (map? (:definition segment)))))))))))
 
 (deftest get-table-details-measures-scoped-to-table-test

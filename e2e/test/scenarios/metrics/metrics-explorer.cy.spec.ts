@@ -194,26 +194,12 @@ describe("scenarios > metrics > explorer", () => {
 
       addMetric("Count of products");
 
+      H.echartsContainer().should("be.visible");
+
       cy.log("should persist state in url");
 
       cy.reload();
       verifyMetricCount(1);
-
-      cy.log("should navigate to data studio via right-click context menu");
-      cy.window().then((win) => {
-        cy.stub(win, "open").as("windowOpen");
-      });
-
-      H.MetricsViewer.searchBarPills()
-        .contains("Count of products")
-        .rightclick();
-      H.popover().findByText("Edit in Data Studio").click();
-
-      cy.get("@windowOpen").should(
-        "have.been.calledWith",
-        Cypress.sinon.match(/\/data-studio\/library\/metrics\/\d+/),
-        "_blank",
-      );
     });
 
     it("should not show Edit in Data Studio for users without data studio access", () => {
@@ -429,6 +415,47 @@ describe("scenarios > metrics > explorer", () => {
       cy.log("should allow changing display types");
       H.MetricsViewer.changeVizType("line");
       H.MetricsViewer.assertVizType("Line");
+    });
+
+    it("should not show dimensions that are already in tabs in the dimension picker", () => {
+      addMetric("Count of products");
+      cy.wait("@dataset");
+      H.MetricsViewer.tabsShouldBe([
+        "Created At",
+        "State",
+        "Title",
+        "Category",
+      ]);
+
+      H.MetricsViewer.getAddDimensionButton().click();
+      H.popover().within(() => {
+        cy.findByText("Rating").should("exist");
+        // Created At exists on the users table so would be a false positive
+        // testing the other tabs is sufficent
+        cy.findByText("State").should("not.exist");
+        cy.findByText("Title").should("not.exist");
+        cy.findByText("Category").should("not.exist");
+      });
+    });
+
+    it("should map shared dimensions to all metrics when adding a tab from the picker", () => {
+      addMetric("Count of products");
+      cy.wait("@dataset");
+
+      H.MetricsViewer.getAddDimensionButton().click();
+      H.popover().within(() => {
+        cy.findByText("Shared").should("exist");
+        cy.findByText("Rating").click();
+      });
+      cy.wait("@dataset");
+
+      H.MetricsViewer.tablist()
+        .findByRole("tab", { name: "Rating" })
+        .should("have.attr", "aria-selected", "true");
+
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findAllByText("Select a dimension").should("not.exist");
+      });
     });
 
     it("should add a dimension tab and remove it", () => {

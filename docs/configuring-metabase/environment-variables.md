@@ -589,8 +589,6 @@ Allow these space delimited origins to embed Metabase interactive.
 
 ### `MB_EMBEDDING_APP_ORIGINS_SDK`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: ``
 - [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
@@ -1204,6 +1202,22 @@ The custom illustration for the login page.
 - [Configuration file name](./config-file.md): `map-tile-server-url`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
+
+### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
+
+- Type: string
+- Default: ``
+- [Configuration file name](./config-file.md): `mcp-apps-cors-custom-origins`
+
+Custom CORS origins for self-hosted MCP clients, space-separated.
+
+### `MB_MCP_APPS_CORS_ENABLED_CLIENTS`
+
+- Type: csv
+- Default: `[]`
+- [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
+
+Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
 
 ### `MB_METABOT_SLACK_SIGNING_SECRET`
 

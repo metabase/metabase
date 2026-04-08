@@ -1,0 +1,244 @@
+name: Comparison Filters
+entity_id: 8kTL-8IzNdWMtXfaMPZaE
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - filters:
+    - - between
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+      - 10
+      - 200
+    - - '>'
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - RATING
+      - 3
+    - - <=
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - RATING
+      - 5
+    - - '!='
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - CATEGORY
+      - Doohickey
+    - - =
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - CATEGORY
+      - Widget
+      - Gadget
+      - Gizmo
+    - - in
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - CATEGORY
+      - Widget
+      - Gadget
+    - - not-in
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - CATEGORY
+      - Doohickey
+      - Gizmo
+    - - =
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+      - - value
+        - effective-type: type/Float
+        - 42.0
+    limit: 20
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Ean
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - EAN
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - EAN
+  name: EAN
+  position: 1
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: EAN
+  lib/desired-column-alias: EAN
+  lib/original-display-name: Ean
+  lib/original-name: EAN
+  lib/source: source/table-defaults
+  lib/source-column-alias: EAN
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Category
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - CATEGORY
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - CATEGORY
+  name: CATEGORY
+  position: 3
+  semantic_type: type/Category
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: CATEGORY
+  lib/desired-column-alias: CATEGORY
+  lib/original-display-name: Category
+  lib/original-name: CATEGORY
+  lib/source: source/table-defaults
+  lib/source-column-alias: CATEGORY
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Price
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - PRICE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - PRICE
+  name: PRICE
+  position: 5
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: PRICE
+  lib/desired-column-alias: PRICE
+  lib/original-display-name: Price
+  lib/original-name: PRICE
+  lib/source: source/table-defaults
+  lib/source-column-alias: PRICE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Rating
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - RATING
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - RATING
+  name: RATING
+  position: 6
+  semantic_type: type/Score
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: RATING
+  lib/desired-column-alias: RATING
+  lib/original-display-name: Rating
+  lib/original-name: RATING
+  lib/source: source/table-defaults
+  lib/source-column-alias: RATING
+  qp/implicit-field?: true
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: 8kTL-8IzNdWMtXfaMPZaE
+  label: comparison_filters
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

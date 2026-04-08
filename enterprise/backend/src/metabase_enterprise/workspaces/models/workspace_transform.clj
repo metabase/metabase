@@ -4,7 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform :as transform]
+   [metabase.transforms.models.transform :as transform]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
