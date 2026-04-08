@@ -76,14 +76,16 @@
 (defn- parse-advisory
   "Parse matching_query EDN strings, convert temporal strings, and rename :id to :advisory_id."
   [advisory]
-  (-> advisory
-      (update :matching_query parse-matching-query)
-      (update :published_at t/offset-date-time)
-      (update :updated_at t/offset-date-time)
-      (set/rename-keys {:id :advisory_id})
-      (select-keys [:advisory_id :title :severity :description :advisory_url
-                    :remediation :affected_versions :matching_query
-                    :published_at :updated_at])))
+  {:advisory_id       (:id advisory)
+   :title             (:title advisory)
+   :severity          (:severity advisory)
+   :description       (:description advisory)
+   :advisory_url      (:advisory_url advisory)
+   :remediation       (:remediation advisory)
+   :affected_versions (:affected_versions advisory)
+   :matching_query    (parse-matching-query (:matching_query advisory))
+   :published_at      (t/offset-date-time (:published_at advisory))
+   :updated_at        (t/offset-date-time (:updated_at advisory))})
 
 (mu/defn ^:private fetch-advisories-from-store :- [:maybe [:sequential [:map]]]
   "GET advisories from the MetaStore. Returns a seq of advisory maps or nil on failure.
