@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { ActionIcon, Center, Icon, Stack, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { VisualizationDisplay } from "metabase-types/api";
@@ -22,9 +23,11 @@ export const ChartTypeOption = ({
   const visualization = visualizations.get(visualizationType);
   const isSelected = selectedVisualization === visualizationType;
 
-  const iconUrl = visualization?.iconUrl;
   const displayName = visualization?.getUiName() ?? visualizationType;
   const iconName = visualization?.iconName;
+  const hasCustomIcon = !!(
+    visualization?.iconUrl || visualization?.iconDarkUrl
+  );
 
   return (
     <Center pos="relative" data-testid="chart-type-option">
@@ -55,23 +58,19 @@ export const ChartTypeOption = ({
           )}
           data-testid={`${displayName}-button`}
         >
-          {iconUrl ? (
-            <img
-              src={iconUrl}
-              alt={displayName}
-              width={20}
-              height={20}
-              style={
-                isSelected ? { filter: "brightness(0) invert(1)" } : undefined
-              }
-            />
-          ) : (
-            <Icon
-              name={iconName ?? "unknown"}
-              c={isSelected ? "white" : "brand"}
-              size={20}
-            />
-          )}
+          <EntityIcon
+            name={iconName ?? "unknown"}
+            iconUrl={visualization?.iconUrl}
+            iconDarkUrl={visualization?.iconDarkUrl}
+            alt={displayName}
+            c={isSelected ? "white" : "brand"}
+            size={20}
+            style={
+              hasCustomIcon && isSelected
+                ? { filter: "brightness(0) invert(1)" }
+                : undefined
+            }
+          />
         </ActionIcon>
 
         {isSelected && onOpenSettings && (

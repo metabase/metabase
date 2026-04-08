@@ -57,6 +57,8 @@
 .ListItem:not(.ListItemDisabled):hover,
 .ListItemSelected:not(.ListItemDisabled) {
   background-color: currentColor;
+  /* Used in BucketPickerPopover.module.css to properly use  */
+  --select-list-item-text-color: var(--mb-color-text-primary-inverse);
 }
 
 /* LIST ITEM TITLE */

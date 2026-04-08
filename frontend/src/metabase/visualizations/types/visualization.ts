@@ -606,6 +606,7 @@ export type VisualizationDefinition = {
   aliases?: string[];
   iconName: IconName;
   iconUrl?: string;
+  iconDarkUrl?: string;
   hasEmptyState?: boolean;
 
   maxMetricsSupported?: number;

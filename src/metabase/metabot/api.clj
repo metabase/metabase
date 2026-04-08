@@ -3,12 +3,15 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -17,6 +20,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
@@ -27,6 +31,7 @@
    [metabase.slackbot.api]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -44,7 +49,8 @@
                                (= (:type %) "state"))
                          messages)
         messages (-> (remove #(or (= % state) (= % finish)) messages)
-                     vec)]
+                     vec)
+        ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                               (constantly (cond-> {:user_id    api/*current-user-id*}
                                             state (assoc :state state))))
@@ -60,7 +66,8 @@
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
                                        (filter map?)
                                        (map #(+ (:prompt %) (:completion %)))
-                                       (apply +))})))
+                                       (apply +))
+                 :ai_proxied      (boolean ai-proxy?)})))
 
 (defn- extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
@@ -92,6 +99,7 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
+        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
         ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
         ;; :data is like `:navigate_to`
         content    (->> parts
@@ -110,7 +118,8 @@
                    :profile_id      profile-id
                    :total_tokens    (->> (vals usage)
                                          (map #(+ (:prompt %) (:completion %)))
-                                         (reduce + 0))}))))
+                                         (reduce + 0))
+                   :ai_proxied      (boolean ai-proxy?)}))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
@@ -200,13 +209,36 @@
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
-     {:profile-id      profile-id
+     {:metabot-id      metabot-id
+      :profile-id      profile-id
       :message         message
       :context         context
       :history         history
       :conversation-id conversation_id
       :state           state
       :debug?          debug?})))
+
+(defn- legacy->modern-query
+  [query]
+  (if-not (= :mbql-version/legacy (lib/normalized-mbql-version query))
+    query
+    (lib/query
+     (lib-be/application-database-metadata-provider (:database query))
+     query)))
+
+(def upgradable-item-types
+  "User is viewing item types with query and chart configs. Upgradeable by [[upgrade-viewing-queries]]."
+  metabot.context/item-types-qc)
+
+(mu/defn- upgrade-viewing-queries
+  "Update queries of items in viewing context vector. Handles following item types: adhoc, question, model, metric"
+  [viewing :- [:vector metabot.context/ViewingItemSchema]]
+  (letfn [(update-items-query [item] (m/update-existing item :query legacy->modern-query))
+          (maybe-update-item [item] (cond-> item
+                                      (contains? upgradable-item-types (:type item))
+                                      (-> update-items-query
+                                          (m/update-existing :chart_configs (partial mapv update-items-query)))))]
+    (mapv maybe-update-item viewing)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -229,7 +261,8 @@
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
             [:debug {:optional true} [:maybe :boolean]]]]
   (metabot.context/log body :llm.log/fe->be)
-  (streaming-request body))
+  (let [body* (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)]
+    (streaming-request body*)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -250,7 +283,7 @@
       (throw e))))
 
 (def ^:private metabot-provider-schema
-  [:enum "anthropic" "openai" "openrouter"])
+  (into [:enum] metabot.settings/supported-metabot-providers))
 
 (def ^:private llm-model-response-schema
   [:map
@@ -372,9 +405,7 @@
 
 (defn- current-provider
   []
-  (some-> (metabot.settings/llm-metabot-provider)
-          (str/split #"/" 2)
-          first))
+  (provider-util/provider-and-model->provider (metabot.settings/llm-metabot-provider)))
 
 (defn- api-error->status-code
   [error]

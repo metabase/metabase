@@ -31,7 +31,7 @@ Here's an example X-ray:
 
 Another great way to get to know your data is by X-raying your models and tables.
 
-- **Table X-rays**: From the left nav, click on **Browse Data**, pick a database, hover over a table card, and click the lightning bolt icon table to view an X-ray of the table.
+- **Table X-rays**: From the left nav, click on **Browse Data**, pick a database, hover over a table card, and click the lightning bolt icon to view an X-ray of the table.
 - **Model X-rays**: Click on the ellipses for a model and select **X-ray this**.
 
 ## X-rays in the data reference

@@ -66,22 +66,19 @@ function SidebarLink({
       return icon;
     }
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+    const hasIconUrl = "iconUrl" in iconProps && iconProps.iconUrl;
 
-    if ("iconUrl" in iconProps && iconProps.iconUrl) {
-      return (
-        <TreeNode.IconContainer transparent={false}>
+    return (
+      <TreeNode.IconContainer transparent={false}>
+        {hasIconUrl ? (
           <EntityIcon
             name={iconProps.name}
             iconUrl={iconProps.iconUrl}
             size="1rem"
           />
-        </TreeNode.IconContainer>
-      );
-    }
-
-    return (
-      <TreeNode.IconContainer transparent={false}>
-        <SidebarIcon {...iconProps} isSelected={isSelected} />
+        ) : (
+          <SidebarIcon {...iconProps} isSelected={isSelected} />
+        )}
       </TreeNode.IconContainer>
     );
   }, [icon, isSelected]);

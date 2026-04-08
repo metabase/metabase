@@ -113,7 +113,7 @@ export function CustomVizPage({ params }: Props) {
                       : t`Add a new visualization`}
                   </Text>
                   <FormTextInput
-                    name="repo_url"
+                    name="repoUrl"
                     label={t`Repository URL`}
                     description={t`The location of the git repository where your visualization bundle is.`}
                     placeholder="https://github.com/user/custom-viz-plugin"
@@ -121,13 +121,13 @@ export function CustomVizPage({ params }: Props) {
                     autoFocus={!isEdit}
                   />
                   <FormTextInput
-                    name="access_token"
+                    name="accessToken"
                     label={t`Repository access token (optional)`}
                     description={t`Personal access token for private repositories.`}
                     type="password"
                   />
                   <FormTextInput
-                    name="pinned_version"
+                    name="pinnedVersion"
                     label={t`Pinned version (optional)`}
                     description={t`Branch, tag, or commit SHA to pin to.`}
                     placeholder="main"

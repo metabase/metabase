@@ -120,11 +120,13 @@ export function getVisualizationTransformed(
 export function getIconForVisualizationType(display: VisualizationDisplay): {
   name: IconName;
   iconUrl?: string;
+  iconDarkUrl?: string;
 } {
   const viz = visualizations.get(display);
   return {
     name: viz?.iconName ?? "unknown",
     iconUrl: viz?.iconUrl,
+    iconDarkUrl: viz?.iconDarkUrl,
   };
 }
 
