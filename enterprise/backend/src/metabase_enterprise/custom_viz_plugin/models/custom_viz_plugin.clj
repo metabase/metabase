@@ -36,14 +36,18 @@
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/make-spec "CustomVizPlugin"
-  [_model-name _opts]
+  [_model-name {:keys [include-database-secrets]}]
   {:copy      [:repo_url :display_name :identifier
                :pinned_version :resolved_commit :enabled :icon :icon_dark
                :manifest :metabase_version]
-   :skip      [:access_token :dev_bundle_url :error_message]
-   :transform {:created_at (serdes/date)
-               :status     {:export (constantly ::serdes/skip)
-                            :import (constantly "pending")}}})
+   :skip      [:dev_bundle_url :error_message]
+   :transform {:created_at   (serdes/date)
+               :status       {:export (constantly ::serdes/skip)
+                              :import (constantly "pending")}
+               :access_token {:export (if include-database-secrets
+                                        identity
+                                        (constantly ::serdes/skip))
+                              :import identity}}})
 
 (defmethod serdes/hash-fields :model/CustomVizPlugin
   [_model]
