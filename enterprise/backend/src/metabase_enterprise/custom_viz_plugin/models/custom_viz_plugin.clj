@@ -2,6 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -26,3 +27,22 @@
 (defmethod mi/can-create? :model/CustomVizPlugin
   [_model _instance]
   api/*is-superuser?*)
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defmethod serdes/make-spec "CustomVizPlugin"
+  [_model-name _opts]
+  {:copy      [:repo_url :display_name :identifier
+               :pinned_version :resolved_commit :enabled :icon :icon_dark
+               :manifest :metabase_version]
+   :skip      [:access_token :dev_bundle_url :error_message]
+   :transform {:created_at (serdes/date)
+               :status     {:export (constantly ::serdes/skip)
+                            :import (constantly "pending")}}})
+
+(defmethod serdes/hash-fields :model/CustomVizPlugin
+  [_model]
+  [:identifier])
+
+(defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
+  [{:label "custom-viz-plugins"} {:label (:identifier entity)}])
