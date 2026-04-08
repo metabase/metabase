@@ -27,26 +27,28 @@
 ;;   - See the examples at the bottom of this file.
 (def ^:private my-ctx
   "Contains instance details, for passing to the various functions below."
-  {:instance-url        "https://acustomer.metabaseapp.com"  ; No trailing slash.
-   :cookie-from-browser "COPY ME FROM YOUR curl COMMAND"
-   :database-id         123})
+  {:instance-url        "http://localhost:3060"  ; No trailing slash.
+   #_#_:cookie-from-browser "ajs_anonymous_id=%2275917aa9-8b1f-4f6a-9244-1479115803f4%22; g_state={\"i_l\":0,\"i_ll\":1767022699495,\"i_b\":\"cnB3iJSFOBNd2cZJgC2kybltBzu1SQNM5VsPKo9cyxU\",\"i_e\":{\"enable_itp_optimization\":0}}; metabase.TIMEOUT=alive; metabase.DEVICE=805e81de-da4e-4153-bd76-2bcf1a3008b7; metabase.SESSION=0bfd5b3f-bdfe-4c11-80d8-c3141b92c7c7"
+   :api-key "mb_CywX4P78PoIS+ivbRweLP1FU2XJrOK36vv/ZOD2KSKM="
+   :database-id         332})
 
-(defn- mk-headers [{:keys [cookie-from-browser instance-url] :as _ctx}]
-  {"accept" "application/json"
-   "accept-language" "en-US,en;q=0.9"
-   "cache-control" "no-cache"
-   "content-type" "application/json"
-   "cookie" cookie-from-browser
-   "pragma" "no-cache"
-   "priority" "u=1, i"
-   "referer" instance-url
-   "sec-ch-ua" "\"Google Chrome\";v=\"141\", \"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"141\""
-   "sec-ch-ua-mobile" "?0"
-   "sec-ch-ua-platform" "\"macOS\""
-   "sec-fetch-dest" "empty"
-   "sec-fetch-mode" "cors"
-   "sec-fetch-site" "same-origin"
-   "user-agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"})
+(defn- mk-headers [{:keys [cookie-from-browser api-key instance-url] :as _ctx}]
+  (cond-> {"accept" "application/json"
+           "accept-language" "en-US,en;q=0.9"
+           "cache-control" "no-cache"
+           "content-type" "application/json"
+           "pragma" "no-cache"
+           "priority" "u=1, i"
+           "referer" instance-url
+           "sec-ch-ua" "\"Google Chrome\";v=\"141\", \"Not?A_Brand\";v=\"8\", \"Chromium\";v=\"141\""
+           "sec-ch-ua-mobile" "?0"
+           "sec-ch-ua-platform" "\"macOS\""
+           "sec-fetch-dest" "empty"
+           "sec-fetch-mode" "cors"
+           "sec-fetch-site" "same-origin"
+           "user-agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"}
+    cookie-from-browser (assoc "cookie" cookie-from-browser)
+    api-key (assoc "x-api-key" api-key)))
 
 (defn- instance-fetch [{:keys [instance-url] :as ctx} path]
   (let [headers  (mk-headers ctx)
@@ -147,6 +149,47 @@
         qp.compile/compile)))
 
 (comment
+
+  (require '[criterium.core :as crit])
+
+  (require '[toucan2.core :as t2])
+
+  (require '[clojure.data.csv :as csv]
+           '[clojure.java.io :as io])
+
+  (let [card-ids (keep #(when (> (:id %) 250) (:id %)) (t2/select :model/Card :type :question))
+        num-cards (count card-ids)
+        _ (tap> (format "Processing %d cards" num-cards))
+        card-stats (into {}
+                         (for [[idx card-id] (map-indexed vector card-ids)]
+                           (let [mp (metadata-for my-ctx {:card [card-id]})
+                                 error-msg (atom "")
+                                 bench-result (crit/quick-benchmark*
+                                               (fn []
+                                                 (try
+                                                   (compile-card mp card-id)
+                                                   (catch Throwable t
+                                                     (when (empty? @error-msg)
+                                                       (reset! error-msg (.getMessage t)))
+                                                     nil)))
+                                               {})
+
+                                 card-stats (-> bench-result
+                                                (select-keys [:mean :lower-q :upper-q :execution-count :sample-count])
+                                                (update-vals #(if (vector? %) (* 1000 (first %)) %))
+                                                (assoc :error-msg @error-msg))
+                                 card-num (-> (inc idx) (/ num-cards) (* 100) double)]
+                             (tap> (format "Processed %.0f%% of %d cards"  card-num num-cards))
+                             [card-id card-stats])))
+        cols (-> card-stats vals first keys)
+        header (into ["card_id"] (map name cols))
+        rows (for [[card-id stats] card-stats]
+               (into [(str card-id)]
+                     (map #(str (get stats %)) cols)))]
+    (with-open [w (io/writer "card_analysis.csv")]
+      (csv/write-csv w (cons header rows)))
+    card-stats)
+
   ;; Example calls
   (let [card-id 456
         mp      (metadata-for my-ctx {:card [card-id]})]
