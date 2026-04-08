@@ -375,7 +375,7 @@
     model))
 
 (defn- normalize-metabase-model
-  [{:keys [id] :as model}]
+  [model]
   (update model :id (fn [id]
                       (when id
                         (if (str/includes? id "/")
