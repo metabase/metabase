@@ -325,6 +325,108 @@
             ;; Pass through unknown types as data
             (rf result (format-data-line part)))))))))
 
+;;; AI SDK v6 SSE Protocol Output
+
+(defn format-sse-event
+  "Format a payload map as an SSE event line: data: {JSON}\n"
+  [payload]
+  (str "data: " (json/encode payload) "\n"))
+
+(defn aisdk-sse-xf
+  "Transducer that converts internal parts to AI SDK v6 SSE protocol format.
+  Returns strings ready to be written to the output stream. Each string is one
+  SSE event line ending with \\n; the streaming writer adds another \\n to form
+  the SSE event boundary (\\n\\n).
+
+  The agent loop emits :start per LLM call (iteration), but the SSE protocol
+  expects a single `start` for the whole message. Subsequent :start parts are
+  treated as step boundaries (finish-step + start-step).
+
+  Input types and their SSE events:
+    :start (1st)  -> {type:start, messageId:...} + {type:start-step}
+    :start (Nth)  -> {type:finish-step} + {type:start-step}
+    :text         -> {type:text-delta, id:..., delta:...}
+    :tool-input   -> {type:tool-input-start} + {type:tool-input-available}
+    :tool-output  -> {type:tool-output-available}
+    :data         -> {type:data-STATE_TYPE, id:..., data:...}
+    :error        -> {type:error, errorText:...}
+    :usage        -> (skipped - internal metadata)
+    :finish       -> (ignored - completion arity handles final finish)
+    completion    -> {type:finish-step} + {type:finish} + [DONE]"
+  []
+  (fn [rf]
+    (let [error?   (volatile! false)
+          started? (volatile! false)]
+      (fn
+        ([] (rf))
+        ([result]
+         (-> result
+             ;; Close the current step if started
+             (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
+             ;; Emit finish + [DONE]
+             (rf (format-sse-event {:type "finish"}))
+             (rf "data: [DONE]\n")
+             (rf)))
+        ([result part]
+         (case (:type part)
+           :start
+           (if @started?
+             ;; Subsequent iteration: close previous step, open new one
+             (-> result
+                 (rf (format-sse-event {:type "finish-step"}))
+                 (rf (format-sse-event {:type "start-step"})))
+             ;; First iteration: emit message start + first step
+             (do
+               (vreset! started? true)
+               (-> result
+                   (rf (format-sse-event {:type "start" :messageId (or (:id part) (mkid))}))
+                   (rf (format-sse-event {:type "start-step"})))))
+
+           :text
+           (rf result (format-sse-event {:type  "text-delta"
+                                         :id    (or (:id part) (mkid))
+                                         :delta (:text part)}))
+
+           :tool-input
+           (-> result
+               (rf (format-sse-event {:type       "tool-input-start"
+                                      :toolCallId (:id part)
+                                      :toolName   (:function part)}))
+               (rf (format-sse-event {:type       "tool-input-available"
+                                      :toolCallId (:id part)
+                                      :toolName   (:function part)
+                                      :input      (:arguments part)})))
+
+           :tool-output
+           (rf result (format-sse-event {:type       "tool-output-available"
+                                         :toolCallId (:id part)
+                                         :toolName   (:function part)
+                                         :output     (or (:result part) "")
+                                         :error      (:error part)}))
+
+           :data
+           (rf result (format-sse-event {:type (str "data-" (or (:data-type part) "data"))
+                                         :id   (or (:id part) (mkid))
+                                         :data (:data part)}))
+
+           :error
+           (do
+             (vreset! error? true)
+             (rf result (format-sse-event {:type      "error"
+                                           :errorText (or (some-> (:error part) :message)
+                                                          (str (:error part)))})))
+
+           :finish
+           result ;; Ignored — completion arity handles the final finish
+
+           :usage
+           result ;; Skip - internal metadata, not streamed
+
+           ;; Unknown types: emit as data parts
+           (rf result (format-sse-event {:type (str "data-" (name (:type part)))
+                                         :id   (or (:id part) (mkid))
+                                         :data part}))))))))
+
 ;;; Tool executor
 
 (defonce ^:private tool-executor

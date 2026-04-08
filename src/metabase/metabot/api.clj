@@ -20,6 +20,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
@@ -88,10 +89,10 @@
    parts))
 
 (defn- store-native-parts!
-  "Store assistant response parts directly to the database.
+  "Store assistant response parts directly to the database in v2 storage format.
 
-  Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format,
-  avoiding the intermediate 'aisdk messages' format.
+  Takes internal agent loop parts (after aisdk-xf combining) and converts them to
+  v2 storage format via `internal-parts->storable` before persisting.
 
   Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
   [conversation-id profile-id parts]
@@ -100,11 +101,10 @@
                            parts)
         usage      (extract-usage parts)
         ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-        ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
-        ;; :data is like `:navigate_to`
+        ;; Filter out metadata parts, then convert to v2 storage format
         content    (->> parts
                         (remove #(#{:start :usage :finish :data} (:type %)))
-                        vec)]
+                        metabot-persistence/internal-parts->storable)]
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
@@ -161,7 +161,7 @@
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
-  Streams AI SDK v4 line protocol to the client in real-time while simultaneously
+  Streams AI SDK v6 SSE protocol to the client in real-time while simultaneously
   collecting parts for database storage. Text parts are combined before storage
   to consolidate streaming chunks into single text parts.
 
@@ -175,10 +175,9 @@
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
-            ;; Compose: collect parts AND convert to lines for streaming.
-            ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
+            ;; Compose: collect parts AND convert to SSE events for streaming.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?}))]
+                             (self.core/aisdk-sse-xf))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan)

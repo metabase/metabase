@@ -26,7 +26,7 @@ describe("ai requests", () => {
       const fetchSpy = jest.spyOn(global, "fetch");
 
       mockStreamedEndpoint(endpoint, {
-        textChunks: whoIsYourFavoriteResponse,
+        events: whoIsYourFavoriteResponse,
       });
 
       await aiStreamingQuery({ url: endpoint, body: {} });
@@ -41,7 +41,7 @@ describe("ai requests", () => {
 
     it("should return full result of a successful request", async () => {
       mockStreamedEndpoint(endpoint, {
-        textChunks: whoIsYourFavoriteResponse,
+        events: whoIsYourFavoriteResponse,
       });
       const result = await aiStreamingQuery({ url: endpoint, body: {} });
       expect(result).toMatchSnapshot();
@@ -49,12 +49,23 @@ describe("ai requests", () => {
 
     it("should call callbacks for relevant chunk types", async () => {
       mockStreamedEndpoint(endpoint, {
-        textChunks: [
-          `0:"Testing"`,
-          `2:{"type":"state","version":1,"value":{}}`,
-          `9:{"toolCallId":"x","toolName":"x","args":""}`,
-          `a:{"toolCallId":"x","result":""}`,
-          `d:{"finishReason":"stop","usage":{"promptTokens":1,"completionTokens":1}}`,
+        events: [
+          { type: "text-delta", id: "t1", delta: "Testing" },
+          { type: "data-state", id: "d1", data: {} },
+          {
+            type: "tool-input-available",
+            toolCallId: "x",
+            toolName: "x",
+            input: "",
+          },
+          {
+            type: "tool-output-available",
+            toolCallId: "x",
+            toolName: "x",
+            output: "",
+          },
+          { type: "finish" },
+          "[DONE]",
         ],
       });
 
@@ -74,8 +85,10 @@ describe("ai requests", () => {
       expect(successCbs.onError).not.toHaveBeenCalled();
 
       mockStreamedEndpoint(endpoint, {
-        textChunks: [
-          `3:{}`, // error after finish to trigger all callbacks
+        events: [
+          { type: "error", errorText: "test error" },
+          { type: "finish" },
+          "[DONE]",
         ],
       });
 
@@ -96,9 +109,7 @@ describe("ai requests", () => {
     });
 
     it("throw error if no response", async () => {
-      mockStreamedEndpoint(endpoint, {
-        textChunks: undefined,
-      });
+      mockStreamedEndpoint(endpoint, {});
       await expect(
         aiStreamingQuery({ url: endpoint, body: {} }),
       ).rejects.toThrow(/No response/);
@@ -120,7 +131,7 @@ describe("ai requests", () => {
     describe("in-flight request tracking", () => {
       it("should register/unregister with inflight requests on a successful request", async () => {
         mockStreamedEndpoint(endpoint, {
-          textChunks: whoIsYourFavoriteResponse,
+          events: whoIsYourFavoriteResponse,
         });
         expect(findMatchingInflightAiStreamingRequests(endpoint).length).toBe(
           0,
@@ -163,7 +174,8 @@ describe("ai requests", () => {
 });
 
 const whoIsYourFavoriteResponse = [
-  `0:"You, but don't tell anyone."`,
-  `2:{"type":"state","version":1,"value":{"queries":{}}}`,
-  `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+  { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+  { type: "data-state", id: "d1", data: { queries: {} } },
+  { type: "finish" },
+  "[DONE]",
 ];

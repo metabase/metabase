@@ -212,9 +212,10 @@ describe("Metabot Query Builder", () => {
 
 // Response helpers
 const mockNavigateToResponse = (path: string) =>
-  `2:{"type":"navigate_to","version":1,"value":"${path}"}
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+  H.sseBody([
+    { type: "data-navigate_to", id: "d1", data: path },
+    { type: "finish" },
+    "[DONE]",
+  ]);
 
-const mockTextOnlyResponse = (text: string) =>
-  `0:"${text}"
-d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+const mockTextOnlyResponse = (text: string) => H.sseTextResponse(text);

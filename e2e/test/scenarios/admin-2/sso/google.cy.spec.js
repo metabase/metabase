@@ -1,6 +1,6 @@
-const { H } = cy;
-
 const CLIENT_ID_SUFFIX = "apps.googleusercontent.com";
+
+const { H } = cy;
 
 describe("scenarios > admin > settings > SSO > Google", () => {
   beforeEach(() => {

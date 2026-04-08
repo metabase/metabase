@@ -6,48 +6,44 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-export const dataPartSchema = Yup.object({
-  type: Yup.string().required(),
-  version: Yup.number().required(),
-  value: Yup.mixed(),
-});
-
-export const knownDataPartTypes = [
-  "navigate_to",
-  "state",
-  "todo_list",
-  "code_edit",
-  "transform_suggestion",
-];
-
-export type KnownDataPart =
-  | { type: "navigate_to"; version: 1; value: string }
-  | { type: "state"; version: 1; value: Record<string, any> }
-  | { type: "todo_list"; version: 1; value: MetabotTodoItem[] }
-  | { type: "transform_suggestion"; version: 1; value: SuggestedTransform }
-  | { type: "code_edit"; version: 1; value: MetabotCodeEdit };
-
+// v6 tool call: received via tool-input-available event
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
   toolName: Yup.string().required(),
-  args: Yup.string(),
+  input: Yup.mixed(),
 });
 
+export type ToolCallPart = {
+  toolCallId: string;
+  toolName: string;
+  input: unknown;
+};
+
+// v6 tool result: received via tool-output-available event
 export const toolResultPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
-  result: Yup.mixed(),
+  toolName: Yup.string().required(),
+  output: Yup.mixed(),
 });
 
-export const finishPartSchema = Yup.object({
-  finishReason: Yup.string()
-    .oneOf([
-      "stop",
-      "length",
-      "content_filter",
-      "tool_calls",
-      "error",
-      "other",
-      "unknown",
-    ])
-    .required(),
-});
+export type ToolResultPart = {
+  toolCallId: string;
+  toolName: string;
+  output: unknown;
+};
+
+// v6 data parts use "data-{subtype}" naming
+export const knownDataPartTypes = [
+  "data-navigate_to",
+  "data-state",
+  "data-todo_list",
+  "data-code_edit",
+  "data-transform_suggestion",
+];
+
+export type KnownDataPart =
+  | { type: "data-navigate_to"; data: string }
+  | { type: "data-state"; data: Record<string, any> }
+  | { type: "data-todo_list"; data: MetabotTodoItem[] }
+  | { type: "data-transform_suggestion"; data: SuggestedTransform }
+  | { type: "data-code_edit"; data: MetabotCodeEdit };

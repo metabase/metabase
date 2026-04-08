@@ -11,9 +11,7 @@
    [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
-   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
@@ -223,10 +221,25 @@
                  :profile-id :slackbot
                  :context    context}))
     (let [parts     @parts-atom
-          lines     (into [] (self.core/aisdk-line-xf) parts)
+          ;; Filter metadata, convert to v2 storage format
+          content   (->> parts
+                         (remove #(#{:start :usage :finish :data} (:type %)))
+                         metabot.persistence/internal-parts->storable)
+          ;; Extract usage: take last usage per model (cumulative)
+          usage-map (transduce
+                     (filter #(= :usage (:type %)))
+                     (completing
+                      (fn [acc {:keys [usage model]}]
+                        (assoc acc (or model "unknown")
+                               {:prompt     (:promptTokens usage 0)
+                                :completion (:completionTokens usage 0)})))
+                     {}
+                     parts)
           pk        (metabot.persistence/store-message!
                      conversation-id "slackbot"
-                     (metabot.u/aisdk->messages :assistant lines)
+                     content
+                     :role         :assistant
+                     :usage        (when (seq usage-map) usage-map)
                      :channel-id   channel-id
                      :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
                      :user-id      api/*current-user-id*

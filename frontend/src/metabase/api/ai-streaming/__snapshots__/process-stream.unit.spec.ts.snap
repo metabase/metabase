@@ -5,11 +5,10 @@ exports[`processChatResponse should be able to process a valid stream 1`] = `
   "aborted": false,
   "data": [
     {
-      "type": "state",
-      "value": {
+      "data": {
         "queries": {},
       },
-      "version": 1,
+      "type": "data-state",
     },
   ],
   "history": [
@@ -35,57 +34,49 @@ exports[`processChatResponse should be able to process a valid stream 1`] = `
   ],
   "parts": [
     {
-      "code": "0",
       "name": "text",
       "value": "You, but don't tell anyone.",
     },
     {
-      "code": "2",
       "name": "data",
       "value": {
-        "type": "state",
-        "value": {
+        "data": {
           "queries": {},
         },
-        "version": 1,
+        "type": "data-state",
       },
     },
     {
-      "code": "9",
       "name": "tool_call",
       "value": {
-        "args": "",
+        "input": "",
         "toolCallId": "x",
         "toolName": "x",
+        "type": "tool-input-available",
       },
     },
     {
-      "code": "a",
       "name": "tool_result",
       "value": {
-        "result": "",
+        "output": "",
         "toolCallId": "x",
+        "toolName": "x",
+        "type": "tool-output-available",
       },
     },
     {
-      "code": "d",
-      "name": "finish_message",
-      "value": {
-        "finishReason": "stop",
-        "usage": {
-          "completionTokens": 8,
-          "promptTokens": 4916,
-        },
-      },
+      "name": "finish",
+      "value": undefined,
     },
   ],
   "text": "You, but don't tell anyone.",
   "toolCalls": [
     {
-      "args": "",
+      "input": "",
       "state": "result",
       "toolCallId": "x",
       "toolName": "x",
+      "type": "tool-input-available",
       "value": "",
     },
   ],
@@ -97,11 +88,10 @@ exports[`processChatResponse should resolve with partial response for aborted re
   "aborted": false,
   "data": [
     {
-      "type": "state",
-      "value": {
+      "data": {
         "testing": 123,
       },
-      "version": 1,
+      "type": "data-state",
     },
   ],
   "history": [
@@ -112,19 +102,16 @@ exports[`processChatResponse should resolve with partial response for aborted re
   ],
   "parts": [
     {
-      "code": "0",
       "name": "text",
       "value": "Partial response",
     },
     {
-      "code": "2",
       "name": "data",
       "value": {
-        "type": "state",
-        "value": {
+        "data": {
           "testing": 123,
         },
-        "version": 1,
+        "type": "data-state",
       },
     },
   ],

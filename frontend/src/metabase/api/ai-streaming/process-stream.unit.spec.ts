@@ -1,5 +1,5 @@
 import { processChatResponse } from "./process-stream";
-import { createMockReadableStream } from "./test-utils";
+import { createMockSSEStream } from "./test-utils";
 
 const getMockedCallbacks = () => ({
   onTextPart: jest.fn(),
@@ -15,17 +15,42 @@ const expectNoStreamedError = {
   },
 };
 
-const mockSuccessStreamData = [
-  `0:"You, but don't tell anyone."`,
-  `2:{"type":"state","version":1,"value":{"queries":{}}}`,
-  `9:{"toolCallId":"x","toolName":"x","args":""}`,
-  `a:{"toolCallId":"x","result":""}`,
-  `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+const mockSuccessStreamEvents = [
+  { type: "start", messageId: "m1" },
+  { type: "start-step" },
+  { type: "text-start", id: "t1" },
+  { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+  { type: "text-end", id: "t1" },
+  { type: "data-state", id: "d1", data: { queries: {} } },
+  {
+    type: "tool-input-start",
+    toolCallId: "x",
+    toolName: "x",
+  },
+  {
+    type: "tool-input-available",
+    toolCallId: "x",
+    toolName: "x",
+    input: "",
+  },
+  {
+    type: "tool-output-available",
+    toolCallId: "x",
+    toolName: "x",
+    output: "",
+  },
+  { type: "finish-step" },
+  { type: "finish" },
+  "[DONE]",
 ];
-const getMockSuccessStream = () =>
-  createMockReadableStream(mockSuccessStreamData);
+const getMockSuccessStream = () => createMockSSEStream(mockSuccessStreamEvents);
 
-const getMockErrorStream = () => createMockReadableStream([`3:{}`]);
+const getMockErrorStream = () =>
+  createMockSSEStream([
+    { type: "error", errorText: "Something went wrong" },
+    { type: "finish" },
+    "[DONE]",
+  ]);
 
 describe("processChatResponse", () => {
   it("should be able to process a valid stream", async () => {
@@ -53,9 +78,14 @@ describe("processChatResponse", () => {
   });
 
   it("should ignore unknown data parts", async () => {
-    const mockStream = createMockReadableStream([
-      `2:{"type":"__some_futurist_data__","version":1,"value":"hi"}`,
-      `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+    const mockStream = createMockSSEStream([
+      {
+        type: "data-__some_futurist_data__",
+        id: "f1",
+        data: "hi",
+      },
+      { type: "finish" },
+      "[DONE]",
     ]);
     const config = getMockedCallbacks();
 
@@ -65,28 +95,31 @@ describe("processChatResponse", () => {
     expect(config.onDataPart).not.toHaveBeenCalled();
     // we should keep track of the info in the result
     expect(result.data).toEqual([
-      { type: "__some_futurist_data__", value: "hi", version: 1 },
+      { type: "data-__some_futurist_data__", data: "hi" },
     ]);
   });
 
-  it("should ignore unknown part types", async () => {
-    const mockStream = createMockReadableStream([`x:"UNKNOWN PART TYPE"`]);
+  it("should ignore unknown event types", async () => {
+    const mockStream = createMockSSEStream([
+      { type: "some_unknown_event_type" },
+      { type: "finish" },
+      "[DONE]",
+    ]);
     const config = getMockedCallbacks();
     await expect(processChatResponse(mockStream, config)).resolves.toBeTruthy();
     expect(config.onError).not.toHaveBeenCalled();
   });
 
-  it("should error if there is no part type", async () => {
-    const mockStream = createMockReadableStream([`data-without-part-type`]);
-    await expect(
-      processChatResponse(mockStream, expectNoStreamedError),
-    ).rejects.toBeTruthy();
-  });
-
   it("should error if a tool result is returned without a preceding tool call", async () => {
-    const mockStream = createMockReadableStream([
-      `a:{"toolCallId":"x","result":""}`,
-      `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+    const mockStream = createMockSSEStream([
+      {
+        type: "tool-output-available",
+        toolCallId: "x",
+        toolName: "x",
+        output: "",
+      },
+      { type: "finish" },
+      "[DONE]",
     ]);
     await expect(
       processChatResponse(mockStream, expectNoStreamedError),
@@ -94,14 +127,18 @@ describe("processChatResponse", () => {
   });
 
   it("should handle messages across multiple chunks", async () => {
-    const mockStream = createMockReadableStream(
-      [
-        `0:"You, but `,
-        `don't tell anyone."\n`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}\n`,
-      ],
-      { disableAutoInsertNewLines: true },
-    );
+    // Simulate SSE events split across TCP chunks
+    const encoder = new TextEncoder();
+    const part1 = 'data: {"type":"text-delta","id":"t1","delta":"You, but ';
+    const part2 = `don't tell anyone."}\n\ndata: {"type":"finish"}\n\ndata: [DONE]\n\n`;
+
+    const mockStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode(part1));
+        controller.enqueue(encoder.encode(part2));
+        controller.close();
+      },
+    });
 
     const result = await processChatResponse(mockStream, expectNoStreamedError);
     expect(result.text).toEqual("You, but don't tell anyone.");
@@ -111,10 +148,10 @@ describe("processChatResponse", () => {
   });
 
   it("should resolve with partial response for aborted requests", async () => {
-    const mockStream = createMockReadableStream(
+    const mockStream = createMockSSEStream(
       [
-        `0:"Partial response"`,
-        `2:{"type":"state","version":1,"value":{"testing":123}}`,
+        { type: "text-delta", id: "t1", delta: "Partial response" },
+        { type: "data-state", id: "d1", data: { testing: 123 } },
       ],
       {
         streamOptions: {
@@ -139,13 +176,16 @@ describe("processChatResponse", () => {
 
     await expect(
       processChatResponse(
-        createMockReadableStream([`0:"Starting response"`], {
-          streamOptions: {
-            async start() {
-              throw error;
+        createMockSSEStream(
+          [{ type: "text-delta", id: "t1", delta: "Starting response" }],
+          {
+            streamOptions: {
+              async start() {
+                throw error;
+              },
             },
           },
-        }),
+        ),
         expectNoStreamedError,
       ),
     ).rejects.toThrow(error);

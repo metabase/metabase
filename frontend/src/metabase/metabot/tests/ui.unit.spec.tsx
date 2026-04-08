@@ -42,7 +42,7 @@ describe("metabot > ui", () => {
 
   it("should show empty state ui if conversation is empty", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     expect(
       await screen.findByTestId("metabot-empty-chat-info"),
@@ -125,10 +125,15 @@ describe("metabot > ui", () => {
   it("should render markdown for messages", async () => {
     setup();
     mockAgentEndpoint({
-      textChunks: [
-        `0:"# You, but don't tell anyone."`,
-        `2:{"type":"state","version":1,"value":{"queries":{}}}`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+      events: [
+        {
+          type: "text-delta",
+          id: "t1",
+          delta: "# You, but don't tell anyone.",
+        },
+        { type: "data-state", id: "d1", data: { queries: {} } },
+        { type: "finish" },
+        "[DONE]",
       ],
     });
 
@@ -196,7 +201,7 @@ describe("metabot > ui", () => {
 
   it("should present the user an option to retry a response", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     await enterChatMessage("Who is your favorite?");
     const lastMessage = await lastChatMessage();
@@ -209,7 +214,10 @@ describe("metabot > ui", () => {
   it("should successfully rewind a response", async () => {
     setup();
     mockAgentEndpoint({
-      textChunks: [`0:"Let me think..."`, ...whoIsYourFavoriteResponse],
+      events: [
+        { type: "text-delta", id: "t0", delta: "Let me think..." },
+        ...whoIsYourFavoriteResponse,
+      ],
     });
     await enterChatMessage("Who is your favorite?");
 
@@ -218,10 +226,11 @@ describe("metabot > ui", () => {
     expect(beforeMessages).toHaveTextContent(/You, but don't tell anyone./);
 
     mockAgentEndpoint({
-      textChunks: [
-        `0:"The answer is always you."`,
-        `2:{"type":"state","version":1,"value":{"queries":{}}}`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+      events: [
+        { type: "text-delta", id: "t1", delta: "The answer is always you." },
+        { type: "data-state", id: "d1", data: { queries: {} } },
+        { type: "finish" },
+        "[DONE]",
       ],
     });
     await userEvent.click(
@@ -240,9 +249,10 @@ describe("metabot > ui", () => {
     setup();
 
     mockAgentEndpoint({
-      textChunks: [
-        `3:"Anthropic API key expired or invalid"`,
-        `d:{"finishReason":"error","usage":{}}`,
+      events: [
+        { type: "error", errorText: "Anthropic API key expired or invalid" },
+        { type: "finish" },
+        "[DONE]",
       ],
     });
 
@@ -315,7 +325,7 @@ describe("metabot > ui", () => {
       ];
       setup({ promptSuggestions: prompts });
       const agentSpy = mockAgentEndpoint({
-        textChunks: whoIsYourFavoriteResponse,
+        events: whoIsYourFavoriteResponse,
       });
 
       expect(

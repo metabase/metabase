@@ -5,11 +5,10 @@ exports[`ai requests aiStreamingQuery should return full result of a successful 
   "aborted": false,
   "data": [
     {
-      "type": "state",
-      "value": {
+      "data": {
         "queries": {},
       },
-      "version": 1,
+      "type": "data-state",
     },
   ],
   "history": [
@@ -20,31 +19,21 @@ exports[`ai requests aiStreamingQuery should return full result of a successful 
   ],
   "parts": [
     {
-      "code": "0",
       "name": "text",
       "value": "You, but don't tell anyone.",
     },
     {
-      "code": "2",
       "name": "data",
       "value": {
-        "type": "state",
-        "value": {
+        "data": {
           "queries": {},
         },
-        "version": 1,
+        "type": "data-state",
       },
     },
     {
-      "code": "d",
-      "name": "finish_message",
-      "value": {
-        "finishReason": "stop",
-        "usage": {
-          "completionTokens": 8,
-          "promptTokens": 4916,
-        },
-      },
+      "name": "finish",
+      "value": undefined,
     },
   ],
   "text": "You, but don't tell anyone.",

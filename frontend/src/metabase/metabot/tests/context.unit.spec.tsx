@@ -50,7 +50,7 @@ describe("metabot > context", () => {
   it("should send along default context", async () => {
     setup();
     const agentSpy = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
 
     await enterChatMessage("Who is your favorite?");
@@ -78,7 +78,7 @@ describe("metabot > context", () => {
     ]);
 
     const agentSpy = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
 
     await enterChatMessage("Who is your favorite?");
@@ -92,7 +92,7 @@ describe("metabot > context", () => {
 
   it("should allow components to register additional context", async () => {
     const agentSpy = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
 
     const TestComponent = () => {
@@ -142,7 +142,7 @@ describe("metabot > context", () => {
     );
 
     const agentSpy = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
 
     const SqlFixContextRegistration = () => {

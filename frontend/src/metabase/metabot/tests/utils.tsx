@@ -17,6 +17,7 @@ import {
 import {
   type MockStreamedEndpointParams,
   createMockReadableStream,
+  createMockSSEStream,
   createPauses,
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
@@ -39,7 +40,7 @@ import {
 } from "../state";
 import { getMetabotInitialState } from "../state/reducer-utils";
 
-export { createMockReadableStream, createPauses };
+export { createMockReadableStream, createMockSSEStream, createPauses };
 
 export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", params);
@@ -132,16 +133,21 @@ export const lastReqBody = async (
   return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
 };
 
-// Common mock response fixtures
+// Common mock response fixtures (v6 SSE events)
 export const whoIsYourFavoriteResponse = [
-  `0:"You, but don't tell anyone."`,
-  `2:{"type":"state","version":1,"value":{"queries":{}}}`,
-  `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+  { type: "start", messageId: "m1" },
+  { type: "start-step" },
+  { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+  { type: "data-state", id: "d1", data: { queries: {} } },
+  { type: "finish-step" },
+  { type: "finish" },
+  "[DONE]",
 ];
 
 export const erroredResponse = [
-  `3:"Anthropic API key expired or invalid"`,
-  `d:{"finishReason":"error","usage":{}}`,
+  { type: "error", errorText: "Anthropic API key expired or invalid" },
+  { type: "finish" },
+  "[DONE]",
 ];
 
 // Setup function for metabot tests

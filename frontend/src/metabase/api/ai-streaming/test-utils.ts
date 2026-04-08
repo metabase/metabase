@@ -29,6 +29,34 @@ export function createMockReadableStream(
   });
 }
 
+/**
+ * Create a mock SSE stream from an array of event objects (AI SDK v6 format).
+ * Each event is encoded as `data: {JSON}\n\n`. String entries (like "[DONE]")
+ * are encoded as `data: {string}\n\n`.
+ */
+export function createMockSSEStream(
+  events: (object | string)[] | AsyncGenerator<object | string, void, unknown>,
+  options?: {
+    streamOptions?: Partial<ConstructorParameters<typeof ReadableStream>[0]>;
+  },
+): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      try {
+        for await (const event of events) {
+          const payload =
+            typeof event === "string" ? event : JSON.stringify(event);
+          controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+        }
+      } finally {
+        controller.close();
+      }
+    },
+    ...(options?.streamOptions ?? {}),
+  });
+}
+
 export function mockEndpoint<T extends Response>(
   url: string,
   endpointMock: (init?: RequestInit) => Promise<T>,
@@ -55,21 +83,21 @@ export function mockEndpoint<T extends Response>(
   });
 }
 
-export type MockStreamedEndpointParams =
-  | {
-      textChunks: string[] | undefined;
-      stream?: undefined;
-      waitForResponse?: boolean;
-    }
-  | {
-      textChunks?: undefined;
-      stream: ReadableStream<any>;
-      waitForResponse?: boolean;
-    };
+export type MockStreamedEndpointParams = {
+  textChunks?: string[];
+  stream?: ReadableStream<any>;
+  events?: (object | string)[];
+  waitForResponse?: boolean;
+};
 
 export function mockStreamedEndpoint(
   url: string,
-  { textChunks, stream, waitForResponse = false }: MockStreamedEndpointParams,
+  {
+    textChunks,
+    stream,
+    events,
+    waitForResponse = false,
+  }: MockStreamedEndpointParams,
 ) {
   const responseGate = waitForResponse ? defer() : null;
 
@@ -77,6 +105,7 @@ export function mockStreamedEndpoint(
     await responseGate?.promise;
     const body =
       stream ||
+      (events && createMockSSEStream(events)) ||
       (textChunks && createMockReadableStream(textChunks)) ||
       undefined;
 

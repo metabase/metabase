@@ -51,18 +51,20 @@ describe("multi-convo support", () => {
 
     // ACT
     mockAgentEndpoint({
-      textChunks: [
-        `0:"Test 1 response"`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+      events: [
+        { type: "text-delta", id: "t1", delta: "Test 1 response" },
+        { type: "finish" },
+        "[DONE]",
       ],
     });
     const msg1 = { ...input, message: "test1", agentId: "test_1" } as const;
     await store.dispatch(submitInput(msg1));
 
     mockAgentEndpoint({
-      textChunks: [
-        `0:"Test 2 response"`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+      events: [
+        { type: "text-delta", id: "t1", delta: "Test 2 response" },
+        { type: "finish" },
+        "[DONE]",
       ],
     });
     const msg2 = { ...input, message: "test2", agentId: "test_2" } as const;
@@ -94,9 +96,10 @@ describe("multi-convo support", () => {
   it("should be able to reset a conversation", async () => {
     const { hook, store } = setup({ agentIds: ["test_1"] });
     mockAgentEndpoint({
-      textChunks: [
-        `0:"response"`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":1,"completionTokens":1}}`,
+      events: [
+        { type: "text-delta", id: "t1", delta: "response" },
+        { type: "finish" },
+        "[DONE]",
       ],
     });
     await store.dispatch(

@@ -324,36 +324,36 @@ export const sendAgentRequest = createAsyncThunk<
           onDataPart: function handleDataPart(part) {
             match(part)
               // only update the convo state if the request is successful
-              .with({ type: "state" }, (part) => (state = part.value))
-              .with({ type: "todo_list" }, (part) => {
+              .with({ type: "data-state" }, (part) => (state = part.data))
+              .with({ type: "data-todo_list" }, (part) => {
                 const message: Omit<
                   MetabotAgentTodoListChatMessage,
                   "id" | "role"
                 > = {
                   type: "todo_list",
-                  payload: part.value,
+                  payload: part.data,
                 };
 
                 dispatch(addAgentMessage({ ...message, agentId }));
               })
-              .with({ type: "code_edit" }, (part) => {
-                dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+              .with({ type: "data-code_edit" }, (part) => {
+                dispatch(addSuggestedCodeEdit({ ...part.data, active: true }));
 
                 if (part.value.buffer_id === "qb") {
                   dispatch(setIsNativeEditorOpen(true));
                 }
               })
-              .with({ type: "navigate_to" }, (part) => {
-                dispatch(setNavigateToPath(part.value));
+              .with({ type: "data-navigate_to" }, (part) => {
+                dispatch(setNavigateToPath(part.data));
 
                 if (!isEmbeddingSdk() && !isWorkspace) {
-                  dispatch(push(part.value) as UnknownAction);
+                  dispatch(push(part.data) as UnknownAction);
                 }
               })
-              .with({ type: "transform_suggestion" }, ({ value }) => {
+              .with({ type: "data-transform_suggestion" }, ({ data }) => {
                 const suggestedTransform = {
-                  ...value,
-                  id: value.id || undefined,
+                  ...data,
+                  id: data.id || undefined,
                   active: true,
                   suggestionId: nanoid(),
                 };
@@ -383,10 +383,22 @@ export const sendAgentRequest = createAsyncThunk<
             dispatch(addAgentTextDelta({ agentId, text: String(part) }));
           },
           onToolCallPart: function handleToolCallPart(part) {
-            dispatch(toolCallStart({ ...part, agentId }));
+            dispatch(
+              toolCallStart({
+                toolCallId: part.toolCallId,
+                toolName: part.toolName,
+                agentId,
+              }),
+            );
           },
           onToolResultPart: function handleToolResultPart(part) {
-            dispatch(toolCallEnd({ ...part, agentId }));
+            dispatch(
+              toolCallEnd({
+                toolCallId: part.toolCallId,
+                result: part.output,
+                agentId,
+              }),
+            );
           },
           onError: function handleError(part) {
             error = part;

@@ -1,108 +1,36 @@
-import { isMatching, match } from "ts-pattern";
-import _ from "underscore";
+import { isMatching } from "ts-pattern";
 
-import type { JSONValue, MetabotHistory } from "metabase-types/api";
+import type { SSEEvent } from "metabase/lib/ai-sdk";
+import { parseSSEStream } from "metabase/lib/ai-sdk";
+import type { MetabotHistory } from "metabase-types/api";
 
 import {
   type KnownDataPart,
-  dataPartSchema,
-  finishPartSchema,
+  type ToolCallPart,
+  type ToolResultPart,
   knownDataPartTypes,
   toolCallPartSchema,
   toolResultPartSchema,
 } from "./schemas";
 
-const StreamingPartTypeRegistry = {
-  TEXT: "0",
-  DATA: "2",
-  ERROR: "3",
-  FINISH_MESSAGE: "d",
-  TOOL_CALL: "9",
-  TOOL_RESULT: "a",
-} as const;
+type ParsedStreamPart =
+  | { name: "text"; value: string }
+  | { name: "data"; value: KnownDataPart | { type: string; data: unknown } }
+  | { name: "tool_call"; value: ToolCallPart }
+  | { name: "tool_result"; value: ToolResultPart }
+  | { name: "error"; value: unknown }
+  | { name: "finish"; value: undefined };
 
-const StreamingPartTypes = Object.values(StreamingPartTypeRegistry);
-
-type StreamingPartType = (typeof StreamingPartTypes)[number];
-
-/**
- * Concatenates all the chunks into a single Uint8Array
- */
-function concatChunks(chunks: Uint8Array[]): Uint8Array {
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const concatenatedChunks = new Uint8Array(totalLength);
-
-  let offset = 0;
-  for (const chunk of chunks) {
-    concatenatedChunks.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return concatenatedChunks;
-}
-
-function parseDataStreamPart(line: string) {
-  const firstSeparatorIndex = line.indexOf(":");
-  if (firstSeparatorIndex === -1) {
-    throw new Error("Failed to parse stream string. No separator found.");
-  }
-
-  const prefix = line.slice(0, firstSeparatorIndex);
-  if (!StreamingPartTypes.includes(prefix as StreamingPartType)) {
-    console.warn(`Received invalid message code: ${prefix}`);
-    return;
-  }
-
-  const code = prefix as StreamingPartType;
-  const textValue = line.slice(firstSeparatorIndex + 1);
-  const jsonValue: JSONValue = JSON.parse(textValue);
-
-  return match(code)
-    .with(StreamingPartTypeRegistry.TEXT, (code) => ({
-      code,
-      name: "text" as const,
-      value: jsonValue,
-    }))
-    .with(StreamingPartTypeRegistry.DATA, (code) => ({
-      code,
-      name: "data" as const,
-      value: dataPartSchema.validateSync(jsonValue, { strict: true }),
-    }))
-    .with(StreamingPartTypeRegistry.TOOL_CALL, (code) => ({
-      code,
-      name: "tool_call" as const,
-      value: toolCallPartSchema.validateSync(jsonValue, { strict: true }),
-    }))
-    .with(StreamingPartTypeRegistry.TOOL_RESULT, (code) => ({
-      code,
-      name: "tool_result" as const,
-      value: toolResultPartSchema.validateSync(jsonValue, { strict: true }),
-    }))
-    .with(StreamingPartTypeRegistry.ERROR, (code) => ({
-      code,
-      name: "error" as const,
-      value: jsonValue,
-    }))
-    .with(StreamingPartTypeRegistry.FINISH_MESSAGE, (code) => ({
-      code,
-      name: "finish_message" as const,
-      value: finishPartSchema.validateSync(jsonValue, { strict: true }),
-    }))
-    .exhaustive();
-}
-
-type ParsedStreamPart = Exclude<ReturnType<typeof parseDataStreamPart>, void>;
 type ParsedStreamPartName = ParsedStreamPart["name"];
 
-function isKnownDataPart(streamPart: ParsedStreamPart): streamPart is Omit<
-  Extract<ParsedStreamPart, { name: "data" }>,
-  "value"
+function isKnownDataPart(part: ParsedStreamPart): part is Extract<
+  ParsedStreamPart,
+  { name: "data" }
 > & {
   value: KnownDataPart;
 } {
   return (
-    streamPart.name === "data" &&
-    knownDataPartTypes.includes(streamPart.value.type)
+    part.name === "data" && knownDataPartTypes.includes(part.value.type as any)
   );
 }
 
@@ -151,7 +79,10 @@ function accumulateStreamParts(streamParts: ParsedStreamPart[]) {
           {
             id: streamPart.value.toolCallId,
             name: streamPart.value.toolName,
-            arguments: streamPart.value.args,
+            arguments:
+              typeof streamPart.value.input === "string"
+                ? streamPart.value.input
+                : JSON.stringify(streamPart.value.input),
           },
         ],
       });
@@ -169,11 +100,11 @@ function accumulateStreamParts(streamParts: ParsedStreamPart[]) {
       acc.toolCalls[index] = {
         ...acc.toolCalls[index],
         state: "result",
-        value: streamPart.value.result,
+        value: streamPart.value.output,
       };
       acc.history.push({
         role: "tool",
-        content: streamPart.value.result,
+        content: streamPart.value.output,
         tool_call_id: streamPart.value.toolCallId,
       });
     }
@@ -189,7 +120,6 @@ type StreamPartValue<name extends ParsedStreamPartName> = Extract<
 
 export type AIStreamingConfig = {
   onTextPart?: (part: StreamPartValue<"text">) => void;
-  // callback is only called if this version of the client is aware of the received data part type
   onDataPart?: (part: KnownDataPart) => void;
   onToolCallPart?: (part: StreamPartValue<"tool_call">) => void;
   onToolResultPart?: (part: StreamPartValue<"tool_result">) => void;
@@ -201,7 +131,7 @@ export interface ProcessedChatResponse extends AccumulatedStreamParts {
 }
 
 /**
- * Processes a stream that follows our AI response protocol and notifies
+ * Processes an SSE stream that follows the AI SDK v6 protocol and notifies
  * the appropriate handlers as text, data, tool call, etc. parts come in.
  *
  * This function does not error on aborted requests and will return whatever
@@ -212,67 +142,42 @@ export async function processChatResponse(
   config: AIStreamingConfig,
 ): Promise<ProcessedChatResponse> {
   const parsedStreamParts: ParsedStreamPart[] = [];
-  const reader = stream.getReader();
-  const decoder = new TextDecoder();
-  let chunks: Uint8Array[] = [];
-
   let aborted = false;
-  while (!aborted) {
-    try {
-      const { value: chunk } = await reader.read();
 
-      if (chunk) {
-        chunks.push(chunk);
-        if (chunk[chunk.length - 1] !== "\n".charCodeAt(0)) {
-          // if the last character is not a newline, we have not read the whole JSON value
-          continue;
-        }
+  try {
+    for await (const event of parseSSEStream(stream)) {
+      const part = sseEventToParsedPart(event);
+      if (!part) {
+        continue;
       }
 
-      if (chunks.length === 0) {
-        break; // we have reached the end of the stream
+      parsedStreamParts.push(part);
+
+      if (part.name === "text") {
+        config.onTextPart?.(part.value);
       }
-
-      const concatenatedChunks = concatChunks(chunks);
-      chunks = [];
-
-      const streamParts = _.compact(
-        decoder
-          .decode(concatenatedChunks, { stream: true })
-          .split("\n")
-          .filter((line) => line !== "") // splitting leaves an empty string at the end
-          .map(parseDataStreamPart),
-      );
-
-      for (const streamPart of streamParts) {
-        parsedStreamParts.push(streamPart);
-
-        if (streamPart.name === "text") {
-          config.onTextPart?.(streamPart.value);
-        }
-        if (streamPart.name === "data") {
-          if (isKnownDataPart(streamPart)) {
-            config.onDataPart?.(streamPart.value);
-          } else {
-            console.warn("Skipping unknown data part:", streamPart);
-          }
-        }
-        if (streamPart.name === "tool_call") {
-          config.onToolCallPart?.(streamPart.value);
-        }
-        if (streamPart.name === "tool_result") {
-          config.onToolResultPart?.(streamPart.value);
-        }
-        if (streamPart.name === "error") {
-          config.onError?.(streamPart.value);
+      if (part.name === "data") {
+        if (isKnownDataPart(part)) {
+          config.onDataPart?.(part.value);
+        } else {
+          console.warn("Skipping unknown data part:", part);
         }
       }
-    } catch (err) {
-      if (isMatching({ name: "AbortError" }, err)) {
-        aborted = true;
-      } else {
-        throw err;
+      if (part.name === "tool_call") {
+        config.onToolCallPart?.(part.value);
       }
+      if (part.name === "tool_result") {
+        config.onToolResultPart?.(part.value);
+      }
+      if (part.name === "error") {
+        config.onError?.(part.value);
+      }
+    }
+  } catch (err) {
+    if (isMatching({ name: "AbortError" }, err)) {
+      aborted = true;
+    } else {
+      throw err;
     }
   }
 
@@ -280,4 +185,77 @@ export async function processChatResponse(
     ...accumulateStreamParts(parsedStreamParts),
     aborted,
   };
+}
+
+/**
+ * Convert an SSE event to a ParsedStreamPart, or null if the event
+ * is a lifecycle event that doesn't produce a stream part.
+ */
+function sseEventToParsedPart(event: SSEEvent): ParsedStreamPart | null {
+  const { type } = event;
+
+  switch (type) {
+    // Text: only emit on text-delta (start/end are lifecycle)
+    case "text-delta":
+      return { name: "text", value: event.delta };
+
+    // Tool call: emit when input is available (start is lifecycle)
+    case "tool-input-available": {
+      const validated = toolCallPartSchema.validateSync(event, {
+        strict: false,
+      });
+      return {
+        name: "tool_call",
+        value: validated as ToolCallPart,
+      };
+    }
+
+    // Tool result: emit when output is available
+    case "tool-output-available": {
+      const validated = toolResultPartSchema.validateSync(event, {
+        strict: false,
+      });
+      return {
+        name: "tool_result",
+        value: validated as ToolResultPart,
+      };
+    }
+
+    // Error
+    case "error":
+      return {
+        name: "error",
+        value: (event as { type: "error"; errorText: string }).errorText,
+      };
+
+    // Finish
+    case "finish":
+      return { name: "finish", value: undefined };
+
+    // Lifecycle events we ignore
+    case "start":
+    case "start-step":
+    case "finish-step":
+    case "text-start":
+    case "text-end":
+    case "tool-input-start":
+    case "tool-input-delta":
+      return null;
+
+    default: {
+      // Data parts: type starts with "data-"
+      const eventType: string = type;
+      if (eventType.startsWith("data-")) {
+        return {
+          name: "data",
+          value: {
+            type: eventType,
+            data: (event as { data: unknown }).data,
+          },
+        };
+      }
+      console.warn(`Received unknown SSE event type: ${eventType}`);
+      return null;
+    }
+  }
 }

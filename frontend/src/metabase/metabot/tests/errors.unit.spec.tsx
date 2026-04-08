@@ -44,7 +44,7 @@ describe("metabot > errors", () => {
 
   it("should handle show error if data error part is in response", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: erroredResponse });
+    mockAgentEndpoint({ events: erroredResponse });
 
     await enterChatMessage("Who is your favorite?");
 
@@ -57,7 +57,7 @@ describe("metabot > errors", () => {
 
   it("should not show a user error when an AbortError is triggered", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     await enterChatMessage("Who is your favorite?");
 
@@ -85,7 +85,7 @@ describe("metabot > errors", () => {
     expect(await input()).toHaveTextContent("Who is your favorite?");
 
     mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
     });
     await enterChatMessage("Who is your favorite?");
     await assertConversation([
