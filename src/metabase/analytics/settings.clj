@@ -108,7 +108,7 @@
 
 (defsetting analytics-pii-retention-enabled
   (deferred-tru (str "Controls whether usage analytics collects personally identifiable information "
-                     "(hostname, path, user agent, IP address). "
+                     "(path, user agent, IP address). Embedding hostname is always collected. "
                      "Disabling this setting stops future collection but does not delete previously collected data."))
   :type       :boolean
   :default    false

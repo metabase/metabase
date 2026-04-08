@@ -260,11 +260,11 @@
                    (:user_agent result)))
             (is (= "Browser (Chrome/OS X)" (:sanitized_user_agent result)))
             (is (= "10.0.0.1"         (:ip_address result)))))))
-    (testing "PII fields nil when setting disabled"
+    (testing "PII fields nil when setting disabled, but hostname still populated"
       (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
         (request.current/with-current-request request
           (let [result (sdk/include-sdk-info {})]
-            (is (nil? (:embedding_hostname result)))
+            (is (= "app.example.com" (:embedding_hostname result)))
             (is (nil? (:embedding_path result)))
             (is (nil? (:user_agent result)))
             (is (nil? (:sanitized_user_agent result)))

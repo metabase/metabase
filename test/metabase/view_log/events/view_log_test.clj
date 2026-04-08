@@ -427,7 +427,7 @@
                   (is (= "TestAgent/1.0" (:user_agent qe)))
                   (is (= "Unknown device type (unknown/unknown)" (:sanitized_user_agent qe)))
                   (is (= "127.0.0.1"       (:ip_address qe))))))))
-        (testing "PII fields nil when setting disabled"
+        (testing "PII fields nil when setting disabled, but hostname still populated"
           (mt/with-temporary-setting-values [analytics-pii-retention-enabled false]
             (public-test/with-temp-public-card [card]
               (client/client :get 202 (str "public/card/" (:public_uuid card) "/query")
@@ -436,14 +436,14 @@
                                                           "user-agent" "TestAgent/1.0"}}})
               (testing "in view_log"
                 (let [view (latest-view nil (:id card))]
-                  (is (nil? (:embedding_hostname view)))
+                  (is (= "app.example.com" (:embedding_hostname view)))
                   (is (nil? (:embedding_path view)))
                   (is (nil? (:user_agent view)))
                   (is (nil? (:sanitized_user_agent view)))
                   (is (nil? (:ip_address view)))))
               (testing "in query_execution"
                 (let [qe (latest-qe (:id card))]
-                  (is (nil? (:embedding_hostname qe)))
+                  (is (= "app.example.com" (:embedding_hostname qe)))
                   (is (nil? (:embedding_path qe)))
                   (is (nil? (:user_agent qe)))
                   (is (nil? (:sanitized_user_agent qe)))
@@ -592,7 +592,7 @@
                 (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (= "public"                (:auth_method row)))
-                (is (= nil                     (:embedding_hostname row)))
+                (is (= "app.example.com"       (:embedding_hostname row)))
                 (is (= nil                     (:embedding_path row)))
                 (is (= nil                     (:user_agent row)))
                 (is (= nil                     (:sanitized_user_agent row)))
@@ -605,7 +605,7 @@
                 (is (false?                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_version row)))
                 (is (= "public"                (:auth_method row)))
-                (is (= nil                     (:embedding_hostname row)))
+                (is (= "app.example.com"       (:embedding_hostname row)))
                 (is (= nil                     (:embedding_path row)))
                 (is (= nil                     (:user_agent row)))
                 (is (= nil                     (:sanitized_user_agent row)))

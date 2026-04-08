@@ -75,16 +75,25 @@
    :sanitized_user_agent  (request.user-agent/describe-user-agent user-agent)
    :ip_address            ip-address})
 
+(defn- hostname-fields
+  "Returns embedding_hostname from the current request. Always collected (not PII)."
+  []
+  (when-let [request (request.current/current-request)]
+    (let [embed-origin (get-in request [:headers "x-metabase-embed-origin"])
+          origin       (or embed-origin (get-in request [:headers "origin"]))]
+      {:embedding_hostname (extract-hostname origin)})))
+
 (defn- pii-fields
   "Returns PII fields from the current request when the `analytics-pii-retention-enabled` setting is true."
   []
   (when (analytics.settings/analytics-pii-retention-enabled)
     (when-let [request (request.current/current-request)]
-      (pii-request-info
-       {:origin     (get-in request [:headers "origin"])
-        :referer    (get-in request [:headers "referer"])
-        :user-agent (get-in request [:headers "user-agent"])
-        :ip-address (request.current/ip-address request)}))))
+      (let [embed-origin (get-in request [:headers "x-metabase-embed-origin"])]
+        {:embedding_path       (extract-path (or embed-origin (get-in request [:headers "referer"])))
+         :user_agent           (some-> (get-in request [:headers "user-agent"])
+                                       (subs 0 (min (count (get-in request [:headers "user-agent"])) 512)))
+         :sanitized_user_agent (request.user-agent/describe-user-agent (get-in request [:headers "user-agent"]))
+         :ip_address           (request.current/ip-address request)}))))
 
 (mu/defn include-sdk-info :- :map
   "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
@@ -95,7 +104,7 @@
       (update :embedding_route (fn [route] (or *route* route)))
       (update :embedding_version (fn [version] (or *version* version)))
       (update :auth_method (fn [method] (or *auth-method* method)))
-      (merge (pii-fields))))
+      (merge (hostname-fields) (pii-fields))))
 
 (def ^:private embedding-sdk-client "embedding-sdk-react")
 (def ^:private embedding-iframe-client "embedding-iframe")
@@ -115,13 +124,13 @@
       (= client embedding-iframe-client)))
 
 (def ^:private route-surface-mapping
-  [["/api/public/" "public"]
-   ["/api/embed/" "guest-embed"]
+  [["/api/public/"        "public"]
+   ["/api/embed/"         "guest-embed"]
    ;; preview-embed is guest-embed; the "-preview" suffix is appended separately
    ;; when X-Metabase-Embedded-Preview: true (see embedding-mw below).
    ["/api/preview-embed/" "guest-embed"]
-   ["/api/metabot/" "metabot"]
-   ["/api/agent/" "agent-api"]])
+   ["/api/metabot/"       "metabot"]
+   ["/api/agent/"         "agent-api"]])
 
 (defn route-surface
   "Returns the route surface string for a URI, or nil if no route matches."
