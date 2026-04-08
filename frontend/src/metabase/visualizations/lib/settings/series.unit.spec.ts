@@ -25,18 +25,22 @@ describe("Series unit settings", () => {
     it("should work for a card with a _seriesKey", () => {
       const series = [
         {
-          card: { ...createMockCard({ name: "Count" }), _seriesKey: "count" },
+          card: {
+            ...createMockCard({ name: "Count" }),
+            _seriesKey: "aggregation",
+            _seriesName: "count",
+          },
           ...createMockDataset(),
         },
       ];
       const settings = createMockVisualizationSettings({
-        "graph.metrics": ["count"],
+        "graph.metrics": ["aggregation"],
         "graph.dimensions": ["CATEGORY"],
       });
 
       const colors = getColors(series, settings);
       expect(colors).toEqual({
-        count: "#509EE3",
+        aggregation: "#509EE3",
       });
     });
 
@@ -86,7 +90,7 @@ describe("Series unit settings", () => {
 
       const colors = getColors(series, settings);
       expect(colors).toEqual({
-        COLUMN_2: "#509EE3", // This is the color for "count"
+        COLUMN_2: "#509EE3", // This is the color for "count" via originalName
       });
     });
   });
