@@ -789,12 +789,13 @@ describe("findInvalidRanges — unknown token detection", () => {
 // ---------------------------------------------------------------------------
 
 describe("findInvalidRanges — predecessor validation", () => {
-  const revenueEntry = makeMetricEntry("metric:1", "Revenue");
-  const costsEntry = makeMetricEntry("metric:2", "Costs");
-  const metricEntries = [revenueEntry, costsEntry];
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:2": "Costs",
+  };
 
   it("flags missing operator between metric and constant", () => {
-    const errors = findInvalidRanges("Revenue 2", metricEntries);
+    const errors = findInvalidRanges("Revenue 2", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 8,
@@ -804,7 +805,7 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags missing operator between two metrics", () => {
-    const errors = findInvalidRanges("Revenue Costs", metricEntries);
+    const errors = findInvalidRanges("Revenue Costs", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 8,
@@ -814,7 +815,7 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags missing operator between constant and metric", () => {
-    const errors = findInvalidRanges("2 Revenue", metricEntries);
+    const errors = findInvalidRanges("2 Revenue", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 2,
@@ -824,10 +825,7 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags missing operator between close-paren and metric", () => {
-    const errors = findInvalidRanges(
-      "(Revenue + Costs) Revenue",
-      metricEntries,
-    );
+    const errors = findInvalidRanges("(Revenue + Costs) Revenue", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 18,
@@ -837,7 +835,7 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags operator before closing parenthesis", () => {
-    const errors = findInvalidRanges("(Revenue +)", metricEntries);
+    const errors = findInvalidRanges("(Revenue +)", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 10,
@@ -847,42 +845,42 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags consecutive operators", () => {
-    const errors = findInvalidRanges("Revenue + + Costs", metricEntries);
+    const errors = findInvalidRanges("Revenue + + Costs", metricNames);
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Missing operand"))).toBe(true);
   });
 
   it("flags operator after opening parenthesis", () => {
-    const errors = findInvalidRanges("(+ Revenue)", metricEntries);
+    const errors = findInvalidRanges("(+ Revenue)", metricNames);
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Missing operand"))).toBe(true);
   });
 
   it("flags empty parentheses", () => {
-    const errors = findInvalidRanges("Revenue + ()", metricEntries);
+    const errors = findInvalidRanges("Revenue + ()", metricNames);
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Empty parentheses"))).toBe(true);
   });
 
   it("flags leading operator", () => {
-    const errors = findInvalidRanges("+ Revenue", metricEntries);
+    const errors = findInvalidRanges("+ Revenue", metricNames);
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("Missing operand"))).toBe(true);
   });
 
   it("flags trailing operator", () => {
-    const errors = findInvalidRanges("Revenue +", metricEntries);
+    const errors = findInvalidRanges("Revenue +", metricNames);
     expect(errors.length).toBeGreaterThanOrEqual(1);
     const messages = errors.map((e) => e.message);
     expect(messages.some((m) => m.includes("end with an operator"))).toBe(true);
   });
 
   it("flags constants-only expression as missing metric", () => {
-    const errors = findInvalidRanges("2 + 2", metricEntries);
+    const errors = findInvalidRanges("2 + 2", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       message: expect.stringContaining("at least one metric"),
@@ -890,7 +888,7 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags unmatched opening parenthesis", () => {
-    const errors = findInvalidRanges("(Revenue + Costs", metricEntries);
+    const errors = findInvalidRanges("(Revenue + Costs", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 0,
@@ -900,7 +898,7 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("flags unmatched closing parenthesis", () => {
-    const errors = findInvalidRanges("Revenue + Costs)", metricEntries);
+    const errors = findInvalidRanges("Revenue + Costs)", metricNames);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toMatchObject({
       from: 15,
@@ -910,15 +908,13 @@ describe("findInvalidRanges — predecessor validation", () => {
   });
 
   it("accepts valid nested parentheses", () => {
-    expect(findInvalidRanges("(2 * (Revenue + Costs))", metricEntries)).toEqual(
+    expect(findInvalidRanges("(2 * (Revenue + Costs))", metricNames)).toEqual(
       [],
     );
   });
 
   it("accepts close-paren followed by operator", () => {
-    expect(findInvalidRanges("(Revenue + Costs) * 2", metricEntries)).toEqual(
-      [],
-    );
+    expect(findInvalidRanges("(Revenue + Costs) * 2", metricNames)).toEqual([]);
   });
 });
 
