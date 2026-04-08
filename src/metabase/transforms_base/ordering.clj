@@ -14,6 +14,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
@@ -62,9 +63,22 @@
 
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 
+(defn- safe-table-dependencies
+  "Compute table dependencies for a transform, returning an empty set (and logging a warning) if
+  computation fails. Ordering should be a best-effort hint — a single broken transform must not
+  take down the whole scheduler. Execution-time checks (e.g. `throw-if-db-routing-enabled!`) are
+  the source of truth for whether a transform can actually run."
+  [transform]
+  (try
+    (transforms-base.i/table-dependencies transform)
+    (catch Throwable e
+      (log/warnf e "Failed to compute table dependencies for transform %s; treating as no dependencies"
+                 (pr-str (:id transform)))
+      #{})))
+
 (defn- dependency-map [transforms]
   (into {}
-        (map (juxt :id transforms-base.i/table-dependencies))
+        (map (juxt :id safe-table-dependencies))
         transforms))
 
 (mu/defn- output-table-map

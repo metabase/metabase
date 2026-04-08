@@ -12,6 +12,7 @@
    [metabase.revisions.core :as revisions]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
@@ -54,16 +55,31 @@
 (defn- get-plan [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
     (let [all-transforms   (t2/select :model/Transform)
-          global-ordering  (transforms-base.ordering/transform-ordering all-transforms)
+          ;; Scope the ordering computation to transforms on the same target databases as the ones
+          ;; we're being asked to run. Dependencies don't cross database boundaries, so this is
+          ;; semantically equivalent to computing the global ordering for relevant databases.
+          ;; Importantly, this prevents `table-dependencies` from being called on unrelated
+          ;; transforms — e.g. a zombie transform on a routing-enabled database which would throw
+          ;; during query preprocessing and take down the whole scheduler.
+          initial-db-ids   (into #{}
+                                 (keep (fn [{:keys [id] :as t}]
+                                         (when (contains? transform-ids id)
+                                           (transforms-base.i/target-db-id t))))
+                                 all-transforms)
+          relevant-transforms (filter (fn [t]
+                                        (contains? initial-db-ids
+                                                   (transforms-base.i/target-db-id t)))
+                                      all-transforms)
+          global-ordering  (transforms-base.ordering/transform-ordering relevant-transforms)
           relevant-ids     (get-deps global-ordering transform-ids)
           transforms-by-id (into {}
                                  (keep (fn [{:keys [id] :as transform}]
                                          (when (relevant-ids id)
                                            [id transform])))
-                                 all-transforms)
+                                 relevant-transforms)
           ordering         (sorted-ordering (select-keys global-ordering relevant-ids) transforms-by-id)]
       (when-let [cycle (transforms-base.ordering/find-cycle ordering)]
-        (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
+        (let [id->name (into {} (map (juxt :id :name)) relevant-transforms)]
           (throw (ex-info (str "Cyclic transform definitions detected: "
                                (str/join " → " (map id->name cycle)))
                           {:cycle cycle}))))
