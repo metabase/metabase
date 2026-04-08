@@ -84,9 +84,12 @@
           content       (rs.git/read-file snapshot "dist/index.js")
           _             (when-not content
                           (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
-          ;; read manifest (optional)
-          manifest-str  (rs.git/read-file snapshot (manifest/manifest-path))
-          parsed        (when manifest-str (manifest/parse-manifest manifest-str))
+          manifest-str  (or (rs.git/read-file snapshot (manifest/manifest-path))
+                            (throw (ex-info (str (manifest/manifest-path) " not found in repository")
+                                            {:commit commit-sha})))
+          parsed        (or (manifest/parse-manifest manifest-str)
+                            (throw (ex-info (str "Failed to parse " (manifest/manifest-path))
+                                            {:commit commit-sha})))
           version-str   (get-in parsed [:metabase :version])
           ;; check version compatibility
           _             (when (and version-str
