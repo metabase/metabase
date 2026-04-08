@@ -1,6 +1,5 @@
 (ns metabase.channel.render.card
   (:require
-   [clojure.string :as str]
    [hiccup.core :refer [h]]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
