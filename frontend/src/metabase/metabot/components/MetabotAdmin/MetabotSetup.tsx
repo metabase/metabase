@@ -86,7 +86,7 @@ export function MetabotSetup() {
   }, [updateMetabotSettings]);
 
   const metabotSettingsQuery = useGetMetabotSettingsQuery(
-    provider ? { provider } : skipToken,
+    provider && provider !== "metabase" ? { provider } : skipToken,
   );
 
   const isConfigured = useSetting("llm-metabot-configured?");
