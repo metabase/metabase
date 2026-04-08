@@ -426,6 +426,13 @@
         (is (= {:schema nil :name "my_table"}
                (transforms-base.u/resolve-target-schema (:id db) {:schema nil :name "my_table"})))))
 
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    _t1 {:db_id (:id db) :name "table_a" :schema "schema_one" :active true}
+                   :model/Table    _t2 {:db_id (:id db) :name "table_b" :schema "schema_two" :active true}]
+      (testing "nil schema stays nil when tables have mixed schemas"
+        (is (= {:schema nil :name "my_table"}
+               (transforms-base.u/resolve-target-schema (:id db) {:schema nil :name "my_table"})))))
+
     (testing "explicit schema is preserved"
       (mt/with-temp [:model/Database db {}]
         (is (= {:schema "custom_schema" :name "my_table"}

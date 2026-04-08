@@ -111,20 +111,23 @@
 ;;; ------------------------------------------------- Table Names -------------------------------------------------
 
 (defn resolve-target-schema
-  "If target has no schema, resolve it by looking at the predominant schema of existing
-   active tables in the same database. Returns target unchanged if schema is already set
-   or no tables exist to infer from."
+  "If target has no schema, resolve it by checking whether ALL active tables in the same
+   database share a single schema. Only applies the inferred schema when there's a unanimous
+   consensus - this avoids incorrect inference on drivers like Clickhouse where the 'schema'
+   field stores the database name and may differ from the transform target location.
+   Returns target unchanged if schema is already set or no unanimous schema exists."
   [database-id target]
   (if (:schema target)
     target
-    (if-let [schema (t2/select-one-fn :schema :model/Table
-                                      :db_id database-id
-                                      :active true
-                                      :schema [:not= nil]
-                                      {:order-by [[:id :asc]]
-                                       :limit    1})]
-      (assoc target :schema schema)
-      target)))
+    (let [schemas (t2/select-fn-set :schema :model/Table
+                                    :db_id database-id
+                                    :active true)]
+      ;; Only use the schema if every active table has the same non-nil schema.
+      ;; If there are mixed schemas, or any nil schemas, don't guess.
+      (if (and (= 1 (count schemas))
+               (first schemas))
+        (assoc target :schema (first schemas))
+        target))))
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
