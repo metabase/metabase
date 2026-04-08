@@ -77,42 +77,42 @@
   "Fetch index.js and manifest from the plugin's git repo and update the DB record.
    Returns the commit SHA or nil on failure."
   [{:keys [id repo_url access_token pinned_version identifier]}]
-   (try
-     (let [source        (rs.git/git-source repo_url nil access_token nil)
-           snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
-           commit-sha    (:version snapshot)
-           content       (rs.git/read-file snapshot "dist/index.js")
-           _             (when-not content
-                           (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
-           ;; read manifest (optional)
-           manifest-str  (rs.git/read-file snapshot (manifest/manifest-path))
-           parsed        (when manifest-str (manifest/parse-manifest manifest-str))
-           version-str   (get-in parsed [:metabase :version])
-           ;; check version compatibility
-           _             (when (and version-str
-                                    (not (manifest/compatible? {:metabase_version version-str})))
-                           (throw (ex-info
-                                   (format "Plugin requires Metabase version %s but current version is %s"
-                                           version-str
-                                           (str "v" (config/current-major-version)))
-                                   {:metabase_version version-str})))]
-       ;; update DB — display_name and icon always come from manifest
-       (t2/update! :model/CustomVizPlugin id
-                   {:status            :active
-                    :error_message     nil
-                    :resolved_commit   commit-sha
-                    :manifest          manifest-str
-                    :display_name      (or (:name parsed) identifier)
-                    :icon              (:icon parsed)
-                    :icon_dark         (:icon_dark parsed)
-                    :metabase_version  version-str})
-       (swap! local-snapshots assoc id snapshot)
-       commit-sha)
-     (catch Exception e
-       (t2/update! :model/CustomVizPlugin id
-                   {:status        :error
-                    :error_message (ex-message e)})
-       nil))))
+  (try
+    (let [source        (rs.git/git-source repo_url nil access_token nil)
+          snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
+          commit-sha    (:version snapshot)
+          content       (rs.git/read-file snapshot "dist/index.js")
+          _             (when-not content
+                          (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
+          ;; read manifest (optional)
+          manifest-str  (rs.git/read-file snapshot (manifest/manifest-path))
+          parsed        (when manifest-str (manifest/parse-manifest manifest-str))
+          version-str   (get-in parsed [:metabase :version])
+          ;; check version compatibility
+          _             (when (and version-str
+                                   (not (manifest/compatible? {:metabase_version version-str})))
+                          (throw (ex-info
+                                  (format "Plugin requires Metabase version %s but current version is %s"
+                                          version-str
+                                          (str "v" (config/current-major-version)))
+                                  {:metabase_version version-str})))]
+      ;; update DB — display_name and icon always come from manifest
+      (t2/update! :model/CustomVizPlugin id
+                  {:status            :active
+                   :error_message     nil
+                   :resolved_commit   commit-sha
+                   :manifest          manifest-str
+                   :display_name      (or (:name parsed) identifier)
+                   :icon              (:icon parsed)
+                   :icon_dark         (:icon_dark parsed)
+                   :metabase_version  version-str})
+      (swap! local-snapshots assoc id snapshot)
+      commit-sha)
+    (catch Exception e
+      (t2/update! :model/CustomVizPlugin id
+                  {:status        :error
+                   :error_message (ex-message e)})
+      nil)))
 
 ;;; ------------------------------------------------ Get ------------------------------------------------
 

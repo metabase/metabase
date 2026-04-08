@@ -195,6 +195,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
@@ -2802,7 +2803,6 @@
            premium-features
            server
            util
-           enterprise/api
            enterprise/remote-sync}
    :model-exports #{:model/CustomVizPlugin}}
 
