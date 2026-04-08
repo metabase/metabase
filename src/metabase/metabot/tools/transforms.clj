@@ -81,7 +81,8 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (mu/defn ^{:tool-name "get_transform_details"
-           :scope     scope/agent-transforms-read}
+           :scope     scope/agent-transforms-read
+           :capabilities #{:feature-transforms}}
   get-transform-details-tool
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
@@ -151,7 +152,7 @@
 
 (mu/defn ^{:tool-name "write_transform_sql"
            :scope scope/agent-transforms-write
-           :capabilities #{:permission-write-transforms}}
+           :capabilities #{:feature-transforms :permission-write-transforms}}
   write-transform-sql-tool
   "Write new SQL queries or edit existing queries for transforms.
 
