@@ -763,7 +763,7 @@
                    {:lib/desired-column-alias "pivot-grouping"
                     :base_type                :type/Integer
                     :effective_type           :type/Integer}
-                   {:lib/desired-column-alias "count"
+                   {:lib/desired-column-alias "aggregation"
                     :field_ref                [:aggregation 0]
                     :base_type                :type/Integer
                     :semantic_type            :type/Quantity
