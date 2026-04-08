@@ -520,16 +520,17 @@
 (defn- module-siblings? [a b]
   (let [pa (module-parent a)
         pb (module-parent b)]
-    (and pa pb (= pa pb))))
+    (boolean (and pa pb (= pa pb)))))
 
 (defn- module-internally-visible?
   "Mirror of `hooks.common.modules/internally-visible?`: viewer can see
   viewed's internals without :api check if they share a subtree in the
-  nested module hierarchy."
+  nested module hierarchy. Returns a proper boolean."
   [viewer viewed]
-  (or (= viewer viewed)
-      (module-ancestor? viewer viewed)
-      (module-siblings? viewer viewed)))
+  (boolean
+   (or (= viewer viewed)
+       (module-ancestor? viewer viewed)
+       (module-siblings? viewer viewed))))
 
 (defn- filter-implicit-deps
   "Remove dependencies that are implicit under nested-module visibility rules:

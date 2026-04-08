@@ -78,13 +78,15 @@
 
 (defn- siblings?
   "True if `a` and `b` share the same direct parent (and thus are siblings
-  in the module tree). Top-level modules are siblings of each other only if
-  both are top-level and in the same namespace part (e.g. two OSS top-level
-  modules are not treated as siblings here — each is its own root)."
+  in the module tree). Top-level modules are NOT siblings of each other —
+  each top-level module is its own root.
+
+  Returns a proper boolean (never `nil`), so callers using `false?`/`true?`
+  on the result get the expected behavior."
   [a b]
   (let [pa (parent-module a)
         pb (parent-module b)]
-    (and pa pb (= pa pb))))
+    (boolean (and pa pb (= pa pb)))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Visibility rules
@@ -152,11 +154,14 @@
 
   Crucially it is NOT the case for descendant → parent: a child can still
   see its parent, but only through the parent's `:api` (same as any other
-  outside caller would)."
+  outside caller would).
+
+  Returns a proper boolean."
   [viewer viewed]
-  (or (= viewer viewed)
-      (ancestor? viewer viewed)
-      (siblings? viewer viewed)))
+  (boolean
+   (or (= viewer viewed)
+       (ancestor? viewer viewed)
+       (siblings? viewer viewed))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Namespace → module resolution (prefix-map based)
