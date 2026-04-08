@@ -183,11 +183,11 @@
                      (lib/breakout (meta/field-metadata :products :category)))
           native (lib.drill-thru.tu/->native-wrapped query)
           exprs  {:expressions [[:get-day {:lib/expression-name "Day of month"}
-                                 [:field {} "max"]]]}]
+                                 [:field {} "aggregation"]]]}]
       (lib.drill-thru.tu/test-drill-application
        {:click-type         :header
         :query-type         :aggregated
-        :column-name        "max"
+        :column-name        "aggregation"
         :drill-type         :drill-thru/column-extract
         :custom-query       query
         :expected           {:type         :drill-thru/column-extract

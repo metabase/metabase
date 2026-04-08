@@ -361,25 +361,25 @@
 (deftest ^:parallel aggregation-names-test
   (testing "basic aggregations"
     (testing ":count"
-      (is (= {:name "count", :display-name "Count"}
+      (is (= {:name "aggregation", :display-name "Count"}
              (aggregation-names [:count]))))))
 
 (deftest ^:parallel aggregation-names-test-2
   (testing "basic aggregations"
     (testing ":distinct"
-      (is (= {:name "count", :display-name "Distinct values of ID"}
+      (is (= {:name "aggregation", :display-name "Distinct values of ID"}
              (aggregation-names [:distinct [:field (meta/id :venues :id) nil]]))))))
 
 (deftest ^:parallel aggregation-names-test-3
   (testing "basic aggregations"
     (testing ":sum"
-      (is (= {:name "sum", :display-name "Sum of ID"}
+      (is (= {:name "aggregation", :display-name "Sum of ID"}
              (aggregation-names [:sum [:field (meta/id :venues :id) nil]]))))))
 
 (deftest ^:parallel aggregation-names-test-4
   (testing "expressions"
     (testing "simple expression"
-      (is (= {:name "expression", :display-name "Count + 1"}
+      (is (= {:name "aggregation", :display-name "Count + 1"}
              (aggregation-names [:+ [:count] 1]))))))
 
 (deftest ^:parallel aggregation-names-test-5
