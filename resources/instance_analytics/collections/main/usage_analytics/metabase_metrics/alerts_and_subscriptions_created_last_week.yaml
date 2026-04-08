@@ -1,0 +1,92 @@
+name: Alerts and subscriptions created last week
+entity_id: ybsNZp-876qEMoA1U51dc
+created_at: '2023-06-14T19:55:26.986705Z'
+creator_id: internal@metabase.com
+display: smartscalar
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_subscriptions]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    breakout:
+    - - field
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week, effective-type: type/DateTimeWithLocalTZ}
+      - [Internal Metabase Database, public, v_subscriptions, created_at]
+    joins:
+    - alias: Group Members - Creator
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_subscriptions, creator_id]
+        - - field
+          - {base-type: type/Integer, join-alias: Group Members - Creator, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_group_members, user_id]
+      stages:
+      - {source-card: lTp-ATFsCUFEr9I0fMEaO, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: 5742a680-2a43-4121-b76c-b24730df8989}
+      lib/type: mbql/join
+    source-card: 5ojUtU9iE-DCggHdFPIll
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: 'Created At: Week'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_subscriptions, created_at]
+  - {temporal-unit: week}
+  id: [Internal Metabase Database, public, v_subscriptions, created_at]
+  inherited_temporal_unit: week
+  name: created_at
+  position: 2
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_subscriptions]
+  unit: week
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 162
+  lib/deduplicated-name: created_at
+  lib/desired-column-alias: created_at
+  lib/from-model?: true
+  lib/original-display-name: Created At
+  lib/original-name: created_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: created_at
+  lib/temporal-unit: week
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings: null
+  graph.dimensions: [created_at, group_name]
+  graph.metrics: [count]
+card_schema: 23
+serdes/meta:
+- {id: ybsNZp-876qEMoA1U51dc, label: alerts_and_subscriptions_created_last_week, model: Card}
+dashboard_id: vFnGZMNN2K_KW1I0B52bq
+source_card_id: 5ojUtU9iE-DCggHdFPIll
+type: question
