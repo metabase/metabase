@@ -216,10 +216,8 @@ export type CreateDefineSetting<
    * longer exists in the result set.
    *
    * @param series - The current query result (rows + column metadata).
-   * @param settings - All settings resolved so far, respecting
-   *   `readDependencies` ordering.
-   * @returns `true` to keep the stored value, `false` to fall back to
-   *   `getDefault`.
+   * @param settings - All settings resolved so far, respecting `readDependencies` ordering.
+   * @returns `true` to keep the stored value, `false` to fall back to`getDefault`.
    */
   isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
 
@@ -233,9 +231,7 @@ export type CreateDefineSetting<
    * on the first query run.
    *
    * @param series - The current query result (rows + column metadata).
-   * @param settings - All settings resolved so far, respecting
-   *   `readDependencies` ordering. Dependencies listed in `readDependencies`
-   *   are guaranteed to be resolved before this is called.
+   * @param settings - All settings resolved so far, respecting `readDependencies` ordering.
    * @returns The default value for this setting.
    */
   getDefault?: (
@@ -258,8 +254,7 @@ export type CreateDefineSetting<
    * configurable props (`ToggleProps` is `never`).
    *
    * @param series - The current query result (rows + column metadata).
-   * @param vizSettings - All settings resolved so far, respecting
-   *   `readDependencies` ordering.
+   * @param vizSettings - All settings resolved so far, respecting `readDependencies` ordering.
    * @returns Props object merged into the widget component's props.
    */
   getProps?: PropsFromWidget<W> extends never
@@ -279,8 +274,7 @@ export type CreateDefineSetting<
    * the stored value is never used.
    *
    * @param series - The current query result (rows + column metadata).
-   * @param settings - All settings resolved so far, respecting
-   *   `readDependencies` ordering.
+   * @param settings - All settings resolved so far, respecting `readDependencies` ordering.
    * @returns The computed value for this setting.
    *
    * @example
