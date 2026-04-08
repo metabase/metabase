@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-944-ability-to-duplicate-and-delete-named-themes"
+    }
+  ]
 }
