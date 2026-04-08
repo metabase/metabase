@@ -102,6 +102,7 @@
      collections
      config
      content-verification
+     custom-viz-plugin
      dashboards
      documents
      eid-translation

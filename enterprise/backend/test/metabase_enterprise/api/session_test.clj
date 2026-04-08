@@ -50,6 +50,7 @@
                               :upload-management
                               :whitelabel
                               :collection-cleanup
+                              :custom-viz
                               :database-routing
                               :tenants
                               :cloud-custom-smtp
@@ -96,6 +97,7 @@
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
+            :custom-viz                     true
             :database_routing               true
             :tenants                        true
             :cloud_custom_smtp              true
