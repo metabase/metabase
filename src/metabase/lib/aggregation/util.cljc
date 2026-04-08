@@ -5,14 +5,16 @@
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]))
 
 (defn- taken-names
-  "Build a set of names already in use by existing aggregation `clauses`. Clauses with explicit `:name` use that;
-  unnamed clauses get a name via the unique-name-generator based on their column name."
+  "Build a set of names already in use by existing aggregation `clauses`. All clauses are fed through the
+  unique-name-generator — named clauses register their explicit `:name`, unnamed clauses register their
+  computed column name. This ensures the generator's internal counter stays consistent."
   [query stage-number clauses]
   (let [unique-name-fn (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
     (into #{}
           (map (fn [clause]
-                 (or (lib.options/clause-name clause)
-                     (unique-name-fn (lib.metadata.calculation/column-name query stage-number clause)))))
+                 (unique-name-fn
+                  (or (lib.options/clause-name clause)
+                      (lib.metadata.calculation/column-name query stage-number clause)))))
           clauses)))
 
 (defn- next-available-name

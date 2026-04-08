@@ -7,6 +7,9 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
 
+(defn- strip-name [clause]
+  (lib.options/update-options clause dissoc :name))
+
 (deftest ^:parallel unique-aggregation-name-test
   (let [query (lib.tu/venues-query)]
     (testing "first aggregation gets the base column name"
@@ -31,12 +34,11 @@
                (lib.aggregation.util/unique-aggregation-name
                 query -1 (lib/aggregations query) (lib/count))))))
     (testing "existing clauses without :name are treated as if named"
-      (let [strip-name  (fn [clause] (lib.options/update-options clause dissoc :name))
-            raw-query   (-> (lib.tu/venues-query)
-                            (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
-                            (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
-                            (update-in [:stages 0 :aggregation] #(mapv strip-name %)))
-            existing    (lib/aggregations raw-query)]
+      (let [raw-query (-> (lib.tu/venues-query)
+                          (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                          (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                          (update-in [:stages 0 :aggregation] #(mapv strip-name %)))
+            existing  (lib/aggregations raw-query)]
         (testing "unnamed sums are treated as named for dedup"
           (is (= "sum_3"
                  (lib.aggregation.util/unique-aggregation-name
@@ -53,4 +55,15 @@
         (is (= "sum_2"
                (lib.aggregation.util/unique-aggregation-name
                 query -1 (lib/aggregations query)
-                (lib/sum (meta/field-metadata :venues :price)))))))))
+                (lib/sum (meta/field-metadata :venues :price)))))))
+    (testing "unnamed and named clauses with same base name both occupy slots"
+      (let [raw-query (-> (lib.tu/venues-query)
+                          (lib/aggregate (lib/count))
+                          (lib/aggregate (lib/count))
+                          (update-in [:stages 0 :aggregation 0] strip-name))
+            existing  (lib/aggregations raw-query)]
+        ;; unnamed count → "count" via generator, named count → "count" explicit
+        ;; generator sees "count" twice → taken is #{"count" "count_2"}
+        (is (= "count_3"
+               (lib.aggregation.util/unique-aggregation-name
+                raw-query -1 existing (lib/count))))))))
