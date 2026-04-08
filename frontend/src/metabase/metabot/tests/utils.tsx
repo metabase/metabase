@@ -6,9 +6,9 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
+  type RenderWithProvidersOptions,
   act,
   fireEvent,
-  type RenderWithProvidersOptions,
   renderWithProviders,
   screen,
   waitFor,
@@ -194,7 +194,10 @@ export function setup(
     {
       storeInitialState: createMockState({
         ...storeInitialState,
-        settings: storeInitialState.settings ?? settings,
+        settings: {
+          ...settings,
+          ...(storeInitialState.settings ?? {}),
+        },
         currentUser: currentUser ? currentUser : undefined,
         metabot: metabotInitialState,
       }),
