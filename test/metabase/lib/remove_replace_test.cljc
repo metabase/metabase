@@ -256,7 +256,7 @@
               (-> query
                   (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0)))
                   (lib/append-stage)
-                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "aggregation_2"] 1))
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "aggregation"] 1))
                   (lib/remove-clause 0 (first aggregations))))))))
 
 (defn- by-desired-alias
@@ -522,7 +522,7 @@
         (is (=? {:stages [{:aggregation [[:max {:name "aggregation", :lib/uuid string?} [:field {} (meta/id :venues :price)]]
                                          (second aggregations)
                                          [:aggregation {:name "aggregation_3", :display-name "expr"} string?]]}
-                          {:filters [[:= {} [:field {} "aggregation"] 1]]}]}
+                          {:filters [[:= {} [:field {} "aggregation_2"] 1]]}]}
                 query'))
         (is (string? agg0-id))
         (is (= agg0-id (get-in query' [:stages 0 :aggregation 2 2])))))
@@ -1526,13 +1526,13 @@
                        :filters [[:< {} [:expression {:effective-type :type/Integer} "double price"] 5]
                                  [:> {} [:expression {:effective-type :type/Integer} "name length"] 9]]
                        :breakout [[:expression {:effective-type :type/Integer} "name length"]]
-                       :aggregation [[:min {:name           "aggregation"
+                       :aggregation [[:min {:name           "min name len"
                                             :display-name   "min name len",
                                             :effective-type :type/Integer}
                                       [:length {} [:field {:effective-type :type/Text} (meta/id :venues :name)]]]]}
                       {:lib/type :mbql.stage/mbql,
-                       :filters [[:> {} [:field {:effective-type :type/Integer} "aggregation"] 20]]
-                       :order-by [[:desc {} [:field {:effective-type :type/Integer} "aggregation"]]
+                       :filters [[:> {} [:field {:effective-type :type/Integer} "min name len"] 20]]
+                       :order-by [[:desc {} [:field {:effective-type :type/Integer} "min name len"]]
                                   [:asc {} [:field {:base-type :type/Integer} "name length"]]]}
                       {:lib/type :mbql.stage/mbql
                        :breakout [[:field {:base-type :type/Integer} "name length"]]}

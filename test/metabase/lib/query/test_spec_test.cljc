@@ -510,7 +510,7 @@
                                            :value {:type     :operator
                                                    :operator :*
                                                    :args     [{:type :column
-                                                               :name "total-price"}
+                                                               :name "aggregation"}
                                                               {:type  :literal
                                                                :value 2}]}}]}]})]
       (is (= 2 (count (:stages query))))
@@ -772,7 +772,7 @@
                                            :value {:type     :operator
                                                    :operator :*
                                                    :args     [{:type :column
-                                                               :name "total-count"}
+                                                               :name "aggregation"}
                                                               {:type  :literal
                                                                :value 2}]}}]
 

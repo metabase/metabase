@@ -619,12 +619,12 @@
                     (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
           sum (->> (lib/aggregable-columns query nil)
                    (m/find-first (comp #{"aggregation"} :name)))
-          expr-name "2*sum"
-          query2 (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) expr-name))
+          query2 (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
+          agg-name "aggregation_2"
           expr (->> (lib/aggregable-columns query2 nil)
-                    (m/find-first (comp #{expr-name} :name))
+                    (m/find-first (comp #{agg-name} :name))
                     (lib/* 2))]
-      (is (=? {:message (str "Cycle detected: " expr-name " → " expr-name)}
+      (is (=? {:message (str "Cycle detected: " agg-name " → " agg-name)}
               (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
 
 (deftest ^:parallel diagnose-expression-incompatible-types-test
