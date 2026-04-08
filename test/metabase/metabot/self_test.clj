@@ -453,9 +453,7 @@
     (let [line (self.core/format-finish-line false {"claude-sonnet-4-5-20250929" {:promptTokens 100 :completionTokens 50}})]
       (is (str/starts-with? line "d:"))
       (is (=? {:finishReason "stop"
-               :usage        {:claude-sonnet-4-5-20250929 {:prompt 100 :completion 50}
-                              :promptTokens               100
-                              :completionTokens           50}}
+               :usage        {:claude-sonnet-4-5-20250929 {:prompt 100 :completion 50}}}
               (json/decode+kw (subs line 2)))))))
 
 (deftest format-start-line-test
@@ -492,9 +490,7 @@
                #"0:.*"
                #"d:.*"]
               lines))
-      (is (=? {:usage {:claude-sonnet-4-5-20250929 {:prompt 10 :completion 5}
-                       :promptTokens 10
-                       :completionTokens 5}}
+      (is (=? {:usage {:claude-sonnet-4-5-20250929 {:prompt 10 :completion 5}}}
               (-> (last lines) (subs 2) (json/decode+kw)))))))
 
 ;;; ===================== Retry Logic Tests =====================

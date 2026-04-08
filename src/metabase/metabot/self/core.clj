@@ -271,20 +271,9 @@
                              error (assoc :error (json/encode error)))))))
 
 (defn- format-usage
-  "Convert internal usage map to expected output format.
-
-  The format accumulated in the usage map is `{model {:promptTokens N :completionTokens N}}` but the benchmarks expect
-  per-model entries to have `:prompt` and `:completion` keys, plus a top-level `promptTokens`/`completionTokens` with
-  aggregated totals."
+  "Convert internal usage map to the format expected by benchmarks."
   [usage]
-  (let [per-model (update-vals usage #(set/rename-keys % {:promptTokens :prompt :completionTokens :completion}))
-        totals    (reduce-kv (fn [acc _model {:keys [prompt completion]}]
-                               (-> acc
-                                   (update :promptTokens + prompt)
-                                   (update :completionTokens + completion)))
-                             {:promptTokens 0 :completionTokens 0}
-                             per-model)]
-    (merge per-model totals)))
+  (update-vals usage #(set/rename-keys % {:promptTokens :prompt :completionTokens :completion})))
 
 (defn format-finish-line
   "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
