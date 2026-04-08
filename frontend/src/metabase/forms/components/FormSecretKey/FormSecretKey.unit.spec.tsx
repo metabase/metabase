@@ -33,7 +33,14 @@ const setup = ({
   renderWithProviders(
     <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
       <Form>
-        <FormSecretKey name="secret" label="Signing Key" readOnly={readOnly} />
+        <FormSecretKey
+          name="secret"
+          label="Signing Key"
+          readOnly={readOnly}
+          wrapperProps={{
+            "data-testid": "inputWrapper",
+          }}
+        />
         <FormSubmitButton />
       </Form>
     </FormProvider>,
@@ -170,7 +177,9 @@ describe("FormSecretKey", () => {
       setup({ initialValues: { secret: EXISTING_VALUE } });
 
       await userEvent.click(
-        screen.getByRole("button", { name: "Regenerate key" }),
+        within(screen.getByTestId("inputWrapper")).getByRole("button", {
+          name: "Regenerate key",
+        }),
       );
 
       expect(
@@ -196,7 +205,9 @@ describe("FormSecretKey", () => {
   describe("when readOnly is true (env var controlled)", () => {
     it("does not show 'Regenerate key' or 'Set up key' buttons", () => {
       setup({ initialValues: { secret: EXISTING_VALUE }, readOnly: true });
-      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("inputWrapper")).queryByRole("button"),
+      ).not.toBeInTheDocument();
     });
   });
 
