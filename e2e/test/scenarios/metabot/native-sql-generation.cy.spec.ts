@@ -237,7 +237,7 @@ describe("Native SQL generation", () => {
 const mockCodeEditResponse = (sql: string) =>
   H.sseBody([
     {
-      type: "data-code_edit",
+      type: "data-code-edit",
       id: "d1",
       data: { buffer_id: "qb", mode: "rewrite", value: sql },
     },

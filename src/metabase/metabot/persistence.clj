@@ -44,12 +44,26 @@
                        has-err?                 (assoc :error (:error output))))
                    block))))))
 
-(defn ensure-current-format
-  "Ensure data is in the current (v2) storage format, migrating from v1 if needed."
+(defn normalize-data-event-types
+  "Replace underscores with hyphens in data event type names.
+   E.g. \"data-navigate_to\" -> \"data-navigate-to\".
+   Idempotent: already-hyphenated types pass through unchanged."
   [data]
-  (if (v1-format? data)
-    (migrate-v1->v2 data)
-    data))
+  (mapv (fn [entry]
+          (if (and (string? (:type entry))
+                   (str/starts-with? (:type entry) "data-"))
+            (update entry :type #(str/replace % "_" "-"))
+            entry))
+        data))
+
+(defn ensure-current-format
+  "Ensure data is in the current (v2) storage format, migrating from v1 if needed.
+   Also normalizes data event type names from underscore to kebab-case."
+  [data]
+  (-> (if (v1-format? data)
+        (migrate-v1->v2 data)
+        data)
+      normalize-data-event-types))
 
 (defn internal-parts->storable
   "Convert internal agent loop parts to v2 storage format.

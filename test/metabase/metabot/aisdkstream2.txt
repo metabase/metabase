@@ -1,7 +1,7 @@
 9:{"toolCallId":"call_sJpEjRXSqi5vSjAOJXFdJhjt","toolName":"create_chart","args":"{\"data_source\":{\"query_id\":\"ajjvXmzxvwACMrT7t9pHK\"},\"viz_settings\":{\"chart_type\":\"bar\"}}"}
 a:{"toolCallId":"call_sJpEjRXSqi5vSjAOJXFdJhjt","result":"\n<result>\nA new chart has been created with the ID 64e67fbd-7858-4765-b58f-8d8378732600\n</result>\n<instructions>\nThe chart is not visible to you or the user yet.\nTo show the chart to the user, use your navigation tool (chart ID: 64e67fbd-7858-4765-b58f-8d8378732600).\nReference it in your response using: `[Link text](metabase://chart/64e67fbd-7858-4765-b58f-8d8378732600)`\n</instructions>"}
 9:{"toolCallId":"call_oPCH01Dt3jlFAwRuemtq9fTt","toolName":"navigate_user","args":"{\"destination\":{\"chart_id\":\"64e67fbd-7858-4765-b58f-8d8378732600\"}}"}
-2:{"type":"navigate_to","version":1,"value":"/question#eyJkYXRhc2V0X3F1ZXJ5IjogeyJkYXRhYmFzZSI6IDEsICJ0eXBlIjogInF1ZXJ5IiwgInF1ZXJ5IjogeyJhZ2dyZWdhdGlvbiI6IFtbImNvdW50Il1dLCAiYnJlYWtvdXQiOiBbWyJmaWVsZCIsICJVU0VSX0lEIiwgeyJiYXNlX3R5cGUiOiAidHlwZS9JbnRlZ2VyIn1dXSwgInNvdXJjZV90YWJsZSI6ICJjYXJkX18xIn19LCAiZGlzcGxheSI6ICJiYXIiLCAiZGlzcGxheUlzTG9ja2VkIjogdHJ1ZSwgInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOiB7fX0="}
+2:{"type":"navigate-to","version":1,"value":"/question#eyJkYXRhc2V0X3F1ZXJ5IjogeyJkYXRhYmFzZSI6IDEsICJ0eXBlIjogInF1ZXJ5IiwgInF1ZXJ5IjogeyJhZ2dyZWdhdGlvbiI6IFtbImNvdW50Il1dLCAiYnJlYWtvdXQiOiBbWyJmaWVsZCIsICJVU0VSX0lEIiwgeyJiYXNlX3R5cGUiOiAidHlwZS9JbnRlZ2VyIn1dXSwgInNvdXJjZV90YWJsZSI6ICJjYXJkX18xIn19LCAiZGlzcGxheSI6ICJiYXIiLCAiZGlzcGxheUlzTG9ja2VkIjogdHJ1ZSwgInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOiB7fX0="}
 a:{"toolCallId":"call_oPCH01Dt3jlFAwRuemtq9fTt","result":"The user now can see the result of the chart with ID 64e67fbd-7858-4765-b58f-8d8378732600"}
 0:"I"
 0:" created"

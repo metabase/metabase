@@ -28,16 +28,16 @@ export const dataEventSchema = Yup.object({
 });
 
 export const knownDataPartTypes = [
-  "data-navigate_to",
+  "data-navigate-to",
   "data-state",
-  "data-todo_list",
-  "data-code_edit",
-  "data-transform_suggestion",
+  "data-todo-list",
+  "data-code-edit",
+  "data-transform-suggestion",
 ];
 
 export type KnownDataPart =
-  | { type: "data-navigate_to"; data: string }
+  | { type: "data-navigate-to"; data: string }
   | { type: "data-state"; data: Record<string, any> }
-  | { type: "data-todo_list"; data: MetabotTodoItem[] }
-  | { type: "data-transform_suggestion"; data: SuggestedTransform }
-  | { type: "data-code_edit"; data: MetabotCodeEdit };
+  | { type: "data-todo-list"; data: MetabotTodoItem[] }
+  | { type: "data-transform-suggestion"; data: SuggestedTransform }
+  | { type: "data-code-edit"; data: MetabotCodeEdit };

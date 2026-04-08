@@ -426,7 +426,7 @@ function createMockTransformSuggestionResponse(
     { type: "text-delta", id: "t1", delta: text },
     { type: "text-end", id: "t1" },
     {
-      type: "data-transform_suggestion",
+      type: "data-transform-suggestion",
       id: "d1",
       data: JSON.parse(transformJSON),
     },

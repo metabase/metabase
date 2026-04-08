@@ -44,7 +44,7 @@
               :tool_calls [{:id        "call_oPCH01Dt3jlFAwRuemtq9fTt"
                             :name      "navigate_user"
                             :arguments #"\{\"destination\":.*\}"}]}
-             {:type    "navigate_to"
+             {:type    "navigate-to"
               :_type   :DATA
               :version 1
               :value   #"/question#eyJ.*"}
