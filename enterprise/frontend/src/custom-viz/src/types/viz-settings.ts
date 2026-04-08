@@ -131,10 +131,7 @@ export type CreateDefineSetting<
   group?: string;
 
   /**
-   * Controls the display order of settings. Within a `section`, lower `index`
-   * values appear first. When settings also share the same `group`, `index`
-   * controls order within that group. Settings without an `index` fall back
-   * to declaration order.
+   * Controls the display order of settings when they're placed in the same group.
    */
   index?: number;
 
