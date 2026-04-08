@@ -23,6 +23,20 @@
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
+;;;
+;;; MIRROR: this is the file-path-based equivalent of the namespace-symbol-based
+;;; module resolution in two other sites:
+;;;
+;;;   - .clj-kondo/src/hooks/common/modules.clj  (canonical)
+;;;   - dev/src/dev/deps_graph.clj               (deps graph mirror)
+;;;
+;;; Invariant: given a file at path P containing namespace ns-symb, this
+;;; function must return the same module symbol that the other two sites
+;;; return when given ns-symb. The test `metabase.core.modules-consistency-test`
+;;; verifies the three sites stay in sync.
+;;;
+;;; If you change the module resolution algorithm (e.g. adding longest-prefix
+;;; matching for nested modules), update ALL THREE sites.
 (defn- file->module [filename]
   (or
    (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]

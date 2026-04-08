@@ -13,10 +13,24 @@
          (select-keys config [:metabase/modules])))
 
 (defn module
-  "E.g.
+  "Resolve a namespace symbol to the module symbol that owns it.
+
+  E.g.
 
     (module 'metabase.qp.middleware.wow) => 'qp
-    (module 'metabase-enterprise.whatever.core) => enterprise/whatever"
+    (module 'metabase-enterprise.whatever.core) => enterprise/whatever
+
+  CANONICAL: this function is the source-of-truth definition of the
+  namespace→module resolution algorithm. Two other sites duplicate its
+  behavior because they live in different classpath contexts and cannot
+  share code:
+
+    - dev/src/dev/deps_graph.clj              (namespace-symbol based)
+    - mage/src/mage/modules.clj/file->module  (file-path based)
+
+  If you change the algorithm here, update both of the above sites. The
+  consistency test `metabase.core.modules-consistency-test` verifies they
+  stay in sync by comparing the regex literals across the three files."
   [ns-symb]
   {:pre [(simple-symbol? ns-symb)]}
   ;; treat something like `metabase.driver-test` (for a module that hasn't fully been updated to use `.core`
@@ -75,14 +89,32 @@
         (contains? module-api-namespaces ns-symb)
         (contains? module-friends current-module))))
 
+(def ^:private special-module-suffixes
+  "Module name suffixes that trigger special-case behavior in `usage-error`.
+
+  - `-rest` modules: HTTP-layer modules split from their core counterparts to
+    break cycles. Non-rest modules (except `-rest`, `-routes`, and `core`
+    modules themselves) are forbidden from depending on them.
+  - `-routes` modules: aggregate HTTP routes from multiple `-rest` modules.
+  - `core` modules: the initialization namespace that may need to init
+    `-routes` modules at startup.
+
+  These special cases are expected to be removed once `-rest` modules are
+  migrated to nested child modules (see the nested-modules implementation
+  plan). Keep them centralized here so the migration is a targeted
+  deletion rather than a scattered hunt."
+  {:rest   "-rest"
+   :routes "-routes"
+   :core   "core"})
+
 (defn- rest-module? [module]
-  (str/ends-with? module "-rest"))
+  (str/ends-with? module (:rest special-module-suffixes)))
 
 (defn- routes-module? [module]
-  (str/ends-with? module "-routes"))
+  (str/ends-with? module (:routes special-module-suffixes)))
 
 (defn- core-module? [module]
-  (str/ends-with? module "core"))
+  (str/ends-with? module (:core special-module-suffixes)))
 
 (defn usage-error
   "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the

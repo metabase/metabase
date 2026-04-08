@@ -52,7 +52,19 @@
   "E.g.
 
     (module 'metabase.qp.middleware.wow) => 'qp
-    (module 'metabase-enterprise.whatever.core) => enterprise/whatever"
+    (module 'metabase-enterprise.whatever.core) => enterprise/whatever
+
+  MIRROR: this is a deliberate duplicate of the canonical
+  `hooks.common.modules/module` function in `.clj-kondo/src/hooks/common/modules.clj`.
+  They live in different classpath contexts (this file is in `dev/`; the
+  kondo hook runs inside clj-kondo's isolated classpath) and cannot share
+  source.
+
+  If you change the namespace→module resolution algorithm, update BOTH this
+  function and the one in `.clj-kondo/src/hooks/common/modules.clj`, plus
+  the file-path-based version in `mage/src/mage/modules.clj/file->module`.
+  The test `metabase.core.modules-consistency-test` verifies all three
+  agree by comparing their regex literals."
   [ns-symb :- simple-symbol?]
   (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
                second
