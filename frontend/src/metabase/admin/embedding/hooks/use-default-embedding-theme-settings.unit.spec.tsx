@@ -1,5 +1,5 @@
 import { renderHookWithProviders } from "__support__/ui";
-import { getColors } from "metabase/lib/colors";
+import { getColors } from "metabase/ui/colors/colors";
 import type { ColorSettings } from "metabase-types/api/settings";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -27,10 +27,10 @@ describe("useDefaultEmbeddingThemeSettings", () => {
       expectedColors["text-secondary"],
     );
 
-    // The SDK maps background-secondary as [bg-secondary, bg-medium]
-    // It should use the first defined value which is "bg-secondary"
+    // The SDK maps background-secondary as [background-secondary, background-tertiary]
+    // It should use the first defined value which is "background-secondary"
     expect(theme?.colors?.["background-secondary"]).toBe(
-      expectedColors["bg-secondary"],
+      expectedColors["background-secondary"],
     );
   });
 
