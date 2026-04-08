@@ -919,7 +919,7 @@
                       {:model "Field" :id "Some Field"}]}
                    (set (serdes/dependencies ser))))))))))
 
-(defn- pmbql-measure-definition
+(defn- mbql5-measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [db-id table-id field-id]
   (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
@@ -936,7 +936,7 @@
                        :model/Database   {db-id :id}        {:name "My Database"}
                        :model/Table      {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
                        :model/Field      {field-id :id}     {:name "Some Field" :table_id no-schema-id}]
-      (let [definition (pmbql-measure-definition db-id no-schema-id field-id)]
+      (let [definition (mbql5-measure-definition db-id no-schema-id field-id)]
         (ts/with-temp-dpc [:model/Measure
                            {m1-id  :id
                             m1-eid :entity_id}
@@ -974,7 +974,7 @@
                        :model/Database   {db-id :id}        {:name "My Database"}
                        :model/Table      {table-id :id}     {:name "My Table" :db_id db-id}
                        :model/Field      {field-id :id}     {:name "Amount" :table_id table-id}]
-      (let [base-definition (pmbql-measure-definition db-id table-id field-id)]
+      (let [base-definition (mbql5-measure-definition db-id table-id field-id)]
         (ts/with-temp-dpc [:model/Measure
                            {m1-id  :id
                             m1-eid :entity_id}
@@ -2606,6 +2606,33 @@
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
+
+          (testing "has no dependencies"
+            (is (empty? (serdes/dependencies ser)))))))))
+
+(deftest custom-viz-plugin-test
+  (mt/with-empty-h2-app-db!
+    (t2/delete! :model/CustomVizPlugin)
+    (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:repo_url     "https://github.com/example/test-viz-plugin"
+                                                               :display_name "Test Plugin"
+                                                               :identifier   "test-plugin"
+                                                               :status       :active
+                                                               :manifest     "{}"}]
+      ;; Uncomment to regenerate baseline:
+      ;; (round-trip-test/add-to-baseline!)
+      (testing "custom viz plugin extraction"
+        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
+          (is (=? {:serdes/meta [{:model "CustomVizPlugin"
+                                  :id    "test-plugin"}]
+                   :repo_url     "https://github.com/example/test-viz-plugin"
+                   :display_name "Test Plugin"
+                   :identifier   "test-plugin"
+                   :manifest     "{}"
+                   :created_at   string?}
+                  ser))
+          (is (not (contains? ser :id)))
+          (is (not (contains? ser :status)))
+          (is (not (contains? ser :access_token)))
 
           (testing "has no dependencies"
             (is (empty? (serdes/dependencies ser)))))))))

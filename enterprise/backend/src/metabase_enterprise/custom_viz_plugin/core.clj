@@ -11,20 +11,8 @@
   [plugin]
   (cache/resolve-bundle plugin))
 
-(defenterprise get-bundle
-  "Enterprise implementation: get the cached JS bundle for a plugin."
-  :feature :custom-viz
-  [plugin-id]
-  (cache/get-bundle plugin-id))
-
-(defenterprise get-asset
-  "Enterprise implementation: get a cached static asset for a plugin."
-  :feature :custom-viz
-  [plugin-id asset-path]
-  (cache/get-asset plugin-id asset-path))
-
 (defenterprise resolve-asset
-  "Enterprise implementation: resolve a static asset, respecting dev bundle URL."
+  "Enterprise implementation: resolve a static asset for a plugin."
   :feature :custom-viz
   [plugin-id asset-path]
   (cache/resolve-asset plugin-id asset-path))

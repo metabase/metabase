@@ -14,7 +14,14 @@ import type { Column } from "./types/data";
 declare const window: { __METABASE_VIZ_API__?: { columnTypes: ColumnTypes } };
 
 function ct(): ColumnTypes {
-  return window.__METABASE_VIZ_API__!.columnTypes;
+  const api = window.__METABASE_VIZ_API__;
+  if (!api) {
+    throw new Error(
+      // eslint-disable-next-line metabase/no-literal-metabase-strings
+      "Metabase Viz API not initialized. Column type functions can only be called inside a running Metabase instance.",
+    );
+  }
+  return api.columnTypes;
 }
 
 export const isDate: ColumnPredicate = (col) => ct().isDate(col);

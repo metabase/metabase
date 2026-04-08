@@ -16,6 +16,8 @@
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
   #{:model/Channel
+    ;; CustomVizPlugins have unique identifiers.
+    :model/CustomVizPlugin
     ;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
     :model/Database
     :model/Table
@@ -32,7 +34,8 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/AnalysisFinding
+  #{:model/AiUsageLog
+    :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
     :model/AuthIdentity
@@ -57,6 +60,8 @@
     :model/LoginHistory
     :model/FieldValues
     :model/MetabotConversation
+    :model/MetabotGroupLimit
+    :model/MetabotInstanceLimit
     :model/MetabotMessage
     :model/MetabotPermissions
     :model/ModelIndex

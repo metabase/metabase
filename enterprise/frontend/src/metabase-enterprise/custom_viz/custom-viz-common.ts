@@ -13,6 +13,7 @@ export function applyDefaultVisualizationProps(
     identifier: string;
     getUiName: () => string;
     iconUrl?: string | undefined;
+    iconDarkUrl?: string | undefined;
   },
 ) {
   Object.assign(Component, {

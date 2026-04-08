@@ -1,12 +1,13 @@
 import type { CSSProperties, ImgHTMLAttributes } from "react";
 
 import type { IconData } from "metabase/lib/icon";
-import { Icon, type IconProps } from "metabase/ui";
+import { Icon, type IconProps, useMantineTheme } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
 
 export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   name?: IconData["name"];
   iconUrl?: string;
+  iconDarkUrl?: string;
   color?: ColorName | "inherit";
   size?: string | number;
   style?: CSSProperties;
@@ -20,6 +21,7 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
  */
 export function EntityIcon({
   iconUrl,
+  iconDarkUrl,
   name = "unknown",
   size = "1rem",
   color,
@@ -27,12 +29,16 @@ export function EntityIcon({
   alt = "",
   ...rest
 }: EntityIconProps) {
-  if (iconUrl) {
+  const theme = useMantineTheme();
+  const isDarkMode = theme.other.colorScheme === "dark";
+  const resolvedIconUrl = (isDarkMode && iconDarkUrl) || iconUrl;
+
+  if (resolvedIconUrl) {
     // color is intentionally not applied — CSS color has no effect on <img>
     return (
       <img
         aria-hidden={alt ? undefined : "true"}
-        src={iconUrl}
+        src={resolvedIconUrl}
         alt={alt}
         style={{ ...style, width: size, height: size }}
         {...(rest as ImgHTMLAttributes<HTMLImageElement>)}

@@ -55,7 +55,7 @@
                                                &Orders.*sum/Integer]}]
                       :fields [$id]})
         mlv2-query (lib/query (mt/metadata-provider)
-                              (lib.convert/->pMBQL query))]
+                              (lib.convert/->mbql5 query))]
     (is (=? [{:base-type                :type/BigInteger
               :semantic-type            :type/PK
               :table-id                 (mt/id :products)
@@ -104,7 +104,7 @@
                       :type     :query
                       :query    {:source-card (u/the-id card)}}
           mlv2-query (lib/query (mt/metadata-provider)
-                                (lib.convert/->pMBQL query))
+                                (lib.convert/->mbql5 query))
           breakouts  (lib/breakoutable-columns mlv2-query)
           agg-query  (-> mlv2-query
                          (lib/breakout (second breakouts))

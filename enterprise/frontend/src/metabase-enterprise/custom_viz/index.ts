@@ -3,11 +3,9 @@ import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
-import {
-  CustomVizDevelopmentPage,
-  CustomVizFormPage,
-  ManageCustomVisualizationsPage,
-} from "./components/CustomVizPluginsSettingsPage";
+import { CustomVizDevPage } from "./components/CustomVizDevPage";
+import { CustomVizPage } from "./components/CustomVizPage";
+import { ManageCustomVizPage } from "./components/ManageCustomVizPage";
 import {
   loadCustomVizPlugin,
   useAutoLoadCustomVizPlugin,
@@ -21,9 +19,9 @@ import {
 export function initializePlugin() {
   if (hasPremiumFeature("custom-viz")) {
     Object.assign(PLUGIN_CUSTOM_VIZ, {
-      ManageCustomVisualizationsPage,
-      CustomVizFormPage,
-      CustomVizDevelopmentPage,
+      ManageCustomVizPage,
+      CustomVizPage,
+      CustomVizDevPage,
       useAutoLoadCustomVizPlugin,
       useCustomVizPlugins,
       loadCustomVizPlugin,

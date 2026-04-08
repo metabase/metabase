@@ -7,7 +7,6 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
-   (java.nio.file FileSystems)
    (org.semver4j Semver SemverException)))
 
 (set! *warn-on-reflection* true)
@@ -60,7 +59,7 @@
     (some #(str/ends-with? lower %) image-extensions)))
 
 (def ^:private allowed-asset-extensions
-  "File extensions allowed for static asset serving (images + locale JSON)."
+  "File extensions allowed for static asset serving (images + JSON)."
   (into image-extensions #{".json"}))
 
 (defn- allowed-asset-file?
@@ -69,42 +68,23 @@
   (let [lower (u/lower-case-en path)]
     (some #(str/ends-with? lower %) allowed-asset-extensions)))
 
-(defn- glob?
-  "Returns true if the path contains glob characters (*, ?, or {})."
+(defn- safe-relative-path?
+  "Returns true if path normalizes to a relative path with no directory traversal."
   [^String path]
-  (boolean (re-find #"[*?\[\{]" path)))
-
-(defn- path-matcher
-  "Create a java.nio.file PathMatcher for a glob pattern."
-  [^String pattern]
-  (.getPathMatcher (FileSystems/getDefault) (str "glob:" pattern)))
-
-(defn expand-globs
-  "Expand glob patterns in asset paths against a list of available file paths.
-   Non-glob paths are returned as-is (if they have an allowed extension).
-   Glob paths are matched against `available-paths` and only matches with
-   allowed extensions are returned."
-  [asset-entries available-paths]
-  (let [{globs true literals false} (group-by glob? asset-entries)]
-    (distinct
-     (concat
-      (filter allowed-asset-file? literals)
-      (when (seq globs)
-        (let [matchers (map path-matcher globs)]
-          (filter (fn [^String path]
-                    (and (allowed-asset-file? path)
-                         (let [p (java.nio.file.Path/of path (into-array String []))]
-                           (some #(.matches ^java.nio.file.PathMatcher % p) matchers))))
-                  available-paths)))))))
+  (let [normalized (.normalize (java.nio.file.Path/of path (into-array String [])))]
+    (and (not (.isAbsolute normalized))
+         (not (.startsWith normalized "..")))))
 
 (defn asset-paths
-  "List the static asset names whitelisted by the manifest.
-   Includes names from the `assets` array and the `icon` (if it's an image filename).
-   Supports glob patterns (e.g. `locales/*`) which are expanded by the caller.
-   Returns literal paths and glob patterns; use [[expand-globs]] to resolve globs
-   against available files."
+  "List the static asset paths whitelisted by the manifest.
+   Includes paths from the `assets` array (filtered to allowed extensions and
+   safe relative paths) and the `icon` (if it's an image filename).
+   Only explicitly listed paths are supported — no glob patterns."
   [manifest]
-  (let [declared  (get manifest :assets [])
+  (let [declared  (filter (every-pred allowed-asset-file? safe-relative-path?) (get manifest :assets []))
         icon-name (when-let [icon (:icon manifest)]
-                    (when (image-file? icon) icon))]
-    (distinct (concat declared (when icon-name [icon-name])))))
+                    (when (and (image-file? icon) (safe-relative-path? icon)) icon))
+        icon-dark-name (when-let [icon-dark (:icon_dark manifest)]
+                         (when (and (image-file? icon-dark) (safe-relative-path? icon-dark)) icon-dark))]
+    (distinct (concat declared (when icon-name [icon-name])
+                      (when icon-dark-name [icon-dark-name])))))

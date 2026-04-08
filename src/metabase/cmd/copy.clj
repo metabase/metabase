@@ -136,9 +136,12 @@
     :model/MetabotPrompt]
    (when config/ee-available?
      [:model/MetabotPermissions
+      :model/MetabotGroupLimit
+      :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant
-      :model/ConnectionImpersonation])))
+      :model/ConnectionImpersonation
+      :model/CustomVizPlugin])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`

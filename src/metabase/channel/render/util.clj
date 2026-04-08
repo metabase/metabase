@@ -9,6 +9,13 @@
 
 ;;; --------------------------------------------------- Helpers ---------------------------------------------------
 
+(defn custom-viz-display?
+  "Returns true if `display-type` (keyword or string) is a custom visualization (prefixed with `custom:`)."
+  [display-type]
+  (some-> display-type name (str/starts-with? "custom:")))
+
+;;; ---------------------------------------------------
+
 (defn- extract-value-sources
   "Extracts column references from mappings that aren't strings"
   [mappings]

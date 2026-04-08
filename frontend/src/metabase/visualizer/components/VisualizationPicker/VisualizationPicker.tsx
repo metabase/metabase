@@ -25,6 +25,7 @@ export function VisualizationPicker({
           value: vizType,
           icon: viz.iconName,
           iconUrl: viz.iconUrl,
+          iconDarkUrl: viz.iconDarkUrl,
         };
       });
   }, []);
@@ -61,6 +62,7 @@ export function VisualizationPicker({
                 data-testid={o.value}
                 name={o.icon}
                 iconUrl={o.iconUrl}
+                iconDarkUrl={o.iconDarkUrl}
               />
             </Center>
           ),

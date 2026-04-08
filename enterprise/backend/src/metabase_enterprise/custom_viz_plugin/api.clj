@@ -32,6 +32,7 @@
    [:status          [:enum "pending" "active" "error"]]
    [:enabled         :boolean]
    [:icon            {:optional true} [:maybe :string]]
+   [:icon_dark       {:optional true} [:maybe :string]]
    [:error_message   {:optional true} [:maybe :string]]
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
@@ -48,6 +49,7 @@
    [:identifier      ms/NonBlankString]
    [:display_name    ms/NonBlankString]
    [:icon            {:optional true} [:maybe :string]]
+   [:icon_dark       {:optional true} [:maybe :string]]
    [:bundle_url      ms/NonBlankString]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
@@ -70,12 +72,6 @@
       (str/split #"/")
       last))
 
-;; TODO: this should be guarded automatically through a custom mi/to-json defmethod
-(defn- strip-token
-  "Remove access_token from plugin map before returning to client."
-  [plugin]
-  (dissoc plugin :access_token))
-
 (defn- parse-manifest-json
   "Parse the manifest JSON string stored in the DB into a map for the response."
   [manifest-str]
@@ -88,7 +84,6 @@
   "Convert a plugin record to API response format (keyword status -> string)."
   [plugin]
   (-> plugin
-      strip-token
       (update :status name)
       (update :manifest parse-manifest-json)
       (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))
@@ -96,12 +91,13 @@
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon resolved_commit manifest]}]
+  [{:keys [id identifier display_name icon icon_dark resolved_commit manifest]}]
   (let [dev-url (cache/resolve-dev-bundle id)]
     (cond-> {:id              id
              :identifier      identifier
              :display_name    display_name
              :icon            icon
+             :icon_dark       icon_dark
              :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
              :resolved_commit resolved_commit
              :manifest        (parse-manifest-json manifest)}
@@ -159,6 +155,7 @@
         manifest-str (when manifest (json/encode manifest))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
+        icon-dark    (:icon_dark manifest)
         version-str  (get-in manifest [:metabase :version])
         plugin       (first (t2/insert-returning-instances! :model/CustomVizPlugin
                                                             :repo_url        sentinel-url
@@ -168,6 +165,7 @@
                                                             :enabled         true
                                                             :dev_bundle_url  dev_bundle_url
                                                             :icon            icon
+                                                            :icon_dark       icon-dark
                                                             :manifest        manifest-str
                                                             :metabase_version version-str))]
     (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
@@ -184,7 +182,7 @@
    Plugins with incompatible Metabase version requirements are excluded."
   []
   (let [plugins (t2/select [:model/CustomVizPlugin
-                            :id :identifier :display_name :icon :resolved_commit
+                            :id :identifier :display_name :icon :icon_dark :resolved_commit
                             :manifest :metabase_version]
                            :status :active
                            :enabled true
@@ -217,7 +215,7 @@
     (when (and (contains? updates :pinned_version)
                (not= (:pinned_version updates) (:pinned_version existing)))
       (let [updated-plugin (t2/select-one :model/CustomVizPlugin :id id)]
-        (cache/fetch-and-update! updated-plugin {:force? true}))))
+        (cache/fetch-and-update! updated-plugin))))
   (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
@@ -359,16 +357,19 @@
   (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
     (if (dev-only-plugin? plugin)
       ;; dev-only: re-fetch manifest from dev server
-      (when-let [dev-url (cache/resolve-dev-bundle id)]
-        (when-let [manifest (cache/fetch-dev-manifest dev-url)]
-          (let [manifest-str (json/encode manifest)
-                version-str  (get-in manifest [:metabase :version])]
-            (t2/update! :model/CustomVizPlugin id
-                        {:display_name     (or (:name manifest) (:identifier plugin))
-                         :icon             (:icon manifest)
-                         :manifest         manifest-str
-                         :metabase_version version-str}))))
-      (cache/fetch-and-update! plugin {:force? true}))
+      (let [dev-url  (or (cache/resolve-dev-bundle id)
+                         (throw (ex-info "No dev server URL configured" {:status-code 404})))
+            manifest (or (cache/fetch-dev-manifest dev-url)
+                         (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
+            manifest-str (json/encode manifest)
+            version-str  (get-in manifest [:metabase :version])]
+        (t2/update! :model/CustomVizPlugin id
+                    {:display_name     (or (:name manifest) (:identifier plugin))
+                     :icon             (:icon manifest)
+                     :icon_dark        (:icon_dark manifest)
+                     :manifest         manifest-str
+                     :metabase_version version-str}))
+      (cache/fetch-and-update! plugin))
     (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))
 
 (def routes

@@ -47,7 +47,7 @@ Check out our guides for:
 
 Metabase will only export the following entities:
 
-- Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
+- Collections (but personal collections don't get exported unless you explicitly specify them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Saved questions
 - Transforms (including jobs)
@@ -78,11 +78,11 @@ Metabase will export its artifacts to a directory of YAML files. The export incl
     - timelines
   - databases
 
-  When serializing through the API, the export directory [will be a compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
+  When serializing through the API, the export directory [will be compressed into a .tar.gz file](#you-must-compress-your-files-when-serializing-via-api-calls).
 
 - A `settings.yaml` file that includes some [Metabase-wide settings](#general-metabase-settings-that-are-exported)
 
-Database connection details are not included by default, so you but you can [configure your export](#customize-what-gets-exported) to include them.
+Database connection details are not included by default, but you can [configure your export](#customize-what-gets-exported) to include them.
 
 ### General Metabase settings that are exported
 
@@ -341,7 +341,7 @@ It refers to the `CATEGORY` field in the `PRODUCTS` table in the `PUBLIC` schema
 
 ## How import works
 
-During import, Metabase will read the provided YAML files and create items according to the YAML specs. [Example of a serialized question](#example-of-a-serialized-question) how Metabase records information it needs to reconstruct an item.
+During import, Metabase will read the provided YAML files and create items according to the YAML specs. See [Example of a serialized question](#example-of-a-serialized-question) for how Metabase records information it needs to reconstruct an item.
 
 Metabase will not delete items from target instance during import, but it will overwrite items that already exist.
 
@@ -426,6 +426,7 @@ export path & options
 	   -D, --no-data-model             Do not export any data model entities; useful for subsequent exports.
 	   -f, --include-field-values      Include field values along with field metadata.
 	   -s, --include-database-secrets  Include database connection details (in plain text; use caution).
+	       --include-custom-viz-token Include custom visualization plugin access tokens (in plain text; use caution).
 ```
 
 #### `--collection`
@@ -459,6 +460,10 @@ The `--include-field-values` flag (alias `-f`) tells Metabase to include the sam
 #### `--include-database-secrets`
 
 The `--include-database-secrets` flag (alias `-s`) tells Metabase to include connection details, including the database user name and password. By default, Metabase excludes these database connection secrets. If you don't use this flag, you'll need to manually input the credentials in the target Metabase.
+
+#### `--include-custom-viz-token`
+
+The `--include-custom-viz-token` flag tells Metabase to include access tokens for custom visualization plugins. By default, Metabase excludes these tokens. If you don't use this flag, you'll need to manually input the access tokens for any private repository plugins in the target Metabase.
 
 ### Importing with CLI
 
@@ -588,6 +593,18 @@ To include database connection details, like the database username and password:
 
 ```html
 database_secrets=true
+```
+
+### `custom_viz_token`
+
+Type: Boolean.
+
+Default: `false`.
+
+To include access tokens for custom visualization plugins:
+
+```
+custom_viz_token=true
 ```
 
 ### `dirname`
