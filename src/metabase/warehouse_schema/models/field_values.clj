@@ -339,7 +339,7 @@
 
 (defenterprise hash-input-for-database-routing
   "Returns a hash input that will be used for fields subject to database routing"
-  metabase-enterprise.database-routing.model
+  metabase-enterprise.database-routing.models
   [_field]
   nil)
 

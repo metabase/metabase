@@ -739,7 +739,7 @@
 
 (defenterprise hydrate-router-user-attribute
   "OSS implementation. Hydrates router user attribute on the databases."
-  metabase-enterprise.database-routing.model
+  metabase-enterprise.database-routing.models
   [_k databases]
   (for [database databases]
     (assoc database :router_user_attribute nil)))
