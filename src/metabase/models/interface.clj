@@ -387,7 +387,7 @@
                              (ex-message e))
                   form))
               form))
-          (normalize-mbql-items [xs]
+          (normalize-mbql-clauses [xs]
             (when xs (mapv normalize-mbql-clause xs)))
           (normalize-table-columns [cols]
             (mapv (fn [col]
@@ -400,21 +400,44 @@
           (normalize-column-split [split]
             (when split
               (-> split
-                  (m/update-existing :rows normalize-mbql-items)
-                  (m/update-existing :columns normalize-mbql-items)
-                  (m/update-existing :values normalize-mbql-items))))
+                  (m/update-existing :rows normalize-mbql-clauses)
+                  (m/update-existing :columns normalize-mbql-clauses)
+                  (m/update-existing :values normalize-mbql-clauses))))
           (normalize-collapsed-rows [collapsed]
             (when collapsed
-              (m/update-existing collapsed :rows normalize-mbql-items)))]
+              (m/update-existing collapsed :rows normalize-mbql-clauses)))
+          (normalize-column-formatting [items]
+            (mapv (fn [item] (m/update-existing item :columns normalize-mbql-clauses)) items))
+          (normalize-dimension [form]
+            (if (and (vector? form) (= "dimension" (first form)))
+              (into [:dimension] (map normalize-mbql-clause) (rest form))
+              form))
+          (normalize-click-behavior-param-mapping [pm]
+            (into {} (map (fn [[k v]]
+                            [k (m/update-existing-in v [:target :dimension] normalize-dimension)]))
+                  pm))
+          (normalize-click-behavior [cb]
+            (when cb
+              (m/update-existing cb :parameterMapping normalize-click-behavior-param-mapping)))
+          (normalize-click-behaviors [settings]
+            (-> settings
+                (m/update-existing :click_behavior normalize-click-behavior)
+                (m/update-existing :column_settings
+                                   (fn [cs] (into {} (map (fn [[k v]] [k (m/update-existing v :click_behavior normalize-click-behavior)])) cs)))))]
     (->
      viz-settings
      (dissoc "column_settings")
      walk/keywordize-keys
+     (m/update-existing :table.columns normalize-table-columns)
+     ;; column_settings needs special handling: keys are JSON-encoded refs that must not be keywordized.
+     ;; We get them from the original (string-keyed) input. If already processed (keyword-keyed input
+     ;; from a second normalization pass), we keep existing :column_settings as-is.
      (cond-> (get viz-settings "column_settings")
        (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings"))))
-     (m/update-existing :table.columns normalize-table-columns)
+     (m/update-existing :table.column_formatting normalize-column-formatting)
      (m/update-existing :pivot_table.column_split normalize-column-split)
-     (m/update-existing :pivot_table.collapsed_rows normalize-collapsed-rows))))
+     (m/update-existing :pivot_table.collapsed_rows normalize-collapsed-rows)
+     normalize-click-behaviors)))
 
 (jm/def-json-migration migrate-viz-settings*)
 
