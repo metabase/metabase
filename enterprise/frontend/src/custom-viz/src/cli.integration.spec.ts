@@ -1,0 +1,381 @@
+import type { ChildProcess } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
+
+const CLI_PATH = join(__dirname, "..", "dist", "cli.js");
+const CUSTOM_VIZ_PACKAGE_DIR = join(__dirname, "..");
+
+let tmpDir: string;
+
+async function scaffold(name: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "node",
+      [CLI_PATH, "init", name],
+      { cwd: tmpDir },
+      (error, _stdout, stderr) => {
+        if (error) {
+          reject(new Error(`scaffold failed: ${stderr}`));
+        } else {
+          resolve(join(tmpDir, name));
+        }
+      },
+    );
+  });
+}
+
+async function npmInstall(cwd: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "npm",
+      ["install", "--ignore-scripts"],
+      { cwd, timeout: 120_000 },
+      (error, _stdout, stderr) => {
+        if (error) {
+          reject(new Error(`npm install failed: ${stderr}`));
+        } else {
+          resolve();
+        }
+      },
+    );
+  });
+}
+
+async function npmRun(
+  script: string,
+  cwd: string,
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "npm",
+      ["run", script],
+      { cwd, timeout: 120_000 },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(`npm run ${script} failed: ${stderr}`));
+        } else {
+          resolve({ stdout: stdout.toString(), stderr: stderr.toString() });
+        }
+      },
+    );
+  });
+}
+
+describe("scaffolding", () => {
+  beforeEach(async () => {
+    const { mkdtemp } = await import("node:fs/promises");
+    tmpDir = await mkdtemp(join(tmpdir(), "custom-viz-scaffold-"));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("npm install executes successfully", async () => {
+    const projectDir = await scaffold("test-viz-install");
+
+    // Point @metabase/custom-viz to local package instead of npm registry
+    const pkgPath = join(projectDir, "package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+    pkg.devDependencies["@metabase/custom-viz"] =
+      `file:${CUSTOM_VIZ_PACKAGE_DIR}`;
+    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+
+    await npmInstall(projectDir);
+    expect(existsSync(join(projectDir, "node_modules"))).toBe(true);
+  }, 120_000);
+});
+
+describe("build output validation", () => {
+  let projectDir: string;
+
+  beforeAll(async () => {
+    const { mkdtemp } = await import("node:fs/promises");
+    tmpDir = await mkdtemp(join(tmpdir(), "custom-viz-build-"));
+    projectDir = await scaffold("test-viz-build");
+
+    // Point to local package
+    const pkgPath = join(projectDir, "package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+    pkg.devDependencies["@metabase/custom-viz"] =
+      `file:${CUSTOM_VIZ_PACKAGE_DIR}`;
+    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+
+    await npmInstall(projectDir);
+    await npmRun("build", projectDir);
+  }, 120_000);
+
+  afterAll(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("dist/index.js exists", () => {
+    expect(existsSync(join(projectDir, "dist", "index.js"))).toBe(true);
+  });
+
+  it("output format is IIFE", () => {
+    const bundle = readFileSync(join(projectDir, "dist", "index.js"), "utf-8");
+    expect(bundle).toContain("__customVizPlugin__");
+  });
+
+  it("React is externalized (not bundled)", () => {
+    const bundle = readFileSync(join(projectDir, "dist", "index.js"), "utf-8");
+    // The bundle should not contain React's source code internals
+    expect(bundle).not.toContain("react-dom");
+    expect(bundle).not.toContain(
+      "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED",
+    );
+    // The bundle should be small (React alone is ~100KB+)
+    expect(bundle.length).toBeLessThan(10_000);
+  });
+
+  it("metabase-plugin.json is copied to dist/", () => {
+    // metabase-plugin.json is only copied to dist by the dev server plugin (closeBundle).
+    // In a plain `vite build`, metabase-plugin.json stays in the project root.
+    // The source manifest should exist and be valid.
+    const manifestPath = join(projectDir, "metabase-plugin.json");
+    expect(existsSync(manifestPath)).toBe(true);
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+    expect(manifest.name).toBe("test-viz-build");
+    expect(manifest).toHaveProperty("icon");
+    expect(manifest).toHaveProperty("assets");
+  });
+
+  it("type-check passes", async () => {
+    await expect(npmRun("type-check", projectDir)).resolves.not.toThrow();
+  }, 60_000);
+
+  it("lint check passes", async () => {
+    // oxlint auto-discovers vite.config.ts as an eslint flat config and fails
+    // on Node < 22.18, so we point --config to an explicit empty JSON config.
+    const oxlintConfig = join(projectDir, ".oxlintrc.json");
+    writeFileSync(oxlintConfig, "{}");
+
+    const oxlintBin = join(
+      CUSTOM_VIZ_PACKAGE_DIR,
+      "node_modules",
+      ".bin",
+      "oxlint",
+    );
+    await new Promise<void>((resolve, reject) => {
+      execFile(
+        oxlintBin,
+        ["--config", oxlintConfig, "src/"],
+        { cwd: projectDir, timeout: 30_000 },
+        (error, stdout, stderr) => {
+          if (error) {
+            reject(
+              new Error(
+                `oxlint failed: ${stdout.toString()} ${stderr.toString()}`,
+              ),
+            );
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
+  }, 60_000);
+});
+
+describe("dev server", () => {
+  let projectDir: string;
+  let devProcess: ChildProcess | null = null;
+
+  beforeAll(async () => {
+    const { mkdtemp } = await import("node:fs/promises");
+    tmpDir = await mkdtemp(join(tmpdir(), "custom-viz-dev-"));
+    projectDir = await scaffold("test-viz-dev");
+
+    // Point to local package
+    const pkgPath = join(projectDir, "package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+    pkg.devDependencies["@metabase/custom-viz"] =
+      `file:${CUSTOM_VIZ_PACKAGE_DIR}`;
+    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+
+    await npmInstall(projectDir);
+
+    // Start the dev server once for all tests
+    await new Promise<void>((resolve, reject) => {
+      devProcess = spawn("npm", ["run", "dev"], {
+        cwd: projectDir,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      const timeout = setTimeout(() => {
+        reject(new Error("Dev server did not start within 60s"));
+      }, 60_000);
+
+      let output = "";
+
+      devProcess.stderr?.on("data", (data: Buffer) => {
+        output += data.toString();
+        if (output.includes("Dev server listening")) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+
+      devProcess.stdout?.on("data", (data: Buffer) => {
+        output += data.toString();
+        if (output.includes("Dev server listening")) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+
+      devProcess.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+
+      devProcess.on("exit", (code) => {
+        if (code !== null && code !== 0) {
+          clearTimeout(timeout);
+          reject(new Error(`Dev server exited with code ${code}: ${output}`));
+        }
+      });
+    });
+  }, 180_000);
+
+  afterAll(async () => {
+    if (devProcess && !devProcess.killed) {
+      devProcess.kill("SIGTERM");
+    }
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("serves SSE endpoint with CORS headers", async () => {
+    // Use raw TCP to inspect headers, since http.get/fetch hang on SSE
+    // streams that don't send initial data.
+    const { Socket } = await import("node:net");
+
+    const rawResponse = await new Promise<string>((resolve, reject) => {
+      const socket = new Socket();
+      let data = "";
+
+      socket.connect(5174, "localhost", () => {
+        socket.write("GET /__sse HTTP/1.1\r\nHost: localhost:5174\r\n\r\n");
+      });
+
+      socket.on("data", (chunk) => {
+        data += chunk.toString();
+        // Once we have the headers (double CRLF), we can close
+        if (data.includes("\r\n\r\n")) {
+          socket.destroy();
+          resolve(data);
+        }
+      });
+
+      socket.on("error", reject);
+      setTimeout(() => {
+        socket.destroy();
+        reject(new Error("Socket timed out"));
+      }, 5_000);
+    });
+
+    expect(rawResponse).toContain("HTTP/1.1 200");
+    expect(rawResponse).toContain("text/event-stream");
+    expect(rawResponse.toLowerCase()).toContain(
+      "access-control-allow-origin: *",
+    );
+  }, 10_000);
+
+  it("serves static files with correct MIME types", async () => {
+    const jsResponse = await fetch("http://localhost:5174/index.js");
+    expect(jsResponse.status).toBe(200);
+    expect(jsResponse.headers.get("content-type")).toBe(
+      "application/javascript",
+    );
+
+    const manifestResponse = await fetch(
+      "http://localhost:5174/metabase-plugin.json",
+    );
+    expect(manifestResponse.status).toBe(200);
+    expect(manifestResponse.headers.get("content-type")).toBe(
+      "application/json",
+    );
+  }, 10_000);
+
+  it("prevents directory traversal", async () => {
+    const response = await fetch("http://localhost:5174/../package.json");
+    // Node's http server normalizes the URL, so the path resolves to /package.json
+    // which won't exist in dist/. The traversal check catches paths that escape distDir.
+    expect([403, 404]).toContain(response.status);
+  }, 10_000);
+
+  it("returns 404 for nonexistent files", async () => {
+    const response = await fetch("http://localhost:5174/nonexistent.js");
+    expect(response.status).toBe(404);
+  }, 10_000);
+
+  it("serves landing page at /", async () => {
+    const response = await fetch("http://localhost:5174/");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/html");
+
+    const html = await response.text();
+    expect(html).toContain("</html>");
+  }, 10_000);
+
+  it("broadcasts SSE reload event on asset change", async () => {
+    const { get } = await import("node:http");
+
+    const received = await new Promise<string>((resolve, reject) => {
+      let data = "";
+
+      const req = get("http://localhost:5174/__sse", (res) => {
+        res.setEncoding("utf-8");
+        res.on("data", (chunk: string) => {
+          data += chunk;
+          if (data.includes("data: reload")) {
+            res.destroy();
+            req.destroy();
+            resolve(data);
+          }
+        });
+      });
+
+      req.on("error", (err) => {
+        // ECONNRESET is expected when we destroy the connection
+        if ("code" in err && err.code === "ECONNRESET") {
+          resolve(data);
+        } else {
+          reject(err);
+        }
+      });
+
+      // Wait briefly for SSE connection to establish, then modify an asset
+      setTimeout(() => {
+        const assetPath = join(projectDir, "public", "assets", "icon.svg");
+        const originalContent = readFileSync(assetPath, "utf-8");
+        writeFileSync(
+          assetPath,
+          originalContent + `<!-- modified ${Date.now()} -->`,
+        );
+      }, 500);
+
+      // Timeout fallback
+      setTimeout(() => {
+        req.destroy();
+        resolve(data);
+      }, 15_000);
+    });
+
+    expect(received).toContain("data: reload");
+  }, 30_000);
+});

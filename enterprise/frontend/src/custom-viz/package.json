@@ -24,6 +24,8 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build && cp -r src/templates dist/templates",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "oxlint src/",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -36,9 +38,11 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "np": "^11.0.2",
+    "oxlint": "^1.59.0",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "vite": "^8.0.3",
-    "vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^4.1.3"
   }
 }
