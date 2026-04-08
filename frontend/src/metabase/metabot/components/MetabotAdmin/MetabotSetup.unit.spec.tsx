@@ -9,7 +9,9 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import type {
   MetabotProvider,
   MetabotSettingsResponse,
@@ -21,7 +23,6 @@ import {
   createMockTokenFeatures,
   createMockTokenStatus,
 } from "metabase-types/api/mocks";
-import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotSetup } from "./MetabotSetup";
 import type { MetabotApiKeyProvider } from "./utils";
@@ -148,8 +149,6 @@ async function setup({
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
-  setupEnterpriseOnlyPlugin("metabot");
-
   const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
     anthropic: "**********45",
     openai: null,
@@ -164,6 +163,7 @@ async function setup({
     "llm-metabot-configured?": isConfigured,
     "token-features": createMockTokenFeatures({
       hosting: isHosted,
+      "offer-metabase-ai-managed": isHosted,
       "metabase-ai-managed": tokenStatusFeatures.includes(
         "metabase-ai-managed",
       ),
@@ -220,6 +220,7 @@ async function setup({
     fetchMock.post("path:/api/premium-features/token/refresh", () => {
       sessionProperties["token-features"] = createMockTokenFeatures({
         hosting: isHosted,
+        "offer-metabase-ai-managed": isHosted,
         "metabase-ai-managed": refreshedTokenStatusFeatures.includes(
           "metabase-ai-managed",
         ),
@@ -231,6 +232,9 @@ async function setup({
       return sessionProperties["token-status"];
     });
   }
+
+  const settings = mockSettings(sessionProperties);
+  setupEnterpriseOnlyPlugin("metabot");
 
   for (const provider of Object.keys(responseMap) as MetabotProvider[]) {
     const response = responseMap[provider];
@@ -255,7 +259,7 @@ async function setup({
       withRouter: true,
       initialRoute: "/admin/metabot/setup",
       storeInitialState: {
-        settings: createMockSettingsState(sessionProperties),
+        settings,
       },
     },
   );
@@ -278,6 +282,10 @@ async function selectProvider(name: string) {
 }
 
 describe("MetabotSetup", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("shows the env var message and disables both provider and model inputs when provider is env-backed", async () => {
     await setup({
       providerSettingIsEnv: true,

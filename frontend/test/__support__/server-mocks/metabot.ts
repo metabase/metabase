@@ -18,6 +18,7 @@ import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metab
 
 const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
   "metabase-ai-managed";
+const METABASE_MANAGED_AI_UNIT_MULTIPLIER = 1_000_000;
 
 export function setupMetabotsEndpoints(
   metabots: MetabotInfo[],
@@ -189,7 +190,9 @@ export function setupMetabaseManagedAiEndpoints({
       default_base_fee: 0,
       default_included_units: 0,
       default_prepaid_units: 1,
-      default_price_per_unit: metabasePricePerUnit,
+      // The API returns a per-token price; tests pass a per-1M-tokens price.
+      default_price_per_unit:
+        metabasePricePerUnit / METABASE_MANAGED_AI_UNIT_MULTIPLIER,
       default_total_units: 1,
       description: null,
       is_metered: true,
