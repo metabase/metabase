@@ -1,3 +1,4 @@
+import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -16,11 +17,11 @@ import type Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockNativeDatasetQuery,
-  createMockTokenFeatures,
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { MetabotProvider } from "../context";
@@ -102,9 +103,6 @@ describe("query builder code edits from omnibot", () => {
       currentUser: createMockUser(),
       settings: mockSettings({
         "llm-metabot-configured?": true,
-        "token-features": createMockTokenFeatures({
-          metabot_v3: true,
-        }),
       }),
       entities: createMockEntitiesState({
         databases: [TEST_DB],
@@ -124,14 +122,18 @@ describe("query builder code edits from omnibot", () => {
         storeInitialState: storeInitialState as any,
       },
     );
+    const typedStore = store as Omit<typeof store, "dispatch" | "getState"> & {
+      dispatch: ThunkDispatch<State, void, AnyAction>;
+      getState: () => State;
+    };
 
     const conversationId =
-      store.getState().metabot.conversations.omnibot?.conversationId;
+      typedStore.getState().metabot.conversations.omnibot?.conversationId;
 
     expect(conversationId).toBeDefined();
 
     await act(async () => {
-      await store.dispatch(
+      await typedStore.dispatch(
         sendAgentRequest({
           agentId: "omnibot",
           message: "Please rewrite this query",
@@ -162,7 +164,7 @@ describe("query builder code edits from omnibot", () => {
       );
     });
 
-    expect(store.getState().qb.uiControls.isNativeEditorOpen).toBe(true);
+    expect(typedStore.getState().qb.uiControls.isNativeEditorOpen).toBe(true);
 
     await waitFor(() => {
       expect(screen.getByTestId("qb-proposed-sql")).toHaveTextContent(

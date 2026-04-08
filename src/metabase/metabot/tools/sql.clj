@@ -181,34 +181,6 @@
         {:output (ex-message e)}
         {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
 
-(mu/defn ^{:tool-name    "edit_sql_query"
-           :scope        scope/agent-sql-edit
-           :capabilities #{:permission-write-sql-queries}}
-  edit-sql-query-code-edit-tool
-  "Edit an existing SQL query and update the code editor buffer."
-  [{:keys [query_id edits checklist]} :- edit-sql-schema]
-  (let [buffer-id (first-code-editor-buffer-id)]
-    (if (nil? buffer-id)
-      {:output "No active code editor buffer found for SQL editing."}
-      (let [{:keys [validation-result action-result]}
-            (edit-sql-query-tools/edit-sql-query
-             {:query-id query_id
-              :edits edits
-              :checklist checklist
-              :queries-state (shared/current-queries-state)})
-            {:keys [valid? dialect error-message]} validation-result
-            {:keys [query-id query-content]} action-result]
-        (if valid?
-          (let [structured (assoc action-result :result-type :query)
-                instr      (instructions/edit-sql-query-instructions-for query-id)]
-            {:output (format-query-output structured instr)
-             :structured-output structured
-             :instructions instr
-             :data-parts [(code-edit-part buffer-id query-content)]})
-          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-            {:output (format-validation-error-output instr)
-             :instructions instr}))))))
-
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Replace SQL query
 ;;; ──────────────────────────────────────────────────────────────────
@@ -251,31 +223,3 @@
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
-
-(mu/defn ^{:tool-name    "replace_sql_query"
-           :scope        scope/agent-sql-edit
-           :capabilities #{:permission-write-sql-queries}}
-  replace-sql-query-code-edit-tool
-  "Replace an SQL query and update the code editor buffer."
-  [{:keys [query_id new_query checklist]} :- replace-sql-schema]
-  (let [buffer-id (first-code-editor-buffer-id)]
-    (if (nil? buffer-id)
-      {:output "No active code editor buffer found for SQL editing."}
-      (let [{:keys [validation-result action-result]}
-            (replace-sql-query-tools/replace-sql-query
-             {:query-id query_id
-              :sql new_query
-              :checklist checklist
-              :queries-state (shared/current-queries-state)})
-            {:keys [valid? dialect error-message]} validation-result
-            {:keys [query-id query-content]} action-result]
-        (if valid?
-          (let [structured (assoc action-result :result-type :query)
-                instr      (instructions/replace-sql-query-instructions-for query-id)]
-            {:output (format-query-output structured instr)
-             :structured-output structured
-             :instructions instr
-             :data-parts [(code-edit-part buffer-id query-content)]})
-          (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
-            {:output (format-validation-error-output instr)
-             :instructions instr}))))))
