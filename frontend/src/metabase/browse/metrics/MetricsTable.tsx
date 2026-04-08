@@ -188,6 +188,9 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       const url = Urls.metric({ id, name, type: "metric" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
+      // TODO: metabase/metabse#47713
+      // trackMetricClick(metric.id);
+
       event.preventDefault();
       event.stopPropagation();
 
