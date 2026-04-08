@@ -75,7 +75,7 @@
                                  "breakout"     #js [#js ["field" 3 nil]]
                                  "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}]
         (is (lib.js/query= q1 q2))))
-    (testing "on pMBQL queries"
+    (testing "on MBQL 5 queries"
       (let [q1 (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                    (lib/expression "some_expr" (lib/+ (meta/field-metadata :orders :subtotal) 1))
                    (lib/aggregate (lib/count))
@@ -519,7 +519,7 @@
                             "b" [:+ [:expression "a"] [:expression "c"]]
                             "x" [:+ [:expression "b"] 1]
                             "s" [:+ [:expression "a"] [:expression "b"] [:expression "c"]]}
-                           lib.convert/->pMBQL)
+                           lib.convert/->mbql5)
         query (reduce-kv (fn [query expr-name expr]
                            (lib/expression query 0 expr-name expr))
                          (lib.tu/venues-query)

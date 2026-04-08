@@ -5,7 +5,7 @@ description: How to embed charts in your app with the Modular embedding SDK.
 
 # Modular embedding SDK - questions
 
-{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embedding=true%}
 
 There are different ways you can embed questions:
 

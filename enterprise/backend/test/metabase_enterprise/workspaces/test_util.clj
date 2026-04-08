@@ -79,7 +79,7 @@
     (lib/query mp (lib.metadata/table mp (mt/id table-kw)))))
 
 (defn mbql->native
-  "Compile a query to a native SQL map. Works with both legacy MBQL and lib (pMBQL) queries.
+  "Compile a query to a native SQL map. Works with both legacy MBQL and lib (MBQL 5) queries.
    This generates driver-specific SQL with properly qualified table names."
   [query]
   (qp.store/with-metadata-provider (mt/id)
