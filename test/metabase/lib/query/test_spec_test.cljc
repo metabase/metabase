@@ -262,7 +262,7 @@
                            {:filters [{:type     :operator
                                        :operator :>
                                        :args     [{:type :column
-                                                   :name "count"}
+                                                   :name "aggregation"}
                                                   {:type  :literal
                                                    :value 10}]}]}]})]
       (is (= 2 (count (:stages query))))
@@ -668,7 +668,7 @@
                            {:filters [{:type     :operator
                                        :operator :>
                                        :args     [{:type :column
-                                                   :name "count"}
+                                                   :name "aggregation"}
                                                   {:type  :literal
                                                    :value 10}]}]}
                            {:limit 5}]})]

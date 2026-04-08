@@ -1586,7 +1586,7 @@
                                 lib/append-stage)
         summarized-cols (lib/returned-columns products-summarized)
         orders-join (-> (lib/join-clause (meta/table-metadata :orders)
-                                         [(lib/< (by-desired-alias summarized-cols "min")
+                                         [(lib/< (by-desired-alias summarized-cols "aggregation")
                                                  (meta/field-metadata :orders :created-at))])
                         (lib/with-join-fields [(meta/field-metadata :orders :created-at)
                                                (meta/field-metadata :orders :quantity)]))
@@ -1594,8 +1594,8 @@
         joined-query-cols (lib/visible-columns joined-query)]
     (-> joined-query
         (lib/filter (lib/< (by-desired-alias joined-query-cols "Orders - Min of Created At__TOTAL") 100))
-        (lib/filter (lib/> (lib/get-month (by-desired-alias joined-query-cols "min")) 6))
-        (lib/filter (lib/= (by-desired-alias joined-query-cols "product count") 3)))))
+        (lib/filter (lib/> (lib/get-month (by-desired-alias joined-query-cols "aggregation")) 6))
+        (lib/filter (lib/= (by-desired-alias joined-query-cols "aggregation_3") 3)))))
 
 ;; TODO: do something about automagic join aliases getting out of date
 (deftest ^:parallel replace-unrelated-type-affecting-join-test
@@ -1604,11 +1604,11 @@
              [{:breakout [[:field {:effective-type :type/Text} (meta/id :products :category)]
                           [:field {:effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
                            (meta/id :products :created-at)]]
-               :aggregation [[:max {:name "min"} [:field {:effective-type :type/DateTimeWithLocalTZ}
-                                                  (meta/id :products :created-at)]]
+               :aggregation [[:max {:name "aggregation"} [:field {:effective-type :type/DateTimeWithLocalTZ}
+                                                          (meta/id :products :created-at)]]
                              [:avg {} [:field {:effective-type :type/Float}
                                        (meta/id :products :price)]]
-                             [:distinct {:name "product count"} [:field {:effective-type :type/BigInteger}
+                             [:distinct {:name "aggregation_3"} [:field {:effective-type :type/BigInteger}
                                                                  (meta/id :products :id)]]]}
               {:joins [{:stages
                         [{:source-table (meta/id :orders)}],
@@ -1619,7 +1619,7 @@
                                           :join-alias "Orders - Min of Created At"}
                                   (meta/id :orders :quantity)]],
                         :conditions [[:< {}
-                                      [:field {:effective-type :type/DateTimeWithLocalTZ} "min"]
+                                      [:field {:effective-type :type/DateTimeWithLocalTZ} "aggregation"]
                                       [:field {:effective-type :type/DateTimeWithLocalTZ
                                                :join-alias "Orders - Min of Created At"}
                                        (meta/id :orders :created-at)]]]
@@ -1629,8 +1629,8 @@
                                    :join-alias "Orders - Min of Created At"}
                            (meta/id :orders :total)]
                           100]
-                         [:> {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ} "min"]] 6]
-                         [:= {} [:field {:effective-type :type/Integer} "product count"] 3]]}]}
+                         [:> {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ} "aggregation"]] 6]
+                         [:= {} [:field {:effective-type :type/Integer} "aggregation_3"] 3]]}]}
             (lib/replace-clause join-query 0
                                 (first (lib/aggregations join-query 0))
                                 (lib/max (by-name (lib/orderable-columns join-query 0) "CREATED_AT"))))))
@@ -1639,11 +1639,11 @@
              [{:breakout [[:field {:effective-type :type/Text} (meta/id :products :category)]
                           [:field {:effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
                            (meta/id :products :created-at)]]
-               :aggregation [[:min {:name "min"} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ}
-                                                                 (meta/id :products :created-at)]]]
+               :aggregation [[:min {:name "aggregation"} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ}
+                                                                         (meta/id :products :created-at)]]]
                              [:avg {} [:field {:effective-type :type/Float}
                                        (meta/id :products :price)]]
-                             [:distinct {:name "product count"} [:field {:effective-type :type/BigInteger}
+                             [:distinct {:name "aggregation_3"} [:field {:effective-type :type/BigInteger}
                                                                  (meta/id :products :id)]]]}
               {}]}
             (lib/replace-clause join-query 0

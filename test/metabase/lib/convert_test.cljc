@@ -1242,7 +1242,7 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
         sum   (->> (lib/aggregable-columns query nil)
-                   (m/find-first (comp #{"sum"} :name)))
+                   (m/find-first (comp #{"aggregation"} :name)))
         query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
         legacy-query (lib.convert/->legacy-MBQL query)]
     (is (= legacy-query
