@@ -136,13 +136,22 @@
 (defn replace-clause
   "Replace the `target-clause` in `stage` `location` with `new-clause`.
    If a clause has :lib/uuid equal to the `target-clause` it is swapped with `new-clause`.
-   If `location` contains no clause with `target-clause` no replacement happens."
+   If `location` contains no clause with `target-clause` no replacement happens.
+   For aggregation clauses, preserves the `:name` from `target-clause` if `new-clause` doesn't have one."
   [stage location target-clause new-clause]
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
-  (let [new-clause (if (= :expressions (first location))
+  (let [new-clause (cond
+                     (= :expressions (first location))
                      (-> new-clause
                          (top-level-expression-clause (or (custom-name new-clause)
                                                           (expression-name target-clause))))
+
+                     (and (= :aggregation (first location))
+                          (not (lib.options/clause-name new-clause))
+                          (lib.options/clause-name target-clause))
+                     (lib.options/with-clause-name new-clause (lib.options/clause-name target-clause))
+
+                     :else
                      new-clause)]
     (m/update-existing-in
      stage

@@ -442,7 +442,7 @@
                  {:settings       {:is_priceless true}
                   :lib/type       :metadata/column
                   :effective-type :type/Integer
-                  :name           "sum"
+                  :name           "sum_2"
                   :display-name   "Sum of Price"
                   :lib/source     :source/aggregations}]
                 (lib/aggregations-metadata agg-query)))))))

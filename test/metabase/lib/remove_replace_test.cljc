@@ -291,10 +291,10 @@
                     lib/append-stage)
           [a0-column a1-column] (-> query
                                     lib/visible-columns
-                                    (->> (filter #(= (:name %) "sum"))))
+                                    (->> (filter #(#{"sum" "sum_2"} (:name %)))))
           _ (is (=? {:name "sum", :lib/source-column-alias "sum"}
                     a0-column))
-          _ (is (=? {:name "sum", :lib/source-column-alias "sum_2"}
+          _ (is (=? {:name "sum_2", :lib/source-column-alias "sum_2"}
                     a1-column))
           query (-> query
                     (lib/expression "xix" (lib/ref a0-column))
@@ -318,7 +318,7 @@
                               :lib/expression-name "yiy"}
                              "sum_2"]]}]}
                 query)))
-      (testing "Second stage field ref indetifier is adjusted from sum_2 to sum."
+      (testing "Second stage field ref identifier keeps its sticky name after first aggregation is removed."
         (is (=? {:stages [{:lib/type :mbql.stage/mbql,
                            :aggregation [[:sum {} [:field {} (meta/id :orders :subtotal)]]]
                            :breakout [[:field {} (meta/id :orders :user-id)]]}
@@ -328,7 +328,7 @@
                              {:base-type :type/Float
                               :effective-type :type/Float
                               :lib/expression-name "yiy"}
-                             "sum"]]}]}
+                             "sum_2"]]}]}
                 (lib/remove-clause query 0 a0-ref)))))))
 
 (deftest ^:parallel remove-clause-expression-test
@@ -519,10 +519,10 @@
                        (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                        (lib/replace-clause 0 (first aggregations) (lib/max (meta/field-metadata :venues :price))))
             agg0-id (get-in query' [:stages 0 :aggregation 0 1 :lib/uuid])]
-        (is (=? {:stages [{:aggregation [[:max {:lib/uuid string?} [:field {} (meta/id :venues :price)]]
+        (is (=? {:stages [{:aggregation [[:max {:name "sum", :lib/uuid string?} [:field {} (meta/id :venues :price)]]
                                          (second aggregations)
                                          [:aggregation {:name "expr", :display-name "expr"} string?]]}
-                          {:filters [[:= {} [:field {} "max"] 1]]}]}
+                          {:filters [[:= {} [:field {} "sum"] 1]]}]}
                 query'))
         (is (string? agg0-id))
         (is (= agg0-id (get-in query' [:stages 0 :aggregation 2 2])))))
@@ -1604,8 +1604,8 @@
              [{:breakout [[:field {:effective-type :type/Text} (meta/id :products :category)]
                           [:field {:effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
                            (meta/id :products :created-at)]]
-               :aggregation [[:max {} [:field {:effective-type :type/DateTimeWithLocalTZ}
-                                       (meta/id :products :created-at)]]
+               :aggregation [[:max {:name "min"} [:field {:effective-type :type/DateTimeWithLocalTZ}
+                                                  (meta/id :products :created-at)]]
                              [:avg {} [:field {:effective-type :type/Float}
                                        (meta/id :products :price)]]
                              [:distinct {:name "product count"} [:field {:effective-type :type/BigInteger}
@@ -1619,7 +1619,7 @@
                                           :join-alias "Orders - Min of Created At"}
                                   (meta/id :orders :quantity)]],
                         :conditions [[:< {}
-                                      [:field {:effective-type :type/DateTimeWithLocalTZ} "max"]
+                                      [:field {:effective-type :type/DateTimeWithLocalTZ} "min"]
                                       [:field {:effective-type :type/DateTimeWithLocalTZ
                                                :join-alias "Orders - Min of Created At"}
                                        (meta/id :orders :created-at)]]]
@@ -1629,7 +1629,7 @@
                                    :join-alias "Orders - Min of Created At"}
                            (meta/id :orders :total)]
                           100]
-                         [:> {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ} "max"]] 6]
+                         [:> {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ} "min"]] 6]
                          [:= {} [:field {:effective-type :type/Integer} "product count"] 3]]}]}
             (lib/replace-clause join-query 0
                                 (first (lib/aggregations join-query 0))
@@ -1639,8 +1639,8 @@
              [{:breakout [[:field {:effective-type :type/Text} (meta/id :products :category)]
                           [:field {:effective-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
                            (meta/id :products :created-at)]]
-               :aggregation [[:min {} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ}
-                                                      (meta/id :products :created-at)]]]
+               :aggregation [[:min {:name "min"} [:get-month {} [:field {:effective-type :type/DateTimeWithLocalTZ}
+                                                                 (meta/id :products :created-at)]]]
                              [:avg {} [:field {:effective-type :type/Float}
                                        (meta/id :products :price)]]
                              [:distinct {:name "product count"} [:field {:effective-type :type/BigInteger}

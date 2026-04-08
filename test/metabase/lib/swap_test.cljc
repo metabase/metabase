@@ -155,16 +155,10 @@
           (testing "the ref always points at the correct underlying column"
             (is (=? (map :lib/source-uuid cols-before)
                     (map :lib/source-uuid cols-after)))
-            (testing "even though the names have changed where they were swapped"
+            (testing "aliases are stable because aggregation names are sticky"
               (let [aliases-before (mapv (juxt :lib/join-alias :lib/source-column-alias) cols-before)
                     aliases-after  (mapv (juxt :lib/join-alias :lib/source-column-alias) cols-after)]
-                (is (not= (nth aliases-before i1)
-                          (nth aliases-after  i1)))
-                (is (not= (nth aliases-before i2)
-                          (nth aliases-after  i2)))
-                (for [i-unchanged (remove #{i1 i2} (range (count aggs-by-id)))]
-                  (is (= (nth aliases-before i-unchanged)
-                         (nth aliases-after  i-unchanged))))))))))))
+                (is (= aliases-before aliases-after))))))))))
 
 (deftest ^:parallel swap-clauses-breakouts-on-same-column-test
   (testing "swapping two breakouts of the same column with different time granularity maintains downstream refs"

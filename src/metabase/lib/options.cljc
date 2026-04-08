@@ -85,3 +85,13 @@
   "Get the `:lib/uuid` associated with something, e.g. an MBQL clause or join."
   [x]
   (:lib/uuid (options x)))
+
+(defn clause-name
+  "Get the `:name` from the options of a clause."
+  [clause]
+  (:name (options clause)))
+
+(defn with-clause-name
+  "Set the `:name` in the options of a clause."
+  [clause a-name]
+  (update-options clause assoc :name a-name))
