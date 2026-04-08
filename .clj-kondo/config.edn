@@ -444,6 +444,7 @@
   metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
+  metabase.analytics.interface-test/with-test-reporter                                  clojure.core/fn
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn

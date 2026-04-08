@@ -60,6 +60,8 @@
    [clojure.string :as str]
    [goog.object :as gobject]
    [medley.core :as m]
+   [metabase.analytics.impl]
+   [metabase.analytics.interface :as analytics.interface]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -95,7 +97,29 @@
    [metabase.util.time :as u.time]))
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
-(comment lib.core/keep-me)
+;;; metabase.analytics.impl registers the CLJS reporter for [[metabase.analytics.interface]].
+
+(defn ^:export internal-analytics-inc
+  "Increment an internal analytics counter. Exposed for use from TypeScript."
+  [metric labels amount]
+  (analytics.interface/inc! (keyword metric)
+                            (js->clj labels :keywordize-keys true)
+                            (or amount 1)))
+
+(defn ^:export internal-analytics-observe
+  "Record an internal analytics observation. Exposed for use from TypeScript."
+  [metric labels amount]
+  (analytics.interface/observe! (keyword metric)
+                                (js->clj labels :keywordize-keys true)
+                                (or amount 1)))
+(comment lib.core/keep-me
+         metabase.analytics.impl/keep-me)
+
+;; Expose for E2E testing
+(when (exists? js/window)
+  (set! (.-__internalAnalytics js/window)
+        #js {:inc     internal-analytics-inc
+             :observe internal-analytics-observe}))
 
 (defn ^:export suggestedName
   "Return a nice description of a query.
