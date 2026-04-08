@@ -9,7 +9,11 @@ import type { Visualization } from "metabase/visualizations/types/visualization"
 export function applyDefaultVisualizationProps(
   Component: Visualization,
   vizDef: CustomVisualization<Record<string, unknown>>,
-  overrides: Partial<Record<keyof Visualization, unknown>>,
+  settings: {
+    identifier: string;
+    getUiName: () => string;
+    iconUrl?: string | undefined;
+  },
 ) {
   Object.assign(Component, {
     settings: vizDef.settings ?? {},
@@ -19,6 +23,6 @@ export function applyDefaultVisualizationProps(
     hidden: false,
     minSize: vizDef.minSize,
     defaultSize: vizDef.defaultSize,
-    ...overrides,
+    ...settings,
   } satisfies Partial<Record<keyof Visualization, unknown>>);
 }
