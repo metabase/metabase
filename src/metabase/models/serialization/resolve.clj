@@ -199,7 +199,7 @@
   (lib.util.match/replace-lite (normalize mbql)
     ;; `pos-int?` guard is here to make the operation idempotent
     [:field (opts :guard map?) (id :guard pos-int?)]
-    [:field (mbql-id->fully-qualified-name opts) (export-field-fk resolver id)]
+    [:field (mbql-id->fully-qualified-name resolver opts) (export-field-fk resolver id)]
 
     ;; legacy (MBQL 4) field refs are still supported in parameter targets and in result metadata `field_ref`...
     [:field (id :guard pos-int?) (opts :guard (some-fn map? nil?))]
