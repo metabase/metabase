@@ -729,4 +729,46 @@
    :examples [["./bin/mage -uxbot-stop my-branch" "Stop session"]]
    :requires [[mage.uxbot.session :as uxbot-session]]
    :arg-schema [:tuple [:string {:name "name-or-id"}]]
-   :task (task! (uxbot-session/stop! parsed))}}}
+   :task (task! (uxbot-session/stop! parsed))}
+
+  ;;; Shared bot tasks
+
+  -bot-fetch-issue
+  {:doc "Fetch a Linear issue by identifier (shared across bots)"
+   :examples [["./bin/mage -bot-fetch-issue MB-12345" "Fetch and display issue"]]
+   :requires [[mage.bot.linear :as bot-linear]]
+   :arg-schema [:tuple [:string {:name "issue-id"}]]
+   :task (task! (bot-linear/print-issue! parsed))}
+
+  ;;; QABot tasks
+
+  qabot-go
+  {:doc "Launch QA testing session for a branch"
+   :examples [["./bin/mage qabot-go my-feature-branch --prompt-file .qabot/prompt.md"
+               "Launch qabot session"]]
+   :requires [[mage.qabot.go :as qabot-go]]
+   :arg-schema [:tuple [:string {:name "branch-name"}]]
+   :options [[nil "--app-db DB" "App database" :default "postgres"]
+             [nil "--prompt-file FILE" "Path to agent prompt file"]
+             [nil "--base BASE" "Base branch/commit to branch from"]]
+   :task (task! (qabot-go/run! parsed))}
+
+  -qabot-stop
+  {:doc "Stop a qabot session (kill tmux + dev env, keep worktree)"
+   :examples [["./bin/mage -qabot-stop my-branch" "Stop session"]]
+   :requires [[mage.qabot.session :as qabot-session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (qabot-session/stop! parsed))}
+
+  -qabot-list
+  {:doc "List qabot sessions with status"
+   :examples [["./bin/mage -qabot-list" "List all sessions"]]
+   :requires [[mage.qabot.session :as qabot-session]]
+   :task (task! (qabot-session/list-sessions! parsed))}
+
+  -qabot-quit
+  {:doc "Tear down and remove a qabot worktree session"
+   :examples [["./bin/mage -qabot-quit my-branch" "Remove session and worktree"]]
+   :requires [[mage.qabot.session :as qabot-session]]
+   :arg-schema [:tuple [:string {:name "name-or-id"}]]
+   :task (task! (qabot-session/quit! parsed))}}}

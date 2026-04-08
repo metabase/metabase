@@ -1,0 +1,30 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "filesystem": {
+      "allowWrite": [".", "{{pwd}}/.qabot", "{{tmpdir}}", "/tmp", "/private/tmp", "~/Library/Caches/ms-playwright"],
+      "allowRead": [".", "{{pwd}}", "~/.m2", "{{tmpdir}}", "/tmp", "/private/tmp", "~/Library/Caches/ms-playwright"]
+    },
+    "excludedCommands": ["docker"],
+    "network": {
+      "allowLocalBinding": true,
+      "allowAllUnixSockets": true,
+      "allowedDomains": ["api.linear.app"]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Write",
+      "Skill",
+      "Bash(*)",
+      "mcp__playwright__*",
+      "WebFetch(domain:linear.app)",
+      "WebFetch(domain:metabase.com)"
+    ]
+  },
+  "skipDangerousModePermissionPrompt": true
+}
