@@ -37,6 +37,7 @@
    :embedded-xlsx-download
    :embedded-json-download
    :table-grid
+   :table-rows-sample
    :transform-inspector
    :slackbot])
 
