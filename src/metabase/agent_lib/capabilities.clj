@@ -4,7 +4,6 @@
    [metabase.agent-lib.capabilities.catalog :as catalog]
    [metabase.agent-lib.capabilities.derived :as derived]
    [metabase.agent-lib.capabilities.synthetic :as capabilities.synthetic]
-   [metabase.agent-lib.capabilities.unsupported :as unsupported]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -119,7 +118,3 @@
 (def operator-guidance-catalog
   "Retry guidance keyed by canonical operator name."
   (derived/operator-guidance-catalog capability-catalog))
-
-(def unsupported-rewrite-catalog
-  "Unsupported helper rewrite guidance keyed by unsupported operator name."
-  unsupported/unsupported-rewrite-catalog)
