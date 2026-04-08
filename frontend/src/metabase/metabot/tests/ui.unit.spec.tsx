@@ -134,8 +134,6 @@ describe("metabot > ui", () => {
         },
         { type: "text-end", id: "t1" },
         { type: "data-state", id: "d1", data: { queries: {} } },
-        { type: "finish" },
-        "[DONE]",
       ],
     });
 
@@ -235,8 +233,6 @@ describe("metabot > ui", () => {
         { type: "text-delta", id: "t1", delta: "The answer is always you." },
         { type: "text-end", id: "t1" },
         { type: "data-state", id: "d1", data: { queries: {} } },
-        { type: "finish" },
-        "[DONE]",
       ],
     });
     await userEvent.click(
@@ -257,8 +253,6 @@ describe("metabot > ui", () => {
     mockAgentEndpoint({
       events: [
         { type: "error", errorText: "Anthropic API key expired or invalid" },
-        { type: "finish" },
-        "[DONE]",
       ],
     });
 

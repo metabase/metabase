@@ -22,35 +22,15 @@ const mockSuccessStreamEvents = [
   { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
   { type: "text-end", id: "t1" },
   { type: "data-state", id: "d1", data: { queries: {} } },
-  {
-    type: "tool-input-start",
-    toolCallId: "x",
-    toolName: "x",
-  },
-  {
-    type: "tool-input-available",
-    toolCallId: "x",
-    toolName: "x",
-    input: "",
-  },
-  {
-    type: "tool-output-available",
-    toolCallId: "x",
-    toolName: "x",
-    output: "",
-  },
+  { type: "tool-input-start", toolCallId: "x", toolName: "x" },
+  { type: "tool-input-available", toolCallId: "x", toolName: "x", input: "" },
+  { type: "tool-output-available", toolCallId: "x", toolName: "x", output: "" },
   { type: "finish-step" },
-  { type: "finish" },
-  "[DONE]",
 ];
 const getMockSuccessStream = () => createMockSSEStream(mockSuccessStreamEvents);
 
 const getMockErrorStream = () =>
-  createMockSSEStream([
-    { type: "error", errorText: "Something went wrong" },
-    { type: "finish" },
-    "[DONE]",
-  ]);
+  createMockSSEStream([{ type: "error", errorText: "Something went wrong" }]);
 
 describe("processChatResponse", () => {
   it("should be able to process a valid stream", async () => {
@@ -79,21 +59,13 @@ describe("processChatResponse", () => {
 
   it("should ignore unknown data parts", async () => {
     const mockStream = createMockSSEStream([
-      {
-        type: "data-__some_futurist_data__",
-        id: "f1",
-        data: "hi",
-      },
-      { type: "finish" },
-      "[DONE]",
+      { type: "data-__some_futurist_data__", id: "f1", data: "hi" },
     ]);
     const config = getMockedCallbacks();
 
     const result = await processChatResponse(mockStream, config);
-    // callbacks shouldn't have been triggered
     expect(config.onError).not.toHaveBeenCalled();
     expect(config.onDataPart).not.toHaveBeenCalled();
-    // we should keep track of the info in the result
     expect(result.data).toEqual([
       { type: "data-__some_futurist_data__", data: "hi" },
     ]);
@@ -102,8 +74,6 @@ describe("processChatResponse", () => {
   it("should ignore unknown event types", async () => {
     const mockStream = createMockSSEStream([
       { type: "some_unknown_event_type" },
-      { type: "finish" },
-      "[DONE]",
     ]);
     const config = getMockedCallbacks();
     await expect(processChatResponse(mockStream, config)).resolves.toBeTruthy();
@@ -118,8 +88,6 @@ describe("processChatResponse", () => {
         toolName: "x",
         output: "",
       },
-      { type: "finish" },
-      "[DONE]",
     ]);
     await expect(
       processChatResponse(mockStream, expectNoStreamedError),
@@ -127,7 +95,7 @@ describe("processChatResponse", () => {
   });
 
   it("should handle messages across multiple chunks", async () => {
-    // Simulate SSE events split across TCP chunks
+    // Simulate SSE events split across TCP chunks (raw bytes, not using createMockSSEStream)
     const encoder = new TextEncoder();
     const part1 =
       'data: {"type":"text-start","id":"t1"}\n\ndata: {"type":"text-delta","id":"t1","delta":"You, but ';

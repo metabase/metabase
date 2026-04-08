@@ -1,7 +1,7 @@
 import type { SSEEvent } from "./types";
 
 /**
- * Parse a Server-Sent Events stream into typed AI SDK v6 events.
+ * Parse a Server-Sent Events stream into typed SSE events.
  *
  * Reads from a ReadableStream<Uint8Array>, buffers until SSE event boundaries
  * (\n\n), and yields parsed JSON event objects. Handles the `data: [DONE]`

@@ -182,8 +182,6 @@ describe("metabot > tool calls", () => {
         { type: "text-start", id: "t2" },
         { type: "text-delta", id: "t2", delta: "Response 2" },
         { type: "text-end", id: "t2" },
-        { type: "finish" },
-        "[DONE]",
       ],
     });
     await enterChatMessage("Request");

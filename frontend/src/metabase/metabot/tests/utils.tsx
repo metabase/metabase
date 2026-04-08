@@ -133,7 +133,7 @@ export const lastReqBody = async (
   return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
 };
 
-// Common mock response fixtures (v6 SSE events)
+// Common mock response fixtures (SSE events)
 export const whoIsYourFavoriteResponse = [
   { type: "start", messageId: "m1" },
   { type: "start-step" },
@@ -142,14 +142,10 @@ export const whoIsYourFavoriteResponse = [
   { type: "text-end", id: "t1" },
   { type: "data-state", id: "d1", data: { queries: {} } },
   { type: "finish-step" },
-  { type: "finish" },
-  "[DONE]",
 ];
 
 export const erroredResponse = [
   { type: "error", errorText: "Anthropic API key expired or invalid" },
-  { type: "finish" },
-  "[DONE]",
 ];
 
 // Setup function for metabot tests

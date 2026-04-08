@@ -39,7 +39,7 @@ describe("metabot > history", () => {
     ).toBeInTheDocument();
 
     const agentSpy = mockAgentEndpoint({
-      events: [{ type: "finish" }, "[DONE]"],
+      events: [],
     });
     await enterChatMessage("Hi!");
     const reqBody = await lastReqBody(agentSpy);
@@ -77,8 +77,6 @@ describe("metabot > history", () => {
         { type: "text-start", id: "t2" },
         { type: "text-delta", id: "t2", delta: "don't tell anyone." },
         { type: "text-end", id: "t2" },
-        { type: "finish" },
-        "[DONE]",
       ],
     });
 

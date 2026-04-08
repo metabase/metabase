@@ -28,8 +28,6 @@ describe("metabot > experimental", () => {
           { type: "text-start", id: "t2" },
           { type: "text-delta", id: "t2", delta: "After" },
           { type: "text-end", id: "t2" },
-          { type: "finish" },
-          "[DONE]",
         ],
       });
     };

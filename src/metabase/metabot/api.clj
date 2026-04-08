@@ -161,7 +161,7 @@
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
-  Streams AI SDK v6 SSE protocol to the client in real-time while simultaneously
+  Streams SSE protocol to the client in real-time while simultaneously
   collecting parts for database storage. Text parts are combined before storage
   to consolidate streaming chunks into single text parts.
 

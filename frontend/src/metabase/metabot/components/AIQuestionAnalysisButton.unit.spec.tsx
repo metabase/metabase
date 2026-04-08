@@ -21,8 +21,6 @@ const mockAgentEndpoint = () =>
         delta: "Here is an analysis of the chart.",
       },
       { type: "text-end", id: "t1" },
-      { type: "finish" },
-      "[DONE]",
     ],
   });
 

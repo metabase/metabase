@@ -32,7 +32,7 @@ export interface ProcessedChatResponse {
 }
 
 /**
- * Processes an SSE stream that follows the AI SDK v6 protocol and notifies
+ * Processes an SSE stream that follows our AI response protocol and notifies
  * the appropriate handlers as events arrive.
  *
  * This function does not error on aborted requests and will return whatever

@@ -55,8 +55,6 @@ describe("multi-convo support", () => {
         { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "Test 1 response" },
         { type: "text-end", id: "t1" },
-        { type: "finish" },
-        "[DONE]",
       ],
     });
     const msg1 = { ...input, message: "test1", agentId: "test_1" } as const;
@@ -67,8 +65,6 @@ describe("multi-convo support", () => {
         { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "Test 2 response" },
         { type: "text-end", id: "t1" },
-        { type: "finish" },
-        "[DONE]",
       ],
     });
     const msg2 = { ...input, message: "test2", agentId: "test_2" } as const;
@@ -104,8 +100,6 @@ describe("multi-convo support", () => {
         { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "response" },
         { type: "text-end", id: "t1" },
-        { type: "finish" },
-        "[DONE]",
       ],
     });
     await store.dispatch(

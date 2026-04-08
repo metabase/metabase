@@ -30,9 +30,13 @@ export function createMockReadableStream(
 }
 
 /**
- * Create a mock SSE stream from an array of event objects (AI SDK v6 format).
+ * Create a mock SSE stream from an array of event objects.
  * Each event is encoded as `data: {JSON}\n\n`. String entries (like "[DONE]")
  * are encoded as `data: {string}\n\n`.
+ *
+ * For array inputs, `finish` and `[DONE]` events are automatically appended
+ * (matching real server behavior). For async generator inputs, the generator
+ * controls its own lifecycle — no events are auto-appended.
  */
 export function createMockSSEStream(
   events: (object | string)[] | AsyncGenerator<object | string, void, unknown>,
@@ -40,11 +44,15 @@ export function createMockSSEStream(
     streamOptions?: Partial<ConstructorParameters<typeof ReadableStream>[0]>;
   },
 ): ReadableStream<Uint8Array> {
+  const source = Array.isArray(events)
+    ? [...events, { type: "finish" }, "[DONE]"]
+    : events;
+
   return new ReadableStream<Uint8Array>({
     async start(controller) {
       const encoder = new TextEncoder();
       try {
-        for await (const event of events) {
+        for await (const event of source) {
           const payload =
             typeof event === "string" ? event : JSON.stringify(event);
           controller.enqueue(encoder.encode(`data: ${payload}\n\n`));

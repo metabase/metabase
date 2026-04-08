@@ -1,5 +1,5 @@
 /**
- * AI SDK v6 SSE event types.
+ * SSE event types for the AI streaming protocol.
  *
  * These types describe the Server-Sent Events wire protocol used between
  * the Metabase backend and frontend for AI streaming responses.

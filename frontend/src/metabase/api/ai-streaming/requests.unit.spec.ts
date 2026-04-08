@@ -66,8 +66,6 @@ describe("ai requests", () => {
             toolName: "x",
             output: "",
           },
-          { type: "finish" },
-          "[DONE]",
         ],
       });
 
@@ -87,11 +85,7 @@ describe("ai requests", () => {
       expect(successCbs.onError).not.toHaveBeenCalled();
 
       mockStreamedEndpoint(endpoint, {
-        events: [
-          { type: "error", errorText: "test error" },
-          { type: "finish" },
-          "[DONE]",
-        ],
+        events: [{ type: "error", errorText: "test error" }],
       });
 
       const failureCbs = {
@@ -180,6 +174,4 @@ const whoIsYourFavoriteResponse = [
   { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
   { type: "text-end", id: "t1" },
   { type: "data-state", id: "d1", data: { queries: {} } },
-  { type: "finish" },
-  "[DONE]",
 ];

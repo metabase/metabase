@@ -325,7 +325,7 @@
             ;; Pass through unknown types as data
             (rf result (format-data-line part)))))))))
 
-;;; AI SDK v6 SSE Protocol Output
+;;; SSE Protocol Output
 
 (defn format-sse-event
   "Format a payload map as an SSE event line: data: {JSON}\n"
@@ -333,7 +333,7 @@
   (str "data: " (json/encode payload) "\n"))
 
 (defn aisdk-sse-xf
-  "Transducer that converts internal parts to AI SDK v6 SSE protocol format.
+  "Transducer that converts internal parts to SSE protocol format.
   Returns strings ready to be written to the output stream. Each string is one
   SSE event line ending with \\n; the streaming writer adds another \\n to form
   the SSE event boundary (\\n\\n).

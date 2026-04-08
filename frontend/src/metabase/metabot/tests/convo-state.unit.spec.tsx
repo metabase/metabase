@@ -63,8 +63,6 @@ describe("metabot > convo state", () => {
         { type: "text-delta", id: "t1", delta: "here ya go" },
         { type: "text-end", id: "t1" },
         { type: "data-state", id: "d1", data: { testing: 123 } },
-        { type: "finish" },
-        "[DONE]",
       ],
     });
     await enterChatMessage("gimme state plz");
