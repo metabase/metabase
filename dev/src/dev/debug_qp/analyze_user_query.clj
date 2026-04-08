@@ -27,9 +27,9 @@
 ;;   - See the examples at the bottom of this file.
 (def ^:private my-ctx
   "Contains instance details, for passing to the various functions below."
-  {:instance-url        "http://localhost:3060"  ; No trailing slash.
-   #_#_:cookie-from-browser "ajs_anonymous_id=%2275917aa9-8b1f-4f6a-9244-1479115803f4%22; g_state={\"i_l\":0,\"i_ll\":1767022699495,\"i_b\":\"cnB3iJSFOBNd2cZJgC2kybltBzu1SQNM5VsPKo9cyxU\",\"i_e\":{\"enable_itp_optimization\":0}}; metabase.TIMEOUT=alive; metabase.DEVICE=805e81de-da4e-4153-bd76-2bcf1a3008b7; metabase.SESSION=0bfd5b3f-bdfe-4c11-80d8-c3141b92c7c7"
-   :api-key "mb_CywX4P78PoIS+ivbRweLP1FU2XJrOK36vv/ZOD2KSKM="
+  {:instance-url        "https://acustomer.metabaseapp.com"  ; No trailing slash.
+   #_#_:cookie-from-browser "COPY ME FROM YOUR curl COMMAND"
+   :api-key "an-api-key"
    :database-id         332})
 
 (defn- mk-headers [{:keys [cookie-from-browser api-key instance-url] :as _ctx}]
