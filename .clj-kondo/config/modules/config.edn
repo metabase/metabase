@@ -89,6 +89,7 @@
 {:metabase/modules
  {actions
   {:team "Gadget"
+   :open #{actions.rest}
    :api  #{metabase.actions.args
            metabase.actions.core
            metabase.actions.init
@@ -120,8 +121,9 @@
                     :model/Table
                     :model/User}}
 
-  actions-rest
+  actions.rest
   {:team "Gadget"
+   :ns-prefix "metabase.actions-rest"
    :api  #{metabase.actions-rest.api}
    :uses #{actions
            analytics
@@ -539,6 +541,7 @@
 
   collections
   {:team "UX West"
+   :open #{collections.rest}
    :api  #{metabase.collections.core
            metabase.collections.models.collection
            metabase.collections.models.collection.root
@@ -572,8 +575,9 @@
                     :model/User
                     :model/Workspace}}
 
-  collections-rest
+  collections.rest
   {:team "UX West"
+   :ns-prefix "metabase.collections-rest"
    :api  #{metabase.collections-rest.api
            metabase.collections-rest.init}
    :uses #{api
@@ -656,6 +660,7 @@
 
   dashboards
   {:team "UX West"
+   :open #{dashboards.rest}
    :api  #{metabase.dashboards.autoplace
            metabase.dashboards.constants
            metabase.dashboards.init
@@ -695,8 +700,9 @@
                     :model/Revision
                     :model/User}}
 
-  dashboards-rest
+  dashboards.rest
   {:team "UX West"
+   :ns-prefix "metabase.dashboards-rest"
    :api  #{metabase.dashboards-rest.api}
    :uses #{actions
            analytics
@@ -704,7 +710,7 @@
            app-db
            channel
            collections
-           collections-rest
+           collections.rest
            dashboards
            eid-translation
            embedding
@@ -895,6 +901,7 @@
 
   embedding
   {:team "Embedding"
+   :open #{embedding.rest}
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
@@ -908,8 +915,9 @@
            util}
    :model-imports #{:model/Card :model/Dashboard}}
 
-  embedding-rest
+  embedding.rest
   {:team "Embedding"
+   :ns-prefix "metabase.embedding-rest"
    :api  #{metabase.embedding-rest.api}
    :uses #{api
            dashboards
@@ -920,7 +928,7 @@
            models
            notification
            parameters
-           public-sharing-rest
+           public-sharing.rest
            queries
            query-processor
            request
@@ -1429,6 +1437,7 @@
 
   permissions
   {:team "UX West"
+   :open #{permissions.rest}
    :api  #{metabase.permissions.core
            metabase.permissions.init
            metabase.permissions.schema}
@@ -1458,8 +1467,9 @@
                     :model/Table
                     :model/User}}
 
-  permissions-rest
+  permissions.rest
   {:team "UX West"
+   :ns-prefix "metabase.permissions-rest"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
            audit-app
@@ -1531,6 +1541,7 @@
 
   public-sharing
   {:team "UX West"
+   :open #{public-sharing.rest}
    :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
            metabase.public-sharing.validation}
@@ -1538,14 +1549,15 @@
            settings
            util}}
 
-  public-sharing-rest
+  public-sharing.rest
   {:team "UX West"
+   :ns-prefix "metabase.public-sharing-rest"
    :api  #{metabase.public-sharing-rest.api}
    :uses #{actions
            analytics
            api
            dashboards
-           dashboards-rest
+           dashboards.rest
            events
            lib
            models
@@ -1602,6 +1614,7 @@
 
   queries
   {:team "Graphy"
+   :open #{queries.rest}
    :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
@@ -1655,8 +1668,9 @@
                     :model/Table
                     :model/User}}
 
-  queries-rest
+  queries.rest
   {:team "Querying Platform"
+   :ns-prefix "metabase.queries-rest"
    :api  #{metabase.queries-rest.api}
    :uses #{analyze
            api
@@ -1949,6 +1963,7 @@
 
   settings
   {:team "DevEx"
+   :open #{settings.rest}
    :api  #{metabase.settings.core
            metabase.settings.init}
    :uses #{api
@@ -1961,8 +1976,9 @@
            enterprise/advanced-permissions}
    :model-exports #{:model/Setting}}
 
-  settings-rest
+  settings.rest
   {:team "DevEx"
+   :ns-prefix "metabase.settings-rest"
    :api  #{metabase.settings-rest.api}
    :uses #{api
            permissions
@@ -1971,6 +1987,7 @@
 
   setup
   {:team "UX West"
+   :open #{setup.rest}
    :api  #{metabase.setup.core
            metabase.setup.init}
    :uses #{app-db
@@ -1979,8 +1996,9 @@
            util}
    :model-imports #{:model/User}}
 
-  setup-rest
+  setup.rest
   {:team "UX West"
+   :ns-prefix "metabase.setup-rest"
    :api  #{metabase.setup-rest.api}
    :uses #{analytics
            api
@@ -2210,6 +2228,7 @@
 
   transforms
   {:team "Graphy"
+   :open #{transforms.rest}
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
@@ -2284,8 +2303,9 @@
    :api  #{}
    :uses #{}}
 
-  transforms-rest
+  transforms.rest
   {:team "Gadget"
+   :ns-prefix "metabase.transforms-rest"
    :api  #{metabase.transforms-rest.api.transform
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
@@ -2344,6 +2364,7 @@
 
   users
   {:team "UX West"
+   :open #{users.rest}
    :api  #{metabase.users.core
            metabase.users.init
            metabase.users.models.user
@@ -2374,8 +2395,9 @@
                     :model/Session
                     :model/Tenant}}
 
-  users-rest
+  users.rest
   {:team "UX West"
+   :ns-prefix "metabase.users-rest"
    :api  #{metabase.users-rest.api}
    :uses #{api
            appearance
@@ -2437,6 +2459,7 @@
 
   warehouse-schema
   {:team "UX West"
+   :open #{warehouse-schema.rest}
    :api  #{metabase.warehouse-schema.field
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
@@ -2473,8 +2496,9 @@
                     :model/Transform
                     :model/User}}
 
-  warehouse-schema-rest
+  warehouse-schema.rest
   {:team "UX West"
+   :ns-prefix "metabase.warehouse-schema-rest"
    :api  #{metabase.warehouse-schema-rest.api}
    :uses #{analytics
            api
@@ -2503,6 +2527,7 @@
 
   warehouses
   {:team "UX West"
+   :open #{warehouses.rest}
    :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}
@@ -2526,8 +2551,9 @@
                     :model/Table
                     :model/User}}
 
-  warehouses-rest
+  warehouses.rest
   {:team "UX West"
+   :ns-prefix "metabase.warehouses-rest"
    :api  #{metabase.warehouses-rest.api}
    :uses #{analytics
            api

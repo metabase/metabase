@@ -343,13 +343,15 @@
   even if it's not the canonical external face — backwards compat for flat
   configs where `:uses` entries name modules directly."
   [config current-module required-module]
-  (let [face            (external-face config required-module)
-        face-chain      (cons face (ancestor-chain face))
-        allowed-modules (allowed-modules config current-module)
-        allowed-set     (set allowed-modules)]
-    (or (= allowed-modules :any)
-        (some allowed-set face-chain)
-        (contains? allowed-set required-module))))
+  (let [allowed-modules (allowed-modules config current-module)]
+    (if (= allowed-modules :any)
+      true
+      (let [face        (external-face config required-module)
+            face-chain  (cons face (ancestor-chain face))
+            allowed-set (set allowed-modules)]
+        (boolean
+         (or (some allowed-set face-chain)
+             (contains? allowed-set required-module)))))))
 
 (defn- allowed-module-namespace?
   "True if `ns-symb` (the namespace being required) is an allowed reference

@@ -127,8 +127,9 @@
                ;; only warn once per namespace
                (not (contains? @warned-namespaces ns-symb)))
       (swap! warned-namespaces conj ns-symb)
-      (let [known-modules  (set (keys (:metabase/modules (modules/config input))))
-            current-module (modules/module ns-symb)]
+      (let [config         (modules/config input)
+            known-modules  (set (keys (:metabase/modules config)))
+            current-module (modules/module config ns-symb)]
         (when (or (not current-module)
                   (not (contains? known-modules current-module)))
           (hooks/reg-finding! (assoc (meta node)

@@ -862,16 +862,18 @@
   "Given a collection of `source-filenames`, return the set of test filenames (relative to the project root directory)
   that we should re-run when any of `source-filenames` change."
   ([source-filenames]
-   (source-filenames->relevant-test-filenames (dependencies) source-filenames))
+   (let [prefix->mod (build-prefix->module (kondo-config))]
+     (source-filenames->relevant-test-filenames (dependencies prefix->mod) source-filenames)))
   ([deps source-filenames]
-   (into
-    (sorted-set)
-    (comp (map file->namespace)
-          (map module)
-          (distinct)
-          (mapcat #(module->dependents deps %))
-          (mapcat module->test-files))
-    source-filenames)))
+   (let [prefix->mod (build-prefix->module (kondo-config))]
+     (into
+      (sorted-set)
+      (comp (map file->namespace)
+            (map (partial module prefix->mod))
+            (distinct)
+            (mapcat #(module->dependents deps %))
+            (mapcat module->test-files))
+      source-filenames))))
 
 (comment
   ;; should only include tests for `settings-rest`, `api-routes`, `core`, and the handful of random modules that use
@@ -941,17 +943,20 @@
 
 (defn model-ownership
   "Scan all source files via [[find-model-definitions]], building a map of `:model/X` => module symbol.
-  The module is derived from the defining namespace via [[module]]."
+  The module is derived from the defining namespace via [[module]], using the
+  prefix map built from the current kondo config so that nested modules
+  (and modules with explicit `:ns-prefix`) resolve correctly."
   []
-  (into (sorted-map)
-        (for [file  (find-source-files)
-              :let  [ns-symb (-> (ns.file/read-file-ns-decl file)
-                                 ns.parse/name-from-ns-decl)
-                     mod     (module ns-symb)
-                     models  (find-model-definitions file)]
-              :when mod
-              model models]
-          [model mod])))
+  (let [prefix->mod (build-prefix->module (kondo-config))]
+    (into (sorted-map)
+          (for [file  (find-source-files)
+                :let  [ns-symb (-> (ns.file/read-file-ns-decl file)
+                                   ns.parse/name-from-ns-decl)
+                       mod     (module prefix->mod ns-symb)
+                       models  (find-model-definitions file)]
+                :when mod
+                model models]
+            [model mod]))))
 
 (def ^:private model-boundary-exempt-namespaces
   "Namespaces that are exempt from model boundary checking. These are 'glue' namespaces that intentionally reference
@@ -983,26 +988,30 @@
 (defn model-references-by-module
   "Scan all source files and build a map of `{module => #{:model/X ...}}` — the set of model keywords
   referenced in each module's source files. Exempt namespaces (e.g. `metabase.models.resolution`) are excluded.
-  Includes all modules (including bypass modules) — callers filter as needed."
+  Includes all modules (including bypass modules) — callers filter as needed.
+
+  Uses the prefix map from the current kondo config so nested modules
+  resolve via [[module]] correctly."
   []
-  (reduce
-   (fn [acc file]
-     (try
-       (let [ns-symb (-> (ns.file/read-file-ns-decl file)
-                         ns.parse/name-from-ns-decl)
-             mod     (module ns-symb)]
-         (if (and mod (not (contains? model-boundary-exempt-namespaces ns-symb)))
-           (let [models (find-model-keywords file)]
-             (if (seq models)
-               (update acc mod (fnil into (sorted-set)) models)
-               acc))
-           acc))
-       (catch Throwable e
-         (throw (ex-info (format "Error scanning model references in %s" (str file))
-                         {:file file}
-                         e)))))
-   (sorted-map)
-   (find-source-files)))
+  (let [prefix->mod (build-prefix->module (kondo-config))]
+    (reduce
+     (fn [acc file]
+       (try
+         (let [ns-symb (-> (ns.file/read-file-ns-decl file)
+                           ns.parse/name-from-ns-decl)
+               mod     (module prefix->mod ns-symb)]
+           (if (and mod (not (contains? model-boundary-exempt-namespaces ns-symb)))
+             (let [models (find-model-keywords file)]
+               (if (seq models)
+                 (update acc mod (fnil into (sorted-set)) models)
+                 acc))
+             acc))
+         (catch Throwable e
+           (throw (ex-info (format "Error scanning model references in %s" (str file))
+                           {:file file}
+                           e)))))
+     (sorted-map)
+     (find-source-files))))
 
 (defn model-boundary-violations
   "Find all model boundary violations across the codebase.
@@ -1018,7 +1027,8 @@
   ([]
    (model-boundary-violations (kondo-config)))
   ([kondo-config]
-   (let [ownership (model-ownership)]
+   (let [ownership   (model-ownership)
+         prefix->mod (build-prefix->module kondo-config)]
      (into []
            (comp
             (mapcat
@@ -1026,7 +1036,7 @@
                (try
                  (let [ns-symb (-> (ns.file/read-file-ns-decl file)
                                    ns.parse/name-from-ns-decl)
-                       mod     (module ns-symb)]
+                       mod     (module prefix->mod ns-symb)]
                    (when (and mod
                               (not (contains? model-boundary-exempt-namespaces ns-symb)))
                      (let [model-imports (get-in kondo-config [mod :model-imports] #{})

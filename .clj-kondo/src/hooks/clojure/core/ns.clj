@@ -74,7 +74,7 @@
 (defn- lint-modules [ns-form-node config]
   (let [ns-symb (ns-form-node->ns-symb ns-form-node)]
     (when-not (modules/ignored-namespace? config ns-symb)
-      (when-let [current-module (modules/module ns-symb)]
+      (when-let [current-module (modules/module config ns-symb)]
         (let [required-namespace-symb-nodes (-> ns-form-node
                                                 ns-form-node->require-node
                                                 require-node->namespace-symb-nodes)]

@@ -195,8 +195,13 @@
                       (pr-str (sort modules))
                       (pr-str prefix))))))))
 
-(defn- rest-module? [module]
-  (str/ends-with? module "-rest"))
+(defn- rest-module?
+  "True if `module` is a REST module. Under the nested-modules scheme, rest
+  modules are dotted children of their base module (e.g. `queries.rest`
+  nested under `queries`) — we identify them by the `.rest` suffix on the
+  module name string."
+  [module]
+  (str/ends-with? (str module) ".rest"))
 
 (deftest ^:parallel do-not-use-rest-modules-in-other-modules-test
   (doseq [[module {:keys [uses], :as _config}] (dev.deps-graph/kondo-config)
