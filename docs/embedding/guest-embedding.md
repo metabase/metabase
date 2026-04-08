@@ -9,6 +9,8 @@ summary: Embed questions, dashboards, and documents without requiring SSO.
 
 Guest embeds are a way to embed basic Metabase components in your app without requiring you to create a Metabase account for each person viewing the charts and dashboards. But not logging people in to your Metabase has some major tradeoffs: see [limitations](#guest-embed-limitations).
 
+"Guest" refers to the authentication approach: Metabase doesn't create a session for each person. Authentication has nothing to do with data freshness. Dashboards and charts in guest embeds always show live data from your database.
+
 Even though you're not using SSO, guest embeds are still secure: Metabase will only load the embed if the request has a JWT signed with the secret shared between your app and your Metabase. The JWT also includes a reference to the resource to load (like the ID of the embedded item), and any values for parameters.
 
 To restrict data in guest embeds for specific people or groups, use [locked parameters](#locked-parameters).

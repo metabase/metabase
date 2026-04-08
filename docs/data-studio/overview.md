@@ -22,7 +22,7 @@ Data Studio provides tools to shape and track your data so everyone can trust th
 - **[Glossary](../exploration-and-organization/data-model-reference.md#glossary)**: Define terms relevant to your business, both for people and agents trying to understand your data.
 - **[Dependency graph](./dependency-graph.md)**\*: A visual map of how your content connects, so you can understand the impact of changes before you make them.
 - **[Dependency diagnostics](./dependency-diagnostics.md)**\*: See which items have broken dependencies, or that aren't used.
-- **[Transforms](./transforms/transforms-overview.md)**: Wrangle your data in Metabase, write the query results back to your database, and reuse them in Metabase as sources for new queries.
+- **[Transforms](./transforms/transforms-overview.md)**: Wrangle your data in Metabase, write the query results back to your database, and reuse them in Metabase as sources for new queries. Transforms are optional—Metabase queries your connected databases directly without them.
 
 \* Available on [Pro and Enterprise plans](https://www.metabase.com/pricing/).
 
