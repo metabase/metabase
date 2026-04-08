@@ -691,7 +691,7 @@ function visitGraph() {
 
 function visitGraphForEntity(id: DependencyId, type: DependencyType) {
   // Wait for async dependency computation to complete before navigating
-  H.waitForGraphDependencies(id, type, (graph) => graph.edges.length > 0);
+  H.waitForBackfillComplete();
   return cy.visit(BASE_URL, { qs: { id, type } });
 }
 

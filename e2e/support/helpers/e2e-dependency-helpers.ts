@@ -48,6 +48,25 @@ export const DependencyDiagnostics = {
 const WAIT_TIMEOUT = 30000;
 const WAIT_INTERVAL = 100;
 
+export function waitForBackfillComplete(
+  timeout = WAIT_TIMEOUT,
+): Cypress.Chainable {
+  return cy
+    .request<{
+      complete: boolean;
+    }>("GET", "/api/ee/dependencies/backfill-status")
+    .then((response) => {
+      if (response.body.complete) {
+        return cy.wrap(response);
+      } else if (timeout > 0) {
+        cy.wait(WAIT_INTERVAL);
+        return waitForBackfillComplete(timeout - WAIT_INTERVAL);
+      } else {
+        throw new Error("Dependency backfill timeout");
+      }
+    });
+}
+
 export function waitForGraphDependencies(
   id: DependencyId,
   type: DependencyType,

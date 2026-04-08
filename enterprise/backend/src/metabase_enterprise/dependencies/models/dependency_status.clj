@@ -94,6 +94,22 @@
               :terminal false
               :next_retry_at [:not= nil]))
 
+(defn has-stale-or-outdated?
+  "Returns true if there are any entities needing dependency calculation:
+  stale=true OR version < current, not terminal, and retry delay elapsed."
+  []
+  (let [now (t/offset-date-time)]
+    (t2/exists? :model/DependencyStatus
+                {:where [:and
+                         [:or
+                          [:= :stale true]
+                          [:< :dependency_analysis_version
+                           models.dependency/current-dependency-analysis-version]]
+                         [:= :terminal false]
+                         [:or
+                          [:is :next_retry_at nil]
+                          [:<= :next_retry_at now]]]})))
+
 (defn record-failure!
   "Record a failed dependency calculation attempt for an entity.
   Increments fail_count and sets next_retry_at based on exponential backoff.

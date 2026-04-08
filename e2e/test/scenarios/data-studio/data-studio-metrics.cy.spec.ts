@@ -102,14 +102,7 @@ describe("scenarios > data studio > library > metrics", () => {
     H.echartsContainer().findByText("Count").should("be.visible");
 
     cy.log("Verify metric dependencies page");
-    cy.url().then((url) => {
-      const metricId = Number(url.match(/metrics\/(\d+)/)?.[1]);
-      H.waitForGraphDependencies(
-        metricId,
-        "card",
-        (graph) => graph.edges.length > 0,
-      );
-    });
+    H.waitForBackfillComplete();
     H.DataStudio.Metrics.dependenciesTab().click();
     H.DependencyGraph.graph().within(() => {
       cy.findByText("Orders").should("be.visible");
