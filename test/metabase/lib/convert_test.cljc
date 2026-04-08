@@ -1114,7 +1114,7 @@
             {:source-table $$venues
              :aggregation [[:aggregation-options
                             [:cum-count [:field %id {:base-type :type/BigInteger}]]
-                            {:name "count"}]]})
+                            {:name "aggregation"}]]})
           (lib.convert/->legacy-MBQL
            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                (lib/aggregate (lib.options/update-options
@@ -1129,7 +1129,7 @@
                              [:+
                               [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
                               [:aggregation-options [:cum-count] {:name "b"}]]
-                             {:name "xixix"}]]})
+                             {:name "aggregation"}]]})
            (lib.convert/->legacy-MBQL
             (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                 (lib/aggregate (lib.options/update-options

@@ -154,9 +154,9 @@
           measure-col  (first visible-cols)
           ;; Get the field ref that would be generated for this column
           field-ref    (lib/ref measure-col)]
-      (testing "The field ref should use 'sum' as the field name, not 'Total Revenue'"
-        ;; field-ref is [:field {:...} "sum"] - the third element is the field name
-        (is (= "sum" (nth field-ref 2)))))))
+      (testing "The field ref should use 'aggregation' as the field name, not 'Total Revenue'"
+        ;; field-ref is [:field {:...} "aggregation"] - the third element is the field name
+        (is (= "aggregation" (nth field-ref 2)))))))
 
 (deftest ^:parallel type-of-test
   (testing "type-of returns the type of the measure's aggregation"

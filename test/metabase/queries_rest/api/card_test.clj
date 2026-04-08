@@ -1120,10 +1120,10 @@
           (is (= ["Product ID" "Created At: Year" "Count" "Sum of Quantity"]
                  (map :display_name (:result_metadata card))))
           ;; Rename all columns
-          (let [renames         {"PRODUCT_ID"  "Termekazonosito"
-                                 "CREATED_AT"  "Keszites eve"
-                                 "count"       "Darabszam"
-                                 "sum"         "Osszes mennyiseg"}
+          (let [renames         {"PRODUCT_ID"    "Termekazonosito"
+                                 "CREATED_AT"    "Keszites eve"
+                                 "aggregation"   "Darabszam"
+                                 "aggregation_2" "Osszes mennyiseg"}
                 new-metadata    (mapv (fn [col]
                                         (if-let [new-name (get renames (:name col))]
                                           (assoc col :display_name new-name)
@@ -4829,6 +4829,6 @@
       (is (=? {:database (mt/id)
                :type     "query"
                :query    {:source-table (mt/id :orders)
-                          :aggregation  [["aggregation-options" ["count"] {:name "count"}]]}}
+                          :aggregation  [["aggregation-options" ["count"] {:name "aggregation"}]]}}
               (-> (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)) :legacy-mbql true)
                   :dataset_query))))))

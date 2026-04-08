@@ -1140,18 +1140,18 @@
                {:name                    "CREATED_AT"
                 :lib/source-column-alias "CREATED_AT_2"
                 :inherited-temporal-unit :month}
-               {:name "count"}]
+               {:name "aggregation"}]
               columns))
       (testing (str "Sanity check: initial query should have no `:fields` in the last stage (i.e., it should return"
                     " everything from the stage before that)")
         (is (nil? (fields-of query))))
       (testing "removing the column coming from the first breakout"
-        (is (=? [[:field {} "CREATED_AT_2"] [:field {} "count"]]
+        (is (=? [[:field {} "CREATED_AT_2"] [:field {} "aggregation"]]
                 (-> query
                     (lib/remove-field 1 (first columns))
                     fields-of))))
       (testing "removing the column coming from the second breakout"
-        (is (=? [[:field {} "CREATED_AT"] [:field {} "count"]]
+        (is (=? [[:field {} "CREATED_AT"] [:field {} "aggregation"]]
                 (-> query
                     (lib/remove-field 1 (second columns))
                     fields-of))))
@@ -1528,7 +1528,7 @@
       (testing "populating :fields"
         (is (nil? (:fields stage1)))
         (is (=? [[:field {} "CREATED_AT"]
-                 [:field {} "sum"]]
+                 [:field {} "aggregation"]]
                 (-> query
                     (#'lib.field/populate-fields-for-stage 1)
                     fields-of))))
@@ -1538,7 +1538,7 @@
                 (-> query
                     (lib/remove-field 1 sum)
                     fields-of)))
-        (is (=? [[:field {} "sum"]]
+        (is (=? [[:field {} "aggregation"]]
                 (-> query
                     (lib/remove-field 1 created-at)
                     fields-of))))

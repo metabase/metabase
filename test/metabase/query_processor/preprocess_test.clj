@@ -562,21 +562,21 @@
       (testing `lib/returned-columns
         (binding [lib.metadata.calculation/*display-name-style* :long]
           (is (= [["Products → Category"                     "Products__CATEGORY"]
-                  ["Count"                                   "count"]
+                  ["Count"                                   "aggregation"]
                   ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
                  (mapv (juxt :display-name :lib/desired-column-alias)
                        (lib/returned-columns query))))))
       (testing `qp.preprocess/query->expected-cols
         (is (=? {:stages [{:breakout    [[:field {:join-alias "Products"} pos-int?]]
-                           :aggregation [[:count {}]]
+                           :aggregation [[:count {:name "aggregation"}]]
                            :joins       [{:alias  "Products"
                                           :stages [{:fields #(= (count %) 8)}]}
                                          {:alias  "People - User"
                                           :stages [{:fields #(= (count %) 13)}]}]}
                           {:fields [[:field {} "Products__CATEGORY"]
-                                    [:field {} "count"]]}
+                                    [:field {} "aggregation"]]}
                           {:fields [[:field {} "Products__CATEGORY"]
-                                    [:field {} "count"]
+                                    [:field {} "aggregation"]
                                     [:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
                            :joins  [{:alias  "Card 2 - Products → Category"
                                      :fields [[:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
@@ -584,7 +584,7 @@
                                               {:fields [[:field {} "CATEGORY"]]}]}]}]}
                 (qp.preprocess/preprocess query)))
         (is (= [["Products → Category"                     "Products__CATEGORY"]
-                ["Count"                                   "count"]
+                ["Count"                                   "aggregation"]
                 ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
                (map (juxt :display_name :lib/desired-column-alias)
                     (qp.preprocess/query->expected-cols query))))))))
