@@ -276,7 +276,8 @@
 (defmethod default-column-sql :default [_ expr]
   (format "DEFAULT (%s)" expr))
 
-(defn- field-definition-sql
+(defn field-definition-sql
+  "Generate the fragment of a `CREATE TABLE` DDL statement for a specific column."
   [driver {:keys [field-name base-type field-comment not-null? unique? default-expr generated-expr], :as field-definition}]
   (let [field-name      (format-and-quote-field-name driver field-name)
         field-type      (or (cond

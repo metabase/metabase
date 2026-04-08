@@ -1,8 +1,9 @@
 (ns metabase.test.data.sqlite
   (:require
    [clojure.java.io :as io]
-   [metabase.config.core :as config]
-   [metabase.driver :as driver]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver :as metabase.driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test.data.interface :as tx]
@@ -17,11 +18,6 @@
 (defmethod driver/database-supports? [:sqlite :test/timestamptz-type]
   [_driver _feature _database]
   false)
-
-;; TODO: It seems that foreign keys sync does not work on sqlite. The [[metabase.driver-test/describe-table-fks-test]]
-;;       is failing. Resolve that and re-enable feature!
-;;       Tracked by: https://github.com/metabase/metabase/issues/45788
-(defmethod driver/database-supports? [:sqlite :metadata/key-constraints] [_driver _feature _db] (not config/is-test?))
 
 (defn- db-file-name [dbdef]
   (str (tx/escaped-database-name dbdef) ".sqlite"))
@@ -57,11 +53,94 @@
       {:base_type :type/Integer}))))
 
 (defmethod execute/execute-sql! :sqlite [& args]
+  (doseq [arg args]
+    (println arg) ; NOCOMMIT
+    )
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod sql.tx/drop-db-if-exists-sql :sqlite [& _] nil)
 (defmethod sql.tx/create-db-sql         :sqlite [& _] nil)
-(defmethod sql.tx/add-fk-sql            :sqlite [& _] nil) ; TODO - fix me
+(defmethod sql.tx/add-fk-sql            :sqlite [& _] nil) ; SQLite FKs have to be added at Table creation time
+
+(defn join-parts [parts]
+  (let [sb (StringBuilder.)]
+    (letfn [(append! [x]
+              (if (sequential? x)
+                (doseq [item x]
+                  (append! item))
+                (.append sb (str x))))]
+      (append! parts))
+    (.toString sb)))
+
+(defmethod sql.tx/create-table-sql :sqlite
+  [driver {:keys [database-name], :as _db-def} {:keys [table-name field-definitions table-comment], :as _tabledef}]
+  (letfn [(spaces [& args]
+            (interpose \space args))
+          (table [table-name]
+            (sql.tx/qualify-and-quote driver database-name table-name))
+          (commas [& args]
+            (interpose ", " args))
+          (sql-list [& args]
+            (concat ["("]
+                    (apply commas args)
+                    [")"]))
+          (field [field-name]
+            (sql.tx/format-and-quote-field-name driver field-name))
+          (field-def [field-definition]
+            (sql.tx/field-definition-sql driver field-definition))
+          (field-defs []
+            (for [field-definition field-definitions]
+              (field-def field-definition)))
+          (primary-key []
+            (spaces
+             "PRIMARY KEY"
+             (apply sql-list (for [field-name (sql.tx/fielddefs->pk-field-names field-definitions)]
+                               (field field-name)))))
+          (foreign-key [field-definition]
+            (spaces
+             "FOREIGN KEY"
+             (sql-list (field (:field-name field-definition)))
+             "REFERENCES"
+             (table (name (:fk field-definition)))
+             (sql-list (field (sql.tx/pk-field-name driver)))))
+          (foreign-keys []
+            (for [field-definition field-definitions
+                  :when            (:fk field-definition)]
+              (foreign-key field-definition)))]
+    (let [parts (spaces
+                 "CREATE TABLE"
+                 (table table-name)
+                 (apply sql-list (concat (field-defs)
+                                         [(primary-key)]
+                                         (foreign-keys))))]
+      (join-parts parts))))
+
+(deftest ^:parallel create-table-ddl-test
+  (testing "CREATE TABLE for SQLite should include inline FOREIGN KEY declarations (#45788, QUE2-59)"
+    (let [driver    :sqlite
+          db-def    {:database-name "country"}
+          table-def {:table-name        "country"
+                     :field-definitions [{:field-name    "id"
+                                          :base-type     {:native "INTEGER"}
+                                          :semantic-type :type/PK
+                                          :pk?           true}
+                                         {:field-name "name"
+                                          :base-type  :type/Text}
+                                         {:field-name "continent_id"
+                                          :base-type  :type/Integer
+                                          :fk         :continent}]}
+          sql       (sql.tx/create-table-sql
+                     driver
+                     db-def
+                     table-def)]
+      (is (= ["CREATE TABLE \"country\" ("
+              "  \"id\" INTEGER,"
+              "  \"name\" TEXT,"
+              "  \"continent_id\" INTEGER,"
+              "  PRIMARY KEY (\"id\"),"
+              "  FOREIGN KEY (\"continent_id\") REFERENCES \"continent\" (\"id\")"
+              ")"]
+             (str/split-lines (metabase.driver/prettify-native-form driver sql)))))))
 
 (defmethod tx/destroy-db! :sqlite
   [_driver dbdef]
