@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.nio.file Files LinkOption Path)
+   (java.nio.file FileVisitOption Files LinkOption Path)
    (java.util.jar JarEntry JarFile)))
 
 (set! *warn-on-reflection* true)
@@ -224,14 +224,10 @@
 (defn directory-content-checksum
   "Stable hash of the relative paths and contents of files under `root` (recursively) whose filenames
    end with `suffix` (e.g. `.sql`). Detects renames (paths are included) and content swaps between
-   files (single hash over sorted pairs).
-
-   Walks via `java.nio.file.Files/walk` rather than `babashka.fs/glob` because the latter is hard-wired
-   to the default filesystem's `PathMatcher` and silently returns no matches when `root` lives inside
-   a jar `ZipFileSystem`."
+   files (single hash over sorted pairs)."
   ([root] (directory-content-checksum root ""))
   ([^Path root suffix]
-   (with-open [stream (Files/walk root (u/varargs java.nio.file.FileVisitOption))]
+   (with-open [stream (Files/walk root (u/varargs FileVisitOption))]
      (->> (iterator-seq (.iterator stream))
           (filter (fn [^Path p]
                     (and (Files/isRegularFile p (u/varargs LinkOption))
@@ -247,7 +243,9 @@
    Stored in the `last-analytics-checksum` setting; when it changes, `ensure-audit-db-installed!`
    re-runs `serialization.cmd/v2-load-internal!` on boot."
   []
-  (directory-content-checksum (instance-analytics-plugin-dir (plugins/plugins-dir))))
+  (-> (plugins/plugins-dir)
+      instance-analytics-plugin-dir
+      directory-content-checksum))
 
 (defn- should-load-audit?
   "Should we load audit data?"
@@ -266,6 +264,10 @@
       [last-checksum (analytics-checksum)])))
 
 (defn- maybe-load-analytics-content!
+  "Loads serialized audit content from the classpath if its checksum has changed. Returns
+   `::engine-changed` when loading required swapping the audit DB engine type back to the host
+   engine — that condition is what `maybe-sync-audit-db!` keys off to refresh field metadata
+   for the new dialect."
   [audit-db]
   (when analytics-dir-resource
     (ia-content->plugins (plugins/plugins-dir))
@@ -287,19 +289,8 @@
         (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
           (let [original-engine engine]
             (adjust-audit-db-to-host! audit-db)
-            ;; Only sync if we actually changed the engine type
             (when (not= original-engine (mdb/db-type))
-              (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
-                ;; Sync the audit database to update field metadata to match the host database engine
-                ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
-                ;; to the correct types for the host database (e.g., datetime for MySQL)
-                (log/info "Starting Sync of Audit DB fields to update metadata for host engine")
-                (let [sync-future (future
-                                    (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
-                                    (log/info "Audit DB field sync complete."))]
-                  (when config/is-test?
-                    ;; Tests need the sync to complete before they run
-                    @sync-future))))))))))
+              ::engine-changed)))))))
 
 (defn- maybe-install-audit-db!
   []
@@ -331,23 +322,30 @@
     (u.files/with-open-path-to-resource [views-dir "migrations/instance_analytics_views"]
       (directory-content-checksum views-dir ".sql"))))
 
-(defn- maybe-sync-audit-views!
-  "Sync the audit DB schema if the analytics views have changed since the last sync.
-   This ensures new views from migrations are discoverable without waiting for the
-   periodic sync schedule."
-  [audit-db]
-  (let [current (views-checksum)
-        last    (audit-app.settings/last-analytics-views-checksum)]
-    (when (and current (not= current last))
-      (log/info "Analytics views changed, syncing Audit DB schema")
+(defn- maybe-sync-audit-db!
+  "One-shot `:scan :schema` sync of the audit DB. Fires when either trigger is true:
+     - `engine-changed?` — `maybe-load-analytics-content!` swapped the audit DB engine and
+       field metadata needs to be refreshed for the new dialect.
+     - the `instance_analytics_views` SQL files have changed since the last successful sync,
+       meaning a migration may have added a new view that isn't yet in `metabase_table`.
+   The two triggers share one sync because they both want the same operation; doing them
+   sequentially would race two parallel syncs against the same DB on a cold boot."
+  [audit-db engine-changed?]
+  (let [current      (views-checksum)
+        views-stale? (and current (not= current (audit-app.settings/last-analytics-views-checksum)))]
+    (when (or engine-changed? views-stale?)
+      (log/infof "Syncing Audit DB schema (engine-changed? %s, views-stale? %s)"
+                 engine-changed? views-stale?)
       (let [sync-future (future
                           (try
                             (log/with-no-logs (sync/sync-database! audit-db {:scan :schema}))
-                            (audit-app.settings/last-analytics-views-checksum! current)
-                            (log/info "Audit DB views sync complete.")
+                            (when current
+                              (audit-app.settings/last-analytics-views-checksum! current))
+                            (log/info "Audit DB sync complete.")
                             (catch Exception e
-                              (log/error e "Audit DB views sync failed."))))]
+                              (log/error e "Audit DB sync failed."))))]
         (when config/is-test?
+          ;; Tests need the sync to complete before they run
           @sync-future)))))
 
 (defenterprise ensure-audit-db-installed!
@@ -361,5 +359,7 @@
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db
         (fn []
-          (maybe-load-analytics-content! audit-db)
-          (maybe-sync-audit-views! audit-db)))))))
+          (let [engine-changed? (= ::engine-changed (maybe-load-analytics-content! audit-db))]
+            ;; re-fetch in case the load path swapped the engine row
+            (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
+              (maybe-sync-audit-db! audit-db engine-changed?)))))))))

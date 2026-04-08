@@ -238,7 +238,7 @@
       (with-redefs [ee-audit/views-checksum (constantly checksum)
                     sync/sync-database! (fn [& _]
                                           (throw (Exception. "sync failed")))]
-        (is (nil? (#'ee-audit/maybe-sync-audit-views! audit-db)))
+        (is (nil? (#'ee-audit/maybe-sync-audit-db! audit-db false)))
         (is (= 0 (ee.audit.settings/last-analytics-views-checksum)))))))
 
 (deftest adjust-audit-db-to-source-test
