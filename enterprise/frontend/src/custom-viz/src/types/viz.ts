@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import type { Column, RowValue, Series } from "./data";
+import type { Column, DatasetData, RowValue, Series } from "./data";
 import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 import type {
   CreateDefineSetting,
@@ -72,6 +72,12 @@ export type CustomVisualization<CustomVisualizationSettings> = {
     keyof CustomVisualizationSettings,
     CustomVisualizationSettingDefinition<CustomVisualizationSettings>
   >;
+
+  /**
+   * Returns true if the visualization makes sense for the given data.
+   * Used to filter which chart types are suggested for a query result.
+   */
+  isSensible?: (data: DatasetData) => boolean;
 
   /**
    * This function should throw if the visualization cannot be rendered with given data and settings.

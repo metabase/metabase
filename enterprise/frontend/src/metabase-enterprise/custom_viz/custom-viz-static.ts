@@ -1,0 +1,40 @@
+import visualizations, { registerVisualization } from "metabase/visualizations";
+import {
+  defineSetting,
+  getCustomPluginIdentifier,
+} from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+
+import { applyDefaultVisualizationPrps } from "./custom-viz-common";
+
+// Registry for custom viz plugins in the GraalJS static-viz context.
+export const customVizRegistry: Map<string, any> = new Map();
+
+export function registerCustomVizPlugin(
+  factory: any,
+  identifier: string,
+  assets: any,
+) {
+  const assetMap = assets || {};
+  const getAssetUrl = (name: string) => assetMap[name] || "";
+  const vizDef = factory({ defineSetting, getAssetUrl });
+  const display = getCustomPluginIdentifier(identifier);
+  customVizRegistry.set(display, vizDef);
+
+  // Register in main visualizations Map so getVisualizationRaw() resolves
+  // the plugin's settings for getComputedSettingsForSeries()
+  const Component = (vizDef.StaticVisualizationComponent ??
+    (() => null)) as any;
+  applyDefaultVisualizationPrps(Component, vizDef, {
+    identifier: display,
+    getUiName: () => identifier,
+    iconName: "area",
+    /**
+     * exclude from chart type picker and visualizer;
+     * this component is only used for server-side settings resolution
+     */
+    hidden: true,
+  });
+  if (!visualizations.has(display)) {
+    registerVisualization(Component);
+  }
+}
