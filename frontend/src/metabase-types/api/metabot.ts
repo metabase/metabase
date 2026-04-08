@@ -344,8 +344,21 @@ export type UserMetabotPermissions = {
   "metabot-other-tools": "yes" | "no";
 };
 
+export type MetabotUsage = {
+  user_usage: number;
+  user_limit: number | null;
+  instance_usage: number;
+  instance_limit: number | null;
+  tenant_usage?: number;
+  tenant_limit?: number | null;
+  limit_unit: MetabotLimitType;
+  limit_reset_rate: MetabotLimitPeriod;
+  period_start: string;
+};
+
 export type UserMetabotPermissionsResponse = {
   permissions: UserMetabotPermissions;
+  usage: MetabotUsage | null;
 };
 
 export type MetabotLimitPeriod = "daily" | "weekly" | "monthly";
