@@ -223,7 +223,7 @@ const AutomaticDashboardAppInner = () => {
           opened={showReturnModal}
           onClose={() => setShowReturnModal(false)}
           title={t`Dashboard saved!`}
-          message={t`Your dashboard has been saved. Go back to the setup guide to continue.`}
+          message={t`Your dashboard has been saved. Return to the setup guide to continue.`}
         />
       )}
     </div>

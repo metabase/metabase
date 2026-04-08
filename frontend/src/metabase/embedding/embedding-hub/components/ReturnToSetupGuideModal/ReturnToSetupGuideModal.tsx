@@ -8,8 +8,8 @@ import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 interface ReturnToSetupGuideModalProps {
   opened: boolean;
   onClose: () => void;
-  title?: string;
-  message?: string;
+  title: string;
+  message: string;
 }
 
 /**
@@ -19,8 +19,8 @@ interface ReturnToSetupGuideModalProps {
 export const ReturnToSetupGuideModal = ({
   opened,
   onClose,
-  title = t`You're all set!`,
-  message = t`Go back to the setup guide to continue setting up embedding.`,
+  title,
+  message,
 }: ReturnToSetupGuideModalProps) => {
   const dispatch = useDispatch();
 

@@ -164,7 +164,7 @@ function DatabaseEditAppInner({
           opened={showReturnModal}
           onClose={() => setShowReturnModal(false)}
           title={t`Database connected!`}
-          message={t`Your database has been added and synced. Go back to the setup guide to continue.`}
+          message={t`Your database has been added and synced. Return to the setup guide to continue.`}
         />
       )}
     </>
