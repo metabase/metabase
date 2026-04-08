@@ -25,7 +25,8 @@
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
-  #{:model/AnalysisFinding
+  #{:model/AiUsageLog
+    :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
     :model/CacheConfig
@@ -37,6 +38,7 @@
     :model/Dependency
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
+    :model/MetabotPermissions
     :model/PythonLibrary
     :model/PremiumFeaturesCache
     :model/Query

@@ -64,14 +64,22 @@
   [perm-type]
   (-> permissions.schema/data-permissions perm-type :values first))
 
+(defn- validate-perm-value!
+  [perm-type perm-value]
+  (let [values (-> permissions.schema/data-permissions perm-type :values)]
+    (when-not (contains? (set values) perm-value)
+      (throw (ex-info (tru "Invalid permission value {0} for permission type {1}" (pr-str perm-value) perm-type)
+                      {:value perm-value :perm-type perm-type :valid-values values})))))
+
 (mu/defn at-least-as-permissive?
   "Returns true if value1 is at least as permissive as value2 for the given permission type."
   [perm-type :- ::permissions.schema/data-permission-type
    value1    :- ::permissions.schema/data-permission-value
    value2    :- ::permissions.schema/data-permission-value]
+  (validate-perm-value! perm-type value1)
+  (validate-perm-value! perm-type value2)
   (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
-    (<= (.indexOf values value1)
-        (.indexOf values value2))))
+    (<= (.indexOf values value1) (.indexOf values value2))))
 
 (def ^:private model-by-perm-type
   "A map from permission types directly to model identifiers (or `nil`)."
@@ -79,9 +87,7 @@
 
 (defn- assert-value-matches-perm-type
   [perm-type perm-value]
-  (when-not (contains? (set (get-in permissions.schema/data-permissions [perm-type :values])) perm-value)
-    (throw (ex-info (tru "Permission type {0} cannot be set to {1}" perm-type perm-value)
-                    {perm-type (permissions.schema/data-permissions perm-type)}))))
+  (validate-perm-value! perm-type perm-value))
 
 ;;; ---------------------------------------- Caching ------------------------------------------------------------------
 

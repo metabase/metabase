@@ -153,7 +153,7 @@ _Admin > Table Metadata > Database > Table > Field_
 
 ### Semantic type
 
-You can change the [semantic type](../data-modeling/semantic-types.md) to give people more context and enable additional functionality, such as displaying text as an image (if the text is an image URL. Another example: you could set an Integer as a "Score" so people have a better idea what those integers indicate.
+You can change the [semantic type](../data-modeling/semantic-types.md) to give people more context and enable additional functionality, such as displaying text as an image (if the text is an image URL). Another example: you could set an Integer as a "Score" so people have a better idea what those integers indicate.
 
 The semantic types you can choose from depend on the data type. If none of the options describe the values in the column, you can set this setting to "No semantic type".
 
