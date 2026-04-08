@@ -342,36 +342,18 @@
         (contains? direct-api-namespaces ns-symb)
         (contains? direct-friends current-module))))
 
-(def ^:private special-module-suffixes
-  "Module name suffixes that trigger special-case behavior in `usage-error`.
-
-  - `-rest` modules: HTTP-layer modules split from their core counterparts to
-    break cycles. Non-rest modules (except `-rest`, `-routes`, and `core`
-    modules themselves) are forbidden from depending on them.
-  - `-routes` modules: aggregate HTTP routes from multiple `-rest` modules.
-  - `core` modules: the initialization namespace that may need to init
-    `-routes` modules at startup.
-
-  These special cases are expected to be removed once `-rest` modules are
-  migrated to nested child modules (see the nested-modules implementation
-  plan). Keep them centralized here so the migration is a targeted
-  deletion rather than a scattered hunt."
-  {:rest   "-rest"
-   :routes "-routes"
-   :core   "core"})
-
-(defn- rest-module? [module]
-  (str/ends-with? module (:rest special-module-suffixes)))
-
-(defn- routes-module? [module]
-  (str/ends-with? module (:routes special-module-suffixes)))
-
-(defn- core-module? [module]
-  (str/ends-with? module (:core special-module-suffixes)))
-
 (defn usage-error
   "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the
-  error type if there is one, otherwise `nil` if there are no errors."
+  error type if there is one, otherwise `nil` if there are no errors.
+
+  Historical note: this function used to carry a special-case clause that
+  forbade non-`-rest` modules from depending on `-rest` modules (plus an
+  exception for `-routes` and `core`). That invariant is now enforced
+  entirely at test time via
+  `metabase.core.modules-test/do-not-use-rest-modules-in-other-modules-test`,
+  which is the authoritative check. The inline kondo-hook duplicate has been
+  removed so that the hook can stay simple and suffix-based workarounds
+  don't proliferate."
   [config current-module required-namespace]
   ;; ignore stuff not in a module i.e. non-Metabase stuff.
   (when-let [required-module (module config required-namespace)]
@@ -391,15 +373,4 @@
           (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
                   required-namespace
                   required-module
-                  required-module)
-
-          ;; (for now) rest modules are allowed to use one another; `routes` is ok because it collects routes together
-          ;; and `core` is ok because [[metabase.core.init]] might need to init some of the `-routes` modules'
-          ;; namespaces
-          (and (not ((some-fn rest-module? routes-module? core-module?) current-module))
-               (rest-module? required-module))
-          (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
-                  required-module
-                  current-module
-                  required-module
-                  (symbol (str/replace required-module #"-rest$" ""))))))))
+                  required-module))))))
