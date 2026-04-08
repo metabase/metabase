@@ -1,4 +1,4 @@
-(ns metabase.models.transforms.job-run
+(ns metabase.transforms.models.job-run
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]

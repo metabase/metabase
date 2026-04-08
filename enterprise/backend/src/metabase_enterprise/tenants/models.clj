@@ -1,4 +1,4 @@
-(ns metabase-enterprise.tenants.model
+(ns metabase-enterprise.tenants.models
   (:require
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit-app]
