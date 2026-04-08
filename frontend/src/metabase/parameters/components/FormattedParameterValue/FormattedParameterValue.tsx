@@ -90,7 +90,9 @@ function FormattedParameterValue({
     }
 
     return (
-      <span>{formatParameterValue(value, parameter, formattingSettings)}</span>
+      <span>
+        {formatParameterValue(tc(value), parameter, formattingSettings)}
+      </span>
     );
   };
 

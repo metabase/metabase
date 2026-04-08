@@ -337,8 +337,8 @@
             raw-query     (lib-metric.dimension/dimensionable-query metadata)]
         (if-not raw-query
           []
-          (let [pmbql-query        (lib/query metadata-provider raw-query)
-                breakout-clauses   (lib/breakouts pmbql-query)
+          (let [mbql5-query        (lib/query metadata-provider raw-query)
+                breakout-clauses   (lib/breakouts mbql5-query)
                 breakout-field-ids (into #{}
                                          (keep lib-metric.dimension/dimension-target->field-id)
                                          breakout-clauses)]

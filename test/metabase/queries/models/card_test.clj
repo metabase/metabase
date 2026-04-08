@@ -376,7 +376,7 @@
 
 (defn- native-query-card
   "Build a card map with a native query containing the given template tags.
-  Uses lib to construct a properly normalized pMBQL query."
+  Uses lib to construct a properly normalized MBQL 5 query."
   [sql template-tags]
   {:dataset_query (lib/with-template-tags
                     (lib/native-query meta/metadata-provider sql)

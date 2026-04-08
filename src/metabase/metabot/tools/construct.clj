@@ -251,7 +251,7 @@
 
 (defn- structured->query-data
   "Convert tool structured output to a map suitable for [[llm-rep/query->xml]].
-  Converts the pMBQL query to legacy MBQL, JSON-encodes it, and wraps result columns."
+  Converts the MBQL 5 query to legacy MBQL, JSON-encodes it, and wraps result columns."
   [{:keys [query-id query result-columns]}]
   (let [legacy-query (when (and (map? query) (:lib/type query))
                        #_{:clj-kondo/ignore [:discouraged-var]}

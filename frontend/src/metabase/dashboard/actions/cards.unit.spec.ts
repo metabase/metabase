@@ -232,6 +232,10 @@ describe("dashboard/actions/cards", () => {
   });
 
   describe("replaceCard", () => {
+    beforeEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it("should correctly update the dashcard", async () => {
       const { nextDashCard } = await runReplaceCardAction({
         dashcardId: TABLE_DASHCARD.id,
@@ -333,11 +337,11 @@ async function runReplaceCardAction({
 }: RunReplaceCardOpts) {
   const { store } = setup(opts);
 
-  await replaceCard({ dashcardId, nextCardId })(store.dispatch, store.getState);
-  const nextState = store.getState();
-
   const dispatchSpy = jest.spyOn(store, "dispatch");
   const cardQueryEndpointSpy = jest.spyOn(CardApi, "query");
+
+  await replaceCard({ dashcardId, nextCardId })(store.dispatch, store.getState);
+  const nextState = store.getState();
 
   return {
     nextDashCard: getDashCardById(nextState, dashcardId),

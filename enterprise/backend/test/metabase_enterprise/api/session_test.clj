@@ -29,6 +29,8 @@
                               :embedding-simple
                               :embedding-hub
                               :hosting
+                              :metabase-ai-managed
+                              :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -75,6 +77,8 @@
             :embedding_sdk                  true
             :embedding_simple               true
             :hosting                        true
+            :metabase-ai-managed            true
+            :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true
