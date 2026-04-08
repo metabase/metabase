@@ -53,9 +53,6 @@
       {:base_type :type/Integer}))))
 
 (defmethod execute/execute-sql! :sqlite [& args]
-  (doseq [arg args]
-    (println arg) ; NOCOMMIT
-    )
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod sql.tx/drop-db-if-exists-sql :sqlite [& _] nil)
@@ -73,7 +70,7 @@
     (.toString sb)))
 
 (defmethod sql.tx/create-table-sql :sqlite
-  [driver {:keys [database-name], :as _db-def} {:keys [table-name field-definitions table-comment], :as _tabledef}]
+  [driver {:keys [database-name], :as _db-def} {:keys [table-name field-definitions], :as _tabledef}]
   (letfn [(spaces [& args]
             (interpose \space args))
           (table [table-name]
