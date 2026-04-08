@@ -47,8 +47,8 @@
 (defn update-query-sql
   "Update a dataset_query map with new SQL content.
   Handles both legacy MBQL (`{:type :native, :native {:query ...}}`) and
-  pMBQL (`{:stages [{:lib/type :mbql.stage/native, :native ...}]}`) formats,
-  including the JSON-serialized pMBQL variant where enum values are strings."
+  MBQL 5 (`{:stages [{:lib/type :mbql.stage/native, :native ...}]}`) formats,
+  including the JSON-serialized MBQL 5 variant where enum values are strings."
   [query new-sql]
   (let [normalized (maybe-normalize-query query)]
     (cond

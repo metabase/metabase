@@ -48,9 +48,10 @@ on:
 
 permissions:
   id-token: write
-  contents: read
-  actions: read
+  contents: write
   checks: write
+  issues: write
+  actions: read
 
 jobs:
   check-version:
@@ -290,7 +291,6 @@ jobs:
       release: "true"
 
   push-tags:
-    permissions: write-all
     needs: [verify-s3-download, containerize-oss, containerize-ee, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -453,7 +453,6 @@ jobs:
     needs: add-extra-tags
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
-    permissions: write-all
     env:
       AWS_S3_DOWNLOADS_BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
       DOCKERHUB_OWNER: ${{ vars.DOCKERHUB_OWNER }}
@@ -626,7 +625,6 @@ jobs:
 
   manage-milestones:
     if: ${{ !inputs.auto }}
-    permissions: write-all
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [draft-release-notes, publish-version-info] # this will ensure that the milestone stays open until the release notes are published
     timeout-minutes: 15

@@ -237,6 +237,12 @@
   metabase-enterprise.cache.task.refresh-cache-configs
   [])
 
+(defenterprise clear-metabot-limit-cache!
+  "Clears the metabot usage limit memoization cache on EE so that limit checks re-evaluate immediately.
+  No-op on OSS."
+  metabase-enterprise.metabot.usage
+  [])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -292,3 +298,39 @@
                                                  [:ref ::lib.schema.test-spec/test-native-query-spec]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-native-query native-query-spec)))
+
+;;;; Metabot AI usage seeding
+
+(def ^:private e2e-usage-source "e2e-test")
+
+(api.macros/defendpoint :post "/metabot/seed-ai-usage"
+  :- [:map [:inserted :int]]
+  "Insert `count` rows into `ai_usage_log` for the given `user_id`, then clear the metabot limit
+  cache so limit checks re-evaluate immediately.  Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id count]} :- [:map
+                               [:user_id ms/PositiveInt]
+                               [:count   ms/PositiveInt]]]
+  (dotimes [_ count]
+    (t2/insert! :model/AiUsageLog
+                {:source            e2e-usage-source
+                 :model             "test/model"
+                 :prompt_tokens     0
+                 :completion_tokens 0
+                 :total_tokens      0
+                 :user_id           user_id}))
+  (clear-metabot-limit-cache!)
+  {:inserted count})
+
+(api.macros/defendpoint :delete "/metabot/seed-ai-usage"
+  :- [:map [:deleted :int]]
+  "Delete all `ai_usage_log` rows inserted by the seeding endpoint for the given `user_id`, then
+  clear the metabot limit cache.  Intended only for E2E tests."
+  [_route-params
+   _query-params
+   {:keys [user_id]} :- [:map
+                         [:user_id ms/PositiveInt]]]
+  (let [deleted (t2/delete! :model/AiUsageLog :user_id user_id :source e2e-usage-source)]
+    (clear-metabot-limit-cache!)
+    {:deleted deleted}))
