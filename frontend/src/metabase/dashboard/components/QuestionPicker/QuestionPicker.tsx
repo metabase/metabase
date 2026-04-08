@@ -28,6 +28,7 @@ import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
 import { addDashboardQuestion } from "./actions";
 import {
+  COLLECTIONS_TOP_LEVEL_ID,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
   useCollectionsWithTenants,
 } from "./hooks/use-collections-with-tenants";
@@ -55,6 +56,7 @@ function QuestionPickerInner({
 
   const collectionsById = useCollectionsWithTenants(baseCollectionsById);
 
+  const isAtTopLevel = currentCollectionId === COLLECTIONS_TOP_LEVEL_ID;
   const isAtSharedTenantRoot =
     currentCollectionId === SHARED_TENANT_COLLECTIONS_ROOT_ID;
   const collection = collectionsById[currentCollectionId];
@@ -151,7 +153,7 @@ function QuestionPickerInner({
         </>
       )}
 
-      {(!isAtSharedTenantRoot || debouncedSearchText) && (
+      {((!isAtSharedTenantRoot && !isAtTopLevel) || debouncedSearchText) && (
         <QuestionList
           hasCollections={collections.length > 0}
           searchText={debouncedSearchText}

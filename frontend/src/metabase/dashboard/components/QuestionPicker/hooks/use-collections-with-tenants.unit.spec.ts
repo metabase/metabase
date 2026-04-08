@@ -3,6 +3,7 @@ import type { Collection, CollectionId } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
+  COLLECTIONS_TOP_LEVEL_ID,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
   mergeSharedCollections,
 } from "./use-collections-with-tenants";
@@ -67,33 +68,40 @@ function setup() {
 }
 
 describe("mergeSharedCollections", () => {
-  it("should insert a synthetic shared root under Our analytics", () => {
+  it("should create a top-level Collections node with Our analytics and Shared collections as siblings", () => {
     const result = setup() as any;
+
+    const topLevel = result[COLLECTIONS_TOP_LEVEL_ID];
+    expect(topLevel.name).toBe("Collections");
+    expect(topLevel.parent).toBeNull();
+    expect(topLevel.children).toHaveLength(2);
+    expect(topLevel.children[0].id).toBe(ROOT_COLLECTION.id);
+    expect(topLevel.children[1].id).toBe(SHARED_TENANT_COLLECTIONS_ROOT_ID);
+
+    const root = result[ROOT_COLLECTION.id];
+    expect(root.parent.id).toBe(COLLECTIONS_TOP_LEVEL_ID);
+    expect(root.path).toEqual([COLLECTIONS_TOP_LEVEL_ID]);
 
     const syntheticRoot = result[SHARED_TENANT_COLLECTIONS_ROOT_ID];
     expect(syntheticRoot.name).toBe("Shared collections");
-    expect(syntheticRoot.parent.id).toBe(ROOT_COLLECTION.id);
-
-    const rootChildren = result[ROOT_COLLECTION.id].children;
-    expect(rootChildren).toContainEqual(
-      expect.objectContaining({ id: SHARED_TENANT_COLLECTIONS_ROOT_ID }),
-    );
+    expect(syntheticRoot.parent.id).toBe(COLLECTIONS_TOP_LEVEL_ID);
+    expect(syntheticRoot.path).toEqual([COLLECTIONS_TOP_LEVEL_ID]);
   });
 
-  it("should re-parent children and rewrite paths through the synthetic root", () => {
+  it("should re-parent children and rewrite paths through the top-level and synthetic root", () => {
     const result = setup() as any;
 
     const tenantA = result[100 as CollectionId];
     expect(tenantA.parent.id).toBe(SHARED_TENANT_COLLECTIONS_ROOT_ID);
     expect(tenantA.path).toEqual([
-      ROOT_COLLECTION.id,
+      COLLECTIONS_TOP_LEVEL_ID,
       SHARED_TENANT_COLLECTIONS_ROOT_ID,
     ]);
 
     const subcollection = result[300 as CollectionId];
     expect(subcollection.parent.id).toBe(100);
     expect(subcollection.path).toEqual([
-      ROOT_COLLECTION.id,
+      COLLECTIONS_TOP_LEVEL_ID,
       SHARED_TENANT_COLLECTIONS_ROOT_ID,
       100,
     ]);

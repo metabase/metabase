@@ -369,16 +369,31 @@ describe("scenarios > organization > entity picker > shared-tenant-collection na
           H.editDashboard();
           H.openQuestionsSidebar();
 
+          // The breadcrumb should show "Collections" as the top level
+          // since shared collections exist
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .should("contain", "Collections")
+            .and("contain", "Our analytics");
+
+          // Navigate to the top level to see both namespaces
+          H.sidebar()
+            .findByTestId("breadcrumbs")
+            .findByText("Collections")
+            .click();
+          H.sidebar().findByText("Our analytics").should("be.visible");
+          H.sidebar().findByText(TENANT_ROOT_NAME).should("be.visible");
+
           H.sidebar().findByText(TENANT_ROOT_NAME).click();
           H.sidebar()
             .findByTestId("breadcrumbs")
-            .should("contain", "Our analytics")
+            .should("contain", "Collections")
             .and("contain", TENANT_ROOT_NAME);
 
           H.sidebar().findByText("Test Tenant Collection").click();
           H.sidebar()
             .findByTestId("breadcrumbs")
-            .should("contain", "Our analytics")
+            .should("contain", "Collections")
             .and("contain", TENANT_ROOT_NAME)
             .and("contain", "Test Tenant Collection");
 

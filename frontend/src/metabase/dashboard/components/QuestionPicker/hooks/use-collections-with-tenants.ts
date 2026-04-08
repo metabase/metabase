@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { skipToken, useListCollectionsTreeQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks/use-setting";
@@ -21,9 +22,18 @@ export type ExpandedCollectionNode = Collection & {
 export const SHARED_TENANT_COLLECTIONS_ROOT_ID =
   "shared-tenant-collections-root" as CollectionId;
 
+export const COLLECTIONS_TOP_LEVEL_ID = "collections-top-level" as CollectionId;
+
 /**
  * When tenants are enabled, fetches shared tenant collections and merges them
  * into the collectionsById map so they appear as a top-level browsable entry.
+ *
+ * The tree structure becomes:
+ *   Collections (top level)
+ *   ├── Our analytics (root collection)
+ *   └── Shared collections (synthetic root for shared collections)
+ *       ├── Shared collection A
+ *       └── Shared collection B
  */
 export function useCollectionsWithTenants(
   collectionsById: Record<CollectionId, Collection>,
@@ -71,7 +81,8 @@ export function useCollectionsWithTenants(
 
 /**
  * Merge shared tenant collections into the base collections map,
- * inserting a synthetic "Shared collections" root under Our analytics.
+ * creating a top-level "Collections" node that contains both
+ * "Our analytics" and "Shared collections" as siblings.
  */
 export function mergeSharedCollections(
   baseCollectionsById: Record<CollectionId, Collection>,
@@ -79,27 +90,52 @@ export function mergeSharedCollections(
   displayName: string,
 ): Record<CollectionId, Collection> {
   const sharedRoot = sharedCollectionsById[ROOT_COLLECTION.id];
+  const rootCollection = baseCollectionsById[
+    ROOT_COLLECTION.id
+  ] as ExpandedCollectionNode;
 
-  const syntheticRoot: ExpandedCollectionNode = {
+  // Create the top-level "Collections" node that parents both namespaces
+  const topLevel = {
+    ...rootCollection,
+    id: COLLECTIONS_TOP_LEVEL_ID,
+    name: t`Collections`,
+    path: [],
+    parent: null,
+    children: [],
+  } as ExpandedCollectionNode;
+
+  // Create the shared collections synthetic root as a sibling of Our analytics
+  const sharedSyntheticRoot: ExpandedCollectionNode = {
     ...sharedRoot,
     id: SHARED_TENANT_COLLECTIONS_ROOT_ID,
     name: displayName,
-    path: [ROOT_COLLECTION.id],
-    parent: baseCollectionsById[ROOT_COLLECTION.id] as ExpandedCollectionNode,
+    path: [COLLECTIONS_TOP_LEVEL_ID],
+    parent: topLevel,
     children: (sharedRoot?.children ?? []).map((child) => ({
       ...child,
       parent: null,
     })) as ExpandedCollectionNode[],
   };
 
-  // Fix circular parent reference now that syntheticRoot exists
-  syntheticRoot.children = syntheticRoot.children.map((child) => ({
+  // Fix circular parent reference now that sharedSyntheticRoot exists
+  sharedSyntheticRoot.children = sharedSyntheticRoot.children.map((child) => ({
     ...child,
-    parent: syntheticRoot,
+    parent: sharedSyntheticRoot,
   })) as ExpandedCollectionNode[];
+
+  // Wire up the top-level children
+  topLevel.children = [rootCollection, sharedSyntheticRoot];
 
   const mergedCollectionsById = { ...baseCollectionsById };
 
+  // Rewrite root collection to point to top-level parent
+  mergedCollectionsById[ROOT_COLLECTION.id] = {
+    ...rootCollection,
+    path: [COLLECTIONS_TOP_LEVEL_ID],
+    parent: topLevel,
+  } as ExpandedCollectionNode;
+
+  // Merge shared collections with rewritten paths
   for (const [id, collection] of Object.entries(sharedCollectionsById)) {
     if (id === String(ROOT_COLLECTION.id)) {
       continue;
@@ -108,10 +144,10 @@ export function mergeSharedCollections(
     mergedCollectionsById[id as CollectionId] = {
       ...collection,
 
-      // Rewrite path so breadcrumbs show "Our analytics > Shared collections > ..."
+      // Rewrite path: Collections > Shared collections > ...
       path: collection.path
         ? [
-            ROOT_COLLECTION.id,
+            COLLECTIONS_TOP_LEVEL_ID,
             SHARED_TENANT_COLLECTIONS_ROOT_ID,
             ...collection.path.filter((s) => s !== ROOT_COLLECTION.id),
           ]
@@ -119,24 +155,14 @@ export function mergeSharedCollections(
 
       parent:
         collection.parent?.id === ROOT_COLLECTION.id
-          ? syntheticRoot
+          ? sharedSyntheticRoot
           : collection.parent,
     } as ExpandedCollectionNode;
   }
 
-  mergedCollectionsById[SHARED_TENANT_COLLECTIONS_ROOT_ID] = syntheticRoot;
-
-  // Append synthetic root to Our analytics children
-  const rootCollection = mergedCollectionsById[ROOT_COLLECTION.id];
-
-  if (rootCollection) {
-    const children = rootCollection.children ?? [];
-
-    mergedCollectionsById[ROOT_COLLECTION.id] = {
-      ...rootCollection,
-      children: [...children, syntheticRoot],
-    } as ExpandedCollectionNode;
-  }
+  mergedCollectionsById[SHARED_TENANT_COLLECTIONS_ROOT_ID] =
+    sharedSyntheticRoot;
+  mergedCollectionsById[COLLECTIONS_TOP_LEVEL_ID] = topLevel;
 
   return mergedCollectionsById;
 }
