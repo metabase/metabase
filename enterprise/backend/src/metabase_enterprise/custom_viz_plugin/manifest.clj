@@ -84,7 +84,7 @@
   (let [declared  (filter (every-pred allowed-asset-file? safe-relative-path?) (get manifest :assets []))
         icon-name (when-let [icon (:icon manifest)]
                     (when (and (image-file? icon) (safe-relative-path? icon)) icon))
-        icon-dark-name (when-let [icon (:icon_dark manifest)]
-                         (when (and (image-file? icon) (safe-relative-path? icon)) icon))]
+        icon-dark-name (when-let [icon-dark (:icon_dark manifest)]
+                         (when (and (image-file? icon-dark) (safe-relative-path? icon-dark)) icon-dark))]
     (distinct (concat declared (when icon-name [icon-name])
                       (when icon-dark-name [icon-dark-name])))))
