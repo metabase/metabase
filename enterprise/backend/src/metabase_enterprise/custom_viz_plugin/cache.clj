@@ -168,7 +168,7 @@
     (try
       (let [content (slurp (java.net.URI. url))]
         {:content content
-         :hash    (str (hash content))})
+         :hash    (content-hash content)})
       (catch Exception e
         (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
                         {:status-code 502}))))))
