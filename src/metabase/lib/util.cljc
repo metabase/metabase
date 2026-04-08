@@ -451,9 +451,27 @@
       (str/replace strip-id-regex "")
       str/trim))
 
+(defn- unique-indexed-name [names original-name]
+  "Compute a unique name starting with `original-name`, deduplicated against existing `names`."
+  (if-not (contains? names original-name)
+    original-name
+    (loop [i 2]
+      (let [indexed-name (str original-name "_" i)]
+        (if-not (contains? names indexed-name)
+          indexed-name
+          (recur (inc i)))))))
+
+(defn- unique-aggregation-name
+  "Compute a unique name starting with `\"aggregation\"`, deduplicated against existing `clauses`' `:name` options."
+  [clauses]
+  (unique-indexed-name
+   (into #{} (keep lib.options/clause-name) clauses)
+   "aggregation"))
+
 (mu/defn add-summary-clause :- ::lib.schema/query
-  "If the given stage has no summary, it will drop :fields, :order-by, and :join :fields from it,
-   as well as dropping any subsequent stages."
+  "Add a summary clause (aggregation or breakout) to a query stage. For aggregation clauses, sets a unique `:name`
+   starting with `\"aggregation\"` (e.g. `\"aggregation\"`, `\"aggregation_2\"`, etc.). If this is the first summary
+   clause added, drops `:order-by` and any subsequent stages."
   [query :- ::lib.schema/query
    stage-number :- :int
    location :- [:enum :breakout :aggregation]
@@ -466,9 +484,12 @@
                    query stage-number
                    update location
                    (fn [summary-clauses]
-                     (->> a-summary-clause
-                          lib.common/->op-arg
-                          (conj (vec summary-clauses)))))]
+                     (let [clause (lib.common/->op-arg a-summary-clause)]
+                       (conj (vec summary-clauses)
+                             (cond-> clause
+                               (= location :aggregation)
+                               (lib.options/with-clause-name
+                                 (unique-aggregation-name summary-clauses)))))))]
     (if new-summary?
       (-> new-query
           (update-query-stage

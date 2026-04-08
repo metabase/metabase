@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.lib.aggregation.util :as lib.aggregation.util]
    [metabase.lib.common :as lib.common]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -348,10 +347,7 @@
    ;; if this is a Metric or Measure metadata, convert it to `:metric` or `:measure` MBQL clause before adding.
    (if (#{:metadata/metric :metadata/measure} (lib.dispatch/dispatch-value aggregable))
      (recur query stage-number (lib.ref/ref aggregable))
-     (let [aggregable (-> (lib.common/->op-arg aggregable)
-                          (lib.options/with-clause-name
-                            (lib.aggregation.util/unique-aggregation-name (aggregations query stage-number))))]
-       (lib.util/add-summary-clause query stage-number :aggregation aggregable)))))
+     (lib.util/add-summary-clause query stage-number :aggregation aggregable))))
 
 (mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
   "Get the aggregations in a given stage of a query."
