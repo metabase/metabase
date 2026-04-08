@@ -36,3 +36,10 @@
   metabase-enterprise.metabot.usage
   []
   nil)
+
+(defenterprise usage-summary
+  "Return a usage summary map for the current user showing current usage and applicable limits.
+  Returns nil in OSS."
+  metabase-enterprise.metabot.usage
+  []
+  nil)
