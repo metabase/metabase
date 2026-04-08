@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -110,24 +111,15 @@
 
 ;;; ------------------------------------------------- Table Names -------------------------------------------------
 
-(defn resolve-target-schema
-  "If target has no schema, resolve it by checking whether ALL active tables in the same
-   database share a single schema. Only applies the inferred schema when there's a unanimous
-   consensus - this avoids incorrect inference on drivers like Clickhouse where the 'schema'
-   field stores the database name and may differ from the transform target location.
-   Returns target unchanged if schema is already set or no unanimous schema exists."
-  [database-id target]
-  (if (:schema target)
-    target
-    (let [schemas (t2/select-fn-set :schema :model/Table
-                                    :db_id database-id
-                                    :active true)]
-      ;; Only use the schema if every active table has the same non-nil schema.
-      ;; If there are mixed schemas, or any nil schemas, don't guess.
-      (if (and (= 1 (count schemas))
-               (first schemas))
-        (assoc target :schema (first schemas))
-        target))))
+(defn- resolve-nil-schema
+  "When a table has nil schema, check if the physical table exists under the driver's
+   default schema. If so, return that schema. Otherwise return nil.
+   This handles the case where transforms create tables without explicit schema
+   but the driver needs a schema to find the table during sync."
+  [driver database table]
+  (when-let [default-schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
+    (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
+      default-schema)))
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -373,25 +365,20 @@
 (defn- sync-table!
   ([database target] (sync-table! database target nil))
   ([database target {:keys [create?]}]
-   (let [resolved-target (resolve-target-schema (:id database) target)]
-     (when-let [table (or ;; Try with original schema first (matches provisional tables)
-                       (target-table (:id database) target)
-                          ;; If target has nil schema, also try the resolved schema
-                       (when (and (nil? (:schema target)) (:schema resolved-target))
-                         (target-table (:id database) resolved-target))
-                          ;; Create with resolved schema if needed
-                       (when create?
-                         (sync/create-table! database (select-keys resolved-target [:schema :name :data_source :data_authority :is_writable]))))]
-       ;; If we found a provisional table with nil schema but resolved schema is known,
-       ;; fix the schema before syncing so the driver can find the physical table
-       (when (and (nil? (:schema table)) (:schema resolved-target))
-         (t2/update! :model/Table (:id table) {:schema (:schema resolved-target)}))
-       (let [table (if (and (nil? (:schema table)) (:schema resolved-target))
-                     (-> (t2/select-one :model/Table (:id table))
-                         (t2/hydrate :db))
-                     table)]
-         (sync/sync-table! table)
-         table)))))
+   (when-let [table (or (target-table (:id database) target)
+                        (when create?
+                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+     ;; If the table has nil schema, check if the physical table actually lives under
+     ;; the driver's default schema. If so, fix the Table record before syncing.
+     (let [table (if (nil? (:schema table))
+                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                     (do (t2/update! :model/Table (:id table) {:schema actual-schema})
+                         (-> (t2/select-one :model/Table (:id table))
+                             (t2/hydrate :db)))
+                     table)
+                   table)]
+       (sync/sync-table! table)
+       table))))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
