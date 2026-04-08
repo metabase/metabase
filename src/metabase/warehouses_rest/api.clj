@@ -489,17 +489,11 @@
   "List of models that are used to report usage on a database."
   [:question :dataset :metric :segment]) ; TODO -- rename `:dataset` to `:model`?
 
-(def ^:private always-false-hsql-expr
-  "A Honey SQL expression that is never true.
-
-    1 = 2"
-  [:= [:inline 1] [:inline 2]])
-
 (defmulti ^:private database-usage-query
   "Query that will returns the number of `model` that use the database with id `database-id`.
   The query must returns a scalar, and the method could return `nil` in case no query is available."
-  {:arglists '([model database-id table-ids])}
-  (fn [model _database-id _table-ids] (keyword model)))
+  {:arglists '([model database-id])}
+  (fn [model _database-id] (keyword model)))
 
 (defn- card-query
   [db-id model type-str]
@@ -510,24 +504,24 @@
             [:= :type type-str]]})
 
 (defmethod database-usage-query :question
-  [_ db-id _table-ids]
+  [_ db-id]
   (card-query db-id :question "question"))
 
 (defmethod database-usage-query :dataset
-  [_model db-id _table-ids]
+  [_ db-id]
   (card-query db-id :dataset "model"))
 
 (defmethod database-usage-query :metric
-  [_ db-id _table-ids]
+  [_ db-id]
   (card-query db-id :metric "metric"))
 
 (defmethod database-usage-query :segment
-  [_ _db-id table-ids]
+  [_ db-id]
   {:select [[:%count.* :segment]]
    :from   [:segment]
-   :where  (if table-ids
-             [:in :table_id table-ids]
-             always-false-hsql-expr)})
+   :where  [:in :table_id {:select [:id]
+                           :from   [:metabase_table]
+                           :where  [:= :db_id db-id]}]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -543,13 +537,12 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-database-exists id)
-  (let [table-ids (t2/select-pks-set :model/Table :db_id id)]
-    (first (mdb/query
-            {:select [:*]
-             :from   (for [model database-usage-models
-                           :let [query (database-usage-query model id table-ids)]
-                           :when query]
-                       [query model])}))))
+  (first (mdb/query
+          {:select [:*]
+           :from   (for [model database-usage-models
+                         :let [query (database-usage-query model id)]
+                         :when query]
+                     [query model])})))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -1327,8 +1320,7 @@
                           (not include-workspace?) (conj [:or
                                                           [:= :schema nil]
                                                           [:not
-                                                          ;; TODO (Chris 2025-12-09) -- dislike coupling to a constant, at least until we have an e2e test
-                                                           [:like :schema "mb__isolation_%"]
+                                                           (driver.u/workspace-isolated-schema-clause :schema)
                                                           ;; TODO (Chris 2025-12-09) -- this might behave terribly without an index when there are lots of workspaces
                                                            #_[:exists {:select [1]
                                                                        :from   [[(t2/table-name :model/Workspace) :w]]

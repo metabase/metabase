@@ -10,6 +10,7 @@ import "./license";
 
 // PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeAdvancedPermissions } from "./advanced_permissions";
+import { initializePlugin as initializeAiControls } from "./ai-controls";
 import { initializePlugin as initializeApplicationPermissions } from "./application_permissions";
 import { initializePlugin as initializeAuditApp } from "./audit_app";
 import { initializePlugin as initializeAuth } from "./auth";
@@ -97,4 +98,5 @@ export function initializePlugins() {
   initializeTenants?.();
   initializeWorkspaces();
   initializeWritableConnection();
+  initializeAiControls();
 }

@@ -627,7 +627,7 @@
 
 (mr/def ::card.query
   "Saved query. This is possibly still a legacy query, but should already be normalized.
-  Call [[metabase.lib.convert/->pMBQL]] on it as needed."
+  Call [[metabase.lib.convert/->mbql5]] on it as needed."
   [:map
    {:decode/normalize normalize-card-query}])
 
@@ -660,7 +660,7 @@
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
   a [[metabase.queries.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily
-  converted to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably
+  converted to MBQL 5 yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably
   not quite massaged into a sequence of [[::column]] metadata just yet.
 
   See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
@@ -705,7 +705,7 @@
    [:name       ::lib.schema.common/non-blank-string]
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
-   ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
+   ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to MBQL 5 if needed.
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
@@ -795,7 +795,7 @@
   [:ref :metabase.lib.metadata.protocols/metadata-providerable])
 
 (mr/def ::stage
-  "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
+  "Metadata about the columns returned by a particular stage of a MBQL 5 query. For example a single-stage native query
   like
 
     {:database 1

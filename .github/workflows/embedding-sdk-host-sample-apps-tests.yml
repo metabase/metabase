@@ -106,6 +106,8 @@ jobs:
       SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
@@ -114,7 +116,7 @@ jobs:
 
       # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
       - name: Set up Docker Compose
-        uses: docker/setup-compose-action@v1
+        uses: docker/setup-compose-action@2fe291b7677a45ee1269ec56a42604c143505e7e # v1
         with:
           version: latest
 
@@ -213,6 +215,8 @@ jobs:
       SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
@@ -277,6 +281,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
@@ -362,6 +367,8 @@ jobs:
       HOST_APP_ENVIRONMENT: ${{ matrix.environment }}
     permissions:
       id-token: write
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4

@@ -63,7 +63,7 @@
     (update-keys m memoized-kebab-key)))
 
 (defn normalize-map
-  "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to
+  "Base normalization behavior for a MBQL 5 map: keywordize keys and keywordize `:lib/type`; convert map to
   kebab-case (excluding the so-called [[HORRIBLE-keys]]."
   [m]
   (-> m normalize-map-no-kebab-case map->kebab-case))

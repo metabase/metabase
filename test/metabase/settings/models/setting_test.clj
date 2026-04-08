@@ -247,6 +247,17 @@
              #"Cannot initialize setting before the db is set up"
              (setting/get :test-setting-custom-init)))))))
 
+(deftest discard-setting-changes-with-init-test
+  (testing "discard-setting-changes correctly handles settings with :init"
+    (clear-setting-if-leak!)
+    (let [value-inside (atom nil)]
+      (mt/discard-setting-changes [:test-setting-custom-init]
+        (reset! value-inside (test-setting-custom-init))
+        (testing "the setting returns its initialized value inside the macro, not nil"
+          (is (some? @value-inside))))
+      (testing "after the macro, the setting's initialized value is preserved (not re-initialized)"
+        (is (= @value-inside (test-setting-custom-init)))))))
+
 (def ^:private base-options
   {:setter   :none
    :default  "totally-basic"})

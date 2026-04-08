@@ -28,7 +28,7 @@ You can search for tables, or use the tree navigation to find each of your conne
 
 To edit a table's display name or description in the table metadata tab, click into the box that contains the current table name or description and edit it. Changes will be saved automatically once you click out of the box.
 
-Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) and tooltips when view the table. Decscriptions help people find the right table for their use case.
+Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) and tooltips when viewing the table. Descriptions help people find the right table for their use case.
 
 ### Table sync options
 

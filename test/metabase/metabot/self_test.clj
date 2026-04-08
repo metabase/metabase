@@ -20,14 +20,21 @@
 
 (deftest ^:parallel parse-provider-model-test
   (testing "parses provider/model format correctly"
-    (is (=? {:provider "anthropic" :model "claude-haiku-4-5"}
+    (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? false}
             (#'self/parse-provider-model "anthropic/claude-haiku-4-5")))
-    (is (=? {:provider "openai" :model "gpt-4.1-mini"}
+    (is (=? {:provider "openai" :model "gpt-4.1-mini" :ai-proxy? false}
             (#'self/parse-provider-model "openai/gpt-4.1-mini")))
-    (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5"}
+    (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5" :ai-proxy? false}
             (#'self/parse-provider-model "openrouter/anthropic/claude-haiku-4-5")))
-    (is (=? {:provider "openrouter" :model "google/gemini-2.5-flash"}
+    (is (=? {:provider "openrouter" :model "google/gemini-2.5-flash" :ai-proxy? false}
             (#'self/parse-provider-model "openrouter/google/gemini-2.5-flash"))))
+  (testing "parses metabase/ prefix (AI proxy)"
+    (is (=? {:provider "anthropic" :model "claude-haiku-4-5" :ai-proxy? true}
+            (#'self/parse-provider-model "metabase/anthropic/claude-haiku-4-5")))
+    (is (=? {:provider "openai" :model "gpt-4.1-mini" :ai-proxy? true}
+            (#'self/parse-provider-model "metabase/openai/gpt-4.1-mini")))
+    (is (=? {:provider "openrouter" :model "anthropic/claude-haiku-4-5" :ai-proxy? true}
+            (#'self/parse-provider-model "metabase/openrouter/anthropic/claude-haiku-4-5"))))
   (testing "throws for invalid formats/models"
     (is (thrown-with-msg? Exception #"Unknown LLM provider: no-slash" (#'self/parse-provider-model "no-slash")))
     (is (thrown-with-msg? Exception #"Unknown LLM provider: " (#'self/parse-provider-model "")))
@@ -45,9 +52,10 @@
 (deftest call-llm-tool-choice-test
   (testing "passes required tool choice to LLM providers"
     (let [captured (atom nil)]
-      (mt/with-dynamic-fn-redefs [http/post (fn [_url opts]
-                                              (reset! captured (json/decode+kw (:body opts)))
-                                              (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
+      (mt/with-dynamic-fn-redefs [http/request (fn [opts]
+                                                 (when (:body opts)
+                                                   (reset! captured (json/decode+kw (:body opts))))
+                                                 (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
         (mt/with-temporary-setting-values [llm-anthropic-api-key  "sk-ant-test-key"
                                            llm-openrouter-api-key "sk-or-v1-test-key"
                                            llm-openai-api-key     "sk-test-key"]
@@ -235,13 +243,23 @@
                    {:type :tool-input :id "call-err" :function "get-time" :arguments {:tz "Invalid/Timezone"}}])
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
       (is (= (count chunks) (dec (count result))))
-      (let [tool-result (last result)]
-        (is (=? {:type       :tool-output-available
-                 :toolCallId "call-err"
-                 :toolName   "get-time"
-                 :error      {:message string?
-                              :type    string?}}
-                tool-result)))))
+      (is (=? {:type       :tool-output-available
+               :toolCallId "call-err"
+               :toolName   "get-time"
+               :error      {:message string?
+                            :type    string?}}
+              (last result)))))
+
+  (testing "tool-executor-xf handles nil arguments for no-arg tools"
+    (let [chunks (test-util/parts->aisdk-chunks
+                  [{:type :start :id "msg-nil"}
+                   {:type :tool-input :id "call-nil" :function "no-arg" :arguments nil}])
+          result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
+      (is (=? {:type       :tool-output-available
+               :toolCallId "call-nil"
+               :toolName   "no-arg"
+               :result     {:output "ok"}}
+              (last result)))))
 
   (testing "tool-executor-xf ignores unknown tool names"
     (let [chunks (test-util/parts->aisdk-chunks
