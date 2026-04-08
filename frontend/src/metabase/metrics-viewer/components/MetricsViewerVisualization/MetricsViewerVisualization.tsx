@@ -17,6 +17,8 @@ import type { DimensionMetadata } from "metabase-lib/metric";
 import type { CardId, SingleSeries } from "metabase-types/api";
 
 import type {
+  MetricSourceId,
+  MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
   MetricsViewerTabState,
 } from "../../types/viewer-state";
@@ -30,6 +32,7 @@ type MetricsViewerVisualizationProps = {
   onDimensionRemove?: (slotIndex: number) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
   metricSlots: MetricSlot[];
   tab: MetricsViewerTabState;
@@ -45,6 +48,7 @@ export function MetricsViewerVisualization({
   onDimensionRemove,
   onBrush,
   className,
+  definitions,
   formulaEntities,
   metricSlots,
   tab,
@@ -59,6 +63,7 @@ export function MetricsViewerVisualization({
     () =>
       interactive
         ? new MetricsViewerClickActionsMode({
+            definitions,
             formulaEntities,
             metricSlots,
             tab,
@@ -67,6 +72,7 @@ export function MetricsViewerVisualization({
           })
         : undefined,
     [
+      definitions,
       cardIdToEntityIndex,
       formulaEntities,
       metricSlots,

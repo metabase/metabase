@@ -194,6 +194,7 @@ export function MetricsViewerTabContent({
         onDimensionChange={onDimensionChange}
         onDimensionRemove={dimensionRemoveHandler}
         onBrush={isTimeTab ? handleBrush : undefined}
+        definitions={definitions}
         formulaEntities={formulaEntities}
         metricSlots={metricSlots}
         tab={tab}
