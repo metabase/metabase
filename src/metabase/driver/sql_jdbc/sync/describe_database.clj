@@ -194,18 +194,28 @@
   ;; It's basically a N+1 operation where N is the number of tables in the database
   (if (driver/database-supports? driver :table-privileges nil)
     (let [privilege-map (build-privilege-map driver conn)]
-      (fn [{schema :schema table :name ttype :type} privilege]
-        (assert (#{:select :write} privilege))
-        ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
-        ;; table on postgres, so we need to use the select method on them
-        ;;
-        ;; TODO FIXME What the hecc!!! We should NOT be hardcoding driver-specific hacks in functions like this!!!!
-        (if (#{[:postgres "FOREIGN TABLE"]}
-             [driver ttype])
-          (case privilege
-            :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-            :write  nil) ; Foreign tables typically don't support write operations
-          (contains? (get-in privilege-map [schema table] #{}) privilege))))
+      (if (empty? privilege-map)
+        ;; Safety net: if current-user-table-privileges returned nothing, fall back to the N+1 probe approach
+        ;; rather than filtering out all tables (which would retire every table on next sync).
+        (do (log/warn "current-user-table-privileges returned empty results for driver" driver
+                      "- falling back to per-table privilege checks")
+            (fn [{schema :schema table :name} privilege]
+              (assert (#{:select :write} privilege))
+              (case privilege
+                :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+                :write  nil)))
+        (fn [{schema :schema table :name ttype :type} privilege]
+          (assert (#{:select :write} privilege))
+          ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
+          ;; table on postgres, so we need to use the select method on them
+          ;;
+          ;; TODO FIXME What the hecc!!! We should NOT be hardcoding driver-specific hacks in functions like this!!!!
+          (if (#{[:postgres "FOREIGN TABLE"]}
+               [driver ttype])
+            (case privilege
+              :select (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+              :write  nil) ; Foreign tables typically don't support write operations
+            (contains? (get-in privilege-map [schema table] #{}) privilege)))))
     (let [can-check-writable?          (driver/database-supports? driver :metadata/table-writable-check {:connection conn})
           check-writable-privilege-map (when can-check-writable?
                                          (build-privilege-map driver conn))]
