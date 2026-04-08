@@ -117,9 +117,8 @@
               ;; conv-1: 150, conv-2: 280 → total 430
               (is (= 430 (:metabot-tokens stats))))
 
-            (testing ":metabot-usage aggregates by model:in/out"
-              (is (= {"openrouter:anthropic/claude-haiku-4-5:in"  300
-                      "openrouter:anthropic/claude-haiku-4-5:out" 130}
+            (testing ":metabot-usage aggregates combined tokens by model"
+              (is (= {"openrouter:anthropic/claude-haiku-4-5:tokens" 430}
                      (:metabot-usage stats))))
 
             (testing ":metabot-queries counts ai-proxied user messages for yesterday"
