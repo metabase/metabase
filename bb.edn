@@ -10,6 +10,7 @@
         org.babashka/json {:mvn/version "0.1.6"} ;; json parsing
         table/table {:mvn/version "0.5.0"} ;; table printing
         }
+ :pods {org.babashka/postgresql {:version "0.1.0"}}
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -597,6 +598,35 @@
              [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
              [nil "--fresh" "Recreate containers from scratch"]]
    :task (task! (jds-dev-env/dev-env! parsed))}
+
+  -nvoxland-dev-env
+  {:doc "Stand up (or tear down) an isolated dev environment for this worktree. Interactive prompts when flags omitted."
+   :examples [["./bin/mage -nvoxland-dev-env" "Interactive TUI to configure infra (saves config)"]
+              ["./bin/mage -nvoxland-dev-env --run" "Configure + launch backend/frontend"]
+              ["./bin/mage -nvoxland-dev-env --run --no-frontend" "Configure + backend only"]
+              ["./bin/mage -nvoxland-dev-env --down" "Stop everything for this worktree"]
+              ["./bin/mage -nvoxland-dev-env --status" "Show running containers and processes"]]
+   :requires [[mage.nvoxland.dev-env :as jds-dev-env]]
+   :options [["-e" "--edition EDITION" "ee or oss (default: prompt)"]
+             ["-t" "--token TOKEN" "Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none"]
+             [nil "--app-db DB" "App database: h2, postgres, mysql, mariadb (default: prompt)"]
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+              :multi true :default nil :update-fn conj]
+             [nil "--run" "Also launch backend + frontend in background"]
+             [nil "--no-frontend" "Skip frontend dev server (only with --run)"]
+             [nil "--down" "Stop everything for this worktree"]
+             [nil "--status" "Show current env status"]
+             [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
+             [nil "--fresh" "Recreate containers from scratch"]
+             [nil "--worktree PATH" "Target a different worktree (default: current)"]]
+   :task (task! (jds-dev-env/dev-env! parsed))}
+
+  -nvoxland-setup-worktree
+  {:doc "Run final configuration steps after a new worktree is created."
+   :examples [["./bin/mage -nvoxland-setup-worktree --worktree $(pwd)" "Set up the current directory as a worktree"]]
+   :options [[nil "--worktree PATH" "Path to the worktree to set up (required)"]]
+   :requires [[mage.nvoxland.setup-worktree :as setup-worktree]]
+   :task (task! (setup-worktree/setup-worktree! parsed))}
 
   -bgrabow-ci-test-repl
   {:doc "Start a REPL replicating a CI test job environment (Docker + env vars)"
