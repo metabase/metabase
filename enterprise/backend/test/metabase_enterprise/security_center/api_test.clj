@@ -127,9 +127,9 @@
                             (deliver started true)
                             @finish)
                           matching/evaluate-all-advisories! (constantly nil)]
-              (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
+              (is (= {:status "started"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
               @started
-              (is (= {:status "ok"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
+              (is (= {:status "already-in-progress"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
               (deliver finish true)
               (is (= 1 @call-count) "sync should only run once despite two API calls")))))
       (testing "non-superuser gets 403"
