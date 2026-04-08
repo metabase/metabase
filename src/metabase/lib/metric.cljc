@@ -94,10 +94,8 @@
      (select-keys opts [:name :display-name :long-display-name]))))
 
 (defmethod lib.metadata.calculation/column-name-method :metric
-  [query stage-number [_tag _opts metric-id-or-name]]
-  (or (when-let [metric-metadata (resolve-metric query metric-id-or-name)]
-        (lib.metadata.calculation/column-name query stage-number metric-metadata))
-      "metric"))
+  [_query _stage-number _clause]
+  "metric")
 
 (mu/defn available-metrics :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/metric]]
   "Get a list of Metrics that you may consider using as aggregations for a query."
