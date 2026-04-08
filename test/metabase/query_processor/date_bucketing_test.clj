@@ -1767,7 +1767,7 @@
           (is (= 7 (count (mt/rows processed))))
           (is (= 7 (count (mt/rows mbql-processed))))
           (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
-                 (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
+                 (get-in (qp/process-query (lib.convert/->mbql5 mbql-query)) [:data :native_form])
                  (get-in (qp/process-query query) [:data :native_form]))))))))
 
 (deftest ^:parallel filter-by-expression-relative-time-interval-test
@@ -1791,7 +1791,7 @@
           (is (= 7 (count (mt/rows processed))))
           (is (= 7 (count (mt/rows mbql-processed))))
           (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
-                 (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
+                 (get-in (qp/process-query (lib.convert/->mbql5 mbql-query)) [:data :native_form])
                  (get-in (qp/process-query query) [:data :native_form]))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!

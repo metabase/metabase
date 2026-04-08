@@ -847,7 +847,16 @@
   ;; delete any ParameterCard linked to this card
   (t2/delete! :model/ParameterCard :card_id id)
   (t2/delete! :model/ModerationReview :moderated_item_type "card", :moderated_item_id id)
-  (t2/delete! :model/Revision :model "Card", :model_id id))
+  (t2/delete! :model/Revision :model "Card", :model_id id)
+  ;; delete any card-type notifications for this card — must materialize IDs first because
+  ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
+  ;; return empty by the time the actual DELETE executes.
+  (when-let [notification-ids (seq (t2/select-pks-set :model/Notification
+                                                      :payload_type :notification/card
+                                                      :payload_id [:in {:select [:id]
+                                                                        :from   [:notification_card]
+                                                                        :where  [:= :card_id id]}]))]
+    (t2/delete! :model/Notification :id [:in notification-ids])))
 
 (defmethod serdes/hash-fields :model/Card
   [_card]
@@ -1331,7 +1340,11 @@
     :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
     :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
     :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
-    :result_metadata        {:export export-result-metadata :import import-result-metadata}}})
+    :result_metadata        {:export export-result-metadata :import import-result-metadata}}
+   :defaults {:archived            false
+              :archived_directly   false
+              :collection_preview  true
+              :enable_embedding    false}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
@@ -1383,30 +1396,31 @@
         ;; Dimensions are columns that are not aggregations
         (remove (comp #{:source/aggregations} :lib/source) columns)))))
 
-(defn- extract-non-temporal-dimension-ids
-  "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)
-        dim-ids    (->> dimensions
-                        (remove lib.types/temporal?)
-                        (keep :id)
-                        sort)]
-    (json/encode (or dim-ids []))))
-
-(defn- has-temporal-dimension?
-  "Return true if the query has any temporal dimensions. See PR 60912"
-  [{:keys [dataset_query]}]
-  (let [dimensions (dataset-query->dimensions dataset_query)]
-    (boolean (some lib.types/temporal? dimensions))))
+(defn- extract-temporal-info
+  "Compute has-temporal-dim and non-temporal-dim-ids in a single dataset-query->dimensions call.
+  Returns a map with snake_case keys so the ingestion layer can merge them directly into the document,
+  avoiding the cost of calling dataset-query->dimensions twice per card. See PR 60912.
+  Short-circuits for native queries: they have no returnable column metadata so temporal dims are always absent."
+  [{:keys [dataset_query query_type]}]
+  (if (= query_type "native")
+    {:has_temporal_dim false :non_temporal_dim_ids "[]"}
+    (let [dimensions   (dataset-query->dimensions dataset_query)
+          non-temp-ids (->> dimensions
+                            (remove lib.types/temporal?)
+                            (keep :id)
+                            sort)]
+      {:has_temporal_dim     (boolean (some lib.types/temporal? dimensions))
+       :non_temporal_dim_ids (json/encode (or (seq non-temp-ids) []))})))
 
 (defn- maybe-extract-native-query
-  "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil."
-  [{query :dataset_query, :as _card}]
-  (let [query ((:out lib-be/transform-query) query)
-        query-text (when (lib/native-only-query? query)
-                     (:native (lib/query-stage query 0)))]
-    (when query-text
-      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
+  "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil.
+  Uses `query_type` to short-circuit without parsing JSON for non-native cards."
+  [{:keys [dataset_query query_type]}]
+  (when (= query_type "native")
+    (let [query      ((:out lib-be/transform-query) dataset_query)
+          query-text (:native (lib/query-stage query 0))]
+      (when query-text
+        (subs query-text 0 (min (count query-text) search/max-searchable-value-length))))))
 
 (defn ^:private base-search-spec
   []
@@ -1421,7 +1435,7 @@
                   :database-id          true
                   :last-viewed-at       :last_used_at
                   :native-query         {:fn maybe-extract-native-query
-                                         :fields [:dataset_query]}
+                                         :fields [:dataset_query :query_type]}
                   :official-collection  [:= "official" :collection.authority_level]
                   :last-edited-at       :r.timestamp
                   :last-editor-id       :r.user_id
@@ -1431,10 +1445,9 @@
                   :created-at           true
                   :updated-at           true
                   :display-type         :this.display
-                  :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
-                                         :fields [:dataset_query]}
-                  :has-temporal-dim     {:fn has-temporal-dimension?
-                                         :fields [:dataset_query]}}
+                  :temporal-info        {:fn       extract-temporal-info
+                                         :fields   [:dataset_query :query_type]
+                                         :provides [:has-temporal-dim :non-temporal-dim-ids]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

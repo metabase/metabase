@@ -6,7 +6,6 @@ import Animation from "metabase/css/core/animation.module.css";
 import Layout from "metabase/css/core/layout.module.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
 
-export const DEFAULT_MODAL_Z_INDEX = 200;
 const DEFAULT_MODAL_SPACING = "lg";
 
 import Styles from "./Modal.module.css";

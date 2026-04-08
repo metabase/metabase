@@ -39,23 +39,27 @@
                 "A few top-level files are expected"))
 
           (testing "the Collections properly exported"
-            (is (= (-> (into {} (t2/select-one :model/Collection :id (:id parent)))
-                       (dissoc :id :location)
-                       (assoc :parent_id nil)
-                       (update :created_at t/offset-date-time))
-                   (-> (yaml/from-file (io/file dump-dir "collections" "main"
-                                                "some_collection.yaml"))
-                       (dissoc :serdes/meta)
-                       (update :created_at t/offset-date-time))))
+            (let [yaml-parent (-> (yaml/from-file (io/file dump-dir "collections" "main"
+                                                           "some_collection.yaml"))
+                                  (dissoc :serdes/meta)
+                                  (update :created_at t/offset-date-time))
+                  yaml-child  (-> (yaml/from-file (io/file dump-dir "collections" "main"
+                                                           "some_collection" "child_collection.yaml"))
+                                  (dissoc :serdes/meta)
+                                  (update :created_at t/offset-date-time))]
+              (is (= (-> (into {} (t2/select-one :model/Collection :id (:id parent)))
+                         (dissoc :id :location)
+                         (assoc :parent_id nil)
+                         (update :created_at t/offset-date-time)
+                         (select-keys (keys yaml-parent)))
+                     yaml-parent))
 
-            (is (= (-> (into {} (t2/select-one :model/Collection :id (:id child)))
-                       (dissoc :id :location)
-                       (assoc :parent_id (:entity_id parent))
-                       (update :created_at t/offset-date-time))
-                   (-> (yaml/from-file (io/file dump-dir "collections" "main"
-                                                "some_collection" "child_collection.yaml"))
-                       (dissoc :serdes/meta)
-                       (update :created_at t/offset-date-time))))))))))
+              (is (= (-> (into {} (t2/select-one :model/Collection :id (:id child)))
+                         (dissoc :id :location)
+                         (assoc :parent_id (:entity_id parent))
+                         (update :created_at t/offset-date-time)
+                         (select-keys (keys yaml-child)))
+                     yaml-child)))))))))
 
 (deftest collection-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -242,21 +246,22 @@
 
 (deftest name-too-long-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    ;; that's a char that takes 3 bytes in utf-8
-    (ts/with-temp-dpc [:model/Card card {:name (str/join (repeat 100 "ป"))}]
-      (let [export        (into [] (extract/extract {:no-settings   true
-                                                     :no-data-model true
-                                                     :no-transforms true
-                                                     :targets       [["Card" (:id card)]]}))
-            ;; 66 is 'char-count * max-bytes / byte-count'
-            card-filename (str/join (repeat 66 "ป"))]
-        (storage/store! export dump-dir)
-        ;; we could also test loading here, but file names do not play significant part in how everything's loaded,
-        ;; `:serdes/meta` does and that one is not shortened or anything
-        (testing "the right files in the right places"
-          (is (= #{["main" (str card-filename ".yaml")]}
-                 (file-set (io/file dump-dir "collections")))
-              "collections form a tree, with same-named files"))))))
+    (mt/with-empty-h2-app-db!
+      ;; that's a char that takes 3 bytes in utf-8
+      (ts/with-temp-dpc [:model/Card card {:name (str/join (repeat 100 "ป"))}]
+        (let [export        (into [] (extract/extract {:no-settings   true
+                                                       :no-data-model true
+                                                       :no-transforms true
+                                                       :targets       [["Card" (:id card)]]}))
+              ;; 66 is 'char-count * max-bytes / byte-count'
+              card-filename (str/join (repeat 66 "ป"))]
+          (storage/store! export dump-dir)
+          ;; we could also test loading here, but file names do not play significant part in how everything's loaded,
+          ;; `:serdes/meta` does and that one is not shortened or anything
+          (testing "the right files in the right places"
+            (is (= #{["main" (str card-filename ".yaml")]}
+                   (file-set (io/file dump-dir "collections")))
+                "collections form a tree, with same-named files")))))))
 
 (deftest ^:parallel resolve-path-test
   (let [resolve-path @#'storage/resolve-path]
@@ -333,4 +338,19 @@
 
     (testing "empty path returns empty vector"
       (let [fns (atom {})]
-        (is (= [] (resolve-path fns [])))))))
+        (is (= [] (resolve-path fns [])))))
+
+    (testing "same slug under different parent paths does not collide"
+      (let [fns (atom {})]
+        (is (= ["collections" "transforms" "my_transform"]
+               (resolve-path fns [{:label "collections" :key "collections"}
+                                  {:label "transforms"  :key "ns-transforms"}
+                                  {:label "My Transform" :key "t-1"}])))
+        (is (= ["databases" "mydb" "schemas" "transforms" "tables" "target"]
+               (resolve-path fns [{:label "databases"  :key "databases"}
+                                  {:label "mydb"       :key "db-1"}
+                                  {:label "schemas"    :key "schemas"}
+                                  {:label "transforms" :key "schema-transforms"}
+                                  {:label "tables"     :key "tables"}
+                                  {:label "target"     :key "table-1"}]))
+            "transforms under databases/.../schemas/ should not get _2 suffix")))))

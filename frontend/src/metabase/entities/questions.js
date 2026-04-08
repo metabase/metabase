@@ -19,7 +19,7 @@ import {
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
-} from "metabase/query_builder/actions/core/types";
+} from "metabase/redux/query-builder";
 import {
   getMetadata,
   getMetadataUnfiltered,

@@ -9,6 +9,22 @@
   visibility: visible;
 }
 
+.triggerButton:hover {
+  color: var(--mb-color-text-primary-inverse);
+}
+
+/* No hover on touch devices, so always show the button with readable text */
+@media (hover: none) and (pointer: coarse) {
+  .triggerButton {
+    visibility: visible;
+    color: var(--select-list-item-text-color, var(--mb-color-brand));
+  }
+
+  .chevronIcon {
+    color: var(--select-list-item-text-color, var(--mb-color-brand));
+  }
+}
+
 .triggerButtonLabel {
   display: flex;
   gap: 0.5rem;

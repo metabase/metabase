@@ -490,7 +490,9 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
     });
 
-    it("should translate aggregation-related columns for joined tables", () => {
+    // Skipped as per https://metaboat.slack.com/archives/C063Q3F1HPF/p1775127278148729
+    // should be re-enabled by [EMB-1541: Re-enable content translation tests](https://linear.app/metabase/issue/EMB-1541/re-enable-content-translation-tests)
+    it.skip("should translate aggregation-related columns for joined tables", () => {
       setupEditor();
       mountEditor();
 

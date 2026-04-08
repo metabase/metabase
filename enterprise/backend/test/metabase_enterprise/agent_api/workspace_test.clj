@@ -29,7 +29,7 @@
   "Sets up JWT auth and premium features needed for agent API + workspaces."
   [& body]
   `(sso.test-setup/with-jwt-default-setup!
-     (mt/with-additional-premium-features #{:agent-api :metabot-v3 :workspaces :transforms}
+     (mt/with-additional-premium-features #{:agent-api :workspaces :transforms}
        ~@body)))
 
 (defn- auth-headers
@@ -226,21 +226,21 @@
                     (client/client :get 200 (str "agent/v1/workspace/" ws-id)
                                    {:request-options {:headers headers}})))
             (is (= {:error   "unsupported_scope"
-                    :message "Token does not have required scope: agent:workspace:write"}
+                    :message "Insufficient scope for this operation."}
                    (client/client :post 403 (str "agent/v1/workspace/" ws-id "/archive")
                                   {:request-options {:headers headers}})))))
 
         (testing "write scope can POST archive but not run"
           (let [headers (scoped-auth-headers "agent:workspace:write")]
             (is (= {:error   "unsupported_scope"
-                    :message "Token does not have required scope: agent:workspace:execute"}
+                    :message "Insufficient scope for this operation."}
                    (client/client :post 403 (str "agent/v1/workspace/" ws-id "/run")
                                   {:request-options {:headers headers}})))))
 
         (testing "execute scope can POST run but not GET workspace"
           (let [headers (scoped-auth-headers "agent:workspace:execute")]
             (is (= {:error   "unsupported_scope"
-                    :message "Token does not have required scope: agent:workspace:read"}
+                    :message "Insufficient scope for this operation."}
                    (client/client :get 403 (str "agent/v1/workspace/" ws-id)
                                   {:request-options {:headers headers}})))))))))
 

@@ -60,29 +60,27 @@ import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/Al
 import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
-const ALERT_TRIGGER_OPTIONS_MAP: Record<
-  NotificationCardSendCondition,
-  NotificationTriggerOption
-> = {
-  has_result: {
-    value: "has_result" as const,
-    get label() {
-      return t`When this question has results`;
+function getAlertTriggerOptionsMap(
+  question: Question | undefined,
+): Record<NotificationCardSendCondition, NotificationTriggerOption> {
+  const isMetric = question?.type() === "metric";
+  return {
+    has_result: {
+      value: "has_result" as const,
+      label: isMetric
+        ? t`When this metric has results`
+        : t`When this question has results`,
     },
-  },
-  goal_above: {
-    value: "goal_above" as const,
-    get label() {
-      return t`When results go above the goal`;
+    goal_above: {
+      value: "goal_above" as const,
+      label: t`When results go above the goal`,
     },
-  },
-  goal_below: {
-    value: "goal_below" as const,
-    get label() {
-      return t`When results go below the goal`;
+    goal_below: {
+      value: "goal_below" as const,
+      label: t`When results go below the goal`,
     },
-  },
-};
+  };
+}
 
 const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "every_n_minutes",
@@ -174,14 +172,13 @@ export const CreateOrEditQuestionAlertModal = ({
   const hasConfiguredEmailOrSlackChannel =
     getHasConfiguredEmailOrSlackChannel(channelSpec);
 
-  const triggerOptions = useMemo(
-    () =>
-      getAlertTriggerOptions({
-        question,
-        visualizationSettings,
-      }).map((trigger) => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
-    [question, visualizationSettings],
-  );
+  const triggerOptions = useMemo(() => {
+    const optionsMap = getAlertTriggerOptionsMap(question);
+    return getAlertTriggerOptions({
+      question,
+      visualizationSettings,
+    }).map((trigger) => optionsMap[trigger]);
+  }, [question, visualizationSettings]);
 
   const hasSingleTriggerOption = triggerOptions.length === 1;
 

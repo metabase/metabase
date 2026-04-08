@@ -197,8 +197,8 @@
 
     ;; Prevent changing data_source to/from metabase-transform
     (when (contains? changes :data_source)
-      (let [original-data-source (:data_source original-table)
-            new-data-source      (:data_source changes)]
+      (let [original-data-source (some-> (:data_source original-table) keyword)
+            new-data-source      (some-> (:data_source changes) keyword)]
         (when (and (= original-data-source :metabase-transform)
                    (not= new-data-source :metabase-transform))
           (throw (ex-info "Cannot change data_source from metabase-transform"
@@ -702,7 +702,11 @@
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database :name)
                :collection_id  (serdes/fk :model/Collection)
-               :transform_id   (serdes/fk :model/Transform)}})
+               :transform_id   (serdes/fk :model/Transform)}
+   :defaults {:is_defective_duplicate  false
+              :is_published            false
+              :is_upload               false
+              :show_in_getting_started false}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (conj (serdes/storage-path-prefixes (serdes/path table))
