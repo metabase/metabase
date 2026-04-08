@@ -455,12 +455,12 @@
 
 (deftest ^:parallel metric-question-on-multi-stage-model-test
   (let [mp meta/metadata-provider
-        sum-pred (comp #{"sum"} :name)
+        agg-pred (comp #{"aggregation"} :name)
         query (as-> (lib/query mp (meta/table-metadata :orders)) $q
                 (lib/aggregate $q (lib/sum (meta/field-metadata :orders :discount)))
                 (lib/append-stage $q)
-                (lib/filter $q (lib/> (m/find-first sum-pred (lib/visible-columns $q)) 2)))
-        question (model-based-metric-question mp query sum-pred)]
+                (lib/filter $q (lib/> (m/find-first agg-pred (lib/visible-columns $q)) 2)))
+        question (model-based-metric-question mp query agg-pred)]
     (is (=? {:stages
              [{:source-table (meta/id :orders)
                :aggregation [[:sum {:name "aggregation"} [:field {} (meta/id :orders :discount)]]]}
