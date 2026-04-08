@@ -13,6 +13,9 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.core :as metabot]
+   [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -90,13 +93,16 @@
                                   [:display_name :string]]]]]
   "List available LLM models from the configured provider.
 
-   Requires LLM to be configured (Anthropic API key set in admin settings)."
+   Requires LLM to be configured for the selected provider in admin settings."
   [_route-params
    _query-params]
-  (when-not (llm.settings/llm-anthropic-api-key)
-    (throw (ex-info (tru "LLM is not configured. Please set an Anthropic API key in admin settings.")
+  (when-not (metabot.settings/llm-metabot-configured?)
+    (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))
-  (llm.anthropic/list-models))
+  (let [provider-and-model (metabot.settings/llm-metabot-provider)
+        ai-proxy?          (metabot/metabase-provider? provider-and-model)
+        provider           (metabot/provider-and-model->provider provider-and-model)]
+    (metabot.self/list-models provider {:ai-proxy? ai-proxy?})))
 
 (def ^:private table-with-columns-schema
   "Schema for table metadata with columns returned by /extract-tables."
