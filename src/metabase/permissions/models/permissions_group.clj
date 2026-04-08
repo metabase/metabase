@@ -120,10 +120,9 @@
 
 (defn- set-default-permission-values!
   [group]
-  (data-perms/with-batch-permissions-lock
-    (t2/with-transaction [_conn]
-      (let [db-ids (t2/select-pks-vec :model/Database :router_database_id nil)]
-        (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group)))))))
+  (data-perms/with-global-permissions-lock
+    (let [db-ids (t2/select-pks-vec :model/Database :router_database_id nil)]
+      (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
 
 (t2/define-after-insert :model/PermissionsGroup
   [group]

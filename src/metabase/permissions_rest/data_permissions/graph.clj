@@ -484,14 +484,13 @@
   impersonations and sandboxes are consistent if necessary."
   ([graph-updates :- ::permissions-rest.schema/data-permissions-graph]
    (when (seq graph-updates)
-     (perms/with-batch-permissions-lock
+     (perms/with-global-permissions-lock
        (let [group-updates (:groups graph-updates)]
          (check-data-analyst-locked-permissions group-updates)
          (check-audit-db-permissions group-updates)
-         (t2/with-transaction [_conn]
-           (update-data-perms-graph!* group-updates)
-           (delete-impersonations-if-needed-after-permissions-change! group-updates)
-           (delete-gtaps-if-needed-after-permissions-change! group-updates))))))
+         (update-data-perms-graph!* group-updates)
+         (delete-impersonations-if-needed-after-permissions-change! group-updates)
+         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

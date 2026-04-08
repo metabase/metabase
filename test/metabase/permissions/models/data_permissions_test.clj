@@ -923,10 +923,10 @@
                                                 :table_id table-id-4 :perm_type :perms/create-queries))
             "should inherit :query-builder from PUBLIC schema, not the :no default")))))
 
-(deftest with-batch-permissions-lock-skips-fine-grained-locks-test
-  (testing "Fine-grained cluster locks are skipped inside with-batch-permissions-lock"
+(deftest batch-permissions-lock-skips-fine-grained-locks-test
+  (testing "Fine-grained cluster locks are skipped inside with-global-permissions-lock"
     (mt/with-temp [:model/Database {db-id :id} {}]
-      (data-perms/with-batch-permissions-lock
+      (data-perms/with-global-permissions-lock
         (testing "skip-cluster-locks dynamic var is bound to true"
           (is (true? (deref #'data-perms/*skip-cluster-locks*))))
         (testing "set-database-permission! succeeds without deadlock"
@@ -937,7 +937,17 @@
             (is (= :unrestricted
                    (t2/select-one-fn :perm_value :model/DataPermissions
                                      :group_id au-id :db_id db-id
-                                     :perm_type :perms/view-data)))))))))
+                                     :perm_type :perms/view-data))))))))
+  (testing "Fine-grained cluster locks are skipped inside with-db-scoped-permissions-lock"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (data-perms/with-db-scoped-permissions-lock db-id
+        (is (true? (deref #'data-perms/*skip-cluster-locks*)))
+        (let [au-id (:id (perms-group/all-users))]
+          (data-perms/set-database-permission! au-id db-id :perms/view-data :unrestricted)
+          (is (= :unrestricted
+                 (t2/select-one-fn :perm_value :model/DataPermissions
+                                   :group_id au-id :db_id db-id
+                                   :perm_type :perms/view-data))))))))
 
 (deftest additional-table-permissions-works
   (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}

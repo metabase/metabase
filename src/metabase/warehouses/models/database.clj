@@ -321,13 +321,12 @@
 (defn- set-new-database-permissions!
   [database]
   (when-not (is-destination? database)
-    (perms/with-batch-permissions-lock
-      (t2/with-transaction [_conn]
-        (let [all-users-group          (perms/all-users-group)
-              all-external-users-group (perms/all-external-users-group)
-              non-magic-groups         (perms/non-magic-groups)
-              non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
-          (perms/set-default-database-permissions! database non-admin-groups))))))
+    (perms/with-db-scoped-permissions-lock (u/the-id database)
+      (let [all-users-group          (perms/all-users-group)
+            all-external-users-group (perms/all-external-users-group)
+            non-magic-groups         (perms/non-magic-groups)
+            non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
+        (perms/set-default-database-permissions! database non-admin-groups)))))
 
 (t2/define-after-insert :model/Database
   [database]

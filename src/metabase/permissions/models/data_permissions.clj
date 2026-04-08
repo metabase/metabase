@@ -33,14 +33,51 @@
    when a coarser lock is already held by the calling code."
   false)
 
-(defmacro with-batch-permissions-lock
-  "Acquires a coarse cluster-wide lock for bulk permission mutations and skips fine-grained
-   per-(db-id, perm-type) locks within the body. All batch permission operations (group creation,
-   database addition, table addition, graph update) share this lock to prevent races."
+;; Permission mutation locks form a two-level intent-lock hierarchy over the
+;; `metabase_cluster_lock` table:
+;;
+;;   root = ::batch-permissions-update
+;;   leaf = ::batch-permissions-update-db-<db-id>  (one per DB)
+;;
+;; - `with-global-permissions-lock`   takes the root in :exclusive mode.
+;; - `with-db-scoped-permissions-lock` takes the root in :share mode + the leaf
+;;   for its db-id in :exclusive mode.
+;;
+;; That gives us:
+;; - parallel DB-scoped writers for different DBs    → no contention
+;; - DB-scoped writers for the same DB               → serialize on the leaf
+;; - global writer vs any DB-scoped writer           → mutually exclusive
+;; - two global writers                              → serialize on the root
+
+(defn db-scoped-leaf-lock-name
+  "Returns the cluster-lock keyword for the per-db leaf used by
+  [[with-db-scoped-permissions-lock]]. Exposed so that macro expansions in
+  other namespaces can reference it."
+  [db-id]
+  (keyword "metabase.permissions.models.data-permissions"
+           (str "batch-permissions-update-db-" db-id)))
+
+(defmacro with-global-permissions-lock
+  "Acquires an exclusive cluster-wide lock over all permission mutations. Use for
+  operations that touch multiple DBs' permission rows (graph update, new group
+  creation). Blocks and is blocked by every `with-db-scoped-permissions-lock`."
   [& body]
   `(cluster-lock/with-cluster-lock ::batch-permissions-update
      (binding [*skip-cluster-locks* true]
        ~@body)))
+
+(defmacro with-db-scoped-permissions-lock
+  "Acquires a shared lock on the permissions root + an exclusive lock on the
+  per-db leaf for `db-id`. Use for operations that only touch one DB's
+  permission rows (new table, new DB). Parallel calls for different DBs run
+  concurrently; parallel calls for the same DB serialize on the leaf row."
+  [db-id & body]
+  `(let [db-id# ~db-id]
+     (cluster-lock/with-cluster-lock
+       {:locks [{:lock ::batch-permissions-update :mode :share}
+                {:lock (db-scoped-leaf-lock-name db-id#) :mode :exclusive}]}
+       (binding [*skip-cluster-locks* true]
+         ~@body))))
 
 (mu/defn- with-cluster-lock-fn
   [m :- [:map
