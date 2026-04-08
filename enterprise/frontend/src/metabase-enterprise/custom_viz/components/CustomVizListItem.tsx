@@ -60,10 +60,23 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
       p="md"
       className={S.customVizListItem}
     >
-      <Group gap="md" align="flex-start" wrap="nowrap">
+      <Group align="flex-start" flex="1" wrap="nowrap">
         <CustomVizIcon plugin={plugin} />
-        <Stack gap="xs" py="xs">
-          <Text fw={700}>{plugin.display_name}</Text>
+        <Stack flex="1" gap="xs" py="xs">
+          <Group justify="space-between">
+            <Text fw={700}>{plugin.display_name}</Text>
+
+            <Group align="center" flex="0 0 auto" gap="xs">
+              {plugin.enabled && <Icon c="success" name="check" />}
+
+              <Text
+                c={plugin.enabled ? "success" : "text-secondary"}
+                fw={plugin.enabled ? 700 : undefined}
+              >
+                {plugin.enabled ? t`Enabled` : t`Disabled`}
+              </Text>
+            </Group>
+          </Group>
           <Group gap="xs">
             <Text
               component="a"
@@ -98,6 +111,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
 
       <Box
         className={S.menuContainer}
+        flex="0 0 auto"
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();

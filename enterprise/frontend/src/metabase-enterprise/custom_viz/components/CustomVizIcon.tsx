@@ -12,7 +12,6 @@ const ICON_SIZE = 20;
 export function CustomVizIcon({ plugin }: Props) {
   const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
   const iconDarkUrl = getPluginAssetUrl(plugin.id, plugin.icon_dark);
-  const dimmed = !plugin.enabled;
 
   return (
     <Flex
@@ -21,7 +20,6 @@ export function CustomVizIcon({ plugin }: Props) {
       bdrs="xl"
       bg="background-secondary"
       justify="center"
-      opacity={dimmed ? 0.6 : undefined}
       w="3.125rem"
       h="3.125rem"
       style={{
@@ -30,12 +28,10 @@ export function CustomVizIcon({ plugin }: Props) {
     >
       <EntityIcon
         alt={plugin.display_name}
-        color={dimmed ? "text-secondary" : undefined}
         iconUrl={iconUrl}
         iconDarkUrl={iconDarkUrl}
         name="unknown"
         size={ICON_SIZE}
-        style={dimmed ? { filter: "grayscale(1)", opacity: 0.6 } : undefined}
       />
     </Flex>
   );
