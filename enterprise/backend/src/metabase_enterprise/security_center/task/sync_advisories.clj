@@ -1,6 +1,6 @@
 (ns metabase-enterprise.security-center.task.sync-advisories
   "Quartz task that periodically fetches advisories from HM, re-evaluates
-   matchtching queries against the appdb, and sends repeat notifications for
+   matching queries against the appdb, and sends repeat notifications for
    unacknowledged active/error advisories."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
