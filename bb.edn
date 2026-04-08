@@ -580,6 +580,8 @@
               ["./bin/mage -johnswanson-dev-env up --fresh" "Force-recreate containers and restart processes"]
               ["./bin/mage -johnswanson-dev-env up --no-frontend" "Start without frontend dev server"]
               ["./bin/mage -johnswanson-dev-env up --no-backend" "Start containers only, no backend process"]
+              ["./bin/mage -johnswanson-dev-env up --edition ee --token all-features --app-db h2 --with none" "Fully non-interactive: all flags specified"]
+              ["./bin/mage -johnswanson-dev-env up --non-interactive" "Reuse saved config without prompting"]
               ["./bin/mage -johnswanson-dev-env add mongo" "Add MongoDB warehouse to running env"]
               ["./bin/mage -johnswanson-dev-env logs" "Show last 100 lines from all log sources"]
               ["./bin/mage -johnswanson-dev-env logs backend" "Show last 100 lines of backend logs"]
@@ -600,8 +602,9 @@
              ["-e" "--edition EDITION" "ee or oss (default: prompt)"]
              ["-t" "--token TOKEN" "Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none"]
              [nil "--app-db DB" "App database: h2, postgres, mysql, mariadb (default: prompt)"]
-             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev, or 'none' to skip"
               :multi true :default [] :update-fn conj]
+             [nil "--non-interactive" "Never prompt. Fail if required flags are missing; treat missing --with as 'none'."]
              [nil "--no-frontend" "Skip frontend dev server"]
              [nil "--no-backend" "Skip backend process (containers + config only)"]
              [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]

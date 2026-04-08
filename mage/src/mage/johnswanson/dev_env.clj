@@ -149,32 +149,54 @@
 
 (def ^:private fzf-opts "--height=10 --layout=reverse")
 
+(defn- require-non-interactive!
+  "Abort with a clear error when running non-interactively and a required flag is missing."
+  [flag-name]
+  (println (c/red "Missing required flag in non-interactive mode: ") (c/yellow flag-name))
+  (u/exit 1))
+
 (defn- select-edition
   "Prompt for edition, or return CLI-provided value."
   [opts]
   (or (some-> (:edition opts) keyword)
-      (keyword (u/fzf-select! ["ee" "oss"]
-                              (str fzf-opts " --prompt='Edition: '")))))
+      (do (when (:non-interactive opts) (require-non-interactive! "--edition"))
+          (keyword (u/fzf-select! ["ee" "oss"]
+                                  (str fzf-opts " --prompt='Edition: '"))))))
 
 (defn- select-token
   "Prompt for token type, or return CLI-provided value."
   [opts]
   (or (some-> (:token opts) keyword)
-      (keyword (u/fzf-select! ["all-features" "starter-cloud" "pro-cloud" "pro-self-hosted" "none"]
-                              (str fzf-opts " --prompt='Token: '")))))
+      (do (when (:non-interactive opts) (require-non-interactive! "--token"))
+          (keyword (u/fzf-select! ["all-features" "starter-cloud" "pro-cloud" "pro-self-hosted" "none"]
+                                  (str fzf-opts " --prompt='Token: '"))))))
 
 (defn- select-app-db
   "Prompt for app database, or return CLI-provided value."
   [opts]
   (or (some-> (:app-db opts) keyword)
-      (keyword (u/fzf-select! ["h2" "postgres" "mysql" "mariadb"]
-                              (str fzf-opts " --prompt='App database: '")))))
+      (do (when (:non-interactive opts) (require-non-interactive! "--app-db"))
+          (keyword (u/fzf-select! ["h2" "postgres" "mysql" "mariadb"]
+                                  (str fzf-opts " --prompt='App database: '"))))))
 
 (defn- select-with
-  "Prompt for warehouse services (multi-select), or return CLI-provided values."
+  "Prompt for warehouse services (multi-select), or return CLI-provided values.
+  Pass `--with none` (or any CLI flag forcing non-interactive mode) to skip the prompt
+  with no warehouses. Also honors `--non-interactive`."
   [opts]
-  (if (seq (:with opts))
+  (cond
+    ;; Explicit "none" sentinel — no warehouses, no prompt.
+    (some #{"none"} (:with opts))
+    []
+
+    (seq (:with opts))
     (mapv keyword (:with opts))
+
+    ;; Non-interactive mode: default to no warehouses rather than prompting.
+    (:non-interactive opts)
+    []
+
+    :else
     (let [result (u/fzf-select! ["postgres" "mysql" "mariadb" "mongo" "clickhouse" "ldap" "maildev" "(none)"]
                                 (str fzf-opts " --multi --prompt='Warehouse services (TAB to select): '"))]
       (if (or (str/blank? result) (= result "(none)"))
@@ -600,13 +622,16 @@
   (let [state (read-state-file)
         has-cli-overrides? (or (:edition opts) (:token opts) (:app-db opts) (seq (:with opts)))]
     (when (and (:config state) (not has-cli-overrides?))
-      (let [cfg (:config state)
-            summary (str (name (:edition cfg)) " / " (name (:app-db cfg))
-                         (when (seq (:with cfg))
-                           (str " + " (str/join ", " (map name (:with cfg))))))]
-        (= "yes"
-           (u/fzf-select! ["yes" "no"]
-                          (str fzf-opts " --prompt='Reuse saved config (" summary ")? '")))))))
+      (if (:non-interactive opts)
+        ;; Non-interactive: silently reuse the saved config rather than prompting.
+        true
+        (let [cfg (:config state)
+              summary (str (name (:edition cfg)) " / " (name (:app-db cfg))
+                           (when (seq (:with cfg))
+                             (str " + " (str/join ", " (map name (:with cfg))))))]
+          (= "yes"
+             (u/fzf-select! ["yes" "no"]
+                            (str fzf-opts " --prompt='Reuse saved config (" summary ")? '"))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Status display
