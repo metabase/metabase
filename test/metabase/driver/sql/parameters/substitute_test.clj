@@ -117,7 +117,7 @@
 
 (deftest ^:parallel substitute-field-filter-for-nested-field-test
   (testing "field filter for a nested field (with parent-id) should include parent field name in identifier (#47003)"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (sql-parameters-engines)
       (let [;; Use high IDs that won't collide with existing test metadata
             parent-field-id 999901
             nested-field-id 999902
