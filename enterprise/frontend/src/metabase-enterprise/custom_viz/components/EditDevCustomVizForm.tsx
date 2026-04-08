@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -13,8 +14,10 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Button, Group, Stack, Text } from "metabase/ui";
+import { Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type { CustomVizPlugin } from "metabase-types/api";
+
+import { CustomVizIcon } from "./CustomVizIcon";
 
 type Props = {
   plugin: CustomVizPlugin;
@@ -57,19 +60,34 @@ export function EditDevCustomVizForm({ plugin }: Props) {
         {({ dirty }) => (
           <Form>
             <Stack gap="lg">
-              <Group gap="sm" align="center">
-                {plugin.dev_bundle_url && (
-                  <Box
-                    w={8}
-                    h={8}
-                    bdrs="xl"
-                    bg="success"
-                    style={{ flexShrink: 0 }}
-                  />
-                )}
-                <Text fw={700} fz="lg">
-                  {plugin.display_name}
-                </Text>
+              <Group align="center">
+                <CustomVizIcon plugin={plugin} />
+
+                <Group align="center" flex="1" justify="space-between">
+                  <Text fw={700} fz="lg">
+                    {plugin.display_name}
+                  </Text>
+
+                  {match(plugin.status)
+                    .with("active", () => (
+                      <Group align="center" flex="0 0 auto" gap="xs">
+                        <Icon c="success" name="check" />
+                        <Text c="success" fw={700}>{t`Active`}</Text>
+                      </Group>
+                    ))
+                    .with("error", () => (
+                      <Text c="error" fw={700}>{t`Error`}</Text>
+                    ))
+                    .with("pending", () => (
+                      <Text
+                        c="text-secondary"
+                        fw={plugin.enabled ? 700 : undefined}
+                      >
+                        {t`Pending`}
+                      </Text>
+                    ))
+                    .exhaustive()}
+                </Group>
               </Group>
               <FormTextInput
                 name="devBundleUrl"
