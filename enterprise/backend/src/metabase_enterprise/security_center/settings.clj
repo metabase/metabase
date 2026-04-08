@@ -43,3 +43,21 @@
                   (throw (ex-info (str (deferred-tru "Slack is not configured for this instance."))
                                   {:status-code 400})))
                 (setting/set-value-of-type! :string :security-center-slack-channel new-value)))
+
+(def ^:private default-severity-repeat-days
+  {:critical 1 :high 3 :medium 7 :low 7})
+
+(defsetting security-center-severity-repeat-days
+  (deferred-tru "Number of days between repeat notifications for each severity level.")
+  :type       :json
+  :default    default-severity-repeat-days
+  :encryption :no
+  :feature    :admin-security-center
+  :visibility :internal
+  :export?    false
+  :doc        false
+  :audit      :never
+  :getter     (fn []
+                (let [v (or (setting/get-value-of-type :json :security-center-severity-repeat-days)
+                            default-severity-repeat-days)]
+                  (update-keys v keyword))))

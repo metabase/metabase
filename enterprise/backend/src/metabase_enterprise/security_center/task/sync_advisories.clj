@@ -10,6 +10,7 @@
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase-enterprise.security-center.matching :as matching]
    [metabase-enterprise.security-center.notification :as notification]
+   [metabase-enterprise.security-center.settings :as settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -24,20 +25,13 @@
 
 ;;; ----------------------------------------- Repeat notifications --------------------------------------------------
 
-(def ^:private severity->repeat-days
-  "Number of days between repeat notifications, keyed by severity."
-  {:critical 1
-   :high     3
-   :medium   7
-   :low      7})
-
 (defn- due-for-notification?
   "True if enough time has passed since `last_notified_at` for this advisory's
    severity cadence. Always true if never notified."
   [{:keys [severity last_notified_at]}]
   (if (nil? last_notified_at)
     true
-    (let [days   (get severity->repeat-days severity 7)
+    (let [days   (get (settings/security-center-severity-repeat-days) severity 7)
           cutoff (t/minus (t/offset-date-time) (t/days days))]
       (t/before? (t/offset-date-time last_notified_at) cutoff))))
 
