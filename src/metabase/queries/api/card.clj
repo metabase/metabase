@@ -488,8 +488,9 @@
                             [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
                             [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]]]
   (check-if-card-can-be-saved query card-type)
-  ;; check that we have permissions to run the query that we're trying to save
-  (query-perms/check-run-permissions-for-query query)
+  ;; check that we have permissions to run the query that we're trying to save.
+  ;; Strip :query-permissions/perms — added by QP middleware, not user input.
+  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
   ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
   (collection/check-write-perms-for-collection
@@ -518,7 +519,7 @@
   [card-before-updates card-updates]
   (let [card-updates (m/update-existing card-updates :dataset_query card.metadata/normalize-dataset-query)]
     (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-      (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))))
+      (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms)))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be

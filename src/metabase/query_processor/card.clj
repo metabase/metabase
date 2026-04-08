@@ -335,4 +335,4 @@
     (binding [qp.perms/*card-id* card-id]
       (qp.store/with-metadata-provider (:database_id card)
         (qp.results-metadata/store-previous-result-metadata! card)
-        (runner query info)))))
+        (runner (assoc query :info info) info)))))
