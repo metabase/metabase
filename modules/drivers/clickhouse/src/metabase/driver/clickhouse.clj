@@ -20,7 +20,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :refer [not-empty]])
   (:import
@@ -398,7 +398,7 @@
                                  (sql.u/quote-name :clickhouse :table (:name table))
                                  qu))]
     (when-not read-user-name
-      (throw (ex-info (str (deferred-tru "Workspace isolation is not properly initialized - missing read user name"))
+      (throw (ex-info (tru "Workspace isolation is not properly initialized - missing read user name")
                       {:workspace-id (:id workspace) :step :grant})))
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
