@@ -17,7 +17,7 @@
 (def ^:private max-label-length 100)
 (def ^:private max-label-bytes 200) ;; 255 is a limit in ext4
 
-(defn- slugify-name
+(defn slugify-name
   "Slugify a name for use as a file or directory name: lowercase, replace special chars with underscores,
   preserve dots and unicode, escape slashes. Truncated for filesystem safety."
   [^String s]
