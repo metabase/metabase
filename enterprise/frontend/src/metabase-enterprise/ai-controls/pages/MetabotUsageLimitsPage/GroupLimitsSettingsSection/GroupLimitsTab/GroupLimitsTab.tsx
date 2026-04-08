@@ -4,8 +4,10 @@ import { t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { isDefaultGroup } from "metabase/lib/groups";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Stack, Text, TextInput } from "metabase/ui";
+import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
 import type { GroupInfo } from "metabase-types/api";
 
@@ -31,6 +33,8 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
     limitType,
     groupLimits,
     instanceLimit,
+    allUsersGroup,
+    allUsersGroupLimit,
   } = props;
 
   const [updateGroupLimit] = useUpdateAIControlsGroupLimitMutation();
@@ -73,6 +77,30 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
     SAVE_DEBOUNCE_MS,
   );
 
+  /**
+   * The "all users" group overrides this group's limit when:
+   * - it exists and this group is not itself the "all users" group
+   * - the "all users" limit is null (unlimited) OR higher than the group's own limit
+   */
+  const isAllUsersGroupOverridingLimit = (group: GroupInfo): boolean => {
+    if (
+      !allUsersGroup ||
+      isDefaultGroup(group) ||
+      group.magic_group_type === "all-external-users" ||
+      allUsersGroupLimit === undefined
+    ) {
+      return false;
+    }
+    const thisGroupLimit = localLimitsMap?.[group.id] ?? null;
+
+    if (thisGroupLimit === null) {
+      // this group is set to unlimited
+      return false;
+    }
+
+    return allUsersGroupLimit === null || allUsersGroupLimit > thisGroupLimit;
+  };
+
   const placeholder =
     instanceLimit != null ? String(instanceLimit) : t`Unlimited`;
 
@@ -103,25 +131,40 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
                 </tr>
               </thead>
               <tbody>
-                {groups.map((group) => (
-                  <tr key={group.id} className={S.BodyRow}>
-                    <td className={S.BodyCell}>{group.name}</td>
-                    <td className={S.BodyCell}>
-                      <TextInput
-                        placeholder={placeholder}
-                        value={localLimitsMap?.[group.id] ?? ""}
-                        onChange={(e) => handleChange(group, e.target.value)}
-                        classNames={{ input: S.LimitInput }}
-                        type="number"
-                        min={1}
-                        aria-label={getGroupLimitAriaLabel(
-                          limitType,
-                          group.name,
-                        )}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {groups.map((group) => {
+                  const showAllUsersOverrideTooltip =
+                    isAllUsersGroupOverridingLimit(group) && !!allUsersGroup;
+
+                  return (
+                    <tr key={group.id} className={S.BodyRow}>
+                      <td className={S.BodyCell}>{group.name}</td>
+                      <td className={S.BodyCell}>
+                        <div className={S.InputWrapper}>
+                          <TextInput
+                            placeholder={placeholder}
+                            value={localLimitsMap?.[group.id] ?? ""}
+                            onChange={(e) =>
+                              handleChange(group, e.target.value)
+                            }
+                            classNames={{ input: S.LimitInput }}
+                            type="number"
+                            min={1}
+                            aria-label={getGroupLimitAriaLabel(
+                              limitType,
+                              group.name,
+                            )}
+                          />
+                          {showAllUsersOverrideTooltip && (
+                            <AllUsersHigherAccessTooltipIcon
+                              groupName={allUsersGroup.name}
+                              variant="group-limits"
+                            />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </Box>
