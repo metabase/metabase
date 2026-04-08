@@ -58,11 +58,10 @@
   :doc        false
   :audit      :never
   :getter     (fn []
-                (let [v (or (setting/get-value-of-type :json :security-center-severity-repeat-days)
-                            default-severity-repeat-days)]
-                  (update-keys v keyword))))
+                (some-> (setting/get-value-of-type :json :security-center-severity-repeat-days)
+                        (update-keys keyword))))
 
 (defn repeat-days-for-severity
-  "Return repeat days for severity, defaults to 7 if not configured"
+  "Return repeat days for severity, defaults to 1 if not configured"
   [severity]
-  (get (security-center-severity-repeat-days) severity 7))
+  (get (security-center-severity-repeat-days) severity 1))
