@@ -124,7 +124,7 @@
    _query-params
    {:keys [jwt]} :- [:map [:jwt ms/NonBlankString]]
    request]
-  (when-not (sso-settings/jwt-enabled)
+  (when-not (sso-settings/jwt-enabled-and-configured)
     (throw (ex-info "JWT authentication is not enabled"
                     {:status-code 400})))
   {:session_token (jwt/jwt->session jwt request)})

@@ -282,6 +282,7 @@ export const createMockSettings = (
   "google-auth-enabled": false,
   "is-hosted?": false,
   "jwt-enabled": false,
+  "jwt-enabled-and-configured": false,
   "jwt-configured": false,
   "jwt-user-provisioning-enabled?": false,
   "jwt-identity-provider-uri": null,
