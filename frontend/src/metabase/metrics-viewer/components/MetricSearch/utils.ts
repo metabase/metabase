@@ -516,69 +516,6 @@ type SearchResultLike = {
   model: "metric" | "measure";
 };
 
-/**
- * Validates a single expression's sub-token stream.
- * Returns a user-facing error message, or null if valid.
- */
-export function validateExpression(
-  tokens: ExpressionSubToken[],
-): string | null {
-  if (tokens.length === 0) {
-    return null;
-  }
-
-  // 1. Unmatched parentheses
-  let depth = 0;
-  for (const token of tokens) {
-    if (token.type === "open-paren") {
-      depth++;
-    } else if (token.type === "close-paren") {
-      depth--;
-      if (depth < 0) {
-        return t`Unmatched closing parenthesis`;
-      }
-    }
-  }
-  if (depth > 0) {
-    return t`Unmatched opening parenthesis`;
-  }
-
-  // 2 & 3. Consecutive / leading / trailing operators, and empty parens
-  let prevSignificant: ExpressionSubToken | null = null;
-  for (const token of tokens) {
-    if (token.type === "operator") {
-      if (prevSignificant === null) {
-        return t`Expression cannot start with an operator`;
-      }
-      if (prevSignificant.type === "operator") {
-        return t`Two operators in a row without a metric between them`;
-      }
-      if (prevSignificant.type === "open-paren") {
-        return t`Operator right after opening parenthesis`;
-      }
-    }
-    const isEmptyParens =
-      token.type === "close-paren" && prevSignificant?.type === "open-paren";
-    if (isEmptyParens) {
-      return t`Empty parentheses`;
-    }
-    prevSignificant = token;
-  }
-  if (prevSignificant?.type === "operator") {
-    return t`Expression cannot end with an operator`;
-  }
-
-  // 4. Must have at least one operand
-  const hasOperand = tokens.some(
-    (tok) => tok.type === "metric" || tok.type === "constant",
-  );
-  if (!hasOperand) {
-    return t`Expression must contain at least one metric`;
-  }
-
-  return null;
-}
-
 // ── Positioned token type (internal) ────────────────────────────────────────
 
 export type PositionedToken = (

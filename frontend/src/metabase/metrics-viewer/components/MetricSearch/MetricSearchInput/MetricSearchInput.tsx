@@ -38,7 +38,6 @@ import {
   getWordAtCursor,
   parseFullText,
   removeUnmatchedParens,
-  validateExpression,
 } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
@@ -354,20 +353,6 @@ export function MetricSearchInput({
       return;
     }
 
-    const newEntities = parseFullText(
-      editTextRef.current,
-      metricNamesRef.current,
-    );
-    // Validate each expression entry
-    for (const entry of newEntities) {
-      if (isExpressionEntry(entry)) {
-        const error = validateExpression(entry.tokens);
-        if (error) {
-          setValidationError(error);
-          return;
-        }
-      }
-    }
     setValidationError(null);
   }, []);
 
@@ -598,20 +583,6 @@ export function MetricSearchInput({
       return;
     }
 
-    const newEntities = parseFullText(
-      editTextRef.current,
-      metricNamesRef.current,
-    );
-    // Validate each expression entry
-    for (const entry of newEntities) {
-      if (isExpressionEntry(entry)) {
-        const error = validateExpression(entry.tokens);
-        if (error) {
-          setValidationError(error);
-          return;
-        }
-      }
-    }
     setValidationError(null);
     commitAndCollapse();
   }, [commitAndCollapse]);
