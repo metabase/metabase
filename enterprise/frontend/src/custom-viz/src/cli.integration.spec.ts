@@ -18,6 +18,9 @@ import {
 const CLI_PATH = join(__dirname, "..", "dist", "cli.js");
 const CUSTOM_VIZ_PACKAGE_DIR = join(__dirname, "..");
 
+// Local dev server URL used in integration tests
+const DEV_SERVER_URL = "http://localhost:5174";
+
 let tmpDir: string;
 
 async function scaffold(name: string): Promise<string> {
@@ -296,14 +299,14 @@ describe("dev server", () => {
   }, 10_000);
 
   it("serves static files with correct MIME types", async () => {
-    const jsResponse = await fetch("http://localhost:5174/index.js");
+    const jsResponse = await fetch(`${DEV_SERVER_URL}/index.js`);
     expect(jsResponse.status).toBe(200);
     expect(jsResponse.headers.get("content-type")).toBe(
       "application/javascript",
     );
 
     const manifestResponse = await fetch(
-      "http://localhost:5174/metabase-plugin.json",
+      `${DEV_SERVER_URL}/metabase-plugin.json`,
     );
     expect(manifestResponse.status).toBe(200);
     expect(manifestResponse.headers.get("content-type")).toBe(
@@ -312,19 +315,19 @@ describe("dev server", () => {
   }, 10_000);
 
   it("prevents directory traversal", async () => {
-    const response = await fetch("http://localhost:5174/../package.json");
+    const response = await fetch(`${DEV_SERVER_URL}/../package.json`);
     // Node's http server normalizes the URL, so the path resolves to /package.json
     // which won't exist in dist/. The traversal check catches paths that escape distDir.
     expect([403, 404]).toContain(response.status);
   }, 10_000);
 
   it("returns 404 for nonexistent files", async () => {
-    const response = await fetch("http://localhost:5174/nonexistent.js");
+    const response = await fetch(`${DEV_SERVER_URL}/nonexistent.js`);
     expect(response.status).toBe(404);
   }, 10_000);
 
   it("serves landing page at /", async () => {
-    const response = await fetch("http://localhost:5174/");
+    const response = await fetch(`${DEV_SERVER_URL}/`);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("text/html");
 
@@ -338,7 +341,7 @@ describe("dev server", () => {
     const received = await new Promise<string>((resolve, reject) => {
       let data = "";
 
-      const req = get("http://localhost:5174/__sse", (res) => {
+      const req = get(`${DEV_SERVER_URL}/__sse`, (res) => {
         res.setEncoding("utf-8");
         res.on("data", (chunk: string) => {
           data += chunk;
