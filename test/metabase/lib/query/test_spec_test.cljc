@@ -743,7 +743,7 @@
                                             :value {:type     :operator
                                                     :operator :count
                                                     :args     []}}
-                                           {:name  "total-revenue"
+                                           {:name  "aggregation_2"
                                             :value {:type     :operator
                                                     :operator :sum
                                                     :args     [{:type :column
@@ -779,12 +779,12 @@
                             :filters [{:type     :operator
                                        :operator :>
                                        :args     [{:type :column
-                                                   :name "total-revenue"}
+                                                   :name "aggregation_2"}
                                                   {:type  :literal
                                                    :value 1000}]}]
 
                             :order-bys [{:type      :column
-                                         :name      "total-revenue"
+                                         :name      "aggregation_2"
                                          :direction :asc}]}
 
                            ;; Stage 2
@@ -820,7 +820,7 @@
               (lib/filters query 0)))
 
       (is (=? [[:count {:display-name "total-count"}]
-               [:sum {:display-name "total-revenue"} [:field {} (meta/id :orders :total)]]
+               [:sum {:display-name "aggregation_2"} [:field {} (meta/id :orders :total)]]
                [:avg {} [:field {:join-alias "Products"} (meta/id :products :price)]]]
               (lib/aggregations query 0)))
 
@@ -837,10 +837,10 @@
                 2]]
               (lib/expressions query 1)))
 
-      (is (=? [[:> {} [:field {} "total-revenue"] 1000]]
+      (is (=? [[:> {} [:field {} "aggregation_2"] 1000]]
               (lib/filters query 1)))
 
-      (is (=? [[:asc {} [:field {} "total-revenue"]]]
+      (is (=? [[:asc {} [:field {} "aggregation_2"]]]
               (lib/order-bys query 1)))
 
       (is (empty? (lib/fields query 1)))

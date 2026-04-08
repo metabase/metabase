@@ -620,11 +620,10 @@
           sum (->> (lib/aggregable-columns query nil)
                    (m/find-first (comp #{"aggregation"} :name)))
           query2 (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))
-          agg-name "aggregation_2"
           expr (->> (lib/aggregable-columns query2 nil)
-                    (m/find-first (comp #{agg-name} :name))
+                    (m/find-first (comp #{"aggregation_2"} :name))
                     (lib/* 2))]
-      (is (=? {:message (str "Cycle detected: " agg-name " → " agg-name)}
+      (is (=? {:message "Cycle detected: 2*sum → 2*sum"}
               (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
 
 (deftest ^:parallel diagnose-expression-incompatible-types-test
