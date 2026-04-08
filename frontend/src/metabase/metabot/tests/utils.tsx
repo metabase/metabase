@@ -133,7 +133,7 @@ export const lastReqBody = async (
   return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
 };
 
-// Common mock response fixtures (SSE events)
+// Common mock response fixtures
 export const whoIsYourFavoriteResponse = [
   { type: "start", messageId: "m1" },
   { type: "start-step" },

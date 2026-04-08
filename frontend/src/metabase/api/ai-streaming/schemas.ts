@@ -1,8 +1,31 @@
+import * as Yup from "yup";
+
 import type {
   MetabotCodeEdit,
   MetabotTodoItem,
   SuggestedTransform,
 } from "metabase-types/api";
+
+export const toolInputAvailableSchema = Yup.object({
+  toolCallId: Yup.string().required(),
+  toolName: Yup.string().required(),
+  input: Yup.mixed(),
+});
+
+export const toolOutputAvailableSchema = Yup.object({
+  toolCallId: Yup.string().required(),
+  toolName: Yup.string().required(),
+  output: Yup.mixed(),
+});
+
+export const dataEventSchema = Yup.object({
+  type: Yup.string()
+    .required()
+    .test("data-prefix", 'type must start with "data-"', (val) =>
+      val ? val.startsWith("data-") : false,
+    ),
+  data: Yup.mixed().required(),
+});
 
 export const knownDataPartTypes = [
   "data-navigate_to",

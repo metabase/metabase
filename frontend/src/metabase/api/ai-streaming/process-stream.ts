@@ -1,14 +1,21 @@
 import { isMatching } from "ts-pattern";
 
+import type { MetabotHistory } from "metabase-types/api";
+
+import {
+  type KnownDataPart,
+  dataEventSchema,
+  knownDataPartTypes,
+  toolInputAvailableSchema,
+  toolOutputAvailableSchema,
+} from "./schemas";
+import { parseSSEStream } from "./sse-stream";
 import type {
   SSEEvent,
   ToolInputAvailableEvent,
   ToolOutputAvailableEvent,
-} from "metabase/lib/ai-sdk";
-import { isDataEvent, parseSSEStream } from "metabase/lib/ai-sdk";
-import type { MetabotHistory } from "metabase-types/api";
-
-import { type KnownDataPart, knownDataPartTypes } from "./schemas";
+} from "./sse-types";
+import { isDataEvent } from "./sse-types";
 
 type ToolCall =
   | { toolCallId: string; toolName: string; state: "call" }
@@ -86,6 +93,7 @@ function processEvent(
     }
 
     case "tool-input-available": {
+      toolInputAvailableSchema.validateSync(event, { strict: false });
       config.onToolCallPart?.(event);
       result.toolCalls.push({
         toolCallId: event.toolCallId,
@@ -109,6 +117,7 @@ function processEvent(
     }
 
     case "tool-output-available": {
+      toolOutputAvailableSchema.validateSync(event, { strict: false });
       const index = result.toolCalls.findIndex(
         (tc) => tc.toolCallId === event.toolCallId,
       );
@@ -139,6 +148,7 @@ function processEvent(
     default: {
       // "data-*" event type
       if (isDataEvent(event)) {
+        dataEventSchema.validateSync(event, { strict: false });
         const dataPart: DataPart = { type: event.type, data: event.data };
         result.data.push(dataPart);
         if (knownDataPartTypes.includes(event.type)) {

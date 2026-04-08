@@ -1,4 +1,4 @@
-import type { SSEEvent } from "./types";
+import type { SSEEvent } from "./sse-types";
 
 /**
  * Parse a Server-Sent Events stream into typed SSE events.

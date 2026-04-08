@@ -95,16 +95,20 @@ describe("processChatResponse", () => {
   });
 
   it("should handle messages across multiple chunks", async () => {
-    // Simulate SSE events split across TCP chunks (raw bytes, not using createMockSSEStream)
-    const encoder = new TextEncoder();
-    const part1 =
-      'data: {"type":"text-start","id":"t1"}\n\ndata: {"type":"text-delta","id":"t1","delta":"You, but ';
-    const part2 = `don't tell anyone."}\n\ndata: {"type":"text-end","id":"t1"}\n\ndata: {"type":"finish"}\n\ndata: [DONE]\n\n`;
-
     const mockStream = new ReadableStream<Uint8Array>({
       start(controller) {
-        controller.enqueue(encoder.encode(part1));
-        controller.enqueue(encoder.encode(part2));
+        const encoder = new TextEncoder();
+        // simulate SSE events split across TCP chunks
+        controller.enqueue(
+          encoder.encode(
+            'data: {"type":"text-start","id":"t1"}\n\ndata: {"type":"text-delta","id":"t1","delta":"You, but ',
+          ),
+        );
+        controller.enqueue(
+          encoder.encode(
+            `don't tell anyone."}\n\ndata: {"type":"text-end","id":"t1"}\n\ndata: {"type":"finish"}\n\ndata: [DONE]\n\n`,
+          ),
+        );
         controller.close();
       },
     });
