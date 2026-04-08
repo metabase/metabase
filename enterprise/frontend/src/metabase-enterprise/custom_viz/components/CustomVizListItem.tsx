@@ -97,6 +97,7 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
       </Group>
 
       <Box
+        className={S.menuContainer}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
