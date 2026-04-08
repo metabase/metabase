@@ -3,6 +3,7 @@ import { isValidElement, useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { Text } from "metabase/ui";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
@@ -91,9 +92,18 @@ const TooltipRow = ({
       <TableCell />
     )}
     <TableCell className={cx(CS.textBold, CS.textLeft)}>
-      {isValidElement(value)
-        ? value
-        : formatValueForTooltip({ value, column, settings, isAlreadyScaled })}
+      {isValidElement(value) ? (
+        value
+      ) : (
+        <Text
+          lineClamp={3}
+          style={{ whiteSpace: "pre-line" }}
+          inherit
+          c="text-secondary-inverse"
+        >
+          {formatValueForTooltip({ value, column, settings, isAlreadyScaled })}
+        </Text>
+      )}
     </TableCell>
   </tr>
 );

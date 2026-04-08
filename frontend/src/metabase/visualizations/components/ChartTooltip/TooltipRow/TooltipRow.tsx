@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { formatPercent } from "metabase/static-viz/lib/numbers";
+import { Text } from "metabase/ui";
 import type { TooltipRowModel } from "metabase/visualizations/types";
 
 import {
@@ -32,8 +33,26 @@ export const TooltipRow = ({
         <ColorIndicator size={isHeader ? 12 : 8} color={color} />
       </ColorIndicatorCell>
     )}
-    <Cell data-testid="row-name">{name}</Cell>
-    <ValueCell data-testid="row-value">{formatter(value)}</ValueCell>
+    <Cell data-testid="row-name">
+      <Text
+        lineClamp={3}
+        c="text-secondary-inverse"
+        style={{ whiteSpace: "pre-line" }}
+        inherit
+      >
+        {name}
+      </Text>
+    </Cell>
+    <ValueCell data-testid="row-value">
+      <Text
+        lineClamp={3}
+        c="text-secondary-inverse"
+        style={{ whiteSpace: "pre-line" }}
+        inherit
+      >
+        {formatter(value)}
+      </Text>
+    </ValueCell>
     {percent != null ? (
       <PercentCell data-testid="row-percent">
         {formatPercent(percent)}

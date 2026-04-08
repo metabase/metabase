@@ -3,6 +3,8 @@ import type React from "react";
 
 import { isNotNull } from "metabase/lib/types";
 
+import { renderWithLineBreaks } from "../utils";
+
 import TooltipStyles from "./EChartsTooltip.module.css";
 
 const getPaddedValuesArray = (values: React.ReactNode[], maxValues: number) => {
@@ -150,7 +152,9 @@ const BaseRow = ({ className, name, values, markerContent }: BaseRowProps) => (
       </td>
     ) : null}
     {name ? (
-      <td className={cx(TooltipStyles.Cell, TooltipStyles.NameCell)}>{name}</td>
+      <td className={cx(TooltipStyles.Cell, TooltipStyles.NameCell)}>
+        {renderWithLineBreaks(name)}
+      </td>
     ) : (
       <td className={TooltipStyles.Cell} />
     )}
@@ -167,7 +171,7 @@ const BaseRow = ({ className, name, values, markerContent }: BaseRowProps) => (
               : TooltipStyles.SecondaryValueCell,
           )}
         >
-          {value}
+          {renderWithLineBreaks(value)}
         </td>
       );
     })}
