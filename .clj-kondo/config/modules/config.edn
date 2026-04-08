@@ -2732,6 +2732,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Dashboard
+                    :model/DatabaseRouter
                     :model/Query
                     :model/QueryCache
                     :model/QueryExecution}}
