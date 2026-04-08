@@ -36,7 +36,7 @@
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/make-spec "CustomVizPlugin"
-  [_model-name {:keys [include-database-secrets]}]
+  [_model-name {:keys [include-custom-viz-token]}]
   {:copy      [:repo_url :display_name :identifier
                :pinned_version :resolved_commit :enabled :icon :icon_dark
                :manifest :metabase_version]
@@ -44,7 +44,7 @@
    :transform {:created_at   (serdes/date)
                :status       {:export (constantly ::serdes/skip)
                               :import (constantly "pending")}
-               :access_token {:export (if include-database-secrets
+               :access_token {:export (if include-custom-viz-token
                                         identity
                                         (constantly ::serdes/skip))
                               :import identity}}})
