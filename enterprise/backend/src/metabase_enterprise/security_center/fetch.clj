@@ -3,7 +3,6 @@
   (:require
    [clj-http.client :as http]
    [clojure.edn :as edn]
-   [clojure.set :as set]
    [java-time.api :as t]
    [metabase-enterprise.security-center.schema :as security-center.schema]
    [metabase.app-db.core :as mdb]
@@ -118,7 +117,7 @@
                          {:advisory_id (:advisory_id advisory)}
                          (fn [existing]
                            (if existing
-                             (dissoc advisory :advisory_id)
+                             advisory
                              (assoc advisory :match_status :unknown)))))
 
 (defn sync-advisories!
@@ -129,11 +128,16 @@
                      (catch Exception e
                        (log/warn e "Error fetching advisories from MetaStore")))]
     (if (seq advisories)
-      (do
-        (doseq [advisory advisories]
-          (try
-            (upsert-advisory! advisory)
-            (catch Exception e
-              (log/warnf e "Error upserting advisory %s" (:advisory_id advisory)))))
-        (log/infof "Synced %d advisories from MetaStore" (count advisories)))
+      (let [total    (count advisories)
+            failures (reduce (fn [n advisory]
+                               (try
+                                 (upsert-advisory! advisory)
+                                 n
+                                 (catch Exception e
+                                   (log/warnf e "Error upserting advisory %s" (:advisory_id advisory))
+                                   (inc n))))
+                             0
+                             advisories)
+            synced   (- total failures)]
+        (log/infof "Synced %d/%d advisories from MetaStore" synced total))
       (log/info "No new advisories from MetaStore"))))
