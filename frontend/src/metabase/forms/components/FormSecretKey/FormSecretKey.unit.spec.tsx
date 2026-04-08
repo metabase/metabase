@@ -13,6 +13,7 @@ interface FormValues {
 
 interface SetupOpts {
   initialValues?: FormValues;
+  readOnly?: boolean;
 }
 
 const GENERATED_TOKEN = "newly-generated-token-xyz";
@@ -21,7 +22,10 @@ const EXISTING_VALUE = "my-super-secret-token-abc123";
 const OBFUSCATED_EXISTING = "**********23";
 const OBFUSCATED_GENERATED = "**********yz";
 
-const setup = ({ initialValues = { secret: undefined } }: SetupOpts = {}) => {
+const setup = ({
+  initialValues = { secret: undefined },
+  readOnly = false,
+}: SetupOpts = {}) => {
   const onSubmit = jest.fn();
 
   setupGenerateRandomTokenEndpoint(GENERATED_TOKEN);
@@ -29,7 +33,14 @@ const setup = ({ initialValues = { secret: undefined } }: SetupOpts = {}) => {
   renderWithProviders(
     <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
       <Form>
-        <FormSecretKey name="secret" label="Signing Key" />
+        <FormSecretKey
+          name="secret"
+          label="Signing Key"
+          readOnly={readOnly}
+          wrapperProps={{
+            "data-testid": "inputWrapper",
+          }}
+        />
         <FormSubmitButton />
       </Form>
     </FormProvider>,
@@ -166,7 +177,9 @@ describe("FormSecretKey", () => {
       setup({ initialValues: { secret: EXISTING_VALUE } });
 
       await userEvent.click(
-        screen.getByRole("button", { name: "Regenerate key" }),
+        within(screen.getByTestId("inputWrapper")).getByRole("button", {
+          name: "Regenerate key",
+        }),
       );
 
       expect(
@@ -186,6 +199,15 @@ describe("FormSecretKey", () => {
           /This will cause existing tokens to stop working/,
         ),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("when readOnly is true (env var controlled)", () => {
+    it("does not show 'Regenerate key' or 'Set up key' buttons", () => {
+      setup({ initialValues: { secret: EXISTING_VALUE }, readOnly: true });
+      expect(
+        within(screen.getByTestId("inputWrapper")).queryByRole("button"),
+      ).not.toBeInTheDocument();
     });
   });
 

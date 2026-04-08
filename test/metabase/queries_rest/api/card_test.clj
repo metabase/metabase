@@ -104,9 +104,9 @@
     :query    {:source-table (u/the-id table-or-id)
                :aggregation  [[:count]]}}))
 
-(defn pmbql-count-query
+(defn mbql5-count-query
   ([]
-   (pmbql-count-query (mt/id) (mt/id :venues)))
+   (mbql5-count-query (mt/id) (mt/id :venues)))
 
   ([db-or-id table-or-id]
    (let [metadata-provider (lib-be/application-database-metadata-provider (u/the-id db-or-id))
@@ -732,7 +732,7 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-model-cleanup [:model/Card]
               (doseq [[mbql-version query] {"MBQL" (mbql-count-query)
-                                            "pMBQL" (pmbql-count-query)}]
+                                            "MBQL 5" (mbql5-count-query)}]
                 (testing mbql-version
                   (let [card (assoc (card-with-name-and-query (mt/random-name) query)
                                     :collection_id (u/the-id collection)
@@ -846,7 +846,7 @@
 
 (deftest create-and-update-metric-card-validation-test
   (testing "POST /api/card"
-    (let [query (pmbql-count-query)
+    (let [query (mbql5-count-query)
           card-name (mt/random-name)
           card (-> (card-with-name-and-query card-name query)
                    (assoc :type :metric))
@@ -3738,7 +3738,7 @@
               venues            (lib.metadata/table metadata-provider (mt/id :venues))
               query             (lib/query metadata-provider venues)
               response          (mt/user-http-request :crowberto :post 200 "card"
-                                                      {:name                   "pMBQL Card"
+                                                      {:name                   "MBQL 5 Card"
                                                        :dataset_query          (dissoc query :lib/metadata)
                                                        :display                :table
                                                        :visualization_settings {}})]

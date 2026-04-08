@@ -7,6 +7,7 @@ import {
 import { useSetting } from "metabase/common/hooks";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
+  PLUGIN_AI_CONTROLS,
   PLUGIN_EMBEDDING_IFRAME_SDK,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
@@ -39,6 +40,7 @@ export function MetabotNavPane() {
                 path={`/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`}
               />
             )}
+            {PLUGIN_AI_CONTROLS.getAiControlsNavItems()}
           </>
         )}
         <AdminNavItem

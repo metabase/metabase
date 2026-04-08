@@ -1,6 +1,7 @@
 import type React from "react";
 import { t } from "ttag";
 
+import { getIcon } from "metabase/lib/icon";
 import { Box, Repeat, Skeleton, Stack, Text } from "metabase/ui";
 
 import type { MetricOrMeasureResult } from "../../../hooks/use-metric-measure-search";
@@ -58,7 +59,7 @@ export function MetricSearchResults({
           ref={getRef(item)}
           name={item.name}
           slug={item.table_name ?? undefined}
-          icon={item.model === "metric" ? "metric" : "sum"}
+          icon={getIcon(item).name}
           active={cursorIndex === index}
           onClick={() => onSelectResult(item.id, item.model)}
         />

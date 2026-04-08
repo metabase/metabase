@@ -308,7 +308,7 @@ When you add a table to a dashboard, you can add [custom destinations](../../das
 
 ## Table pagination on dashboard cards
 
-When you add a table to dashboard, the table will be scrollable by default. You can paginate the rows by:
+When you add a table to a dashboard, the table will be scrollable by default. You can paginate the rows by:
 
 1. Clicking on the **Pencil** icon to edit the dashboard.
 2. Hovering over the dashcard containing the table, and clicking the **Visualization** icon.
