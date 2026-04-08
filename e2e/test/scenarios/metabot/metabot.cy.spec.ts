@@ -253,7 +253,9 @@ describe("Metabot in full-app embedding", () => {
 });
 
 const whoIsYourFavoriteResponse = H.sseBody([
+  { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+  { type: "text-end", id: "t1" },
   { type: "data-state", id: "d1", data: { queries: {} } },
 ]);
 

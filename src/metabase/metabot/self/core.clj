@@ -383,9 +383,11 @@
                    (rf (format-sse-event {:type "start-step"})))))
 
            :text
-           (rf result (format-sse-event {:type  "text-delta"
-                                         :id    (or (:id part) (mkid))
-                                         :delta (:text part)}))
+           (let [id (or (:id part) (mkid))]
+             (-> result
+                 (rf (format-sse-event {:type "text-start" :id id}))
+                 (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))
+                 (rf (format-sse-event {:type "text-end" :id id}))))
 
            :tool-input
            (-> result
@@ -398,11 +400,11 @@
                                       :input      (:arguments part)})))
 
            :tool-output
-           (rf result (format-sse-event {:type       "tool-output-available"
-                                         :toolCallId (:id part)
-                                         :toolName   (:function part)
-                                         :output     (or (:result part) "")
-                                         :error      (:error part)}))
+           (rf result (format-sse-event (cond-> {:type       "tool-output-available"
+                                                 :toolCallId (:id part)
+                                                 :toolName   (:function part)
+                                                 :output     (or (:result part) "")}
+                                          (:error part) (assoc :error (:error part)))))
 
            :data
            (rf result (format-sse-event {:type (str "data-" (or (:data-type part) "data"))

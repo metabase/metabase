@@ -57,9 +57,13 @@ describe("metabot > message", () => {
     mockAgentEndpoint({
       stream: createMockSSEStream(
         (async function* () {
+          yield { type: "text-start", id: "t1" };
           yield { type: "text-delta", id: "t1", delta: "You, but " };
+          yield { type: "text-end", id: "t1" };
           await pause1.promise;
+          yield { type: "text-start", id: "t2" };
           yield { type: "text-delta", id: "t2", delta: "don't tell anyone." };
+          yield { type: "text-end", id: "t2" };
           yield { type: "finish" };
           yield "[DONE]";
         })(),

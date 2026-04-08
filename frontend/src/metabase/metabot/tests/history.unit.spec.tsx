@@ -71,8 +71,12 @@ describe("metabot > history", () => {
     const { store } = setup();
     mockAgentEndpoint({
       events: [
+        { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "You, but " },
+        { type: "text-end", id: "t1" },
+        { type: "text-start", id: "t2" },
         { type: "text-delta", id: "t2", delta: "don't tell anyone." },
+        { type: "text-end", id: "t2" },
         { type: "finish" },
         "[DONE]",
       ],

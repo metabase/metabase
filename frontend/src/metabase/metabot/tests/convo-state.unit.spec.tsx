@@ -59,7 +59,9 @@ describe("metabot > convo state", () => {
 
     mockAgentEndpoint({
       events: [
+        { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "here ya go" },
+        { type: "text-end", id: "t1" },
         { type: "data-state", id: "d1", data: { testing: 123 } },
         { type: "finish" },
         "[DONE]",
@@ -76,9 +78,13 @@ describe("metabot > convo state", () => {
     mockAgentEndpoint({
       stream: createMockSSEStream(
         (async function* () {
+          yield { type: "text-start", id: "t1" };
           yield { type: "text-delta", id: "t1", delta: "blah blah blah" };
+          yield { type: "text-end", id: "t1" };
           await pause1.promise;
+          yield { type: "text-start", id: "t2" };
           yield { type: "text-delta", id: "t2", delta: "something something" };
+          yield { type: "text-end", id: "t2" };
         })(),
       ),
     });

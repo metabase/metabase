@@ -126,11 +126,13 @@ describe("metabot > ui", () => {
     setup();
     mockAgentEndpoint({
       events: [
+        { type: "text-start", id: "t1" },
         {
           type: "text-delta",
           id: "t1",
           delta: "# You, but don't tell anyone.",
         },
+        { type: "text-end", id: "t1" },
         { type: "data-state", id: "d1", data: { queries: {} } },
         { type: "finish" },
         "[DONE]",
@@ -215,7 +217,9 @@ describe("metabot > ui", () => {
     setup();
     mockAgentEndpoint({
       events: [
+        { type: "text-start", id: "t0" },
         { type: "text-delta", id: "t0", delta: "Let me think..." },
+        { type: "text-end", id: "t0" },
         ...whoIsYourFavoriteResponse,
       ],
     });
@@ -227,7 +231,9 @@ describe("metabot > ui", () => {
 
     mockAgentEndpoint({
       events: [
+        { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "The answer is always you." },
+        { type: "text-end", id: "t1" },
         { type: "data-state", id: "d1", data: { queries: {} } },
         { type: "finish" },
         "[DONE]",

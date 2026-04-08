@@ -422,15 +422,15 @@ function createMockTransformSuggestionResponse(
   transformJSON: string,
 ) {
   return H.sseBody([
+    { type: "text-start", id: "t1" },
     { type: "text-delta", id: "t1", delta: text },
+    { type: "text-end", id: "t1" },
     {
       type: "data-transform_suggestion",
       id: "d1",
       data: JSON.parse(transformJSON),
     },
     { type: "data-state", id: "d2", data: {} },
-    { type: "finish" },
-    "[DONE]",
   ]);
 }
 

@@ -212,10 +212,6 @@ describe("Metabot Query Builder", () => {
 
 // Response helpers
 const mockNavigateToResponse = (path: string) =>
-  H.sseBody([
-    { type: "data-navigate_to", id: "d1", data: path },
-    { type: "finish" },
-    "[DONE]",
-  ]);
+  H.sseBody([{ type: "data-navigate_to", id: "d1", data: path }]);
 
 const mockTextOnlyResponse = (text: string) => H.sseTextResponse(text);

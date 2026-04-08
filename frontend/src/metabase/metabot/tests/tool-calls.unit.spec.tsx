@@ -100,7 +100,9 @@ describe("metabot > tool calls", () => {
             output: "",
           };
           await pause1.promise;
+          yield { type: "text-start", id: "t1" };
           yield { type: "text-delta", id: "t1", delta: "Hey." };
+          yield { type: "text-end", id: "t1" };
           await pause2.promise;
           yield {
             type: "tool-input-available",
@@ -162,7 +164,9 @@ describe("metabot > tool calls", () => {
     setup();
     mockAgentEndpoint({
       events: [
+        { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "Response 1" },
+        { type: "text-end", id: "t1" },
         {
           type: "tool-input-available",
           toolCallId: "x",
@@ -175,7 +179,9 @@ describe("metabot > tool calls", () => {
           toolName: "x",
           output: "",
         },
+        { type: "text-start", id: "t2" },
         { type: "text-delta", id: "t2", delta: "Response 2" },
+        { type: "text-end", id: "t2" },
         { type: "finish" },
         "[DONE]",
       ],
@@ -196,9 +202,13 @@ describe("metabot > tool calls", () => {
     mockAgentEndpoint({
       stream: createMockSSEStream(
         (async function* () {
+          yield { type: "text-start", id: "t1" };
           yield { type: "text-delta", id: "t1", delta: "You, but " };
+          yield { type: "text-end", id: "t1" };
           await pause1.promise;
+          yield { type: "text-start", id: "t2" };
           yield { type: "text-delta", id: "t2", delta: "don't tell anyone." };
+          yield { type: "text-end", id: "t2" };
         })(),
       ),
     });
@@ -224,9 +234,13 @@ describe("metabot > tool calls", () => {
     mockAgentEndpoint({
       stream: createMockSSEStream(
         (async function* () {
+          yield { type: "text-start", id: "t1" };
           yield { type: "text-delta", id: "t1", delta: "You, but " };
+          yield { type: "text-end", id: "t1" };
           await pause1.promise;
+          yield { type: "text-start", id: "t2" };
           yield { type: "text-delta", id: "t2", delta: "don't tell anyone." };
+          yield { type: "text-end", id: "t2" };
         })(),
       ),
     });

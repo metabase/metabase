@@ -129,8 +129,9 @@ describe("processChatResponse", () => {
   it("should handle messages across multiple chunks", async () => {
     // Simulate SSE events split across TCP chunks
     const encoder = new TextEncoder();
-    const part1 = 'data: {"type":"text-delta","id":"t1","delta":"You, but ';
-    const part2 = `don't tell anyone."}\n\ndata: {"type":"finish"}\n\ndata: [DONE]\n\n`;
+    const part1 =
+      'data: {"type":"text-start","id":"t1"}\n\ndata: {"type":"text-delta","id":"t1","delta":"You, but ';
+    const part2 = `don't tell anyone."}\n\ndata: {"type":"text-end","id":"t1"}\n\ndata: {"type":"finish"}\n\ndata: [DONE]\n\n`;
 
     const mockStream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -150,7 +151,9 @@ describe("processChatResponse", () => {
   it("should resolve with partial response for aborted requests", async () => {
     const mockStream = createMockSSEStream(
       [
+        { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "Partial response" },
+        { type: "text-end", id: "t1" },
         { type: "data-state", id: "d1", data: { testing: 123 } },
       ],
       {
@@ -177,7 +180,11 @@ describe("processChatResponse", () => {
     await expect(
       processChatResponse(
         createMockSSEStream(
-          [{ type: "text-delta", id: "t1", delta: "Starting response" }],
+          [
+            { type: "text-start", id: "t1" },
+            { type: "text-delta", id: "t1", delta: "Starting response" },
+            { type: "text-end", id: "t1" },
+          ],
           {
             streamOptions: {
               async start() {

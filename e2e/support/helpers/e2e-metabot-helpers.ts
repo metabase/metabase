@@ -92,17 +92,8 @@ export const mockMetabotResponse = (response: StaticResponse) => {
     .as("metabotAgent");
 };
 
-/**
- * Format an array of SSE event objects into an SSE response body string.
- * Each event becomes `data: {JSON}\n\n`. String entries (like "[DONE]")
- * are formatted as `data: {string}\n\n`.
- */
-export function sseBody(
-  events: (Record<string, unknown> | string)[],
-  options: { finish?: boolean } = { finish: true },
-): string {
-  return events
-    .concat(options.finish ? [{ type: "finish" }, "[DONE]"] : [])
+export function sseBody(events: (Record<string, unknown> | string)[]): string {
+  return [...events, { type: "finish" }, "[DONE]"]
     .map((e) => {
       const payload = typeof e === "string" ? e : JSON.stringify(e);
       return `data: ${payload}\n\n`;
@@ -110,9 +101,10 @@ export function sseBody(
     .join("");
 }
 
-/**
- * Create a simple text-only SSE response body.
- */
 export function sseTextResponse(text: string): string {
-  return sseBody([{ type: "text-delta", id: "t1", delta: text }]);
+  return sseBody([
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: text },
+    { type: "text-end", id: "t1" },
+  ]);
 }

@@ -30,21 +30,21 @@ const adHocQuestionPath = `/question#${btoa(
 )}`;
 
 const metabotResponse = H.sseBody([
+  { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: `Here is the [question link](${adHocQuestionPath})` },
-  { type: "finish" },
-  "[DONE]",
+  { type: "text-end", id: "t1" },
 ]);
 const metabotResponseWithNavigateTo = H.sseBody([
+  { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: `Here is the [question link](${adHocQuestionPath})` },
+  { type: "text-end", id: "t1" },
   { type: "data-navigate_to", id: "d1", data: adHocQuestionPath },
-  { type: "finish" },
-  "[DONE]",
 ]);
 
 const metabotRetryResponse = H.sseBody([
+  { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: `Retry: Here is the [question link](${adHocQuestionPath})` },
-  { type: "finish" },
-  "[DONE]",
+  { type: "text-end", id: "t1" },
 ]);
 
 describe("scenarios > embedding-sdk > metabot-question", () => {

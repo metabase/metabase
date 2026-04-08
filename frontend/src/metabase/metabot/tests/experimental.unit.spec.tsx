@@ -10,7 +10,9 @@ describe("metabot > experimental", () => {
     const mockResponse = () => {
       mockAgentEndpoint({
         events: [
+          { type: "text-start", id: "t1" },
           { type: "text-delta", id: "t1", delta: "Before" },
+          { type: "text-end", id: "t1" },
           {
             type: "tool-input-available",
             toolCallId: "debug_test",
@@ -23,7 +25,9 @@ describe("metabot > experimental", () => {
             toolName: "debug_test",
             output: "",
           },
+          { type: "text-start", id: "t2" },
           { type: "text-delta", id: "t2", delta: "After" },
+          { type: "text-end", id: "t2" },
           { type: "finish" },
           "[DONE]",
         ],

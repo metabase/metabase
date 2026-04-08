@@ -6,7 +6,6 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-// v6 tool call: received via tool-input-available event
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
   toolName: Yup.string().required(),
@@ -19,7 +18,6 @@ export type ToolCallPart = {
   input: unknown;
 };
 
-// v6 tool result: received via tool-output-available event
 export const toolResultPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
   toolName: Yup.string().required(),
@@ -32,7 +30,6 @@ export type ToolResultPart = {
   output: unknown;
 };
 
-// v6 data parts use "data-{subtype}" naming
 export const knownDataPartTypes = [
   "data-navigate_to",
   "data-state",

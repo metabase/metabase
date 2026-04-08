@@ -14,11 +14,13 @@ import { AIQuestionAnalysisButton } from "./AIQuestionAnalysisButton";
 const mockAgentEndpoint = () =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", {
     events: [
+      { type: "text-start", id: "t1" },
       {
         type: "text-delta",
         id: "t1",
         delta: "Here is an analysis of the chart.",
       },
+      { type: "text-end", id: "t1" },
       { type: "finish" },
       "[DONE]",
     ],

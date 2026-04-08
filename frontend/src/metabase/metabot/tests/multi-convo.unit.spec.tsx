@@ -52,7 +52,9 @@ describe("multi-convo support", () => {
     // ACT
     mockAgentEndpoint({
       events: [
+        { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "Test 1 response" },
+        { type: "text-end", id: "t1" },
         { type: "finish" },
         "[DONE]",
       ],
@@ -62,7 +64,9 @@ describe("multi-convo support", () => {
 
     mockAgentEndpoint({
       events: [
+        { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "Test 2 response" },
+        { type: "text-end", id: "t1" },
         { type: "finish" },
         "[DONE]",
       ],
@@ -97,7 +101,9 @@ describe("multi-convo support", () => {
     const { hook, store } = setup({ agentIds: ["test_1"] });
     mockAgentEndpoint({
       events: [
+        { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "response" },
+        { type: "text-end", id: "t1" },
         { type: "finish" },
         "[DONE]",
       ],

@@ -244,4 +244,8 @@ const mockCodeEditResponse = (sql: string) =>
   ]);
 
 const mockTextOnlyResponse = (text: string) =>
-  H.sseBody([{ type: "text-delta", id: "t1", delta: text }]);
+  H.sseBody([
+    { type: "text-start", id: "t1" },
+    { type: "text-delta", id: "t1", delta: text },
+    { type: "text-end", id: "t1" },
+  ]);

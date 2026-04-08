@@ -29,9 +29,7 @@ function isKnownDataPart(part: ParsedStreamPart): part is Extract<
 > & {
   value: KnownDataPart;
 } {
-  return (
-    part.name === "data" && knownDataPartTypes.includes(part.value.type as any)
-  );
+  return part.name === "data" && knownDataPartTypes.includes(part.value.type);
 }
 
 type AccumulatedStreamParts = {
@@ -131,7 +129,7 @@ export interface ProcessedChatResponse extends AccumulatedStreamParts {
 }
 
 /**
- * Processes an SSE stream that follows the AI SDK v6 protocol and notifies
+ * Processes an SSE stream that follows our AI response and notifies
  * the appropriate handlers as text, data, tool call, etc. parts come in.
  *
  * This function does not error on aborted requests and will return whatever
@@ -192,47 +190,35 @@ export async function processChatResponse(
  * is a lifecycle event that doesn't produce a stream part.
  */
 function sseEventToParsedPart(event: SSEEvent): ParsedStreamPart | null {
-  const { type } = event;
-
-  switch (type) {
-    // Text: only emit on text-delta (start/end are lifecycle)
-    case "text-delta":
-      return { name: "text", value: event.delta };
-
-    // Tool call: emit when input is available (start is lifecycle)
+  switch (event.type) {
+    case "text-delta": {
+      return {
+        name: "text",
+        value: event.delta,
+      };
+    }
     case "tool-input-available": {
-      const validated = toolCallPartSchema.validateSync(event, {
-        strict: false,
-      });
       return {
         name: "tool_call",
-        value: validated as ToolCallPart,
+        value: toolCallPartSchema.validateSync(event, {
+          strict: false,
+        }),
       };
     }
-
-    // Tool result: emit when output is available
     case "tool-output-available": {
-      const validated = toolResultPartSchema.validateSync(event, {
-        strict: false,
-      });
       return {
         name: "tool_result",
-        value: validated as ToolResultPart,
+        value: toolResultPartSchema.validateSync(event, {
+          strict: false,
+        }),
       };
     }
-
-    // Error
-    case "error":
-      return {
-        name: "error",
-        value: (event as { type: "error"; errorText: string }).errorText,
-      };
-
-    // Finish
-    case "finish":
+    case "error": {
+      return { name: "error", value: event.errorText };
+    }
+    case "finish": {
       return { name: "finish", value: undefined };
-
-    // Lifecycle events we ignore
+    }
     case "start":
     case "start-step":
     case "finish-step":
@@ -243,18 +229,16 @@ function sseEventToParsedPart(event: SSEEvent): ParsedStreamPart | null {
       return null;
 
     default: {
-      // Data parts: type starts with "data-"
-      const eventType: string = type;
-      if (eventType.startsWith("data-")) {
+      if (event.type.startsWith("data-")) {
         return {
           name: "data",
           value: {
-            type: eventType,
-            data: (event as { data: unknown }).data,
+            type: event.type,
+            data: event.data,
           },
         };
       }
-      console.warn(`Received unknown SSE event type: ${eventType}`);
+      console.warn(`Received unknown SSE event type: ${event.type}`);
       return null;
     }
   }

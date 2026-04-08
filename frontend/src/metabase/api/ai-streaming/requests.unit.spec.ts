@@ -50,7 +50,9 @@ describe("ai requests", () => {
     it("should call callbacks for relevant chunk types", async () => {
       mockStreamedEndpoint(endpoint, {
         events: [
+          { type: "text-start", id: "t1" },
           { type: "text-delta", id: "t1", delta: "Testing" },
+          { type: "text-end", id: "t1" },
           { type: "data-state", id: "d1", data: {} },
           {
             type: "tool-input-available",
@@ -174,7 +176,9 @@ describe("ai requests", () => {
 });
 
 const whoIsYourFavoriteResponse = [
+  { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+  { type: "text-end", id: "t1" },
   { type: "data-state", id: "d1", data: { queries: {} } },
   { type: "finish" },
   "[DONE]",
