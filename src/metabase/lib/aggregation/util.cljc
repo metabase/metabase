@@ -11,8 +11,8 @@
   (let [base-name-fn  (lib.util.unique-name-generator/non-truncating-unique-name-generator)
         taken-name-fn (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
     (doseq [clause clauses
-            :let [base-name (lib.metadata.calculation/column-name-method query stage-number clause)]
-            clause-name (lib.options/clause-name clause)]
+            :let [base-name (lib.metadata.calculation/column-name-method query stage-number clause)
+                  clause-name (lib.options/clause-name clause)]]
       (base-name-fn base-name)
       (taken-name-fn (or clause-name base-name)))
     (let [new-name (base-name-fn (lib.metadata.calculation/column-name-method query stage-number new-clause))]

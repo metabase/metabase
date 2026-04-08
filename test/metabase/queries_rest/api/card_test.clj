@@ -4829,6 +4829,6 @@
       (is (=? {:database (mt/id)
                :type     "query"
                :query    {:source-table (mt/id :orders)
-                          :aggregation  [["count"]]}}
+                          :aggregation  [["aggregation-options" ["count"] {:name "count"}]]}}
               (-> (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)) :legacy-mbql true)
                   :dataset_query))))))
