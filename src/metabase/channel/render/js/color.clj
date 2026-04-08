@@ -74,13 +74,9 @@
   `get-background-color` on each cell."
   [{:keys [cols rows]} :- QueryResults
    viz-settings]
-  ;; Ideally we'd convert everything to JS data before invoking the function below, but converting rows would be
-  ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
-  ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
-  ;; code. We do however need to handle BigDecimals as Graal won't convert these
   (let [converted-rows (convert-bignumbers-by-column rows)]
     (js.engine/execute-fn-name (js-engine) "makeCellBackgroundGetter"
-                               converted-rows
+                               (json/encode converted-rows)
                                (json/encode cols)
                                (json/encode viz-settings))))
 
