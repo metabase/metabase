@@ -55,7 +55,8 @@
                                       ")"))
           "\n  Return: " (str/replace (with-out-str
                                         #_{:clj-kondo/ignore [:discouraged-var]}
-                                        (pp/pprint (:schema (:values return) :any)))
+                                        (pp/pprint (:schema (:values return) :any)
+                                                   {:max-width 120}))
                                       "\n"
                                       "\n          ")
           (when (not-empty doc)
