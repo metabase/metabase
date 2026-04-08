@@ -106,10 +106,12 @@
                            [:source [:ref ::source]]
                            [:operations [:sequential [:ref ::top-level-op]]]]})
 
-(def ^{:doc "Malli schema for structured-program sources."} source-schema
+(def source-schema
+  "Malli schema for structured-program sources."
   [:schema {:registry registry} [:ref ::source]])
 
-(def ^{:doc "Malli schema for full structured MBQL programs."} program-schema
+(def program-schema
+  "Malli schema for full structured MBQL programs."
   [:schema {:registry registry} [:ref ::program]])
 
 (defn validated-structure

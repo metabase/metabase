@@ -21,8 +21,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^{:doc "Unsupported helper rewrite guidance keyed by unsupported operator name."}
-  unsupported-rewrite-catalog
+(def unsupported-rewrite-catalog
+  "Unsupported helper rewrite guidance keyed by unsupported operator name."
   {"avg-where"
    {:summary       "`avg-where` is not supported."
     :prompt-notes  ["Do not invent lookalike helpers. `avg-where` does not exist."

@@ -43,8 +43,8 @@
 
 (validate-top-level-coverage!)
 
-(def ^{:doc "Schema form for all valid top-level structured query transforms, ordered from the top-level capability catalog."}
-  query-transform-form
+(def query-transform-form
+  "Schema form for all valid top-level structured query transforms, ordered from the top-level capability catalog."
   (into [:or]
         (map top-level-operation-schemas)
         top-level-op-names))

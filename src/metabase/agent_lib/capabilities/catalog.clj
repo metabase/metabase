@@ -12,8 +12,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^{:doc "Capability entries grouped into review-friendly sections."}
-  grouped-capability-catalog
+(def grouped-capability-catalog
+  "Capability entries grouped into review-friendly sections."
   [{:group :top-level          :capabilities top-level/capabilities}
    {:group :sources            :capabilities sources/capabilities}
    {:group :filtering          :capabilities filtering/capabilities}
@@ -22,8 +22,8 @@
    {:group :expressions        :capabilities expressions/capabilities}
    {:group :joins              :capabilities joins/capabilities}])
 
-(def ^{:doc "Ordered structured-program capability metadata assembled from the grouped catalog."}
-  raw-capability-catalog
+(def raw-capability-catalog
+  "Ordered structured-program capability metadata assembled from the grouped catalog."
   (into []
         (mapcat :capabilities)
         grouped-capability-catalog))

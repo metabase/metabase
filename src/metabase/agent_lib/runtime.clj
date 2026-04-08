@@ -29,20 +29,19 @@
    ;; Query-dependent refs are wired at runtime build time.
    'aggregation-ref           nil})
 
-(def ^{:doc "Trusted structured helper implementations keyed by operator symbol."}
-  trusted-helper-bindings
+(def trusted-helper-bindings
+  "Trusted structured helper implementations keyed by operator symbol."
   (merge capabilities/trusted-helper-bindings
          extra-helper-bindings))
 
-(def ^{:doc "Top-level structured query-transform operator symbols."}
-  query-transform-symbols
+(def query-transform-symbols
+  "Top-level structured query-transform operator symbols."
   capabilities/query-transform-symbols)
 
-(def ^{:doc "All helper symbols accepted by the structured runtime."}
-  helper-symbols
+(def helper-symbols
+  "All helper symbols accepted by the structured runtime."
   (into capabilities/helper-symbols
         (keys extra-helper-bindings)))
-
 (defn op-symbol
   "Normalize helper identifiers into canonical operator symbols."
   [op]

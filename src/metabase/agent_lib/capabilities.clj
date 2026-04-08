@@ -9,8 +9,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^{:doc "Ordered structured-program capability metadata used for repair, validation, and prompts."}
-  raw-capability-catalog
+(def raw-capability-catalog
+  "Ordered structured-program capability metadata used for repair, validation, and prompts."
   catalog/raw-capability-catalog)
 
 (def ^:private guidance-keys
@@ -48,8 +48,8 @@
     (cond-> (apply dissoc capability guidance-keys)
       guidance (assoc :guidance guidance))))
 
-(def ^{:doc "Ordered structured-program capability metadata keyed into structural fields plus nested guidance."}
-  capability-catalog
+(def capability-catalog
+  "Ordered structured-program capability metadata keyed into structural fields plus nested guidance."
   (mapv split-guidance raw-capability-catalog))
 
 (defn- validate-capability-catalog!
@@ -88,30 +88,38 @@
   [capability]
   (derived/guidance-example capability))
 
-(def ^{:doc "Capability metadata keyed by operator symbol."} capability-by-op
+(def capability-by-op
+  "Capability metadata keyed by operator symbol."
   (derived/capability-by-op capability-catalog))
 
-(def ^{:doc "Structured helper arities keyed by operator symbol."} fixed-arities
+(def fixed-arities
+  "Structured helper arities keyed by operator symbol."
   (derived/fixed-arities capability-catalog))
 
-(def ^{:doc "Trusted helper implementations keyed by operator symbol."} trusted-helper-bindings
+(def trusted-helper-bindings
+  "Trusted helper implementations keyed by operator symbol."
   (derived/trusted-helper-bindings capability-catalog))
 
-(def ^{:doc "Top-level structured query-transform operator symbols."} query-transform-symbols
+(def query-transform-symbols
+  "Top-level structured query-transform operator symbols."
   (derived/query-transform-symbols capability-catalog))
 
-(def ^{:doc "All structured helper symbols accepted by the evaluator."} helper-symbols
+(def helper-symbols
+  "All structured helper symbols accepted by the evaluator."
   (derived/helper-symbols capability-catalog capabilities.synthetic/synthetic-helper-symbols))
 
-(def ^{:doc "String names for nested structured helper operators."} nested-operator-values
+(def nested-operator-values
+  "String names for nested structured helper operators."
   (derived/nested-operator-values capability-catalog))
 
-(def ^{:doc "String names for top-level structured operations."} top-level-operator-values
+(def top-level-operator-values
+  "String names for top-level structured operations."
   (derived/top-level-operator-values capability-catalog))
 
-(def ^{:doc "Retry guidance keyed by canonical operator name."} operator-guidance-catalog
+(def operator-guidance-catalog
+  "Retry guidance keyed by canonical operator name."
   (derived/operator-guidance-catalog capability-catalog))
 
-(def ^{:doc "Unsupported helper rewrite guidance keyed by unsupported operator name."}
-  unsupported-rewrite-catalog
+(def unsupported-rewrite-catalog
+  "Unsupported helper rewrite guidance keyed by unsupported operator name."
   unsupported/unsupported-rewrite-catalog)

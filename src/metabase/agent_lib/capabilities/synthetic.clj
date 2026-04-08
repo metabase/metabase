@@ -4,6 +4,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^{:doc "Synthetic helper symbols accepted by the structured evaluator."}
-  synthetic-helper-symbols
+(def synthetic-helper-symbols
+  "Synthetic helper symbols accepted by the structured evaluator."
   '#{query})
