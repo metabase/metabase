@@ -1,4 +1,5 @@
 export { parseSSEStream } from "./stream";
+export { isDataEvent } from "./types";
 export type {
   DataEvent,
   ErrorEvent,

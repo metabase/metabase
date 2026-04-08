@@ -1,136 +1,39 @@
 import { isMatching } from "ts-pattern";
 
-import type { SSEEvent } from "metabase/lib/ai-sdk";
-import { parseSSEStream } from "metabase/lib/ai-sdk";
+import type {
+  SSEEvent,
+  ToolInputAvailableEvent,
+  ToolOutputAvailableEvent,
+} from "metabase/lib/ai-sdk";
+import { isDataEvent, parseSSEStream } from "metabase/lib/ai-sdk";
 import type { MetabotHistory } from "metabase-types/api";
 
-import {
-  type KnownDataPart,
-  type ToolCallPart,
-  type ToolResultPart,
-  knownDataPartTypes,
-  toolCallPartSchema,
-  toolResultPartSchema,
-} from "./schemas";
+import { type KnownDataPart, knownDataPartTypes } from "./schemas";
 
-type ParsedStreamPart =
-  | { name: "text"; value: string }
-  | { name: "data"; value: KnownDataPart | { type: string; data: unknown } }
-  | { name: "tool_call"; value: ToolCallPart }
-  | { name: "tool_result"; value: ToolResultPart }
-  | { name: "error"; value: unknown }
-  | { name: "finish"; value: undefined };
+type ToolCall =
+  | { toolCallId: string; toolName: string; state: "call" }
+  | { toolCallId: string; toolName: string; state: "result"; value: unknown };
 
-type ParsedStreamPartName = ParsedStreamPart["name"];
-
-function isKnownDataPart(part: ParsedStreamPart): part is Extract<
-  ParsedStreamPart,
-  { name: "data" }
-> & {
-  value: KnownDataPart;
-} {
-  return part.name === "data" && knownDataPartTypes.includes(part.value.type);
-}
-
-type AccumulatedStreamParts = {
-  toolCalls: (
-    | { toolCallId: string; toolName: string; state: "call" }
-    | { toolCallId: string; toolName: string; state: "result"; value: unknown }
-  )[];
-  text: null | string;
-  data: unknown[];
-  parts: ParsedStreamPart[];
-  history: MetabotHistory;
-};
-
-function accumulateStreamParts(streamParts: ParsedStreamPart[]) {
-  const acc: AccumulatedStreamParts = {
-    toolCalls: [],
-    data: [],
-    text: null,
-    parts: streamParts,
-    history: [],
-  };
-
-  return streamParts.reduce((acc, streamPart, index) => {
-    if (streamPart.name === "text") {
-      const lastStreamPart = streamParts[index - 1];
-      acc.text = `${acc.text ?? ""}${streamPart.value}`;
-      if (lastStreamPart?.name === "text") {
-        const historyEntry = acc.history.pop();
-        acc.history.push({
-          ...historyEntry,
-          content: historyEntry.content + streamPart.value,
-        });
-      } else {
-        acc.history.push({ role: "assistant", content: streamPart.value });
-      }
-    }
-    if (streamPart.name === "data") {
-      acc.data = acc.data.concat(streamPart.value);
-    }
-    if (streamPart.name === "tool_call") {
-      acc.toolCalls.push({ ...streamPart.value, state: "call" });
-      acc.history.push({
-        role: "assistant",
-        tool_calls: [
-          {
-            id: streamPart.value.toolCallId,
-            name: streamPart.value.toolName,
-            arguments:
-              typeof streamPart.value.input === "string"
-                ? streamPart.value.input
-                : JSON.stringify(streamPart.value.input),
-          },
-        ],
-      });
-    }
-    if (streamPart.name === "tool_result") {
-      const toolCallId = streamPart.value.toolCallId;
-      const index = acc.toolCalls.findIndex((v) => v.toolCallId === toolCallId);
-
-      if (index === -1) {
-        throw new Error(
-          "Tool Results must be preceded by the tool call with the same toolCallId",
-        );
-      }
-
-      acc.toolCalls[index] = {
-        ...acc.toolCalls[index],
-        state: "result",
-        value: streamPart.value.output,
-      };
-      acc.history.push({
-        role: "tool",
-        content: streamPart.value.output,
-        tool_call_id: streamPart.value.toolCallId,
-      });
-    }
-
-    return acc;
-  }, acc);
-}
-
-type StreamPartValue<name extends ParsedStreamPartName> = Extract<
-  ParsedStreamPart,
-  { name: name }
->["value"];
+type DataPart = { type: string; data: unknown };
 
 export type AIStreamingConfig = {
-  onTextPart?: (part: StreamPartValue<"text">) => void;
+  onTextPart?: (delta: string) => void;
   onDataPart?: (part: KnownDataPart) => void;
-  onToolCallPart?: (part: StreamPartValue<"tool_call">) => void;
-  onToolResultPart?: (part: StreamPartValue<"tool_result">) => void;
-  onError?: (error: StreamPartValue<"error">) => void;
+  onToolCallPart?: (event: ToolInputAvailableEvent) => void;
+  onToolResultPart?: (event: ToolOutputAvailableEvent) => void;
+  onError?: (errorText: string) => void;
 };
 
-export interface ProcessedChatResponse extends AccumulatedStreamParts {
+export interface ProcessedChatResponse {
   aborted: boolean;
+  toolCalls: ToolCall[];
+  history: MetabotHistory;
+  data: DataPart[];
 }
 
 /**
- * Processes an SSE stream that follows our AI response and notifies
- * the appropriate handlers as text, data, tool call, etc. parts come in.
+ * Processes an SSE stream that follows the AI SDK v6 protocol and notifies
+ * the appropriate handlers as events arrive.
  *
  * This function does not error on aborted requests and will return whatever
  * values that it has received so far as a result.
@@ -139,107 +42,115 @@ export async function processChatResponse(
   stream: ReadableStream<Uint8Array>,
   config: AIStreamingConfig,
 ): Promise<ProcessedChatResponse> {
-  const parsedStreamParts: ParsedStreamPart[] = [];
-  let aborted = false;
+  const result: ProcessedChatResponse = {
+    aborted: false,
+    toolCalls: [],
+    history: [],
+    data: [],
+  };
 
   try {
     for await (const event of parseSSEStream(stream)) {
-      const part = sseEventToParsedPart(event);
-      if (!part) {
-        continue;
-      }
-
-      parsedStreamParts.push(part);
-
-      if (part.name === "text") {
-        config.onTextPart?.(part.value);
-      }
-      if (part.name === "data") {
-        if (isKnownDataPart(part)) {
-          config.onDataPart?.(part.value);
-        } else {
-          console.warn("Skipping unknown data part:", part);
-        }
-      }
-      if (part.name === "tool_call") {
-        config.onToolCallPart?.(part.value);
-      }
-      if (part.name === "tool_result") {
-        config.onToolResultPart?.(part.value);
-      }
-      if (part.name === "error") {
-        config.onError?.(part.value);
-      }
+      processEvent(event, result, config);
     }
   } catch (err) {
     if (isMatching({ name: "AbortError" }, err)) {
-      aborted = true;
+      result.aborted = true;
     } else {
       throw err;
     }
   }
 
-  return {
-    ...accumulateStreamParts(parsedStreamParts),
-    aborted,
-  };
+  return result;
 }
 
-/**
- * Convert an SSE event to a ParsedStreamPart, or null if the event
- * is a lifecycle event that doesn't produce a stream part.
- */
-function sseEventToParsedPart(event: SSEEvent): ParsedStreamPart | null {
+function processEvent(
+  event: SSEEvent,
+  result: ProcessedChatResponse,
+  config: AIStreamingConfig,
+) {
   switch (event.type) {
     case "text-delta": {
-      return {
-        name: "text",
-        value: event.delta,
-      };
+      config.onTextPart?.(event.delta);
+      const lastEntry = result.history[result.history.length - 1];
+      if (
+        lastEntry &&
+        lastEntry.role === "assistant" &&
+        "content" in lastEntry
+      ) {
+        lastEntry.content += event.delta;
+      } else {
+        result.history.push({ role: "assistant", content: event.delta });
+      }
+      break;
     }
+
     case "tool-input-available": {
-      return {
-        name: "tool_call",
-        value: toolCallPartSchema.validateSync(event, {
-          strict: false,
-        }),
-      };
+      config.onToolCallPart?.(event);
+      result.toolCalls.push({
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+        state: "call",
+      });
+      result.history.push({
+        role: "assistant",
+        tool_calls: [
+          {
+            id: event.toolCallId,
+            name: event.toolName,
+            arguments:
+              typeof event.input === "string"
+                ? event.input
+                : JSON.stringify(event.input),
+          },
+        ],
+      });
+      break;
     }
+
     case "tool-output-available": {
-      return {
-        name: "tool_result",
-        value: toolResultPartSchema.validateSync(event, {
-          strict: false,
-        }),
+      const index = result.toolCalls.findIndex(
+        (tc) => tc.toolCallId === event.toolCallId,
+      );
+      if (index === -1) {
+        throw new Error(
+          "Tool Results must be preceded by the tool call with the same toolCallId",
+        );
+      }
+      config.onToolResultPart?.(event);
+      result.toolCalls[index] = {
+        ...result.toolCalls[index],
+        state: "result",
+        value: event.output,
       };
+      result.history.push({
+        role: "tool",
+        content: event.output,
+        tool_call_id: event.toolCallId,
+      });
+      break;
     }
+
     case "error": {
-      return { name: "error", value: event.errorText };
+      config.onError?.(event.errorText);
+      break;
     }
-    case "finish": {
-      return { name: "finish", value: undefined };
-    }
-    case "start":
-    case "start-step":
-    case "finish-step":
-    case "text-start":
-    case "text-end":
-    case "tool-input-start":
-    case "tool-input-delta":
-      return null;
 
     default: {
-      if (event.type.startsWith("data-")) {
-        return {
-          name: "data",
-          value: {
-            type: event.type,
-            data: event.data,
-          },
-        };
+      // "data-*" event type
+      if (isDataEvent(event)) {
+        const dataPart: DataPart = { type: event.type, data: event.data };
+        result.data.push(dataPart);
+        if (knownDataPartTypes.includes(event.type)) {
+          config.onDataPart?.(dataPart as KnownDataPart);
+        } else {
+          console.warn("Skipping unknown data part:", dataPart);
+        }
       }
-      console.warn(`Received unknown SSE event type: ${event.type}`);
-      return null;
+
+      // NOTE: Lifecycle events (start, start-step, finish-step, text-start,
+      // text-end, tool-input-start, tool-input-delta, finish) are currently ignored.
+      break;
     }
   }
 }

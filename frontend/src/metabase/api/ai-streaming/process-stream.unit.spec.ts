@@ -142,7 +142,6 @@ describe("processChatResponse", () => {
     });
 
     const result = await processChatResponse(mockStream, expectNoStreamedError);
-    expect(result.text).toEqual("You, but don't tell anyone.");
     expect(result.history).toEqual([
       { content: "You, but don't tell anyone.", role: "assistant" },
     ]);

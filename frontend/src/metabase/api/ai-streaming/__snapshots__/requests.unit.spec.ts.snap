@@ -17,26 +17,6 @@ exports[`ai requests aiStreamingQuery should return full result of a successful 
       "role": "assistant",
     },
   ],
-  "parts": [
-    {
-      "name": "text",
-      "value": "You, but don't tell anyone.",
-    },
-    {
-      "name": "data",
-      "value": {
-        "data": {
-          "queries": {},
-        },
-        "type": "data-state",
-      },
-    },
-    {
-      "name": "finish",
-      "value": undefined,
-    },
-  ],
-  "text": "You, but don't tell anyone.",
   "toolCalls": [],
 }
 `;

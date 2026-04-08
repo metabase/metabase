@@ -65,3 +65,7 @@ export type SSEEvent =
   | ToolOutputAvailableEvent
   | ErrorEvent
   | DataEvent;
+
+export function isDataEvent(event: SSEEvent): event is DataEvent {
+  return event.type.startsWith("data-");
+}

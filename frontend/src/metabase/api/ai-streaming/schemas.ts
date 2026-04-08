@@ -1,34 +1,8 @@
-import * as Yup from "yup";
-
 import type {
   MetabotCodeEdit,
   MetabotTodoItem,
   SuggestedTransform,
 } from "metabase-types/api";
-
-export const toolCallPartSchema = Yup.object({
-  toolCallId: Yup.string().required(),
-  toolName: Yup.string().required(),
-  input: Yup.mixed(),
-});
-
-export type ToolCallPart = {
-  toolCallId: string;
-  toolName: string;
-  input: unknown;
-};
-
-export const toolResultPartSchema = Yup.object({
-  toolCallId: Yup.string().required(),
-  toolName: Yup.string().required(),
-  output: Yup.mixed(),
-});
-
-export type ToolResultPart = {
-  toolCallId: string;
-  toolName: string;
-  output: unknown;
-};
 
 export const knownDataPartTypes = [
   "data-navigate_to",

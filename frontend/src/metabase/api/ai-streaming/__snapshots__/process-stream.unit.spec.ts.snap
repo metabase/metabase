@@ -32,51 +32,11 @@ exports[`processChatResponse should be able to process a valid stream 1`] = `
       "tool_call_id": "x",
     },
   ],
-  "parts": [
-    {
-      "name": "text",
-      "value": "You, but don't tell anyone.",
-    },
-    {
-      "name": "data",
-      "value": {
-        "data": {
-          "queries": {},
-        },
-        "type": "data-state",
-      },
-    },
-    {
-      "name": "tool_call",
-      "value": {
-        "input": "",
-        "toolCallId": "x",
-        "toolName": "x",
-        "type": "tool-input-available",
-      },
-    },
-    {
-      "name": "tool_result",
-      "value": {
-        "output": "",
-        "toolCallId": "x",
-        "toolName": "x",
-        "type": "tool-output-available",
-      },
-    },
-    {
-      "name": "finish",
-      "value": undefined,
-    },
-  ],
-  "text": "You, but don't tell anyone.",
   "toolCalls": [
     {
-      "input": "",
       "state": "result",
       "toolCallId": "x",
       "toolName": "x",
-      "type": "tool-input-available",
       "value": "",
     },
   ],
@@ -100,22 +60,6 @@ exports[`processChatResponse should resolve with partial response for aborted re
       "role": "assistant",
     },
   ],
-  "parts": [
-    {
-      "name": "text",
-      "value": "Partial response",
-    },
-    {
-      "name": "data",
-      "value": {
-        "data": {
-          "testing": 123,
-        },
-        "type": "data-state",
-      },
-    },
-  ],
-  "text": "Partial response",
   "toolCalls": [],
 }
 `;
