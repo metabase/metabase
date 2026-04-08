@@ -926,7 +926,7 @@
           query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib.metadata/metric mp 1)))
           stage        (get-in query [:stages 0])]
-      (is (=? [:sum {:name (symbol "nil #_\"key is not present.\"")} [:field {} pos-int?]]
+      (is (=? [:sum {:name "sum"} [:field {} pos-int?]]
               (get-in (#'metrics/fetch-referenced-metrics query stage)
                       [1 :aggregation]))))))
 
