@@ -357,16 +357,19 @@
   (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
     (if (dev-only-plugin? plugin)
       ;; dev-only: re-fetch manifest from dev server
-      (when-let [dev-url (cache/resolve-dev-bundle id)]
-        (when-let [manifest (cache/fetch-dev-manifest dev-url)]
-          (let [manifest-str (json/encode manifest)
-                version-str  (get-in manifest [:metabase :version])]
-            (t2/update! :model/CustomVizPlugin id
-                        {:display_name     (or (:name manifest) (:identifier plugin))
-                         :icon             (:icon manifest)
-                         :manifest         manifest-str
-                         :metabase_version version-str}))))
-      (cache/fetch-and-update! plugin {:force? true}))
+      (let [dev-url  (or (cache/resolve-dev-bundle id)
+                         (throw (ex-info "No dev server URL configured" {:status-code 404})))
+            manifest (or (cache/fetch-dev-manifest dev-url)
+                         (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
+            manifest-str (json/encode manifest)
+            version-str  (get-in manifest [:metabase :version])]
+        (t2/update! :model/CustomVizPlugin id
+                    {:display_name     (or (:name manifest) (:identifier plugin))
+                     :icon             (:icon manifest)
+                     :icon_dark        (:icon_dark manifest)
+                     :manifest         manifest-str
+                     :metabase_version version-str}))
+      (cache/fetch-and-update! plugin))
     (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))
 
 (def routes
