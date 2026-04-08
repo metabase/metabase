@@ -28,6 +28,11 @@
   [_model _instance]
   api/*is-superuser?*)
 
+(methodical/defmethod mi/to-json :model/CustomVizPlugin
+  "Never include the access token in JSON."
+  [plugin json-generator]
+  (next-method (dissoc plugin :access_token) json-generator))
+
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/make-spec "CustomVizPlugin"

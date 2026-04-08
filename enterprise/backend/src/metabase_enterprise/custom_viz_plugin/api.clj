@@ -72,12 +72,6 @@
       (str/split #"/")
       last))
 
-;; TODO: this should be guarded automatically through a custom mi/to-json defmethod
-(defn- strip-token
-  "Remove access_token from plugin map before returning to client."
-  [plugin]
-  (dissoc plugin :access_token))
-
 (defn- parse-manifest-json
   "Parse the manifest JSON string stored in the DB into a map for the response."
   [manifest-str]
@@ -90,7 +84,6 @@
   "Convert a plugin record to API response format (keyword status -> string)."
   [plugin]
   (-> plugin
-      strip-token
       (update :status name)
       (update :manifest parse-manifest-json)
       (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))
