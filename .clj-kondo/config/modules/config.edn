@@ -125,8 +125,7 @@
   {:team "Gadget"
    :ns-prefix "metabase.actions-rest"
    :api  #{metabase.actions-rest.api}
-   :uses #{actions
-           analytics
+   :uses #{analytics
            api
            collections
            lib
@@ -582,7 +581,6 @@
            metabase.collections-rest.init}
    :uses #{api
            app-db
-           collections
            eid-translation
            events
            lib-be
@@ -711,7 +709,6 @@
            channel
            collections
            collections.rest
-           dashboards
            eid-translation
            embedding
            events
@@ -923,7 +920,6 @@
            dashboards
            database-routing
            eid-translation
-           embedding
            events
            models
            notification
@@ -1474,7 +1470,6 @@
    :uses #{api
            audit-app
            events
-           permissions
            premium-features
            request
            settings
@@ -1562,7 +1557,6 @@
            lib
            models
            parameters
-           public-sharing
            queries
            query-processor
            request
@@ -1684,7 +1678,6 @@
            parameters
            permissions
            public-sharing
-           queries
            query-permissions
            query-processor
            request
@@ -1982,7 +1975,6 @@
    :api  #{metabase.settings-rest.api}
    :uses #{api
            permissions
-           settings
            util}}
 
   setup
@@ -2007,7 +1999,6 @@
            events
            request
            settings
-           setup
            system
            util}
    :model-imports #{:model/AuthIdentity :model/User}}
@@ -2312,7 +2303,6 @@
    :uses #{api
            models
            request
-           transforms
            transforms-base
            util}
    :model-imports #{:model/Transform
@@ -2412,7 +2402,6 @@
            sso
            system
            tenants
-           users
            util
            enterprise/advanced-permissions}
    :model-imports #{:model/AuthIdentity
@@ -2517,7 +2506,6 @@
            types
            upload
            util
-           warehouse-schema
            xrays}
    :model-imports #{:model/Database
                     :model/Dimension
@@ -2579,7 +2567,6 @@
            upload
            util
            warehouse-schema
-           warehouses
            enterprise/advanced-permissions}
    :model-imports #{:model/Card
                     :model/Collection

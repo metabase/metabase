@@ -150,17 +150,27 @@
 
     - same module
     - parent → descendant (any depth)
+    - descendant → ancestor (any depth)
     - siblings (same direct parent)
 
-  Crucially it is NOT the case for descendant → parent: a child can still
-  see its parent, but only through the parent's `:api` (same as any other
-  outside caller would).
+  In other words, any two modules that share a direct parent-child-or-
+  sibling relationship in the nesting tree trust each other's internals
+  fully. This is the subsystem model: a nested subtree forms a unit of
+  internal trust, and the `:api` only gates access from OUTSIDE the
+  subtree.
+
+  This is the nesting-based replacement for `:friends`: to convert a
+  `:friends` relationship into a nested one, simply nest the friended
+  module as a child (or parent, or sibling) of the target — the symmetric
+  internal-visibility rule then provides the same reach that `:friends`
+  used to grant, without needing a special config entry.
 
   Returns a proper boolean."
   [viewer viewed]
   (boolean
    (or (= viewer viewed)
        (ancestor? viewer viewed)
+       (ancestor? viewed viewer)
        (siblings? viewer viewed))))
 
 ;;;; -------------------------------------------------------------------------
