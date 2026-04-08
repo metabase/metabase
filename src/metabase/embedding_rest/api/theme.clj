@@ -58,7 +58,7 @@
                 settings (assoc :settings settings)))
   (t2/select-one :model/EmbeddingTheme :id id))
 
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- :nil
   "Delete an embedding theme."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
