@@ -17,6 +17,8 @@ export function applyDefaultVisualizationProps(
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
     hidden: false,
+    minSize: vizDef.minSize,
+    defaultSize: vizDef.defaultSize,
     ...overrides,
   } satisfies Partial<Record<keyof Visualization, unknown>>);
 }
