@@ -10,6 +10,7 @@ import {
   useSearchListQuery,
 } from "metabase/common/hooks";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -74,6 +75,7 @@ export const useCommandPaletteBasicActions = ({
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
@@ -260,10 +262,12 @@ export const useCommandPaletteBasicActions = ({
       },
     );
 
-    actions.push({
-      id: "navigate-data-studio",
-      perform: () => dispatch(push("/data-studio")),
-    });
+    if (hasDataStudioAccess) {
+      actions.push({
+        id: "navigate-data-studio",
+        perform: () => dispatch(push("/data-studio")),
+      });
+    }
 
     const browseActions: RegisterShortcutProps[] = [
       {
@@ -299,6 +303,7 @@ export const useCommandPaletteBasicActions = ({
   }, [
     dispatch,
     hasDataAccess,
+    hasDataStudioAccess,
     hasNativeWrite,
     collectionId,
     openNewModal,
