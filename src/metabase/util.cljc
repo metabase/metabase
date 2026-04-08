@@ -539,10 +539,11 @@
   (^String [^String s]
    (slugify s {}))
   (^String [s :- [:maybe :string]
-            {:keys [max-length unicode?]} :- [:map
-                                              {:closed true}
-                                              [:max-length {:optional true} pos-int?]
-                                              [:unicode?   {:optional true} boolean?]]]
+            {:keys [max-length unicode?]} :- [:maybe
+                                              [:map
+                                               {:closed true}
+                                               [:max-length {:optional true} pos-int?]
+                                               [:unicode?   {:optional true} any?]]]]
    (when (seq s)
      (cond->> (remove-diacritical-marks (lower-case-en s))
        true (map #(slugify-char % (not unicode?)))
