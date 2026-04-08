@@ -1,4 +1,5 @@
-import { Flex, Icon } from "metabase/ui";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { Flex } from "metabase/ui";
 import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
 import type { CustomVizPlugin } from "metabase-types/api";
 
@@ -10,6 +11,7 @@ const ICON_SIZE = 20;
 
 export function CustomVizIcon({ plugin }: Props) {
   const iconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
+  const iconDarkUrl = getPluginAssetUrl(plugin.id, plugin.icon_dark);
   const dimmed = !plugin.enabled;
 
   return (
@@ -17,6 +19,7 @@ export function CustomVizIcon({ plugin }: Props) {
       align="center"
       bd="1px solid var(--mb-color-border)"
       bdrs="xl"
+      bg="background-secondary"
       justify="center"
       opacity={dimmed ? 0.6 : undefined}
       w="3.125rem"
@@ -25,21 +28,15 @@ export function CustomVizIcon({ plugin }: Props) {
         flexShrink: 0,
       }}
     >
-      {iconUrl ? (
-        <img
-          alt={plugin.display_name}
-          height={ICON_SIZE}
-          src={iconUrl}
-          style={dimmed ? { filter: "grayscale(1)", opacity: 0.6 } : undefined}
-          width={ICON_SIZE}
-        />
-      ) : (
-        <Icon
-          c={dimmed ? "text-secondary" : undefined}
-          name="unknown"
-          size={ICON_SIZE}
-        />
-      )}
+      <EntityIcon
+        alt={plugin.display_name}
+        color={dimmed ? "text-secondary" : undefined}
+        iconUrl={iconUrl}
+        iconDarkUrl={iconDarkUrl}
+        name="unknown"
+        size={ICON_SIZE}
+        style={dimmed ? { filter: "grayscale(1)", opacity: 0.6 } : undefined}
+      />
     </Flex>
   );
 }

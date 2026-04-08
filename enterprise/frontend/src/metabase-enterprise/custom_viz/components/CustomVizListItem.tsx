@@ -95,10 +95,11 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
           )}
         </Stack>
       </Group>
+
       <Box
-        onClick={(e: React.MouseEvent) => {
-          e.preventDefault();
-          e.stopPropagation();
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
         }}
       >
         <Menu>
