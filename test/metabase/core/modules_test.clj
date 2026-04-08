@@ -141,9 +141,15 @@
 (deftest ^:parallel modules-config-up-to-date-test
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
-    (let [deps     (dev.deps-graph/dependencies)
-          expected (dev.deps-graph/generate-config deps (dev.deps-graph/kondo-config))
-          actual   (dev.deps-graph/kondo-config)
+    ;; Compute dependencies with awareness of the declared module set, so
+    ;; nested modules (e.g. `lib.schema` as a child of `lib`) resolve via
+    ;; longest-prefix matching. Without declared modules passed in,
+    ;; dependencies uses the flat first-segment fallback — which is the
+    ;; correct behavior when no nested modules are declared.
+    (let [actual   (dev.deps-graph/kondo-config)
+          declared (set (keys actual))
+          deps     (dev.deps-graph/dependencies declared)
+          expected (dev.deps-graph/generate-config deps actual)
           modules  (set/union (set (keys expected))
                               (set (keys actual)))]
       (doseq [module modules

@@ -48,11 +48,37 @@
   (mapcat ns.find/find-sources-in-dir
           (list* (source-root) (enterprise-source-root) (drivers-source-roots))))
 
+(defn- module-split
+  "Split a module symbol into `[ns-part name-parts-vec]`. See the doc on
+  `hooks.common.modules/split-module` — this is a mirror."
+  [m]
+  [(namespace m) (str/split (name m) #"\.")])
+
+(defn- module-join
+  "Inverse of `module-split`."
+  [[ns-part name-parts]]
+  (if ns-part
+    (symbol ns-part (str/join "." name-parts))
+    (symbol (str/join "." name-parts))))
+
+(defn- module-candidates
+  "For a given `[ns-part suffix-dotted]`, return the seq of candidate module
+  symbols the namespace could resolve to, from longest-prefix to single
+  segment. Mirror of `hooks.common.modules/candidate-modules`."
+  [[ns-part suffix]]
+  (let [parts (str/split suffix #"\.")]
+    (for [n (range (count parts) 0 -1)]
+      (module-join [ns-part (take n parts)]))))
+
 (mu/defn- module :- [:maybe symbol?]
   "E.g.
 
     (module 'metabase.qp.middleware.wow) => 'qp
     (module 'metabase-enterprise.whatever.core) => enterprise/whatever
+
+  With a `declared-modules` set (optional), performs longest-prefix matching
+  against the declared modules. With no set or no match, falls back to
+  single-segment extraction (the current flat-config behavior).
 
   MIRROR: this is a deliberate duplicate of the canonical
   `hooks.common.modules/module` function in `.clj-kondo/src/hooks/common/modules.clj`.
@@ -65,13 +91,31 @@
   the file-path-based version in `mage/src/mage/modules.clj/file->module`.
   The test `metabase.core.modules-consistency-test` verifies all three
   agree by comparing their regex literals."
-  [ns-symb :- simple-symbol?]
-  (or (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
-               second
-               (symbol "enterprise"))
-      (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
-              second
-              symbol)))
+  ([ns-symb :- simple-symbol?]
+   (module nil ns-symb))
+  ([declared-modules :- [:maybe [:set symbol?]]
+    ns-symb :- simple-symbol?]
+   (or
+    ;; Longest-prefix match against the declared set, if we have one.
+    (when (seq declared-modules)
+      (let [stripped (cond
+                       (re-find #"^metabase-enterprise\." (str ns-symb))
+                       ["enterprise" (subs (str ns-symb) (count "metabase-enterprise."))]
+
+                       (re-find #"^metabase\." (str ns-symb))
+                       [nil (subs (str ns-symb) (count "metabase."))]
+
+                       :else nil)]
+        (when stripped
+          (first (filter declared-modules (module-candidates stripped))))))
+    ;; Fallback: single-segment extraction. Regex literals preserved
+    ;; byte-for-byte to match the kondo hook for the consistency test.
+    (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
+             second
+             (symbol "enterprise"))
+    (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
+            second
+            symbol))))
 
 (def ^:private require-symbols
   '#{require
@@ -246,45 +290,48 @@
                                               [:namespace simple-symbol?]
                                               [:module    symbol?]
                                               [:dynamic {:optional true} :keyword]]]]]
-  [file :- [:or
-            string?
-            [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
-  (try
-    (let [decl         (ns.file/read-file-ns-decl file)
-          ns-symb      (ns.parse/name-from-ns-decl decl)
-          static-deps  (ns.parse/deps-from-ns-decl decl)
-          dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
-                         (vary-meta symb assoc ::dynamic :require-and-friends))
-          ;;
-          ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
-          ;; rationale.
-          ;;
-          ;; defenterprise-deps (for [symb (find-defenterprises file)]
-          ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
-          ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
-          ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
-          deps         (into (sorted-set) cat
-                             [static-deps
-                              dynamic-deps
-                              #_defenterprise-deps
-                              #_defenterprise-schema-deps])]
-      {:namespace ns-symb
-       :filename  (file->path-relative-to-project-root file)
-       :module    (module ns-symb)
-       :deps      (sort-by pr-str
-                           (keep (fn [required-ns]
-                                   (when-let [module (module required-ns)]
-                                     (when-not (some-> ignored-dependencies ns-symb required-ns)
-                                       (merge
-                                        {:namespace required-ns
-                                         :module    module}
-                                        (when-let [dynamic-type (::dynamic (meta required-ns))]
-                                          {:dynamic dynamic-type})))))
-                                 deps))})
-    (catch Throwable e
-      (throw (ex-info (format "Error calculating dependencies for %s" file)
-                      {:file file}
-                      e)))))
+  ([file]
+   (file-dependencies nil file))
+  ([declared-modules :- [:maybe [:set symbol?]]
+    file :- [:or
+             string?
+             [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
+   (try
+     (let [decl         (ns.file/read-file-ns-decl file)
+           ns-symb      (ns.parse/name-from-ns-decl decl)
+           static-deps  (ns.parse/deps-from-ns-decl decl)
+           dynamic-deps (for [symb (find-dynamically-loaded-namespaces file)]
+                          (vary-meta symb assoc ::dynamic :require-and-friends))
+           ;;
+           ;; excluded from the diff for now, see https://metaboat.slack.com/archives/C0669P4AF9N/p1745875106092029 for
+           ;; rationale.
+           ;;
+           ;; defenterprise-deps (for [symb (find-defenterprises file)]
+           ;;                      (vary-meta symb assoc ::dynamic :defenterprise))
+           ;; defenterprise-schema-deps (for [symb (find-defenterprise-schemas file)]
+           ;;                             (vary-meta symb assoc ::dynamic :defenterprise-schema))
+           deps         (into (sorted-set) cat
+                              [static-deps
+                               dynamic-deps
+                               #_defenterprise-deps
+                               #_defenterprise-schema-deps])]
+       {:namespace ns-symb
+        :filename  (file->path-relative-to-project-root file)
+        :module    (module declared-modules ns-symb)
+        :deps      (sort-by pr-str
+                            (keep (fn [required-ns]
+                                    (when-let [module (module declared-modules required-ns)]
+                                      (when-not (some-> ignored-dependencies ns-symb required-ns)
+                                        (merge
+                                         {:namespace required-ns
+                                          :module    module}
+                                         (when-let [dynamic-type (::dynamic (meta required-ns))]
+                                           {:dynamic dynamic-type})))))
+                                  deps))})
+     (catch Throwable e
+       (throw (ex-info (format "Error calculating dependencies for %s" file)
+                       {:file file}
+                       e))))))
 
 (comment
   (file-dependencies "src/metabase/app_db/setup.clj")
@@ -295,9 +342,16 @@
 
 (defn dependencies
   "Calculate information about all the modules dependencies for all *SOURCE* files in the Metabase project by parsing
-  the files."
-  []
-  (pmap file-dependencies (find-source-files)))
+  the files.
+
+  With `declared-modules`, uses longest-prefix matching against the declared
+  module set for namespace→module resolution. Without it, uses the flat
+  single-segment extraction — the pre-nested-modules behavior."
+  ([]
+   (dependencies nil))
+  ([declared-modules]
+   (let [fd (partial file-dependencies declared-modules)]
+     (pmap fd (find-source-files)))))
 
 (defn external-usages
   "All usages of a module named by `module-symb` outside that module."
@@ -436,16 +490,70 @@
                [k (count v)]))
         (full-dependencies deps)))
 
+(defn- module-parent
+  "Direct parent of a module symbol, or nil if top-level.
+  Mirror of `hooks.common.modules/parent-module`."
+  [m]
+  (let [[ns-part parts] (module-split m)]
+    (when (> (count parts) 1)
+      (module-join [ns-part (butlast parts)]))))
+
+(defn- module-ancestor-chain [m]
+  (take-while some? (iterate module-parent (module-parent m))))
+
+(defn- module-ancestor? [maybe-ancestor maybe-descendant]
+  (boolean (some #(= maybe-ancestor %) (module-ancestor-chain maybe-descendant))))
+
+(defn- module-siblings? [a b]
+  (let [pa (module-parent a)
+        pb (module-parent b)]
+    (and pa pb (= pa pb))))
+
+(defn- module-internally-visible?
+  "Mirror of `hooks.common.modules/internally-visible?`: viewer can see
+  viewed's internals without :api check if they share a subtree in the
+  nested module hierarchy."
+  [viewer viewed]
+  (or (= viewer viewed)
+      (module-ancestor? viewer viewed)
+      (module-siblings? viewer viewed)))
+
+(defn- filter-implicit-deps
+  "Remove dependencies that are implicit under nested-module visibility rules:
+  a module does not need to declare its descendants or siblings in its `:uses`
+  because those are internally visible by construction.
+
+  Operates on a single module's raw dep set."
+  [module dep-set]
+  (into (empty dep-set)
+        (remove #(module-internally-visible? module %))
+        dep-set))
+
 (defn generate-config
-  "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."
+  "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`.
+
+  Under nested modules, the set of declared modules is determined from the
+  current Kondo config — `generate-config` reads the config to learn which
+  modules (including nested ones) have been declared, then uses longest-prefix
+  matching to assign each namespace to its owning module. Dependencies that
+  are implicit under nested-module visibility rules (parent → descendant,
+  siblings) are filtered out of each module's generated `:uses` so that the
+  config doesn't list them redundantly.
+
+  For backwards compatibility the 2-arity form still accepts pre-computed
+  `deps`. When called that way, the caller is responsible for having
+  computed `deps` with the correct declared-modules set (or without one,
+  for the flat behavior)."
   ([]
-   (generate-config (dependencies) (kondo-config)))
+   (let [kc       (kondo-config)
+         declared (set (keys kc))]
+     (generate-config (dependencies declared) kc)))
 
   ([deps kondo-config]
    (into (sorted-map)
          (map (fn [[module uses]]
                 [module {:api  (externally-used-namespaces-ignoring-friends deps kondo-config module)
-                         :uses uses}]))
+                         :uses (filter-implicit-deps module uses)}]))
          (module-dependencies deps))))
 
 (defn kondo-config
