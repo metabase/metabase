@@ -1276,7 +1276,7 @@
         (when expr-dim
           (let [response (dataset-request
                           {:expression  [:metric {:lib/uuid "a"} (:id metric)]
-                           :projections [{:type :metric :id (:id metric)
+                           :projections [{:type :metric :id (:id metric) :lib/uuid "a"
                                           :projection [[:dimension {} (:id expr-dim)]]}]})]
             (is (= "completed" (:status response)))
             (is (< 1 (:row_count response)))))))))
