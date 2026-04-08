@@ -8,44 +8,36 @@
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.semver4j Semver)))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Version Parsing ------------------------------------------------
 
-(def ^:private ParsedVersion
-  "Version vector: numeric segments from before any `-suffix`, plus a pre-release
-   sentinel (0=pre-release, 1=stable). Variable length — works with 3-segment
-   (v0.57.3), 4-segment (v0.55.17.5), or any other format."
-  [:vector :int])
-
 (def ^:private QueryResult
   "Result of executing a matching query: true (matched), false (no match), or :error."
   [:or :boolean [:= :error]])
 
-;; TODO (Ngoc - 2026-04-01) - consider using semver4j once it's available in the codebase
-(mu/defn parse-version :- [:maybe ParsedVersion]
-  "Parse a version string loosely into a comparable int vector.
-   Extracts numeric segments before any `-suffix`, appends a pre-release sentinel
-   (0=pre-release, 1=stable). Returns nil if no numeric segments found."
+(mu/defn parse-version :- [:maybe [:fn #(instance? Semver %)]]
+  "Parse a version string into a Semver instance. Returns nil on failure.
+   Handles Metabase version strings like \"v0.55.3\", \"0.55.17.5\", \"v1.2.3-RC1\"."
   [version-string :- [:maybe :string]]
-  (when-let [segments (some->> version-string
-                               (re-matcher #"[^-]+")
-                               re-find
-                               (re-seq #"\d+")
-                               (mapv parse-long)
-                               seq)]
-    (conj (vec segments) (if (re-find #"-\w" version-string) 0 1))))
+  (when version-string
+    (try
+      (Semver/coerce version-string)
+      (catch Exception _
+        nil))))
 
 (defn- version-in-range?
-  "True if `version` (parsed triple) is >= min and < fixed."
-  [version {:keys [min fixed]}]
-  (let [min-v   (parse-version min)
-        fixed-v (parse-version fixed)]
+  "True if `version` is >= min and < fixed."
+  [^Semver version {:keys [min fixed]}]
+  (let [^Semver min-v   (parse-version min)
+        ^Semver fixed-v (parse-version fixed)]
     (and min-v fixed-v
-         (>= (compare version min-v) 0)
-         (neg? (compare version fixed-v)))))
+         (.isGreaterThanOrEqualTo version min-v)
+         (.isLowerThan version fixed-v))))
 
 (defn- affected-by-version?
   "True if `version` falls in any of the affected version ranges."
@@ -99,7 +91,7 @@
    Does not perform I/O — call [[execute-matching-query!]] separately to obtain `query-result`.
    `query-result` is true (matched), false (no match), or :error."
   [advisory         :- [:map [:affected_versions ::schema/affected-versions]]
-   instance-version :- [:maybe ParsedVersion]
+   instance-version :- [:maybe [:fn #(instance? Semver %)]]
    query-result     :- QueryResult]
   (cond
     (= query-result :error)

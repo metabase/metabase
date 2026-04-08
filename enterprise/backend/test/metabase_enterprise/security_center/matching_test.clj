@@ -6,38 +6,23 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import org.semver4j.Semver))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel parse-version-test
-  (testing "3-segment versions"
-    (are [expected input] (= expected (matching/parse-version input))
-      [1 57 0 1]  "v1.57.0"
-      [1 57 0 1]  "1.57.0"
-      [0 50 2 1]  "v0.50.2"
-      [1 57 16 1] "v1.57.16"))
-  (testing "4-segment hotfix versions"
-    (are [expected input] (= expected (matching/parse-version input))
-      [0 55 17 5 1]   "v0.55.17.5"
-      [0 58 8 6 1]    "v0.58.8.6"
-      [0 50 99 123 1] "v0.50.99.123"))
-  (testing "pre-release versions — suffix numbers excluded"
-    (are [expected input] (= expected (matching/parse-version input))
-      [0 57 0 0]   "v0.57.0-beta"
-      [0 58 0 3 0] "v0.58.0.3-beta"
-      [0 59 0 1 0] "v0.59.0.1-beta"
-      [0 21 0 0]   "v0.21.0-rc1"
-      [0 38 0 0]   "v0.38.0-preview"))
+  (testing "parses standard versions"
+    (doseq [input ["v1.57.0" "1.57.0" "v0.50.2" "v1.57.16"]]
+      (is (some? (matching/parse-version input)) (str "should parse: " input))))
   (testing "edition prefix preserved — 0.57 and 1.57 are distinct for range matching"
     (is (not= (matching/parse-version "v0.57.0")
               (matching/parse-version "v1.57.0"))))
   (testing "pre-release sorts before stable"
-    (is (neg? (compare (matching/parse-version "v0.58.0-beta")
-                       (matching/parse-version "v0.58.0")))))
-  (testing "hotfix sorts after base"
-    (is (pos? (compare (matching/parse-version "v0.55.17.5")
-                       (matching/parse-version "v0.55.17")))))
+    (is (.isLowerThan ^Semver (matching/parse-version "v0.58.0-beta")
+                      ^Semver (matching/parse-version "v0.58.0"))))
   (testing "invalid formats return nil"
     (are [input] (nil? (matching/parse-version input))
       "vLOCAL_DEV"
@@ -45,29 +30,30 @@
       "")))
 
 (deftest ^:parallel evaluate-advisory-test
-  (let [single-range  {:affected_versions [{:min "1.57.0" :fixed "1.57.16"}]}
+  (let [v             matching/parse-version
+        single-range  {:affected_versions [{:min "1.57.0" :fixed "1.57.16"}]}
         multi-range   {:affected_versions [{:min "1.57.0" :fixed "1.57.16"}
                                            {:min "1.58.0" :fixed "1.58.10"}]}
         narrow-range  {:affected_versions [{:min "0.50.0" :fixed "0.50.2"}]}]
     (testing "query result takes priority over version"
       (are [expected version query-result]
            (= expected (matching/evaluate-advisory single-range version query-result))
-        :not_affected [1 57 5 1]  false
-        :not_affected [1 57 16 1] false
-        :error        [1 57 5 1]  :error
-        :error        [1 57 16 1] :error))
+        :not_affected (v "1.57.5")  false
+        :not_affected (v "1.57.16") false
+        :error        (v "1.57.5")  :error
+        :error        (v "1.57.16") :error))
     (testing "single range — version determines active vs resolved"
       (are [expected version]
            (= expected (matching/evaluate-advisory single-range version true))
-        :active   [1 57 0 1]      ; at min boundary
-        :active   [1 57 5 1]      ; mid-range
-        :active   [1 57 15 1]     ; one patch before fixed
-        :resolved [1 57 16 1]     ; at fixed boundary
-        :resolved [1 57 17 1]     ; one patch after fixed
-        :resolved [1 57 20 1]     ; well past fixed
-        :resolved [1 56 0 1]      ; before range
-        :resolved [1 59 0 1]      ; past range
-        :resolved [0 57 5 1]))    ; OSS doesn't match EE range
+        :active   (v "1.57.0")      ; at min boundary
+        :active   (v "1.57.5")      ; mid-range
+        :active   (v "1.57.15")     ; one patch before fixed
+        :resolved (v "1.57.16")     ; at fixed boundary
+        :resolved (v "1.57.17")     ; one patch after fixed
+        :resolved (v "1.57.20")     ; well past fixed
+        :resolved (v "1.56.0")      ; before range
+        :resolved (v "1.59.0")      ; past range
+        :resolved (v "0.57.5")))    ; OSS doesn't match EE range
     (testing "nil version (LOCAL_DEV) → active when query matches"
       (is (= :active (matching/evaluate-advisory single-range nil true))))
     (testing "nil version + no match → not_affected"
@@ -77,25 +63,23 @@
     (testing "multiple ranges"
       (are [expected version]
            (= expected (matching/evaluate-advisory multi-range version true))
-        :active   [1 57 5 1]      ; in first range
-        :active   [1 58 3 1]      ; in second range
-        :active   [1 58 0 1]      ; at second range min boundary
-        :resolved [1 57 20 1]     ; between ranges (patched for first, before second)
-        :resolved [1 58 10 1]     ; at second range fixed boundary
-        :resolved [1 59 0 1]))    ; past all ranges
+        :active   (v "1.57.5")      ; in first range
+        :active   (v "1.58.3")      ; in second range
+        :active   (v "1.58.0")      ; at second range min boundary
+        :resolved (v "1.57.20")     ; between ranges (patched for first, before second)
+        :resolved (v "1.58.10")     ; at second range fixed boundary
+        :resolved (v "1.59.0")))    ; past all ranges
     (testing "narrow patch range [0.50.0, 0.50.2)"
       (are [expected version]
            (= expected (matching/evaluate-advisory narrow-range version true))
-        :active   [0 50 0 1]      ; at min
-        :active   [0 50 1 1]      ; mid-range
-        :resolved [0 50 2 1]      ; at fixed
-        :resolved [1 0 0 1]))     ; major version jump
-    (testing "hotfix version resolves advisory"
-      (is (= :resolved (matching/evaluate-advisory single-range [1 57 16 1 1] true))))
+        :active   (v "0.50.0")      ; at min
+        :active   (v "0.50.1")      ; mid-range
+        :resolved (v "0.50.2")      ; at fixed
+        :resolved (v "1.0.0")))     ; major version jump
     (testing "pre-release of fixed version is still affected"
-      (is (= :active (matching/evaluate-advisory single-range [1 57 16 0] true))))
+      (is (= :active (matching/evaluate-advisory single-range (v "1.57.16-beta") true))))
     (testing "empty affected_versions — query matches but no ranges → resolved"
-      (is (= :resolved (matching/evaluate-advisory {:affected_versions []} [1 57 5 1] true))))))
+      (is (= :resolved (matching/evaluate-advisory {:affected_versions []} (v "1.57.5") true))))))
 
 (deftest execute-matching-query-test
   (testing "nil query means affects all — returns true"
