@@ -50,6 +50,9 @@
                                         (constantly ::serdes/skip))
                               :import identity}}})
 
+(defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
+  identifier)
+
 (defmethod serdes/generate-path "CustomVizPlugin" [_ entity]
   [{:model "CustomVizPlugin"
     :id    (:identifier entity)
@@ -58,6 +61,10 @@
 (defmethod serdes/hash-fields :model/CustomVizPlugin
   [_model]
   [:identifier])
+
+(defmethod serdes/load-find-local "CustomVizPlugin" [path]
+  (let [{:keys [id]} (last path)]
+    (t2/select-one :model/CustomVizPlugin :identifier id)))
 
 (defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
   [{:label "custom-viz-plugins"} {:label (:identifier entity)}])
