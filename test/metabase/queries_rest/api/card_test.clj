@@ -4833,12 +4833,12 @@
               (-> (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)) :legacy-mbql true)
                   :dataset_query))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |              result_metadata persistence with parameters (QUE2-502)                                            |
-;;; |              See also: metabase.dashboards-rest.api-test (dashboard endpoint tests for MBQL cards)              |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; +--------------------------------------------------------------------------------------------------+
+;;; |       result_metadata persistence with parameters (QUE2-502)                                     |
+;;; |       See also: metabase.dashboards-rest.api-test (dashboard endpoint tests for MBQL cards)      |
+;;; +--------------------------------------------------------------------------------------------------+
 
-(deftest parameterized-native-card-does-not-persist-result-metadata-test
+(deftest parameterized-native-card-does-not-persist-result-metadata-test ; QUE2-502
   (testing "POST /api/card/:id/query — native card with non-default parameter values should not update result_metadata"
     (let [query (mt/native-query
                  {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
@@ -4865,7 +4865,7 @@
                  (t2/select-one-fn :result_metadata :model/Card :id card-id))
               "result_metadata should not change when native card is run with non-default parameter values"))))))
 
-(deftest native-card-with-default-parameters-persists-result-metadata-test
+(deftest native-card-with-default-parameters-persists-result-metadata-test ; QUE2-502
   (testing "POST /api/card/:id/query — native card with default parameter values SHOULD update result_metadata"
     (let [query (mt/native-query
                  {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"

@@ -5492,12 +5492,13 @@
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |              result_metadata persistence with parameters (QUE2-502)                                            |
-;;; |              See also: metabase.queries-rest.api.card-test (card endpoint tests for native cards)               |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; +--------------------------------------------------------------------------------------------------+
+;;; |       result_metadata persistence with parameters (QUE2-502)                                     |
+;;; |       See also: metabase.queries-rest.api.card-test (card endpoint tests for native cards)       |
+;;; +--------------------------------------------------------------------------------------------------+
 
 (deftest parameterized-mbql-dashcard-does-not-persist-result-metadata-test
+  ;; QUE2-502
   (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — MBQL card with parameters should not update result_metadata"
     (mt/with-temp [:model/Card          {card-id :id}
                    {:dataset_query (mt/mbql-query orders
@@ -5534,6 +5535,7 @@
               "result_metadata should remain stable across different parameter values"))))))
 
 (deftest parameterized-native-dashcard-does-not-persist-result-metadata-test
+  ;; QUE2-502
   (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — native card with non-default parameters should not update result_metadata"
     (let [native-query (mt/native-query
                         {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
@@ -5571,6 +5573,7 @@
                 "result_metadata should not change when native dashcard is run with non-default parameter values")))))))
 
 (deftest native-dashcard-with-default-parameters-persists-result-metadata-test
+  ;; QUE2-502
   (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — native card with default parameter values SHOULD update result_metadata"
     (let [native-query (mt/native-query
                         {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"

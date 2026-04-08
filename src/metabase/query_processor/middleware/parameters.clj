@@ -112,7 +112,7 @@
                                          (not= value default)))))]
         (some non-default-param? params)))))
 
-(defn- determine-result-metadata-persistence
+(defn- maybe-skip-result-metadata-persistence
   "Sets :qp/skip-result-metadata-persistence to true/false."
   [query]
   (->> (:stages query)
@@ -138,7 +138,7 @@
 
     (seq parameters)
     (-> (move-top-level-params-to-stage* parameters)
-        determine-result-metadata-persistence)))
+        maybe-skip-result-metadata-persistence)))
 
 (mu/defn- expand-parameters :- ::lib.schema/query
   "If any parameters were supplied then substitute them into the query."
