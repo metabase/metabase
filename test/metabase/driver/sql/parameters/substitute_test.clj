@@ -29,6 +29,14 @@
     (mt/with-metadata-provider meta/metadata-provider
       (sql.params.substitute/substitute parsed param->value))))
 
+;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
+;; TIMEZONE FIXME
+(defn- sql-parameters-engines []
+  (set (for [driver (mt/normal-drivers-with-feature :native-parameters)
+             :when  (and (isa? driver/hierarchy driver :sql)
+                         (not= driver :redshift))]
+         driver)))
+
 (deftest ^:parallel substitute-test
   (testing "normal substitution"
     (is (= ["select * from foobars where bird_type = ?" ["Steller's Jay"]]
@@ -157,8 +165,6 @@
             [sql _args] (mt/with-metadata-provider metadata-provider
                           (sql.params.substitute/substitute query {"tag" field-filter}))]
         (testing "The SQL identifier should include the parent field 'result' before 'tag_name'"
-          ;; Currently this FAILS: the identifier is "PUBLIC"."VENUES"."tag_name" (missing "result")
-          ;; It should be "PUBLIC"."VENUES"."result"."tag_name"
           (let [[exp-identifier] (sql.qp/format-honeysql driver/*driver*
                                                          (h2x/identifier :field "result" "tag_name"))]
             (is (str/includes? sql exp-identifier)
@@ -953,14 +959,6 @@
   [table-name]
   `(let [sql# (:query (qp.compile/compile (mt/mbql-query ~table-name)))]
      (second (re-find #"(?m)FROM\s+([^\s()]+)" sql#))))
-
-;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
-;; TIMEZONE FIXME
-(defn- sql-parameters-engines []
-  (set (for [driver (mt/normal-drivers-with-feature :native-parameters)
-             :when  (and (isa? driver/hierarchy driver :sql)
-                         (not= driver :redshift))]
-         driver)))
 
 (defn- process-native [& {:as query}]
   (qp/process-query

@@ -891,12 +891,12 @@
   nil)
 
 (defn- parent-id->ancestor-names
-  "Walk the parent chain for a field with `:parent-id` set and return the ancestor field names in order.
-  For example, if field `tag_name` has parent `result`, returns `[\"result\"]`.
-  If `tag_name` has parent `post` which has parent `result`, returns `[\"result\" \"post\"]`."
+  "Walk the parent chain for a field with `:parent-id` set and return the ancestor field names, \"oldest\" first.
+  For example, if field `c` has parent `b`, returns `[\"b\"]`.
+  If `c` has parent `b` which has parent `a`, returns `[\"a\" \"b\"]`."
   [parent-id]
-  (loop [id parent-id
-         path (list)]
+  (loop [id   parent-id
+         path ()]
     (if-not id
       (vec path)
       (let [parent (driver-api/field (driver-api/metadata-provider) id)]
