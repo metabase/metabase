@@ -1,4 +1,4 @@
-(ns metabase-enterprise.database-routing.model
+(ns metabase-enterprise.database-routing.models
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
    [metabase.models.interface :as mi]
