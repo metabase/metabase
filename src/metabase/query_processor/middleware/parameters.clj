@@ -118,6 +118,8 @@
   (->> (:stages query)
        (some stage-has-non-default-params?)
        boolean
+       ;; `qp/skip-result-metadata-persistence` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]]
+       ;; to decide whether to record metadata.
        (assoc query :qp/skip-result-metadata-persistence)))
 
 (mu/defn- move-top-level-params-to-stage :- ::lib.schema/query
