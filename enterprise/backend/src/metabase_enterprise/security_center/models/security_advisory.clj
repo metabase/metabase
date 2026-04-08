@@ -27,10 +27,9 @@
   [_model k advisories]
   (let [user-ids (keep :acknowledged_by advisories)
         id->user (when (seq user-ids)
-                   (into {}
-                         (map (juxt :id #(select-keys % [:id :common_name :email])))
-                         (t2/select [:model/User :id :first_name :last_name :email]
-                                    :id [:in (set user-ids)])))]
+                   (t2/select-fn->fn :id #(select-keys % [:id :common_name :email])
+                                     [:model/User :id :first_name :last_name :email]
+                                     :id [:in (set user-ids)]))]
     (mi/instances-with-hydrated-data
      advisories k
      (constantly id->user)
