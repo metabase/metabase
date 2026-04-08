@@ -3,10 +3,7 @@ import * as Snowplow from "@snowplow/browser-tracker";
 import { shouldLogAnalytics } from "metabase/env";
 import Settings from "metabase/lib/settings";
 import type { SchemaEvent, SchemaType } from "metabase-types/analytics";
-import type {
-  SimpleEvent,
-  SimpleEventSchema,
-} from "metabase-types/analytics/event";
+import type { SimpleEventSchema } from "metabase-types/analytics/event";
 
 export * from "./analytics-untyped";
 
@@ -37,17 +34,10 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   upsell: "1-0-0",
 };
 
-/**
- * Track a simple event. Accepts either:
- * - A known SimpleEvent from the central union type
- * - Any event conforming to SimpleEventSchema (for feature-local event types)
- */
-export function trackSimpleEvent(event: SimpleEvent): void;
 export function trackSimpleEvent<
   T extends SimpleEventSchema &
     Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
->(event: T): void;
-export function trackSimpleEvent(event: SimpleEventSchema) {
+>(event: T) {
   trackSchemaEvent("simple_event", event as SchemaEvent);
 }
 
