@@ -410,18 +410,23 @@
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))
 
-(deftest ^:parallel resolve-target-schema-test
-  (testing "resolve-target-schema fills in nil schema from driver default"
-    (testing "nil schema is resolved to driver's default"
-      (is (= {:schema "public" :name "my_table"}
-             (transforms-base.u/resolve-target-schema :postgres {:name "my_table"})))
-      (is (= {:schema "public" :name "my_table"}
-             (transforms-base.u/resolve-target-schema :postgres {:schema nil :name "my_table"}))))
+(deftest resolve-target-schema-test
+  (testing "resolve-target-schema infers schema from existing tables in the database"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    _t1 {:db_id (:id db) :name "existing_table" :schema "public" :active true}]
+      (testing "nil schema is resolved from existing tables"
+        (is (= {:schema "public" :name "my_table"}
+               (transforms-base.u/resolve-target-schema (:id db) {:name "my_table"})))
+        (is (= {:schema "public" :name "my_table"}
+               (transforms-base.u/resolve-target-schema (:id db) {:schema nil :name "my_table"})))))
+
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    _t1 {:db_id (:id db) :name "existing_table" :schema nil :active true}]
+      (testing "nil schema stays nil when existing tables also have nil schema"
+        (is (= {:schema nil :name "my_table"}
+               (transforms-base.u/resolve-target-schema (:id db) {:schema nil :name "my_table"})))))
 
     (testing "explicit schema is preserved"
-      (is (= {:schema "custom_schema" :name "my_table"}
-             (transforms-base.u/resolve-target-schema :postgres {:schema "custom_schema" :name "my_table"}))))
-
-    (testing "H2 driver returns uppercase PUBLIC"
-      (is (= {:schema "PUBLIC" :name "my_table"}
-             (transforms-base.u/resolve-target-schema :h2 {:name "my_table"}))))))
+      (mt/with-temp [:model/Database db {}]
+        (is (= {:schema "custom_schema" :name "my_table"}
+               (transforms-base.u/resolve-target-schema (:id db) {:schema "custom_schema" :name "my_table"})))))))
