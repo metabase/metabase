@@ -1,15 +1,17 @@
 (ns metabase-enterprise.metabot-analytics.api
   "`/api/ee/metabot-analytics/` endpoints for AI/Metabot usage analytics.
-  These only work if you have a premium token with the `:audit-app` feature."
+  These only work if you have a premium token with the `:audit-app` feature.
+
+  Handlers stay thin: auth + param coercion + delegation. The HoneySQL and
+  response assembly live in `metabase-enterprise.metabot-analytics.conversations`."
   (:require
+   [metabase-enterprise.metabot-analytics.conversations :as analytics.conversations]
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.metabot.persistence :as metabot-persistence]
    [metabase.request.core :as request]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,94 +92,24 @@
 
 ;;; -------------------------------------------------- Endpoints --------------------------------------------------
 
-(def ^:private first-assistant-model-subquery
-  "Correlated subquery selecting the `profile_id` of the earliest non-deleted assistant message
-   for the outer `metabot_conversation` row aliased as `c`."
-  {:select   [:mm.profile_id]
-   :from     [[:metabot_message :mm]]
-   :where    [:and
-              [:= :mm.conversation_id :c.id]
-              [:= :mm.role "assistant"]
-              [:= :mm.deleted_at nil]]
-   :order-by [[:mm.created_at :asc]]
-   :limit    1})
-
 (api.macros/defendpoint :get "/conversations" :- ListConversationsResponse
   "Return paginated list of AI conversations with summary statistics."
   [_route-params
    {:keys [user-id sort-by sort-dir]} :- ListConversationsParams]
   (api/check-superuser)
-  (let [limit        (or (request/limit) 50)
-        offset       (or (request/offset) 0)
-        sort-by-kw   (keyword (or sort-by "created_at"))
-        sort-dir-kw  (if (= sort-dir "asc") :asc :desc)
-        where-clause (when user-id [:= :c.user_id user-id])
-        base-query   {:select    [[:c.id :conversation_id]
-                                  [:c.created_at :created_at]
-                                  [:c.user_id :user_id]
-                                  [:c.summary :summary]
-                                  [[:count :m.id] :message_count]
-                                  [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
-                                  [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
-                                  [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
-                                  [[:max :m.created_at] :last_message_at]
-                                  [first-assistant-model-subquery :model]]
-                      :from      [[:metabot_conversation :c]]
-                      :left-join [[:metabot_message :m] [:and
-                                                         [:= :m.conversation_id :c.id]
-                                                         [:= :m.deleted_at nil]]]
-                      :group-by  [:c.id :c.created_at :c.user_id :c.summary]}
-        query        (cond-> base-query
-                       where-clause (assoc :where where-clause))
-        ;; Count all conversations (including those with no messages, which the LEFT JOIN below also returns).
-        count-query  (cond-> {:select [[[:count :*] :count]]
-                              :from   [[:metabot_conversation :c]]}
-                       where-clause (assoc :where where-clause))
-        total        (or (:count (t2/query-one count-query)) 0)
-        ;; Fetch paginated results. Add :c.id as a stable tiebreaker so pagination is deterministic
-        ;; even when the primary sort key has duplicates (e.g. message_count = 0).
-        results      (t2/query (-> query
-                                   (assoc :order-by [[sort-by-kw sort-dir-kw] [:c.id :asc]])
-                                   (assoc :limit limit)
-                                   (assoc :offset offset)))]
-    {:data   (t2/hydrate (mapv #(t2/instance :model/MetabotConversation %) results) :user)
-     :total  total
-     :limit  limit
-     :offset offset}))
-
-(defn- fetch-conversation-detail
-  "Fetch a conversation with all its messages, user info, and frontend-ready chat messages."
-  [conversation-id]
-  (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
-    (api/check-404 conversation)
-    (let [messages (t2/select :model/MetabotMessage
-                              :conversation_id conversation-id
-                              {:where    [:= :deleted_at nil]
-                               :order-by [[:created_at :asc]]})
-          hydrated (t2/hydrate conversation :user)]
-      {:conversation_id (:id conversation)
-       :created_at      (:created_at conversation)
-       :user_id         (:user_id conversation)
-       :summary         (:summary conversation)
-       :state           (:state conversation)
-       :user            (:user hydrated)
-       :messages        (mapv (fn [m]
-                                {:message_id   (:id m)
-                                 :created_at   (:created_at m)
-                                 :role         (name (:role m))
-                                 :model        (:profile_id m)
-                                 :total_tokens (:total_tokens m)
-                                 :data         (:data m)})
-                              messages)
-       :chat_messages   (metabot-persistence/messages->chat-messages messages)
-       :queries         (analytics.queries/messages->generated-queries messages)})))
+  (analytics.conversations/list-conversations
+   {:user-id  user-id
+    :sort-by  (keyword (or sort-by "created_at"))
+    :sort-dir (if (= sort-dir "asc") :asc :desc)
+    :limit    (or (request/limit) 50)
+    :offset   (or (request/offset) 0)}))
 
 (api.macros/defendpoint :get "/conversations/:id"
   :- ConversationDetail
   "Return full details for a specific conversation including all messages."
   [{:keys [id]} :- ConversationIdParams]
   (api/check-superuser)
-  (fetch-conversation-detail id))
+  (analytics.conversations/fetch-conversation-detail id))
 
 ;;; -------------------------------------------------- Routes --------------------------------------------------
 

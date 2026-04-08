@@ -362,7 +362,4 @@
       ((sync-util/with-duplicate-ops-prevented
         :sync-database audit-db
         (fn []
-          (let [engine-changed? (maybe-load-analytics-content! audit-db)]
-            ;; re-fetch in case the load path swapped the engine row
-            (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-              (maybe-sync-audit-db! audit-db engine-changed?)))))))))
+          (maybe-sync-audit-db! audit-db (maybe-load-analytics-content! audit-db))))))))
