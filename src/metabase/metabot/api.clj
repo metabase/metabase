@@ -303,8 +303,11 @@
 (def ^:private metabot-settings-request-schema
   [:map
    [:provider metabot-provider-schema]
-   [:model {:optional true} ms/NonBlankString]
+   [:model {:optional true} [:maybe :string]]
    [:api-key {:optional true} [:maybe :string]]])
+
+(def ^:private metabase-default-model
+  "anthropic/claude-sonnet-4-6")
 
 (defn- provider-api-key-setting-key
   [provider]
@@ -319,6 +322,13 @@
     (let [trimmed (str/trim value)]
       (when-not (str/blank? trimmed)
         trimmed))))
+
+(defn- effective-provider-model
+  [provider model]
+  (cond
+    (nil? model) nil
+    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabase-default-model
+    :else (non-blank-string model)))
 
 (def ^:private invalid-api-key-statuses
   #{401 403})
@@ -367,9 +377,20 @@
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
+(defn- normalize-metabase-model
+  [model]
+  (update model :id (fn [id]
+                      (when id
+                        (if (str/includes? id "/")
+                          id
+                          (str "anthropic/" id))))))
+
 (defn- decorate-provider-models
   [provider models]
-  (let [decorated-models (map #(decorate-provider-model provider %) models)]
+  (let [models           (if (= provider provider-util/metabase-provider-prefix)
+                           (map normalize-metabase-model models)
+                           models)
+        decorated-models (map #(decorate-provider-model provider %) models)]
     (if (contains? #{"anthropic" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
@@ -383,20 +404,24 @@
   ([provider]
    (provider-models-response provider nil))
   ([provider api-key-override]
-   (let [effective-api-key (or (non-blank-string api-key-override)
-                               (non-blank-string
-                                (metabot.settings/configured-provider-api-key provider)))]
-     (if (and provider effective-api-key)
-       (try
-         {:models (decorate-provider-models
-                   provider
-                   (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
-         (catch clojure.lang.ExceptionInfo e
-           (if (invalid-api-key-error? e)
-             {:models []
-              :api-key-error (.getMessage e)}
-             (throw e))))
-       {:models []}))))
+   (if (= provider provider-util/metabase-provider-prefix)
+     {:models (decorate-provider-models
+               provider
+               (:models (metabot.self/list-models "anthropic" {:ai-proxy? true})))}
+     (let [effective-api-key (or (non-blank-string api-key-override)
+                                 (non-blank-string
+                                  (metabot.settings/configured-provider-api-key provider)))]
+       (if (and provider effective-api-key)
+         (try
+           {:models (decorate-provider-models
+                     provider
+                     (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
+           (catch clojure.lang.ExceptionInfo e
+             (if (invalid-api-key-error? e)
+               {:models []
+                :api-key-error (.getMessage e)}
+               (throw e))))
+         {:models []})))))
 
 (defn- settings-response
   ([provider]
@@ -441,7 +466,8 @@
    _query-params
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
-  (let [{:keys [provider model api-key]} body]
+  (let [{:keys [provider model api-key]} body
+        model (effective-provider-model provider model)]
     (verify-api-key! provider api-key)
     (when (contains? body :api-key)
       (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
