@@ -27,9 +27,6 @@ export function registerCustomVizPlugin(
   applyDefaultVisualizationProps(Component, vizDef, {
     identifier: display,
     getUiName: () => identifier,
-    iconName: "area",
-    /** exclude from chart type picker and visualizer */
-    hidden: true,
   });
   if (!visualizations.has(display)) {
     registerVisualization(Component);

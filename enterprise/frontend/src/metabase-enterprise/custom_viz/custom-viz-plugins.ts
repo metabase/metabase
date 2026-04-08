@@ -304,7 +304,6 @@ export async function loadCustomVizPlugin(
       iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
       minSize: vizDef.minSize,
       defaultSize: vizDef.defaultSize,
-      hidden: false,
     });
 
     // Use registerVisualization for first load; overwrite directly for updates

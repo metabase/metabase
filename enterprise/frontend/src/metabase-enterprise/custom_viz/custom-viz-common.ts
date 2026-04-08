@@ -16,6 +16,7 @@ export function applyDefaultVisualizationProps(
     checkRenderable: vizDef.checkRenderable,
     noHeader: vizDef.noHeader ?? false,
     canSavePng: vizDef.canSavePng ?? false,
+    hidden: false,
     ...overrides,
   } satisfies Partial<Record<keyof Visualization, unknown>>);
 }
