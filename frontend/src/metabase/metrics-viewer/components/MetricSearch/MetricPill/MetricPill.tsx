@@ -3,13 +3,7 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
-import { canAccessDataStudio } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  dataStudioMetric,
-  dataStudioPublishedTableMeasure,
-} from "metabase/lib/urls/data-studio";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -47,7 +41,6 @@ export function MetricPill({
   onOpen,
 }: MetricPillProps) {
   const [popoverState, setPopoverState] = useState<PillPopoverState>("closed");
-  const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
   const { selectedMetricIds, selectedMeasureIds } = useMemo(() => {
     if (metric.sourceType === "metric") {
@@ -117,18 +110,6 @@ export function MetricPill({
     e.stopPropagation();
     setPopoverState("context-menu");
   }, []);
-
-  const handleEditInDataStudio = useCallback(() => {
-    if (metric.sourceType === "measure" && metric.tableId != null) {
-      window.open(
-        dataStudioPublishedTableMeasure(metric.tableId, metric.id),
-        "_blank",
-      );
-    } else {
-      window.open(dataStudioMetric(metric.id), "_blank");
-    }
-    setPopoverState("closed");
-  }, [metric]);
 
   const handleOpenBreakoutPicker = useCallback(() => {
     setPopoverState("breakout-picker");
@@ -248,18 +229,9 @@ export function MetricPill({
               </Menu.Item>
             </>
           )}
-          {(hasDataStudioAccess || metric.sourceType === "metric") && (
-            <Menu.Divider role="separator" />
-          )}
-          {hasDataStudioAccess && (
-            <Menu.Item
-              leftSection={<Icon name="pencil" />}
-              rightSection={<Icon name="external" />}
-              onClick={handleEditInDataStudio}
-            >
-              {t`Edit in Data Studio`}
-            </Menu.Item>
-          )}
+          {metric.sourceType === "metric" &&
+            dimensions.size > 0 &&
+            definition && <Menu.Divider role="separator" />}
           {metric.sourceType === "metric" && (
             <Menu.Item
               leftSection={<Icon name="info" />}

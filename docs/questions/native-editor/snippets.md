@@ -45,7 +45,7 @@ In the [**native editor**](./writing-sql.md):
 
 You can also create a new snippet from the Snippet sidebar:
 
-1. Open the native editor by clicking **+ New > SQL query** or **+ New > Native query**in the top right corner.
+1. Open the native editor by clicking **+ New > SQL query** or **+ New > Native query** in the top right corner.
 2. Open the Snippet sidebar by clicking the **Snippets** button above the editor window
 3. Enter the code that you want to save as a reusable snippet.
 4. Save.
