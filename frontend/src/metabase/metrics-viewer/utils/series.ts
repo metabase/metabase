@@ -12,14 +12,14 @@ import type {
 } from "metabase/metrics-viewer/components/DimensionPillBar";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
-import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
-import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
+import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
   Card,
   CardId,
   Dataset,
+  DatasetColumn,
   DimensionId,
   MetricBreakoutValuesResponse,
   RowValue,
@@ -31,6 +31,7 @@ import type {
 } from "metabase-types/api";
 
 import {
+  type BreakoutColorMap,
   type ExpressionDefinitionEntry,
   type MetricDefinitionEntry,
   type MetricSourceId,
@@ -38,6 +39,7 @@ import {
   type MetricsViewerDisplayType,
   type MetricsViewerFormulaEntity,
   type SelectedMetric,
+  type SourceBreakoutColorMap,
   type SourceColorMap,
   isExpressionEntry,
   isMetricEntry,
@@ -48,184 +50,150 @@ import { getModifiedDefinition } from "./definition-cache";
 import {
   entryHasBreakout,
   getEffectiveDefinitionEntry,
-  getEffectiveTokenDefinitionEntry,
   getEntryBreakout,
 } from "./definition-entries";
 import { findDimensionById } from "./dimension-lookup";
-import {
-  type MetricSlot,
-  findExpressionTokenSlot,
-  findStandaloneSlot,
-  slotsForEntity,
-} from "./metric-slots";
+import { type MetricSlot, slotsForEntity } from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
-export function buildArithmeticSeriesFromResult(
-  entry: ExpressionDefinitionEntry,
-  entryIndex: number,
-  metricSlots: MetricSlot[],
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  dimensionMapping: Record<number, DimensionId | null>,
-  display: MetricsViewerDisplayType,
-  arithmeticResult: Dataset,
-  modifiedDefinitions: Record<number, MetricDefinition>,
-  sourceColors: string[] | undefined,
-): SingleSeries[] {
-  if (!arithmeticResult.data?.cols?.length) {
-    return [];
-  }
+interface BuildSeriesParams {
+  formulaEntities: MetricsViewerFormulaEntity[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  resultsByEntityIndex: Map<number, Dataset>;
+  metricSlots: MetricSlot[];
+  dimensionMapping: Record<number, DimensionId | null>;
+  display: MetricsViewerDisplayType;
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
+  sourceBreakoutColors: SourceBreakoutColorMap;
+}
 
-  const vizSettings = getVizSettingsBySourceId(
-    display,
-    entry,
-    entryIndex,
-    metricSlots,
+export function buildSeries({
+  formulaEntities,
+  definitions,
+  resultsByEntityIndex,
+  metricSlots,
+  dimensionMapping,
+  display,
+  modifiedDefinitionsBySlotIndex,
+  sourceBreakoutColors,
+}: BuildSeriesParams): {
+  series: SingleSeries[];
+  cardIdToEntityIndex: Record<CardId, number>;
+  activeBreakoutColors: SourceBreakoutColorMap;
+} {
+  const uniqueNamesByEntityIndex = computeUniqueEntityNames(
+    formulaEntities,
     definitions,
-    modifiedDefinitions,
-    dimensionMapping,
   );
-  if (!vizSettings) {
-    return [];
+  let isFirstSeries = true;
+  const cardIdToEntityIndex: Record<CardId, number> = {};
+  const activeBreakoutColors: SourceBreakoutColorMap = {};
+
+  const series = Array.from(resultsByEntityIndex.entries()).flatMap(
+    ([entityIndex, result]) => {
+      const vizSettings = getVizSettings(
+        dimensionMapping,
+        display,
+        modifiedDefinitionsBySlotIndex,
+        metricSlots
+          .filter((slot) => slot.entityIndex === entityIndex)
+          .map((slot) => slot.slotIndex),
+      );
+      if (!vizSettings) {
+        return [];
+      }
+      const cardId = nextSyntheticCardId();
+      const name = uniqueNamesByEntityIndex.get(entityIndex);
+      if (!name) {
+        return [];
+      }
+      const seriesKey = isFirstSeries ? result.data.cols[1]?.name : name;
+      const colors = sourceBreakoutColors[entityIndex];
+      const color =
+        typeof colors === "string"
+          ? colors
+          : colors instanceof Map
+            ? colors.values().next().value
+            : undefined;
+      const singleSeries: SingleSeries = {
+        card: createSeriesCard(cardId, name, display, {
+          ...vizSettings,
+          ...computeColorVizSettings({
+            displayType: display,
+            seriesKey,
+            color,
+          }),
+        }),
+        data: result.data,
+      };
+      let entrySeries: SingleSeries[];
+      const entity = formulaEntities[entityIndex];
+      if (
+        !isMetricEntry(entity) ||
+        !entryHasBreakout(getEffectiveDefinitionEntry(entity, definitions)) ||
+        singleSeries.data.rows.length === 0 ||
+        !(colors instanceof Map)
+      ) {
+        entrySeries = [singleSeries];
+        activeBreakoutColors[entityIndex] = color;
+      } else {
+        const { series, activeBreakoutColorMap } = splitByBreakout(
+          singleSeries,
+          formulaEntities.length,
+          isFirstSeries,
+          colors,
+          vizSettings,
+        );
+        entrySeries = series;
+        activeBreakoutColors[entityIndex] = activeBreakoutColorMap;
+      }
+      isFirstSeries = false;
+
+      for (const series of entrySeries) {
+        cardIdToEntityIndex[series.card.id] = entityIndex;
+      }
+      return entrySeries;
+    },
+  );
+
+  const displayType = DISPLAY_TYPE_REGISTRY[display];
+  if (series.length > 1 && displayType.combineSettings) {
+    series[0].card.visualization_settings = displayType.combineSettings(
+      series.map((s) => s.card.visualization_settings),
+    );
   }
 
-  const cardId = nextSyntheticCardId();
-  const cols = arithmeticResult.data.cols;
-  const metricCol = cols[cols.length - 1];
-  const seriesKey = getSeriesVizSettingsKey(
-    metricCol,
-    false,
-    true,
-    1,
-    null,
-    entry.name,
-  );
-
-  return [
-    {
-      card: createSeriesCard(cardId, entry.name, display, {
-        ...vizSettings,
-        ...computeColorVizSettings({
-          displayType: display,
-          seriesKey,
-          color: sourceColors?.[0],
-        }),
-      }),
-      data: arithmeticResult.data,
-    },
-  ];
+  return { series, cardIdToEntityIndex, activeBreakoutColors };
 }
 
-/**
- * Resolve viz settings from source-ID-keyed modified definitions.
- * Used by the expression/arithmetic series path.
- */
-function getVizSettingsBySourceId(
-  display: MetricsViewerDisplayType,
-  entry: ExpressionDefinitionEntry,
-  entryIndex: number,
-  metricSlots: MetricSlot[],
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  modifiedDefinitions: Record<number, MetricDefinition>,
+function getVizSettings(
   dimensionMapping: Record<number, DimensionId | null>,
+  display: MetricsViewerDisplayType,
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>,
+  slotIndices: number[],
 ): VisualizationSettings | null {
   const displayConfig = DISPLAY_TYPE_REGISTRY[display];
-
-  return entry.tokens.reduce<VisualizationSettings | null>(
-    (found, token, tokenIndex) => {
-      if (found) {
-        return found;
+  for (const slotIndex of slotIndices) {
+    const modifiedDefinition = modifiedDefinitionsBySlotIndex.get(slotIndex);
+    if (!modifiedDefinition) {
+      continue;
+    }
+    const dimensionId = dimensionMapping[slotIndex];
+    if (displayConfig.dimensionRequired) {
+      if (!dimensionId) {
+        continue;
       }
-
-      if (token.type !== "metric") {
-        return null;
+      const dimension = findDimensionById(modifiedDefinition, dimensionId);
+      if (!dimension) {
+        continue;
       }
-
-      const entry = getEffectiveTokenDefinitionEntry(token, definitions);
-      const definition = entry.definition;
-      const modifiedDefinition = modifiedDefinitions[tokenIndex];
-
-      if (!definition || !modifiedDefinition) {
-        return null;
-      }
-
-      const tokenSlot = findExpressionTokenSlot(
-        metricSlots,
-        entryIndex,
-        tokenIndex,
-      );
-      const slotIndex = tokenSlot?.slotIndex ?? -1;
-      const dimensionId = dimensionMapping[slotIndex];
-
-      if (displayConfig.dimensionRequired) {
-        if (!dimensionId) {
-          return null;
-        }
-        const dimension = findDimensionById(definition, dimensionId);
-        if (!dimension) {
-          return null;
-        }
-        return displayConfig.getSettings(modifiedDefinition, dimension);
-      }
-
-      return displayConfig.getSettings(modifiedDefinition);
-    },
-    null,
-  );
-}
-
-/**
- * Resolve viz settings from entity-index-keyed modified definitions.
- * Used by the individual metric series path.
- *
- * `dimensionMapping` is keyed by slot index (not entity index), so we use
- * `metricSlots` to find the correct slot for each standalone metric entity.
- */
-function getVizSettingsByEntityIndex(
-  display: MetricsViewerDisplayType,
-  indexedEntries: {
-    entry: MetricsViewerDefinitionEntry;
-    entityIndex: number;
-  }[],
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  modifiedDefinitions: Map<number, MetricDefinition>,
-  dimensionMapping: Record<number, DimensionId | null>,
-  metricSlots?: MetricSlot[],
-): VisualizationSettings | null {
-  const displayConfig = DISPLAY_TYPE_REGISTRY[display];
-
-  return indexedEntries.reduce<VisualizationSettings | null>(
-    (found, { entry, entityIndex }) => {
-      if (found) {
-        return found;
-      }
-      const definition = definitions[entry.id]?.definition;
-      const modifiedDefinition = modifiedDefinitions.get(entityIndex);
-      if (!definition || !modifiedDefinition) {
-        return null;
-      }
-
-      const slot = metricSlots
-        ? findStandaloneSlot(metricSlots, entityIndex)
-        : undefined;
-      const dimensionId = dimensionMapping[slot?.slotIndex ?? entityIndex];
-
-      if (displayConfig.dimensionRequired) {
-        if (!dimensionId) {
-          return null;
-        }
-        const dimension = findDimensionById(definition, dimensionId);
-        if (!dimension) {
-          return null;
-        }
-        return displayConfig.getSettings(modifiedDefinition, dimension);
-      }
-
-      return displayConfig.getSettings(modifiedDefinition);
-    },
-    null,
-  );
+      return displayConfig.getSettings(modifiedDefinition, dimension);
+    }
+    return displayConfig.getSettings(modifiedDefinition);
+  }
+  return null;
 }
 
 /**
@@ -277,34 +245,26 @@ export function computeUniqueEntityNames(
   return result;
 }
 
-/**
- * Computes colors for each formula entity by building the same series key array
- * that the chart pipeline would produce, then passing it to getColorsForValues.
- *
- * Chart key rules (from transformSeries → keyForSingleSeries):
- *   - Series key = card.name (unique per entity via computeUniqueEntityNames)
- *   - Breakout series key = "displayName: breakoutValue"
- */
-export function computeSourceColors(
+function formatBreakoutValue(value: RowValue, column: DatasetColumn): string {
+  return String(
+    formatValue(isEmpty(value) ? NULL_DISPLAY_VALUE : value, {
+      column,
+    }),
+  );
+}
+
+export function computeSourceBreakoutColors(
   formulaEntities: MetricsViewerFormulaEntity[],
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   breakoutValuesByEntityIndex?: Map<number, MetricBreakoutValuesResponse>,
-): SourceColorMap {
+): SourceBreakoutColorMap {
   const uniqueNames = computeUniqueEntityNames(formulaEntities, definitions);
 
   const entries: {
     entityIndex: number;
     keys: string[];
+    keyToBreakoutValue: Record<string, string>;
   }[] = [];
-
-  // Count visible formula entities (metrics + expressions), matching the
-  // `defCount` / `seriesCount` used by `buildRawSeriesFromDefinitions` and
-  // `splitByBreakout` to decide whether to prefix breakout labels with the
-  // metric name.  Using `Object.keys(definitions).length` would undercount
-  // when the same metric appears multiple times.
-  const defCount = formulaEntities.filter(
-    (e) => isMetricEntry(e) || isExpressionEntry(e),
-  ).length;
 
   for (
     let entityIndex = 0;
@@ -329,22 +289,28 @@ export function computeSourceColors(
         response &&
         response.values.length > 0
       ) {
-        const keys = response.values.map((val) => {
-          const formatted = String(
-            formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
-              column: response.col,
-            }),
-          );
-          return defCount > 1 ? `${uniqueName}: ${formatted}` : formatted;
+        // getColorsForValues needs unique keys
+        const keys: string[] = [];
+        // but we want to return the (possibly non-unique) breakout values to be displayed in the legend
+        const keyToBreakoutValue: Record<string, string> = {};
+        response.values.forEach((val) => {
+          const breakoutValue = formatBreakoutValue(val, response.col);
+          const key = `${uniqueName}: ${breakoutValue}`;
+          keys.push(key);
+          keyToBreakoutValue[key] = breakoutValue;
         });
-        entries.push({ entityIndex, keys });
+        entries.push({ entityIndex, keys, keyToBreakoutValue });
       } else {
-        entries.push({ entityIndex, keys: [uniqueName] });
+        entries.push({
+          entityIndex,
+          keys: [uniqueName],
+          keyToBreakoutValue: {},
+        });
       }
     }
 
     if (isExpressionEntry(entity)) {
-      entries.push({ entityIndex, keys: [uniqueName] });
+      entries.push({ entityIndex, keys: [uniqueName], keyToBreakoutValue: {} });
     }
   }
 
@@ -352,16 +318,22 @@ export function computeSourceColors(
     return {};
   }
 
-  const allKeys = entries.flatMap((entry) => entry.keys);
-  const colorMapping = getColorsForValues(allKeys);
+  const colorMapping = getColorsForValues(
+    entries.flatMap((entry) => entry.keys),
+  );
 
-  const result: SourceColorMap = {};
-  let idx = 0;
+  const result: SourceBreakoutColorMap = {};
   for (const entry of entries) {
-    result[entry.entityIndex] = entry.keys.map(
-      (_, i) => colorMapping[allKeys[idx + i]],
-    );
-    idx += entry.keys.length;
+    if (entry.keys.length === 1) {
+      result[entry.entityIndex] = colorMapping[entry.keys[0]];
+    } else {
+      result[entry.entityIndex] = new Map(
+        Object.entries(entry.keyToBreakoutValue).map(([key, breakoutValue]) => [
+          breakoutValue,
+          colorMapping[key],
+        ]),
+      );
+    }
   }
   return result;
 }
@@ -372,9 +344,13 @@ export function computeSourceColors(
 export function splitByBreakout(
   series: SingleSeries,
   seriesCount: number,
-  sourceColors?: string[],
-  vizSettings?: VisualizationSettings,
-): SingleSeries[] {
+  isFirstSeries: boolean,
+  breakoutColorMap: BreakoutColorMap,
+  vizSettings: VisualizationSettings,
+): {
+  series: SingleSeries[];
+  activeBreakoutColorMap: BreakoutColorMap | string | undefined;
+} {
   const { card, data } = series;
   const { cols } = data;
 
@@ -388,55 +364,66 @@ export function splitByBreakout(
   const rowsByBreakoutValue = new Map<RowValue, RowValues[]>();
 
   for (const row of data.rows) {
-    const breakoutValue = row[breakoutColumnIndex];
+    const breakoutValue = formatBreakoutValue(
+      row[breakoutColumnIndex],
+      breakoutCol,
+    );
     let groupedRows = rowsByBreakoutValue.get(breakoutValue);
     if (!groupedRows) {
       groupedRows = [];
       rowsByBreakoutValue.set(breakoutValue, groupedRows);
       if (rowsByBreakoutValue.size > MAX_SERIES) {
-        return [series];
+        return {
+          series: [series],
+          activeBreakoutColorMap: breakoutColorMap.values().next().value,
+        };
       }
     }
     groupedRows.push([row[0], row[metricColumnIndex]] as RowValues);
   }
 
-  return Array.from(rowsByBreakoutValue.keys()).map((breakoutValue, i) => {
-    const name = [
-      seriesCount > 1 && card.name,
-      formatValue(isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue, {
-        column: breakoutCol,
-      }),
-    ]
-      .filter(Boolean)
-      .join(": ");
+  const activeBreakoutColorMap: BreakoutColorMap = new Map();
 
-    // Use card.name as the series_settings key so it matches keyForSingleSeries.
-    // For breakout series, the name includes the breakout value and is already
-    // unique, so we use it directly as the key.
-    const seriesKey = name;
+  const breakoutSeries = Array.from(breakoutColorMap)
+    .map(([breakoutValue, color]) => {
+      const rows = rowsByBreakoutValue.get(breakoutValue);
+      if (!rows) {
+        return null;
+      }
 
-    return {
-      ...series,
-      card: {
-        ...card,
-        id: nextSyntheticCardId(),
-        name,
-        visualization_settings: {
-          ...vizSettings,
-          ...computeColorVizSettings({
-            displayType: card.display,
-            seriesKey,
-            color: sourceColors?.[i],
-          }),
+      activeBreakoutColorMap.set(breakoutValue, color);
+
+      const name = [seriesCount > 1 && card.name, breakoutValue]
+        .filter(Boolean)
+        .join(": ");
+
+      const seriesKey = isFirstSeries ? metricCol?.name : name;
+      isFirstSeries = false;
+
+      return {
+        ...series,
+        card: {
+          ...card,
+          id: nextSyntheticCardId(),
+          name,
+          visualization_settings: {
+            ...vizSettings,
+            ...computeColorVizSettings({
+              displayType: card.display,
+              seriesKey,
+              color,
+            }),
+          },
         },
-      },
-      data: {
-        ...data,
-        rows: rowsByBreakoutValue.get(breakoutValue)!,
-        cols: outputCols,
-      },
-    };
-  });
+        data: {
+          ...data,
+          rows,
+          cols: outputCols,
+        },
+      };
+    })
+    .filter((s) => s != null);
+  return { series: breakoutSeries, activeBreakoutColorMap };
 }
 
 function createSeriesCard(
@@ -451,107 +438,6 @@ function createSeriesCard(
     display,
     visualization_settings: vizSettings,
   } as Card;
-}
-
-export function buildRawSeriesFromDefinitions(
-  indexedMetrics: { entry: MetricDefinitionEntry; entityIndex: number }[],
-  dimensionMapping: Record<number, DimensionId | null>,
-  display: MetricsViewerDisplayType,
-  resultsByEntityIndex: Map<number, Dataset>,
-  modifiedDefinitions: Map<number, MetricDefinition>,
-  sourceColors: SourceColorMap,
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  uniqueNames: Map<number, string>,
-  totalEntityCount: number,
-  metricSlots?: MetricSlot[],
-): {
-  series: SingleSeries[];
-  cardIdToDimensionId: Record<CardId, number>;
-} {
-  const vizSettings = getVizSettingsByEntityIndex(
-    display,
-    indexedMetrics,
-    definitions,
-    modifiedDefinitions,
-    dimensionMapping,
-    metricSlots,
-  );
-
-  if (!vizSettings) {
-    return { series: [], cardIdToDimensionId: {} };
-  }
-
-  const cardIdToDimensionId: Record<CardId, number> = {};
-
-  const series = indexedMetrics.flatMap(({ entry, entityIndex }) => {
-    const definition = definitions[entry.id]?.definition;
-    if (!definition) {
-      return [];
-    }
-
-    const modDef = modifiedDefinitions.get(entityIndex);
-    const result = resultsByEntityIndex.get(entityIndex);
-    if (!modDef || !result?.data?.cols?.length) {
-      return [];
-    }
-
-    const cardId = nextSyntheticCardId();
-    if (cardId == null) {
-      return [];
-    }
-
-    const uniqueName = uniqueNames.get(entityIndex);
-    const name = uniqueName ?? getDefinitionName(definition);
-
-    // Use card.name as the series_settings key so it matches what
-    // keyForSingleSeries returns in the chart pipeline.
-    const seriesKey = getSeriesVizSettingsKey(
-      result.data.cols[Math.min(1, result.data.cols.length - 1)], // metric API returns [projection_cols..., aggregation_col]
-      false,
-      true,
-      1,
-      null,
-      name ?? undefined,
-    );
-
-    const singleSeries: SingleSeries = {
-      card: createSeriesCard(cardId, name, display, {
-        ...vizSettings,
-        ...computeColorVizSettings({
-          displayType: display,
-          seriesKey,
-          color: sourceColors[entityIndex]?.[0],
-        }),
-      }),
-      data: result.data,
-    };
-
-    let entrySeries: SingleSeries[];
-    if (
-      !entryHasBreakout(getEffectiveDefinitionEntry(entry, definitions)) ||
-      singleSeries.data.rows.length === 0
-    ) {
-      entrySeries = [singleSeries];
-    } else {
-      entrySeries = splitByBreakout(
-        singleSeries,
-        totalEntityCount,
-        sourceColors[entityIndex] ?? [],
-        vizSettings,
-      );
-    }
-
-    for (const s of entrySeries) {
-      const slot = metricSlots
-        ? findStandaloneSlot(metricSlots, entityIndex)
-        : undefined;
-      cardIdToDimensionId[s.card.id] = slot?.slotIndex ?? entityIndex;
-    }
-
-    return entrySeries;
-  });
-
-  return { series, cardIdToDimensionId };
 }
 
 function computeColorVizSettings({
@@ -636,7 +522,7 @@ function computeAvailableOptions(
 export function buildDimensionItemsFromDefinitions(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   dimensionMapping: Record<number, DimensionId | null>,
-  modifiedDefinitionsByEntityIndex: Map<number, MetricDefinition>,
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>,
   sourceColors: SourceColorMap,
   metricSlots: MetricSlot[],
   formulaEntities: MetricsViewerFormulaEntity[],
@@ -704,7 +590,7 @@ export function buildDimensionItemsFromDefinitions(
         slot,
         definitions,
         dimensionMapping,
-        modifiedDefinitionsByEntityIndex,
+        modifiedDefinitionsBySlotIndex,
         sourceColors,
         dimensionFilter,
       );
@@ -722,7 +608,7 @@ function buildStandaloneDimensionItem(
   slot: MetricSlot,
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   dimensionMapping: Record<number, DimensionId | null>,
-  modifiedDefinitionsByEntityIndex: Map<number, MetricDefinition>,
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>,
   sourceColors: SourceColorMap,
   dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
 ): MetricDimensionItem | null {
@@ -738,9 +624,7 @@ function buildStandaloneDimensionItem(
 
   const dimensionId = dimensionMapping[slot.slotIndex];
   const entryColors = sourceColors[slot.entityIndex];
-  const modifiedDefinition = modifiedDefinitionsByEntityIndex.get(
-    slot.entityIndex,
-  );
+  const modifiedDefinition = modifiedDefinitionsBySlotIndex.get(slot.slotIndex);
 
   if (dimensionId != null && modifiedDefinition) {
     const projections = LibMetric.projections(modifiedDefinition);

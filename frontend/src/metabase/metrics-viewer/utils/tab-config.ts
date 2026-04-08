@@ -30,11 +30,17 @@ type DisplayTypeDefinition =
         def: MetricDefinition,
         dimension: DimensionMetadata,
       ) => VisualizationSettings;
+      combineSettings?: (
+        settings: VisualizationSettings[],
+      ) => VisualizationSettings;
     }
   | {
       dimensionRequired: false;
       supportsMultipleSeries: boolean;
       getSettings: (def: MetricDefinition) => VisualizationSettings;
+      combineSettings?: (
+        settings: VisualizationSettings[],
+      ) => VisualizationSettings;
     };
 
 interface BaseTabTypeDefinition {
@@ -184,13 +190,6 @@ function getChartSettings(
   };
 }
 
-function getPieSettings(
-  _def: MetricDefinition,
-  _dimension: DimensionMetadata,
-): VisualizationSettings {
-  return {};
-}
-
 function getScatterSettings(
   def: MetricDefinition,
   dimension: DimensionMetadata,
@@ -229,6 +228,21 @@ function getScalarSettings(def: MetricDefinition): VisualizationSettings {
   };
 }
 
+function combineColors(
+  settings: VisualizationSettings[],
+): VisualizationSettings {
+  // getStoredSettingsForSeries only looks at settings on the first series
+  return settings.reduce((acc, setting) => {
+    return {
+      ...acc,
+      series_settings: {
+        ...acc["series_settings"],
+        ...setting["series_settings"],
+      },
+    };
+  });
+}
+
 export const DISPLAY_TYPE_REGISTRY: Record<
   MetricsViewerDisplayType,
   DisplayTypeDefinition
@@ -237,36 +251,30 @@ export const DISPLAY_TYPE_REGISTRY: Record<
     dimensionRequired: true,
     supportsMultipleSeries: true,
     getSettings: getChartSettings,
+    combineSettings: combineColors,
   },
   area: {
     dimensionRequired: true,
     supportsMultipleSeries: true,
     getSettings: getChartSettings,
+    combineSettings: combineColors,
   },
   bar: {
     dimensionRequired: true,
     supportsMultipleSeries: true,
     getSettings: getChartSettings,
-  },
-  row: {
-    dimensionRequired: true,
-    supportsMultipleSeries: true,
-    getSettings: getChartSettings,
+    combineSettings: combineColors,
   },
   scatter: {
     dimensionRequired: true,
     supportsMultipleSeries: true,
     getSettings: getScatterSettings,
+    combineSettings: combineColors,
   },
   map: {
     dimensionRequired: true,
     supportsMultipleSeries: false,
     getSettings: getMapSettings,
-  },
-  pie: {
-    dimensionRequired: true,
-    supportsMultipleSeries: false,
-    getSettings: getPieSettings,
   },
   scalar: {
     dimensionRequired: false,

@@ -1,7 +1,6 @@
 import * as LibMetric from "metabase-lib/metric";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import Metric from "metabase-lib/v1/metadata/Metric";
-import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 import {
   createMockMetric,
   createMockMetricDimension,
@@ -11,7 +10,7 @@ import type {
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
-  SourceColorMap,
+  SourceBreakoutColorMap,
 } from "../types/viewer-state";
 
 import { buildLegendGroups } from "./legend";
@@ -90,15 +89,40 @@ describe("buildLegendGroups", () => {
     const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
       "metric:1": { id: "metric:1", definition },
     };
-    const breakoutValues = new Map<number, MetricBreakoutValuesResponse>();
-    const colors: SourceColorMap = { 0: ["#509EE3"] };
+    const activeBreakoutColors: SourceBreakoutColorMap = {
+      0: "#509EE3",
+    };
 
     const formulaEntities: MetricDefinitionEntry[] = [
       { id: "metric:1", type: "metric", definition: null },
     ];
 
     expect(
-      buildLegendGroups(formulaEntities, definitions, breakoutValues, colors),
+      buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    ).toEqual([]);
+  });
+
+  it("returns empty array when activeBreakoutColors has only string values", () => {
+    const metadata = createMetadata([REVENUE_METRIC]);
+    const definition = setupDefinitionWithBreakout(
+      metadata,
+      REVENUE_METRIC.id,
+      1,
+    );
+
+    const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+      "metric:1": { id: "metric:1", definition },
+    };
+    const activeBreakoutColors: SourceBreakoutColorMap = {
+      0: "#509EE3",
+    };
+
+    const formulaEntities: MetricDefinitionEntry[] = [
+      { id: "metric:1", type: "metric", definition: null },
+    ];
+
+    expect(
+      buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
     ).toEqual([]);
   });
 
@@ -125,23 +149,16 @@ describe("buildLegendGroups", () => {
       { id: "metric:2", type: "metric", definition: null },
     ];
 
-    const breakoutValues = new Map<number, MetricBreakoutValuesResponse>([
-      [
-        0,
-        {
-          values: ["Gadgets", "Widgets"],
-          col: { name: "CATEGORY" } as any,
-        },
-      ],
-    ]);
-
-    const colors: SourceColorMap = {
-      0: ["#509EE3", "#88BF4D"],
-      1: ["#A989C5"],
+    const activeBreakoutColors: SourceBreakoutColorMap = {
+      0: new Map([
+        ["Gadgets", "#509EE3"],
+        ["Widgets", "#88BF4D"],
+      ]),
+      1: "#A989C5",
     };
 
     expect(
-      buildLegendGroups(formulaEntities, definitions, breakoutValues, colors),
+      buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
     ).toEqual([
       {
         key: 0,

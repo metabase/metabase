@@ -8,17 +8,22 @@ import type {
   ProjectionClause,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
+import type {
+  CardId,
+  Dataset,
+  MetricBreakoutValuesResponse,
+  SingleSeries,
+} from "metabase-types/api";
 
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
-  ExpressionItemResult,
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerFormulaEntity,
   MetricsViewerTabState,
   SelectedMetric,
+  SourceBreakoutColorMap,
   SourceColorMap,
 } from "../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
@@ -28,8 +33,12 @@ import type {
   SourceDisplayInfo,
 } from "../utils/dimension-picker";
 import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
-import { computeMetricSlots } from "../utils/metric-slots";
-import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
+import { type MetricSlot, computeMetricSlots } from "../utils/metric-slots";
+import {
+  buildSeries,
+  computeSourceBreakoutColors,
+  getSelectedMetricsInfo,
+} from "../utils/series";
 import { createSourceId } from "../utils/source-ids";
 import {
   type TabInfo,
@@ -50,12 +59,15 @@ export interface UseMetricsViewerResult {
   initialLoadComplete: boolean;
   loadingIds: Set<MetricSourceId>;
   resultsByEntityIndex: Map<number, Dataset>;
-  errorsByDefinitionId: Map<MetricSourceId, string>;
-  modifiedDefinitionsByIndex: Map<number, MetricDefinition>;
-  isExecuting: (id: MetricSourceId) => boolean;
-  expressionItems: ExpressionItemResult[];
-  sourceColors: SourceColorMap;
+  queriesAreLoading: boolean;
+  queriesError: string | null;
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
   breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
+  metricSlots: MetricSlot[];
+  series: SingleSeries[];
+  cardIdToEntityIndex: Record<CardId, number>;
+  activeBreakoutColors: SourceBreakoutColorMap;
+  sourceColors: SourceColorMap;
   selectedMetrics: SelectedMetric[];
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
@@ -141,11 +153,10 @@ export function useMetricsViewer({
 
   const {
     resultsByEntityIndex,
-    errorsByDefinitionId,
-    modifiedDefinitionsByIndex,
+    queriesAreLoading,
+    queriesError,
+    modifiedDefinitionsBySlotIndex,
     breakoutValuesByEntityIndex,
-    isExecuting,
-    expressionItems,
   } = useDefinitionQueries(state.definitions, state.formulaEntities, activeTab);
 
   const definitionValues = useMemo(
@@ -158,14 +169,58 @@ export function useMetricsViewer({
     [definitionValues, loadingIds],
   );
 
-  const sourceColors = useMemo(
+  const metricSlots = useMemo(
+    () => computeMetricSlots(state.formulaEntities),
+    [state.formulaEntities],
+  );
+
+  const sourceBreakoutColors = useMemo(
     () =>
-      computeSourceColors(
+      computeSourceBreakoutColors(
         state.formulaEntities,
         state.definitions,
         breakoutValuesByEntityIndex,
       ),
     [state.formulaEntities, state.definitions, breakoutValuesByEntityIndex],
+  );
+
+  const { series, cardIdToEntityIndex, activeBreakoutColors } = useMemo(() => {
+    if (!activeTab) {
+      return { series: [], cardIdToEntityIndex: {}, activeBreakoutColors: {} };
+    }
+    return buildSeries({
+      formulaEntities: state.formulaEntities,
+      definitions: state.definitions,
+      metricSlots,
+      dimensionMapping: activeTab.dimensionMapping,
+      display: activeTab.display,
+      resultsByEntityIndex,
+      modifiedDefinitionsBySlotIndex,
+      sourceBreakoutColors,
+    });
+  }, [
+    state.formulaEntities,
+    state.definitions,
+    metricSlots,
+    activeTab,
+    resultsByEntityIndex,
+    modifiedDefinitionsBySlotIndex,
+    sourceBreakoutColors,
+  ]);
+
+  const sourceColors = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(activeBreakoutColors).map(([sourceId, colors]) => [
+          sourceId,
+          colors === undefined
+            ? []
+            : typeof colors === "string"
+              ? [colors]
+              : Array.from(colors.values()),
+        ]),
+      ),
+    [activeBreakoutColors],
   );
 
   const definitionsBySourceId = useMemo(
@@ -195,11 +250,6 @@ export function useMetricsViewer({
     }
     return out;
   }, [state.formulaEntities]);
-
-  const metricSlots = useMemo(
-    () => computeMetricSlots(state.formulaEntities),
-    [state.formulaEntities],
-  );
 
   const sourceDataById = useMemo((): Record<
     MetricSourceId,
@@ -318,14 +368,15 @@ export function useMetricsViewer({
     initialLoadComplete,
     loadingIds,
     resultsByEntityIndex,
-    errorsByDefinitionId,
-    modifiedDefinitionsByIndex,
-    isExecuting,
-
-    expressionItems,
-
-    sourceColors,
+    queriesAreLoading,
+    queriesError,
+    modifiedDefinitionsBySlotIndex,
     breakoutValuesByEntityIndex,
+    metricSlots,
+    series,
+    cardIdToEntityIndex,
+    activeBreakoutColors,
+    sourceColors,
     selectedMetrics,
     sourceOrder,
     sourceDataById,

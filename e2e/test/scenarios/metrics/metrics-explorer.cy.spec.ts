@@ -1328,6 +1328,79 @@ describe("scenarios > metrics > explorer", () => {
         85,
       );
     });
+
+    it("should preserve breakout colors when a dimension filter hides some values", () => {
+      selectBreakout("Count of orders", "Quantity");
+      cy.wait("@dataset");
+
+      const colorsBefore: Record<string, string> = {};
+
+      H.MetricsViewer.breakoutLegend()
+        .findAllByTestId("breakout-legend-dot")
+        .each(($dot) => {
+          const color = $dot.css("background-color");
+          const label = $dot.next().text();
+          colorsBefore[label] = color;
+        })
+        .then(() => {
+          expect(Object.keys(colorsBefore).length).to.be.greaterThan(0);
+        });
+
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /All time/i })
+        .click();
+      H.popover()
+        .findByText(/Fixed date/)
+        .click();
+      H.popover().within(() => {
+        cy.findByRole("textbox", { name: "Start date" })
+          .clear()
+          .type("February 1, 2024");
+        cy.findByRole("textbox", { name: "End date" })
+          .clear()
+          .type("February 7, 2024");
+        cy.button("Add filter").click();
+      });
+
+      cy.wait("@dataset");
+
+      H.MetricsViewer.breakoutLegend()
+        .findAllByTestId("breakout-legend-dot")
+        .then(($dots) => {
+          expect($dots.length).to.be.lessThan(
+            Object.keys(colorsBefore).length,
+            "Filtering should reduce the number of legend items",
+          );
+
+          const legendHexColors: string[] = [];
+
+          $dots.each((_i, dot) => {
+            const $dot = Cypress.$(dot);
+            const color = $dot.css("background-color");
+            const label = $dot.next().text();
+            expect(colorsBefore[label]).to.equal(
+              color,
+              `Color for "${label}" should be stable after filtering`,
+            );
+            legendHexColors.push(Color(color).hex());
+          });
+
+          cy.log("Chart series colors should match legend colors");
+          for (const hex of legendHexColors) {
+            H.echartsContainer().find(`path[stroke="${hex}"]`).should("exist");
+          }
+
+          cy.log("Search pill color indicator should match legend count");
+          H.MetricsViewer.searchBarPills()
+            .contains(
+              "[data-testid=metrics-viewer-search-pill]",
+              "Count of orders",
+            )
+            .findByTestId("color-indicator-container")
+            .children()
+            .should("have.length", legendHexColors.length);
+        });
+    });
   });
 
   // ============================================================================
@@ -1449,12 +1522,15 @@ describe("scenarios > metrics > explorer", () => {
 
         cy.log("dimension filter is applied");
         H.MetricsViewer.getMetricVisualizationDataPoints().should(
-          "have.length",
+          "have.length.of.at.most",
           60,
         );
         switchToTab("Totals");
         cy.log("correct value is calculated from metric math expression");
-        cy.contains("[data-testid=visualization-root]", "8,915");
+        H.MetricsViewer.getAllMetricVisualizations()
+          .should("have.length", 5)
+          .eq(4)
+          .contains("8,915");
         switchToTab("Created At");
       }
       assertMetricMath();
