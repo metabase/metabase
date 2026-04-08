@@ -22,7 +22,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: ${{ (github.ref_name == 'master' && '1') || '0' }}
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}

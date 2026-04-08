@@ -32,7 +32,7 @@ jobs:
         working-directory: frontend/src/custom-viz
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.branch }}
 

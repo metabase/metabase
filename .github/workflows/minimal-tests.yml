@@ -57,7 +57,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     name: Postgres Latest EE App DB Tests (Part 1)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test Postgres App DB
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -107,7 +107,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     name: Postgres Latest Driver Tests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test Postgres Driver
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -139,7 +139,7 @@ jobs:
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
     name: Frontend Unit Tests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment

@@ -19,7 +19,7 @@ jobs:
       #     github-token: '${{ secrets.GITHUB_TOKEN }}'
       #     valid-labels: '.metabase-lib/no-change'
       #     disable-reviews: true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Check for updated MBQL library changelog
         run: |
           if [[ $(git show HEAD -- docs/developers-guide/mbql-library-changelog.md) ]]; then

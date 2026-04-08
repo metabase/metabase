@@ -11,7 +11,7 @@ jobs:
     if: ${{ contains(github.event.pull_request.labels.*.name,'Type:Documentation') }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ github.head_ref }}
         token: ${{ secrets.GITHUB_TOKEN }}

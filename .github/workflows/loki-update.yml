@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           ref: ${{ github.head_ref }}

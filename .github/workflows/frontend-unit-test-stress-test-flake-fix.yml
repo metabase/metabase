@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 60
     name: Stress test frontend unit test flake fix
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment

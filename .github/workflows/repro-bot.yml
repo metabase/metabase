@@ -42,7 +42,7 @@ jobs:
 
         env:
           DISPATCH_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/prepare-backend
       - uses: ./.github/actions/prepare-frontend
 
