@@ -18,7 +18,8 @@
   :getter     (fn []
                 (or
                  (some->> (setting/get-value-of-type :json :security-center-email-recipients)
-                          (mapv #(update % :type keyword)))
+                          (mapv #(update % :type keyword))
+                          not-empty)
                  ;; default to all admins -- can't use (perms/admin-group) inline in :default as the group may not exist yet
                  [{:type :notification-recipient/group, :permissions_group_id (:id (perms/admin-group))}]))
   :setter     (fn [new-value]
