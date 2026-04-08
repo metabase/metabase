@@ -22,6 +22,7 @@ import {
 
 import { useMetabotAgent, useMetabotName } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
+import { MetabotUsageIndicator } from "../MetabotUsageIndicator/MetabotUsageIndicator";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
@@ -88,7 +89,8 @@ export const MetabotChat = ({
           </Text>
         </Flex>
 
-        <Flex gap="sm">
+        <Flex gap="sm" align="center">
+          <MetabotUsageIndicator variant="compact" />
           <Tooltip label={t`Clear conversation`} position="bottom">
             <ActionIcon
               onClick={handleResetChat}

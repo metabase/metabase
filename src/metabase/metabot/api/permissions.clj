@@ -15,12 +15,12 @@
 
 (def ^:private usage-schema
   [:map
-   [:user_usage :int]
-   [:user_limit [:maybe :int]]
-   [:instance_usage :int]
-   [:instance_limit [:maybe :int]]
-   [:tenant_usage {:optional true} [:maybe :int]]
-   [:tenant_limit {:optional true} [:maybe :int]]
+   [:user_usage number?]
+   [:user_limit [:maybe number?]]
+   [:instance_usage number?]
+   [:instance_limit [:maybe number?]]
+   [:tenant_usage {:optional true} [:maybe number?]]
+   [:tenant_limit {:optional true} [:maybe number?]]
    [:limit_unit [:enum "tokens" "messages"]]
    [:limit_reset_rate [:enum "daily" "weekly" "monthly"]]
    [:period_start :string]])

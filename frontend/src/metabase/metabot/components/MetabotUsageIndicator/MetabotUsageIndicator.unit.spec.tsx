@@ -80,7 +80,7 @@ describe("MetabotUsageIndicator", () => {
       });
       expect(await screen.findByText("Your usage")).toBeInTheDocument();
       expect(
-        await screen.findByText("50 / 100 tokens used"),
+        await screen.findByText("50.0 / 100.0M tokens used"),
       ).toBeInTheDocument();
     });
 
@@ -94,7 +94,7 @@ describe("MetabotUsageIndicator", () => {
       });
       expect(await screen.findByText("Instance pool")).toBeInTheDocument();
       expect(
-        await screen.findByText("200 / 500 tokens used"),
+        await screen.findByText("200.0 / 500.0M tokens used"),
       ).toBeInTheDocument();
     });
 
@@ -120,9 +120,7 @@ describe("MetabotUsageIndicator", () => {
           tenant_limit: 200,
         }),
       });
-      expect(
-        await screen.findByText("Organization pool"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Organization pool")).toBeInTheDocument();
     });
 
     it("shows reset rate text", async () => {

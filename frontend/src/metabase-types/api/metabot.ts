@@ -345,7 +345,7 @@ export type UserMetabotPermissions = {
 };
 
 export type MetabotUsage = {
-  user_usage: number;
+  user_usage: number; // tokens: in millions (e.g. 1.5 = 1.5M tokens); messages: integer count
   user_limit: number | null;
   instance_usage: number;
   instance_limit: number | null;

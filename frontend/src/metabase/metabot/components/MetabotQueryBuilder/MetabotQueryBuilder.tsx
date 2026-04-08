@@ -24,6 +24,7 @@ import {
 } from "metabase/ui";
 
 import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
+import { MetabotUsageIndicator } from "../MetabotUsageIndicator/MetabotUsageIndicator";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -238,6 +239,8 @@ const MetabotQueryBuilderInner = () => {
               </UnstyledButton>
             ))}
           </Box>
+
+          <MetabotUsageIndicator variant="detailed" />
         </Stack>
       </Box>
     </Box>

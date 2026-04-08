@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { useMetabotUsage } from "metabase/metabot/hooks";
-import type { PoolUsageScope, UsageScope } from "metabase/metabot/hooks/use-metabot-usage";
+import type {
+  PoolUsageScope,
+  UsageScope,
+} from "metabase/metabot/hooks/use-metabot-usage";
 import {
   Box,
   Group,
@@ -37,14 +40,13 @@ function formatResetRate(rate: string): string {
   }
 }
 
-function formatUsageText(
-  scope: UsageScope,
-  unit: string | null,
-): string {
+function formatUsageText(scope: UsageScope, unit: string | null): string {
   if (unit === "messages") {
     return t`${scope.usage} / ${scope.limit} messages used`;
   }
-  return t`${scope.usage} / ${scope.limit} tokens used`;
+  const usage = scope.usage.toFixed(1);
+  const limit = scope.limit.toFixed(1);
+  return t`${usage} / ${limit}M tokens used`;
 }
 
 function UsageBar({
@@ -58,23 +60,20 @@ function UsageBar({
 }) {
   return (
     <Box>
-      <Group justify="space-between" mb={4}>
-        <Text size="sm" fw={500}>
+      <Group justify="space-between" mb={2}>
+        <Text size="xs" c="text-tertiary">
           {label}
         </Text>
         <Text size="xs" c="text-tertiary">
-          {`${scope.percent}%`}
+          {formatUsageText(scope, unit)}
         </Text>
       </Group>
       <Progress
         value={scope.percent}
-        size={6}
+        size={4}
         color={getColor(scope)}
         aria-label={label}
       />
-      <Text size="xs" c="text-tertiary" mt={4}>
-        {formatUsageText(scope, unit)}
-      </Text>
     </Box>
   );
 }
@@ -83,9 +82,7 @@ interface MetabotUsageIndicatorProps {
   variant: "compact" | "detailed";
 }
 
-export function MetabotUsageIndicator({
-  variant,
-}: MetabotUsageIndicatorProps) {
+export function MetabotUsageIndicator({ variant }: MetabotUsageIndicatorProps) {
   const { user, pool, mostConstrained, limitUnit, resetRate } =
     useMetabotUsage();
 
@@ -119,16 +116,12 @@ export function MetabotUsageIndicator({
   }
 
   return (
-    <Stack className={S.detailedRoot} gap="md">
-      {user && (
-        <UsageBar label={t`Your usage`} scope={user} unit={limitUnit} />
-      )}
+    <Stack className={S.detailedRoot} gap="xs">
+      {user && <UsageBar label={t`Your usage`} scope={user} unit={limitUnit} />}
       {pool && (
         <UsageBar
           label={
-            pool.scope === "tenant"
-              ? t`Organization pool`
-              : t`Instance pool`
+            pool.scope === "tenant" ? t`Organization pool` : t`Instance pool`
           }
           scope={pool}
           unit={limitUnit}

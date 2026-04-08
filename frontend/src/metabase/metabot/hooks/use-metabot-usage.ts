@@ -30,7 +30,8 @@ function computeScope(usage: number, limit: number | null): UsageScope | null {
   if (limit == null) {
     return null;
   }
-  const percent = limit > 0 ? Math.min(100, Math.round((usage / limit) * 100)) : 100;
+  const percent =
+    limit > 0 ? Math.min(100, Math.round((usage / limit) * 100)) : 100;
   return {
     usage,
     limit,
@@ -40,9 +41,17 @@ function computeScope(usage: number, limit: number | null): UsageScope | null {
   };
 }
 
-export function computeUsageScopes(usage: MetabotUsage | null | undefined): Omit<MetabotUsageResult, "isLoading"> {
+export function computeUsageScopes(
+  usage: MetabotUsage | null | undefined,
+): Omit<MetabotUsageResult, "isLoading"> {
   if (!usage) {
-    return { user: null, pool: null, mostConstrained: null, limitUnit: null, resetRate: null };
+    return {
+      user: null,
+      pool: null,
+      mostConstrained: null,
+      limitUnit: null,
+      resetRate: null,
+    };
   }
 
   const user = computeScope(usage.user_usage, usage.user_limit);
