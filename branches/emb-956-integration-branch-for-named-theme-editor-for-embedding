@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "d029b634ae40b989006426d10f3d495555df7abf"
+  },
+  "upstream": {
+    "branch": "emb-956-integration-branch-for-named-theme-editor-for-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 72147,
+        "gqlID": "PR_kwDOAczgH87Qu4IP"
+      }
+    }
   }
 }
