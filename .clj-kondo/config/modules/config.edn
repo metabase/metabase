@@ -2796,6 +2796,7 @@
            config
            models
            premium-features
+           server
            util
            enterprise/api
            enterprise/remote-sync}
