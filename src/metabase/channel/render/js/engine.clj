@@ -30,12 +30,12 @@
       ;; https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md
       (option "engine.WarnInterpreterOnly" "false")
       (option "js.intl-402" "true")
-      (allowHostAccess HostAccess/ALL)
+      (allowHostAccess HostAccess/NONE)
       (allowHostClassLookup (reify java.util.function.Predicate
-                              (test [_ _] true)))
+                              (test [_ _] false)))
       (out System/out)
       (err System/err)
-      (allowIO true)
+      (allowIO false)
       (build)))
 
 (defn load-js-string
