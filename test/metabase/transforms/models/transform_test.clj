@@ -1,4 +1,4 @@
-(ns metabase.models.transforms.transform-test
+(ns metabase.transforms.models.transform-test
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]))

@@ -1,4 +1,4 @@
-(ns metabase.models.transforms.transform
+(ns metabase.transforms.models.transform
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -9,7 +9,6 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
@@ -17,6 +16,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]

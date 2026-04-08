@@ -1,7 +1,7 @@
-(ns metabase-enterprise.tenants.model-test
+(ns metabase-enterprise.tenants.models-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [metabase-enterprise.tenants.model :as tenants.model]
+   [metabase-enterprise.tenants.models :as tenants.model]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [toucan2.core :as t2]))

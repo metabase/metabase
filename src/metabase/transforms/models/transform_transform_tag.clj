@@ -1,4 +1,4 @@
-(ns metabase.models.transforms.transform-transform-tag
+(ns metabase.transforms.models.transform-transform-tag
   (:require
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]

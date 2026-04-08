@@ -1,12 +1,12 @@
-(ns metabase.models.transforms.transform-job
+(ns metabase.transforms.models.transform-job
   (:require
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.transforms.job-run :as transforms.job-run]
-   [metabase.models.transforms.transform :as transform]
+   [metabase.transforms.models.job-run :as transforms.job-run]
+   [metabase.transforms.models.transform :as transform]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
