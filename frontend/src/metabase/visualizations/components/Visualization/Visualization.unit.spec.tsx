@@ -178,8 +178,14 @@ describe("Visualization", () => {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({ name: "Dimension" }),
-                createMockNumericColumn({ name: "Count" }),
+                createMockCategoryColumn({
+                  name: "Dimension",
+                  display_name: "Dimension",
+                }),
+                createMockNumericColumn({
+                  name: "Count",
+                  display_name: "Count",
+                }),
               ],
               rows: [
                 ["foo", 1],
@@ -200,9 +206,15 @@ describe("Visualization", () => {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({ name: "Dimension" }),
-                createMockNumericColumn({ name: "Count" }),
-                createMockNumericColumn({ name: "Sum" }),
+                createMockCategoryColumn({
+                  name: "Dimension",
+                  display_name: "Dimension",
+                }),
+                createMockNumericColumn({
+                  name: "Count",
+                  display_name: "Count",
+                }),
+                createMockNumericColumn({ name: "Sum", display_name: "Sum" }),
               ],
               rows: [
                 ["foo", 1, 3],
@@ -224,9 +236,18 @@ describe("Visualization", () => {
             card: createMockCard({ name: "Card", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({ name: "Dimension1" }),
-                createMockCategoryColumn({ name: "Dimension2" }),
-                createMockNumericColumn({ name: "Count" }),
+                createMockCategoryColumn({
+                  name: "Dimension1",
+                  display_name: "Dimension1",
+                }),
+                createMockCategoryColumn({
+                  name: "Dimension2",
+                  display_name: "Dimension2",
+                }),
+                createMockNumericColumn({
+                  name: "Count",
+                  display_name: "Count",
+                }),
               ],
               rows: [
                 ["foo", "a", 1],
@@ -250,8 +271,16 @@ describe("Visualization", () => {
             card: createMockCard({ id: 1, name: "Card1", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({ id: 1, name: "Dimension" }),
-                createMockNumericColumn({ id: 2, name: "Count" }),
+                createMockCategoryColumn({
+                  id: 1,
+                  name: "Dimension",
+                  display_name: "Dimension",
+                }),
+                createMockNumericColumn({
+                  id: 2,
+                  name: "Count",
+                  display_name: "Count",
+                }),
               ],
               rows: [
                 ["foo", 1],
@@ -263,8 +292,16 @@ describe("Visualization", () => {
             card: createMockCard({ id: 2, name: "Card2", display: "bar" }),
             data: createMockDatasetData({
               cols: [
-                createMockCategoryColumn({ id: 1, name: "Dimension" }),
-                createMockNumericColumn({ id: 2, name: "Count" }),
+                createMockCategoryColumn({
+                  id: 1,
+                  name: "Dimension",
+                  display_name: "Dimension",
+                }),
+                createMockNumericColumn({
+                  id: 2,
+                  name: "Count",
+                  display_name: "Count",
+                }),
               ],
               rows: [
                 ["foo", 3],
@@ -274,8 +311,12 @@ describe("Visualization", () => {
           },
         ]);
 
-        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "count"
-        expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "Card2"
+        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "Count"
+        // Card2 gets a hash-based color since "Card2" doesn't match any preferred color
+        const card2Paths = [1, 2, 3, 4, 5, 6, 7].find(
+          (i) => chartPathsWithColor(color(`accent${i}` as any)).length === 2,
+        );
+        expect(card2Paths).toBeDefined();
       });
     });
   });

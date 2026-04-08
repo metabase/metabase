@@ -526,7 +526,7 @@ describe("syncVizSettingsWithQuery", () => {
         ],
       });
       const oldSettings = createMockVisualizationSettings({
-        "graph.metrics": ["sum"],
+        "graph.metrics": ["aggregation"],
       });
 
       const newSettings = syncVizSettingsWithQuery(
@@ -535,7 +535,7 @@ describe("syncVizSettingsWithQuery", () => {
         oldQuery,
       );
       expect(newSettings).toEqual({
-        "graph.metrics": ["sum", "sum_2"],
+        "graph.metrics": ["aggregation", "aggregation_2"],
       });
     });
   });
