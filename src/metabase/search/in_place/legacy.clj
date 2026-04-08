@@ -685,7 +685,7 @@
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
                 (mdb/format-sql (first (mdb/compile search-query))))
-    (t2/reducible-query search-query)))
+    (mdb/streaming-reducible-query search-query)))
 
 (defmethod search.engine/results
   :search.engine/in-place

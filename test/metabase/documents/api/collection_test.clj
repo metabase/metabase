@@ -74,12 +74,11 @@
                    :model/Dashboard {dash-id :id} {:collection_id nil
                                                    :name "Root Dashboard"}]
       (testing "Documents appear alongside cards and dashboards in root"
-        (let [items (mt/user-http-request :rasta :get 200 "collection/root/items")
-              root-test-items (filter #(#{doc-id card-id dash-id} (:id %))
+        (let [items         (mt/user-http-request :rasta :get 200 "collection/root/items")
+              expected-ids  #{[doc-id "document"] [card-id "card"] [dash-id "dashboard"]}
+              root-test-items (filter #(expected-ids [(:id %) (:model %)])
                                       (:data items))]
-          (is (= #{[doc-id "document"]
-                   [card-id "card"]
-                   [dash-id "dashboard"]}
+          (is (= expected-ids
                  (set (map (juxt :id :model) root-test-items)))))))))
 
 (deftest archived-documents-appear-in-trash-items
