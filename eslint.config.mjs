@@ -663,7 +663,7 @@ const configs = [
                 "!metabase/utils/time-dayjs",
                 "!metabase/utils/types",
                 "!metabase/utils/urls",
-                "!metabase/utils/utils",
+                "!metabase/utils/clone",
               ],
             },
           ],
