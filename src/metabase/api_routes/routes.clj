@@ -152,7 +152,7 @@
    "/dataset"              (+auth 'metabase.query-processor.api)
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
-   "/eid-translation"      'metabase.eid-translation.api
+   "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                metabase.channel.api/email-routes
    "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
