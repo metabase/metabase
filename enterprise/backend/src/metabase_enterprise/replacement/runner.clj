@@ -11,6 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.source-swap.util :as source-swap.util]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -173,12 +174,6 @@
    These are in snake_case matching both result_metadata storage and Field columns."
   [:description :display_name :semantic_type :fk_target_field_id :settings :visibility_type])
 
-(defn- column-match-key
-  "Same logic as [[metabase.source-swap.util/column-match-key]] but without Malli schema
-   validation, since result_metadata entries are raw snake_case maps."
-  [col-meta]
-  (or (:lib/desired-column-alias col-meta) (:name col-meta)))
-
 (defn- copy-model-metadata-overrides!
   "Copy user-edited metadata from a model's result_metadata onto the Fields of the
    output table. Writes to both Field and FieldUserSettings so overrides survive sync."
@@ -188,7 +183,7 @@
         fields          (t2/select :model/Field :table_id table-id :active true)
         field-by-name   (m/index-by :name fields)]
     (doseq [col-meta result-metadata
-            :let [field     (field-by-name (column-match-key col-meta))
+            :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
                   overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
             :when (and field (seq overrides))]
       (t2/update! :model/Field (:id field) overrides)
