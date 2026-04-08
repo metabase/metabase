@@ -795,7 +795,7 @@ function createComplex2StageQuery() {
               type: "operator",
               operator: "+",
               args: [
-                { type: "column", name: "count" },
+                { type: "column", name: "aggregation" },
                 { type: "literal", value: 1 },
               ],
             },
