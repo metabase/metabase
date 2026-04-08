@@ -174,10 +174,20 @@
                (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))
     (testing "Not available with missing features"
-      (with-redefs [premium-features/has-feature? (fn [feat]
+      (with-redefs [premium-features/is-hosted? (constantly true)
+                    premium-features/has-feature? (fn [feat]
                                                     (if (#{:transforms-basic :transforms-python} feat)
                                                       false
                                                       (orig-has-feature feat)))]
         (is (= #{}
+               (set (#'profiles/filter-by-capabilities transform-tools
+                                                       ["permission:write_transforms"]))))))
+    (testing "Sql tool available on self hosted instances"
+      (with-redefs [premium-features/is-hosted? (constantly false)
+                    premium-features/has-feature? (fn [feat]
+                                                    (if (#{:transforms-basic :transforms-python} feat)
+                                                      false
+                                                      (orig-has-feature feat)))]
+        (is (= #{#'tools.transforms/write-transform-sql-tool}
                (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))))
