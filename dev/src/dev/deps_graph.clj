@@ -525,13 +525,11 @@
 (defn- module-internally-visible?
   "Mirror of `hooks.common.modules/internally-visible?`: viewer can see
   viewed's internals without :api check if they share a subtree in the
-  nested module hierarchy. Symmetric — ancestor and descendant both see
-  each other's internals. Returns a proper boolean."
+  nested module hierarchy. Returns a proper boolean."
   [viewer viewed]
   (boolean
    (or (= viewer viewed)
        (module-ancestor? viewer viewed)
-       (module-ancestor? viewed viewer)
        (module-siblings? viewer viewed))))
 
 (defn- filter-implicit-deps

@@ -255,17 +255,16 @@
 ;;;; -------------------------------------------------------------------------
 
 (deftest ^:parallel internally-visible?-test
-  (testing "`internally-visible?` is the subsystem trust-boundary rule — symmetric ancestor/descendant/sibling access"
+  (testing "`internally-visible?` is the trust-boundary rule for sibling / ancestor-descendant access"
     (let [internally-visible? (hook-fn 'internally-visible?)]
       (testing "same module"
         (is (true? (internally-visible? 'lib 'lib))))
       (testing "parent sees descendant (direct and deep)"
         (is (true? (internally-visible? 'lib 'lib.schema)))
         (is (true? (internally-visible? 'lib 'lib.schema.foo))))
-      (testing "descendant sees ancestor (symmetric with parent-sees-descendant — this is the :friends replacement)"
-        (is (true? (internally-visible? 'lib.schema 'lib)))
-        (is (true? (internally-visible? 'lib.schema.foo 'lib)))
-        (is (true? (internally-visible? 'lib.schema.foo 'lib.schema))))
+      (testing "descendant → ancestor is NOT internally visible (must go through parent's :api)"
+        (is (false? (internally-visible? 'lib.schema 'lib)))
+        (is (false? (internally-visible? 'lib.schema.foo 'lib))))
       (testing "siblings see each other"
         (is (true? (internally-visible? 'lib.schema 'lib.be)))
         (is (true? (internally-visible? 'lib.be 'lib.schema))))
