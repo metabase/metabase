@@ -485,12 +485,11 @@
                    query stage-number
                    update location
                    (fn [summary-clauses]
-                     (let [clause (lib.common/->op-arg a-summary-clause)]
-                       (conj (vec summary-clauses)
-                             (cond-> clause
-                               (= location :aggregation)
-                               (lib.options/with-clause-name
-                                 (unique-aggregation-name summary-clauses)))))))]
+                     (conj (vec summary-clauses)
+                           (cond-> (lib.common/->op-arg a-summary-clause)
+                             (= location :aggregation)
+                             (lib.options/with-clause-name
+                               (unique-aggregation-name summary-clauses))))))]
     (if new-summary?
       (-> new-query
           (update-query-stage
