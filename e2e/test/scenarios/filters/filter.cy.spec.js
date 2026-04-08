@@ -796,7 +796,7 @@ describe("scenarios > question > filter", () => {
     });
 
     assertOnLegendLabels();
-    H.cartesianChartCircleWithColors(["#88BF4D", "#509EE3", "#A989C5"]);
+    H.cartesianChartCircleWithColors(["#98D9D9", "#509EE3", "#A989C5"]);
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     cy.findByTestId("save-question-modal")
@@ -810,7 +810,7 @@ describe("scenarios > question > filter", () => {
 
     assertOnLegendLabels();
 
-    H.cartesianChartCircleWithColors(["#88BF4D", "#509EE3", "#A989C5"]);
+    H.cartesianChartCircleWithColors(["#98D9D9", "#509EE3", "#A989C5"]);
 
     function assertOnLegendLabels() {
       cy.findAllByTestId("legend-item")
