@@ -2,17 +2,20 @@
   (:require
    [babashka.process :as p]
    [cheshire.core :as json]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [mage.util :as u]))
 
 (def ^:private repo "metabase/metabase")
 
 ;;; Utilities
 
 (defn- sh
-  "Run shell command, return stdout or nil on error"
+  "Run shell command, return stdout or nil on error.
+   Uses p/process (not p/shell) so non-zero exits don't throw - some tools like
+   `gh pr checks` return exit 1 with valid output when checks fail."
   [& args]
   (try
-    (let [result (apply p/shell {:out :string :err :string :in nil} args)]
+    (let [result @(apply p/process {:out :string :err :string :in nil} args)]
       (when (zero? (:exit result))
         (str/trim (:out result))))
     (catch Exception e
@@ -391,6 +394,10 @@
 
     ;; Status message
     (cond
+      (zero? (count checks))
+      (do (println "⚠️ **No checks found.** CI may not have started yet, or check data was unavailable. Try again in a minute.")
+          (println))
+
       (and (zero? (count failed)) (zero? (count pending)))
       (do (println "✅ **All checks passing!**")
           (println))
@@ -542,22 +549,24 @@
       (System/exit 1))
     (log-success (format "Found PR on branch: %s" (:headRefName info)))
     (log-progress "Checking PR status...")
-    (let [checks (pr-checks pr-number)
-          {:keys [failed pending]} (categorize-checks checks)]
-      (log-progress (format "Found %d failed, %d pending check(s)"
-                            (count failed) (count pending)))
-      (log-progress "Fetching failed job logs...")
-      (let [logs-by-job-id (if (pos? (count failed))
-                             (fetch-failed-logs-parallel failed {:detailed? detailed?})
-                             {})]
-        (when (seq logs-by-job-id)
-          (log-success "Retrieved logs"))
-        (log-progress (str "Generating report" (when detailed? " (detailed mode)") "..."))
-        (println)
-        (generate-report pr-number info checks logs-by-job-id
-                         {:detailed? detailed?
-                          :progress-log *progress-log*})
-        (log-success "Done!")))))
+    (let [checks (pr-checks pr-number)]
+      (when-not checks
+        (u/exit (format "Error: Could not fetch checks for PR #%s (API error)" pr-number) 1))
+      (let [{:keys [failed pending]} (categorize-checks checks)]
+        (log-progress (format "Found %d failed, %d pending check(s)"
+                              (count failed) (count pending)))
+        (log-progress "Fetching failed job logs...")
+        (let [logs-by-job-id (if (pos? (count failed))
+                               (fetch-failed-logs-parallel failed {:detailed? detailed?})
+                               {})]
+          (when (seq logs-by-job-id)
+            (log-success "Retrieved logs"))
+          (log-progress (str "Generating report" (when detailed? " (detailed mode)") "..."))
+          (println)
+          (generate-report pr-number info checks logs-by-job-id
+                           {:detailed? detailed?
+                            :progress-log *progress-log*})
+          (log-success "Done!"))))))
 
 (defn- run-commit-report!
   "Generate report for a commit SHA (with optional branch name for display)."
