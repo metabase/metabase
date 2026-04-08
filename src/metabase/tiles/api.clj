@@ -12,8 +12,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -151,7 +151,7 @@
 (mu/defn- resolve-field :- ::lib.schema.metadata/column
   [query      :- ::lib.schema/query
    legacy-ref :- ::legacy-ref]
-  (lib/metadata query (lib/->pMBQL legacy-ref)))
+  (lib/metadata query (lib/->mbql5 legacy-ref)))
 
 (mu/defn- tiles-query :- ::lib.schema/query
   "Transform a card's query into a query finding coordinates in a particular region.

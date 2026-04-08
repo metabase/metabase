@@ -881,6 +881,79 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
           H.filterWidget().findByText("Gerät").should("be.visible");
         });
       });
+
+      it("translates selected static-list filter label in guest embed for values without labels", () => {
+        const staticListFilter = {
+          name: "String",
+          slug: "string",
+          id: "static-list-id",
+          type: "string/=",
+          sectionId: "string",
+          values_source_type: "static-list" as const,
+          values_source_config: {
+            values: [["Gadget"], ["Widget"]],
+          },
+        };
+
+        cy.signInAsAdmin();
+        H.createQuestionAndDashboard({
+          questionDetails: {
+            name: "Expression Question",
+            query: {
+              "source-table": PEOPLE_ID,
+            },
+          },
+          dashboardDetails: {
+            parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
+            enable_embedding: true,
+            embedding_params: {
+              [staticListFilter.slug]: "enabled",
+            },
+          },
+        }).then(({ body: { id, card_id, dashboard_id } }) => {
+          // Map the parameter to an expression column so the filter widget
+          // is visible, but hasFields() returns false (testing the tc()
+          // fix in FormattedParameterValue)
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 9,
+                parameter_mappings: [
+                  {
+                    parameter_id: staticListFilter.id,
+                    card_id,
+                    target: [
+                      "dimension",
+                      ["expression", "Thing", { "base-type": "type/Integer" }],
+                      { "stage-number": 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+
+          H.visitEmbeddedPage(
+            {
+              resource: { dashboard: dashboard_id as number },
+              params: {},
+            },
+            {
+              setFilters: { [staticListFilter.slug]: "Gadget" },
+              additionalHashOptions: {
+                locale: "de",
+              },
+            },
+          );
+
+          H.filterWidget().findByText("Gerät").should("be.visible");
+        });
+      });
     });
   });
 
@@ -988,4 +1061,78 @@ describe("scenarios > content translation > static embeds > dashboards", () => {
   });
 
   describe("Boolean content", () => {});
+
+  describe("funnel chart with translated dimension values (metabase#71488)", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
+        { locale: "fr", msgid: "Doohickey", msgstr: "Le doohickey" },
+        { locale: "fr", msgid: "Gizmo", msgstr: "Le gizmo" },
+        { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
+      ]);
+
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      cy.signInAsAdmin();
+    });
+
+    it("should render funnel with translated dimension labels in a static embed", () => {
+      H.createQuestion({
+        name: "Products Funnel",
+        display: "funnel",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        visualization_settings: {
+          "funnel.metric": "count",
+          "funnel.dimension": "CATEGORY",
+        },
+      }).then(({ body: card }) => {
+        H.createDashboard({
+          name: "funnel_dashboard",
+        }).then(({ body: { id: dashboardId } }) => {
+          // Add the funnel card to the dashboard
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashboardId,
+            card_id: card.id,
+            card: { size_x: 16, size_y: 8 },
+          });
+          H.visitDashboard(dashboardId);
+          H.openLegacyStaticEmbeddingModal({
+            resource: "dashboard",
+            resourceId: dashboardId,
+          });
+          H.publishChanges("dashboard", () => {});
+          H.visitEmbeddedPage(
+            {
+              resource: { dashboard: dashboardId as number },
+              params: {},
+            },
+            {
+              additionalHashOptions: {
+                locale: "fr",
+              },
+            },
+          );
+          // The funnel should render without crashing
+          cy.findByTestId("funnel-chart", { timeout: 10_000 }).should("exist");
+          // Dimension labels should be translated
+          cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
+          cy.findByTestId("funnel-chart").within(() => {
+            cy.findByText("Le gadget").should("exist");
+            cy.findByText("Le doohickey").should("exist");
+            cy.findByText("Le gizmo").should("exist");
+            cy.findByText("Le widget").should("exist");
+          });
+        });
+      });
+    });
+  });
 });

@@ -76,19 +76,16 @@ describe("command palette", () => {
     await userEvent.type(input, "dark mode");
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
-    expect(
-      await fetchMock.callHistory
-        .lastCall(/\/api\/setting\/color-scheme/)
-        ?.request?.json(),
-    ).toEqual({ value: "dark" });
+    const calls = () =>
+      fetchMock.callHistory.calls(/\/api\/setting\/color-scheme/);
+
+    expect(await calls().at(-1)?.request?.json()).toEqual({ value: "dark" });
 
     await userEvent.click(await screen.findByText("Toggle dark/light mode"));
 
-    expect(
-      await fetchMock.callHistory
-        .lastCall(/\/api\/setting\/color-scheme/)
-        ?.request?.json(),
-    ).toEqual({ value: "auto" });
+    expect(await calls().at(-1)?.request?.json()).toEqual({
+      value: "auto",
+    });
   });
 
   it("should preserve user navigation selection when search results load", async () => {

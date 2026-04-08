@@ -5,7 +5,7 @@ import { WebClient } from '@slack/web-api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import fetch from 'node-fetch';
-import _ from 'underscore';
+
 dayjs.extend(relativeTime);
 
 import _githubSlackMap from "../github-slack-map.json";
@@ -79,7 +79,7 @@ export async function sendBackportReminder({
 
     const lines = text.split("\n");
     const chunkSize = Math.floor(lines.length / chunks);
-    const chunkedLines = _.chunk(lines, chunkSize);
+    const chunkedLines = chunk(lines, chunkSize);
 
     const attachments = [{
       "color": "#F9841A",
@@ -544,4 +544,13 @@ export async function sendMilestoneCheckMessage({
     file,
     message: fileMessage,
   });
+}
+
+function chunk<T>(array: T[], count: number): T[][] {
+  const result: T[][] = [];
+  let i = 0;
+  while (i < array.length) {
+    result.push(array.slice(i, (i += count)));
+  }
+  return result;
 }

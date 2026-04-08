@@ -1,5 +1,5 @@
 (ns metabase.lib.equality
-  "Logic for determining whether two pMBQL queries are equal."
+  "Logic for determining whether two MBQL 5 queries are equal."
   (:refer-clojure :exclude [= every? some mapv empty? not-empty get-in #?(:clj for)])
   (:require
    [medley.core :as m]
@@ -24,7 +24,7 @@
    [metabase.util.performance :refer [every? some mapv empty? not-empty get-in #?(:clj for)]]))
 
 (defmulti =
-  "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
+  "Determine whether two already-normalized MBQL 5 maps, clauses, or other sorts of expressions are equal. The basic rule
   is that two things are considered equal if they are [[clojure.core/=]], or, if they are both maps, if they
   are [[clojure.core/=]] if you ignore all qualified keyword keys besides `:lib/type`."
   {:arglists '([x y])}
@@ -579,7 +579,7 @@ are known to be the same."
     stage-number :- :int
     legacy-ref   :- :some
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
-   (find-matching-column query stage-number (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref) metadatas)))
+   (find-matching-column query stage-number (lib.convert/legacy-ref->mbql5 query stage-number legacy-ref) metadatas)))
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching with

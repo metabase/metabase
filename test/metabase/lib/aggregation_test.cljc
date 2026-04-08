@@ -113,7 +113,7 @@
 ;;; make sure that given an existing query, the expected description was generated correctly.
 
 (defn- describe-legacy-query [query]
-  (lib/describe-query (lib.query/query meta/metadata-provider (lib.convert/->pMBQL query))))
+  (lib/describe-query (lib.query/query meta/metadata-provider (lib.convert/->mbql5 query))))
 
 (deftest ^:parallel describe-multiple-aggregations-test
   (let [query {:database (meta/id)
@@ -802,7 +802,7 @@
                           (lib/expression "Zero" (lib/+ 0 0))
                           (lib/expression "Total of Zero" (lib/coalesce (meta/field-metadata :orders :total) 0)))
           converted-query (lib/query meta/metadata-provider
-                                     (lib.convert/->pMBQL
+                                     (lib.convert/->mbql5
                                       (lib.tu.macros/mbql-query orders
                                         {:expressions {"Zero"          [:+ 0 0]
                                                        "Total of Zero" [:coalesce $total 0]}})))

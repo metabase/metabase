@@ -1,4 +1,4 @@
-export * from "./ai-entity-analysis";
+export * from "./ai-controls";
 export * from "./api";
 export * from "./audit-info";
 export * from "./billing-info";
@@ -8,7 +8,6 @@ export * from "./db-routing";
 export * from "./dependencies";
 export * from "./gdrive";
 export * from "./library";
-export * from "./metabot";
 export * from "./remote-sync";
 export * from "./oidc";
 export * from "./replacement";

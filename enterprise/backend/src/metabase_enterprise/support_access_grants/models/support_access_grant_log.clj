@@ -19,14 +19,19 @@
   (derive :hook/timestamped?))
 
 (defn fetch-or-create-support-user!
-  "Fetch or Create the support user account from settings."
+  "Fetch or Create the support user account from settings.
+  If the user exists but is deactivated, reactivate them."
   []
-  (or (t2/select-one :model/User :email (sag.settings/support-access-grant-email))
-      (t2/insert-returning-instance! :model/User
-                                     {:email (sag.settings/support-access-grant-email)
-                                      :first_name (sag.settings/support-access-grant-first-name)
-                                      :last_name (sag.settings/support-access-grant-last-name)
-                                      :password (str (random-uuid))})))
+  (if-let [user (t2/select-one :model/User :email (sag.settings/support-access-grant-email))]
+    (do
+      (when-not (:is_active user)
+        (t2/update! :model/User (:id user) {:is_active true}))
+      (assoc user :is_active true))
+    (t2/insert-returning-instance! :model/User
+                                   {:email (sag.settings/support-access-grant-email)
+                                    :first_name (sag.settings/support-access-grant-first-name)
+                                    :last_name (sag.settings/support-access-grant-last-name)
+                                    :password (str (random-uuid))})))
 
 (methodical/defmethod t2/batched-hydrate [:model/SupportAccessGrantLog :user_info]
   [_model _k grants]

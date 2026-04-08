@@ -21,7 +21,7 @@ You can override the global defaults for a specific field by going to the `Table
 
 ## Formatting options depend on the data type and the semantic type
 
-The options you'll see here will depend on the field's data type and it's [semantic type](./semantic-types.md).
+The options you'll see here will depend on the field's data type and its [semantic type](./semantic-types.md).
 
 ## Text formatting options
 

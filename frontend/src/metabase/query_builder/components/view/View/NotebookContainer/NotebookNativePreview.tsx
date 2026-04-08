@@ -2,9 +2,10 @@ import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
+import { updateQuestion } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { NotebookNativePreview as ControlledNotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
+import { setUIControls } from "metabase/redux/query-builder";
 import type Question from "metabase-lib/v1/Question";
 
 export const NotebookNativePreview = () => {

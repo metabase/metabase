@@ -6,10 +6,12 @@ on:
       - 'master'
       - 'release-**'
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 jobs:
 
   lint-migrations:
+    if: github.event.action != 'labeled' && github.event.action != 'unlabeled'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
@@ -18,3 +20,19 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Verify Liquibase Migrations
         run: ./bin/mage lint-migrations
+
+  check-migration-versions:
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          fetch-depth: 0
+      - name: Check migration versions
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: bin/check-migration-versions

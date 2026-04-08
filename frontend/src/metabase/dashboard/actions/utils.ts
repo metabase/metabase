@@ -1,7 +1,8 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getIframeDomainName } from "metabase/visualizations/visualizations/IFrameViz/utils";
+import { getIframeDomainName } from "metabase/dashboard/visualizations/IFrameViz/utils";
+import { isActionDashCard } from "metabase/lib/dashboard";
 import type {
   DashCardId,
   Dashboard,
@@ -12,7 +13,7 @@ import type {
 import type { StoreDashboard, StoreDashcard } from "metabase-types/store";
 
 import { trackIFrameDashcardsSaved } from "../analytics";
-import { isActionDashCard, isIFrameDashCard } from "../utils";
+import { isIFrameDashCard } from "../utils";
 
 export function getExistingDashCards(
   dashboards: Record<DashboardId, StoreDashboard>,

@@ -18,11 +18,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -156,6 +156,21 @@
                       {:name "tunnel-pass"}
                       {:name "tunnel-private-key"}
                       {:name "tunnel-private-key-passphrase"}
+                      {:name       "tunnel-known-hosts-options"
+                       :type       "select"
+                       :options    [{:name  "Local file path"
+                                     :value "local"}
+                                    {:name  "Uploaded file path"
+                                     :value "uploaded"}]
+                       :visible-if {"tunnel-enabled" true}}
+                      {:name       "tunnel-known-hosts-value"
+                       :type       "textFile"
+                       :visible-if {:tunnel-known-hosts-options "uploaded"
+                                    "tunnel-enabled" true}}
+                      {:name       "tunnel-known-hosts-path"
+                       :type       "string"
+                       :visible-if {:tunnel-known-hosts-options "local"
+                                    "tunnel-enabled" true}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
@@ -166,6 +181,8 @@
                       {:name "refingerprint"}]
             actual   (->> (driver/connection-properties :oracle)
                           (driver.u/connection-props-server->client :oracle))]
+        (is (= (count expected) (count actual))
+            (str "actual names: " (pr-str (mapv :name actual))))
         (is (= expected (mt/select-keys-sequentially expected actual)))))))
 
 (deftest ^:parallel test-ssh-connection
@@ -262,7 +279,7 @@
                    "FROM"
                    "  ("
                    "    SELECT"
-                   "      \"source\".\"s\" \"s\""
+                   "      \"__mb_source\".\"s\" \"s\""
                    "    FROM"
                    "      ("
                    "        SELECT"
@@ -270,7 +287,7 @@
                    "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
                    "        FROM"
                    "          \"public\".\"table\""
-                   "      ) \"source\""
+                   "      ) \"__mb_source\""
                    "  )"
                    "WHERE"
                    "  rownum <= 3"]]

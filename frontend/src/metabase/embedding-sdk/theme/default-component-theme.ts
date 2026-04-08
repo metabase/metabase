@@ -3,7 +3,7 @@ import { merge } from "icepick";
 import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
-import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
+import type { DeepPartial } from "metabase/lib/types";
 import type { MantineThemeOverride } from "metabase/ui";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;

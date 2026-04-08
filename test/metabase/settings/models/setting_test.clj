@@ -247,6 +247,17 @@
              #"Cannot initialize setting before the db is set up"
              (setting/get :test-setting-custom-init)))))))
 
+(deftest discard-setting-changes-with-init-test
+  (testing "discard-setting-changes correctly handles settings with :init"
+    (clear-setting-if-leak!)
+    (let [value-inside (atom nil)]
+      (mt/discard-setting-changes [:test-setting-custom-init]
+        (reset! value-inside (test-setting-custom-init))
+        (testing "the setting returns its initialized value inside the macro, not nil"
+          (is (some? @value-inside))))
+      (testing "after the macro, the setting's initialized value is preserved (not re-initialized)"
+        (is (= @value-inside (test-setting-custom-init)))))))
+
 (def ^:private base-options
   {:setter   :none
    :default  "totally-basic"})
@@ -1851,3 +1862,62 @@
   (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name ""
                                 mb-old-test-setting-name             "LEGACY"]
     (is (nil? (setting/env-var-value :test-setting-with-deprecated-name)))))
+
+;;; ----------------------------------------- deprecated-name DB fallback -----------------------------------------
+
+(defmacro ^:private with-setting-row-in-db
+  "Set up a raw DB row for a setting key (primary or deprecated), refresh the cache, execute body, then clean up.
+  Binds a fresh warned-set so warning behaviour can be tested in isolation."
+  [[k v] & body]
+  `(let [k# (name ~k)]
+     (binding [setting/*deprecated-db-key-warned* (atom #{})]
+       (try
+         (if (t2/select-one :model/Setting :key k#)
+           (t2/update! :model/Setting :key k# {:value ~v})
+           (t2/insert! :model/Setting {:key k# :value ~v}))
+         (setting.cache/restore-cache!)
+         ~@body
+         (finally
+           (t2/delete! (t2/table-name :model/Setting) :key k#)
+           (setting.cache/restore-cache!))))))
+
+(deftest deprecated-name-db-fallback-only-legacy-test
+  (testing "When only the deprecated key exists in the DB, the new setting reads its value"
+    (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+      (is (= "DB_LEGACY" (test-setting-with-deprecated-name))))))
+
+(deftest deprecated-name-db-fallback-primary-takes-precedence-test
+  (testing "When both keys exist in the DB, the primary value wins"
+    (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+      (mt/with-temporary-setting-values [test-setting-with-deprecated-name "DB_PRIMARY"]
+        (is (= "DB_PRIMARY" (test-setting-with-deprecated-name)))))))
+
+(deftest deprecated-name-db-fallback-neither-set-test
+  (testing "When neither key exists in the DB, returns nil (or default)"
+    (mt/with-temporary-setting-values [test-setting-with-deprecated-name nil]
+      (is (nil? (test-setting-with-deprecated-name))))))
+
+(deftest deprecated-name-clearing-primary-does-not-resurface-legacy-test
+  (testing "Clearing the primary setting does not cause the deprecated value to resurface"
+    (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+      ;; sanity check: deprecated value is visible
+      (is (= "DB_LEGACY" (test-setting-with-deprecated-name)))
+      ;; now explicitly clear the setting — deprecated value should not resurface
+      (test-setting-with-deprecated-name! nil)
+      (is (nil? (test-setting-with-deprecated-name))))))
+
+;;; ----------------------------------------- deprecated-name env+DB interaction -----------------------------------------
+
+(deftest deprecated-name-env-var-takes-precedence-over-db-test
+  (testing "When the deprecated env var and deprecated DB key are both set, the env var wins (checked first)"
+    (mt/with-temp-env-var-value! [mb-old-test-setting-name "ENV_LEGACY"]
+      (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+        (is (= "ENV_LEGACY" (test-setting-with-deprecated-name))))))
+  (testing "When the deprecated env var is set and primary DB key is also set, env var wins (env > DB)"
+    (mt/with-temp-env-var-value! [mb-old-test-setting-name "ENV_LEGACY"]
+      (with-setting-row-in-db [:test-setting-with-deprecated-name "DB_PRIMARY"]
+        (is (= "ENV_LEGACY" (test-setting-with-deprecated-name))))))
+  (testing "When the primary env var is set and deprecated DB key exists, primary env var wins"
+    (mt/with-temp-env-var-value! [mb-test-setting-with-deprecated-name "ENV_PRIMARY"]
+      (with-setting-row-in-db [:old-test-setting-name "DB_LEGACY"]
+        (is (= "ENV_PRIMARY" (test-setting-with-deprecated-name)))))))

@@ -11,12 +11,6 @@ export const isWorkspaceUninitialized = (workspace: {
   return workspace.status === "uninitialized";
 };
 
-export const isWorkspaceReady = (workspace: {
-  status: WorkspaceSetupStatus;
-}) => {
-  return workspace.status === "ready";
-};
-
 export function getCheckoutDisabledMessage(
   reason: CheckoutDisabledReason | undefined,
 ): string | undefined {

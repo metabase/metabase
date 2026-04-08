@@ -11,11 +11,17 @@ Two optional config keys per module in
 
 | Key              | Default | Meaning |
 |------------------|---------|---------|
-| `:model-exports` | `:any`  | Set of `:model/X` keywords this module allows **others** to use. |
-| `:model-imports` | `:any`  | Set of `:model/X` keywords **this module** may use from other modules. |
+| `:model-exports` | `#{}`   | Set of `:model/X` keywords this module allows **others** to use. |
+| `:model-imports` | `#{}`   | Set of `:model/X` keywords **this module** may use from other modules. |
 
-When omitted (or set to `:any`), no restrictions apply. `#{}` means export
-nothing / import nothing.
+When omitted, no models are exported/imported (closed by default). `:any`
+opens all restrictions.
+
+`:model-imports` also supports `:bypass` for cross-cutting modules that
+reference nearly every model (e.g. `cmd`, `enterprise/serialization`). A
+bypassed module can reference any model — even unexported ones. Models that
+are *only* referenced by bypass modules do not need `:model-exports` entries
+(the staleness test will flag them if added).
 
 ## Why it exists
 
@@ -118,6 +124,24 @@ The module can only reference these models from other modules. Any other
 `:model/X` keyword in the module's source files will cause a test failure.
 Unknown models (not defined anywhere) are also violations.
 
+### Bypassing import restrictions
+
+Some modules are inherently cross-cutting and import nearly every model. Use
+`:bypass` instead of an explicit set:
+
+```clojure
+cmd
+{:team "UX West"
+ :model-imports :bypass
+ ...}
+```
+
+A bypassed module can reference any model, even unexported ones. This means
+bypass modules don't drive `:model-exports` — if a model is *only* used
+outside its home module by bypass modules, it doesn't need to be exported.
+
+Use sparingly. Prefer explicit sets where feasible.
+
 ### Verifying changes
 
 ```bash
@@ -132,8 +156,18 @@ Or at the REPL:
 ```
 
 The test also validates that configured `:model-exports` / `:model-imports`
-only mention known models, and that exported models are actually owned by the
-module exporting them.
+only mention known models, that exported models are actually owned by the
+module exporting them, and that no stale entries exist (exports not referenced
+externally, imports not referenced in the module's source files).
+
+### Computing model boundaries
+
+Use the dev namespace to see what the config should contain:
+
+```clojure
+(dev.model-boundary-config/compute-model-boundaries) ;; returns data
+(dev.model-boundary-config/update-config!)           ;; rewrite config.edn
+```
 
 ## Limitations and future directions
 
@@ -169,12 +203,10 @@ read-only/read-write distinction above.
   (source scanning with rewrite-clj) and avoids adding overhead to normal
   development. The tradeoff: violations are only caught when tests run.
 
-- **Opt-in, not opt-out (for now).** Modules default to `:any` for both
-  exports and imports, so enforcement is incremental — restrict one module at a
-  time without touching anything else. Once enough modules have explicit sets,
-  we might flip the default to `#{}` so that new modules are restricted by
-  default and must explicitly declare their model dependencies. `:any` as the
-  starting default avoids a big-bang migration.
+- **Closed by default.** Both `:model-exports` and `:model-imports` default
+  to `#{}`. New modules must explicitly declare their model dependencies.
+  All existing modules have explicit config entries populated from a scan of
+  actual usage (see `dev.model-boundary-config`).
 
 - **Ownership is derived, not configured.** Instead of manually mapping models
   to modules, ownership is determined by scanning for `t2/table-name` defmethod

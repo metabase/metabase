@@ -1,0 +1,350 @@
+name: Products Table (Formatted)
+entity_id: Wo5d6IV8lb63wex29uh6H
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlViZsEtTiNgS0ExAmP1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/BigInteger
+  database_type: BIGINT
+  display_name: ID
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - ID
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - ID
+  name: ID
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: ID
+  lib/desired-column-alias: ID
+  lib/original-display-name: ID
+  lib/original-name: ID
+  lib/source: source/table-defaults
+  lib/source-column-alias: ID
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Ean
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - EAN
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - EAN
+  name: EAN
+  position: 1
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: EAN
+  lib/desired-column-alias: EAN
+  lib/original-display-name: Ean
+  lib/original-name: EAN
+  lib/source: source/table-defaults
+  lib/source-column-alias: EAN
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Title
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - TITLE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - TITLE
+  name: TITLE
+  position: 2
+  semantic_type: type/Title
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: TITLE
+  lib/desired-column-alias: TITLE
+  lib/original-display-name: Title
+  lib/original-name: TITLE
+  lib/source: source/table-defaults
+  lib/source-column-alias: TITLE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Category
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - CATEGORY
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - CATEGORY
+  name: CATEGORY
+  position: 3
+  semantic_type: type/Category
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: CATEGORY
+  lib/desired-column-alias: CATEGORY
+  lib/original-display-name: Category
+  lib/original-name: CATEGORY
+  lib/source: source/table-defaults
+  lib/source-column-alias: CATEGORY
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Vendor
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - VENDOR
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - VENDOR
+  name: VENDOR
+  position: 4
+  semantic_type: type/Company
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: VENDOR
+  lib/desired-column-alias: VENDOR
+  lib/original-display-name: Vendor
+  lib/original-name: VENDOR
+  lib/source: source/table-defaults
+  lib/source-column-alias: VENDOR
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Price
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - PRICE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - PRICE
+  name: PRICE
+  position: 5
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: PRICE
+  lib/desired-column-alias: PRICE
+  lib/original-display-name: Price
+  lib/original-name: PRICE
+  lib/source: source/table-defaults
+  lib/source-column-alias: PRICE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Rating
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - RATING
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - RATING
+  name: RATING
+  position: 6
+  semantic_type: type/Score
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: RATING
+  lib/desired-column-alias: RATING
+  lib/original-display-name: Rating
+  lib/original-name: RATING
+  lib/source: source/table-defaults
+  lib/source-column-alias: RATING
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    - CREATED_AT
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - CREATED_AT
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  visibility_type: normal
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  qp/implicit-field?: true
+visualization_settings:
+  column_settings:
+    '["name","CREATED_AT"]':
+      date_abbreviate: true
+      date_style: MMMM D, YYYY
+      time_enabled: null
+    '["name","PRICE"]':
+      column_title: Price (USD)
+      currency: USD
+      currency_style: symbol
+      decimals: 2
+      number_style: currency
+    '["name","RATING"]':
+      decimals: 1
+      number_style: decimal
+      suffix: ' / 5'
+  table.column_formatting:
+  - color: '#84BB4C'
+    columns:
+    - PRICE
+    highlight_row: false
+    operator: '>'
+    type: single
+    value: 100
+  - color: '#ED6E6E'
+    columns:
+    - PRICE
+    highlight_row: true
+    operator: <
+    type: single
+    value: 20
+  - colors:
+    - '#ED6E6E'
+    - '#F9CF48'
+    - '#84BB4C'
+    columns:
+    - RATING
+    max_type: custom
+    max_value: 5
+    min_type: custom
+    min_value: 1
+    type: range
+  table.columns:
+  - enabled: true
+    name: TITLE
+  - enabled: true
+    name: CATEGORY
+  - enabled: true
+    name: PRICE
+  - enabled: true
+    name: RATING
+  - enabled: true
+    name: VENDOR
+  - enabled: true
+    name: CREATED_AT
+  - enabled: false
+    name: EAN
+card_schema: 23
+serdes/meta:
+- id: Wo5d6IV8lb63wex29uh6H
+  label: products_table__formatted_
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

@@ -18,7 +18,7 @@ import { useSelector } from "metabase/lib/redux";
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
-} from "metabase/query_builder/components/expressions";
+} from "metabase/querying/components/expressions";
 import {
   type DefinedClauseName,
   type MBQLClauseFunctionConfig,
