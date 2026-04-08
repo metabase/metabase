@@ -18,7 +18,7 @@ import {
 
 import S from "./MetabotUsageIndicator.module.css";
 
-function getColor(scope: UsageScope): string {
+function getColor(scope: UsageScope): "error" | "warning" | "brand" {
   if (scope.isAtLimit) {
     return "error";
   }
