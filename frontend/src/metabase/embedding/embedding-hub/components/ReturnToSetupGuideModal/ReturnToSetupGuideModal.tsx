@@ -1,21 +1,11 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { EMBEDDING_SETUP_GUIDE_PATH } from "metabase/embedding/embedding-hub/constants";
 import { useDispatch } from "metabase/lib/redux";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
-/**
- * Only allow relative paths to prevent open redirect via ?returnTo=.
- */
-function getSafeReturnTo(returnTo: string): string | null {
-  if (returnTo.startsWith("/") && !returnTo.startsWith("//")) {
-    return returnTo;
-  }
-  return null;
-}
-
 interface ReturnToSetupGuideModalProps {
-  returnTo: string;
   opened: boolean;
   onClose: () => void;
   title?: string;
@@ -27,18 +17,12 @@ interface ReturnToSetupGuideModalProps {
  * after completing an action (e.g. adding a database, saving an x-ray dashboard).
  */
 export const ReturnToSetupGuideModal = ({
-  returnTo,
   opened,
   onClose,
   title = t`You're all set!`,
   message = t`Go back to the setup guide to continue setting up embedding.`,
 }: ReturnToSetupGuideModalProps) => {
   const dispatch = useDispatch();
-  const safePath = getSafeReturnTo(returnTo);
-
-  if (!safePath) {
-    return null;
-  }
 
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
@@ -48,7 +32,10 @@ export const ReturnToSetupGuideModal = ({
           <Button variant="subtle" onClick={onClose}>
             {t`Stay here`}
           </Button>
-          <Button variant="filled" onClick={() => dispatch(push(safePath))}>
+          <Button
+            variant="filled"
+            onClick={() => dispatch(push(EMBEDDING_SETUP_GUIDE_PATH))}
+          >
             {t`Return to the setup guide`}
           </Button>
         </Group>

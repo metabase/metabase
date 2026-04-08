@@ -2,24 +2,27 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
 import { useDispatch } from "metabase/lib/redux";
 import type { TableId } from "metabase-types/api";
 
 interface EmbeddingHubXrayPickerModalProps {
   opened: boolean;
   onClose: () => void;
-  returnTo?: string;
+  fromEmbeddingSetupGuide?: boolean;
 }
 
 export const EmbeddingHubXrayPickerModal = ({
   opened,
   onClose,
-  returnTo,
+  fromEmbeddingSetupGuide,
 }: EmbeddingHubXrayPickerModalProps) => {
   const dispatch = useDispatch();
 
   function handleTableSelect(tableId: TableId) {
-    const params = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : "";
+    const params = fromEmbeddingSetupGuide
+      ? `?${RETURN_TO_SETUP_GUIDE_PARAM}=true`
+      : "";
     dispatch(push(`/auto/dashboard/table/${tableId}${params}`));
   }
 

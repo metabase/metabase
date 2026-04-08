@@ -129,7 +129,7 @@ describe("EmbeddingHub", () => {
     await userEvent.click(within(dialog).getByText("Foo Bar Table"));
 
     expect(mockPush).toHaveBeenCalledWith(
-      "/auto/dashboard/table/10?returnTo=%2Fadmin%2Fembedding%2Fsetup-guide",
+      "/auto/dashboard/table/10?returnToEmbeddingSetupGuide=true",
     );
   });
 

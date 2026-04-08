@@ -18,7 +18,8 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
-import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideButton";
+import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideModal";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -50,7 +51,10 @@ const AutomaticDashboardAppInner = () => {
   const invalidateCollections = () => invalidateTags(null, ["collection"]);
 
   const [savedDashboardUrl, setSavedDashboardUrl] = useState<string>();
-  const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const fromEmbeddingSetupGuide = new URLSearchParams(
+    window.location.search,
+  ).has(RETURN_TO_SETUP_GUIDE_PARAM);
 
   useEffect(() => {
     setSavedDashboardUrl(undefined);
@@ -87,6 +91,9 @@ const AutomaticDashboardAppInner = () => {
         }),
       );
       setSavedDashboardUrl(newDashboardUrl);
+      if (fromEmbeddingSetupGuide) {
+        setShowReturnModal(true);
+      }
     }
   };
 
@@ -211,11 +218,10 @@ const AutomaticDashboardAppInner = () => {
           </Box>
         )}
       </div>
-      {returnTo && (
+      {fromEmbeddingSetupGuide && (
         <ReturnToSetupGuideModal
-          returnTo={returnTo}
-          opened={!!savedDashboardUrl}
-          onClose={() => setSavedDashboardUrl(undefined)}
+          opened={showReturnModal}
+          onClose={() => setShowReturnModal(false)}
           title={t`Dashboard saved!`}
           message={t`Your dashboard has been saved. Go back to the setup guide to continue.`}
         />

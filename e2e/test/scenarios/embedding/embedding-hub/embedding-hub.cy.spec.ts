@@ -45,7 +45,7 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Should navigate to auto dashboard with from param");
       cy.url().should("include", "/auto/dashboard/table/");
-      cy.url().should("include", "returnTo=");
+      cy.url().should("include", "returnToEmbeddingSetupGuide=");
 
       cy.log("Wait for x-ray dashboard to load and save it");
       cy.findByRole("button", { name: "Save this", timeout: 30_000 }).click();
@@ -78,7 +78,7 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("Should navigate with from param");
       cy.url().should("include", "/admin/databases/create");
-      cy.url().should("include", "returnTo=");
+      cy.url().should("include", "returnToEmbeddingSetupGuide=");
     });
 
     it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {
