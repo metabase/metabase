@@ -91,9 +91,9 @@ In your Keycloak client:
 2. In SAML settings, toggle on **Synchronize Group Memberships**
 3. For each of the Keycloak groups, set up a new mapping to a Metabase group.
 
-   Currently, Keycloak groups will show up in Metabase with the slash character ("/") prepended to the group name. So, for example, a group named `sales` in Keycloak show up in Metabase as `/sales`.
+   Currently, Keycloak groups will show up in Metabase with the slash character ("/") prepended to the group name. So, for example, a group named `sales` in Keycloak shows up in Metabase as `/sales`.
 
-4. In **Group attribute name**, enter `member_of` (the name for the attribute with the group list in your Keycloack configuration).
+4. In **Group attribute name**, enter `member_of` (the name for the attribute with the group list in your Keycloak configuration).
 
 ## Troubleshooting SAML issues
 
