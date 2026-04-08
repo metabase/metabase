@@ -9,7 +9,8 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -124,7 +125,14 @@
                            (assoc (tx/dbdef->connection-details :vertica nil nil)
                                   :user test-user
                                   :password test-pw))
+                ;; Debug: what does the test user see?
+                _          (log/fatalf "DEBUG: user-info %s" (pr-str (jdbc/query user-spec ["SELECT user_name, is_super_user FROM v_catalog.users WHERE user_name = CURRENT_USER"])))
+                _          (log/fatalf "DEBUG: role grants %s" (pr-str (jdbc/query user-spec ["SELECT grantee, object_name, object_type FROM v_catalog.grants WHERE object_type = 'ROLE'"])))
+                _          (log/fatalf "DEBUG: table grants for role %s" (pr-str (jdbc/query user-spec [(str "SELECT grantee, object_schema, object_name, object_type, privileges_description FROM v_catalog.grants WHERE grantee = '" test-role "' AND object_type IN ('TABLE', 'VIEW') LIMIT 5")])))
+                _          (log/fatalf "DEBUG: schema grants %s" (pr-str (jdbc/query user-spec [(str "SELECT grantee, object_name, object_type, privileges_description FROM v_catalog.grants WHERE grantee = '" test-role "' AND object_type = 'SCHEMA'")])))
+                _          (log/fatalf "DEBUG: all grants for test entities %s" (pr-str (jdbc/query user-spec [(str "SELECT grantee, object_schema, object_name, object_type, privileges_description FROM v_catalog.grants WHERE grantee IN ('" test-user "', '" test-role "', 'PUBLIC') LIMIT 20")])))
                 privileges (sql-jdbc.sync/current-user-table-privileges :vertica user-spec)
+                _          (log/fatalf "DEBUG: privileges result %s" (pr-str (take 5 privileges)))
                 orders     (filter (fn [priv] (str/includes? (u/lower-case-en (:table priv)) "orders")) privileges)]
             (is (seq privileges) "Non-superuser with role grant should see tables")
             (is (seq orders) "ORDERS table should be visible via role grant")
