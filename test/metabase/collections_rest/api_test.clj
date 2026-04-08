@@ -3156,6 +3156,30 @@
       (mt/user-http-request :crowberto :put 403 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
 
+(deftest trashed-items-respect-collection-permissions-test
+  (testing "GET /api/collection/<trash-id>/items does not show trashed items from collections the user can't access"
+    (doseq [[model model-name attrs] [[:model/Card      "card"      {:name "Secret Card" :dataset_query (mt/native-query {:query "select 1"})}]
+                                      [:model/Dashboard "dashboard" {:name "Secret Dashboard"}]
+                                      [:model/Document  "document"  {:name "Secret Document"}]]]
+      (testing (str model-name)
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Restricted Collection"}
+                       model {item-id :id} (merge {:collection_id     coll-id
+                                                   :archived          true
+                                                   :archived_directly true}
+                                                  attrs)]
+          (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)
+          (testing "User without collection access does NOT see the trashed item"
+            (let [items (mt/user-http-request :rasta :get 200
+                                              (format "collection/%d/items" (collection/trash-collection-id)))
+                  ids   (set (map :id (filter #(= model-name (:model %)) (:data items))))]
+              (is (not (contains? ids item-id)))))
+          (testing "User WITH collection access DOES see the trashed item"
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+            (let [items (mt/user-http-request :rasta :get 200
+                                              (format "collection/%d/items" (collection/trash-collection-id)))
+                  ids   (set (map :id (filter #(= model-name (:model %)) (:data items))))]
+              (is (contains? ids item-id)))))))))
+
 (deftest skip-graph-skips-graph-on-graph-PUT
   (is (malli= [:map [:revision :int] [:groups :map]]
               (mt/user-http-request :crowberto
