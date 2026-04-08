@@ -576,12 +576,14 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     });
 
     cy.realPress("g").realPress("s");
-    cy.location("pathname").should("equal", "/data-studio");
+    cy.location("pathname").should("match", /^\/data-studio/);
 
     H.expectUnstructuredSnowplowEvent({
       event: "keyboard_shortcut_performed",
       event_detail: "navigate-data-studio",
     });
+
+    cy.realPress("g").realPress("m");
 
     cy.log("shortcuts should not be enabled when working in a modal (ADM 658)");
 
