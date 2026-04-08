@@ -494,8 +494,8 @@
         (try
           (mt/with-test-user :rasta
             (let [summary (usage/usage-summary)]
-              (is (some? summary))
-              (is (not (contains? summary :tenant_usage)))
-              (is (not (contains? summary :tenant_limit)))))
+              (is (map? summary))
+              (is (not (contains? (or summary {}) :tenant_usage)))
+              (is (not (contains? (or summary {}) :tenant_limit)))))
           (finally
             (cleanup-test-usage! user-id)))))))
