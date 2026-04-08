@@ -21,11 +21,7 @@ import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSing
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
-import {
-  MetabaseReduxProvider,
-  useDispatch,
-  useSelector,
-} from "metabase/lib/redux";
+import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -44,34 +40,36 @@ export type ComponentProviderInternalProps = ComponentProviderProps & {
 
 let hasInitializedPlugins = false;
 
-function useInitPlugins() {
-  const dispatch = useDispatch();
-
+/**
+ * Initializes EE plugins synchronously during render
+ * to avoid an extra frame where children render without plugins.
+ *
+ * Uses reduxStore.dispatch directly instead of the useDispatch hook,
+ * since the hook-based dispatch may not be available during render.
+ * This follows the same pattern as use-init-data-internal.ts.
+ */
+function useInitPlugins(reduxStore: SdkStore) {
   const tokenFeatures = useSelector(
     (state) => state.settings.values["token-features"],
   );
 
-  useEffect(() => {
-    // Modular Embedding already initializes the plugins in its entrypoint.
-    // We have to avoid re-initializing SDK plugins as they could override
-    // some of plugins needed by EAJS
-    if (isEmbeddingEajs() || !tokenFeatures) {
-      return;
-    }
+  // Modular Embedding already initializes the plugins in its entrypoint.
+  // We have to avoid re-initializing SDK plugins as they could override
+  // some of plugins needed by EAJS
+  if (isEmbeddingEajs() || !tokenFeatures) {
+    return;
+  }
 
-    if (hasInitializedPlugins) {
-      // Plugins already initialized (e.g. a second ComponentProvider mounting,
-      // or a fresh store in tests). Don't re-run initializePlugins, but do
-      // mark this store instance as ready.
-      dispatch(setPluginsReady(true));
-      return;
-    }
-
+  if (!hasInitializedPlugins) {
     hasInitializedPlugins = true;
 
     initializePlugins();
-    dispatch(setPluginsReady(true));
-  }, [tokenFeatures, dispatch]);
+  }
+
+  // Mark ready for this store instance on first render.
+  if (!reduxStore.getState().sdk?.pluginsReady) {
+    reduxStore.dispatch(setPluginsReady(true));
+  }
 }
 
 export const ComponentProviderInternal = (
@@ -104,7 +102,7 @@ export const ComponentProviderInternal = (
     isLocalHost,
   });
 
-  useInitPlugins();
+  useInitPlugins(reduxStore);
 
   useSdkCustomLoader();
 
