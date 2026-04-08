@@ -67,4 +67,4 @@
     (t2/select-one :model/CustomVizPlugin :identifier id)))
 
 (defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
-  [{:label "custom-viz-plugins"} {:label (:identifier entity)}])
+  [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
