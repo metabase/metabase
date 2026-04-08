@@ -540,10 +540,14 @@
   (let [definition (assoc (arithmetic-definition)
                           :projections [{:type :metric
                                          :id 42
+                                         :lib/uuid arith-uuid-a
+                                         :projection [[:dimension {} uuid-1]]}
+                                        {:type :metric
+                                         :id 42
+                                         :lib/uuid arith-uuid-b
                                          :projection [[:dimension {} uuid-1]]}])
         ast (ast.build/from-definition definition)]
 
     (testing "projections are assigned to matching leaf sub-ASTs"
       (doseq [child (get-in ast [:expression :children])]
-        ;; Both children reference :metric 42, so both get the projection
         (is (= 1 (count (get-in child [:ast :group-by]))))))))
