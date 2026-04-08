@@ -63,7 +63,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-404 (t2/exists? :model/EmbeddingTheme :id id))
   (t2/delete! :model/EmbeddingTheme :id id)
-  api/generic-204-no-content)
+  nil)
 
 (api.macros/defendpoint :post "/:id/copy" :- ::EmbeddingTheme
   "Copy an embedding theme."
