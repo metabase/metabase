@@ -451,8 +451,9 @@
       (str/replace strip-id-regex "")
       str/trim))
 
-(defn- unique-indexed-name [names original-name]
+(defn- unique-indexed-name
   "Compute a unique name starting with `original-name`, deduplicated against existing `names`."
+  [names original-name]
   (if-not (contains? names original-name)
     original-name
     (loop [i 2]
