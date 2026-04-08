@@ -176,6 +176,30 @@
             :graph.dimensions ["CREATED_AT"]}
            (mi/normalize-visualization-settings viz-settings)))))
 
+(deftest ^:parallel normalize-visualization-settings-preserves-column-names-test
+  (testing "Column names that look like MBQL clauses are preserved as strings, field refs are normalized"
+    (is (= {:graph.metrics             ["expression" "aggregation"]
+            :pivot_table.column_split  {:rows    ["expression" "CREATED_AT"]
+                                        :columns ["field" "SUBTOTAL"]
+                                        :values  ["aggregation" "count" "sum"]}
+            :pivot_table.collapsed_rows {:rows  ["aggregation" "expression"]
+                                         :value ["some-id"]}
+            :table.columns             [{:name "expression"  :enabled true  :field_ref [:field 1 nil]}
+                                        {:name "aggregation" :enabled false}
+                                        {:name "field"       :enabled true  :fieldRef [:field 2 nil]}
+                                        {:name "ID"          :enabled true  :fieldref [:field 3 nil]}]}
+           (mi/normalize-visualization-settings
+            {"graph.metrics"              ["expression" "aggregation"]
+             "pivot_table.column_split"   {"rows"    ["expression" "CREATED_AT"]
+                                           "columns" ["field" "SUBTOTAL"]
+                                           "values"  ["aggregation" "count" "sum"]}
+             "pivot_table.collapsed_rows" {"rows"  ["aggregation" "expression"]
+                                           "value" ["some-id"]}
+             "table.columns"              [{"name" "expression"  "enabled" true  "field_ref" ["field" 1 nil]}
+                                           {"name" "aggregation" "enabled" false}
+                                           {"name" "field"       "enabled" true  "fieldRef" ["field" 2 nil]}
+                                           {"name" "ID"          "enabled" true  "fieldref" ["field" 3 nil]}]})))))
+
 (deftest ^:parallel normalize-invalid-visualization-settings-test
   (testing "Unknown keys in `:column_settings` should be removed rather than causing normalization to fail (#69626)"
     (let [viz-settings {"column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "x"}

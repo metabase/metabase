@@ -377,9 +377,8 @@
                     "aggregation"
                     "expression"}
                   (first form))))
-          (normalize-mbql-clauses [form]
-            (cond
-              (mbql-field-clause? form)
+          (normalize-mbql-clause [form]
+            (if (mbql-field-clause? form)
               (try
                 (mbql.normalize/normalize form)
                 (catch Exception e
@@ -387,39 +386,35 @@
                              (u/pprint-to-str 'red form)
                              (ex-message e))
                   form))
-
-              (sequential? form)
-              (into (empty form) (map normalize-mbql-clauses) form)
-
-              (map? form)
-              (into (empty form)
-                    (map (fn [[k v]]
-                           ;; don't recurse into `:columns` if they are COLUMN NAMES! -- if the first column name is
-                           ;; something like "expression" then we don't want to accidentally treat it as an
-                           ;; `:expression` ref. Some `:columns` lists is viz settings do contain MBQL clauses
-                           ;; tho :unamused:
-                           (let [column-names? (and (= k :columns)
-                                                    (sequential? v)
-                                                    (every? (complement mbql-field-clause?) v))]
-                             [k (cond-> v
-                                  (not column-names?) normalize-mbql-clauses)])))
-                    form)
-
-              :else
-              form))]
+              form))
+          (normalize-mbql-items [xs]
+            (when xs (mapv normalize-mbql-clause xs)))
+          (normalize-table-columns [cols]
+            (mapv (fn [col]
+                    (-> col
+                        (dissoc :key)
+                        (m/update-existing :field_ref normalize-mbql-clause)
+                        (m/update-existing :fieldRef normalize-mbql-clause)
+                        (m/update-existing :fieldref normalize-mbql-clause)))
+                  cols))
+          (normalize-column-split [split]
+            (when split
+              (-> split
+                  (m/update-existing :rows normalize-mbql-items)
+                  (m/update-existing :columns normalize-mbql-items)
+                  (m/update-existing :values normalize-mbql-items))))
+          (normalize-collapsed-rows [collapsed]
+            (when collapsed
+              (m/update-existing collapsed :rows normalize-mbql-items)))]
     (->
      viz-settings
-     (dissoc "column_settings" "graph.metrics")
+     (dissoc "column_settings")
      walk/keywordize-keys
-     ;; "key" is an old unused value
-     (m/update-existing :table.columns (fn [cols] (mapv #(dissoc % :key) cols)))
      (cond-> (get viz-settings "column_settings")
        (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings"))))
-     normalize-mbql-clauses
-     ;; exclude graph.metrics from normalization as it may start with the word "expression" but it is not
-     ;; MBQL (metabase#15882)
-     (cond-> (get viz-settings "graph.metrics")
-       (assoc :graph.metrics (get viz-settings "graph.metrics"))))))
+     (m/update-existing :table.columns normalize-table-columns)
+     (m/update-existing :pivot_table.column_split normalize-column-split)
+     (m/update-existing :pivot_table.collapsed_rows normalize-collapsed-rows))))
 
 (jm/def-json-migration migrate-viz-settings*)
 
