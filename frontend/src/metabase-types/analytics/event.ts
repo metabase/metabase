@@ -687,19 +687,7 @@ type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
-// Feature modules can extend this interface via declaration merging
-// to add their own event types to SimpleEvent
-// Example:
-//   declare module "metabase-types/analytics/event" {
-//     interface SimpleEventExtensions {
-//       myFeatureEvent: ValidateEvent<{ event: "my_event"; ... }>;
-//     }
-//   }
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- extended via declaration merging in feature modules
-export interface SimpleEventExtensions {}
-
 export type SimpleEvent =
-  | SimpleEventExtensions[keyof SimpleEventExtensions]
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
   | CSVUploadClickedEvent
