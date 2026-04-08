@@ -230,7 +230,7 @@ const TEST_MULTISTAGE_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
           type: "operator",
           operator: ">",
           args: [
-            { type: "column", name: "count" },
+            { type: "column", name: "aggregation" },
             { type: "literal", value: 5 },
           ],
         },

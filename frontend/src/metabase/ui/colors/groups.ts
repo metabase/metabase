@@ -1,4 +1,5 @@
 import Color from "color";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { ACCENT_COUNT, color } from "./palette";
@@ -76,48 +77,86 @@ export const getStatusColorRanges = (): string[][] => {
 };
 
 export const getPreferredColor = (key: string, palette?: ColorPalette) => {
-  const mapping = [
-    {
-      keys: [
-        "success",
-        "succeeded",
-        "pass",
-        "passed",
-        "valid",
-        "complete",
-        "completed",
-        "accepted",
-        "active",
-        "profit",
-      ],
-      color: color("success", palette),
-    },
-    {
-      keys: [
-        "cancel",
-        "canceled",
-        "cancelled",
-        "error",
-        "fail",
-        "failed",
-        "failure",
-        "failures",
-      ],
-      color: color("error", palette),
-    },
-    {
-      keys: ["warn", "warning", "incomplete", "unstable"],
-      color: color("warning", palette),
-    },
-    { keys: ["count"], color: color("accent0", palette) },
-    { keys: ["sum"], color: color("accent1", palette) },
-    { keys: ["average"], color: color("accent2", palette) },
-  ];
-
-  const lowercasedKey = key.toLowerCase();
-  for (const { keys, color } of mapping) {
-    if (keys.some((key) => lowercasedKey.includes(key))) {
-      return color;
-    }
+  switch (key.toLowerCase()) {
+    case "success":
+    case "succeeded":
+    case "pass":
+    case "passed":
+    case "valid":
+    case "complete":
+    case "completed":
+    case "accepted":
+    case "active":
+    case "profit":
+      return color("success", palette);
+    case "cancel":
+    case "canceled":
+    case "cancelled":
+    case "error":
+    case "fail":
+    case "failed":
+    case "failure":
+    case "failures":
+    case "invalid":
+    case "rejected":
+    case "inactive":
+    case "loss":
+    case "cost":
+    case "deleted":
+    case "pending":
+      return color("error", palette);
+    case "warn":
+    case "warning":
+    case "incomplete":
+    case "unstable":
+      return color("warning", palette);
+    case "count":
+      return color("accent0", palette);
+    case "sum":
+      return color("accent1", palette);
+    case "average":
+      return color("accent2", palette);
   }
 };
+
+// Maps aggregation display names to legacy column names (e.g. "Sum of Price" → "sum",
+// "Count" → "count"). This is needed to get the same preferred color and the same
+// color hash as before aggregation columns switched to generic names.
+export function getPreferredColorKey(name: string): string | undefined {
+  const mapping: [string, string][] = [
+    [t`Count`, "count"],
+    [t`Cumulative count`, "cum-count"],
+    [t`Average`, "average"],
+    [t`Cumulative sum`, "cum-sum"],
+    [t`Distinct values`, "distinct"],
+    [t`Max`, "max"],
+    [t`Median`, "median"],
+    [t`Min`, "min"],
+    [t`Standard deviation`, "standard-deviation"],
+    [t`Sum`, "sum"],
+    [t`Variance`, "var"],
+  ];
+
+  for (const [prefix, key] of mapping) {
+    if (name.startsWith(prefix)) {
+      return key;
+    }
+  }
+  return undefined;
+}
+
+// Deduplicates color keys to match legacy column names (e.g. "count", "count_2", "sum")
+// so that series colors don't regress when multiple aggregations of the same type are used.
+export function getDeduplicatedColorKeys(
+  colorKeys: (string | undefined)[],
+): (string | undefined)[] {
+  const counts = new Map<string, number>();
+  return colorKeys.map((key) => {
+    if (key == null) {
+      return undefined;
+    }
+    const count = counts.get(key) ?? 0;
+    counts.set(key, count + 1);
+    return count === 0 ? key : `${key}_${count + 1}`;
+  });
+}

@@ -1,6 +1,10 @@
 import Color from "color";
 
-import { getAccentColors, getPreferredColor } from "./groups";
+import {
+  getAccentColors,
+  getDeduplicatedColorKeys,
+  getPreferredColorKey,
+} from "./groups";
 import { color } from "./palette";
 
 describe("groups", () => {
@@ -20,27 +24,58 @@ describe("groups", () => {
     });
   });
 
-  describe("getPreferredColor", () => {
-    it("should match exact key names", () => {
-      expect(getPreferredColor("count")).toBe(color("accent0"));
-      expect(getPreferredColor("sum")).toBe(color("accent1"));
-      expect(getPreferredColor("average")).toBe(color("accent2"));
+  describe("getPreferredColorKey", () => {
+    it.each([
+      ["Count", "count"],
+      ["Count of rows", "count"],
+      ["Cumulative count", "cum-count"],
+      ["Cumulative count of ID", "cum-count"],
+      ["Sum of Price", "sum"],
+      ["Cumulative sum of Total", "cum-sum"],
+      ["Average of Rating", "average"],
+      ["Distinct values of Category", "distinct"],
+      ["Max of Price", "max"],
+      ["Median of Total", "median"],
+      ["Min of Price", "min"],
+      ["Standard deviation of Rating", "standard-deviation"],
+      ["Variance of Total", "var"],
+    ])('should map "%s" to "%s"', (name, expected) => {
+      expect(getPreferredColorKey(name)).toBe(expected);
     });
 
-    it("should match keys as substrings of display names", () => {
-      expect(getPreferredColor("Count of rows")).toBe(color("accent0"));
-      expect(getPreferredColor("Sum of Price")).toBe(color("accent1"));
-      expect(getPreferredColor("Average of Total")).toBe(color("accent2"));
-    });
+    it.each(["aggregation", "Discount %", "Revenue", "foo"])(
+      'should return undefined for "%s"',
+      (name) => {
+        expect(getPreferredColorKey(name)).toBeUndefined();
+      },
+    );
+  });
 
-    it("should match case-insensitively", () => {
-      expect(getPreferredColor("COUNT")).toBe(color("accent0"));
-      expect(getPreferredColor("Sum of Price")).toBe(color("accent1"));
-    });
-
-    it("should return undefined for unrecognized keys", () => {
-      expect(getPreferredColor("aggregation")).toBeUndefined();
-      expect(getPreferredColor("foo")).toBeUndefined();
+  describe("getDeduplicatedColorKeys", () => {
+    it.each([
+      [["count"], ["count"]],
+      [
+        ["count", "sum"],
+        ["count", "sum"],
+      ],
+      [
+        ["count", "count"],
+        ["count", "count_2"],
+      ],
+      [
+        ["count", "sum", "count"],
+        ["count", "sum", "count_2"],
+      ],
+      [
+        ["sum", "sum", "sum"],
+        ["sum", "sum_2", "sum_3"],
+      ],
+      [
+        [undefined, "count"],
+        [undefined, "count"],
+      ],
+    ])("should deduplicate %j to %j", (input, expected) => {
+      expect(getDeduplicatedColorKeys(input)).toEqual(expected);
     });
   });
 });

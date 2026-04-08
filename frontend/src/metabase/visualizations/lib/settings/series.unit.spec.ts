@@ -28,7 +28,7 @@ describe("Series unit settings", () => {
           card: {
             ...createMockCard({ name: "Count" }),
             _seriesKey: "aggregation",
-            _seriesName: "count",
+            _seriesName: "Count",
           },
           ...createMockDataset(),
         },
