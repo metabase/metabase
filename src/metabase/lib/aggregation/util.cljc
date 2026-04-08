@@ -9,7 +9,9 @@
   [query stage-number clause]
   (:name (lib.metadata.calculation/metadata
           query stage-number
-          (lib.options/update-options clause dissoc :name))))
+          (cond-> clause
+            (lib.options/clause-name clause)
+            (lib.options/update-options dissoc :name)))))
 
 (defn unique-aggregation-name
   "Given existing aggregation `clauses` and a `new-clause`, compute a unique `:name` for `new-clause` based on its

@@ -348,9 +348,12 @@
    ;; if this is a Metric or Measure metadata, convert it to `:metric` or `:measure` MBQL clause before adding.
    (if (#{:metadata/metric :metadata/measure} (lib.dispatch/dispatch-value aggregable))
      (recur query stage-number (lib.ref/ref aggregable))
-     (let [existing    (aggregations query stage-number)
-           agg-name    (lib.aggregation.util/unique-aggregation-name query stage-number existing aggregable)
-           aggregable  (lib.options/with-clause-name aggregable agg-name)]
+     (let [aggregable  (lib.common/->op-arg aggregable)
+           existing    (aggregations query stage-number)
+           aggregable  (cond-> aggregable
+                         (not (lib.options/clause-name aggregable))
+                         (lib.options/with-clause-name
+                           (lib.aggregation.util/unique-aggregation-name query stage-number existing aggregable)))]
        (lib.util/add-summary-clause query stage-number :aggregation aggregable)))))
 
 (mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
