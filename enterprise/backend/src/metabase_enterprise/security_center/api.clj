@@ -13,7 +13,13 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent ExecutorService RejectedExecutionException
+                         SynchronousQueue ThreadPoolExecutor ThreadPoolExecutor$AbortPolicy
+                         TimeUnit)))
+
+(set! *warn-on-reflection* true)
 
 (defn- advisory-response
   "Format a SecurityAdvisory row for API response. Expects `:acknowledged_by_user` to be hydrated."
@@ -79,20 +85,21 @@
     (api/check-404 advisory)
     (acknowledge-response (security-advisory/acknowledge! advisory api/*current-user-id*))))
 
-(def ^:private syncing? (atom false))
+(defonce ^:private ^ExecutorService sync-executor
+  (ThreadPoolExecutor. 1 1 0 TimeUnit/MILLISECONDS
+                       (SynchronousQueue.) (ThreadPoolExecutor$AbortPolicy.)))
 
 (api.macros/defendpoint :post "/sync" :- [:map [:status ms/NonBlankString]]
   "Trigger an async advisory sync + re-evaluation.
-   Returns immediately. No-ops if a sync is already in progress."
+   Returns immediately. If a sync is already running, the request is a no-op."
   []
   (api/check-superuser)
-  (when (compare-and-set! syncing? false true)
-    (future
-      (try
-        (sync-advisories/sync-and-evaluate!)
-        (finally
-          (reset! syncing? false)))))
-  {:status "ok"})
+  (let [submitted? (try
+                     (.submit sync-executor ^Runnable sync-advisories/sync-and-evaluate!)
+                     true
+                     (catch RejectedExecutionException _e
+                       false))]
+    {:status (if submitted? "started" "already-in-progress")}))
 
 (api.macros/defendpoint :post "/test-notification" :- [:map [:success :boolean]]
   "Send a test notification through the configured Security Center channels."
