@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-956-integration-branch-for-named-theme-editor-for-embedding",
-    "hash": "e6b8a61bab335d3981ad79f47e450ed34356b6fa"
+    "hash": "e9aaf27f28cfcc7ee2175019f582213175249d09"
   },
   "upstream": {
     "branch": "emb-942-add-embedding-theme-preview-placeholder-cards-to-theme"
