@@ -115,10 +115,8 @@ export type CreateDefineSetting<
   id: Key;
 
   /**
-   * Top-level tab that this setting appears under in the settings sidebar
-   * (e.g. `"Data"`, `"Display"`, `"Axes"`). Settings with the same
-   * `section` value are grouped under the same tab. Omit to place the
-   * setting outside of any section.
+   * Top-level section that this setting appears under in the settings sidebar
+   * (e.g. `"Data"`, `"Display"`, `"Axes"`).
    */
   section?: string;
 
