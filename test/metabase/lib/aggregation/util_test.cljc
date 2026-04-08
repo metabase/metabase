@@ -38,7 +38,7 @@
                             (update-in [:stages 0 :aggregation] #(mapv strip-name %)))
             existing    (lib/aggregations raw-query)]
         (testing "unnamed sums are treated as named for dedup"
-          (is (= "sum_2_2"
+          (is (= "sum_3"
                  (lib.aggregation.util/unique-aggregation-name
                   raw-query -1 existing
                   (lib/sum (meta/field-metadata :venues :price))))))
