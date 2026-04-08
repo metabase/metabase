@@ -29,5 +29,5 @@ export interface ChartLayout {
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"];
   stackedBarTicksRotation?: TicksRotation;
   panelHeight?: number;
-  panelGap?: number;
+  panelGap: number;
 }

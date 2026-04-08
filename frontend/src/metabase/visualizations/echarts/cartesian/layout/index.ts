@@ -838,6 +838,7 @@ export const getChartLayout = (
     outerHeight: height,
     axisEnabledSetting,
     stackedBarTicksRotation,
+    panelGap: 0,
   };
 };
 
