@@ -73,63 +73,56 @@
 
 ;;; ------------------------------------------------ Fetch & Update ------------------------------------------------
 
-(defn- repo-asset-paths
-  "List all file paths under `dist/assets/` in the repo, returned relative to that prefix."
-  [snapshot]
-  (let [prefix "dist/assets/"]
-    (->> (rs.git/list-files snapshot)
-         (filter #(str/starts-with? % prefix))
-         (map #(subs % (count prefix))))))
-
 (defn fetch-and-update!
   "Fetch index.js and manifest from the plugin's git repo and update the DB record.
    Returns the commit SHA or nil on failure."
-  ([plugin]
-   (fetch-and-update! plugin nil))
-  ([{:keys [id repo_url access_token pinned_version identifier]} _opts]
-   (try
-     (let [source        (rs.git/git-source repo_url nil access_token nil)
-           snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
-           commit-sha    (:version snapshot)
-           content       (rs.git/read-file snapshot "dist/index.js")
-           _             (when-not content
-                           (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
-           ;; read manifest (optional)
-           manifest-str  (rs.git/read-file snapshot (manifest/manifest-path))
-           parsed        (when manifest-str (manifest/parse-manifest manifest-str))
-           version-str   (get-in parsed [:metabase :version])
-           ;; check version compatibility
-           _             (when (and version-str
-                                    (not (manifest/compatible? {:metabase_version version-str})))
-                           (throw (ex-info
-                                   (format "Plugin requires Metabase version %s but current version is %s"
-                                           version-str
-                                           (str "v" (config/current-major-version)))
-                                   {:metabase_version version-str})))]
-       ;; update DB — display_name and icon always come from manifest
-       (t2/update! :model/CustomVizPlugin id
-                   {:status            :active
-                    :error_message     nil
-                    :resolved_commit   commit-sha
-                    :manifest          manifest-str
-                    :display_name      (or (:name parsed) identifier)
-                    :icon              (:icon parsed)
-                    :icon_dark         (:icon_dark parsed)
-                    :metabase_version  version-str})
-       (swap! local-snapshots assoc id snapshot)
-       commit-sha)
-     (catch Exception e
-       (t2/update! :model/CustomVizPlugin id
-                   {:status        :error
-                    :error_message (ex-message e)})
-       nil))))
+  [{:keys [id repo_url access_token pinned_version identifier]}]
+  (try
+    (let [source        (rs.git/git-source repo_url nil access_token nil)
+          snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
+          commit-sha    (:version snapshot)
+          content       (rs.git/read-file snapshot "dist/index.js")
+          _             (when-not content
+                          (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
+          manifest-str  (or (rs.git/read-file snapshot (manifest/manifest-path))
+                            (throw (ex-info (str (manifest/manifest-path) " not found in repository")
+                                            {:commit commit-sha})))
+          parsed        (or (manifest/parse-manifest manifest-str)
+                            (throw (ex-info (str "Failed to parse " (manifest/manifest-path))
+                                            {:commit commit-sha})))
+          version-str   (get-in parsed [:metabase :version])
+          ;; check version compatibility
+          _             (when (and version-str
+                                   (not (manifest/compatible? {:metabase_version version-str})))
+                          (throw (ex-info
+                                  (format "Plugin requires Metabase version %s but current version is %s"
+                                          version-str
+                                          (str "v" (config/current-major-version)))
+                                  {:metabase_version version-str})))]
+      ;; update DB — display_name and icon always come from manifest
+      (t2/update! :model/CustomVizPlugin id
+                  {:status            :active
+                   :error_message     nil
+                   :resolved_commit   commit-sha
+                   :manifest          manifest-str
+                   :display_name      (or (:name parsed) identifier)
+                   :icon              (:icon parsed)
+                   :icon_dark         (:icon_dark parsed)
+                   :metabase_version  version-str})
+      (swap! local-snapshots assoc id snapshot)
+      commit-sha)
+    (catch Exception e
+      (t2/update! :model/CustomVizPlugin id
+                  {:status        :error
+                   :error_message (ex-message e)})
+      nil)))
 
 ;;; ------------------------------------------------ Get ------------------------------------------------
 
 (defn- select-plugin-for-read
   "Select the fields needed for git read operations."
   [plugin-id]
-  (t2/select-one [:model/CustomVizPlugin :id :repo_url :access_token :pinned_version :resolved_commit]
+  (t2/select-one [:model/CustomVizPlugin :id :repo_url :access_token :pinned_version :resolved_commit :manifest]
                  :id plugin-id))
 
 (defn get-bundle
@@ -140,18 +133,12 @@
       (read-bundle-from-git plugin))))
 
 (defn- asset-whitelisted?
-  "Check whether an asset path is allowed by the plugin's manifest.
-   Parses the manifest's declared assets, expands globs against available files in
-   the repo, and returns true if asset-path is in the expanded set."
-  [snapshot ^String asset-path]
+  "Check whether an asset path is explicitly listed in the plugin's manifest."
+  [{:keys [manifest]} ^String asset-path]
   (try
-    (let [manifest-str (rs.git/read-file snapshot (manifest/manifest-path))
-          parsed       (when manifest-str (manifest/parse-manifest manifest-str))]
-      (when parsed
-        (let [declared  (manifest/asset-paths parsed)
-              available (repo-asset-paths snapshot)
-              allowed   (set (manifest/expand-globs declared available))]
-          (contains? allowed asset-path))))
+    (when-let [parsed (some-> manifest manifest/parse-manifest)]
+      (let [allowed (set (manifest/asset-paths parsed))]
+        (contains? allowed asset-path)))
     (catch Exception e
       (log/warnf "Failed to check asset whitelist for %s: %s" asset-path (ex-message e))
       false)))
@@ -162,10 +149,10 @@
    Returns a byte array or nil."
   ^bytes [plugin-id ^String asset-path]
   (when-let [{:keys [resolved_commit] :as plugin} (select-plugin-for-read plugin-id)]
-    (when resolved_commit
+    (when (and resolved_commit
+               (asset-whitelisted? plugin asset-path))
       (let [snapshot (plugin-snapshot plugin)]
-        (when (asset-whitelisted? snapshot asset-path)
-          (read-asset-from-git snapshot resolved_commit asset-path))))))
+        (read-asset-from-git snapshot resolved_commit asset-path)))))
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
@@ -182,7 +169,7 @@
     (try
       (let [content (slurp (java.net.URI. url))]
         {:content content
-         :hash    (str (hash content))})
+         :hash    (content-hash content)})
       (catch Exception e
         (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
                         {:status-code 502}))))))
@@ -216,9 +203,7 @@
   [id dev-bundle-url]
   (let [url (when (seq dev-bundle-url) dev-bundle-url)]
     (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})
-    (if url
-      (swap! dev-bundle-urls assoc id url)
-      (swap! dev-bundle-urls assoc id ::none))))
+    (swap! dev-bundle-urls assoc id (or url ::none))))
 
 (defn resolve-dev-bundle
   "Resolve the dev bundle URL for a plugin. Checks in-memory cache first, falls back to DB."
@@ -227,11 +212,8 @@
     (if (some? cached)
       (when-not (= cached ::none) cached)
       (let [url (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id)]
-        (if (seq url)
-          (do (swap! dev-bundle-urls assoc id url)
-              url)
-          (do (swap! dev-bundle-urls assoc id ::none)
-              nil))))))
+        (swap! dev-bundle-urls assoc id (if (seq url) url ::none))
+        (when (seq url) url)))))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 

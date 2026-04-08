@@ -426,6 +426,7 @@ export path & options
 	   -D, --no-data-model             Do not export any data model entities; useful for subsequent exports.
 	   -f, --include-field-values      Include field values along with field metadata.
 	   -s, --include-database-secrets  Include database connection details (in plain text; use caution).
+	       --include-custom-viz-token Include custom visualization plugin access tokens (in plain text; use caution).
 ```
 
 #### `--collection`
@@ -459,6 +460,10 @@ The `--include-field-values` flag (alias `-f`) tells Metabase to include the sam
 #### `--include-database-secrets`
 
 The `--include-database-secrets` flag (alias `-s`) tells Metabase to include connection details, including the database user name and password. By default, Metabase excludes these database connection secrets. If you don't use this flag, you'll need to manually input the credentials in the target Metabase.
+
+#### `--include-custom-viz-token`
+
+The `--include-custom-viz-token` flag tells Metabase to include access tokens for custom visualization plugins. By default, Metabase excludes these tokens. If you don't use this flag, you'll need to manually input the access tokens for any private repository plugins in the target Metabase.
 
 ### Importing with CLI
 
@@ -588,6 +593,18 @@ To include database connection details, like the database username and password:
 
 ```html
 database_secrets=true
+```
+
+### `custom_viz_token`
+
+Type: Boolean.
+
+Default: `false`.
+
+To include access tokens for custom visualization plugins:
+
+```
+custom_viz_token=true
 ```
 
 ### `dirname`
