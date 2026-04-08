@@ -31,9 +31,9 @@
                                                      {:expression   [:+ {}
                                                                      [:metric {:lib/uuid "a"} (:id metric-a)]
                                                                      [:metric {:lib/uuid "b"} (:id metric-b)]]
-                                                      :projections  [{:type :metric :id (:id metric-a)
+                                                      :projections  [{:type :metric :id (:id metric-a) :lib/uuid "a"
                                                                       :projection [[:dimension {} dim-a-uuid]]}
-                                                                     {:type :metric :id (:id metric-b)
+                                                                     {:type :metric :id (:id metric-b) :lib/uuid "b"
                                                                       :projection [[:dimension {} dim-b-uuid]]}]}})]
         (is (= "completed" (:status response)))
         (is (pos? (:row_count response)))
@@ -59,9 +59,9 @@
                                                      {:expression   [:- {}
                                                                      [:metric {:lib/uuid "a"} (:id metric-a)]
                                                                      [:metric {:lib/uuid "b"} (:id metric-b)]]
-                                                      :projections  [{:type :metric :id (:id metric-a)
+                                                      :projections  [{:type :metric :id (:id metric-a) :lib/uuid "a"
                                                                       :projection [[:dimension {} dim-a-uuid]]}
-                                                                     {:type :metric :id (:id metric-b)
+                                                                     {:type :metric :id (:id metric-b) :lib/uuid "b"
                                                                       :projection [[:dimension {} dim-b-uuid]]}]}})]
         (is (= "completed" (:status response)))
         ;; Same query minus itself: all values should be 0
@@ -83,7 +83,9 @@
                                                                    [:metric {:lib/uuid "b"} (:id metric)]]
                                                     :filters      [{:lib/uuid "a"
                                                                     :filter [:= {} [:dimension {} dim-uuid] 1]}]
-                                                    :projections  [{:type :metric :id (:id metric)
+                                                    :projections  [{:type :metric :id (:id metric) :lib/uuid "a"
+                                                                    :projection [[:dimension {} dim-uuid]]}
+                                                                   {:type :metric :id (:id metric) :lib/uuid "b"
                                                                     :projection [[:dimension {} dim-uuid]]}]}})]
         (is (= "completed" (:status response)))))))
 
@@ -116,7 +118,11 @@
                                                                     [:metric {:lib/uuid "a"} (:id metric)]
                                                                     [:metric {:lib/uuid "b"} (:id metric)]]
                                                                    [:metric {:lib/uuid "c"} (:id metric)]]
-                                                    :projections  [{:type :metric :id (:id metric)
+                                                    :projections  [{:type :metric :id (:id metric) :lib/uuid "a"
+                                                                    :projection [[:dimension {} dim-uuid]]}
+                                                                   {:type :metric :id (:id metric) :lib/uuid "b"
+                                                                    :projection [[:dimension {} dim-uuid]]}
+                                                                   {:type :metric :id (:id metric) :lib/uuid "c"
                                                                     :projection [[:dimension {} dim-uuid]]}]}})]
         (is (= "completed" (:status response)))
         (is (pos? (:row_count response)))))))
@@ -134,7 +140,7 @@
                                                    {:expression   [:* {}
                                                                    [:metric {:lib/uuid "a"} (:id metric)]
                                                                    2]
-                                                    :projections  [{:type :metric :id (:id metric)
+                                                    :projections  [{:type :metric :id (:id metric) :lib/uuid "a"
                                                                     :projection [[:dimension {} dim-uuid]]}]}})]
         (is (= "completed" (:status response)))
         (is (pos? (:row_count response)))
@@ -142,7 +148,7 @@
         (let [single-response (mt/user-http-request :rasta :post 202 "metric/dataset"
                                                     {:definition
                                                      {:expression   [:metric {:lib/uuid "x"} (:id metric)]
-                                                      :projections  [{:type :metric :id (:id metric)
+                                                      :projections  [{:type :metric :id (:id metric) :lib/uuid "x"
                                                                       :projection [[:dimension {} dim-uuid]]}]}})
               single-rows     (into {} (map (fn [[k v]] [k v]) (get-in single-response [:data :rows])))
               double-rows     (into {} (map (fn [[k v]] [k v]) (get-in response [:data :rows])))]
@@ -158,12 +164,11 @@
       (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
       (let [metric-response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
             dim-uuid        (:id (first (:dimensions metric-response)))
-            projections     [{:type :metric :id (:id metric)
-                              :projection [[:dimension {} dim-uuid]]}]
             baseline        (mt/user-http-request :rasta :post 202 "metric/dataset"
                                                   {:definition
                                                    {:expression   [:metric {:lib/uuid "x"} (:id metric)]
-                                                    :projections  projections}})
+                                                    :projections  [{:type :metric :id (:id metric) :lib/uuid "x"
+                                                                    :projection [[:dimension {} dim-uuid]]}]}})
             response        (mt/user-http-request :rasta :post 202 "metric/dataset"
                                                   {:definition
                                                    {:expression   [:* {}
@@ -171,7 +176,10 @@
                                                                     [:metric {:lib/uuid "a"} (:id metric)]
                                                                     [:metric {:lib/uuid "b"} (:id metric)]]
                                                                    2]
-                                                    :projections  projections}})]
+                                                    :projections  [{:type :metric :id (:id metric) :lib/uuid "a"
+                                                                    :projection [[:dimension {} dim-uuid]]}
+                                                                   {:type :metric :id (:id metric) :lib/uuid "b"
+                                                                    :projection [[:dimension {} dim-uuid]]}]}})]
         (is (= "completed" (:status response)))
         (is (pos? (:row_count response)))
         (let [base-rows   (into {} (map (fn [[k v]] [k v]) (get-in baseline [:data :rows])))
@@ -188,7 +196,9 @@
       (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
       (let [metric-response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
             dim-uuid        (:id (first (:dimensions metric-response)))
-            projections     [{:type :metric :id (:id metric)
+            projections     [{:type :metric :id (:id metric) :lib/uuid "a"
+                              :projection [[:dimension {} dim-uuid]]}
+                             {:type :metric :id (:id metric) :lib/uuid "b"
                               :projection [[:dimension {} dim-uuid]]}]
             ;; A / (A / 2) = N / (N/2) = 2.0
             response-a      (mt/user-http-request :rasta :post 202 "metric/dataset"
@@ -224,12 +234,11 @@
       (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
       (let [metric-response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
             dim-uuid        (:id (first (:dimensions metric-response)))
-            projections     [{:type :metric :id (:id metric)
-                              :projection [[:dimension {} dim-uuid]]}]
             baseline        (mt/user-http-request :rasta :post 202 "metric/dataset"
                                                   {:definition
                                                    {:expression   [:metric {:lib/uuid "x"} (:id metric)]
-                                                    :projections  projections}})
+                                                    :projections  [{:type :metric :id (:id metric) :lib/uuid "x"
+                                                                    :projection [[:dimension {} dim-uuid]]}]}})
             response        (mt/user-http-request :rasta :post 202 "metric/dataset"
                                                   {:definition
                                                    {:expression   [:/ {}
@@ -239,7 +248,12 @@
                                                                      [:metric {:lib/uuid "b"} (:id metric)]]
                                                                     [:metric {:lib/uuid "c"} (:id metric)]]
                                                                    2]
-                                                    :projections  projections}})]
+                                                    :projections  [{:type :metric :id (:id metric) :lib/uuid "a"
+                                                                    :projection [[:dimension {} dim-uuid]]}
+                                                                   {:type :metric :id (:id metric) :lib/uuid "b"
+                                                                    :projection [[:dimension {} dim-uuid]]}
+                                                                   {:type :metric :id (:id metric) :lib/uuid "c"
+                                                                    :projection [[:dimension {} dim-uuid]]}]}})]
         (is (= "completed" (:status response)))
         (is (pos? (:row_count response)))
         (let [base-rows (into {} (map (fn [[k v]] [k (double v)]) (get-in baseline [:data :rows])))
@@ -263,7 +277,11 @@
                                                                    [:- {}
                                                                     [:metric {:lib/uuid "b"} (:id metric)]
                                                                     [:metric {:lib/uuid "c"} (:id metric)]]]
-                                                    :projections  [{:type :metric :id (:id metric)
+                                                    :projections  [{:type :metric :id (:id metric) :lib/uuid "a"
+                                                                    :projection [[:dimension {} dim-uuid]]}
+                                                                   {:type :metric :id (:id metric) :lib/uuid "b"
+                                                                    :projection [[:dimension {} dim-uuid]]}
+                                                                   {:type :metric :id (:id metric) :lib/uuid "c"
                                                                     :projection [[:dimension {} dim-uuid]]}]}})]
         (is (= "completed" (:status response)))
         (is (zero? (:row_count response)))))))
@@ -294,9 +312,9 @@
                                                         {:expression   [:+ {}
                                                                         [:metric {:lib/uuid "a"} (:id metric)]
                                                                         [:measure {:lib/uuid "b"} (:id measure)]]
-                                                         :projections  [{:type :metric :id (:id metric)
+                                                         :projections  [{:type :metric :id (:id metric) :lib/uuid "a"
                                                                          :projection [[:dimension {} dim-metric-uuid]]}
-                                                                        {:type :measure :id (:id measure)
+                                                                        {:type :measure :id (:id measure) :lib/uuid "b"
                                                                          :projection [[:dimension {} dim-measure-uuid]]}]}})]
             (is (= "completed" (:status response)))
             (is (pos? (:row_count response)))))))))

@@ -223,6 +223,7 @@
          {:expression  [:* {} [:metric {:lib/uuid "a"} 42] 100]
           :projections [{:type       :metric
                          :id         42
+                         :lib/uuid   "a"
                          :projection [[:dimension {} "550e8400-e29b-41d4-a716-446655440001"]]}]}))))
 
 (deftest normalize-json-number-passthrough-test

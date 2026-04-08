@@ -1478,7 +1478,11 @@ describe("scenarios > metrics > explorer", () => {
       assertMetricMath();
 
       cy.log("edit formula and assert again");
-      H.MetricsViewer.searchInput().type("{end} + 0");
+      const searchInput = H.MetricsViewer.searchInput();
+      // typing too fast seems to break metric identities, so wait a bit
+      // this isn't an ideal fix, but I can't recreate the flake locally or find another way to fix it
+      cy.wait(1000);
+      searchInput.type("{end} + 0");
       H.MetricsViewer.runButton().click();
       assertMetricMath();
     });
