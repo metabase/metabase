@@ -22,7 +22,7 @@
                  ;; default to all admins -- can't use (perms/admin-group) inline in :default as the group may not exist yet
                  [{:type :notification-recipient/group, :permissions_group_id (:id (perms/admin-group))}]))
   :setter     (fn [new-value]
-                (when (or (nil? new-value) (empty? new-value))
+                (when (empty? new-value)
                   (throw (ex-info (str (deferred-tru "At least one email recipient is required."))
                                   {:status-code 400})))
                 (setting/set-value-of-type! :json :security-center-email-recipients new-value)))
@@ -61,3 +61,8 @@
                 (let [v (or (setting/get-value-of-type :json :security-center-severity-repeat-days)
                             default-severity-repeat-days)]
                   (update-keys v keyword))))
+
+(defn repeat-days-for-severity
+  "Return repeat days for severity, defaults to 7 if not configured"
+  [severity]
+  (get (security-center-severity-repeat-days) severity 7))

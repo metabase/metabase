@@ -31,7 +31,7 @@
   [{:keys [severity last_notified_at]}]
   (if (nil? last_notified_at)
     true
-    (let [days   (get (settings/security-center-severity-repeat-days) severity 7)
+    (let [days   (settings/repeat-days-for-severity severity)
           cutoff (t/minus (t/offset-date-time) (t/days days))]
       (t/before? (t/offset-date-time last_notified_at) cutoff))))
 
@@ -46,14 +46,13 @@
   "Check all unacknowledged active/error advisories and send repeat notifications
    for those that are due based on their severity cadence."
   []
-  (let [advisories (unacknowledged-active-advisories)]
-    (doseq [advisory advisories
-            :when (due-for-notification? advisory)]
-      (try
-        (notification/notify-advisory! advisory)
-        (catch Exception e
-          (log/warnf e "Failed to send repeat notification for advisory %s"
-                     (:advisory_id advisory)))))))
+  (doseq [advisory (unacknowledged-active-advisories)
+          :when (due-for-notification? advisory)]
+    (try
+      (notification/notify-advisory! advisory)
+      (catch Exception e
+        (log/warnf e "Failed to send repeat notification for advisory %s"
+                   (:advisory_id advisory))))))
 
 ;;; ----------------------------------------- Sync + evaluate + notify -----------------------------------------------
 
