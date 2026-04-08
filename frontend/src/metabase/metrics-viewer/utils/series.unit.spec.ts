@@ -3,6 +3,7 @@ import type {
   RowValues,
 } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
+import { createMockDatasetData } from "metabase-types/api/mocks/dataset";
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import { createMockSingleSeries } from "metabase-types/api/mocks/series";
 
@@ -18,6 +19,7 @@ import {
   setupMeasureDefinition,
 } from "./__tests__/test-helpers";
 import {
+  buildCartesianVizSettings,
   computeSourceBreakoutColors,
   getSelectedMetricsInfo,
   splitByBreakout,
@@ -408,6 +410,85 @@ describe("computeSourceBreakoutColors", () => {
     );
 
     expect(typeof result["metric:1"]).toBe("string");
+  });
+});
+
+describe("buildCartesianVizSettings", () => {
+  describe("without breakout", () => {
+    const data = createMockDatasetData({
+      cols: [dimensionCol, metricCol],
+      rows: [
+        ["2024-01", 10],
+        ["2024-02", 20],
+      ],
+    });
+
+    it("sets single dimension and metric", () => {
+      const result = buildCartesianVizSettings(data, false, false, "Revenue");
+
+      expect(result["graph.dimensions"]).toEqual(["CREATED_AT"]);
+      expect(result["graph.metrics"]).toEqual(["COUNT"]);
+    });
+
+    it("disables axis labels", () => {
+      const result = buildCartesianVizSettings(data, false, false, "Revenue");
+
+      expect(result["graph.x_axis.labels_enabled"]).toBe(false);
+      expect(result["graph.y_axis.labels_enabled"]).toBe(false);
+    });
+
+    it("sets color keyed by metric column name", () => {
+      const result = buildCartesianVizSettings(data, false, false, "Revenue", [
+        "#509EE3",
+      ]);
+
+      expect(result.series_settings).toEqual({
+        COUNT: { color: "#509EE3" },
+      });
+    });
+  });
+
+  describe("with breakout", () => {
+    const data = createMockDatasetData({
+      cols: [dimensionCol, breakoutCol, metricCol],
+      rows: [
+        ["2024-01", "Gadgets", 10],
+        ["2024-01", "Widgets", 20],
+        ["2024-02", "Gadgets", 30],
+        ["2024-02", "Widgets", 40],
+      ],
+    });
+
+    it("sets both dimension and breakout columns in graph.dimensions", () => {
+      const result = buildCartesianVizSettings(data, true, false, "Revenue");
+
+      expect(result["graph.dimensions"]).toEqual(["CREATED_AT", "CATEGORY"]);
+      expect(result["graph.metrics"]).toEqual(["COUNT"]);
+    });
+
+    it("sets series_settings colors keyed by formatted breakout values", () => {
+      const result = buildCartesianVizSettings(data, true, false, "Revenue", [
+        "#509EE3",
+        "#88BF4D",
+      ]);
+
+      expect(result.series_settings).toEqual({
+        Gadgets: { color: "#509EE3" },
+        Widgets: { color: "#88BF4D" },
+      });
+    });
+
+    it("prefixes color keys with card name when hasMultipleCards is true", () => {
+      const result = buildCartesianVizSettings(data, true, true, "Revenue", [
+        "#509EE3",
+        "#88BF4D",
+      ]);
+
+      expect(result.series_settings).toEqual({
+        "Revenue: Gadgets": { color: "#509EE3" },
+        "Revenue: Widgets": { color: "#88BF4D" },
+      });
+    });
   });
 });
 
