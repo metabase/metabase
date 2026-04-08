@@ -733,18 +733,9 @@ export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
-export type MetricPageViewedEvent = ValidateEvent<{
-  event: "metric_page_viewed";
-  target_id: number;
-}>;
-
 export type MetricPageShowMoreClickedEvent = ValidateEvent<{
   event: "metric_page_show_more_clicked";
   target_id: number;
-}>;
-
-export type MetricsViewerOpenedEvent = ValidateEvent<{
-  event: "metrics_viewer_opened";
 }>;
 
 export type MetricsViewerMetricAddedEvent = ValidateEvent<{
@@ -787,7 +778,6 @@ export type MetricsViewerDimensionTabRemovedEvent = ValidateEvent<{
 }>;
 
 export type MetricsViewerEvent =
-  | MetricsViewerOpenedEvent
   | MetricsViewerMetricAddedEvent
   | MetricsViewerMetricRemovedEvent
   | MetricsViewerFilterAddedEvent
@@ -857,6 +847,5 @@ export type SimpleEvent =
   | ClickActionPerformedEvent
   | DataStudioEvent
   | UnsavedChangesWarningDisplayedEvent
-  | MetricPageViewedEvent
   | MetricPageShowMoreClickedEvent
   | MetricsViewerEvent;

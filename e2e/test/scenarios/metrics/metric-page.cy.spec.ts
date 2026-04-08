@@ -201,11 +201,6 @@ describe("scenarios > metrics > metric page", () => {
   it("should render dimension charts on the overview tab and show more", () => {
     H.createQuestion(ORDERS_TIMESERIES_METRIC).then(({ body: metric }) => {
       H.visitMetric(metric.id);
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "metric_page_viewed",
-        target_id: metric.id,
-      });
     });
 
     H.MetricPage.overviewTab().click();

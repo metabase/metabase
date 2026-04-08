@@ -264,10 +264,6 @@ describe("scenarios > metrics > explorer", () => {
     it("should add multiple metrics", () => {
       H.MetricsViewer.goToViewer();
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "metrics_viewer_opened",
-      });
-
       addMetric("Count of products");
       cy.wait("@dataset");
 

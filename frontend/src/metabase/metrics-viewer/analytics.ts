@@ -1,11 +1,5 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
 
-export const trackMetricsViewerOpened = () => {
-  trackSimpleEvent({
-    event: "metrics_viewer_opened",
-  });
-};
-
 export const trackMetricsViewerMetricAdded = (
   targetId: number | null,
   eventDetail: "metric" | "measure",

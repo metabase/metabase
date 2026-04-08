@@ -1,12 +1,11 @@
 import type { Location } from "history";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 import { Box, Flex, Stack } from "metabase/ui";
 
 import {
   trackMetricsViewerMetricAdded,
   trackMetricsViewerMetricRemoved,
-  trackMetricsViewerOpened,
 } from "../../analytics";
 import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
 import {
@@ -55,10 +54,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     updateDefinition,
     setBreakoutDimension,
   } = useMetricsViewer(props);
-
-  useEffect(() => {
-    trackMetricsViewerOpened();
-  }, []);
 
   const handleAddMetric = useCallback(
     (metric: SelectedMetric) => {
