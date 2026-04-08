@@ -55,16 +55,12 @@ const NUMBER_BUCKETS = [
   "Don't bin",
 ];
 
-const TIME_BUCKETS = [
-  "Minute",
-  "Hour",
+const DATE_BUCKETS = [
   "Day",
   "Week",
   "Month",
   "Quarter",
   "Year",
-  "Minute of hour",
-  "Hour of day",
   "Day of week",
   "Day of month",
   "Day of year",
@@ -72,6 +68,14 @@ const TIME_BUCKETS = [
   "Month of year",
   "Quarter of year",
   "Don't bin",
+];
+
+const DATE_TIME_BUCKETS = [
+  ...DATE_BUCKETS,
+  "Minute",
+  "Hour",
+  "Minute of hour",
+  "Hour of day",
 ];
 
 const LONGITUDE_BUCKETS = [
@@ -117,7 +121,7 @@ describe("scenarios > binning > binning options", () => {
 
       openBinningListForDimension("Created At", "by month");
       getAllOptions({
-        options: TIME_BUCKETS,
+        options: DATE_TIME_BUCKETS,
         isSelected: "Month",
         shouldExpandList: true,
       });
@@ -167,7 +171,7 @@ describe("scenarios > binning > binning options", () => {
       openBinningListForDimension("Created At", "by month");
 
       getAllOptions({
-        options: TIME_BUCKETS,
+        options: DATE_TIME_BUCKETS,
         isSelected: "Month",
         shouldExpandList: true,
       });
@@ -217,7 +221,11 @@ describe("scenarios > binning > binning options", () => {
       });
 
       openBinningListForDimension("Birth Date", "by month");
-      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+      getAllOptions({
+        options: DATE_BUCKETS,
+        isSelected: "Month",
+        shouldExpandList: true,
+      });
     });
 
     it("should work for number", () => {
@@ -237,7 +245,11 @@ describe("scenarios > binning > binning options", () => {
       });
 
       openBinningListForDimension("Longitude", "Auto binned");
-      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({
+        options: LONGITUDE_BUCKETS,
+        isSelected: "Auto bin",
+        shouldExpandList: true,
+      });
     });
   });
 
@@ -253,7 +265,11 @@ describe("scenarios > binning > binning options", () => {
       });
 
       openBinningListForDimension("Birth Date", "by month");
-      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+      getAllOptions({
+        options: DATE_BUCKETS,
+        isSelected: "Month",
+        shouldExpandList: true,
+      });
     });
 
     it("should work for number", () => {
@@ -273,7 +289,11 @@ describe("scenarios > binning > binning options", () => {
       });
 
       openBinningListForDimension("Longitude", "Auto binned");
-      getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
+      getAllOptions({
+        options: LONGITUDE_BUCKETS,
+        isSelected: "Auto bin",
+        shouldExpandList: true,
+      });
     });
   });
 });

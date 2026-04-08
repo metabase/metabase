@@ -87,7 +87,7 @@
                   :pivot_table.column_split
                   {:rows    ["ID"]
                    :columns ["CREATED_AT"]
-                   :values  ["count" "count_2"]}
+                   :values  [:aggregation "aggregation_2"]}
 
                   :pivot_table.collapsed_rows
                   {:rows  ["ID"]
@@ -112,7 +112,7 @@
                  {:pivot_table.column_split
                   {:rows    ["ID"]
                    :columns [[:field 9999 nil]]
-                   :values  ["count" [:aggregation 1]]}}}
+                   :values  [:aggregation ["aggregation" 1]]}}}
                 (t2/select-one :model/Card card-id)))))))
 
 (deftest card-upgrade-field-refs!-parameters-test

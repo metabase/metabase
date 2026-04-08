@@ -419,7 +419,7 @@
   (let [mp meta/metadata-provider
         query (as-> (lib/query mp (meta/table-metadata :orders)) $q
                 (lib/aggregate $q (lib/sum (meta/field-metadata :orders :discount))))
-        question (model-based-metric-question mp query (comp #{"sum"} :name))]
+        question (model-based-metric-question mp query (comp #{"aggregation"} :name))]
     (is (=? {:stages
              [{:source-table (meta/id :orders)
                :aggregation [[:sum {:name "aggregation"} [:field {} (meta/id :orders :discount)]]]}
