@@ -76,9 +76,7 @@
 (defn fetch-and-update!
   "Fetch index.js and manifest from the plugin's git repo and update the DB record.
    Returns the commit SHA or nil on failure."
-  ([plugin]
-   (fetch-and-update! plugin nil))
-  ([{:keys [id repo_url access_token pinned_version identifier]} _opts]
+  [{:keys [id repo_url access_token pinned_version identifier]}]
    (try
      (let [source        (rs.git/git-source repo_url nil access_token nil)
            snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))

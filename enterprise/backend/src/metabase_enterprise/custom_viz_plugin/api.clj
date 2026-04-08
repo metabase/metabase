@@ -215,7 +215,7 @@
     (when (and (contains? updates :pinned_version)
                (not= (:pinned_version updates) (:pinned_version existing)))
       (let [updated-plugin (t2/select-one :model/CustomVizPlugin :id id)]
-        (cache/fetch-and-update! updated-plugin {:force? true}))))
+        (cache/fetch-and-update! updated-plugin))))
   (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
