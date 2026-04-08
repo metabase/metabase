@@ -1537,7 +1537,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Document}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/Document}}
 
   pulse
   {:team "Gadget"
