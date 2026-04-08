@@ -10,42 +10,30 @@ type MetabaseManagedAiPurchaseResult = {
   isLoading: boolean;
 };
 
-export function usePurchaseMetabaseManagedAi(
-  shouldLoadMetabaseBilling: boolean,
-): MetabaseManagedAiPurchaseResult {
+export function usePurchaseMetabaseManagedAi(): MetabaseManagedAiPurchaseResult {
   const [purchaseCloudAddOn, purchaseCloudAddOnResult] =
     usePurchaseCloudAddOnMutation();
 
   const purchaseMetabaseManagedAi = useCallback(
     async (hasAcceptedTerms: boolean) => {
-      if (!shouldLoadMetabaseBilling) {
-        console.warn(
-          "Skipping managed AI purchase because hosted billing is unavailable.",
-        );
-        return;
-      }
-
       await purchaseCloudAddOn({
         product_type: METABASE_MANAGED_AI_PRODUCT_TYPE,
         terms_of_service: hasAcceptedTerms,
       }).unwrap();
     },
-    [purchaseCloudAddOn, shouldLoadMetabaseBilling],
+    [purchaseCloudAddOn],
   );
 
   return useMemo(
     () => ({
       purchaseMetabaseManagedAi,
-      error: shouldLoadMetabaseBilling ? purchaseCloudAddOnResult.error : null,
-      isLoading: shouldLoadMetabaseBilling
-        ? purchaseCloudAddOnResult.isLoading
-        : false,
+      error: purchaseCloudAddOnResult.error,
+      isLoading: purchaseCloudAddOnResult.isLoading,
     }),
     [
       purchaseCloudAddOnResult.error,
       purchaseCloudAddOnResult.isLoading,
       purchaseMetabaseManagedAi,
-      shouldLoadMetabaseBilling,
     ],
   );
 }

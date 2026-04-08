@@ -49,9 +49,7 @@ export function MetabaseAIProviderSetup({
   isSavingMetabaseConnection,
   onConnect,
 }: MetabaseAIProviderSetupProps) {
-  const isHosted = useSetting("is-hosted?");
   const llmProxyConfigured = useSetting("llm-proxy-configured?");
-  const shouldLoadMetabaseBilling = !!llmProxyConfigured && isHosted;
   const hasMetabaseManagedAiProviderFeature = !!hasPremiumFeature(
     METABASE_MANAGED_AI_FEATURE,
   );
@@ -60,11 +58,9 @@ export function MetabaseAIProviderSetup({
   const {
     pricing: metabaseManagedAiPricing,
     isLoading: isLoadingMetabaseManagedAiPricing,
-  } = useMetabaseManagedAiPricing(shouldLoadMetabaseBilling);
+  } = useMetabaseManagedAiPricing(!!llmProxyConfigured);
 
-  const metabaseManagedAiPurchase = usePurchaseMetabaseManagedAi(
-    shouldLoadMetabaseBilling,
-  );
+  const metabaseManagedAiPurchase = usePurchaseMetabaseManagedAi();
 
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isSettingUpModalOpen, setIsSettingUpModalOpen] = useState(false);

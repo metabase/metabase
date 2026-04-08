@@ -61,7 +61,8 @@ function getMetabaseManagedAiPricing(
 
   const unitCount =
     addOn.default_total_units * METABASE_MANAGED_AI_UNIT_MULTIPLIER;
-  const pricePerUnit = addOn.default_price_per_unit;
+  const pricePerUnit =
+    addOn.default_price_per_unit * METABASE_MANAGED_AI_UNIT_MULTIPLIER;
 
   return {
     price: formatMetabaseCost(pricePerUnit),
