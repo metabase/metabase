@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
-   [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
@@ -42,8 +41,7 @@
                               :percentile-aggregations          false
                               :regex/lookaheads-and-lookbehinds false
                               :test/jvm-timezone-setting        false
-                              :uuid-type                        true
-                              :table-privileges                 true}]
+                              :uuid-type                        true}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
@@ -353,62 +351,3 @@
 
 (defmethod driver/llm-sql-dialect-resource :vertica [_]
   "metabot/prompts/dialects/vertica.md")
-
-(defmethod sql-jdbc.sync/current-user-table-privileges :vertica
-  [_driver conn-spec & {:as _options}]
-  ;; HAS_TABLE_PRIVILEGE() is a Vertica meta-function that can't be used in SELECT...FROM queries.
-  ;; Instead, query v_catalog.grants with an expanded grantee set: the current user, PUBLIC,
-  ;; and all roles granted to the user (from v_catalog.users.all_roles).
-  (let [user-info (first (jdbc/query conn-spec
-                                     ["SELECT user_name, all_roles, is_super_user FROM v_catalog.users WHERE user_name = CURRENT_USER"]))]
-    (if (:is_super_user user-info)
-      ;; Superusers have all privileges on all tables - query all_tables directly
-      (jdbc/query conn-spec
-                  (str/join "\n"
-                            ["SELECT NULL AS role, t.schema_name AS schema, t.table_name AS table,"
-                             "  true AS \"select\", true AS \"update\", true AS \"insert\", true AS \"delete\""
-                             "FROM v_catalog.all_tables t"
-                             "WHERE t.table_type IN ('TABLE', 'VIEW')"]))
-      ;; Normal user: expand grantee set to include user + PUBLIC + all granted roles
-      (let [effective-grantees
-            (cond-> #{(:user_name user-info) "PUBLIC"}
-              (:all_roles user-info)
-              ;; all_roles is comma-separated, may have asterisks for WITH GRANT OPTION (e.g. "role1*, role2")
-              (into (comp (map #(str/replace % #"\*$" ""))
-                          (map str/trim)
-                          (remove str/blank?))
-                    (str/split (:all_roles user-info) #",")))]
-        (let [in-clause (str "(" (str/join ", " (map #(str "'" (str/replace % "'" "''") "'") effective-grantees)) ")")]
-          (->> (jdbc/query
-                conn-spec
-                (str/join
-                 "\n"
-                 [;; Table-level grants (direct per-table grants)
-                  "SELECT"
-                  "  g.object_schema AS schema,"
-                  "  g.object_name AS table_name,"
-                  "  g.privileges_description"
-                  "FROM v_catalog.grants g"
-                  (str "WHERE g.grantee IN " in-clause)
-                  "  AND g.object_type IN ('TABLE', 'VIEW')"
-                  "UNION ALL"
-                  ;; Schema-level grants expanded to all tables in that schema
-                  "SELECT"
-                  "  t.schema_name AS schema,"
-                  "  t.table_name AS table_name,"
-                  "  g.privileges_description"
-                  "FROM v_catalog.grants g"
-                  "JOIN v_catalog.all_tables t ON t.schema_name = g.object_name"
-                  (str "WHERE g.grantee IN " in-clause)
-                  "  AND g.object_type = 'SCHEMA'"
-                  "  AND t.table_type IN ('TABLE', 'VIEW')"]))
-               (group-by (juxt :schema :table_name))
-               (map (fn [[[schema table] rows]]
-                      (let [all-privs (str/join " " (map :privileges_description rows))]
-                        {:role   nil
-                         :schema schema
-                         :table  table
-                         :select (boolean (re-find #"(?i)SELECT" all-privs))
-                         :update (boolean (re-find #"(?i)UPDATE" all-privs))
-                         :insert (boolean (re-find #"(?i)INSERT" all-privs))
-                         :delete (boolean (re-find #"(?i)DELETE" all-privs))})))))))))
