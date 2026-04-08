@@ -21,7 +21,7 @@
 (defn- optimize-filter [clause]
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
     (or (-> clause
-            lib/->pMBQL
+            lib/->mbql5
             (->> (#'optimize-temporal-filters/optimize-filter query [:stages 0]))
             lib/->legacy-MBQL)
         clause)))

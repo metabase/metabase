@@ -259,7 +259,8 @@ jobs:
           $DOCKERHUB_REPO\:$DOCKERHUB_VERSION
 
   push-git-tags:
-    permissions: write-all
+    permissions:
+      contents: write
     needs: check-version
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5

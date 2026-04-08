@@ -267,7 +267,7 @@
    - Table template tags (:type :table with :table-id)
 
    Parameters:
-   - query: pMBQL query with native stage
+   - query: MBQL 5 query with native stage
    - old-table-id: ID of table to replace
    - new-table-id: ID of replacement table"
   [query old-table-id new-table-id]
@@ -302,7 +302,7 @@
    E.g., `FROM {{my_table}}` → `FROM {{#123-my-card}}`
 
    Parameters:
-   - query: pMBQL query with native stage
+   - query: MBQL 5 query with native stage
    - old-table-id: ID of table to replace
    - new-card-id: ID of card to reference"
   [query old-table-id new-card-id]
@@ -367,7 +367,7 @@
    This is the inverse of `replace-table-with-card-in-native`.
 
    Parameters:
-   - query: pMBQL query with native stage
+   - query: MBQL 5 query with native stage
    - old-card-id: ID of card template tag to replace
    - new-table-id: ID of table to reference directly"
   [query old-card-id new-table-id]

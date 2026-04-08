@@ -324,7 +324,7 @@
       :is-empty  ((unary-filter-display-fns :is-empty)     expr)
       :not-empty ((unary-filter-display-fns :is-not-empty) expr)
       ;; TODO -- This description is sorta wack, we should use [[metabase.legacy-mbql.util/negate-filter-clause]] to
-      ;; negate `expr` and then generate a description. That would require porting that stuff to pMBQL tho.
+      ;; negate `expr` and then generate a description. That would require porting that stuff to MBQL 5 tho.
       :not       ((unary-filter-display-fns :not) expr))))
 
 (defmethod lib.metadata.calculation/display-name-method :value

@@ -32,7 +32,7 @@ To filter your search results, hit `cmd/ctrl + k` to bring up the command palett
 
 ![Search results](./images/search-results.png)
 
-Searches consider items' titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it's pinned. Note that you'll only ever see items in that are in collections you have permission to view.
+Searches consider items' titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it's pinned. Note that you'll only ever see items that are in collections you have permission to view.
 
 You can search by:
 

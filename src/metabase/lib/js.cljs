@@ -14,7 +14,7 @@
   A reference of what is meant in these docs by \"column\", \"query\", etc. Most of the CLJS maps have a `:lib/type`
   key, the values are indicated here. TS types are also indicated as eg. `Lib.ColumnMetadata`.
 
-  - **query** means a modern pMBQL query, represented as a CLJS map (`:mbql/query`, `Lib.Query`)
+  - **query** means a modern MBQL 5 query, represented as a CLJS map (`:mbql/query`, `Lib.Query`)
   - **legacy query** and **MLv1 query** mean the previous form of MBQL, represented as a JSON object
   - **column** means the full details of a column - its name, types, etc. (`:metadata/column`, `Lib.ColumnMetadata`)
       - Columns can come from several sources: source tables, cards/models, previous stages of this query, aggregations,
@@ -23,7 +23,7 @@
   - **clause** means a fragment of MBQL describing part of a query, such as an aggregation, breakout, join, etc.
   - **ref** means a reference to a column.
       - Often these are misleading called a \"field ref\", since they are represented as a `[:field ...]` clause in both
-        legacy MBQL and pMBQL.
+        legacy MBQL and MBQL 5.
       - Refs are a code smell - they are an internal detail of MBQL structures that has leaked into many places in
         legacy. All mention of refs should be eliminated from this interface eventually.
 
@@ -155,7 +155,7 @@
    (lib.cache/side-channel-cache-weak-refs
     (str database-id) metadata-provider query-map
     #(->> %
-          lib.convert/js-legacy-query->pMBQL
+          lib.convert/js-legacy-query->mbql5
           (lib.core/query metadata-provider))
     {:force? true})))
 
@@ -177,7 +177,7 @@
     :else                  x))
 
 (defn ^:export legacy-query
-  "Coerce an MLv2 query (pMBQL in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
+  "Coerce an MLv2 query (MBQL 5 in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
 
   > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
   where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MLv2."
@@ -716,7 +716,7 @@
     (-> a-query (js->clj :keywordize-keys true) unwrap normalize*)))
 
 (defn ^:export normalize
-  "Normalize the MBQL or pMBQL query `a-query`.
+  "Normalize the MBQL or MBQL 5 query `a-query`.
   Returns the JS form of the normalized query."
   [a-query]
   (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
@@ -812,7 +812,7 @@
   It duplicates the logic formerly found in `query_builder/selectors.js`.
 
   > **Code health:** Legacy. New calls are acceptable if necessary. Eventually this will be replaced with an equivalent
-  function that compares two pMBQL queries in CLJS form, but that needs pMBQL queries to be the source of truth on the
+  function that compares two MBQL 5 queries in CLJS form, but that needs MBQL 5 queries to be the source of truth on the
   wire, rather than legacy."
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
@@ -1534,13 +1534,13 @@
                                    (u/qualified-name %)
                                    %))))
 
-(defn- legacy-ref->pMBQL [a-legacy-ref]
+(defn- legacy-ref->mbql5 [a-legacy-ref]
   (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
       #_{:clj-kondo/ignore [:deprecated-var]}
       mbql.normalize/normalize-field-ref
-      lib.convert/->pMBQL
+      lib.convert/->mbql5
       (->> (lib.normalize/normalize ::lib.schema.ref/ref))))
 
 (defn- ref->legacy-ref
@@ -1577,8 +1577,8 @@
     ;; Convert legacy columns like we do for metadata.
     (let [parsed (js.metadata/parse-column legacy-column)]
       (if (= (:lib/source parsed) :source/aggregations)
-        ;; Special case: Aggregations need to be converted to a pMBQL :aggregation ref and :lib/source-uuid set.
-        (let [agg-ref (legacy-ref->pMBQL (.-field_ref legacy-column))]
+        ;; Special case: Aggregations need to be converted to a MBQL 5 :aggregation ref and :lib/source-uuid set.
+        (let [agg-ref (legacy-ref->mbql5 (.-field_ref legacy-column))]
           (assoc parsed :lib/source-uuid (last agg-ref)))
         parsed))
     ;; It's already a :metadata/column map
@@ -1594,11 +1594,11 @@
   identify a column in viz settings. Avoid new calls if you have an alternative way to find the column you need. But if
   you need it, no worries about a new call."
   [a-query stage-number legacy-columns legacy-refs]
-  ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->pMBQL]] to convert legacy
-  ;; `[:aggregation 0]` refs into pMBQL `[:aggregation uuid]` refs.
+  ;; Set up this query stage's `:aggregation` list as the context for [[lib.convert/->mbql5]] to convert legacy
+  ;; `[:aggregation 0]` refs into MBQL 5 `[:aggregation uuid]` refs.
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
     (let [haystack      (mapv ->column-or-ref legacy-columns)
-          needles       (map legacy-ref->pMBQL legacy-refs)
+          needles       (map legacy-ref->mbql5 legacy-refs)
           column-refs   (into {} (keep-indexed (fn [i col]
                                                  [(-> col
                                                       lib.core/ref
@@ -1984,7 +1984,7 @@
 (defn ^:export native-query
   "Create a new native query.
 
-  *Native* in this sense means a pMBQL query where the first stage is `:mbql.stage/native`.
+  *Native* in this sense means a MBQL 5 query where the first stage is `:mbql.stage/native`.
 
   > **Code health:** Healthy"
   [database-id metadata inner-query]
@@ -2015,7 +2015,7 @@
                          (perf/update-keys keyword)
                          (update :type keyword)
                          (m/update-existing :widget-type #(some-> % keyword))
-                         (m/update-existing :dimension #(some-> % legacy-ref->pMBQL)))))))
+                         (m/update-existing :dimension #(some-> % legacy-ref->mbql5)))))))
 
 (defn- template-tags-cljs->js
   [tags]
@@ -2264,7 +2264,7 @@
   [a-query stage-number ^js js-column]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (.-field_ref js-column)]
-                       (legacy-ref->pMBQL a-ref))]
+                       (legacy-ref->mbql5 a-ref))]
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
 (defn ^:export legacy-column->type-info
@@ -2291,7 +2291,7 @@
   (fn [^js cell]
     (let [column     (js.metadata/parse-column (col-fn cell))
           column-ref (when-let [a-ref (:field-ref column)]
-                       (legacy-ref->pMBQL a-ref))]
+                       (legacy-ref->mbql5 a-ref))]
       {:column     (fix-column-with-ref column-ref column)
        :column-ref column-ref
        :value      (.-value cell)})))
@@ -2353,7 +2353,7 @@
   [a-query stage-number card-id column value row dimensions]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
-                       (legacy-ref->pMBQL a-ref))]
+                       (legacy-ref->mbql5 a-ref))]
       (->> (merge {:column     (when column
                                  (fix-column-with-ref column-ref (js.metadata/parse-column column)))
                    :column-ref column-ref
