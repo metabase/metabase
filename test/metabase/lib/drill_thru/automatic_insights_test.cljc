@@ -20,7 +20,7 @@
    {:drill-type  :drill-thru/automatic-insights
     :click-type  :cell
     :query-type  :aggregated
-    :column-name "count"
+    :column-name "aggregation"
     :expected    {:type :drill-thru/automatic-insights
                   :column-ref [:aggregation {} u/uuid-regex]
                   :dimensions [{} {}]}}))
@@ -30,7 +30,7 @@
    {:drill-type  :drill-thru/automatic-insights
     :click-type  :cell
     :query-type  :aggregated
-    :column-name "sum"
+    :column-name "aggregation_2"
     :expected    {:type :drill-thru/automatic-insights
                   :column-ref [:aggregation {} u/uuid-regex]
                   :dimensions [{} {}]}}))
@@ -40,7 +40,7 @@
    {:drill-type  :drill-thru/automatic-insights
     :click-type  :cell
     :query-type  :aggregated
-    :column-name "max"
+    :column-name "aggregation_3"
     :expected    {:type :drill-thru/automatic-insights
                   :column-ref [:aggregation {} u/uuid-regex]
                   :dimensions [{} {}]}}))
@@ -141,7 +141,7 @@
                                   (lib/aggregate (lib/count))
                                   (lib/breakout (-> (meta/field-metadata :orders :quantity)
                                                     (lib/with-binning {:strategy :num-bins, :num-bins 10}))))
-          col-count           (m/find-first #(= (:name %) "count")
+          col-count           (m/find-first #(= (:name %) "aggregation")
                                             (lib/returned-columns query))
           _                   (is (some? col-count))
           col-orders-quantity (m/find-first #(= (:name %) "QUANTITY")

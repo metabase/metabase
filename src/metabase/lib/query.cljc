@@ -267,12 +267,10 @@
                     #(lib.util/add-summary-clause %1 0 :breakout %2)
                     base-query
                     (:breakout metric-first-stage))
-        agg-clause (lib.options/ensure-uuid [:metric {} card-id])
-        agg-clause (cond-> agg-clause
-                     (not (lib.options/clause-name agg-clause))
-                     (lib.options/with-clause-name
-                       (lib.aggregation.util/unique-aggregation-name
-                        (:aggregation (lib.util/query-stage base-query 0)))))]
+        agg-clause (-> (lib.options/ensure-uuid [:metric {} card-id])
+                       (lib.options/with-clause-name
+                         (lib.aggregation.util/unique-aggregation-name
+                          (:aggregation (lib.util/query-stage base-query 0)))))]
     (lib.util/add-summary-clause base-query 0 :aggregation agg-clause)))
 
 (defmethod query-method :metadata/card

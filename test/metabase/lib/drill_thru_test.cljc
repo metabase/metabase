@@ -398,7 +398,7 @@
   (testing "ORDERS + count aggregation + breakout on CREATED_AT by month query"
     (testing "options for CREATED_AT column + value"
       (let [query             orders-count-aggregation-breakout-on-created-at-by-month-query
-            count-column      (m/find-first #(= (:name %) "count")
+            count-column      (m/find-first #(= (:name %) "aggregation")
                                             (lib/returned-columns orders-count-aggregation-breakout-on-created-at-by-month-query))
             _                 (assert count-column)
             created-at-column (m/find-first #(= (:name %) "CREATED_AT")
@@ -456,7 +456,7 @@
   (testing "ORDERS + count aggregation + breakout on CREATED_AT by month query"
     (testing "options for COUNT column + value"
       (let [query   orders-count-aggregation-breakout-on-created-at-by-month-query
-            column  (m/find-first #(= (:name %) "count")
+            column  (m/find-first #(= (:name %) "aggregation")
                                   (lib/returned-columns orders-count-aggregation-breakout-on-created-at-by-month-query))
             _       (assert column)
             context (merge (basic-context column 10)
@@ -499,9 +499,9 @@
                        :column-ref (lib/ref count-col)
                        :value      nil}]
           (is (=? [{:type   :drill-thru/column-filter
-                    :column {:name "count"}}
+                    :column {:name "aggregation"}}
                    {:type   :drill-thru/sort
-                    :column {:name "count"}}]
+                    :column {:name "aggregation"}}]
                   (lib/available-drill-thrus query -1 context)))
           (test-drill-applications query context))))
     (testing "Drills for max(discount) aggregation"
@@ -528,7 +528,7 @@
                                              (meta/field-metadata :orders :created-at)
                                              :month)))
             columns      (lib/returned-columns query)
-            sum          (lib.drill-thru.tu/column-by-name columns "sum")
+            sum          (lib.drill-thru.tu/column-by-name columns "aggregation")
             sum-dim      {:column     sum
                           :column-ref (lib/ref sum)
                           :value      42295.12}
@@ -729,7 +729,7 @@
    "aggregated cell click on count column"
    {:click-type  :cell
     :query-type  :aggregated
-    :column-name "count"
+    :column-name "aggregation"
     :expected    [{:type :drill-thru/automatic-insights
                    :dimensions [{:column {:name "PRODUCT_ID"}}
                                 {:column {:name "CREATED_AT"}}]}
@@ -762,7 +762,7 @@
     (lib.drill-thru.tu/test-available-drill-thrus
      {:click-type  :cell
       :query-type  :aggregated
-      :column-name "max"
+      :column-name "aggregation_3"
       :expected    [{:type :drill-thru/automatic-insights
                      :dimensions [{:column {:name "PRODUCT_ID"}}
                                   {:column {:name "CREATED_AT"}}]}
@@ -830,7 +830,7 @@
     (lib.drill-thru.tu/test-available-drill-thrus
      {:click-type  :cell
       :query-type  :aggregated
-      :column-name "count"
+      :column-name "aggregation"
       :custom-row  #(assoc % "CREATED_AT" nil)
       ;; Expect the same set of drills as [[available-drill-thrus-test-9]] above, but without zoom-in.timeseries
       ;; since "CREATED_AT" is nil.
