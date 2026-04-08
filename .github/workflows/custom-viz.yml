@@ -25,8 +25,8 @@ jobs:
       - name: Prepare Node + Bun environment
         uses: ./.github/actions/prepare-node-bun
       - name: Install dependencies
-        run: npm install
+        run: bun install --frozen-lockfile
       - name: Build CLI
-        run: npm run build
+        run: bun run build
       - name: Run tests
-        run: npx vitest run
+        run: bun run test
