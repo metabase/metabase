@@ -167,7 +167,7 @@
                           #'tools.transforms/write-transform-python-tool}]
     (testing "Available with features present"
       (with-redefs [premium-features/has-feature? (fn [feat]
-                                                    (if (#'profiles/relevant-features feat)
+                                                    (if (#{:transforms-basic :transforms-python} feat)
                                                       true
                                                       (orig-has-feature feat)))]
         (is (= transform-tools
@@ -175,7 +175,7 @@
                                                        ["permission:write_transforms"]))))))
     (testing "Not available with missing features"
       (with-redefs [premium-features/has-feature? (fn [feat]
-                                                    (if (#'profiles/relevant-features feat)
+                                                    (if (#{:transforms-basic :transforms-python} feat)
                                                       false
                                                       (orig-has-feature feat)))]
         (is (= #{}
