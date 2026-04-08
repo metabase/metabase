@@ -28,16 +28,16 @@ describe("groups", () => {
     it.each([
       ["Count", "count"],
       ["Count of rows", "count"],
-      ["Cumulative count", "cum-count"],
-      ["Cumulative count of ID", "cum-count"],
+      ["Cumulative count", "count"],
+      ["Cumulative count of ID", "count"],
       ["Sum of Price", "sum"],
-      ["Cumulative sum of Total", "cum-sum"],
-      ["Average of Rating", "average"],
-      ["Distinct values of Category", "distinct"],
+      ["Cumulative sum of Total", "sum"],
+      ["Average of Rating", "avg"],
+      ["Distinct values of Category", "count"],
       ["Max of Price", "max"],
       ["Median of Total", "median"],
       ["Min of Price", "min"],
-      ["Standard deviation of Rating", "standard-deviation"],
+      ["Standard deviation of Rating", "stddev"],
       ["Variance of Total", "var"],
     ])('should map "%s" to "%s"', (name, expected) => {
       expect(getPreferredColorKey(name)).toBe(expected);

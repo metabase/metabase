@@ -114,6 +114,8 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
       return color("accent0", palette);
     case "sum":
       return color("accent1", palette);
+    // NOTE - the correct column name is "avg", but this used "average" historically
+    // fixing this would change colors in charts
     case "average":
       return color("accent2", palette);
   }
@@ -125,14 +127,14 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
 export function getPreferredColorKey(name: string): string | undefined {
   const mapping: [string, string][] = [
     [t`Count`, "count"],
-    [t`Cumulative count`, "cum-count"],
-    [t`Average`, "average"],
-    [t`Cumulative sum`, "cum-sum"],
-    [t`Distinct values`, "distinct"],
+    [t`Cumulative count`, "count"],
+    [t`Average`, "avg"],
+    [t`Cumulative sum`, "sum"],
+    [t`Distinct values`, "count"],
     [t`Max`, "max"],
     [t`Median`, "median"],
     [t`Min`, "min"],
-    [t`Standard deviation`, "standard-deviation"],
+    [t`Standard deviation`, "stddev"],
     [t`Sum`, "sum"],
     [t`Variance`, "var"],
   ];
