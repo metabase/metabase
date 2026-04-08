@@ -49,8 +49,9 @@
           (list* (source-root) (enterprise-source-root) (drivers-source-roots))))
 
 (defn- module-split
-  "Split a module symbol into `[ns-part name-parts-vec]`. See the doc on
-  `hooks.common.modules/split-module` — this is a mirror."
+  "Split a module symbol into `[ns-part name-parts-vec]`. Mirror of
+  `hooks.common.modules/split-module`. Used by `module-parent` to walk the
+  nested-module hierarchy (which is separate from `:ns-prefix`)."
   [m]
   [(namespace m) (str/split (name m) #"\.")])
 
@@ -61,53 +62,64 @@
     (symbol ns-part (str/join "." name-parts))
     (symbol (str/join "." name-parts))))
 
-(defn- module-candidates
-  "For a given `[ns-part suffix-dotted]`, return the seq of candidate module
-  symbols the namespace could resolve to, from longest-prefix to single
-  segment. Mirror of `hooks.common.modules/candidate-modules`."
-  [[ns-part suffix]]
-  (let [parts (str/split suffix #"\.")]
-    (for [n (range (count parts) 0 -1)]
-      (module-join [ns-part (take n parts)]))))
+(defn default-ns-prefix
+  "Default `:ns-prefix` for a module symbol, derived from its name. Mirror of
+  `hooks.common.modules/default-ns-prefix` — see that function for details."
+  [m]
+  (if (= (namespace m) "enterprise")
+    (str "metabase-enterprise." (name m))
+    (str "metabase." (name m))))
+
+(defn module-ns-prefix
+  "Effective `:ns-prefix` for a module: explicit from the module's config
+  entry, else the name-derived default. `modules-config` is the inner map
+  from `kondo-config` (keyed by module symbol)."
+  [modules-config m]
+  (or (get-in modules-config [m :ns-prefix])
+      (default-ns-prefix m)))
+
+(defn build-prefix->module
+  "Build the `{ns-prefix-string module-symbol}` map from all declared modules
+  in `modules-config`. Used as the lookup table for longest-prefix resolution."
+  [modules-config]
+  (into {}
+        (map (fn [m] [(module-ns-prefix modules-config m) m]))
+        (keys modules-config)))
+
+(defn- ns-starts-with-prefix? [ns-str prefix]
+  (or (= ns-str prefix)
+      (str/starts-with? ns-str (str prefix "."))))
+
+(defn- longest-matching-prefix
+  "Scan `prefix->module` and return the module whose ns-prefix is the longest
+  string prefix of `ns-str` at segment boundaries."
+  [prefix->module ns-str]
+  (let [matches (filter #(ns-starts-with-prefix? ns-str %) (keys prefix->module))]
+    (when (seq matches)
+      (get prefix->module (apply max-key count matches)))))
 
 (mu/defn- module :- [:maybe symbol?]
-  "E.g.
+  "Resolve a namespace symbol to a module symbol via prefix-map lookup.
 
-    (module 'metabase.qp.middleware.wow) => 'qp
-    (module 'metabase-enterprise.whatever.core) => enterprise/whatever
+  The 2-arity form takes a pre-computed `prefix->module` map (as produced
+  by `build-prefix->module`) and does longest-prefix-at-segment-boundaries
+  matching. The 1-arity form is a flat fallback using single-segment regex
+  extraction — retained for backwards compat and for callers that don't
+  have a prefix map handy.
 
-  With a `declared-modules` set (optional), performs longest-prefix matching
-  against the declared modules. With no set or no match, falls back to
-  single-segment extraction (the current flat-config behavior).
-
-  MIRROR: this is a deliberate duplicate of the canonical
-  `hooks.common.modules/module` function in `.clj-kondo/src/hooks/common/modules.clj`.
-  They live in different classpath contexts (this file is in `dev/`; the
-  kondo hook runs inside clj-kondo's isolated classpath) and cannot share
-  source.
-
-  If you change the namespace→module resolution algorithm, update BOTH this
-  function and the one in `.clj-kondo/src/hooks/common/modules.clj`, plus
-  the file-path-based version in `mage/src/mage/modules.clj/file->module`.
-  The test `metabase.core.modules-consistency-test` verifies all three
-  agree by comparing their regex literals."
+  MIRROR: deliberate duplicate of the canonical
+  `hooks.common.modules/module` function. They live in different classpath
+  contexts and cannot share source. See
+  `metabase.core.modules-consistency-test` for the tripwire that keeps
+  them in sync."
   ([ns-symb :- simple-symbol?]
    (module nil ns-symb))
-  ([declared-modules :- [:maybe [:set symbol?]]
+  ([prefix->module :- [:maybe [:map-of :string symbol?]]
     ns-symb :- simple-symbol?]
    (or
-    ;; Longest-prefix match against the declared set, if we have one.
-    (when (seq declared-modules)
-      (let [stripped (cond
-                       (re-find #"^metabase-enterprise\." (str ns-symb))
-                       ["enterprise" (subs (str ns-symb) (count "metabase-enterprise."))]
-
-                       (re-find #"^metabase\." (str ns-symb))
-                       [nil (subs (str ns-symb) (count "metabase."))]
-
-                       :else nil)]
-        (when stripped
-          (first (filter declared-modules (module-candidates stripped))))))
+    ;; Primary path: prefix-map longest match over declared modules.
+    (when (seq prefix->module)
+      (longest-matching-prefix prefix->module (str ns-symb)))
     ;; Fallback: single-segment extraction. Regex literals preserved
     ;; byte-for-byte to match the kondo hook for the consistency test.
     (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
@@ -292,7 +304,7 @@
                                               [:dynamic {:optional true} :keyword]]]]]
   ([file]
    (file-dependencies nil file))
-  ([declared-modules :- [:maybe [:set symbol?]]
+  ([prefix->module :- [:maybe [:map-of :string symbol?]]
     file :- [:or
              string?
              [:fn {:error/message "Instance of a java.io.File"} #(instance? java.io.File %)]]]
@@ -317,10 +329,10 @@
                                #_defenterprise-schema-deps])]
        {:namespace ns-symb
         :filename  (file->path-relative-to-project-root file)
-        :module    (module declared-modules ns-symb)
+        :module    (module prefix->module ns-symb)
         :deps      (sort-by pr-str
                             (keep (fn [required-ns]
-                                    (when-let [module (module declared-modules required-ns)]
+                                    (when-let [module (module prefix->module required-ns)]
                                       (when-not (some-> ignored-dependencies ns-symb required-ns)
                                         (merge
                                          {:namespace required-ns
@@ -341,16 +353,17 @@
   (file-dependencies "src/metabase/query_processor/middleware/permissions.clj"))
 
 (defn dependencies
-  "Calculate information about all the modules dependencies for all *SOURCE* files in the Metabase project by parsing
-  the files.
+  "Calculate information about all the modules dependencies for all *SOURCE*
+  files in the Metabase project by parsing the files.
 
-  With `declared-modules`, uses longest-prefix matching against the declared
-  module set for namespace→module resolution. Without it, uses the flat
-  single-segment extraction — the pre-nested-modules behavior."
+  With `prefix->module` (a pre-computed `{ns-prefix-string module-symbol}`
+  map), uses longest-prefix matching at segment boundaries for
+  namespace→module resolution. Without it, uses the flat single-segment
+  extraction — the pre-nested-modules behavior."
   ([]
    (dependencies nil))
-  ([declared-modules]
-   (let [fd (partial file-dependencies declared-modules)]
+  ([prefix->module]
+   (let [fd (partial file-dependencies prefix->module)]
      (pmap fd (find-source-files)))))
 
 (defn external-usages
@@ -532,22 +545,21 @@
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`.
 
-  Under nested modules, the set of declared modules is determined from the
-  current Kondo config — `generate-config` reads the config to learn which
-  modules (including nested ones) have been declared, then uses longest-prefix
-  matching to assign each namespace to its owning module. Dependencies that
-  are implicit under nested-module visibility rules (parent → descendant,
-  siblings) are filtered out of each module's generated `:uses` so that the
-  config doesn't list them redundantly.
+  Under nested modules, `generate-config` reads the current Kondo config to
+  discover which modules have been declared (and their `:ns-prefix`es), then
+  uses longest-prefix matching to assign each namespace to its owning
+  module. Dependencies that are implicit under nested-module visibility
+  rules (parent → descendant, siblings) are filtered out of each module's
+  generated `:uses` so the config doesn't list them redundantly.
 
   For backwards compatibility the 2-arity form still accepts pre-computed
   `deps`. When called that way, the caller is responsible for having
-  computed `deps` with the correct declared-modules set (or without one,
+  computed `deps` with the correct `prefix->module` map (or without one,
   for the flat behavior)."
   ([]
-   (let [kc       (kondo-config)
-         declared (set (keys kc))]
-     (generate-config (dependencies declared) kc)))
+   (let [kc          (kondo-config)
+         prefix->mod (build-prefix->module kc)]
+     (generate-config (dependencies prefix->mod) kc)))
 
   ([deps kondo-config]
    (into (sorted-map)

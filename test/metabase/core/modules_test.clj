@@ -141,17 +141,16 @@
 (deftest ^:parallel modules-config-up-to-date-test
   (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
                 "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
-    ;; Compute dependencies with awareness of the declared module set, so
-    ;; nested modules (e.g. `lib.schema` as a child of `lib`) resolve via
-    ;; longest-prefix matching. Without declared modules passed in,
-    ;; dependencies uses the flat first-segment fallback — which is the
-    ;; correct behavior when no nested modules are declared.
-    (let [actual   (dev.deps-graph/kondo-config)
-          declared (set (keys actual))
-          deps     (dev.deps-graph/dependencies declared)
-          expected (dev.deps-graph/generate-config deps actual)
-          modules  (set/union (set (keys expected))
-                              (set (keys actual)))]
+    ;; Compute dependencies with awareness of the declared modules and their
+    ;; `:ns-prefix`es, so nested modules (e.g. `lib.schema` as a child of
+    ;; `lib`, or `lib.be` with an explicit :ns-prefix "metabase.lib-be")
+    ;; resolve via longest-prefix matching at segment boundaries.
+    (let [actual      (dev.deps-graph/kondo-config)
+          prefix->mod (dev.deps-graph/build-prefix->module actual)
+          deps        (dev.deps-graph/dependencies prefix->mod)
+          expected    (dev.deps-graph/generate-config deps actual)
+          modules     (set/union (set (keys expected))
+                                 (set (keys actual)))]
       (doseq [module modules
               :let   [_ (testing (format "Remove %s" (pr-str module))
                           (is (seq (get expected module))))]
@@ -175,6 +174,26 @@
           (is (empty? missing)))
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))
+
+(deftest ^:parallel ns-prefix-uniqueness-test
+  (testing (str "Every module has a unique effective :ns-prefix (explicit via :ns-prefix "
+                "config key or derived from the module name). Two modules sharing the same "
+                "prefix would create ambiguity in namespace→module resolution, so this test "
+                "enforces uniqueness across the whole config including implicit defaults.")
+    (let [config           (dev.deps-graph/kondo-config)
+          effective-prefix (fn [m]
+                             (or (get-in config [m :ns-prefix])
+                                 (dev.deps-graph/default-ns-prefix m)))
+          by-prefix        (group-by effective-prefix (keys config))]
+      (doseq [[prefix modules] by-prefix
+              :when            (> (count modules) 1)]
+        (testing (format "\nprefix %s is claimed by multiple modules: %s"
+                         (pr-str prefix)
+                         (pr-str (sort modules)))
+          (is (= 1 (count modules))
+              (format "Modules %s share :ns-prefix %s. Either give them distinct explicit :ns-prefix values, or rename one so its default prefix doesn't collide."
+                      (pr-str (sort modules))
+                      (pr-str prefix))))))))
 
 (defn- rest-module? [module]
   (str/ends-with? module "-rest"))

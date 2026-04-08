@@ -38,29 +38,57 @@
 ;;; If you change the module resolution algorithm (e.g. adding longest-prefix
 ;;; matching for nested modules), update ALL THREE sites.
 
-(defn- file->module-candidates
-  "For a file path, produce the sequence of candidate module symbols from
-  longest-prefix (most-specific nested module) to shortest (single segment).
-  Returns an empty seq for non-metabase files.
+(defn- file->ns-symbol
+  "Derive a namespace symbol from a source file path by stripping the src/test
+  root and converting path segments to dotted namespace form (with underscores
+  replaced by hyphens). Returns `nil` if the file isn't a recognized Metabase
+  source file.
 
-  For `src/metabase/lib/schema/foo.clj`:
-    => ('lib.schema.foo 'lib.schema 'lib)
+  Examples:
 
-  For `enterprise/backend/src/metabase_enterprise/transforms/python/foo.clj`:
-    => (enterprise/transforms.python.foo enterprise/transforms.python enterprise/transforms)"
+    src/metabase/lib/schema/foo.clj         => metabase.lib.schema.foo
+    enterprise/backend/src/metabase_enterprise/transforms/python/foo.clj
+                                            => metabase-enterprise.transforms.python.foo
+    src/metabase/lib_be/core.clj            => metabase.lib-be.core"
   [filename]
   (or
    (when-let [[_match module-path] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^.]+)\.(?:clj|cljc|cljs|bb)$" filename)]
-     (let [parts (->> (str/split module-path #"/")
-                      (mapv #(str/replace % #"_" "-")))]
-       (for [n (range (count parts) 0 -1)]
-         (symbol (str/join "." (take n parts))))))
+     (symbol (str "metabase."
+                  (-> module-path
+                      (str/replace #"/" ".")
+                      (str/replace #"_" "-")))))
    (when-let [[_match module-path] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^.]+)\.(?:clj|cljc|cljs|bb)$" filename)]
-     (let [parts (->> (str/split module-path #"/")
-                      (mapv #(str/replace % #"_" "-")))]
-       (for [n (range (count parts) 0 -1)]
-         (symbol "enterprise" (str/join "." (take n parts))))))
-   ()))
+     (symbol (str "metabase-enterprise."
+                  (-> module-path
+                      (str/replace #"/" ".")
+                      (str/replace #"_" "-")))))))
+
+(defn- ns-starts-with-prefix?
+  "True if `ns-str` equals `prefix` or begins with `prefix + \".\"`
+  (segment boundary)."
+  [ns-str prefix]
+  (or (= ns-str prefix)
+      (str/starts-with? ns-str (str prefix "."))))
+
+(defn- default-ns-prefix-for [m]
+  (if (= (namespace m) "enterprise")
+    (str "metabase-enterprise." (name m))
+    (str "metabase." (name m))))
+
+(defn- build-prefix->module
+  "Build the `{ns-prefix-string module-symbol}` map from the `:metabase/modules`
+  map read from the kondo config. Mirror of the same function in the kondo
+  hook and dev.deps-graph."
+  [modules-config]
+  (into {}
+        (map (fn [[m cfg]]
+               [(or (:ns-prefix cfg) (default-ns-prefix-for m)) m]))
+        modules-config))
+
+(defn- longest-matching-prefix [prefix->module ns-str]
+  (let [matches (filter #(ns-starts-with-prefix? ns-str %) (keys prefix->module))]
+    (when (seq matches)
+      (get prefix->module (apply max-key count matches)))))
 
 (defn- file->module
   "Resolve a file path to a module symbol.
@@ -69,17 +97,19 @@
   segment after `metabase/` or `metabase_enterprise/`, matching the flat
   pre-nested-modules behavior.
 
-  With two args, the second being a set of declared module symbols from the
-  kondo config, performs longest-prefix matching against the declared set
-  — analogous to the namespace-symbol-based resolution in `deps_graph` and
-  the kondo hook."
+  With two args, the first being a `prefix->module` map (as produced by
+  `build-prefix->module`), derives the namespace symbol from the file path
+  and does longest-matching-prefix lookup at segment boundaries. Analogous
+  to the namespace-symbol-based resolution in `deps_graph` and the kondo
+  hook."
   ([filename]
    (file->module nil filename))
-  ([declared-modules filename]
+  ([prefix->module filename]
    (or
-    ;; Longest-prefix match against the declared set.
-    (when (seq declared-modules)
-      (first (filter declared-modules (file->module-candidates filename))))
+    ;; Primary: derive ns symbol from file path, do longest-prefix lookup.
+    (when (seq prefix->module)
+      (when-let [ns-sym (file->ns-symbol filename)]
+        (longest-matching-prefix prefix->module (str ns-sym))))
     ;; Fallback: single-segment extraction. Regex literals preserved
     ;; byte-for-byte-equivalent to the pre-nesting behavior.
     (when-let [[_match module] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^/]+)/.*$" filename)]
@@ -87,20 +117,20 @@
     (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
       (symbol "enterprise" (str/replace module #"_" "-"))))))
 
-(defn- read-declared-modules
-  "Read the set of declared module symbols from the kondo config. Used as the
-  declared-modules set for longest-prefix file→module resolution."
+(defn- read-prefix->module
+  "Read the `:metabase/modules` map from kondo config and build the
+  `{ns-prefix-string module-symbol}` lookup map used for file→module
+  resolution."
   []
   (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
         (edn/read r))
       :metabase/modules
-      keys
-      set))
+      build-prefix->module))
 
 (defn- updated-files->updated-modules [updated-files]
-  (let [declared (read-declared-modules)]
+  (let [prefix->mod (read-prefix->module)]
     (into (sorted-set)
-          (keep (partial file->module declared))
+          (keep (partial file->module prefix->mod))
           updated-files)))
 
 (defn- updated-modules [git-ref]

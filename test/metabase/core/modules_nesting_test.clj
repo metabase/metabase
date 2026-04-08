@@ -93,6 +93,79 @@
       (is (= 'driver (module 'metabase.driver-test))))))
 
 ;;;; -------------------------------------------------------------------------
+;;;; :ns-prefix — explicit override of the name-derived default
+;;;; -------------------------------------------------------------------------
+
+(deftest ^:parallel default-ns-prefix-test
+  (testing "`default-ns-prefix` derives the prefix string from the module name"
+    (let [default-ns-prefix (hook-fn 'default-ns-prefix)]
+      (is (= "metabase.lib"                         (default-ns-prefix 'lib)))
+      (is (= "metabase.lib.schema"                  (default-ns-prefix 'lib.schema)))
+      (is (= "metabase.query-processor"             (default-ns-prefix 'query-processor)))
+      (is (= "metabase-enterprise.transforms"       (default-ns-prefix 'enterprise/transforms)))
+      (is (= "metabase-enterprise.transforms.python"
+             (default-ns-prefix 'enterprise/transforms.python))))))
+
+(deftest ^:parallel module-ns-prefix-explicit-override-test
+  (testing "`module-ns-prefix` returns explicit `:ns-prefix` when set, else default"
+    (let [module-ns-prefix (hook-fn 'module-ns-prefix)
+          config {:metabase/modules {'lib        {}
+                                     'lib.be     {:ns-prefix "metabase.lib-be"}
+                                     'lib.schema {}}}]
+      (is (= "metabase.lib"         (module-ns-prefix config 'lib)))
+      (is (= "metabase.lib-be"      (module-ns-prefix config 'lib.be)))
+      (is (= "metabase.lib.schema"  (module-ns-prefix config 'lib.schema))))))
+
+(deftest ^:parallel module-resolution-explicit-ns-prefix-test
+  (testing "Namespace resolution respects explicit `:ns-prefix` on a module"
+    (let [module (hook-fn 'module)
+          config {:metabase/modules {'lib        {}
+                                     'lib.schema {}
+                                     'lib.be     {:ns-prefix "metabase.lib-be"}
+                                     'lib.legacy-mbql {:ns-prefix "metabase.legacy-mbql"}}}]
+      (testing "hyphenated source namespace resolves to the nested module"
+        (is (= 'lib.be (module config 'metabase.lib-be.core)))
+        (is (= 'lib.be (module config 'metabase.lib-be.models.query))))
+      (testing "unrelated hyphenated namespace resolves to its own nested module"
+        (is (= 'lib.legacy-mbql (module config 'metabase.legacy-mbql.util)))
+        (is (= 'lib.legacy-mbql (module config 'metabase.legacy-mbql.schema.macros))))
+      (testing "default-prefixed sibling still resolves correctly"
+        (is (= 'lib.schema (module config 'metabase.lib.schema.foo))))
+      (testing "parent resolves to itself for its own namespaces"
+        (is (= 'lib (module config 'metabase.lib.core)))))))
+
+(deftest ^:parallel module-resolution-segment-boundary-test
+  (testing "Longest-prefix matching only accepts matches at segment boundaries"
+    (let [module (hook-fn 'module)
+          config {:metabase/modules {'lib    {}
+                                     'lib.be {:ns-prefix "metabase.lib-be"}}}]
+      (testing "`metabase.lib-be.foo` matches `metabase.lib-be` at segment boundary"
+        (is (= 'lib.be (module config 'metabase.lib-be.foo))))
+      (testing "`metabase.lib-bert.foo` does NOT match `metabase.lib-be` (mid-segment)"
+        ;; No declared prefix matches at a segment boundary, so the primary
+        ;; path returns nil. The fallback single-segment regex returns the
+        ;; first segment after `metabase.` literally — `lib-bert` — which is
+        ;; NOT `lib.be`.
+        (is (not= 'lib.be (module config 'metabase.lib-bert.foo)))
+        (is (= 'lib-bert (module config 'metabase.lib-bert.foo))))
+      (testing "exact match works"
+        (is (= 'lib.be (module config 'metabase.lib-be))))
+      (testing "unrelated namespace outside the declared set falls through to flat fallback"
+        (is (= 'query-processor (module config 'metabase.query-processor.foo)))))))
+
+(deftest ^:parallel build-prefix->module-test
+  (testing "`build-prefix->module` assembles the lookup map from declared modules"
+    (let [build-prefix->module (hook-fn 'build-prefix->module)
+          config {:metabase/modules {'lib    {}
+                                     'lib.be {:ns-prefix "metabase.lib-be"}
+                                     'query-processor {}}}
+          result (build-prefix->module config)]
+      (is (= {"metabase.lib"             'lib
+              "metabase.lib-be"          'lib.be
+              "metabase.query-processor" 'query-processor}
+             result)))))
+
+;;;; -------------------------------------------------------------------------
 ;;;; Visibility helpers (parent-module, ancestor-chain, siblings?, etc.)
 ;;;; -------------------------------------------------------------------------
 
@@ -228,18 +301,34 @@
 
 (deftest ^:parallel usage-error-encapsulated-grandchild-denied-test
   (testing "Outside module cannot reach into an unopened nested module"
-    (let [config {:metabase/modules {'lib             {:open #{}}
-                                     'lib.schema      {:api  #{}
+    ;; `lib.schema` is nested under `lib` but lib does not open it, so
+    ;; lib.schema is encapsulated behind lib. Outside callers see only
+    ;; lib's :api and cannot reach lib.schema's contents — even if
+    ;; lib.schema's own :api declares those namespaces. This is strict
+    ;; encapsulation: :open is the only way to expose a nested child.
+    ;;
+    ;; Note: the hook currently treats `(empty? api-set)` as "allow
+    ;; anything" (matching the :any case), so to get real encapsulation
+    ;; behavior in a fixture you must provide a non-empty :api that
+    ;; excludes the namespace being tested.
+    (let [config {:metabase/modules {'lib             {:open #{}
+                                                       :api  #{'metabase.lib.core}
+                                                       :uses #{}}
+                                     'lib.schema      {:api  #{'metabase.lib.schema.public-ns}
                                                        :uses #{}}
                                      'query-processor {:uses #{'lib}
-                                                       :api  #{}}}}]
-      ;; query-processor declares :uses lib, and lib does not open lib.schema.
-      ;; So query-processor should not be able to reach lib.schema.foo.
-      ;; Note: :api #{} on lib means no namespaces are in lib's api — empty
-      ;; is treated as "unspecified" in the current hook (returns default
-      ;; <module>.api / .core / .init triple). For test clarity we give lib
-      ;; an explicit :api below in a more targeted test.
-      (is (some? (usage-error config 'query-processor 'metabase.lib.schema.foo))))))
+                                                       :api  :any}}}]
+      (testing "access to a private descendant namespace is denied"
+        (is (some? (usage-error config 'query-processor 'metabase.lib.schema.private-ns))))
+      (testing "access to lib's own api is allowed"
+        (is (nil? (usage-error config 'query-processor 'metabase.lib.core))))
+      (testing "access to lib.schema's own :api is ALSO denied — lib.schema is fully encapsulated"
+        ;; lib.schema's :api declares `metabase.lib.schema.public-ns`, but
+        ;; lib does NOT open lib.schema, so lib.schema's API is invisible
+        ;; to outside callers. The only way for query-processor to reach
+        ;; this would be for lib to explicitly `:open #{lib.schema}` or
+        ;; for lib to re-export the namespace in its own :api.
+        (is (some? (usage-error config 'query-processor 'metabase.lib.schema.public-ns)))))))
 
 (deftest ^:parallel usage-error-opened-child-allowed-test
   (testing "Outside module CAN reach into an opened nested module when listed in :open"

@@ -159,64 +159,86 @@
       (siblings? viewer viewed)))
 
 ;;;; -------------------------------------------------------------------------
-;;;; Namespace → module resolution
+;;;; Namespace → module resolution (prefix-map based)
+;;;;
+;;;; Each declared module has an effective `:ns-prefix` — the namespace-
+;;;; prefix string it owns. By convention the default prefix is derived
+;;;; from the module's symbol name (e.g. `lib.schema` defaults to
+;;;; `"metabase.lib.schema"`, `enterprise/transforms.python` defaults to
+;;;; `"metabase-enterprise.transforms.python"`). A module may override
+;;;; this with an explicit `:ns-prefix` in its config — used when the
+;;;; source files follow a different naming convention than the module
+;;;; tree (e.g. nesting `lib.be` as a child of `lib` while its source
+;;;; files remain `metabase.lib-be.*`).
+;;;;
+;;;; Resolution builds a prefix-string → module-symbol map from all
+;;;; declared modules and finds the longest matching prefix for the
+;;;; given namespace symbol, matching only at segment boundaries (so
+;;;; `metabase.lib.bert` never matches prefix `metabase.lib.be`).
 ;;;; -------------------------------------------------------------------------
 
-(defn- strip-metabase-prefix
-  "Given a simple namespace symbol, return `[ns-part suffix]` where `ns-part`
-  is `\"enterprise\"` for `metabase-enterprise.*` namespaces, `nil` for
-  `metabase.*` namespaces, and the whole thing is `nil` for anything else
-  (e.g. `clojure.core`).
+(defn- default-ns-prefix
+  "Derive the default `:ns-prefix` for a module symbol. For a top-level
+  module `lib` this is `\"metabase.lib\"`. For a nested module `lib.schema`
+  it's `\"metabase.lib.schema\"`. For enterprise modules the prefix root is
+  `metabase-enterprise.` instead of `metabase.`.
 
-    (strip-metabase-prefix 'metabase.lib.schema.foo)
-      => [nil \"lib.schema.foo\"]
+    (default-ns-prefix 'lib)                 => \"metabase.lib\"
+    (default-ns-prefix 'lib.schema)          => \"metabase.lib.schema\"
+    (default-ns-prefix 'enterprise/foo.bar)  => \"metabase-enterprise.foo.bar\""
+  [m]
+  (if (= (namespace m) "enterprise")
+    (str "metabase-enterprise." (name m))
+    (str "metabase." (name m))))
 
-    (strip-metabase-prefix 'metabase-enterprise.transforms.core)
-      => [\"enterprise\" \"transforms.core\"]
+(defn- module-ns-prefix
+  "Effective namespace prefix for a module: explicit `:ns-prefix` from the
+  module's config if set, else the name-derived default."
+  [config m]
+  (or (get-in config [:metabase/modules m :ns-prefix])
+      (default-ns-prefix m)))
 
-    (strip-metabase-prefix 'clojure.core)
-      => nil"
-  [ns-symb]
-  (let [s (str ns-symb)]
-    (cond
-      (str/starts-with? s "metabase-enterprise.")
-      ["enterprise" (subs s (count "metabase-enterprise."))]
+(defn- build-prefix->module
+  "Build the map of `ns-prefix-string → module-symbol` from all declared
+  modules. Used as the lookup table for longest-prefix resolution."
+  [config]
+  (into {}
+        (map (fn [m] [(module-ns-prefix config m) m]))
+        (keys (get config :metabase/modules))))
 
-      (str/starts-with? s "metabase.")
-      [nil (subs s (count "metabase."))]
+(defn- ns-starts-with-prefix?
+  "True if namespace string `ns-str` is either exactly equal to `prefix` or
+  begins with `prefix` followed by a `.` (segment boundary). Prevents false
+  matches like `metabase.lib.bert` vs prefix `metabase.lib.be`."
+  [ns-str prefix]
+  (or (= ns-str prefix)
+      (str/starts-with? ns-str (str prefix "."))))
 
-      :else
-      nil)))
-
-(defn- candidate-modules
-  "For a given `[ns-part suffix-dotted-string]`, return the seq of candidate
-  module symbols that the namespace could resolve to, from longest-prefix
-  to shortest (single segment).
-
-    (candidate-modules [nil \"lib.schema.foo.bar\"])
-      => (lib.schema.foo.bar lib.schema.foo lib.schema lib)
-
-    (candidate-modules [\"enterprise\" \"transforms.python\"])
-      => (enterprise/transforms.python enterprise/transforms)"
-  [[ns-part suffix]]
-  (let [parts (str/split suffix #"\.")]
-    (for [n (range (count parts) 0 -1)]
-      (join-module [ns-part (take n parts)]))))
+(defn- longest-matching-prefix
+  "Scan `prefix->module` and return the module whose `:ns-prefix` is the
+  longest string prefix of `ns-str` at segment boundaries. Returns `nil`
+  if no declared module owns the namespace."
+  [prefix->module ns-str]
+  (let [matches (filter #(ns-starts-with-prefix? ns-str %) (keys prefix->module))]
+    (when (seq matches)
+      (get prefix->module (apply max-key count matches)))))
 
 (defn module
   "Resolve a namespace symbol to the module symbol that owns it.
 
-  With one arg (legacy, used by callers without access to a config): return
-  the single-segment first-element extraction — the flat mapping behavior
-  that predates nested modules. Equivalent to `(module nil ns-symb)`.
+  Uses the `:ns-prefix` mechanism: each declared module has an effective
+  namespace prefix (explicit via `:ns-prefix` in config or derived from
+  the module's symbol name). Resolution is a longest-prefix match over
+  the set of declared prefixes at segment boundaries.
 
-  With two args: if `config` is non-nil and has `:metabase/modules`
-  declared, do **longest-prefix matching** against the declared module
-  set. `metabase.lib.schema.foo` resolves to `lib.schema` if `lib.schema`
-  is declared, else `lib`, else to the single-segment fallback. If no
-  candidate is declared at all, fall back to the shortest candidate
-  (single segment) — preserving backwards compatibility with the flat
-  config model.
+  With one arg (legacy, used by callers without access to a config):
+  fall back to the single-segment first-element extraction — the flat
+  mapping behavior that predates nested modules. Equivalent to
+  `(module nil ns-symb)`.
+
+  With two args: if `config` is non-nil and declares modules, use the
+  prefix-map lookup. Falls through to the single-segment regex if no
+  declared prefix matches, preserving backwards compatibility.
 
   CANONICAL: this function is the source-of-truth definition of the
   namespace→module resolution algorithm. Two other sites duplicate its
@@ -228,7 +250,7 @@
 
   If you change the algorithm here, update both of the above sites. The
   consistency test `metabase.core.modules-consistency-test` verifies they
-  stay in sync by comparing the regex literals across the three files.
+  stay in sync.
 
   Examples:
 
@@ -236,7 +258,10 @@
       => 'qp   ; single-segment fallback
 
     (module config 'metabase.lib.schema.foo)
-      => 'lib.schema   ; if lib.schema is declared; else 'lib
+      => 'lib.schema   ; if lib.schema is declared with default :ns-prefix
+
+    (module config 'metabase.lib-be.foo)
+      => 'lib.be       ; if lib.be declares :ns-prefix \"metabase.lib-be\"
 
     (module 'metabase-enterprise.whatever.core)
       => enterprise/whatever"
@@ -249,33 +274,29 @@
    (let [ns-symb (if (str/ends-with? (name ns-symb) "-test")
                    (symbol (str/replace (name ns-symb) #"-test$" ""))
                    ns-symb)]
-     ;; Primary path: longest-prefix match against declared modules, if we
-     ;; have a config and anything is declared. Uses a regex-free walk to
-     ;; match the regex-based fallback below byte-for-byte on fallback.
-     (when-let [stripped (strip-metabase-prefix ns-symb)]
-       (let [candidates (candidate-modules stripped)
-             declared   (when config (declared-modules config))]
-         (or
-          ;; Longest-prefix match against declared set.
-          (when declared
-            (first (filter declared candidates)))
-          ;; Fallback: single-segment extraction via the original regexes.
-          ;; Preserved byte-for-byte so the consistency test can compare
-          ;; regex literals across the three mapping sites.
-          (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
-                   second
-                   (symbol "enterprise"))
-          (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
-                  second
-                  symbol)))))))
+     (or
+      ;; Primary path: prefix-map longest match over declared modules.
+      (when (seq (get config :metabase/modules))
+        (longest-matching-prefix (build-prefix->module config) (str ns-symb)))
+      ;; Fallback: single-segment extraction via the original regexes.
+      ;; Preserved byte-for-byte so the consistency test can compare
+      ;; regex literals across the three mapping sites.
+      (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
+               second
+               (symbol "enterprise"))
+      (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
+              second
+              symbol)))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Access checks
 ;;;; -------------------------------------------------------------------------
 
 (defn- module-api-namespaces
-  "Set of API namespace symbols for a given module. `:any` means you can use anything, there are no API namespaces for
-  this module (yet). If unspecified, the default is just the `<module>.core` namespace."
+  "Set of API namespace symbols for a given module. `:any` means you can use
+  anything, there are no API namespaces for this module (yet). If unspecified,
+  the default is the module's `.api`, `.core`, and `.init` namespaces derived
+  from the effective `:ns-prefix` (which may be explicit or name-derived)."
   [config module]
   (let [module-config (get-in config [:metabase/modules module :api])]
     (cond
@@ -286,9 +307,7 @@
       module-config
 
       :else
-      (let [ns-prefix (if (= (namespace module) "enterprise")
-                        (str "metabase-enterprise." (name module))
-                        (name module))]
+      (let [ns-prefix (module-ns-prefix config module)]
         #{(symbol (str ns-prefix ".api"))
           (symbol (str ns-prefix ".core"))
           (symbol (str ns-prefix ".init"))}))))
@@ -306,41 +325,41 @@
 
 (defn allowed-module?
   "True if `current-module` is allowed to depend on `required-module` based on
-  `current-module`'s `:uses` declaration. Under nested modules, the
-  `required-module` is replaced by its `external-face` (the module that
-  outside code must reference) before the lookup — so `:uses lib` is
-  sufficient to reach `lib.schema` if `lib` opens `lib.schema`."
+  `current-module`'s `:uses` declaration.
+
+  Under nested modules, `:uses lib` covers both `lib` and any of lib's
+  externally-visible descendants (those reached via `:open`). We walk from
+  the required module's external face upward through the ancestor chain,
+  and allow if any ancestor is declared in `current-module`'s `:uses`.
+  Every ancestor of the external face is itself externally-visible (by the
+  transitivity of `externally-visible?`), so this is the correct reach.
+
+  Also accepts a `:uses` entry that literally names the required module,
+  even if it's not the canonical external face — backwards compat for flat
+  configs where `:uses` entries name modules directly."
   [config current-module required-module]
   (let [face            (external-face config required-module)
-        allowed-modules (allowed-modules config current-module)]
+        face-chain      (cons face (ancestor-chain face))
+        allowed-modules (allowed-modules config current-module)
+        allowed-set     (set allowed-modules)]
     (or (= allowed-modules :any)
-        (contains? (set allowed-modules) face)
-        ;; Also accept a :uses entry that names the required module directly,
-        ;; even if it's not the canonical external face. This is lenient but
-        ;; matches current expectations where :uses entries literally name
-        ;; the module they depend on.
-        (contains? (set allowed-modules) required-module))))
+        (some allowed-set face-chain)
+        (contains? allowed-set required-module))))
 
 (defn- allowed-module-namespace?
   "True if `ns-symb` (the namespace being required) is an allowed reference
-  from `current-module`. Checks the external-face's `:api` list, and falls
-  back to the face's `:friends` list for legacy escape hatches."
+  from `current-module`. Checks the external-face's `:api` list and
+  `:friends` list. Under flat configs (no nesting declared), the external
+  face of any module is the module itself, so this is equivalent to the
+  pre-nesting direct `:api`/`:friends` check."
   [config current-module ns-symb]
-  (let [required-module       (module config ns-symb)
-        face                  (external-face config required-module)
-        face-api-namespaces   (module-api-namespaces config face)
-        face-friends          (module-friends config face)
-        ;; The required-module's own api/friends are also honored for
-        ;; backwards compatibility — when no nesting is in play, face ==
-        ;; required-module and these are the same.
-        direct-api-namespaces (module-api-namespaces config required-module)
-        direct-friends        (module-friends config required-module)]
+  (let [required-module     (module config ns-symb)
+        face                (external-face config required-module)
+        face-api-namespaces (module-api-namespaces config face)
+        face-friends        (module-friends config face)]
     (or (empty? face-api-namespaces)
         (contains? face-api-namespaces ns-symb)
-        (contains? face-friends current-module)
-        (empty? direct-api-namespaces)
-        (contains? direct-api-namespaces ns-symb)
-        (contains? direct-friends current-module))))
+        (contains? face-friends current-module))))
 
 (defn usage-error
   "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the
