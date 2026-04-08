@@ -36,7 +36,8 @@
                      (for [[k v] m]
                        [k (serialization-deep-sort v (conj path k))]))
      (and (sequential? m)
-          (map? (first m))) (mapv #(serialization-deep-sort % path) m)
+          (or (some sequential? m)
+              (some map? m))) (mapv #(serialization-deep-sort % path) m)
      :else                  m)))
 
 (defn spit-yaml!
