@@ -12,7 +12,6 @@
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.entity-details :as entity-details]
@@ -320,350 +319,56 @@
 
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 
-;; Request schemas for the Agent API.
-;; These use snake_case keys for validation and OpenAPI generation,
-;; with :encode/tool-api-request transformers for converting to the internal format.
-
-(mr/def ::bucket
-  (into [:enum {:error/message           "Valid bucket"
-                :encode/tool-api-request keyword}]
-        (map name)
-        lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
-
-(mr/def ::existence-filter
+(mr/def ::program-request
+  "Request body for /v2/construct-query and /v2/query.
+  An agent-lib structured program with `:source` and `:operations`. The top-level
+  `:source` must reference a database entity (`table`, `card`, `dataset`, or
+  `metric`) — `context` and nested `program` sources are rejected at the HTTP
+  boundary because they require an in-process evaluation context."
   [:and
-   [:map
-    [:field_id ::field-id]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "is-null"         "is-not-null"
-                 "string-is-empty" "string-is-not-empty"
-                 "is-true"         "is-false"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::temporal-extraction-filter
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "year-equals"        "year-not-equals"
-                 "quarter-equals"     "quarter-not-equals"
-                 "month-equals"       "month-not-equals"
-                 "day-of-week-equals" "day-of-week-not-equals"
-                 "hour-equals"        "hour-not-equals"
-                 "minute-equals"      "minute-not-equals"
-                 "second-equals"      "second-not-equals"]]
-    [:value :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::disjunctive-temporal-extraction-filter
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "year-equals"        "year-not-equals"
-                 "quarter-equals"     "quarter-not-equals"
-                 "month-equals"       "month-not-equals"
-                 "day-of-week-equals" "day-of-week-not-equals"
-                 "hour-equals"        "hour-not-equals"
-                 "minute-equals"      "minute-not-equals"
-                 "second-equals"      "second-not-equals"]]
-    [:values [:sequential :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::temporal-filter
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:bucket {:optional true} ::bucket]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"       "not-equals"
-                 "greater-than" "greater-than-or-equal"
-                 "less-than"    "less-than-or-equal"]]
-    [:value [:or :string :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::disjunctive-temporal-filter
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:bucket {:optional true} ::bucket]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"       "not-equals"
-                 "greater-than" "greater-than-or-equal"
-                 "less-than"    "less-than-or-equal"]]
-    [:values [:sequential [:or :string :int]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::string-filter
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"             "not-equals"
-                 "string-contains"    "string-not-contains"
-                 "string-starts-with" "string-ends-with"]]
-    [:value :string]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::disjunctive-string-date-filter
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"             "not-equals"
-                 "string-contains"    "string-not-contains"
-                 "string-starts-with" "string-ends-with"]]
-    [:values [:sequential :string]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::numeric-filter
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"       "not-equals"
-                 "greater-than" "greater-than-or-equal"
-                 "less-than"    "less-than-or-equal"]]
-    [:value [:or :int :double]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::disjunctive-numeric-filter
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals" "not-equals"]]
-    [:values [:sequential [:or :int :double]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::segment-filter
-  "Filter using a pre-defined segment."
-  [:and
-   [:map
-    [:segment_id :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::filter
-  [:or
-   ::segment-filter
-   ::existence-filter
-   ::temporal-extraction-filter ::disjunctive-temporal-extraction-filter
-   ::temporal-filter ::disjunctive-temporal-filter
-   ::string-filter ::disjunctive-string-date-filter
-   ::numeric-filter ::disjunctive-numeric-filter])
-
-(mr/def ::group-by
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:field_granularity {:optional true}
-     [:maybe [:enum {:encode/tool-api-request keyword}
-              "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::count-aggregation
-  "Count aggregation — counts rows, no field_id needed.
-   Use sort_order to order results by this aggregation ('asc' or 'desc')."
-  [:and
-   [:map
-    [:function [:= {:encode/tool-api-request keyword} "count"]]
-    [:bucket {:optional true} ::bucket]
-    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::field-aggregation
-  "Aggregation using a field and function. field_id is required.
-   Use sort_order to order results by this aggregation ('asc' or 'desc')."
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:bucket {:optional true} ::bucket]
-    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
-    [:function [:enum {:encode/tool-api-request keyword}
-                "avg" "count-distinct" "max" "min" "sum"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::measure-aggregation
-  "Aggregation using a pre-defined measure."
-  [:and
-   [:map
-    [:measure_id :int]
-    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::aggregation
-  "Aggregation — count (field optional), field-based (field required), or measure-based."
-  [:or ::count-aggregation ::field-aggregation ::measure-aggregation])
-
-(mr/def ::field
-  [:and
-   [:map
-    [:field_id ::field-id]
-    [:bucket {:optional true} ::bucket]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::order-by
-  "Order by item specifying a field and sort direction."
-  [:map
-   [:field ::field]
-   [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]])
-
-(mr/def ::construct-query-table-request
-  "Request schema for constructing a query from a table.
-
-   Query components:
-   - filters: Filter conditions to apply
-   - fields: Specific fields to select (omit for all fields)
-   - aggregations: Aggregation functions (sum, count, avg, etc.). Use sort_order on the aggregation to order by it.
-   - group_by: Fields to group by, with optional temporal granularity
-   - order_by: Order by regular fields only. To order by an aggregation result, use sort_order on the aggregation instead.
-   - limit: Maximum rows to return"
-  [:and
-   [:map
-    [:table_id ms/PositiveInt]
-    [:filters      {:optional true} [:maybe [:sequential ::filter]]]
-    [:fields       {:optional true} [:maybe [:sequential ::field]]]
-    [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
-    [:group_by     {:optional true} [:maybe [:sequential ::group-by]]]
-    [:order_by     {:optional true
-                    :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
-     [:maybe [:sequential ::order-by]]]
-    [:limit        {:optional true} [:maybe ms/PositiveInt]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::construct-query-metric-request
-  "Request schema for constructing a query from a metric.
-   Only supports filters and group_by (aggregation is defined by the metric)."
-  [:and
-   [:map
-    [:metric_id ms/PositiveInt]
-    [:filters  {:optional true} [:maybe [:sequential ::filter]]]
-    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::construct-query-request
-  "Request schema for /v1/construct-query. Accepts either table_id or metric_id."
-  [:or ::construct-query-table-request ::construct-query-metric-request])
-
-(mr/def ::query-request
-  "Request schema for /v1/query. Accepts construct params (table_id or metric_id) or a continuation_token."
-  [:multi {:dispatch (fn [m]
-                       (cond
-                         (:continuation_token m) :continuation
-                         (:metric_id m)          :metric
-                         :else                   :table))}
-   [:continuation [:map [:continuation_token ms/NonBlankString]]]
-   [:table        ::construct-query-table-request]
-   [:metric       ::construct-query-metric-request]])
+   agent-lib/program-schema
+   [:fn {:error/message "top-level program source must be one of: table, card, dataset, metric"}
+    (fn [program]
+      (contains? #{"table" "card" "dataset" "metric"}
+                 (get-in program [:source :type])))]])
 
 (mr/def ::construct-query-response
   "Response containing a base64-encoded MBQL query for use with /v1/execute."
   [:map
    [:query ms/NonBlankString]])
 
-(defn- ->long
-  "Coerce a field_id to long, whether it's already an integer or a string."
-  [x]
-  (if (int? x) x (parse-long x)))
+(defn- evaluate-program-for-execution
+  "Resolve a program's source entity, evaluate the program via agent-lib, and return a
+  plain MBQL 5 query map. The JSON round-trip strips lib metadata so the query can be
+  serialized into a continuation token."
+  [program]
+  (let [source-entity (metabot-construct/program-source->source-entity (:source program))
+        result        (metabot-construct/execute-program source-entity nil program)
+        pmbql         (get-in result [:structured-output :query])]
+    (json/decode+kw (json/encode pmbql))))
 
-(defn- body->program
-  "Convert a construct-query request body into an agent-lib program.
-  Maps the legacy table_id/metric_id + filters/aggregations format into the
-  unified program format with source and operations."
-  [body]
-  (let [ops (cond-> []
-              ;; filters → ["filter", clause] for each
-              (seq (:filters body))
-              (into (map (fn [{:keys [field_id operation value values segment_id bucket]}]
-                           (if segment_id
-                             ["filter" ["segment" segment_id]]
-                             (let [field-ref (if bucket
-                                               ["with-temporal-bucket" ["field" (->long field_id)] bucket]
-                                               ["field" (->long field_id)])]
-                               (cond
-                                 (seq values) ["filter" [operation field-ref values]]
-                                 (some? value) ["filter" [operation field-ref value]]
-                                 :else         ["filter" [operation field-ref]])))))
-                    (:filters body))
-              ;; aggregations
-              (seq (:aggregations body))
-              (into (map (fn [{:keys [field_id function measure_id]}]
-                           (if measure_id
-                             ["aggregate" ["measure" measure_id]]
-                             (if (and field_id (not= function "count"))
-                               ["aggregate" [function ["field" (->long field_id)]]]
-                               ["aggregate" [function]]))))
-                    (:aggregations body))
-              ;; group_by → breakout
-              (seq (:group_by body))
-              (into (map (fn [{:keys [field_id field_granularity]}]
-                           (if field_granularity
-                             ["breakout" ["with-temporal-bucket" ["field" (->long field_id)] field_granularity]]
-                             ["breakout" ["field" (->long field_id)]])))
-                    (:group_by body))
-              ;; fields → with-fields
-              (seq (:fields body))
-              (conj ["with-fields" (mapv (fn [{:keys [field_id]}]
-                                           ["field" (->long field_id)])
-                                         (:fields body))])
-              ;; order_by
-              (seq (:order_by body))
-              (into (map (fn [{:keys [field direction]}]
-                           (let [field-ref ["field" (->long (:field_id field))]]
-                             (if (= direction "desc")
-                               ["order-by" field-ref "desc"]
-                               ["order-by" field-ref]))))
-                    (:order_by body))
-              ;; limit
-              (:limit body)
-              (conj ["limit" (:limit body)]))]
-    {:source {:type "context" :ref "source"} :operations ops}))
+(api.macros/defendpoint :post "/v2/construct-query" :- ::construct-query-response
+  "Construct an MBQL query from a structured agent-lib program.
 
-(defn- construct-query*
-  "Shared query construction: converts body to program, evaluates via agent-lib, returns the raw MBQL 5 query."
-  [body]
-  (let [source-entity (cond
-                        (:table_id body)  {:type "table"  :id (:table_id body)}
-                        (:metric_id body) {:type "metric" :id (:metric_id body)})
-        program       (body->program body)
-        result        (metabot-construct/execute-program source-entity nil program)]
-    (get-in result [:structured-output :query])))
-
-(defn- construct-table-query
-  "Build a query from a table using the provided query components."
-  [body]
-  (let [body  (cond-> body (not (:limit body)) (assoc :limit default-query-row-limit))
-        query (construct-query* body)]
-    {:query (-> query json/encode u/encode-base64)}))
-
-(defn- construct-metric-query
-  "Build a query from a metric using filters and group_by."
-  [body]
-  {:query (-> (construct-query* body) json/encode u/encode-base64)})
-
-(api.macros/defendpoint :post "/v1/construct-query" :- ::construct-query-response
-  "Construct an MBQL query from a table or metric.
-
-  Returns a base64-encoded MBQL query that can be used with the query API.
-
-  For tables, supports: filters, fields, aggregations, group_by, order_by, limit.
-  For metrics, supports: filters, group_by (aggregation is defined by the metric)."
+  The body is the program itself: a JSON object with `source` (identifying the
+  table/card/dataset/metric to query) and `operations` (an array of operator
+  tuples). Returns a base64-encoded MBQL query that can be executed via
+  /v1/execute. See the agent_api reference for the full program syntax."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
-           :description (str "Construct a query against a Metabase table or metric. "
-                             "Returns an opaque query string that can be executed with execute_query.\n\n"
-                             "For table queries: provide table_id. "
-                             "Supports filters, fields, aggregations, group_by, order_by, and limit.\n\n"
-                             "For metric queries: provide metric_id. "
-                             "Supports only filters and group_by (aggregation is defined by the metric).\n\n"
-                             "Provide either table_id or metric_id, not both.")
+           :description (str "Construct a Metabase query from a structured program. "
+                             "The body is a JSON object with `source` and `operations` keys "
+                             "where source identifies the table/card/dataset/metric to query "
+                             "(e.g. {\"type\": \"table\", \"id\": 42}) and operations is an "
+                             "array of operator tuples (filter, aggregate, breakout, expression, "
+                             "with-fields, order-by, limit, join, append-stage, etc.). Returns "
+                             "an opaque query string that can be executed with execute_query.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
-   body :- ::construct-query-request]
-  (if (:table_id body)
-    (construct-table-query body)
-    (construct-metric-query body)))
+   program :- ::program-request]
+  (let [query (evaluate-program-for-execution program)]
+    {:query (-> query json/encode u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
@@ -680,13 +385,13 @@
   [token]
   (-> token u/decode-base64 json/decode+kw))
 
-(defn- build-query-for-execution
-  "Construct a MBQL 5 query map from table_id or metric_id params. Returns {:query <map> :limit <int>}.
-   The JSON round-trip strips lib metadata so the query is a plain MBQL 5 map suitable for token serialization."
-  [body]
-  (let [limit (min (or (:limit body) default-query-row-limit) max-query-row-limit)
-        query (construct-query* (assoc body :limit limit))]
-    {:query (json/decode+kw (json/encode query)) :limit limit}))
+(defn- query-page-size
+  "Determine the per-page row limit for an evaluated MBQL 5 query, taking the
+  user-supplied limit (from the last stage) when present and capping at the
+  combined query endpoint's hard maximum."
+  [query-map]
+  (let [user-limit (-> query-map :stages last :limit)]
+    (min (or user-limit default-query-row-limit) max-query-row-limit)))
 
 (defn- apply-page-to-query
   "Apply :page clause to the last stage of a MBQL 5 query map."
@@ -711,24 +416,28 @@
          :constraints {:max-results           max-query-row-limit
                        :max-results-bare-rows max-query-row-limit}))
 
-(api.macros/defendpoint :post "/v1/query"
-  :- (streaming-response/streaming-response-schema ::query-response)
-  "Query a Metabase table or metric, or continue paginating a previous query.
+(mr/def ::query-request
+  "Request body for /v2/query. Accepts either a structured program or a continuation_token."
+  [:multi {:dispatch (fn [m]
+                       (if (:continuation_token m) :continuation :program))}
+   [:continuation [:map [:continuation_token ms/NonBlankString]]]
+   [:program      ::program-request]])
 
-  Accepts either construct params (table_id/metric_id + filters, aggregations, etc.)
-  or a continuation_token from a previous response. Returns results with column metadata
-  and an optional continuation_token for fetching the next page."
+(api.macros/defendpoint :post "/v2/query"
+  :- (streaming-response/streaming-response-schema ::query-response)
+  "Execute a structured program and stream the results, with continuation-token pagination.
+
+  Accepts either a program (same shape as /v2/construct-query) or a
+  `continuation_token` from a previous response. Returns results with column
+  metadata and an optional `continuation_token` for fetching the next page."
   {:scope "agent:query"
    :tool  {:name "query"
-           :description (str "Query a Metabase table or metric. Returns results with column metadata. "
-                             "If more rows are available, the response includes a continuation_token — "
-                             "pass it back to get the next page.\n\n"
-                             "For table queries: provide table_id. "
-                             "Supports filters, fields, aggregations, group_by, order_by, and limit.\n\n"
-                             "For metric queries: provide metric_id. "
-                             "Supports only filters and group_by (aggregation is defined by the metric).\n\n"
-                             "For pagination: provide only continuation_token from a previous response.\n\n"
-                             "Provide exactly one of table_id, metric_id, or continuation_token.")}}
+           :description (str "Execute a Metabase query from a structured program and return "
+                             "results with column metadata. If more rows are available, the "
+                             "response includes a continuation_token — pass it back to get the "
+                             "next page.\n\n"
+                             "The body is either a structured program (see construct_query) or "
+                             "{\"continuation_token\": \"...\"} from a previous response.")}}
   [_route-params
    _query-params
    body :- ::query-request]
@@ -736,8 +445,8 @@
         (if-let [token (:continuation_token body)]
           (let [{:keys [query pagination]} (decode-continuation-token token)]
             {:query query :limit (:limit pagination) :page (:page pagination)})
-          (let [{:keys [query limit]} (build-query-for-execution body)]
-            {:query query :limit limit :page 1}))
+          (let [query (evaluate-program-for-execution body)]
+            {:query query :limit (query-page-size query) :page 1}))
         mbql5-with-page (apply-page-to-query query page limit)]
     (qp.streaming/streaming-response
      [rff :api]

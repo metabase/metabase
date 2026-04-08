@@ -14,19 +14,18 @@ Base path: /api/agent
   (e.g., "Total Revenue"). Metrics are stored in collections and can be used
   as a data source in the API. They have a fixed aggregation, but can be
   filtered and grouped by their queryable dimensions. Use /v1/metric/{id} to
-  inspect a metric's dimensions, and POST /v1/construct-query with a program
-  to query one.
+  inspect a metric's dimensions, and POST /v2/construct-query with a program
+  whose `source` is `{"type": "metric", "id": <id>}` to query one.
 - **Measures**: Lightweight, reusable aggregation expressions (e.g.,
   `SUM(total)`) associated with a specific table. Unlike metrics, measures are
   not standalone queries — they are building blocks that can be referenced in
-  table queries via `measure_id` in the aggregations array. Discover available
-  measures for a table via GET /v1/table/{id}?with-measures=true.
+  table queries via `["measure", id]` inside an `aggregate` operation. Discover
+  available measures for a table via GET /v1/table/{id}?with-measures=true.
 - **Segments**: Pre-defined filter conditions (e.g., "Active Users") that can
-  be applied to queries by passing `{"segment_id": id}` in the filters array.
+  be applied to queries via `["filter", ["segment", id]]`.
 - **Field IDs**: Integer identifiers for database columns. These are the real
   database field IDs returned by the table/metric detail endpoints. Use them
-  as the `field_id` value in filters, aggregations, group_by, and order_by
-  entries when constructing queries.
+  inside operator forms as `["field", N]`.
 
 ## Authentication
 
@@ -284,48 +283,52 @@ Response:
 }
 ```
 
-### POST /v1/construct-query
+### POST /v2/construct-query
 
-Construct a query using a structured program. Returns a base64-encoded query
-to pass to /v1/execute.
+Construct an MBQL query from a structured agent-lib program. Returns a
+base64-encoded query string to pass to `/v1/execute`.
 
-**Important**: Field IDs used in operations must come from the detail endpoints
-(/v1/table/{id} or /v1/metric/{id}). Always fetch entity details first.
+**Important**: All field IDs used in operations must come from the detail
+endpoints (`/v1/table/{id}` or `/v1/metric/{id}`). Always fetch entity details
+first.
 
-The request uses a program format with a source and an array of operations.
-Each operation is an array: `["operation-name", arg1, arg2, ...]`.
+The request body **is** the program — there is no envelope. A program is a
+JSON object with two keys:
+
+- `source` — identifies the entity to query (`table`, `card`, `dataset`, or
+  `metric` plus an `id`).
+- `operations` — an ordered array of operator tuples to apply on top of the
+  source. Each operation is itself an array: `["operator", arg1, arg2, ...]`.
+
+The agent-lib backend automatically repairs small mistakes (operator aliases,
+casing, scalar wrapping) before validation, so you don't need to be perfectly
+precise about every detail — but the canonical operator names listed below
+will always work.
 
 #### Request format
 
 ```json
 {
-  "table_id": 42,
-  "filters": [
-    {"field_id": "302", "operation": "greater-than", "value": 100}
-  ],
-  "aggregations": [
-    {"function": "sum", "field_id": "302"}
-  ],
-  "group_by": [
-    {"field_id": "305", "field_granularity": "month"}
-  ],
-  "order_by": [
-    {"field": {"field_id": "302"}, "direction": "desc"}
-  ],
-  "limit": 100
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["filter", [">", ["field", 302], 100]],
+    ["aggregate", ["sum", ["field", 302]]],
+    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]],
+    ["order-by", ["aggregation-ref", 0], "desc"],
+    ["limit", 100]
+  ]
 }
 ```
 
-Or for metrics:
+For a metric source (the metric supplies its own aggregation, so additional
+aggregates are usually unnecessary):
 
 ```json
 {
-  "metric_id": 10,
-  "filters": [
-    {"field_id": "305", "operation": "greater-than", "value": "2024-01-01"}
-  ],
-  "group_by": [
-    {"field_id": "305", "field_granularity": "month"}
+  "source": {"type": "metric", "id": 10},
+  "operations": [
+    ["filter", [">", ["field", 305], "2024-01-01"]],
+    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]]
   ]
 }
 ```
@@ -336,123 +339,210 @@ Or for metrics:
 {"query": "eyJkYXRhYmFzZSI6MSwi..."}
 ```
 
-#### Filter types
+#### Source types
 
-Filters are polymorphic. The required fields depend on the operation.
+The top-level `source` must be one of these — `context` and nested `program`
+sources are reserved for in-process callers and are rejected at the HTTP
+boundary.
 
-**Segment filter** — apply a pre-defined segment:
+| Type      | Meaning                                                       |
+|-----------|---------------------------------------------------------------|
+| `table`   | Query a database table directly (`id` is a table ID)         |
+| `card`    | Query a saved question (`id` is a card ID)                   |
+| `dataset` | Query a model (`id` is the model's card ID)                  |
+| `metric`  | Query a metric, inheriting its aggregation and time dimension |
+
+#### Top-level operations
+
+Each operation is an array starting with the operator name. Operations are
+applied in order to the query stage produced from `source`.
+
+| Operator               | Shape                                           | Description                                              |
+|------------------------|-------------------------------------------------|----------------------------------------------------------|
+| `filter`               | `["filter", clause]`                            | Add a filter clause to the current stage                 |
+| `aggregate`            | `["aggregate", agg-clause]`                     | Add an aggregation                                       |
+| `breakout`             | `["breakout", ref-or-bucketed]`                 | Add a grouping dimension                                 |
+| `expression`           | `["expression", "Name", expr]`                  | Define a named computed column                           |
+| `with-fields`          | `["with-fields", [refs]]`                       | Restrict the returned columns                            |
+| `order-by`             | `["order-by", ref]` or `["order-by", ref, dir]` | Sort by a field, expression-ref, or aggregation-ref      |
+| `limit`                | `["limit", N]`                                  | Cap the number of returned rows                          |
+| `join`                 | `["join", join-clause]`                         | Join another table or card                               |
+| `append-stage`         | `["append-stage"]`                              | Start a new query stage (e.g. for post-aggregation ops)  |
+| `with-page`            | `["with-page", {"page": N, "items": M}]`        | Apply pagination on the current stage                    |
+
+The full canonical list lives in
+[src/metabase/agent_lib/capabilities/catalog/](../agent_lib/capabilities/catalog/).
+
+#### References
+
+References are nested operator forms used inside operations to point at fields,
+expressions, or earlier aggregations.
+
+| Form                              | Meaning                                                |
+|-----------------------------------|--------------------------------------------------------|
+| `["field", N]`                    | Reference a database field by ID                       |
+| `["expression-ref", "Name"]`      | Reference a named expression defined earlier           |
+| `["aggregation-ref", N]`          | Reference the Nth aggregation defined earlier (0-based)|
+| `["measure", N]`                  | Reference a pre-defined measure on the source entity   |
+| `["with-temporal-bucket", r, b]`  | Bucket a temporal field by `b` (`day`, `month`, …)     |
+
+#### Filter operators (used inside `["filter", …]`)
+
+| Operator             | Example                                              |
+|----------------------|------------------------------------------------------|
+| `=`, `!=`            | `["=", ["field", 101], "active"]`                    |
+| `<`, `<=`, `>`, `>=` | `[">", ["field", 302], 100]`                         |
+| `between`            | `["between", ["field", 305], "2024-01-01", "2024-12-31"]` |
+| `in`, `not-in`       | `["in", ["field", 302], [10, 20, 30]]`               |
+| `is-null`, `not-null`| `["is-null", ["field", 101]]`                        |
+| `is-empty`, `not-empty` | `["is-empty", ["field", 101]]`                    |
+| `contains`, `does-not-contain` | `["contains", ["field", 303], "acme"]`     |
+| `starts-with`, `ends-with` | `["starts-with", ["field", 303], "acme"]`      |
+| `time-interval`      | `["time-interval", ["field", 305], -7, "day"]`       |
+| `and`, `or`, `not`   | `["and", filter1, filter2]`                          |
+| `segment`            | `["segment", 5]` — apply a pre-defined segment        |
+
+#### Aggregation operators (used inside `["aggregate", …]`)
+
+`count`, `sum`, `avg`, `min`, `max`, `distinct`, `median`, `stddev`, `var`,
+`percentile`, `count-where`, `sum-where`, `distinct-where`, `share`,
+`cum-count`, `cum-sum`.
 
 ```json
-{"segment_id": 5}
+["aggregate", ["count"]]
+["aggregate", ["sum", ["field", 302]]]
+["aggregate", ["count-where", ["=", ["field", 101], "completed"]]]
 ```
 
-**Existence filters** — no value needed:
+#### Temporal helpers (commonly used in `expression` and `breakout`)
 
-| Operation            | Description            |
-|----------------------|------------------------|
-| is-null              | Field is null          |
-| is-not-null          | Field is not null      |
-| string-is-empty      | String is empty        |
-| string-is-not-empty  | String is not empty    |
-| is-true              | Boolean is true        |
-| is-false             | Boolean is false       |
+`get-year`, `get-quarter`, `get-month`, `get-week`, `get-day`,
+`get-day-of-week`, `get-hour`, `get-minute`, `datetime-add`, `datetime-diff`,
+`datetime-subtract`, `now`, `today`, `relative-datetime`, `absolute-datetime`,
+`with-temporal-bucket`, `convert-timezone`.
+
+#### Worked examples
+
+**Top 5 customers by revenue**
 
 ```json
-{"field_id": "301", "operation": "is-not-null"}
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["aggregate", ["sum", ["field", 302]]],
+    ["breakout", ["field", 101]],
+    ["order-by", ["aggregation-ref", 0], "desc"],
+    ["limit", 5]
+  ]
+}
 ```
 
-**Comparison filters** — single value:
-
-| Operation             | Description                     |
-|-----------------------|---------------------------------|
-| equals                | Equals value                    |
-| not-equals            | Does not equal value            |
-| greater-than          | Greater than                    |
-| greater-than-or-equal | Greater than or equal           |
-| less-than             | Less than                       |
-| less-than-or-equal    | Less than or equal              |
+**Conditional sum with a named expression**
 
 ```json
-{"field_id": "302", "operation": "greater-than", "value": 100}
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["expression", "Discount", ["-", ["field", 302], ["field", 303]]],
+    ["aggregate", ["sum", ["expression-ref", "Discount"]]]
+  ]
+}
 ```
 
-For multiple values, use `values` (array) instead of `value`:
+**Orders per month using a metric**
 
 ```json
-{"field_id": "302", "operation": "equals", "values": [10, 20, 30]}
+{
+  "source": {"type": "metric", "id": 10},
+  "operations": [
+    ["breakout", ["with-temporal-bucket", ["field", 305], "month"]]
+  ]
+}
 ```
 
-**String filters**:
-
-| Operation           | Description                          |
-|---------------------|--------------------------------------|
-| string-contains     | Contains substring                   |
-| string-not-contains | Does not contain substring           |
-| string-starts-with  | Starts with prefix                   |
-| string-ends-with    | Ends with suffix                     |
+**Multi-stage: filter on an aggregated value**
 
 ```json
-{"field_id": "303", "operation": "string-contains", "value": "acme"}
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["aggregate", ["sum", ["field", 302]]],
+    ["breakout", ["field", 101]],
+    ["append-stage"],
+    ["filter", [">", ["aggregation-ref", 0], 1000]]
+  ]
+}
 ```
 
-**Temporal filters** — optional `bucket` for temporal bucketing:
+#### Error responses
 
-Truncation units: `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`.
-Extraction units: `day-of-week`, `day-of-month`, `day-of-year`,
-`week-of-year`, `month-of-year`, `quarter-of-year`, `hour-of-day`,
-`minute-of-hour`, `second-of-minute`.
+Validation, repair, and resolution errors are returned as `400 Bad Request`
+with a structured JSON body:
 
 ```json
-{"field_id": "305", "operation": "greater-than", "value": "2024-01-01", "bucket": "day"}
+{
+  "status-code": 400,
+  "error": "invalid-generated-program",
+  "path": "operations[2].field_id",
+  "details": "operations[2].field_id: field 12345 is not accessible",
+  "recovery": {
+    "available": ["field 1001", "field 1002"],
+    "suggestion": "Did you mean field 1001?"
+  }
+}
 ```
 
-#### Aggregations
+A non-existent table, card, or metric in `source` returns `404 Not Found`.
 
-Field-based aggregation — `function` is required:
+### POST /v2/query
 
-| Function       | Description                |
-|----------------|----------------------------|
-| avg            | Average                    |
-| count          | Count of rows              |
-| count-distinct | Count of distinct values   |
-| max            | Maximum value              |
-| min            | Minimum value              |
-| sum            | Sum                        |
+Combined construct-and-execute endpoint with built-in pagination via
+continuation tokens.
+
+The body is either:
+- A program (same shape as `/v2/construct-query`), **or**
+- `{"continuation_token": "..."}` returned from a previous response.
+
+Pagination is automatic. The per-page row limit is taken from your program's
+`["limit", N]` operation if present, otherwise defaults to 200, and is hard-
+capped at 200 rows for memory and LLM-context safety. If the page is full and
+more rows may exist, the response includes a `continuation_token` you can
+post back to fetch the next page.
 
 ```json
-{"field_id": "302", "function": "sum"}
+{
+  "source": {"type": "table", "id": 42},
+  "operations": [
+    ["order-by", ["field", 101]],
+    ["limit", 50]
+  ]
+}
 ```
 
-For `count`, omit `field_id`:
+Response (HTTP 202, streaming):
 
 ```json
-{"function": "count"}
+{
+  "status": "completed",
+  "data": {
+    "cols": [{"name": "ID", "base_type": "type/Integer", "display_name": "ID"}],
+    "rows": [[1], [2], [3], [...]]
+  },
+  "row_count": 50,
+  "running_time": 87,
+  "continuation_token": "eyJxdWVyeSI6ey..."
+}
 ```
 
-Measure-based aggregation — uses a pre-defined measure:
+To fetch the next page:
 
 ```json
-{"measure_id": 5}
-```
-
-#### Group by
-
-```json
-{"field_id": "305", "field_granularity": "month"}
-```
-
-`field_granularity` is optional. Valid values: `minute`, `hour`, `day`,
-`week`, `month`, `quarter`, `year`, `day-of-week`.
-
-#### Order by
-
-```json
-{"field": {"field_id": "302"}, "direction": "desc"}
+{"continuation_token": "eyJxdWVyeSI6ey..."}
 ```
 
 ### POST /v1/execute
 
-Execute a query returned by /v1/construct-query.
+Execute a query returned by /v2/construct-query.
 
 **Important: streaming response.** This endpoint streams results, so the HTTP
 status code (202) is sent before query execution completes. A 202 status does
@@ -507,7 +597,6 @@ On failure:
 ```
 
 Row limits:
-- Default: 100 rows (applied when no `limit` is specified in construct-query for tables)
 - Simple queries (no aggregation): 2000 rows max
 - Aggregated queries: 10000 rows max
 
@@ -518,19 +607,21 @@ Row limits:
    understand the schema
 3. **Explore field values** — GET /v1/table/{id}/field/{field-id}/values if
    you need to know valid filter values or field statistics
-4. **Build query** — POST /v1/construct-query with filters, aggregations,
-   group_by, etc.
-5. **Execute** — POST /v1/execute with the base64-encoded query
-6. **Iterate** — Adjust filters/aggregations and repeat steps 4-5
+4. **Build query** — POST /v2/construct-query with a structured program
+   (`source` + `operations`)
+5. **Execute** — POST /v1/execute with the base64-encoded query, or use
+   POST /v2/query to construct and execute in one round-trip with pagination
+6. **Iterate** — Adjust the program and repeat steps 4-5
 
 ## Error handling
 
-| HTTP Status | Meaning                                  |
-|-------------|------------------------------------------|
-| 200         | Success (GET endpoints, construct-query) |
-| 202         | Success (execute — streaming response)   |
-| 401         | Authentication failure                   |
-| 403         | Insufficient permissions                 |
-| 404         | Entity not found                         |
+| HTTP Status | Meaning                                                       |
+|-------------|---------------------------------------------------------------|
+| 200         | Success (GET endpoints, construct-query)                      |
+| 202         | Success (execute / query — streaming response)                |
+| 400         | Invalid program (validation, repair, or resolution failure)   |
+| 401         | Authentication failure                                        |
+| 403         | Insufficient permissions                                      |
+| 404         | Entity not found                                              |
 
 ---

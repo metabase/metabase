@@ -71,6 +71,24 @@
     "metric"     "metric"
     type))
 
+(defn program-source->source-entity
+  "Convert a structured-program `:source` map (using agent-lib model strings: `table`,
+  `card`, `dataset`, `metric`) into the `source-entity` shape consumed by
+  [[execute-program]] (using metabot type strings: `table`, `question`, `model`,
+  `metric`). Throws if the source isn't one of the four database-resolved types
+  (e.g. `context` or nested `program` sources are rejected)."
+  [{:keys [type id] :as source}]
+  (let [entity-type (case type
+                      "table"   "table"
+                      "card"    "question"
+                      "dataset" "model"
+                      "metric"  "metric"
+                      (throw (ex-info (str "Unsupported program source type: " (pr-str type))
+                                      {:agent-error? true
+                                       :status-code  400
+                                       :source       source})))]
+    {:type entity-type :id id}))
+
 (defn- source-metadata-for
   "Resolve the lib metadata object for a source entity."
   [type id metadata-provider]
