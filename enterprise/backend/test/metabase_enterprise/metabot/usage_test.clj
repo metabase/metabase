@@ -9,6 +9,8 @@
   (:import
    (java.time Instant)))
 
+(set! *warn-on-reflection* true)
+
 (defn- insert-usage!
   "Insert a test ai_usage_log row for the given user with the specified total_tokens."
   ([user-id total-tokens]
@@ -492,6 +494,7 @@
         (try
           (mt/with-test-user :rasta
             (let [summary (usage/usage-summary)]
+              (is (some? summary))
               (is (not (contains? summary :tenant_usage)))
               (is (not (contains? summary :tenant_limit)))))
           (finally
