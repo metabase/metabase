@@ -114,6 +114,7 @@
 
         (and config/ee-available?
              (premium-features/enable-custom-viz?)
+             display-type
              (str/starts-with? (name display-type) "custom:")
              (let [identifier (subs (name display-type) (count "custom:"))
                    plugin-id     (t2/select-one-pk :model/CustomVizPlugin :identifier identifier :enabled true)]
