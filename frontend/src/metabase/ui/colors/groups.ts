@@ -116,7 +116,7 @@ export const getPreferredColor = (key: string, palette?: ColorPalette) => {
 
   const lowercasedKey = key.toLowerCase();
   for (const { keys, color } of mapping) {
-    if (keys.includes(lowercasedKey)) {
+    if (keys.some((key) => lowercasedKey.includes(key))) {
       return color;
     }
   }
