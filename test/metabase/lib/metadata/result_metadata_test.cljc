@@ -385,7 +385,7 @@
 (deftest ^:parallel aggregation-names-test-5
   (testing "expressions"
     (testing "expression with nested expressions"
-      (is (= {:name "expression", :display-name "Min of ID + (2 × Average of Price)"}
+      (is (= {:name "aggregation", :display-name "Min of ID + (2 × Average of Price)"}
              (aggregation-names
               [:+
                [:min [:field (meta/id :venues :id) nil]]
@@ -394,7 +394,7 @@
 (deftest ^:parallel aggregation-names-test-6
   (testing "expressions"
     (testing "very complicated expression"
-      (is (= {:name "expression", :display-name "Min of ID + (2 × Average of Price × 3 × (Max of Category ID - 4))"}
+      (is (= {:name "aggregation", :display-name "Min of ID + (2 × Average of Price × 3 × (Max of Category ID - 4))"}
              (aggregation-names
               [:+
                [:min [:field (meta/id :venues :id) nil]]
@@ -407,7 +407,7 @@
 (deftest ^:parallel aggregation-names-test-7
   (testing "`aggregation-options`"
     (testing "`:name` and `:display-name`"
-      (is (= {:name "generated_name", :display-name "User-specified Name"}
+      (is (= {:name "aggregation", :display-name "User-specified Name"}
              (aggregation-names
               [:aggregation-options
                [:+ [:min [:field (meta/id :venues :id) nil]] [:* 2 [:avg [:field (meta/id :venues :price) nil]]]]
@@ -416,7 +416,7 @@
 (deftest ^:parallel aggregation-names-test-8
   (testing "`aggregation-options`"
     (testing "`:name` only"
-      (is (= {:name "generated_name", :display-name "Min of ID + (2 × Average of Price)"}
+      (is (= {:name "aggregation", :display-name "Min of ID + (2 × Average of Price)"}
              (aggregation-names
               [:aggregation-options
                [:+ [:min [:field (meta/id :venues :id) nil]] [:* 2 [:avg [:field (meta/id :venues :price) nil]]]]
@@ -425,7 +425,7 @@
 (deftest ^:parallel aggregation-names-test-9
   (testing "`aggregation-options`"
     (testing "`:display-name` only"
-      (is (= {:name "expression", :display-name "User-specified Name"}
+      (is (= {:name "aggregation", :display-name "User-specified Name"}
              (aggregation-names
               [:aggregation-options
                [:+ [:min [:field (meta/id :venues :id) nil]] [:* 2 [:avg [:field (meta/id :venues :price) nil]]]]
@@ -435,7 +435,7 @@
   (testing "basic aggregation clauses"
     (testing "`:count` (no field)"
       (is (=? {:base-type    :type/Float
-               :name         "expression"
+               :name         "aggregation"
                :display-name "Count ÷ 2"}
               (col-info-for-aggregation-clause [:/ [:count] 2]))))))
 
@@ -443,7 +443,7 @@
   (testing "basic aggregation clauses"
     (testing "`:sum`"
       (is (=? {:base-type    :type/Integer
-               :name         "sum"
+               :name         "aggregation"
                :display-name "Sum of Price + 1"}
               (lib.tu.macros/$ids venues
                 (col-info-for-aggregation-clause [:sum [:+ $price 1]])))))))
@@ -453,7 +453,7 @@
     (testing "`:name` and `:display-name`"
       (is (=? {:base-type     :type/Integer
                :settings      {:is_priceless true}
-               :name          "sum_2"
+               :name          "aggregation"
                :display-name  "My custom name"}
               (lib.tu.macros/$ids venues
                 (col-info-for-aggregation-clause
@@ -464,7 +464,7 @@
     (testing "`:name` only"
       (is (=? {:base-type     :type/Integer
                :settings      {:is_priceless true}
-               :name          "sum_2"
+               :name          "aggregation"
                :display-name  "Sum of Price"}
               (lib.tu.macros/$ids venues
                 (col-info-for-aggregation-clause [:aggregation-options [:sum $price] {:name "sum_2"}])))))))
@@ -474,7 +474,7 @@
     (testing "`:display-name` only"
       (is (=? {:base-type     :type/Integer
                :settings      {:is_priceless true}
-               :name          "sum"
+               :name          "aggregation"
                :display-name  "My Custom Name"}
               (lib.tu.macros/$ids venues
                 (col-info-for-aggregation-clause
