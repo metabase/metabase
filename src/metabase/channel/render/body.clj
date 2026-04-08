@@ -405,23 +405,22 @@
    Assets are included as a map of `{name -> data-uri}` so the static viz JS context
    can resolve `getAssetUrl` calls without HTTP."
   [card]
-  (let [display-type (some-> card :display name)]
-    (when (and config/ee-available?
-               (premium-features/enable-custom-viz?)
-               display-type (str/starts-with? display-type "custom:"))
-      (let [identifier (subs display-type (count "custom:"))
-            plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
-        (when-let [content (some-> plugin
-                                   custom-viz-plugin/resolve-bundle
-                                   :content)]
-          (let [manifest   (some-> plugin :manifest custom-viz-plugin/parse-manifest)
-                asset-names (custom-viz-plugin/asset-paths manifest)
-                assets     (into {}
-                                 (keep (fn [asset-name]
-                                         (when-let [bytes (custom-viz-plugin/resolve-asset (:id plugin) asset-name)]
-                                           [asset-name (asset->data-uri asset-name bytes)])))
-                                 asset-names)]
-            [{:identifier identifier :source content :assets assets}]))))))
+  (when (and config/ee-available?
+             (premium-features/enable-custom-viz?)
+             (render.util/custom-viz-display? (:display card)))
+    (let [identifier (subs (name (:display card)) (count "custom:"))
+          plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+      (when-let [content (some-> plugin
+                                 custom-viz-plugin/resolve-bundle
+                                 :content)]
+        (let [manifest    (some-> plugin :manifest custom-viz-plugin/parse-manifest)
+              asset-names (custom-viz-plugin/asset-paths manifest)
+              assets      (into {}
+                                (keep (fn [asset-name]
+                                        (when-let [bytes (custom-viz-plugin/resolve-asset (:id plugin) asset-name)]
+                                          [asset-name (asset->data-uri asset-name bytes)])))
+                                asset-names)]
+          [{:identifier identifier :source content :assets assets}])))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
@@ -438,7 +437,7 @@
                                                                                   (custom-viz-bundles card))]
     ;; If the custom viz plugin didn't define a StaticVisualizationComponent,
     ;; RenderChart returns an empty string. Fall back to table rendering.
-    (if (and (str/starts-with? (name (get card :display)) "custom:")
+    (if (and (render.util/custom-viz-display? (:display card))
              (str/blank? content))
       (render :table render-type _timezone-id card dashcard data)
       (case rendered-type

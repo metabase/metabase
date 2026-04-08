@@ -114,8 +114,7 @@
 
         (and config/ee-available?
              (premium-features/enable-custom-viz?)
-             display-type
-             (str/starts-with? (name display-type) "custom:")
+             (render.util/custom-viz-display? display-type)
              (let [identifier (subs (name display-type) (count "custom:"))
                    plugin-id     (t2/select-one-pk :model/CustomVizPlugin :identifier identifier :enabled true)]
                (some-> plugin-id custom-viz-plugin/resolve-bundle :content)))
@@ -156,7 +155,7 @@
            :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
 
-        (str/starts-with? (name display-type) "custom:")
+        (render.util/custom-viz-display? display-type)
         (chart-type :table "display-type is a custom visualization without static support, falling back to table")
 
         :else
