@@ -27,7 +27,7 @@
       (let [query (-> query
                       (lib/aggregate (lib/count))
                       (lib/aggregate (lib/count)))]
-        (is (= "count_2_2"
+        (is (= "count_3"
                (lib.aggregation.util/unique-aggregation-name
                 query -1 (lib/aggregations query) (lib/count))))))
     (testing "existing clauses without :name are treated as if named"
