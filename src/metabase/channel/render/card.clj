@@ -104,15 +104,16 @@
                           tyype (pr-str card-name) (apply format reason args))
               tyype)]
       (cond
-        (or (empty? rows)
-            ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-            (= [[nil]] (-> data :rows)))
-        (chart-type :empty "there are no rows in results")
 
         (when-let [identifier (render.util/custom-viz-identifier display-type)]
           (let [plugin (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
             (some-> plugin custom-viz-plugin/resolve-bundle :content)))
         (chart-type :javascript_visualization "display-type is a custom visualization with static support")
+
+        (or (empty? rows)
+            ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+            (= [[nil]] (-> data :rows)))
+        (chart-type :empty "there are no rows in results")
 
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
