@@ -15,13 +15,15 @@ import type {
 } from "metabase/common/components/Pickers/MiniPicker/types";
 import { isEmbedding } from "metabase/embedding/config";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { loadMetadataForTable } from "metabase/questions/actions";
+import { loadCard, loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, TextInput } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import {
+  getQuestionIdFromVirtualTableId,
+  getQuestionVirtualTableId,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
 import type { QueryEditorDatabasePickerItem } from "../../../editor/types";
@@ -32,7 +34,7 @@ import {
 import { NotebookCellItem } from "../NotebookCell";
 
 import { EmbeddingDataPicker } from "./EmbeddingDataPicker";
-import { isObjectWithModel } from "./utils";
+import { getDatabaseId, isObjectWithModel } from "./utils";
 
 export interface NotebookDataPickerProps {
   title: string;
@@ -79,9 +81,14 @@ export function NotebookDataPicker({
   const isTenantUser = useSelector(getIsTenantUser);
 
   const handleChange = async (tableId: TableId) => {
-    await dispatch(loadMetadataForTable(tableId));
+    const cardId = getQuestionIdFromVirtualTableId(tableId);
+    if (cardId != null) {
+      await dispatch(loadCard(cardId));
+    } else {
+      await dispatch(loadMetadataForTable(tableId));
+    }
     const metadata = getMetadata(store.getState());
-    const databaseId = checkNotNull(metadata.table(tableId)).db_id;
+    const databaseId = getDatabaseId(metadata, tableId);
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     if (table) {

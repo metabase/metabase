@@ -203,14 +203,14 @@ export function selectSavedQuestionsToJoin(
   firstQuestionName: string,
   secondQuestionName: string,
 ) {
-  cy.intercept("GET", "/api/table/*/query_metadata").as("joinedTableMetadata");
+  cy.intercept("GET", "/api/card/*").as("getCard");
   miniPickerBrowseAll().click();
   entityPickerModal().within(() => {
     cy.findByText("Our analytics").click();
     cy.findByText(firstQuestionName).click();
   });
 
-  cy.wait("@joinedTableMetadata");
+  cy.wait("@getCard");
 
   // join to question b
   cy.icon("join_left_outer").click();
