@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [compojure.response]
-   [medley.core :as m]
    [metabase.api.common :as mb.api]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -57,20 +56,20 @@
                       lines    (str/split-lines response)
                       conv     (t2/select-one :model/MetabotConversation :id conversation-id)
                       messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
-              ;; Native agent emits AI SDK v4 line protocol directly
-                  (testing "response contains expected line types"
-                ;; f:{start}, 0:"text" chunks, 2:{state data}, d:{finish with usage}
-                    (is (=? [#"f:.*"
-                             #"0:.*"
-                             #"2:.*"
-                             #"d:.*"]
-                            (m/distinct-by #(subs % 0 2) lines)))
-                ;; Text chunks reassemble to full message
-                    (let [text-lines (filter #(str/starts-with? % "0:") lines)]
-                      (is (= "Hello from native agent!"
-                             (apply str (map #(json/decode (subs % 2)) text-lines)))))
-                ;; Finish line includes usage
-                    (is (str/includes? (last lines) "promptTokens")))
+              ;; Native agent emits AI SDK v6 SSE protocol
+                  (let [events (->> lines
+                                    (remove str/blank?)
+                                    (remove #(= "data: [DONE]" %))
+                                    (mapv #(json/decode (subs % (count "data: ")))))]
+                    (testing "response contains expected SSE event types"
+                      (let [types (set (mapv #(get % "type") events))]
+                        (is (contains? types "start"))
+                        (is (contains? types "text-delta"))
+                        (is (contains? types "finish"))))
+                    (testing "text deltas contain expected message"
+                      (let [text (apply str (map #(get % "delta")
+                                                 (filter #(= "text-delta" (get % "type")) events)))]
+                        (is (str/includes? text "Hello from native agent!")))))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
               ;; Native agent stores parts in raw format

@@ -11,6 +11,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: data_version
+                  remarks: Version of the data format stored in this message
                   type: integer
                   defaultValueNumeric: 1
                   constraints:
