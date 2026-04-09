@@ -472,52 +472,8 @@
                  (mw.session/reset-session-timeout* request response request-time))))))))
 
 ;;; ---------------------------------------- server-side session timeout tests -----------------------------------------
-
-(deftest session-timeout-enforces-last-active-at-test
-  (init-status/set-complete!)
-  (mt/with-premium-features #{:session-timeout-config}
-    (mt/with-temporary-setting-values [session-timeout {:amount 5 :unit "minutes"}]
-      (mt/with-temp [:model/User {user-id :id}]
-        (let [session-id  (session/generate-session-id)
-              session-key (str (random-uuid))
-              key-hashed  (session/hash-session-key session-key)]
-          (testing "Session with recent last_active_at should be valid"
-            (t2/insert! (t2/table-name :model/Session)
-                        {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
-                         :last_active_at :%now})
-            (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
-
-          (testing "Session with last_active_at older than timeout should be expired"
-            (t2/query-one {:update (t2/table-name :model/Session)
-                           :set    {:last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -301 :second)}
-                           :where  [:= :key_hashed key-hashed]})
-            (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
-
-          (testing "Session with last_active_at just within timeout should be valid"
-            (t2/query-one {:update (t2/table-name :model/Session)
-                           :set    {:last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -299 :second)}
-                           :where  [:= :key_hashed key-hashed]})
-            (is (some? (#'mw.session/current-user-info-for-session session-key nil)))))))))
-
-(deftest session-timeout-falls-back-to-created-at-test
-  (init-status/set-complete!)
-  (mt/with-premium-features #{:session-timeout-config}
-    (mt/with-temporary-setting-values [session-timeout {:amount 5 :unit "minutes"}]
-      (mt/with-temp [:model/User {user-id :id}]
-        (let [session-id  (session/generate-session-id)
-              session-key (str (random-uuid))
-              key-hashed  (session/hash-session-key session-key)]
-
-          (testing "newly created session (NULL last_active_at) should be valid"
-            (t2/insert! (t2/table-name :model/Session)
-                        {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now})
-            (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
-
-          (testing "old session with NULL last_active_at should be expired"
-            (t2/query-one {:update (t2/table-name :model/Session)
-                           :set    {:created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -301 :second)}
-                           :where  [:= :key_hashed key-hashed]})
-            (is (nil? (#'mw.session/current-user-info-for-session session-key nil)))))))))
+;; Tests for session-timeout-enforces-last-active-at, session-timeout-falls-back-to-created-at, and
+;; session-activity-update-throttle are in metabase-enterprise.api.session-test because they require EE features.
 
 (deftest session-timeout-requires-premium-feature-test
   (init-status/set-complete!)
@@ -532,25 +488,4 @@
                        :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
-(deftest session-activity-update-throttle-test
-  (init-status/set-complete!)
-  (testing "maybe-update-session-activity! throttles DB writes"
-    (mt/with-premium-features #{:session-timeout-config}
-      (mt/with-temporary-setting-values [session-timeout {:amount 30 :unit "minutes"}]
-        (mt/with-temp [:model/User {user-id :id}]
-          (let [session-id  (session/generate-session-id)
-                session-key (str (random-uuid))
-                key-hashed  (session/hash-session-key session-key)]
-            (session/clear-session-activity-cache!)
-            (t2/insert! (t2/table-name :model/Session)
-                        {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now})
 
-            (testing "first call should update last_active_at"
-              (#'mw.session/maybe-update-session-activity! session-key)
-              (is (some? (t2/select-one-fn :last_active_at (t2/table-name :model/Session) :key_hashed key-hashed))))
-
-            (testing "immediate second call should be throttled (no error, just skipped)"
-              (let [first-value (t2/select-one-fn :last_active_at (t2/table-name :model/Session) :key_hashed key-hashed)]
-                (#'mw.session/maybe-update-session-activity! session-key)
-                (is (= first-value
-                       (t2/select-one-fn :last_active_at (t2/table-name :model/Session) :key_hashed key-hashed)))))))))))
