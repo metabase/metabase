@@ -18,13 +18,6 @@
   [_plugin-id _asset-path]
   nil)
 
-(defenterprise parse-manifest
-  "Parse a manifest JSON string. Returns the parsed map or nil.
-   OSS: always returns nil."
-  metabase-enterprise.custom-viz-plugin.core
-  [_json-str]
-  nil)
-
 (defenterprise asset-paths
   "List the static asset names from the manifest.
    OSS: always returns empty vector."

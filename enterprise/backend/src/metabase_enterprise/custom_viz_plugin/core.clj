@@ -17,12 +17,6 @@
   [plugin-id asset-path]
   (cache/resolve-asset plugin-id asset-path))
 
-(defenterprise parse-manifest
-  "Enterprise implementation: parse a manifest JSON string."
-  :feature :custom-viz
-  [json-str]
-  (manifest/parse-manifest json-str))
-
 (defenterprise asset-paths
   "Enterprise implementation: list static asset names from the manifest."
   :feature :custom-viz

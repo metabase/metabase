@@ -9,7 +9,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.server.streaming-response :as sr]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -18,8 +17,6 @@
    (java.net HttpURLConnection URI)))
 
 (set! *warn-on-reflection* true)
-
-;;; ---------------------------------------- In-memory dev bundle URLs -----------------------------------------
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
@@ -72,36 +69,23 @@
       (str/split #"/")
       last))
 
-(defn- parse-manifest-json
-  "Parse the manifest JSON string stored in the DB into a map for the response."
-  [manifest-str]
-  (when manifest-str
-    (try
-      (json/decode+kw manifest-str)
-      (catch Exception _ nil))))
-
 (defn- plugin->response
-  "Convert a plugin record to API response format (keyword status -> string)."
+  "Convert a plugin record to API response format."
   [plugin]
-  (-> plugin
-      (update :status name)
-      (update :manifest parse-manifest-json)
-      (assoc :dev_bundle_url (cache/resolve-dev-bundle (:id plugin)))
-      (assoc :dev_only (dev-only-plugin? plugin))))
+  (assoc plugin :dev_only (dev-only-plugin? plugin)))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon icon_dark resolved_commit manifest]}]
-  (let [dev-url (cache/resolve-dev-bundle id)]
-    (cond-> {:id              id
-             :identifier      identifier
-             :display_name    display_name
-             :icon            icon
-             :icon_dark       icon_dark
-             :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
-             :resolved_commit resolved_commit
-             :manifest        (parse-manifest-json manifest)}
-      dev-url (assoc :dev_bundle_url dev-url))))
+  [{:keys [id identifier display_name icon icon_dark resolved_commit manifest dev_bundle_url]}]
+  (cond-> {:id              id
+           :identifier      identifier
+           :display_name    display_name
+           :icon            icon
+           :icon_dark       icon_dark
+           :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
+           :resolved_commit resolved_commit
+           :manifest        manifest}
+    dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
@@ -152,7 +136,6 @@
                       (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))
         sentinel-url (str "dev://local/" identifier)
-        manifest-str (when manifest (json/encode manifest))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
         icon-dark    (:iconDark manifest)
@@ -166,7 +149,7 @@
                                                             :dev_bundle_url  dev_bundle_url
                                                             :icon            icon
                                                             :icon_dark       icon-dark
-                                                            :manifest        manifest-str
+                                                            :manifest        manifest
                                                             :metabase_version version-str))]
     (cache/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
     (plugin->response plugin)))
@@ -183,7 +166,7 @@
   []
   (let [plugins (t2/select [:model/CustomVizPlugin
                             :id :identifier :display_name :icon :icon_dark :resolved_commit
-                            :manifest :metabase_version]
+                            :manifest :metabase_version :dev_bundle_url]
                            :status :active
                            :enabled true
                            {:order-by [[:display_name :asc]]})]
@@ -344,13 +327,12 @@
                          (throw (ex-info "No dev server URL configured" {:status-code 404})))
             manifest (or (cache/fetch-dev-manifest dev-url)
                          (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
-            manifest-str (json/encode manifest)
             version-str  (get-in manifest [:metabase :version])]
         (t2/update! :model/CustomVizPlugin id
                     {:display_name     (or (:name manifest) (:identifier plugin))
                      :icon             (:icon manifest)
                      :icon_dark        (:iconDark manifest)
-                     :manifest         manifest-str
+                     :manifest         manifest
                      :metabase_version version-str}))
       (cache/fetch-and-update! plugin))
     (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))

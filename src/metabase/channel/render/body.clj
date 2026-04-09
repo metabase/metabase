@@ -408,13 +408,13 @@
       (when-let [content (some-> plugin
                                  custom-viz-plugin/resolve-bundle
                                  :content)]
-        (when-let [manifest (some-> manifest custom-viz-plugin/parse-manifest)]
-          (let [assets (into {}
-                             (keep (fn [asset-name]
-                                     (when-let [bytes (custom-viz-plugin/resolve-asset id asset-name)]
-                                       [asset-name (asset->data-uri asset-name bytes)])))
-                             (custom-viz-plugin/asset-paths manifest))]
-            [{:identifier identifier :source content :assets assets}]))))))
+        (let [asset-names (some-> manifest custom-viz-plugin/asset-paths)
+              assets      (into {}
+                                (keep (fn [asset-name]
+                                        (when-let [bytes (custom-viz-plugin/resolve-asset id asset-name)]
+                                          [asset-name (asset->data-uri asset-name bytes)])))
+                                asset-names)]
+          [{:identifier identifier :source content :assets assets}])))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.

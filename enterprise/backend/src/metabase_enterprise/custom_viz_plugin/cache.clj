@@ -89,11 +89,9 @@
           commit-sha    (:version snapshot)
           _content       (or (rs.git/read-file snapshot (git-path bundle-rel-path))
                              (throw (ex-info (str (git-path bundle-rel-path) " not found in repository") {:commit commit-sha})))
-          manifest-str  (or (rs.git/read-file snapshot (manifest/manifest-path))
-                            (throw (ex-info (str (manifest/manifest-path) " not found in repository")
-                                            {:commit commit-sha})))
-          parsed        (or (manifest/parse-manifest manifest-str)
-                            (throw (ex-info (str "Failed to parse " (manifest/manifest-path))
+          parsed        (or (some-> (rs.git/read-file snapshot (manifest/manifest-path))
+                                    manifest/parse-manifest)
+                            (throw (ex-info (str (manifest/manifest-path) " not found or invalid in repository")
                                             {:commit commit-sha})))
           version-str   (get-in parsed [:metabase :version])]
       (when (and version-str
@@ -106,7 +104,7 @@
                   {:status            :active
                    :error_message     nil
                    :resolved_commit   commit-sha
-                   :manifest          manifest-str
+                   :manifest          parsed
                    :display_name      (or (:name parsed) identifier)
                    :icon              (:icon parsed)
                    :icon_dark         (:iconDark parsed)
@@ -137,13 +135,9 @@
 (defn- asset-whitelisted?
   "Check whether an asset path is explicitly listed in the plugin's manifest."
   [{:keys [manifest]} ^String asset-path]
-  (try
-    (when-let [parsed (some-> manifest manifest/parse-manifest)]
-      (let [allowed (set (manifest/asset-paths parsed))]
-        (contains? allowed asset-path)))
-    (catch Exception e
-      (log/warnf "Failed to check asset whitelist for %s: %s" asset-path (ex-message e))
-      false)))
+  (when manifest
+    (let [allowed (set (manifest/asset-paths manifest))]
+      (contains? allowed asset-path))))
 
 (defn get-asset
   "Get a static asset for a plugin. Reads from the local bare git repo at the resolved commit.
