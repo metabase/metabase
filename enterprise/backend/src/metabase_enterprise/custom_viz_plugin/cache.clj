@@ -5,6 +5,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.remote-sync.source.git :as rs.git]
@@ -152,23 +153,30 @@
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
+(defn- validate-dev-url!
+  "Validate that a dev bundle URL uses http or https scheme. Throws on invalid input."
+  [^String url]
+  (let [scheme (some-> (java.net.URI. url) .getScheme str/lower-case)]
+    (when-not (#{"http" "https"} scheme)
+      (throw (ex-info (str "Dev bundle URL must use http or https, got: " scheme)
+                      {:status-code 400 :url url})))))
+
 (defn dev-base-url
-  "Ensure the base URL ends with a slash for proper path joining."
+  "Validate and normalize the dev base URL. Ensures http/https scheme and trailing slash."
   ^String [^String url]
+  (validate-dev-url! url)
   (if (str/ends-with? url "/") url (str url "/")))
 
 (defn fetch-dev-bundle
   "Fetch a JS bundle from a dev base URL (appends /index.js).
    Returns {:content str :hash str} or nil."
   [^String base-url]
-  (let [url (str (dev-base-url base-url) "index.js")]
-    (try
-      (let [content (slurp (java.net.URI. url))]
-        {:content content
-         :hash    (content-hash content)})
-      (catch Exception e
-        (throw (ex-info (str "Failed to fetch dev bundle from " url ": " (.getMessage e))
-                        {:status-code 502}))))))
+  (let [url     (str (dev-base-url base-url) "index.js")
+        content (:body (http/get url {:as :string
+                                      :socket-timeout 5000
+                                      :connection-timeout 5000}))]
+    {:content content
+     :hash    (content-hash content)}))
 
 (defn fetch-dev-manifest
   "Fetch and parse the manifest (metabase-plugin.json) from a dev base URL.
@@ -176,7 +184,9 @@
   [^String base-url]
   (let [url (str (dev-base-url base-url) (manifest/manifest-path))]
     (try
-      (let [content (slurp (java.net.URI. url))]
+      (let [content (:body (http/get url {:as :string
+                                          :socket-timeout 5000
+                                          :connection-timeout 5000}))]
         (manifest/parse-manifest content))
       (catch Exception e
         (log/debugf "No manifest at %s: %s" url (ex-message e))
@@ -187,17 +197,15 @@
    Returns the bytes or nil on failure."
   ^bytes [^String base-url ^String asset-path]
   (let [url (str (dev-base-url base-url) "assets/" asset-path)]
-    (try
-      (with-open [in (.openStream (.toURL (java.net.URI. url)))]
-        (.readAllBytes in))
-      (catch Exception e
-        (throw (ex-info (str "Failed to fetch dev asset from " url ": " (.getMessage e))
-                        {:status-code 502}))))))
+    (:body (http/get url {:as :byte-array
+                          :socket-timeout 5000
+                          :connection-timeout 5000}))))
 
 (defn set-or-clear-dev-bundle!
   "Set or clear the dev base URL for a plugin. Persists to the database and updates the in-memory cache."
   [id dev-bundle-url]
   (let [url (when (seq dev-bundle-url) dev-bundle-url)]
+    (when url (validate-dev-url! url))
     (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})
     (swap! dev-bundle-urls assoc id (or url ::none))))
 
