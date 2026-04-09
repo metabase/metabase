@@ -724,6 +724,7 @@
            metabase.lib.metadata.result-metadata
            metabase.lib.normalize
            metabase.lib.options
+           metabase.lib.parameters
            metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
