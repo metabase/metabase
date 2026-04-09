@@ -113,7 +113,9 @@
         target-name  (get-in transform [:target :name])
         table-id     (when (and valid-db-id? target-name)
                        (transforms-base.u/upsert-target-table!
-                        target-db-id (get-in transform [:target :schema]) target-name))]
+                        target-db-id (get-in transform [:target :schema]) target-name))
+        _            (when table-id
+                       (transforms-base.u/seed-target-fields! table-id source))]
     (when-not valid-db-id?
       (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform

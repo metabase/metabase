@@ -428,3 +428,29 @@
               (.execute ^Value (object-array [sql from-dialect to-dialect]))
               .asString)))
       normalize-transpilation-result))
+
+;; TODO(rileythomp, 2026-03): Should this be a driver multimethod?
+;; ANSWER(dan, 2026-04): i don't think so. Don't want to have to load
+;; drivers just to parse strings. Perhaps have a fall back that is opt
+;; in?
+(defn driver->dialect
+  "Map a Metabase driver keyword to a SQLGlot dialect string.
+   Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
+  [driver]
+  (case driver
+    nil                  nil
+    :postgres            "postgres"
+    :mysql               "mysql"
+    :snowflake           "snowflake"
+    :bigquery            "bigquery"
+    :bigquery-cloud-sdk  "bigquery"
+    :redshift            "redshift"
+    :sqlserver           "tsql"
+    :sparksql            "spark"
+    :presto-jdbc         "presto"
+    :starburst           "trino"
+    :clickhouse          "clickhouse"
+    :vertica             nil
+    :h2                  nil
+    ;; Default: try using the driver name as dialect
+    (name driver)))

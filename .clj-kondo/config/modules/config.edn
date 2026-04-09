@@ -1069,7 +1069,8 @@
   lib-be
   {:team "Querying Platform"
    :api  #{metabase.lib-be.core
-           metabase.lib-be.init}
+           metabase.lib-be.init
+           metabase.lib-be.source-swap}
    :uses #{lib
            models
            settings
@@ -2235,6 +2236,7 @@
            metabase.transforms-base.util}
    :model-imports #{:model/Database
                     :model/DatabaseRouter
+                    :model/Field
                     :model/Table
                     ;; TODO regressions — transforms-base should not depend on
                     ;; these directly. Remove once the module is agnostic to
@@ -2245,7 +2247,9 @@
            events
            lib
            lib-be
+           models
            query-processor
+           sql-parsing
            sync
            util
            warehouse-schema}
@@ -3046,6 +3050,7 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DashboardCardSeries
                     :model/Field
                     :model/Measure
                     :model/PersistedInfo

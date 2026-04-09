@@ -7,18 +7,21 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
+   [metabase.models.humanization :as humanization]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-remaps :as remap]
    [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sync.core :as sync]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
@@ -31,7 +34,14 @@
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.time
+    Instant
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
@@ -696,6 +706,155 @@
   depend on `transforms-base` (which is allowed to use `warehouse-schema`)."
   [db-id schema table-name]
   (table/upsert-transform-target-table! db-id schema table-name))
+
+(defn- columns->predicted-fields
+  "Convert a sequence of column metadata maps (from lib or sql-tools) into predicted field descriptors."
+  [columns]
+  (into []
+        (map-indexed
+         (fn [position col]
+           (let [col-name (or (:lib/desired-column-alias col) (:name col))]
+             {:name           col-name
+              :display-name   (or (:display-name col)
+                                  (humanization/name->human-readable-name col-name))
+              :base-type      (or (:base-type col) :type/*)
+              :effective-type (or (:effective-type col) (:base-type col) :type/*)
+              :semantic-type  (:semantic-type col)
+              :position       position})))
+        columns))
+
+(defn- predict-mbql-fields
+  "Predict fields for an MBQL query using MLv2 returned-columns."
+  [normalized-query]
+  (columns->predicted-fields (lib/returned-columns normalized-query)))
+
+(defn- resolve-returned-field-type
+  "Given a returned field spec from sql-parsing field-references, resolve its base type
+  by looking up the source column via the metadata provider. Returns `:type/*` for computed fields."
+  [field-spec metadata-provider]
+  (if (= :single-column (:type field-spec))
+    (let [col-name (:column field-spec)
+          ;; Walk source-columns to find the source table
+          source-table-name (some (fn [source-chain]
+                                    (some (fn [source]
+                                            (when (= :all-columns (:type source))
+                                              (get-in source [:table :table])))
+                                          source-chain))
+                                  (:source-columns field-spec))]
+      (if source-table-name
+        (let [tables       (lib.metadata/tables metadata-provider)
+              source-table (some (fn [t]
+                                   (when (= (u/lower-case-en (:name t))
+                                            (u/lower-case-en source-table-name))
+                                     t))
+                                 tables)]
+          (if source-table
+            (let [fields (lib.metadata/fields metadata-provider (:id source-table))
+                  field  (some (fn [f]
+                                 (when (= (u/lower-case-en (:name f))
+                                          (u/lower-case-en col-name))
+                                   f))
+                               fields)]
+              (or (:base-type field) :type/*))
+            :type/*))
+        :type/*))
+    :type/*))
+
+(defn- predict-native-fields
+  "Predict fields for a native SQL query using sql-parsing field-references.
+  Parses the SQL to determine returned column names and resolves their types
+  by looking up source columns in the appdb.
+
+  Column names are normalized using the driver's casing rules (e.g., lowercase for Postgres,
+  uppercase for Snowflake) so that seeded field names match what the physical database will
+  produce when the transform actually runs."
+  [normalized-query]
+  (let [{:keys [engine]} (lib.metadata/database normalized-query)
+        driver engine]
+    (when driver
+      (let [sql             (lib/raw-native-query normalized-query)
+            dialect         (sql-parsing/driver->dialect driver)
+            {:keys [returned-fields]} (sql-parsing/field-references dialect sql)]
+        (into []
+              (map-indexed
+               (fn [position field-spec]
+                 (let [raw-name  (or (:alias field-spec) (:column field-spec))
+                       col-name  (sql.normalize/normalize-name driver raw-name)
+                       base-type (resolve-returned-field-type field-spec normalized-query)]
+                   {:name           col-name
+                    :display-name   (humanization/name->human-readable-name col-name)
+                    :base-type      base-type
+                    :effective-type base-type
+                    :semantic-type  nil
+                    :position       position})))
+              returned-fields)))))
+
+(defn predict-target-fields
+  "Predict what fields a transform's target table will have, based on its source.
+
+  For MBQL query transforms, uses MLv2 `returned-columns` to analyze the query structure.
+  For native SQL transforms, uses `sql-parsing/field-references` to parse the SQL and resolve
+  column types from the database schema.
+  Returns a sequence of maps with `:name`, `:display-name`, `:base-type`, `:effective-type`,
+  and `:semantic-type`, or nil if prediction is not possible (python transforms or analysis failure)."
+  [source]
+  (when (= :query (keyword (:type source)))
+    (try
+      (let [normalized (lib-be/normalize-query (:query source))]
+        (when-not (empty? normalized)
+          (if (lib/native-only-query? normalized)
+            (predict-native-fields normalized)
+            (predict-mbql-fields normalized))))
+      (catch Exception e
+        (log/warn e "Failed to predict columns for transform query")
+        nil))))
+
+(defn sync-target-fields!
+  "Reconcile `metabase_field` rows for a transform target table against a predicted field list.
+
+  - Fields in `predicted-fields` that don't exist yet are created.
+  - Existing fields whose names are NOT in `predicted-fields` are marked inactive.
+  - Existing fields whose names ARE in `predicted-fields` are left untouched.
+
+  `predicted-fields` is a sequence of maps as returned by [[predict-target-fields]]."
+  [table-id predicted-fields]
+  (when (and table-id (seq predicted-fields))
+    (let [predicted-names (into #{} (map :name) predicted-fields)
+          existing        (t2/select :model/Field :table_id table-id :active true)
+          existing-names  (into #{} (map :name) existing)
+          to-create       (remove #(contains? existing-names (:name %)) predicted-fields)
+          to-retire       (remove #(contains? predicted-names (:name %)) existing)]
+      ;; Create new fields
+      (when (seq to-create)
+        (t2/insert! :model/Field
+                    (mapv (fn [{:keys [name display-name base-type effective-type semantic-type position]}]
+                            {:table_id          table-id
+                             :name              name
+                             :display_name      display-name
+                             :base_type         base-type
+                             :effective_type    effective-type
+                             :database_type     "NULL"
+                             :position          position
+                             :database_position position
+                             :semantic_type     semantic-type
+                             :active            true})
+                          to-create)))
+      ;; Retire fields no longer predicted
+      (when (seq to-retire)
+        (t2/update! :model/Field {:table_id table-id
+                                  :id       [:in (map :id to-retire)]}
+                    {:active false}))
+      {:created (count to-create)
+       :retired (count to-retire)})))
+
+(defn seed-target-fields!
+  "Predict fields for a transform's source query and sync them into its target table.
+
+  Convenience wrapper that chains [[predict-target-fields]] → [[sync-target-fields!]].
+  Returns the sync result map, or nil if prediction was not possible."
+  [table-id source]
+  (when-let [predicted (predict-target-fields source)]
+    (sync-target-fields! table-id predicted)))
 
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern."

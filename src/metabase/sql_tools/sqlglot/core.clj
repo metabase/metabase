@@ -26,29 +26,6 @@
     ;; Fallback: pass through if already in correct format or unknown type
     error))
 
-;; TODO(rileythomp, 2026-03): Should this be a driver multimethod?
-(defn driver->dialect
-  "Map a Metabase driver keyword to a SQLGlot dialect string.
-   Returns nil for drivers that should use SQLGlot's default dialect (e.g., H2)."
-  [driver]
-  (case driver
-    nil                  nil
-    :postgres            "postgres"
-    :mysql               "mysql"
-    :snowflake           "snowflake"
-    :bigquery            "bigquery"
-    :bigquery-cloud-sdk  "bigquery"
-    :redshift            "redshift"
-    :sqlserver           "tsql"
-    :sparksql            "spark"
-    :presto-jdbc         "presto"
-    :starburst           "trino"
-    :clickhouse          "clickhouse"
-    :vertica             nil
-    :h2                  nil
-    ;; Default: try using the driver name as dialect
-    (name driver)))
-
 ;;;; Tables
 
 (defn- referenced-tables
@@ -58,7 +35,7 @@
           db-transforms (lib.metadata/transforms query)
           sql (lib/raw-native-query query)
           default-schema (sql.normalize/default-schema driver)
-          query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
+          query-tables (sql-parsing/referenced-tables (sql-parsing/driver->dialect driver) sql)]
       (into #{}
             (keep (fn [[_catalog table-schema table]]
                     (sql-tools.common/find-table-or-transform
@@ -111,7 +88,7 @@
 
 (defmethod sql-tools/field-references-impl :sqlglot
   [_parser driver sql-string]
-  (let [result (sql-parsing/field-references (driver->dialect driver) sql-string)]
+  (let [result (sql-parsing/field-references (sql-parsing/driver->dialect driver) sql-string)]
     (-> result
         (update :used-fields #(set (map (partial normalize-field driver) %)))
         (update :returned-fields #(mapv (partial normalize-field driver) %))
@@ -140,7 +117,7 @@
 (defmethod sql-tools/referenced-tables-raw-impl :sqlglot
   [_parser driver sql-str]
   (try
-    (let [dialect (driver->dialect driver)
+    (let [dialect (sql-parsing/driver->dialect driver)
           ;; sql-parsing/referenced-tables returns [[catalog schema table] ...]
           ;; Convert to [{:schema ... :table ...} ...] format.
           ;; Do NOT normalize case here — SQLGlot already applies dialect-appropriate case rules
@@ -169,7 +146,7 @@
 
 (defmethod sql-tools/add-into-clause-impl :sqlglot
   [_parser driver sql table-name]
-  (sql-parsing/add-into-clause (driver->dialect driver) sql table-name))
+  (sql-parsing/add-into-clause (sql-parsing/driver->dialect driver) sql table-name))
 
 (defmethod sql-tools/replace-names-impl :sqlglot
   [_parser driver sql-string replacements _opts]
@@ -178,7 +155,7 @@
   (let [replacements' (-> replacements
                           (update :tables #(when % (vec %)))
                           (update :columns #(when % (vec %))))]
-    (sql-parsing/replace-names (driver->dialect driver) sql-string replacements')))
+    (sql-parsing/replace-names (sql-parsing/driver->dialect driver) sql-string replacements')))
 
 (defmethod sql-tools/transpile-sql-impl :sqlglot
   [_parser sql from-dialect to-dialect]

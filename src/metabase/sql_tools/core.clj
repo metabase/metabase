@@ -12,7 +12,6 @@
    [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.metrics :as metrics]
    [metabase.sql-tools.settings :as sql-tools.settings]
-   [metabase.sql-tools.sqlglot.core :as sqlglot]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p]))
@@ -216,4 +215,4 @@
 (defn is-single-select-stmt?
   "Wrapper around `sql-parsing/is-single-select-stmt`."
   [driver sql]
-  (sql-parsing/is-single-select-stmt? (sqlglot/driver->dialect driver) sql))
+  (sql-parsing/is-single-select-stmt? (sql-parsing/driver->dialect driver) sql))
