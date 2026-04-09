@@ -500,10 +500,25 @@ To save responses to the output directory for evidence, redirect stdout:
 ./bin/mage -bot-api-call /api/<endpoint> --api-key $ADMIN_API_KEY > .qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/output/api-<name>.json
 ```
 
+## Minimizing Permission Prompts
+
+Bash commands can trigger permission prompts that slow you down. Prefer tools and wrappers that are auto-allowed:
+
+| Instead of... | Use... | Why |
+|---|---|---|
+| `git diff`, `git log`, `git status`, `gh pr view` | `./bin/mage -bot-git-readonly git ...` / `gh ...` | Auto-allowed, blocks writes |
+| `curl` | `./bin/mage -bot-api-call` | Auto-allowed, auto-discovers port |
+| `cat`, `head`, `tail` | `Read` tool | Never prompts |
+| `echo > file`, `cat > file` | `Write` tool | Never prompts |
+| `grep`, `rg` | `Grep` tool | Never prompts |
+| `find`, `ls` | `Glob` tool | Never prompts |
+
+When you must use bash (e.g., `mkdir -p`, `date`, `npx`), combine independent operations into a single command with `&&` to reduce the total number of prompts.
+
 ## Important Rules
 
 - **Read-only**: Do NOT modify any source code. You are analyzing and testing, not fixing.
-- **Use wrapper commands**: Always use `./bin/mage -bot-git-readonly` for all `git` and `gh` commands — it auto-allows read-only operations without permission prompts. Only fall back to bare `git`/`gh` if the wrapper fails (e.g., the mage command is not available). Similarly, use `./bin/mage -bot-api-call` for all API calls instead of `curl`.
+- **Use wrapper commands**: Always use `./bin/mage -bot-git-readonly` for all `git` and `gh` commands. Use `./bin/mage -bot-api-call` for all API calls. Only fall back to bare commands if the wrapper fails.
 - **Evidence-based**: Every finding must have evidence — a screenshot, API response, or specific code reference.
 - **No style reviews**: Focus on functional correctness, security, and user experience. Do not report code style issues.
 - **Balanced reporting**: Note what works well, not just what's broken.
