@@ -10,7 +10,6 @@ import {
   isLinkDashCard,
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
-import { trackSimpleEvent } from "metabase/lib/analytics";
 import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { Box, Icon } from "metabase/ui";
@@ -36,6 +35,7 @@ import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButto
 import S from "./DashCardActionsPanel.module.css";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
+import { trackVisualizeAnotherWayClicked } from "./analytics";
 
 interface Props {
   series: Series;
@@ -230,10 +230,7 @@ function DashCardActionsPanelInner({
           tooltip={t`Visualize another way`}
           aria-label={t`Visualize another way`}
           onClick={() => {
-            trackSimpleEvent({
-              event: "visualize_another_way_clicked",
-              triggered_from: "dashcard-actions-panel",
-            });
+            trackVisualizeAnotherWayClicked();
             onEditVisualization();
           }}
         >

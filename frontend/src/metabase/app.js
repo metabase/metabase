@@ -37,7 +37,6 @@ import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
-import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
@@ -51,6 +50,7 @@ import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import registerVisualizations from "metabase/visualizations/register";
 
+import { createTracker } from "./analytics";
 import { HistoryProvider } from "./history";
 import { RouterProvider } from "./router";
 import { getStore } from "./store";
