@@ -19,7 +19,7 @@ export function CustomVizDevPage() {
   return (
     <SettingsPageWrapper
       title={t`Development`}
-      description={t`Set a dev bundle URL to load plugin code from a local dev server instead of the stored bundle. Changes take effect on the next page reload.`}
+      description={t`Set a dev server URL to load plugin code from a local dev server instead of the git repository. Changes take effect on the next page reload.`}
     >
       <LoadingAndErrorWrapper error={error} loading={isLoading} />
 
