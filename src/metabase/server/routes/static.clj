@@ -5,7 +5,8 @@
    instead of compressing on the fly. This avoids CPU overhead at request time
    and lets us use higher compression levels during the build."
   (:require
-   [clojure.string :as str]
+   [clojure.string :as string]
+   [compojure.core :as compojure]
    [ring.util.mime-type :as mime]
    [ring.util.response :as response]))
 
@@ -24,7 +25,7 @@
   "Returns true if the request Accept-Encoding header includes `encoding`."
   [request encoding]
   (some-> (get-in request [:headers "accept-encoding"])
-          (str/includes? encoding)))
+          (string/includes? encoding)))
 
 (defn- compressed-path
   "Returns the path of the pre-compressed artifact for a given encoding."
@@ -42,24 +43,25 @@
             (assoc-in [:headers "Content-Encoding"] encoding)
             (assoc-in [:headers "Vary"] "Accept-Encoding"))))
 
-(defn- serve-resource
+(defn- compressed-resource
   "Serve a static resource, preferring pre-compressed variants when available."
-  [request root path]
-  (let [resource-path (str root "/" path)]
+  [request options]
+  (let [root (:root options)
+        request-path (:* (:route-params request)
+        resource-path (str root "/" request-path)]
     (if (compressible-resource? resource-path)
       (or (try-compressed-response request resource-path "br")
           (try-compressed-response request resource-path "gz")
           (response/resource-response resource-path))
       (response/resource-response resource-path))))
 
-(defn precompressed-resources-handler
+(defn- add-wildcard [path]
+  (str path (if (string/ends-with path "/") "*" "/*")))
+
+(defn precompressed-resources
   "A Ring handler that serves classpath resources from `root`, preferring
    pre-compressed (.br, .gz) variants when the client supports them.
    Drop-in replacement for `compojure.route/resources`."
-  [root]
-  (fn [{:keys [uri] :as request} respond _raise]
-    ;; Strip leading slash to get the relative path
-    (let [path (str/replace-first uri #"^/" "")]
-      (if-let [resp (serve-resource request root path)]
-        (respond resp)
-        (respond {:status 404 :body "Not found."})))))
+  [path options]
+  (compojure/GET (add-wildcard path) request
+    (compressed-resource request options)))
