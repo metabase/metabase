@@ -753,7 +753,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         cy.findByTestId("table-header").within(() => {
           cy.findByText("AR-Product ID").should("be.visible");
 
-          // This still uses DE i18n translation, as this values comes from BE, so we skip this part
+          // This still uses AR i18n translation, as this values comes from BE, so we skip this part
           /*cy.findByText("مجموع AR-Total").should("be.visible");*/
         });
       });
