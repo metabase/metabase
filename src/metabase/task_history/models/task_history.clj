@@ -132,6 +132,10 @@
    [:status                        (into [:enum] task-history-status)]
    [:task_details {:optional true} [:maybe :map]]])
 
+(def ^:dynamic *parent-task-id*
+  "Bound to the current task history ID inside [[with-task-history]]."
+  nil)
+
 (def ^:private TaskHistoryInfo
   "Schema for `info` passed to the `with-task-history` macro."
   [:map {:closed true}
@@ -226,13 +230,16 @@
         info            (dissoc info :on-success-info :on-fail-info)
         start-time-ns   (System/nanoTime)
         run-id          (task-run/current-run-id)
+        parent-id       *parent-task-id*
         th-id           (t2/insert-returning-pk! :model/TaskHistory
                                                  (cond-> (assoc info
                                                                 :status     :started
                                                                 :started_at (t/instant))
-                                                   run-id (assoc :run_id run-id)))
+                                                   run-id    (assoc :run_id run-id)
+                                                   parent-id (assoc :parent_id parent-id)))
         logs-atom       (log-capture-atom)]
-    (binding [clojure.tools.logging/*logger-factory*
+    (binding [*parent-task-id*                      th-id
+              clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]
       (try
         (u/prog1 (f)
