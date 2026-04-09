@@ -186,7 +186,9 @@ describe("metabot > history", () => {
     });
     await enterChatMessage("hi");
     await userEvent.click(await stopResponseButton());
-    pause1.resolve();
+    act(() => {
+      pause1.resolve();
+    });
     expect(getHistory(store.getState(), "omnibot")).toMatchObject([
       { content: "hi", role: "user" },
       {

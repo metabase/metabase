@@ -144,7 +144,7 @@ describe("Metabot Query Builder", () => {
 
     // mock a response without a navigate_to data part
     H.mockMetabotResponse({
-      body: mockTextOnlyResponse("I need more information to help you."),
+      body: H.sseTextResponse("I need more information to help you."),
     });
 
     // send a prompt
@@ -161,7 +161,7 @@ describe("Metabot Query Builder", () => {
     cy.intercept("POST", "/api/metabot/agent-streaming", (req) => {
       req.reply({
         statusCode: 200,
-        body: mockTextOnlyResponse("ok"),
+        body: H.sseTextResponse("ok"),
         headers: {
           "content-type": "text/event-stream; charset=utf-8",
         },
@@ -196,7 +196,7 @@ describe("Metabot Query Builder", () => {
 
     // send a prompt with a delayed response
     H.mockMetabotResponse({
-      body: mockTextOnlyResponse("This should be canceled"),
+      body: H.sseTextResponse("This should be canceled"),
       delay: 2000,
     });
     metabotPromptInput().type("Show me something");
@@ -213,5 +213,3 @@ describe("Metabot Query Builder", () => {
 // Response helpers
 const mockNavigateToResponse = (path: string) =>
   H.sseBody([{ type: "data-navigate-to", id: "d1", data: path }]);
-
-const mockTextOnlyResponse = (text: string) => H.sseTextResponse(text);

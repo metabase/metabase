@@ -1,22 +1,15 @@
-/**
- * SSE event types for the AI streaming protocol.
- *
- * These types describe the Server-Sent Events wire protocol used between
- * the Metabase backend and frontend for AI streaming responses.
- */
-
-// Lifecycle events
+// lifecycle events
 export type StartEvent = { type: "start"; messageId: string };
 export type StartStepEvent = { type: "start-step" };
 export type FinishStepEvent = { type: "finish-step" };
 export type FinishEvent = { type: "finish" };
 
-// Text events
+// text events
 export type TextStartEvent = { type: "text-start"; id: string };
 export type TextDeltaEvent = { type: "text-delta"; id: string; delta: string };
 export type TextEndEvent = { type: "text-end"; id: string };
 
-// Tool events
+// tool events
 export type ToolInputStartEvent = {
   type: "tool-input-start";
   toolCallId: string;
@@ -41,10 +34,10 @@ export type ToolOutputAvailableEvent = {
   error?: unknown;
 };
 
-// Error event
+// error event
 export type ErrorEvent = { type: "error"; errorText: string };
 
-// Data events use "data-{subtype}" naming convention
+// data events use "data-{subtype}" naming convention
 export type DataEvent = {
   type: `data-${string}`;
   id?: string;

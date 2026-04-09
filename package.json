@@ -100,6 +100,7 @@
     "diff": "^5.2.2",
     "echarts": "6.0.0",
     "events": "^3.3.0",
+    "eventsource-parser": "^3.0.6",
     "fast-text-encoding": "^1.0.6",
     "formik": "^2.4.5",
     "frimousse": "^0.3.0",

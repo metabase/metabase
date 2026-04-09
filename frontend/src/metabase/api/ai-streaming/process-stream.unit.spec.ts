@@ -60,7 +60,7 @@ describe("processChatResponse", () => {
 
   it("should ignore unknown data parts", async () => {
     const mockStream = createMockSSEStream([
-      { type: "data-__some_futurist_data__", id: "f1", data: "hi" },
+      { type: "data-some-futurist-data", id: "f1", data: "hi" },
     ]);
     const config = getMockedCallbacks();
 
@@ -68,14 +68,14 @@ describe("processChatResponse", () => {
     expect(config.onError).not.toHaveBeenCalled();
     expect(config.onDataPart).not.toHaveBeenCalled();
     expect(result.data).toEqual([
-      { type: "data-__some_futurist_data__", data: "hi" },
+      { type: "data-some-futurist-data", data: "hi" },
     ]);
   });
 
   it("should ignore unknown event types", async () => {
-    // @ts-expect-error — intentionally testing unknown event type
     const mockStream = createMockSSEStream([
-      { type: "some_unknown_event_type" },
+      // @ts-expect-error — intentionally testing unknown event type
+      { type: "some-unknown-event-type" },
     ]);
     const config = getMockedCallbacks();
     await expect(processChatResponse(mockStream, config)).resolves.toBeTruthy();

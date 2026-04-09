@@ -1,7 +1,7 @@
 import { webcrypto } from "crypto";
 import { TextDecoder, TextEncoder } from "util";
 
-import { ReadableStream } from "web-streams-polyfill";
+import { ReadableStream, TransformStream } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-canvas-mock";
@@ -49,8 +49,9 @@ Object.defineProperty(globalThis, "crypto", {
 global.TextEncoder = JSDOMTextEncoder;
 global.TextDecoder = TextDecoder;
 
-// replace node's ReadableStream what one that matches what is in the browser
+// jsdom doesn't provide web stream globals — use Node's built-in implementations
 global.ReadableStream = ReadableStream;
+global.TransformStream = TransformStream;
 
 // https://github.com/jsdom/jsdom/issues/3002
 Range.prototype.getBoundingClientRect = () => ({
