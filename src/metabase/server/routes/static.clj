@@ -38,27 +38,28 @@
    response map if a compressed variant exists and the client accepts it,
    otherwise nil."
   [request resource-path]
-  (when (compressible-resource? resource-path)
-    ;; Prefer Brotli over gzip — better compression ratio
-    (or (when (accepts-encoding? request "br")
-          (when-let [resp (response/resource-response (str resource-path ".br"))]
-            (-> resp
-                (response/content-type content-type)
-                (assoc-in [:headers "Content-Encoding"] "br")
-                (assoc-in [:headers "Vary"] "Accept-Encoding"))))
-        (when (accepts-encoding? request "gzip")
-          (when-let [resp (response/resource-response (str resource-path ".gz"))]
-            (-> resp
-                (response/content-type content-type)
-                (assoc-in [:headers "Content-Encoding"] "gzip")
-                (assoc-in [:headers "Vary"] "Accept-Encoding")))))))
+  ;; Prefer Brotli over gzip — better compression ratio
+  (or (when (accepts-encoding? request "br")
+        (when-let [resp (response/resource-response (str resource-path ".br"))]
+          (-> resp
+              (response/content-type content-type)
+              (assoc-in [:headers "Content-Encoding"] "br")
+              (assoc-in [:headers "Vary"] "Accept-Encoding"))))
+      (when (accepts-encoding? request "gzip")
+        (when-let [resp (response/resource-response (str resource-path ".gz"))]
+          (-> resp
+              (response/content-type content-type)
+              (assoc-in [:headers "Content-Encoding"] "gzip")
+              (assoc-in [:headers "Vary"] "Accept-Encoding"))))))
 
 (defn- serve-resource
   "Serve a static resource, preferring pre-compressed variants when available."
   [request root path]
   (let [resource-path (str root "/" path)]
-    (or (try-compressed-response request resource-path)
-        (response/resource-response resource-path))))
+    (if (compressible-resource? resource-path)
+      (or (try-compressed-response request resource-path)
+          (response/resource-response resource-path)))
+    (response/resource-response resource-path)))
 
 (defn precompressed-resources-handler
   "A Ring handler that serves classpath resources from `root`, preferring
