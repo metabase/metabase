@@ -372,7 +372,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
-  it.only("should show all summaries and groupings from multi-stage queries and handle removal correctly", () => {
+  it("should show all summaries and groupings from multi-stage queries and handle removal correctly", () => {
     mountSdkContent(<InteractiveQuestion questionId="new" />);
 
     cy.log("Pick starting data");
