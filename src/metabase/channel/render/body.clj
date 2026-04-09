@@ -404,18 +404,17 @@
    can resolve `getAssetUrl` calls without HTTP."
   [card]
   (when-let [identifier (render.util/custom-viz-identifier (:display card))]
-    (let [plugin (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+    (let [{:keys [manifest id] :as plugin} (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
       (when-let [content (some-> plugin
                                  custom-viz-plugin/resolve-bundle
                                  :content)]
-        (let [manifest    (some-> plugin :manifest custom-viz-plugin/parse-manifest)
-              asset-names (custom-viz-plugin/asset-paths manifest)
-              assets      (into {}
-                                (keep (fn [asset-name]
-                                        (when-let [bytes (custom-viz-plugin/resolve-asset (:id plugin) asset-name)]
-                                          [asset-name (asset->data-uri asset-name bytes)])))
-                                asset-names)]
-          [{:identifier identifier :source content :assets assets}])))))
+        (when-let [manifest (some-> manifest custom-viz-plugin/parse-manifest)]
+          (let [assets (into {}
+                             (keep (fn [asset-name]
+                                     (when-let [bytes (custom-viz-plugin/resolve-asset id asset-name)]
+                                       [asset-name (asset->data-uri asset-name bytes)])))
+                             (custom-viz-plugin/asset-paths manifest))]
+            [{:identifier identifier :source content :assets assets}]))))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
