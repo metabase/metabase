@@ -2,10 +2,6 @@
   overflow-y: auto;
 }
 
-.dimensionList {
-  color: var(--mb-color-brand);
-}
-
 .itemWrapper:hover [data-bucket-trigger] {
   visibility: visible;
 }

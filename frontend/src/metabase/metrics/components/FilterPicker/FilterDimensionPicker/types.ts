@@ -1,4 +1,4 @@
-import type { Section as BaseSection } from "metabase/common/components/AccordionList";
+import type { ListSection } from "metabase/common/components/DimensionPill";
 import type * as LibMetric from "metabase-lib/metric";
 
 export type DimensionListItem = {
@@ -8,7 +8,7 @@ export type DimensionListItem = {
   dimension: LibMetric.DimensionMetadata;
 };
 
-export type DimensionSection = BaseSection<DimensionListItem>;
+export type DimensionSection = ListSection<DimensionListItem>;
 
 export type MetricGroup = {
   id: number;

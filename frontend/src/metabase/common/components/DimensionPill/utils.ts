@@ -1,5 +1,9 @@
-import type { Section } from "metabase/common/components/AccordionList";
 import type { DimensionGroup } from "metabase-lib/metric";
+
+export type ListSection<TItem> = {
+  name?: string;
+  items?: TItem[];
+};
 
 interface Groupable {
   group?: DimensionGroup;
@@ -7,7 +11,7 @@ interface Groupable {
 
 export function groupIntoSections<T extends Groupable>(
   items: T[],
-): Section<T>[] {
+): ListSection<T>[] {
   const groups = new Map<
     string | undefined,
     { groupName: string; items: T[] }
