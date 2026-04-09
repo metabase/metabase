@@ -29,6 +29,7 @@ export interface ExpressionMetricSource {
   metricCount?: number;
   colors?: string[];
   currentDimensionLabel?: string;
+  currentDimensionIcon?: IconName;
   availableOptions: DimensionOption[];
 }
 
@@ -37,6 +38,7 @@ export interface ExpressionDimensionItem {
   /** Expression entity index — used as the React key. */
   id: number;
   colors?: string[];
+  icon?: IconName;
   /** Aggregate label derived from selected dimensions. */
   label?: string;
   metricSources: ExpressionMetricSource[];

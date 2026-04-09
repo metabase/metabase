@@ -10,6 +10,7 @@ import type {
   ExpressionMetricSource,
   MetricDimensionItem,
 } from "metabase/metrics-viewer/components/DimensionPillBar";
+import type { IconName } from "metabase/ui";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
@@ -558,7 +559,7 @@ export function buildDimensionItemsFromDefinitions(
         dimensionFilter,
       );
 
-      // Derive aggregate label from selected dimensions.
+      // Derive aggregate label and icon from selected dimensions.
       const selectedLabels = metricSources
         .map((s) => s.currentDimensionLabel)
         .filter(Boolean);
@@ -569,8 +570,12 @@ export function buildDimensionItemsFromDefinitions(
           : uniqueLabels.length > 1
             ? t`Multiple dimensions`
             : undefined;
+      const selectedIcons = metricSources
+        .map((s) => s.currentDimensionIcon)
+        .filter(Boolean);
+      const uniqueIcons = [...new Set(selectedIcons)];
+      const icon = uniqueIcons.length === 1 ? uniqueIcons[0] : undefined;
 
-      // Merge colors from all token slots for the pill indicator.
       const expressionColors = sourceColors[slot.entityIndex];
 
       items.push({
@@ -578,6 +583,7 @@ export function buildDimensionItemsFromDefinitions(
         id: slot.entityIndex,
         colors: expressionColors,
         label,
+        icon,
         metricSources,
       } satisfies ExpressionDimensionItem);
     }
@@ -709,6 +715,7 @@ function buildExpressionMetricSources(
     }
 
     let currentDimensionLabel: string | undefined;
+    let currentDimensionIcon: IconName | undefined;
     if (dimensionId != null && modifiedDefinition) {
       const projections = LibMetric.projections(modifiedDefinition);
       if (projections.length > 0) {
@@ -721,6 +728,7 @@ function buildExpressionMetricSources(
             modifiedDefinition,
             projDim,
           ).longDisplayName;
+          currentDimensionIcon = getDimensionIcon(projDim);
         }
       }
     }
@@ -739,6 +747,7 @@ function buildExpressionMetricSources(
         })(),
         colors: entryColors,
         currentDimensionLabel,
+        currentDimensionIcon,
         availableOptions: computeAvailableOptions(
           effectiveEntry,
           modifiedDefinition,

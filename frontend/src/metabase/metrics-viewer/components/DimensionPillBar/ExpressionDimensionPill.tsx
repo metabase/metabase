@@ -106,7 +106,7 @@ export function ExpressionDimensionPill({
           onClick={canOpenPopover ? () => setIsOpen(true) : undefined}
           data-testid="expression-dimension-pill"
         >
-          <SourceColorIndicator colors={item.colors} />
+          <SourceColorIndicator colors={item.colors} fallbackIcon={item.icon} />
           <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
             {pillLabel}
           </Text>
