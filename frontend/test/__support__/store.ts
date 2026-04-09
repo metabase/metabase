@@ -8,7 +8,10 @@ import {
   DatabaseSchema,
   DocumentSchema,
   FieldSchema,
+  GroupSchema,
   IndexedEntitySchema,
+  MeasureSchema,
+  MetricSchema,
   QuestionSchema,
   SchemaSchema,
   SegmentSchema,
@@ -21,6 +24,7 @@ import type {
   Dashboard,
   Database,
   Field,
+  Measure,
   NativeQuerySnippet,
   SavedQuestionDatabase,
   Schema,
@@ -41,6 +45,7 @@ export interface EntitiesStateOpts {
   tables?: Table[];
   fields?: Field[];
   segments?: Segment[];
+  measures?: Measure[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
   questions?: Card[];
@@ -56,9 +61,12 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   tables: [TableSchema],
   fields: [FieldSchema],
   segments: [SegmentSchema],
+  measures: [MeasureSchema],
+  metrics: [MetricSchema],
   snippets: [SnippetSchema],
   indexedEntities: [IndexedEntitySchema],
   questions: [QuestionSchema],
+  groups: [GroupSchema],
 };
 
 export const createMockEntitiesState = (

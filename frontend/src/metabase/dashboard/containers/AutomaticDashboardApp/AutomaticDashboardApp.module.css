@@ -10,7 +10,7 @@
 .SuggestionsSidebarWrapper {
   min-height: 100%;
   width: 346px;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border-left: 2px solid var(--mb-color-border);
 }
 
@@ -23,7 +23,7 @@
 }
 
 .Root {
-  background: var(--mb-color-background-light);
+  background: var(--mb-color-background-secondary);
   min-height: 100%;
   display: flex;
   flex-direction: column;

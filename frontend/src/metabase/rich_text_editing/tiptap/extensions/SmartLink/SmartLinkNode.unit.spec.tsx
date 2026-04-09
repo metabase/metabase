@@ -1,4 +1,6 @@
 import type { NodeViewProps } from "@tiptap/react";
+import { createMemoryHistory } from "history";
+import { Route, Router, useRouterHistory } from "react-router";
 
 import {
   setupCardEndpoints,
@@ -26,21 +28,27 @@ function createProps(
   model: SuggestionModel,
   entity: SmartLinkEntity | { id: number; label?: string },
   label?: string,
+  updateAttributes?: NodeViewProps["updateAttributes"],
 ) {
   const node = { attrs: { entityId: entity.id, model, label } };
-  return { node } as unknown as NodeViewProps;
+  return {
+    node,
+    updateAttributes: updateAttributes ?? jest.fn(),
+  } as unknown as NodeViewProps;
 }
 
 function setup({
   entity,
   model,
   label,
+  updateAttributes,
 }: {
   model: SuggestionModel;
   entity: SmartLinkEntity;
   label?: string;
+  updateAttributes?: NodeViewProps["updateAttributes"];
 }) {
-  const props = createProps(model, entity, label);
+  const props = createProps(model, entity, label, updateAttributes);
   renderWithProviders(<SmartLinkComponent {...props} />);
 }
 
@@ -58,6 +66,25 @@ describe("SmartLink", () => {
       // Eventually updates to network data
       expect(await screen.findByText("Network Card Name")).toBeInTheDocument();
       expect(screen.queryByText("Cached Card Name")).not.toBeInTheDocument();
+    });
+
+    it("updates missing labels for pasted smart links", async () => {
+      const card = createMockCard({ id: 123, name: "Network Card Name" });
+      const updateAttributes = jest.fn();
+
+      setupCardEndpoints(card);
+      setup({
+        model: "card",
+        entity: card,
+        label: undefined,
+        updateAttributes,
+      });
+
+      await waitFor(() => {
+        expect(updateAttributes).toHaveBeenCalledWith({
+          label: "Network Card Name",
+        });
+      });
     });
   });
 
@@ -164,6 +191,69 @@ describe("SmartLink", () => {
       await waitFor(() => {
         expect(screen.getByText("My Document")).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("link generation", () => {
+    it("should include subpath in link href when router has basename", async () => {
+      const dashboard = createMockDashboard({
+        id: 456,
+        name: "Subpath Dashboard",
+      });
+
+      setupDashboardEndpoints(dashboard);
+
+      const historyWithBasename = useRouterHistory(createMemoryHistory)({
+        basename: "/subpath",
+        entries: ["/"],
+      });
+
+      const props = createProps("dashboard", dashboard);
+      renderWithProviders(
+        <Router history={historyWithBasename}>
+          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
+        </Router>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Subpath Dashboard")).toBeInTheDocument();
+      });
+
+      const link = screen.getByText("Subpath Dashboard").closest("a");
+      expect(link).toHaveAttribute(
+        "href",
+        "/subpath/dashboard/456-subpath-dashboard",
+      );
+    });
+
+    it("should work correctly without subpath", async () => {
+      const dashboard = createMockDashboard({
+        id: 789,
+        name: "No Subpath Dashboard",
+      });
+
+      setupDashboardEndpoints(dashboard);
+
+      const historyNoBasename = useRouterHistory(createMemoryHistory)({
+        entries: ["/"],
+      });
+
+      const props = createProps("dashboard", dashboard);
+      renderWithProviders(
+        <Router history={historyNoBasename}>
+          <Route path="*" component={() => <SmartLinkComponent {...props} />} />
+        </Router>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("No Subpath Dashboard")).toBeInTheDocument();
+      });
+
+      const link = screen.getByText("No Subpath Dashboard").closest("a");
+      expect(link).toHaveAttribute(
+        "href",
+        "/dashboard/789-no-subpath-dashboard",
+      );
     });
   });
 });

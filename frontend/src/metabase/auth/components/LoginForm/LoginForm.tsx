@@ -2,10 +2,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
-import FormInput from "metabase/common/components/FormInput";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import { Form, FormCheckbox, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormCheckbox,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 
 import type { LoginData } from "../../types";
@@ -56,26 +60,28 @@ export const LoginForm = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <FormInput
+        <FormTextInput
           name="username"
-          title={
+          label={
             isLdapEnabled ? t`Username or email address` : t`Email address`
           }
           type={isLdapEnabled ? "input" : "email"}
           placeholder="nicetoseeyou@email.com"
           autoFocus
+          mb="1.25rem"
         />
-        <FormInput
+        <FormTextInput
           name="password"
-          title={t`Password`}
+          label={t`Password`}
           type="password"
-          placeholder={t`Shhh...`}
+          placeholder="Shhh..."
+          mb="1.25rem"
         />
         {!hasSessionCookies && (
           <FormCheckbox name="remember" label={t`Remember me`} mb="1.25rem" />
         )}
-        <FormSubmitButton title={t`Sign in`} primary fullWidth />
-        <FormErrorMessage />
+        <FormSubmitButton label={t`Sign in`} variant="filled" w="100%" />
+        <FormErrorMessage mt="1rem" />
       </Form>
     </FormProvider>
   );

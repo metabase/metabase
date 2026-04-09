@@ -4,6 +4,7 @@ import {
   closeObjectDetail,
   followForeignKey,
   loadObjectDetailFKReferences,
+  runQuestionQuery,
   viewNextObjectDetail,
   viewPreviousObjectDetail,
 } from "metabase/query_builder/actions";
@@ -48,8 +49,8 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     question: getQuestion(state),
     table,
     tableForeignKeys: getTableForeignKeys(state),
-    tableForeignKeyReferences: getTableForeignKeyReferences(state),
-    zoomedRowID,
+    tableForeignKeyReferences: getTableForeignKeyReferences(state) ?? undefined,
+    zoomedRowID: zoomedRowID ?? undefined,
     zoomedRow,
     canZoom: isZooming && !!zoomedRow,
     canZoomPreviousRow,
@@ -74,6 +75,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
+  onActionSuccess: () => dispatch(runQuestionQuery()),
 });
 type MapDispatchProps = ReturnType<typeof mapDispatchToProps>;
 
@@ -82,8 +84,7 @@ type OwnProps = Omit<
   keyof MapStateProps | keyof MapDispatchProps
 >;
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
+export const ObjectDetail = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(ObjectDetailWrapper) as unknown as React.ComponentType<OwnProps>;

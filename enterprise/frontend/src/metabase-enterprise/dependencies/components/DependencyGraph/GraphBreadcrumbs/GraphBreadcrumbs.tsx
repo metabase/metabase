@@ -1,34 +1,33 @@
+import cx from "classnames";
 import { Fragment } from "react";
 import { Link } from "react-router";
 
+import CS from "metabase/css/core/index.css";
 import { Box, Group, type GroupProps } from "metabase/ui";
 
-import type { NodeLink } from "../types";
+import type { NodeLink } from "../../../types";
 
 import S from "./GraphBreadcrumbs.module.css";
 
 type GraphBreadcrumbsProps = GroupProps & {
-  location: NodeLink[];
+  links: NodeLink[];
 };
 
-export function GraphBreadcrumbs({
-  location,
-  ...props
-}: GraphBreadcrumbsProps) {
+export function GraphBreadcrumbs({ links, ...props }: GraphBreadcrumbsProps) {
   return (
     <Group c="text-secondary" gap="sm" wrap="nowrap" {...props}>
       <Group fz="sm" gap="xs">
-        {location.map((part, partIndex) => (
-          <Fragment key={partIndex}>
-            {partIndex > 0 && <Box>/</Box>}
+        {links.map((link, linkIndex) => (
+          <Fragment key={linkIndex}>
+            {linkIndex > 0 && <Box>/</Box>}
             <Box
-              className={S.link}
+              className={cx(S.link, CS.textWrap)}
               component={Link}
-              to={part.url}
+              to={link.url}
               target="_blank"
               lh="1rem"
             >
-              {part.label}
+              {link.label}
             </Box>
           </Fragment>
         ))}

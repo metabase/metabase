@@ -2,8 +2,8 @@
 import styled from "@emotion/styled";
 
 import { focusOutlineStyle } from "metabase/common/style/input";
-import { alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { alpha } from "metabase/ui/colors";
 import { color } from "metabase/ui/utils/colors";
 
 interface TabProps {
@@ -16,7 +16,8 @@ export const TabRoot = styled.button<TabProps>`
   width: 100%;
   flex: 1;
   text-align: left;
-  color: ${(props) => (props.isSelected ? color("brand") : color("text-dark"))};
+  color: ${(props) =>
+    props.isSelected ? color("brand") : color("text-primary")};
   background-color: ${(props) =>
     props.isSelected ? alpha("brand", 0.1) : "transparent"};
   cursor: pointer;

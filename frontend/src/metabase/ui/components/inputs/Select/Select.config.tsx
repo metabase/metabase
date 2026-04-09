@@ -17,7 +17,7 @@ export const selectOverrides = {
       clearButtonProps: {
         // eslint-disable-next-line ttag/no-module-declaration
         "aria-label": t`Clear`,
-        color: "text-dark",
+        color: "text-primary",
         className: S.SelectClearButton,
       },
       comboboxProps: {

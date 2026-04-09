@@ -14,12 +14,11 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box, Button } from "metabase/ui";
-import type { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn, TemplateTags } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 const { H } = cy;
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const setup = ({ question }: { question: NativeQuestionDetails }) => {
   signInAsAdminAndEnableEmbeddingSdk();
@@ -69,7 +68,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         );
 
         // The first row should have the same ID column value as the initial SQL parameters
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         rows
           .findAllByTestId("cell-data")
           .eq(idColumnIndex)
@@ -86,13 +85,13 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         const [questionId, setQuestionId] = useState<string | number>("new");
 
         return (
-          <Box>
+          <div>
             <InteractiveQuestion questionId={questionId} />
 
-            <Button onClick={() => setQuestionId(nativeQuestionId)}>
+            <button onClick={() => setQuestionId(nativeQuestionId)}>
               use native question
-            </Button>
-          </Box>
+            </button>
+          </div>
         );
       };
 
@@ -278,6 +277,67 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
           columnValue: "El Paso",
         });
       });
+    });
+  });
+
+  describe("editable parameters for a native question with multi-select parameter", () => {
+    const PARAMETERS = [
+      createMockParameter({
+        id: "category",
+        name: "Category",
+        slug: "category",
+        type: "number/=",
+        target: ["dimension", ["template-tag", "category"]],
+        isMultiSelect: true,
+      }),
+    ];
+    const TEMPLATE_TAGS: TemplateTags = {
+      category: {
+        id: "category",
+        name: "category",
+        "display-name": "Category",
+        type: "dimension",
+        "widget-type": "number/=",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+      },
+    };
+
+    beforeEach(() => {
+      setup({
+        question: {
+          name: "Products native question",
+          native: {
+            query: "SELECT * FROM PRODUCTS WHERE {{category}}",
+            "template-tags": TEMPLATE_TAGS,
+          },
+          parameters: PARAMETERS,
+        },
+      });
+    });
+
+    it("allows to pass in initial values for multi-select sql parameter (metabase#64673)", () => {
+      mountInteractiveQuestion({
+        initialSqlParameters: { category: ["Gizmo", "Widget"] },
+        children: (
+          <>
+            <InteractiveQuestion.Title />
+            <InteractiveQuestion.SqlParametersList />
+            <InteractiveQuestion.QuestionVisualization />
+          </>
+        ),
+      });
+
+      cy.wait("@cardQuery");
+
+      H.getUniqueTableColumnValues("CATEGORY").should("deep.equal", [
+        "Gizmo",
+        "Widget",
+      ]);
+
+      cy.findByLabelText("Category").should(
+        "have.text",
+        "Category:\u00a02 selections", // \u00a0 is a non-breaking space, aka &nbsp;
+      );
     });
   });
 });

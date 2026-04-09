@@ -41,7 +41,7 @@ supportedDatabases.forEach(({ database, snapshotName, dbName }) => {
         });
 
         H.visualize();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
       });
     },

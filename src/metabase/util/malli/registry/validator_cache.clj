@@ -3,11 +3,11 @@
 
     <hash> => <nano-time>
 
-  for SUCCESSFUL validations (presence of an entry means that the validation was sucessful).
+  for SUCCESSFUL validations (presence of an entry means that the validation was successful).
 
   When the map gets bigger than [[max-entries]], walk the values and find the oldest `nano-time` and evict that entry.
 
-  I tried at least 20 different cache implentations and settled on this one and the current value of [[max-entries]]
+  I tried at least 20 different cache implementations and settled on this one and the current value of [[max-entries]]
   as the most performant -- significantly faster then [[clojure.core.memoize/lru]]
 
   -- Cam.")

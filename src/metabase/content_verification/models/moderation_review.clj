@@ -44,8 +44,8 @@
   10)
 
 (mu/defn delete-extra-reviews!
-  "Delete extra reviews to maintain an invariant of only `max-moderation-reviews`. Called before inserting so actuall
-  insures there are one fewer than that so you can add afterwards."
+  "Delete extra reviews to maintain an invariant of only `max-moderation-reviews`. Called before inserting so actually
+  ensures there are one fewer than that so you can add afterwards."
   [item-id   :- :int
    item-type :- :string]
   (let [ids (into #{} (comp (map :id)
@@ -55,7 +55,7 @@
                                  :where    [:and
                                             [:= :moderated_item_id item-id]
                                             [:= :moderated_item_type item-type]]
-                                    ;; cannot put the offset in this query as mysql doesnt place nice. It requires a limit
+                                    ;; cannot put the offset in this query as mysql doesn't play nice. It requires a limit
                                     ;; as well which we do not want to give. The offset is only 10 though so its not a huge
                                     ;; savings and we run this on every entry so the max number is 10, delete the extra,
                                     ;; and insert a new one to arrive at 10 again, our invariant.

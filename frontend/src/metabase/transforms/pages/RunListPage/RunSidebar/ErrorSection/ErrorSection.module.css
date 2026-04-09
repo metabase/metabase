@@ -1,0 +1,6 @@
+.codeContainer {
+  border: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  box-shadow: 0 2px 2px var(--mb-color-shadow);
+  overflow: hidden;
+}

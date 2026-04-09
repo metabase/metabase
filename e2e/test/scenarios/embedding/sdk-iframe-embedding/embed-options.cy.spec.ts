@@ -114,7 +114,7 @@ describe("EE", () => {
 
             cy.log("set up the second subscription");
             cy.button("Set up a new schedule").click();
-            cy.findByText("Hourly").click();
+            cy.findByDisplayValue("Hourly").click();
           });
 
           H.popover().findByRole("option", { name: "Daily" }).click();
@@ -166,7 +166,8 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       );
 
       cy.log("2. clicking on the column value should not show the popover");
-      cy.findAllByText("37.65").first().should("be.visible").click();
+      cy.findAllByText("37.65").first().should("be.visible");
+      cy.findAllByText("37.65").first().click();
       cy.findByText(/Filter by this value/).should("not.exist");
     });
   });
@@ -224,7 +225,10 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.get('[aria-label="Download as PDF"]').should("be.visible");
 
       cy.log("4. clicking on the column value should not show the popover");
-      cy.findAllByText("37.65").first().should("be.visible").click();
+      cy.findAllByText("37.65").first().should("be.visible");
+
+      cy.findAllByText("37.65").first().click();
+
       cy.findByText(/Filter by this value/).should("not.exist");
     });
   });
@@ -254,7 +258,8 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.get("[aria-label='download icon']").should("be.visible");
 
       cy.log("3. clicking on the column value should show the popover");
-      cy.findAllByText("37.65").first().should("be.visible").click();
+      cy.findAllByText("37.65").first().should("be.visible");
+      cy.findAllByText("37.65").first().click();
       cy.findByText(/Filter by this value/).should("be.visible");
 
       cy.log("4. clicking on the filter should drill down");

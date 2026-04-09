@@ -13,6 +13,7 @@ import {
   enterpriseOnlyCachingStrategies,
   getEnterprisePerformanceTabMetadata,
 } from "./constants";
+import { MetricCachingPage } from "./pages/MetricCachingPage";
 import { hasQuestionCacheSection } from "./utils";
 
 /**
@@ -40,6 +41,7 @@ export function initializePlugin() {
     PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards =
       StrategyEditorForQuestionsAndDashboards;
     PLUGIN_CACHING.getTabMetadata = getEnterprisePerformanceTabMetadata;
+    PLUGIN_CACHING.MetricCachingPage = MetricCachingPage;
   }
 
   if (hasPremiumFeature("cache_preemptive")) {

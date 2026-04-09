@@ -11,6 +11,7 @@ export interface SankeyChartColumns {
 
 export interface SankeyNode {
   rawName: RowValue;
+  displayName: RowValue;
   level: number;
   hasInputs: boolean;
   hasOutputs: boolean;

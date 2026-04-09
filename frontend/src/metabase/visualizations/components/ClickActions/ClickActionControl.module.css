@@ -1,15 +1,15 @@
 .horizontalButton[data-variant="inverse"] {
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
 
     .subtitle {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
     }
 
     .clickActionButtonIcon,
     .clickActionButtonTextIcon {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
     }
   }
 
@@ -46,14 +46,14 @@
 }
 
 .infoControl {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: bold;
   line-height: 1.5rem;
   max-width: 10.75rem;
 }
 
 .subtitle {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-weight: normal;
   margin-left: 1rem;
 }

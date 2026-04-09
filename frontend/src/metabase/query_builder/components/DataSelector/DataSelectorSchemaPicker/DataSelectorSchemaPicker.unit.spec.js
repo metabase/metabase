@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 
-import DataSelectorSchemaPicker from "./DataSelectorSchemaPicker";
+import { DataSelectorSchemaPicker } from "./DataSelectorSchemaPicker";
 
 describe("DataSelectorSchemaPicker", () => {
   it("displays schema name", () => {

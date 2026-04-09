@@ -1,8 +1,8 @@
 import cx from "classnames";
 
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
@@ -55,9 +55,12 @@ export function formatUrl(value: string, options: OptionsType = {}) {
 
     const onClickCaptureInSdk = isEmbeddingSdk()
       ? {
-          onClickCapture: (e: React.MouseEvent<HTMLAnchorElement>) => {
-            if (handleLinkSdkPlugin(url).handled) {
-              e.preventDefault();
+          onClickCapture: async (e: React.MouseEvent<HTMLAnchorElement>) => {
+            e.preventDefault(); // Prevent immediately while we await the response
+            const result = await handleLinkSdkPlugin(url);
+            if (!result.handled) {
+              // Parent didn't handle it - proceed with default navigation
+              window.open(url, "_blank", "noopener");
             }
           },
         }

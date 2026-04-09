@@ -4,8 +4,8 @@ import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { getColorScale } from "metabase/lib/colors/scales";
 import { Box, Flex, type FlexProps } from "metabase/ui";
+import { getColorScale } from "metabase/visualizations/lib/color-scales";
 
 export interface ColorRangeProps extends Omit<FlexProps, "onSelect"> {
   colors: string[];
@@ -52,7 +52,10 @@ export const ColorRange = forwardRef(function ColorRange(
       )}
     >
       {_.range(0, sections).map((section) => (
-        <Box key={section} flex="1" bg={scale(section)} />
+        <>
+          {/* @ts-expect-error color range needs access to arbitrary color values */}
+          <Box key={section} flex="1" bg={scale(section)} />
+        </>
       ))}
     </Flex>
   );

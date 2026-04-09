@@ -93,7 +93,7 @@ To create a grid map:
 
 Region maps display a distribution of aggregated data broken out by regions, like count of users by country.
 
-Metabase comes with two built-in regions: [world map](#world-map) with countries, and the [Unites States map](#united-states-map) with states. Admins can [add custom regions](#custom-regions) in Admin setting.
+Metabase comes with two built-in regions: [world map](#world-map) with countries, and the [United States map](#united-states-map) with states. Admins can [add custom regions](#custom-regions) in Admin settings.
 
 ![Three types of region maps](../images/region-maps.png)
 
@@ -156,7 +156,7 @@ You can connect the state column in the US region map to a "Location" type dashb
 
 ### Custom regions
 
-Admins can add more regions - like Brazil states or NYC neighborhoods - by [adding custom GeoJSON maps](../../configuring-metabase/custom-maps.md) in **Admin settings**. Once custom maps have been added, you'll be able to select them when building a region map in map settings.
+Admins can add more regions - like Brazil states or NYC neighborhoods - by [adding custom GeoJSON maps](../../configuring-metabase/custom-maps.md) in **Admin** > **Settings** > **Maps**. Once custom maps have been added, you'll be able to select them when building a region map in map settings.
 
 ![Select a custom region](../images/select-region-map.png)
 

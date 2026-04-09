@@ -33,7 +33,7 @@ export const SidebarIcon = styled(Icon, {
   ${(props) =>
     !props.isLogoVisible &&
     css`
-      color: var(--mb-color-text-medium);
+      color: var(--mb-color-text-secondary);
 
       &:hover {
         color: var(--mb-color-brand);

@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
   (:require
-   [clojure.set :as set]
    [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
@@ -67,7 +66,7 @@
 
 (defn remove-permissions-key
   "Pre-processing middleware. Removes the `:query-permissions/perms` key from the query. This is where we store important permissions
-  information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
+  information like perms coming from sandboxing (GTAPs). This is programmatically added by middleware when appropriate,
   but we definitely don't want users passing it in themselves. So remove it if it's present."
   [query]
   (dissoc query :query-permissions/perms))
@@ -92,12 +91,20 @@
    (fn [_query _path-type _path stage-or-join]
      (dissoc stage-or-join :query-permissions/sandboxed-table))))
 
+(defn remove-persisted-info-native-keys
+  "Strips `:persisted-info/native` from query stages."
+  [query]
+  (lib.walk/walk
+   query
+   (fn [_query _path-type _path stage-or-join]
+     (dissoc stage-or-join :persisted-info/native))))
+
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [query :- ::qp.schema/any-query]
   (if (:lib/type query)
     (recur (lib/->legacy-MBQL query))
-    (let [{database-id :database, {gtap-perms :gtaps} :query-permissions/perms :as outer-query} query]
+    (let [{database-id :database :as outer-query} query]
       (when *current-user-id*
         (log/tracef "Checking query permissions. Current user permissions = %s"
                     (pr-str (perms/permissions-for-user *current-user-id*)))
@@ -105,9 +112,9 @@
           (check-audit-db-permissions outer-query))
         (check-query-does-not-access-inactive-tables outer-query)
         (let [required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
-              source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
+              source-card-ids (:card-ids required-perms)]
           ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
-          ;; (unless overriden by `gtap-perms`) and any queries that touch blocked tables/DBs
+          ;; (unless overridden by `gtap-perms`) and any queries that touch blocked tables/DBs
           (check-block-permissions outer-query)
           (cond
             ;; if card-id is bound this means that this is not an ad hoc query and we can just

@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
@@ -14,7 +14,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
   DashboardCard,
-  Pulse,
+  DashboardSubscription,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -85,13 +85,13 @@ type SetupOpts = {
   email?: boolean;
   slack?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   isAdmin?: boolean;
   dashcards?: DashboardCard[];
   parameters?: UiParameter[];
   isEmbeddingSdk?: boolean;
   setSharing?: (sharing: boolean) => void;
-  pulses?: (Partial<Pulse> & { id: number })[];
+  pulses?: (Partial<DashboardSubscription> & { id: number })[];
   currentUser?: {
     firstName: string;
     lastName: string;
@@ -103,7 +103,7 @@ export function setup({
   email = true,
   slack = true,
   tokenFeatures = {},
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   isAdmin = false,
   dashcards = defaultDashcards,
   parameters = defaultParameters,
@@ -174,7 +174,7 @@ export function setup({
   // Mock POST that updates the GET response
   fetchMock.post("path:/api/pulse", ({ options }) => {
     const body = JSON.parse(options.body as string);
-    const newPulse = { ...body, id: getNextId() } as Pulse & { id: number };
+    const newPulse = { ...body, id: getNextId() } as DashboardSubscription;
     pulses.push(newPulse);
     return newPulse;
   });
@@ -184,8 +184,10 @@ export function setup({
   const features = createMockTokenFeatures(tokenFeatures);
   const storeSettings = mockSettings({ "token-features": features });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(

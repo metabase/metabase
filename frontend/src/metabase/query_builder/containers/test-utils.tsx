@@ -23,7 +23,9 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -31,7 +33,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
@@ -47,7 +49,6 @@ import {
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockResultsMetadata,
   createMockSettings,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
@@ -206,8 +207,6 @@ export const TEST_MODEL_DATASET = createMockDataset({
 
 export const TEST_COLLECTION = createMockCollection();
 
-export const TEST_METADATA = createMockResultsMetadata();
-
 const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
 ) => {
@@ -237,11 +236,16 @@ export const setup = async ({
   card,
   dataset = createMockDataset(),
   initialRoute = `/question${
-    isSavedCard(card) ? `/${card.id}` : `#${serializeCardForUrl(card)}`
+    card == null
+      ? ""
+      : isSavedCard(card)
+        ? `/${card.id}`
+        : `#${serializeCardForUrl(card)}`
   }`,
 }: SetupOpts) => {
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
-  setupCardDataset(dataset);
+  setupCardDataset({ dataset });
   setupSearchEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });
@@ -315,6 +319,7 @@ export const setup = async ({
             can_create_native_queries: true,
           }),
         }),
+        settings: mockSettings({ "site-url": "http://localhost:3000" }),
       }),
     },
   );

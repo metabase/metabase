@@ -1,0 +1,14 @@
+.AppBarRoot {
+  position: relative;
+  z-index: 4;
+}
+
+.AppBarRoot[data-with-border="true"] {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+@media print {
+  .AppBarRoot {
+    display: none;
+  }
+}

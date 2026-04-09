@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
@@ -97,6 +98,7 @@
   (sync-document-cards-collection! id collection_id
                                    :archived archived
                                    :archived-directly archived_directly)
+  (events/publish-event! :event/document-update {:object instance})
   instance)
 
 (t2/define-after-select :model/Document
@@ -196,7 +198,9 @@
                :document {:export-with-context export-document-content
                           :import-with-context import-document-content}
                :collection_id (serdes/fk :model/Collection)
-               :creator_id (serdes/fk :model/User)}})
+               :creator_id (serdes/fk :model/User)}
+   :defaults {:archived          false
+              :archived_directly false}})
 
 (defn- document-deps
   [{:keys [content_type] :as document}]

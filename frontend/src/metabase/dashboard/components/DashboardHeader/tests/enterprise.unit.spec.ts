@@ -9,8 +9,8 @@ import { setup } from "./setup";
 const setupEnterprise = (opts: any) => {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
     tokenFeatures: { audit_app: true },
+    enterprisePlugins: ["audit_app", "database_routing", "collections"],
   });
 };
 
@@ -34,12 +34,20 @@ describe("DashboardHeader - enterprise", () => {
       dashboard: INSTANCE_ANALYTICS_DASHBOARD,
       collections: [INSTANCE_ANALYTICS_COLLECTION],
     });
+
+    // Expect heading element to be present with correct role and aria-level (#70544)
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: /Analytics Dashboard/,
+      }),
+    ).toBeInTheDocument();
     expect(
       await screen.findByRole("img", { name: /audit/i }),
     ).toBeInTheDocument();
     expect(screen.getByText("Make a copy")).toBeInTheDocument();
 
-    //Other buttons
+    // Other buttons
     expect(
       screen.getByRole("button", { name: /bookmark/i }),
     ).toBeInTheDocument();

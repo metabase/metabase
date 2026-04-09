@@ -30,6 +30,12 @@
     (not (map? prop))
     (throw (Exception. (trs "Invalid connection property {0}: not a string or map." prop)))
 
+    (:group prop)
+    ;; Handle nested group structure
+    {:type :group
+     :container-style (:container-style (:group prop))
+     :fields (into [] (mapcat #(u/one-or-many (parse-connection-property %))) (:fields (:group prop)))}
+
     (:merge prop)
     (into {} (map parse-connection-property) (:merge prop))
 
@@ -38,10 +44,18 @@
 
 (defn- parse-connection-properties
   "Parse the connection properties included in the plugin manifest. These can be one of several things -- a key
-  referring to one of the default maps in `driver.common`, a entire custom map, or a list of maps to `merge:` (e.g.
-  for overriding part, but not all, of a default option)."
+  referring to one of the default maps in `driver.common`, a entire custom map, a list of maps to `merge:` (e.g.
+  for overriding part, but not all, of a default option), or a nested group structure."
   [{:keys [connection-properties]}]
-  (into [] (mapcat #(u/one-or-many (parse-connection-property %))) connection-properties))
+  (into []
+        (mapcat (fn [prop]
+                  (let [parsed (parse-connection-property prop)]
+                    ;; If parsed result is a group, keep it as a single item
+                    ;; Otherwise apply one-or-many to flatten merged properties
+                    (if (and (map? parsed) (= :group (:type parsed)))
+                      [parsed]
+                      (u/one-or-many parsed)))))
+        connection-properties))
 
 (defn- make-initialize! [driver add-to-classpath! init-steps]
   (fn [_]
@@ -53,7 +67,7 @@
     ;; manually call it. When we do so we don't want to get stuck in an infinite loop of calls back to this
     ;; implementation
     (remove-method driver/initialize! driver)
-    ;; ok, do the init steps listed in the plugin mainfest
+    ;; ok, do the init steps listed in the plugin manifest
     (u/profile (u/format-color 'magenta (trs "Load lazy loading driver {0}" driver))
       (init-steps/do-init-steps! init-steps))
     ;; ok, now go ahead and call `driver/initialize!` a second time on the driver in case it actually has

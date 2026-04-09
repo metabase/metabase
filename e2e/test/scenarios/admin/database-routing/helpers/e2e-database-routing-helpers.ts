@@ -8,7 +8,7 @@ import type { DatabaseData, User } from "metabase-types/api";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
-export function configurDbRoutingViaAPI({
+export function configureDbRoutingViaAPI({
   router_database_id,
   user_attribute,
 }: {

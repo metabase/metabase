@@ -5,6 +5,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
@@ -12,10 +13,10 @@ import { screen } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
   createMockColumn,
   createMockDatabase,
   createMockDataset,
@@ -75,6 +76,20 @@ const setup = ({
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
+  const BOBBY_TEST_COLLECTION = createMockCollection({
+    archived: false,
+    can_write: true,
+    description: null,
+    id: 1,
+    location: "/",
+    name: "Bobby Tables's Personal Collection",
+    personal_owner_id: 100,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: [BOBBY_TEST_COLLECTION],
+  });
+
   const clickSpy = jest.fn();
 
   renderWithSDKProviders(
@@ -99,20 +114,15 @@ describe("InteractiveQuestion.EditorButton", () => {
   });
 
   it("should render the editor button", async () => {
-    const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
-
     setup({ isOpen: true });
 
     expect(await screen.findByTestId("notebook-button")).toBeInTheDocument();
-    expect(shouldRenderSpy).toHaveBeenCalledTimes(1);
   });
 
   it("should fire click handler when clicking the notebook button", async () => {
-    const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
     const { clickSpy } = setup({ isOpen: true });
 
     await userEvent.click(await screen.findByTestId("notebook-button"));
-    expect(shouldRenderSpy).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -2,21 +2,25 @@
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
+import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
+import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
   setIsGuestEmbed,
-  setLoaderComponent,
   setPlugins,
+  setPluginsReady,
 } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
+import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
@@ -36,20 +40,36 @@ export type ComponentProviderInternalProps = ComponentProviderProps & {
 
 let hasInitializedPlugins = false;
 
-function useInitPlugins() {
+/**
+ * Initializes EE plugins synchronously during render
+ * to avoid an extra frame where children render without plugins.
+ *
+ * Uses reduxStore.dispatch directly instead of the useDispatch hook,
+ * since the hook-based dispatch may not be available during render.
+ * This follows the same pattern as use-init-data-internal.ts.
+ */
+function useInitPlugins(reduxStore: SdkStore) {
   const tokenFeatures = useSelector(
     (state) => state.settings.values["token-features"],
   );
 
-  useEffect(() => {
-    if (hasInitializedPlugins || !tokenFeatures) {
-      return;
-    }
+  // Modular Embedding already initializes the plugins in its entrypoint.
+  // We have to avoid re-initializing SDK plugins as they could override
+  // some of plugins needed by EAJS
+  if (isEmbeddingEajs() || !tokenFeatures) {
+    return;
+  }
 
+  if (!hasInitializedPlugins) {
     hasInitializedPlugins = true;
 
     initializePlugins();
-  }, [tokenFeatures]);
+  }
+
+  // Mark ready for this store instance on first render.
+  if (!reduxStore.getState().sdk?.pluginsReady) {
+    reduxStore.dispatch(setPluginsReady(true));
+  }
 }
 
 export const ComponentProviderInternal = (
@@ -64,13 +84,12 @@ export const ComponentProviderInternal = (
     reduxStore,
     locale,
     errorComponent,
-    loaderComponent,
     allowConsoleLog,
     isLocalHost,
   } = useNormalizeComponentProviderProps(props);
 
   const isGuestEmbed = !!authConfig.isGuest;
-  const { fontFamily } = theme ?? {};
+  const fontFamily = isEmbeddingThemeV1(theme) ? theme.fontFamily : undefined;
 
   // The main call of useInitData happens in the MetabaseProvider
   // This call in the ComponentProvider is still needed for:
@@ -83,7 +102,9 @@ export const ComponentProviderInternal = (
     isLocalHost,
   });
 
-  useInitPlugins();
+  useInitPlugins(reduxStore);
+
+  useSdkCustomLoader();
 
   useEffect(() => {
     reduxStore.dispatch(setIsGuestEmbed(!!isGuestEmbed));
@@ -104,10 +125,6 @@ export const ComponentProviderInternal = (
   }, [reduxStore, eventHandlers]);
 
   useEffect(() => {
-    reduxStore.dispatch(setLoaderComponent(loaderComponent ?? null));
-  }, [reduxStore, loaderComponent]);
-
-  useEffect(() => {
     reduxStore.dispatch(setErrorComponent(errorComponent ?? null));
   }, [reduxStore, errorComponent]);
 
@@ -126,6 +143,8 @@ export const ComponentProviderInternal = (
             <>
               <LocaleProvider locale={locale || instanceLocale}>
                 {children}
+
+                {isInstanceToRender && <ContentTranslationsProvider />}
               </LocaleProvider>
 
               {isInstanceToRender && (

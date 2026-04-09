@@ -2,6 +2,7 @@
   (:require
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (def LoginAttributes
@@ -29,3 +30,12 @@
    [:locale           {:optional true} [:maybe ms/KeywordOrString]]
    [:type             {:optional true} [:maybe ms/KeywordOrString]]
    [:tenant_id        {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::user-group-membership
+  "Group Membership info of a User.
+  In which :is_group_manager is only included if `advanced-permissions` is enabled."
+  [:map
+   [:id ms/PositiveInt]
+   [:is_group_manager
+    {:optional true, :description "Only relevant if `advanced-permissions` is enabled. If it is, you should always include this key."}
+    :boolean]])

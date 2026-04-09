@@ -487,7 +487,7 @@ describe("parseConnectionUriRegex - Starburst", () => {
 });
 
 describe("parseConnectionUriRegex - Vertica", () => {
-  it("should parse a Vertica connection strin", () => {
+  it("should parse a Vertica connection string", () => {
     const connectionString = enginesConfig["vertica"];
     const result = parseConnectionUriRegex(connectionString, "vertica");
     expect(result).toEqual(

@@ -15,11 +15,13 @@ import type {
   Channel,
   ChannelApiResponse,
   ChannelSpec,
-  Pulse,
-  PulseParameter,
+  ChannelSpecs,
+  DashboardSubscription,
+  Parameter,
   ScheduleSettings,
   User,
 } from "metabase-types/api";
+import type { DashboardSubscriptionData } from "metabase-types/store";
 
 export const NEW_PULSE_TEMPLATE = {
   name: null,
@@ -28,9 +30,9 @@ export const NEW_PULSE_TEMPLATE = {
   skip_if_empty: false,
   collection_id: null,
   parameters: [],
-};
+} satisfies Partial<DashboardSubscription>;
 
-export function channelIsValid(channel: Channel, channelSpec: ChannelSpec) {
+export function channelIsValid(channel: Channel, channelSpec?: ChannelSpec) {
   switch (channel.channel_type) {
     case "email":
       return (
@@ -79,7 +81,7 @@ export function scheduleIsValid(channel: Channel) {
   return true;
 }
 
-export function fieldsAreValid(channel: Channel, channelSpec: ChannelSpec) {
+export function fieldsAreValid(channel: Channel, channelSpec?: ChannelSpec) {
   if (!channelSpec) {
     return false;
   }
@@ -93,7 +95,10 @@ export function fieldsAreValid(channel: Channel, channelSpec: ChannelSpec) {
     .every((field) => Boolean(channel.details?.[field.name]));
 }
 
-function pulseChannelsAreValid(pulse: Pulse, channelSpecs: any) {
+function pulseChannelsAreValid(
+  pulse: DashboardSubscriptionData,
+  channelSpecs: Partial<ChannelSpecs>,
+) {
   return (
     pulse.channels.filter((channel) =>
       channelIsValid(channel, channelSpecs?.[channel.channel_type]),
@@ -119,45 +124,34 @@ export function recipientIsValid(recipient: RecipientPickerValue) {
   );
 }
 
-export function pulseIsValid(pulse: Pulse, channelSpecs: ChannelSpecs) {
-  return (
-    (pulse.name &&
-      pulse.cards.length > 0 &&
-      pulseChannelsAreValid(pulse, channelSpecs)) ||
-    false
-  );
-}
-
 export function dashboardPulseIsValid(
-  pulse: Pulse,
-  channelSpecs: ChannelSpecs,
+  pulse: DashboardSubscriptionData,
+  channelSpecs: Partial<ChannelSpecs>,
 ) {
   return pulseChannelsAreValid(pulse, channelSpecs);
 }
 
-export function emailIsEnabled(pulse: Pulse) {
-  return (
-    pulse.channels.filter(
-      (channel) => channel.channel_type === "email" && channel.enabled,
-    ).length > 0
-  );
-}
-
-export function cleanPulse(pulse: Pulse, channelSpecs: any) {
+export function cleanPulse<T extends DashboardSubscriptionData>(
+  pulse: T,
+  channelSpecs: Partial<ChannelSpecs>,
+): T {
   return {
     ...pulse,
     channels: cleanPulseChannels(pulse.channels, channelSpecs),
     parameters: cleanPulseParameters(getPulseParameters(pulse)),
-  };
+  } as T;
 }
 
-function cleanPulseChannels(channels: Channel[], channelSpecs: any) {
+function cleanPulseChannels(
+  channels: Channel[],
+  channelSpecs: Partial<ChannelSpecs>,
+) {
   return channels.filter((channel) =>
     channelIsValid(channel, channelSpecs?.[channel.channel_type]),
   );
 }
 
-function cleanPulseParameters(parameters: PulseParameter[]) {
+function cleanPulseParameters(parameters: Parameter[]) {
   return parameters.map((parameter) => {
     const { default: defaultValue, name, slug, type, value, id } = parameter;
     const normalizedValue = normalizeParameterValue(type, value);
@@ -171,25 +165,6 @@ function cleanPulseParameters(parameters: PulseParameter[]) {
       value: normalizedValue,
     };
   });
-}
-
-type ChannelSpecs = {
-  email?: {
-    configured: boolean;
-  };
-};
-
-export function getDefaultChannel(channelSpecs: ChannelSpecs) {
-  // email is the first choice
-  if (channelSpecs.email?.configured) {
-    return channelSpecs.email;
-  }
-  // otherwise just pick the first configured
-  for (const channelSpec of Object.values(channelSpecs)) {
-    if (channelSpec.configured) {
-      return channelSpec;
-    }
-  }
 }
 
 export function createChannel(
@@ -208,22 +183,24 @@ export function createChannel(
   };
 }
 
-export function getPulseParameters(pulse: Pulse) {
+export function getPulseParameters(pulse: DashboardSubscriptionData) {
   return pulse?.parameters || [];
 }
 
 // pulse parameters list cannot be trusted for existence/up-to-date defaults
 // rely on given parameters list but take pulse parameter values if they are not null
 export function getActivePulseParameters(
-  pulse: Pulse,
-  parameters: PulseParameter[],
+  pulse: DashboardSubscriptionData,
+  parameters: Parameter[],
 ) {
-  const parameterValues = getPulseParameters(pulse).reduce((map, parameter) => {
+  const parameterValues = getPulseParameters(pulse).reduce<
+    Record<string, Parameter["value"]>
+  >((map, parameter) => {
     map[parameter.id] = parameter.value;
     return map;
   }, {});
   return getDefaultValuePopulatedParameters(parameters, parameterValues).filter(
-    (parameter: any) => parameter.value != null,
+    (parameter: Parameter) => parameter.value != null,
   );
 }
 
@@ -304,7 +281,9 @@ export const formatChannelDetails = ({ channel_type, details }: Channel) => {
   }
 };
 
-export const formatChannelRecipients = (item: Alert) => {
+export const formatChannelRecipients = (
+  item: Alert | DashboardSubscription,
+) => {
   const emailCount = getRecipientsCount(item, "email");
   const slackCount = getRecipientsCount(item, "slack");
 
@@ -330,7 +309,7 @@ export const formatChannelRecipients = (item: Alert) => {
 };
 
 export const getRecipientsCount = (
-  item: Alert,
+  item: Alert | DashboardSubscription,
   channelType: "email" | "slack",
 ) => {
   return item.channels
@@ -338,7 +317,10 @@ export const getRecipientsCount = (
     .reduce((total, channel) => total + (channel.recipients?.length || 0), 0);
 };
 
-export const canArchiveLegacyAlert = (item: Alert, user: User): boolean => {
+export const canArchiveLegacyAlert = (
+  item: Alert | DashboardSubscription,
+  user: User,
+): boolean => {
   const recipients = item.channels.flatMap((channel) => {
     if (channel.recipients) {
       return channel.recipients.map((recipient) => recipient.id);

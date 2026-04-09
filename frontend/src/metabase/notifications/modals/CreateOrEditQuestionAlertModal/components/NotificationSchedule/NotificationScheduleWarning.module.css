@@ -1,6 +1,9 @@
 .warningContainer {
   width: 100%;
-  background-color: var(--notification-warning-bg, var(--mb-color-bg-light));
+  background-color: var(
+    --notification-warning-bg,
+    var(--mb-color-background-secondary)
+  );
   padding: var(
     --notification-warning-padding,
     var(--mantine-spacing-md) var(--mantine-spacing-xl)

@@ -22,32 +22,32 @@ export function PeopleNav() {
         <PeopleNavItem
           path="/admin/people"
           data-testid="nav-item"
-          label={isUsingTenants ? t`Internal Users` : t`People`}
+          label={isUsingTenants ? t`Internal users` : t`People`}
           icon="person"
         />
         <PeopleNavItem
           path="/admin/people/groups"
           data-testid="nav-item"
-          label={isUsingTenants ? t`Internal Groups` : t`Groups`}
+          label={isUsingTenants ? t`Internal groups` : t`Groups`}
           icon="group"
         />
         {isUsingTenants && (
           <>
             <Divider my="sm" />
             <PeopleNavItem
-              path="/admin/tenants"
+              path="/admin/people/tenants"
               data-testid="nav-item-tenants"
               label={t`Tenants`}
               icon="globe"
             />
             <PeopleNavItem
-              path="/admin/tenants/groups"
+              path="/admin/people/tenants/groups"
               data-testid="nav-item-tenant-groups"
-              label={t`Tenant Groups`}
+              label={t`Tenant groups`}
               icon="group"
             />
             <PeopleNavItem
-              path="/admin/tenants/people"
+              path="/admin/people/tenants/people"
               data-testid="nav-item-external-users"
               label={t`Tenant users`}
               icon="person"

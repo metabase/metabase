@@ -109,7 +109,6 @@ describe("impersonated permission", { tags: "@external" }, () => {
         H.saveQuestion("foo", undefined, {
           path: ["Our analytics", "First collection"],
           select: true,
-          tab: "Browse",
         });
 
         cy.log("configure caching");

@@ -24,26 +24,22 @@ export function removeDestinationDatabase(
   return `/admin/databases/${databaseId}/destination-databases/${destinationDatabaseId}/remove`;
 }
 
-export function newMetabotConversation({ prompt }: { prompt: string }) {
-  return `/metabot/new?q=${encodeURIComponent(prompt)}`;
-}
-
 export function newTenant() {
-  return `/admin/tenants/new`;
+  return `/admin/people/tenants/new`;
 }
 
 export function editTenant(tenantId: Tenant["id"]) {
-  return `/admin/tenants/${tenantId}/edit`;
+  return `/admin/people/tenants/${tenantId}/edit`;
 }
 
 export function deactivateTenant(tenantId: Tenant["id"]) {
-  return `/admin/tenants/${tenantId}/deactivate`;
+  return `/admin/people/tenants/${tenantId}/deactivate`;
 }
 
 export function reactivateTenant(tenantId: Tenant["id"]) {
-  return `/admin/tenants/${tenantId}/reactivate`;
+  return `/admin/people/tenants/${tenantId}/reactivate`;
 }
 
-export function editUserStrategy() {
-  return `/admin/people/user-strategy`;
+export function editUserStrategy(page: "people" | "tenants") {
+  return `/admin/people${page === "tenants" ? "/tenants" : ""}/user-strategy`;
 }

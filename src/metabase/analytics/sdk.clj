@@ -62,8 +62,9 @@
   (fn embedding-mw-fn
     [request respond raise]
     (let [sdk-client (get-in request [:headers "x-metabase-client"])
-          version (get-in request [:headers "x-metabase-client-version"])]
-      (binding [*client* sdk-client
+          version (get-in request [:headers "x-metabase-client-version"])
+          preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")]
+      (binding [*client* (if preview? (str sdk-client "-preview") sdk-client)
                 *version* version]
         (handler request
                  (fn responder [response]

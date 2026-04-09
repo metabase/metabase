@@ -1,6 +1,7 @@
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
 import type {
+  CopyDocumentRequest,
   CreateDocumentRequest,
   DeleteDocumentRequest,
   Document,
@@ -44,7 +45,19 @@ export const documentApi = Api.injectEndpoints({
         body: document,
       }),
       invalidatesTags: (_, error, { id }) =>
-        !error ? [listTag("document"), idTag("document", id)] : [],
+        !error
+          ? [listTag("document"), idTag("document", id), listTag("revision")]
+          : [],
+      async onQueryStarted(_props, { dispatch, queryFulfilled }) {
+        const { data } = await queryFulfilled;
+        await dispatch(
+          documentApi.util.upsertQueryData(
+            "getDocument",
+            { id: data.id },
+            data,
+          ),
+        );
+      },
     }),
     deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
       query: (document) => ({
@@ -53,6 +66,24 @@ export const documentApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
+    }),
+    copyDocument: builder.mutation<Document, CopyDocumentRequest>({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/document/${id}/copy`,
+        body,
+      }),
+      invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
+      async onQueryStarted(_props, { dispatch, queryFulfilled }) {
+        const { data } = await queryFulfilled;
+        await dispatch(
+          documentApi.util.upsertQueryData(
+            "getDocument",
+            { id: data.id },
+            data,
+          ),
+        );
+      },
     }),
     listPublicDocuments: builder.query<GetPublicDocument[], void>({
       query: () => ({
@@ -104,6 +135,8 @@ export const {
   useGetDocumentQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
+  useDeleteDocumentMutation,
+  useCopyDocumentMutation,
   useListPublicDocumentsQuery,
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,

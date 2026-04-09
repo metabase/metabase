@@ -1,10 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import _LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import type { ColorName } from "metabase/lib/colors/types";
+import { LoadingSpinner as LoadingSpinnerBase } from "metabase/common/components/LoadingSpinner";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 const TRANSITION_DURATION = () => (isReducedMotionPreferred() ? "0" : "0.25s");
@@ -66,7 +66,7 @@ export const Fade = styled.div<FadeProps>`
   }
 `;
 
-export const LoadingSpinner = styled(_LoadingSpinner)`
+export const LoadingSpinner = styled(LoadingSpinnerBase)`
   display: flex;
   flex-grow: 1;
   align-self: center;

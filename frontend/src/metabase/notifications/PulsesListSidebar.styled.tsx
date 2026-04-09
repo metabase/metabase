@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Card from "metabase/common/components/Card";
+import { Card } from "metabase/common/components/Card";
 
 interface PulesCardProps {
   canEdit: boolean;

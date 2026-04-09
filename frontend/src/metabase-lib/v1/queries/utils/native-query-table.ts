@@ -1,18 +1,11 @@
 import _ from "underscore";
 
 import type Table from "metabase-lib/v1/metadata/Table";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import type NativeQuery from "../NativeQuery";
 
 export function getNativeQueryTable(nativeQuery: NativeQuery): Table | null {
   const question = nativeQuery.question();
-  const isModel = question.type() === "model" && question.isSaved();
-
-  if (isModel) {
-    return question.metadata().table(getQuestionVirtualTableId(question.id()));
-  }
-
   const database = question.database();
   const collection = nativeQuery.collection();
   if (database && collection) {

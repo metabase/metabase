@@ -4,7 +4,7 @@ import { createQuestion, getSignedJwtForResource } from "e2e/support/helpers";
 const { H } = cy;
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 const IS_OSS = !IS_ENTERPRISE;
 const MB_EDITION = IS_ENTERPRISE ? "ee" : "oss";
 
@@ -56,6 +56,43 @@ describe(
         frame.within(() => {
           cy.findByText("Product ID").should("be.visible");
           cy.findByText("Max of Quantity").should("be.visible");
+        });
+      });
+    });
+
+    it("allows to download a static question as CSV", () => {
+      cy.get("@questionId").then(async (questionId) => {
+        const token = await getSignedJwtForResource({
+          resourceId: questionId as unknown as number,
+          resourceType: "question",
+        });
+
+        const frame = H.loadSdkIframeEmbedTestPage({
+          metabaseConfig: { isGuest: true },
+          elements: [
+            {
+              component: "metabase-question",
+              attributes: {
+                token,
+                "with-downloads": true,
+              },
+            },
+          ],
+        });
+
+        cy.wait("@getCardQuery");
+
+        frame.within(() => {
+          H.downloadAndAssert({
+            isDashboard: false,
+            isEmbed: true,
+            enableFormatting: true,
+            assertStatusCode: 200,
+            waitForDismiss: false,
+            fileType: "csv",
+            downloadUrl: "/api/embed/card/*/query/csv*",
+            downloadMethod: "GET",
+          });
         });
       });
     });

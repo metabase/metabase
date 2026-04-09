@@ -1,13 +1,13 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { type Ref, forwardRef } from "react";
 
-import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Group } from "metabase/ui";
 
 import { ColorPill } from "../ColorPill";
 
 import type { ColorPickerAttributes } from "./ColorPicker";
-import ColorPickerContent from "./ColorPickerContent";
+import { ColorPickerContent } from "./ColorPickerContent";
 import S from "./ColorPillPicker.module.css";
 
 export interface ColorPillPickerProps extends ColorPickerAttributes {

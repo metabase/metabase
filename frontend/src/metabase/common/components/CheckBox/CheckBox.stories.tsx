@@ -2,7 +2,7 @@ import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 import type { ChangeEvent } from "react";
 
-import CheckBox from "./CheckBox";
+import { CheckBox } from "./CheckBox";
 
 export default {
   title: "Deprecated/Components/CheckBox",

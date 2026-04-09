@@ -31,7 +31,7 @@ Here's an example X-ray:
 
 Another great way to get to know your data is by X-raying your models and tables.
 
-- **Table X-rays**: From the left nav, click on **Browse Data**, pick a database, hover over a table card, and click the lightning bolt icon table to view an X-ray of the table.
+- **Table X-rays**: From the left nav, click on **Browse Data**, pick a database, hover over a table card, and click the lightning bolt icon to view an X-ray of the table.
 - **Model X-rays**: Click on the ellipses for a model and select **X-ray this**.
 
 ## X-rays in the data reference
@@ -60,7 +60,7 @@ If you come across an X-ray that's particularly interesting, you can save its ca
 
 ## Disabling X-rays
 
-If for some reason X-rays aren't a good fit for your team or your data, administrators can turn them off completely by clicking on the gear icon in the upper right and going to **Admin settings** > **Settings** > **General** and toggling the option to **Enable X-ray features**.
+If for some reason X-rays aren't a good fit for your team or your data, administrators can turn them off completely by clicking on the grid icon in the upper right and going to **Admin** > **Settings** > **General** and toggling the option to **Enable X-ray features**.
 
 If you pin any dashboards in the "Our Analytics" collection, Metabase will hide the X-ray suggestions that appear on the homepage.
 

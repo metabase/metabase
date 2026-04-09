@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { type HTMLProps, type Ref, forwardRef } from "react";
-import { t } from "ttag";
 
 import bug from "assets/img/metabot-bug-report.svg?component";
 import cloud from "assets/img/metabot-cloud-96x96.svg?component";
 import happy from "assets/img/metabot-happy.svg?component";
 import sad from "assets/img/metabot-sad.svg?component";
 import cool from "assets/img/metabot-shades.svg?component";
+import { useMetabotName } from "metabase/metabot/hooks";
 
 import Styles from "./MetabotLogo.module.css";
 
@@ -31,13 +31,14 @@ export const MetabotLogo = forwardRef(function MetabotLogo(
   ref: Ref<any>,
 ) {
   const MetabotComponent = urlByVariant[variant];
+  const metabotName = useMetabotName();
 
   return (
     <MetabotComponent
       className={cx(Styles.MetabotLogo, className)}
       {...rest}
       ref={ref}
-      aria-label={t`Metabot`}
+      aria-label={metabotName}
       role="img"
     />
   );

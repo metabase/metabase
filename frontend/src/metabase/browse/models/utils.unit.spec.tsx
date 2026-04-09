@@ -1,5 +1,4 @@
 import { createMockCollection } from "metabase-types/api/mocks";
-import { SortDirection } from "metabase-types/api/sorting";
 
 import { createMockModelResult } from "./test-utils";
 import type { ModelResult } from "./types";
@@ -41,7 +40,7 @@ describe("sortModels", () => {
   it("can sort by name in ascending order", () => {
     const sortingOptions = {
       sort_column: "name",
-      sort_direction: SortDirection.Asc,
+      sort_direction: "asc",
     } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
     expect(sorted?.map((model) => model.name)).toEqual(["A", "B", "C"]);
@@ -50,7 +49,7 @@ describe("sortModels", () => {
   it("can sort by name in descending order", () => {
     const sortingOptions = {
       sort_column: "name",
-      sort_direction: SortDirection.Desc,
+      sort_direction: "desc",
     } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
     expect(sorted?.map((model) => model.name)).toEqual(["C", "B", "A"]);
@@ -59,7 +58,7 @@ describe("sortModels", () => {
   it("can sort by collection path in ascending order", () => {
     const sortingOptions = {
       sort_column: "collection",
-      sort_direction: SortDirection.Asc,
+      sort_direction: "asc",
     } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
     expect(sorted?.map((model) => model.name)).toEqual(["B", "A", "C"]);
@@ -68,7 +67,7 @@ describe("sortModels", () => {
   it("can sort by collection path in descending order", () => {
     const sortingOptions = {
       sort_column: "collection",
-      sort_direction: SortDirection.Desc,
+      sort_direction: "desc",
     } as const;
     const sorted = sortModels(mockSearchResults, sortingOptions);
     expect(sorted?.map((model) => model.name)).toEqual(["C", "A", "B"]);
@@ -95,7 +94,7 @@ describe("sortModels", () => {
     it("can sort by collection path, ascending, and then does a secondary sort by name", () => {
       const sortingOptions = {
         sort_column: "collection",
-        sort_direction: SortDirection.Asc,
+        sort_direction: "asc",
       } as const;
       const sorted = sortModels(mockSearchResults, sortingOptions);
       expect(sorted).toEqual([
@@ -110,7 +109,7 @@ describe("sortModels", () => {
     it("can sort by collection path, descending, and then does a secondary sort by name", () => {
       const sortingOptions = {
         sort_column: "collection",
-        sort_direction: SortDirection.Desc,
+        sort_direction: "desc",
       } as const;
       const sorted = sortModels(mockSearchResults, sortingOptions);
       expect(sorted).toEqual([

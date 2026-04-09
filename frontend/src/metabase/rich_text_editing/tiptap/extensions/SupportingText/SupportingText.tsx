@@ -11,18 +11,14 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListCommentsQuery } from "metabase/api/comment";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
-import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
+import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
   getCurrentDocument,
 } from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { DropZone } from "metabase/rich_text_editing/tiptap/extensions/shared/dnd/DropZone";
@@ -35,10 +31,12 @@ import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 
 import S from "./SupportingText.module.css";
 
+const SUPPORTING_TEXT_NODE_NAME = "supportingText";
+
 export const SupportingText = Node.create<{
   HTMLAttributes: Record<string, any>;
 }>({
-  name: "supportingText",
+  name: SUPPORTING_TEXT_NODE_NAME,
   group: "block",
   content: "(paragraph|heading|bulletList|orderedList|blockquote|codeBlock)+",
   draggable: true,
@@ -60,7 +58,7 @@ export const SupportingText = Node.create<{
   parseHTML() {
     return [
       {
-        tag: 'div[data-type="supportingText"]',
+        tag: `div[data-type="${SUPPORTING_TEXT_NODE_NAME}"]`,
       },
     ];
   },
@@ -69,7 +67,7 @@ export const SupportingText = Node.create<{
     return [
       "div",
       mergeAttributes(HTMLAttributes, {
-        "data-type": this.name,
+        "data-type": SUPPORTING_TEXT_NODE_NAME,
       }),
       0,
     ];
@@ -140,20 +138,9 @@ const SupportingTextComponent = ({
 }: NodeViewProps) => {
   const childTargetId = useSelector(getChildTargetId);
   const document = useSelector(getCurrentDocument);
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(document),
-  );
-  const comments = commentsData?.comments;
   const { _id } = node.attrs;
+  const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
   const isOpen = childTargetId === _id;
-  const threads = useMemo(
-    () => getTargetChildCommentThreads(comments, _id),
-    [comments, _id],
-  );
-  const unresolvedCommentsCount = useMemo(
-    () => getUnresolvedComments(threads).length,
-    [threads],
-  );
   const commentsPath = document
     ? `/document/${document.id}/comments/${_id}`
     : "";
@@ -175,6 +162,7 @@ const SupportingTextComponent = ({
     <NodeViewWrapper
       className={cx(S.wrapper, { [S.selected]: selected })}
       data-testid="document-card-supporting-text"
+      data-type={SUPPORTING_TEXT_NODE_NAME}
       onDragOver={handleDragOver}
       onDrop={() => setDragState({ isDraggedOver: false, side: null })}
       onCut={onCutOrCopy}
@@ -215,7 +203,9 @@ const SupportingTextComponent = ({
           className={S.handle}
           onClick={() => {
             const pos = getPos();
-            pos && editor.commands.setNodeSelection(pos);
+            if (pos) {
+              editor.commands.setNodeSelection(pos);
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === "Backspace" || e.key === "Delete") {

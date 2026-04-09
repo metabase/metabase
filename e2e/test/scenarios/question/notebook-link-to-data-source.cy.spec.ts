@@ -24,14 +24,6 @@ const {
   PRODUCTS,
 } = SAMPLE_DATABASE;
 
-// https://docs.cypress.io/api/cypress-api/platform
-const macOSX = Cypress.platform === "darwin";
-
-const clickConfig = {
-  metaKey: macOSX,
-  ctrlKey: !macOSX,
-};
-
 describe("scenarios > notebook > link to data source", () => {
   beforeEach(() => {
     H.restore();
@@ -56,7 +48,9 @@ describe("scenarios > notebook > link to data source", () => {
     H.miniPicker().findByText("Reviews").click(); // close miniPicker
 
     cy.log("Meta/Ctrl click on the fields picker behaves as a regular click");
-    H.getNotebookStep("data").findByTestId("fields-picker").click(clickConfig);
+    H.getNotebookStep("data")
+      .findByTestId("fields-picker")
+      .click(H.holdMetaKey);
     H.popover().within(() => {
       cy.findByText("Select all").click();
     });
@@ -83,7 +77,7 @@ describe("scenarios > notebook > link to data source", () => {
       `${METAKEY}+click to open in new tab`,
     );
 
-    H.getNotebookStep("data").findByText("Reviews").click(clickConfig);
+    H.getNotebookStep("data").findByText("Reviews").click(H.holdMetaKey);
     cy.wait("@dataset"); // already intercepted in `visualize()`
 
     cy.log("Make sure Reviews table is rendered in a simple mode");
@@ -101,7 +95,7 @@ describe("scenarios > notebook > link to data source", () => {
     it("should open the source table from a simple question", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       H.openNotebook();
-      H.getNotebookStep("data").findByText("Orders").click(clickConfig);
+      H.getNotebookStep("data").findByText("Orders").click(H.holdMetaKey);
 
       cy.log("Make sure Orders table is rendered in a simple mode");
       cy.findAllByTestId("header-cell").should("contain", "Subtotal");
@@ -124,7 +118,9 @@ describe("scenarios > notebook > link to data source", () => {
       );
 
       H.openNotebook();
-      H.getNotebookStep("data").findByText("Orders, Count").click(clickConfig);
+      H.getNotebookStep("data")
+        .findByText("Orders, Count")
+        .click(H.holdMetaKey);
 
       cy.log("Make sure the source question rendered in a simple mode");
       cy.location("pathname").should(
@@ -163,7 +159,7 @@ describe("scenarios > notebook > link to data source", () => {
         );
 
         H.openNotebook();
-        H.getNotebookStep("data").findByText(source.name).click(clickConfig);
+        H.getNotebookStep("data").findByText(source.name).click(H.holdMetaKey);
 
         cy.log("Make sure the source question rendered in a simple mode");
         cy.location("pathname").should(
@@ -197,7 +193,7 @@ describe("scenarios > notebook > link to data source", () => {
       );
 
       H.openNotebook();
-      H.getNotebookStep("data").findByText("Orders Model").click(clickConfig);
+      H.getNotebookStep("data").findByText("Orders Model").click(H.holdMetaKey);
 
       cy.log("Make sure the source model is rendered in a simple mode");
       cy.location("pathname").should(
@@ -237,7 +233,7 @@ describe("scenarios > notebook > link to data source", () => {
         H.openNotebook();
         H.getNotebookStep("data")
           .findByText(sourceQuestion.name)
-          .click(clickConfig);
+          .click(H.holdMetaKey);
 
         cy.log("Make sure the source model rendered in a simple mode");
         cy.location("pathname").should(
@@ -270,7 +266,9 @@ describe("scenarios > notebook > link to data source", () => {
       });
 
       H.openNotebook();
-      H.getNotebookStep("data").findByText("Orders, Count").click(clickConfig);
+      H.getNotebookStep("data")
+        .findByText("Orders, Count")
+        .click(H.holdMetaKey);
 
       cy.log('Make sure the source question opens in the "trash"');
       cy.location("pathname").should(
@@ -288,7 +286,7 @@ describe("scenarios > notebook > link to data source", () => {
     it("should open the underlying model", () => {
       H.visitModel(ORDERS_MODEL_ID);
       H.openNotebook();
-      H.getNotebookStep("data").findByText("Orders Model").click(clickConfig);
+      H.getNotebookStep("data").findByText("Orders Model").click(H.holdMetaKey);
 
       cy.log("Make sure the source model is rendered in a simple mode");
       cy.location("pathname").should(
@@ -320,7 +318,7 @@ describe("scenarios > notebook > link to data source", () => {
         H.visitModel(id);
 
         H.openNotebook();
-        H.getNotebookStep("data").findByText(name).click(clickConfig);
+        H.getNotebookStep("data").findByText(name).click(H.holdMetaKey);
 
         cy.log("Make sure the source model rendered in a simple mode");
         cy.location("pathname").should("eq", `/model/${id}-native-model`);
@@ -349,7 +347,7 @@ describe("scenarios > notebook > link to data source", () => {
       H.openNotebook();
       H.getNotebookStep("data")
         .findByText("Nested model based on a question")
-        .click(clickConfig);
+        .click(H.holdMetaKey);
 
       cy.log("Make sure the source model is rendered in a simple mode");
       cy.get("@nestedModelId").then((id) => {
@@ -381,7 +379,7 @@ describe("scenarios > notebook > link to data source", () => {
       H.openNotebook();
       H.getNotebookStep("data")
         .findByText("Nested model based on a model")
-        .click(clickConfig);
+        .click(H.holdMetaKey);
 
       cy.log("Make sure the source model is rendered in a simple mode");
       cy.get("@nestedModelId").then((id) => {
@@ -498,7 +496,9 @@ describe("scenarios > notebook > link to data source", () => {
           "Showing 11 rows",
         );
         H.openNotebook();
-        H.getNotebookStep("data").findByText("Orders Model").click(clickConfig);
+        H.getNotebookStep("data")
+          .findByText("Orders Model")
+          .click(H.holdMetaKey);
         cy.findByTestId("question-row-count").should(
           "have.text",
           "Showing 11 rows",
@@ -521,7 +521,7 @@ describe("scenarios > notebook > link to data source", () => {
         H.getNotebookStep("join")
           .findByLabelText("Right table")
           .should("have.text", "Orders")
-          .click(clickConfig);
+          .click(H.holdMetaKey);
 
         cy.findByTestId("question-row-count").should(
           "have.text",
@@ -625,7 +625,7 @@ describe("scenarios > notebook > link to data source", () => {
           H.getNotebookStep("join", { stage: 0, index: 0 }).within(() => {
             cy.findByLabelText("Right table")
               .should("have.text", "Orders Model")
-              .click(clickConfig);
+              .click(H.holdMetaKey);
           });
 
           cy.location("pathname").should(
@@ -650,7 +650,7 @@ describe("scenarios > notebook > link to data source", () => {
           H.getNotebookStep("join", { stage: 0, index: 1 }).within(() => {
             cy.findByLabelText("Right table")
               .should("have.text", savedQuestion.name)
-              .click(clickConfig);
+              .click(H.holdMetaKey);
           });
 
           cy.location("pathname").should(
@@ -674,7 +674,7 @@ describe("scenarios > notebook > link to data source", () => {
           H.getNotebookStep("join", { stage: 0, index: 2 }).within(() => {
             cy.findByLabelText("Right table")
               .should("have.text", "Reviews")
-              .click(clickConfig);
+              .click(H.holdMetaKey);
           });
 
           cy.findAllByTestId("header-cell").should("contain", "Reviewer");
@@ -695,7 +695,7 @@ describe("scenarios > notebook > link to data source", () => {
           );
           H.getNotebookStep("join")
             .findByLabelText("Change join type")
-            .click(clickConfig);
+            .click(H.holdMetaKey);
           H.popover().should("contain", "Inner join");
 
           cy.log(
@@ -703,7 +703,7 @@ describe("scenarios > notebook > link to data source", () => {
           );
           H.getNotebookStep("join")
             .findByLabelText("Pick columns")
-            .click(clickConfig);
+            .click(H.holdMetaKey);
           H.popover().should("contain", "Discount");
 
           cy.log(
@@ -711,7 +711,7 @@ describe("scenarios > notebook > link to data source", () => {
           );
           H.getNotebookStep("join")
             .findByLabelText("Left column")
-            .click(clickConfig);
+            .click(H.holdMetaKey);
           H.popover().should("contain", "Vendor");
 
           cy.log(
@@ -719,7 +719,7 @@ describe("scenarios > notebook > link to data source", () => {
           );
           H.getNotebookStep("join")
             .findByLabelText("Change operator")
-            .click(clickConfig);
+            .click(H.holdMetaKey);
           H.popover().should("contain", ">=");
 
           cy.log(
@@ -727,7 +727,7 @@ describe("scenarios > notebook > link to data source", () => {
           );
           H.getNotebookStep("join")
             .findByLabelText("Right column")
-            .click(clickConfig);
+            .click(H.holdMetaKey);
           H.popover().should("contain", "Discount");
 
           cy.log(
@@ -735,7 +735,7 @@ describe("scenarios > notebook > link to data source", () => {
           );
           H.getNotebookStep("join")
             .findByLabelText("Add condition")
-            .click(clickConfig);
+            .click(H.holdMetaKey);
           cy.findByTestId("new-join-condition").should("be.visible");
         })();
       });

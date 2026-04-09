@@ -1,16 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { GridItem } from "metabase/common/components/Grid";
-import {
-  breakpointMinMedium,
-  breakpointMinSmall,
-} from "metabase/styled-components/theme";
-
-const getPercentage = (number: number): string => {
-  return `${number * 100}%`;
-};
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const OptionsRoot = styled.div`
   display: flex;
@@ -27,7 +19,7 @@ export const OptionsRoot = styled.div`
 `;
 
 export const EducationalButton = styled(ExternalLink)`
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
   border-radius: 0.5rem;
   color: var(--mb-color-brand);
   font-weight: bold;
@@ -35,23 +27,7 @@ export const EducationalButton = styled(ExternalLink)`
   transition: all 0.3s;
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
-  }
-`;
-
-interface OptionsGridItemProps {
-  itemsCount: number;
-}
-
-export const OptionsGridItem = styled(GridItem)<OptionsGridItemProps>`
-  width: 100%;
-
-  ${breakpointMinSmall} {
-    width: 50%;
-  }
-
-  ${breakpointMinMedium} {
-    width: ${(props) => getPercentage(1 / props.itemsCount)};
   }
 `;

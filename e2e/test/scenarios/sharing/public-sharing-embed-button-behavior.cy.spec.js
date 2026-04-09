@@ -181,6 +181,8 @@ describe("Embed JS modal display", () => {
 
       H.openSharingMenu("Embed");
 
+      cy.findByLabelText("Metabase account (SSO)").click();
+
       H.embedModalEnableEmbeddingCard().within(() => {
         cy.findByText(/modular embedding/).should("be.visible");
       });
@@ -196,8 +198,9 @@ describe("Embed JS modal display", () => {
         H.visitDashboard("@dashboardId");
         H.openSharingMenu("Embed");
 
-        it("should open Embed JS modal with the `enable simple embedding` card", () => {
+        it("should open Embed JS modal with the `enable guest embedding` card", () => {
           H.activateToken("pro-self-hosted");
+          H.updateSetting("enable-embedding-static", false);
           H.visitDashboard("@dashboardId");
 
           H.openSharingMenu("Embed");
@@ -221,10 +224,7 @@ describe("#39152 sharing an unsaved question", () => {
   it("should ask the user to save the question before creating a public link", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, "People").click();
-    });
+    H.pickEntity({ path: ["Databases", "Sample Database", "People"] });
     H.visualize();
 
     H.openSharingMenu();

@@ -34,3 +34,22 @@ export const removeDiacritics = (value: string) =>
 
 export const getOptionDisplayName = (option: Option | RowValue[]) =>
   String(option.at(-1));
+
+/**
+ * Coerces selected values to match option key types via string comparison.
+ * This fixes a type mismatch where URL query params are normalized to numbers
+ * (e.g. `1`) but static-list option keys remain strings (e.g. `"1"`), causing
+ * `Map.has()` / `Set.has()` to miss the match and create synthetic options.
+ */
+export function normalizeValuesToOptionKeys(
+  values: RowValue[],
+  options: Option[],
+): RowValue[] {
+  const optionKeysByString = new Map(
+    options.map((option) => [String(option[0]), option[0]]),
+  );
+  return values.map((value) => {
+    const matchingKey = optionKeysByString.get(String(value));
+    return matchingKey !== undefined ? matchingKey : value;
+  });
+}

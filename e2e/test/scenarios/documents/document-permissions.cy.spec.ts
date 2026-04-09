@@ -35,9 +35,7 @@ describe("document permissions", () => {
 
     cy.findByRole("button", { name: "Save" }).click();
 
-    cy.findByTestId("item-picker-level-0")
-      .findByText("Our analytics")
-      .should("not.exist");
+    H.entityPickerModalLevel(0).findByText("Our analytics").should("not.exist");
     H.entityPickerModalItem(0, "Collections").should("exist");
 
     H.entityPickerModalItem(0, /Personal Collection/).click();

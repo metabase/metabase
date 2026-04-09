@@ -30,14 +30,9 @@ export function getRowSelectColumn({
     id: ROW_SELECT_COLUMN_ID,
     name: "",
     accessorFn: () => null,
+    meta: { isUtilityColumn: true },
     header: ({ table }: { table: Table<RowValues> }) => (
-      <Flex
-        p="0.75rem"
-        h="100%"
-        align="center"
-        bg="var(--cell-bg-color)"
-        className={S.tableHeaderCell}
-      >
+      <Flex p="0.75rem" h="100%" align="center" className={S.tableHeaderCell}>
         <Checkbox
           size={rem(16)}
           checked={table.getIsAllRowsSelected()}

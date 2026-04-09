@@ -1,0 +1,116 @@
+.aiMarkdown {
+  line-height: 1.5;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.aiMarkdown pre {
+  overflow: auto hidden;
+  max-width: 100%;
+  white-space: pre;
+  background: var(--mb-color-background-secondary);
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.375rem;
+  margin: 0.5rem 0;
+  border: 1px solid var(--mb-color-border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--mb-color-border) transparent;
+}
+
+.aiMarkdown pre::-webkit-scrollbar {
+  height: 6px;
+}
+
+.aiMarkdown pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aiMarkdown pre::-webkit-scrollbar-thumb {
+  background: var(--mb-color-border);
+  border-radius: 3px;
+}
+
+.aiMarkdown pre::-webkit-scrollbar-thumb:hover {
+  background: var(--mb-color-text-tertiary);
+}
+
+.aiMarkdown code {
+  font-family: Monaco, Menlo, "Courier New", monospace;
+  background: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-primary);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  border: 1px solid var(--mb-color-border);
+}
+
+.aiMarkdown pre code {
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.aiMarkdown p {
+  margin-bottom: 1rem;
+}
+
+.aiMarkdown h1,
+.aiMarkdown h2,
+.aiMarkdown h3,
+.aiMarkdown h4,
+.aiMarkdown h5,
+.aiMarkdown h6 {
+  margin-bottom: 1rem;
+}
+
+.aiMarkdown ul,
+.aiMarkdown ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.aiMarkdown ul {
+  list-style-type: disc;
+}
+
+.aiMarkdown ol {
+  list-style-type: decimal;
+}
+
+.aiMarkdown li {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.aiMarkdown li p {
+  line-height: 1.5;
+}
+
+.aiMarkdown li > ul,
+.aiMarkdown li > ol {
+  margin-top: 0.5rem;
+}
+
+.smartLink {
+  color: var(--mb-color-brand);
+  font-weight: 700;
+  padding: 0.125rem;
+  border-radius: var(--mantine-radius-sm);
+  transition: 200ms background-color;
+  outline: none;
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.smartLinkInner {
+  border-bottom: 1px solid var(--mb-color-border-brand);
+}
+
+.icon {
+  margin-bottom: -0.125rem;
+  margin-right: 0.25rem;
+}

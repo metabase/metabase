@@ -10,7 +10,7 @@
 
     (name->human-readable-name :simple \"cool_toucans\") ;-> \"Cool Toucans\"
 
-    ;; specifiy a different strategy:
+    ;; specify a different strategy:
     (name->human-readable-name :none \"cool_toucans\") ;-> \"cool_toucans\""
   {:arglists '([strategy s])}
   (fn [strategy _s]

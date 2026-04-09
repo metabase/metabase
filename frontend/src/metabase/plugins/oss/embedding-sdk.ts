@@ -1,23 +1,15 @@
-export type OnBeforeRequestHandlerData = {
-  method: "GET" | "POST";
-  url: string;
-  options: {
-    headers?: Record<string, string>;
-    hasBody: boolean;
-  } & Record<string, unknown>;
-};
-
-export type OnBeforeRequestHandler = (
-  data: OnBeforeRequestHandlerData,
-) => Promise<void | OnBeforeRequestHandlerData>;
+import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 
 const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,
   onBeforeRequestHandlers: {
     getOrRefreshSessionHandler: async () => {},
+    getOrRefreshGuestSessionHandler: async (
+      _data: OnBeforeRequestHandlerConfig,
+    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
     overrideRequestsForGuestEmbeds: async (
-      _data: OnBeforeRequestHandlerData,
-    ): Promise<OnBeforeRequestHandlerData | void> => {},
+      _data: OnBeforeRequestHandlerConfig,
+    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
   },
 });
 

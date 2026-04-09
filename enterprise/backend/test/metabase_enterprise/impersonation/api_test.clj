@@ -1,5 +1,5 @@
 (ns metabase-enterprise.impersonation.api-test
-  "Tests for creating and updating Connection Impersonation configs via the permisisons API"
+  "Tests for creating and updating Connection Impersonation configs via the permissions API"
   (:require
    [clojure.test :refer :all]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]

@@ -6,12 +6,19 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { useListApiKeysQuery } from "metabase/api";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import CS from "metabase/css/core/index.css";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
-import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import {
+  Button,
+  Ellipsified,
+  Group,
+  Icon,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
 
@@ -166,7 +173,7 @@ export const ManageApiKeys = () => {
             align="center"
             data-testid="api-keys-settings-header"
           >
-            <Text c="text-medium">
+            <Text c="text-secondary">
               {t`Allow users to use API keys to authenticate their API calls.`}
             </Text>
             <Button

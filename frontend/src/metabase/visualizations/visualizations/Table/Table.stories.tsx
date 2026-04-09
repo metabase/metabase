@@ -15,9 +15,10 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { commonReducers } from "metabase/reducers-common";
 import { Box } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
-import Table from "metabase/visualizations/visualizations/Table/Table";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
 import type { RawSeries } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
@@ -65,7 +66,7 @@ const DefaultTemplate: StoryFn<{
 }: {
   series: RawSeries;
   isDashboard?: boolean;
-  bgColor?: string;
+  bgColor?: ColorName;
   theme?: MetabaseTheme;
   hasDevWatermark?: boolean;
 }) => {

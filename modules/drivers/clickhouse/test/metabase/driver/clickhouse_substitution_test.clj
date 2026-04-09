@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]
    [metabase.util :as u]
@@ -336,10 +336,49 @@
                                         :target ["variable" ["template-tag" "x"]]
                                         :id uuid}]}))))))))
 
+(deftest ^:parallel clickhouse-field-filter-unix-millis-coercion-test
+  (mt/test-driver :clickhouse
+    (mt/with-clock clock
+      (testing "Field filter on a UInt64 column coerced to UNIX milliseconds->DateTime generates valid SQL (#70901)"
+        (let [now   (local-date-time-now)
+              ->epoch-millis (fn [^LocalDateTime ldt]
+                               (.toEpochMilli (.toInstant (.atZone ldt (java.time.ZoneId/of "UTC")))))]
+          (mt/dataset
+            (mt/dataset-definition "milliseconds_db"
+                                   [["milliseconds_table"
+                                     [{:field-name        "time"
+                                       :base-type         {:native "UInt64"}
+                                       :effective-type    :type/Instant
+                                       :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime}
+                                      {:field-name "name"
+                                       :base-type  :type/Text}]
+                                     [[(->epoch-millis (.minusDays now 2)) "Event A"]
+                                      [(->epoch-millis (.minusHours now 24)) "Event B"]
+                                      [(->epoch-millis (.plusHours now 1)) "Event C"]
+                                      [(->epoch-millis (.plusDays now 2)) "Event D"]]]])
+            (let [uuid  (str (random-uuid))
+                  query {:database   (mt/id)
+                         :type       "native"
+                         :native     {:collection    "milliseconds-table"
+                                      :template-tags {:date_filter {:id           uuid
+                                                                    :name         "time"
+                                                                    :display-name "Time"
+                                                                    :type         "dimension"
+                                                                    :dimension    ["field" (mt/id :milliseconds-table :time) nil]
+                                                                    :required     true}}
+                                      :query "SELECT * FROM `milliseconds_db`.`milliseconds_table` WHERE {{date_filter}}"}
+                         :parameters [{:type   "date/all-options"
+                                       :value  "past7days"
+                                       :target ["dimension" ["template-tag" "date_filter"]]
+                                       :id     uuid}]}]
+              (is (= [[1 1574982000000 "Event A"]
+                      [2 1575068400000 "Event B"]]
+                     (mt/rows (qp/process-query query)))))))))))
+
 (deftest clickhouse-native-query-with-uuid-filter-test
   (mt/test-driver :clickhouse
-    (let [uuid-1 (random-uuid)
-          uuid-2 (random-uuid)]
+    (let [uuid-1 #uuid "3127abff-e634-4114-a015-59893b49ae74"
+          uuid-2 #uuid "a65e1a3b-4710-4136-b5b7-63a747e17a5a"]
       (mt/dataset
         (mt/dataset-definition "uuid_filter_db"
                                [["uuid_filter_table"

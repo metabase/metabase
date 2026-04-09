@@ -2,23 +2,29 @@
   "Main namespace for interacting with collections"
   (:require
    [metabase.collections.models.collection]
+   [metabase.collections.util]
    [potemkin :as p]))
 
 (comment
-  metabase.collections.models.collection/keep-me)
+  metabase.collections.models.collection/keep-me
+  metabase.collections.util/keep-me)
 
 (p/import-vars
  [metabase.collections.models.collection
-  remote-synced-collection
-  remote-synced-collection?
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
+  create-library-collection!
+  descendant-ids
   library-collection
   library-data-collection-type
   location-path
-  create-library-collection!
-  moving-into-remote-synced?
   moving-from-remote-synced?
+  moving-into-remote-synced?
   non-remote-synced-dependencies
-  shared-tenant-collection?])
+  remote-synced-collection
+  remote-synced-collection?
+  shared-tenant-collection?
+  transforms-ns]
+ [metabase.collections.util
+  annotate-dashboards])

@@ -205,7 +205,7 @@
                                  (is false "refresh! called on a model that should not be refreshed"))
                                (unpersist! [_ _database persisted-info]
                                  (swap! called-on conj (u/the-id persisted-info))))]
-          (testing "Query finds deletabable, archived, and unmodeled persisted infos"
+          (testing "Query finds deletable, archived, and unmodeled persisted infos"
             (let [queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
               (doseq [deletable-persisted [deletable punmodeled parchived]]
                 (is (contains? queued-for-deletion (u/the-id deletable-persisted))))))

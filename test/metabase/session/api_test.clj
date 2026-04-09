@@ -13,6 +13,7 @@
    [metabase.settings.models.setting]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.sso.ldap.default-implementation]
+   [metabase.sso.settings]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -311,6 +312,48 @@
                    (:email g-user)
                    (re-pattern "Click the button below to reset the password"))))))))))
 
+(deftest forgot-password-ee-sso-user-can-reset-when-provider-disabled-test
+  (testing "POST /api/session/forgot_password - enterprise SSO users can reset password when their provider is disabled"
+    (doseq [sso-source [:saml :jwt :oidc :slack :scim]]
+      (testing (str "sso_source = " sso-source)
+        ;; Mock sso-source-enabled? to return false (provider is disabled, e.g., after downgrade)
+        (with-redefs [api.session/forgot-password-impl
+                      (let [orig @#'api.session/forgot-password-impl]
+                        (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
+                      metabase.sso.settings/sso-source-enabled? (constantly false)]
+          (mt/with-temp [:model/User sso-user {:first_name "sso"
+                                               :last_name  "user"
+                                               :email      (str (name sso-source) "-user@example.com")
+                                               :sso_source sso-source}]
+            (mt/with-temporary-setting-values [site-url "http://test.example.com"]
+              (mt/with-fake-inbox
+                (mt/user-http-request sso-user :post 204 "session/forgot_password"
+                                      {:email (:email sso-user)})
+                (is (mt/received-email-body?
+                     (:email sso-user)
+                     (re-pattern "Click the button below to reset the password")))))))))))
+
+(deftest forgot-password-ee-sso-user-cannot-reset-when-provider-enabled-test
+  (testing "POST /api/session/forgot_password - enterprise SSO users cannot reset password when their provider is enabled"
+    (doseq [sso-source [:saml :jwt :oidc :slack :scim]]
+      (testing (str "sso_source = " sso-source)
+        ;; Mock sso-source-enabled? to return true (provider is active)
+        (with-redefs [api.session/forgot-password-impl
+                      (let [orig @#'api.session/forgot-password-impl]
+                        (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
+                      metabase.sso.settings/sso-source-enabled? (fn [src] (= (keyword src) sso-source))]
+          (mt/with-temp [:model/User sso-user {:first_name "sso"
+                                               :last_name  "user"
+                                               :email      (str (name sso-source) "-user@example.com")
+                                               :sso_source sso-source}]
+            (mt/with-temporary-setting-values [site-url "http://test.example.com"]
+              (mt/with-fake-inbox
+                (mt/user-http-request sso-user :post 204 "session/forgot_password"
+                                      {:email (:email sso-user)})
+                (is (mt/received-email-body?
+                     (:email sso-user)
+                     (re-pattern "single sign-on")))))))))))
+
 (deftest forgot-password-event-test
   (mt/with-premium-features #{:audit-app}
     (with-redefs [api.session/forgot-password-impl
@@ -481,18 +524,18 @@
 
     (testing "Authenticated normal user"
       (mt/with-test-user :lucky
-        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :admin-write-authed-read})))
                (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
         (with-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
-          (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+          (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
     (testing "Authenticated super user"
       (mt/with-test-user :crowberto
-        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin})))
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read :admin})))
                (set (keys (mt/user-http-request :crowberto :get 200 "session/properties")))))))
 
     (testing "Includes user-local settings"
@@ -685,7 +728,8 @@
       (t2/update! :model/User (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
-                         :embedded            false
+                         :embedded           false
+                         :token_exchange     false
                          :ip_address         "192.168.1.1"}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo

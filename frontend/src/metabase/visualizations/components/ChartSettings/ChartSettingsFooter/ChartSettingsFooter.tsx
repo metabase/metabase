@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 
 import { ChartSettingsFooterRoot } from "./ChartSettingsFooter.styled";
 

@@ -7,7 +7,7 @@ import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useMetabotName } from "metabase/metabot/hooks";
 import {
   ActionIcon,
   Box,
@@ -18,7 +18,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { SortDirection } from "metabase-types/api/sorting";
+import type { SortDirection } from "metabase-types/api";
 
 import S from "./Glossary.module.css";
 import { GlossaryRowEditor } from "./GlossaryRowEditor";
@@ -43,6 +43,7 @@ export function GlossaryTable({
   onDelete,
 }: GlossaryTableProps) {
   const [isCreating, setIsCreating] = useState(false);
+  const metabotName = useMetabotName();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingField, setEditingField] = useState<
     "term" | "definition" | null
@@ -51,11 +52,7 @@ export function GlossaryTable({
   const [sortColumnName, setSortColumnName] = useState<
     keyof GlossaryItem | null
   >(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(
-    SortDirection.Asc,
-  );
-
-  const hasMetabot = useHasTokenFeature("metabot_v3");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const sortedRows = useMemo(() => {
     if (!sortColumnName) {
@@ -68,7 +65,7 @@ export function GlossaryTable({
       const ak = a[sortColumnName] ?? "";
       const bk = b[sortColumnName] ?? "";
       const cmp = String(ak).localeCompare(String(bk));
-      return sortDirection === SortDirection.Asc ? cmp : -cmp;
+      return sortDirection === "asc" ? cmp : -cmp;
     });
     return [
       ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),
@@ -80,9 +77,7 @@ export function GlossaryTable({
     <>
       <Group justify="space-between" mb="xs">
         <Text>
-          {hasMetabot
-            ? t`Define terms to help your team and Metabot understand your data.`
-            : t`Define terms to help your team understand your data.`}
+          {t`Define terms to help your team and ${metabotName} understand your data.`}
         </Text>
         <Button
           variant="default"
@@ -131,10 +126,12 @@ export function GlossaryTable({
         rowRenderer={(row) => {
           // Create row
           if ("kind" in row && row.kind === "create") {
+            const existingTerms = glossary.map((g) => g.term);
             return (
               <tr className={cx(S.row, S.rowEditor)}>
                 <GlossaryRowEditor
                   item={{ term: "", definition: "" }}
+                  existingTerms={existingTerms}
                   onCancel={() => setIsCreating(false)}
                   onSave={async (term, definition) => {
                     await onCreate(term, definition);
@@ -154,6 +151,9 @@ export function GlossaryTable({
                 <GlossaryRowEditor
                   item={item}
                   autoFocusField={editingField ?? "term"}
+                  existingTerms={glossary
+                    .filter((g) => g.id !== item.id)
+                    .map((g) => g.term)}
                   onCancel={() => setEditingId(null)}
                   onSave={async (newTerm, newDefinition) => {
                     await onEdit(item.id, newTerm, newDefinition);
@@ -207,7 +207,7 @@ export function GlossaryTable({
                       <ActionIcon
                         aria-label={t`Delete`}
                         variant="subtle"
-                        c="text-light"
+                        c="text-tertiary"
                         className={cx(S.action)}
                         onClick={() => setDeletingItem(item)}
                       >

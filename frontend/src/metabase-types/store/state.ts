@@ -13,8 +13,10 @@ import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
 import type { EmbeddingDataPickerState } from "./embedding-data-picker";
 import type { EntitiesState } from "./entities";
+import type { MetabotState } from "./metabot";
 import type { ModalState } from "./modal";
 import type { ParametersState } from "./parameters";
+import type { PulseState } from "./pulse";
 import type { QueryBuilderState } from "./qb";
 import type { RequestsState } from "./requests";
 import type { SettingsState } from "./settings";
@@ -36,6 +38,7 @@ export interface State {
   embeddingDataPicker: EmbeddingDataPickerState;
   entities: EntitiesState;
   parameters: ParametersState;
+  pulse: PulseState;
   qb: QueryBuilderState;
   requests: RequestsState;
   routing: RouterState;
@@ -52,6 +55,7 @@ export interface State {
   };
   "metabase-api": MetabaseApiState;
   documents: DocumentsState;
+  metabot: MetabotState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

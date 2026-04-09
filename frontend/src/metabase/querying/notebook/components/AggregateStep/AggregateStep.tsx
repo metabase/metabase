@@ -2,6 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
+import { useLocale } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
@@ -17,6 +20,8 @@ export function AggregateStep({
 }: NotebookStepProps) {
   const { question, stageIndex } = step;
   const isMetric = question.type() === "metric";
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
 
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);
@@ -44,7 +49,12 @@ export function AggregateStep({
   };
 
   const renderAggregationName = (aggregation: Lib.AggregationClause) =>
-    Lib.displayInfo(query, stageIndex, aggregation).longDisplayName;
+    PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+      displayName: Lib.displayInfo(query, stageIndex, aggregation)
+        .longDisplayName,
+      tc,
+      locale,
+    });
 
   return (
     <ClauseStep

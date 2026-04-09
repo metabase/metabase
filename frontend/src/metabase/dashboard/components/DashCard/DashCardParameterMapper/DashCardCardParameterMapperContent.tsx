@@ -3,19 +3,18 @@ import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
   getVirtualCardType,
-  isQuestionDashCard,
-  isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
+import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
 import { useDispatch } from "metabase/lib/redux";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import {
   Box,
+  Ellipsified,
   Flex,
   Icon,
   Stack,
@@ -30,6 +29,7 @@ import type {
   DashboardCard,
   Parameter,
   ParameterTarget,
+  VirtualCard,
 } from "metabase-types/api";
 
 import { DashCardCardParameterMapperButton } from "./DashCardCardParameterMapperButton";
@@ -46,7 +46,7 @@ interface DashCardCardParameterMapperContentProps {
   question: Question | undefined;
   editingParameter: Parameter | null | undefined;
   mappingOptions: ParameterMappingOption[];
-  card: Card;
+  card: Card | VirtualCard;
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
   layoutHeight: number;
@@ -119,13 +119,9 @@ export const DashCardCardParameterMapperContent = ({
   const handleChangeTarget = useCallback(
     (target: ParameterTarget | null) => {
       if (editingParameter) {
+        const cardId = typeof card.id === "number" ? card.id : null;
         dispatch(
-          setParameterMapping(
-            editingParameter.id,
-            dashcard.id,
-            card.id,
-            target,
-          ),
+          setParameterMapping(editingParameter.id, dashcard.id, cardId, target),
         );
       }
     },

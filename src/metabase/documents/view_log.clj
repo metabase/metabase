@@ -26,7 +26,9 @@
                                             (fn [xs] (apply t/max (map :timestamp xs))))]
     (try
       (cluster-lock/with-cluster-lock document-statistics-lock
-        (t2/update! :model/Document :id [:in (keys document-id->timestamp)]
+        ;; use `t2/table-name` to avoid triggering `after-update` hooks and creating a revision
+        (t2/update! (t2/table-name :model/Document)
+                    :id [:in (keys document-id->timestamp)]
                     {:last_viewed_at (into [:case]
                                            (mapcat (fn [[id timestamp]]
                                                      [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])

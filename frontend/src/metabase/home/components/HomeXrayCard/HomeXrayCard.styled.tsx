@@ -1,8 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Icon } from "metabase/ui";
+import { Ellipsified, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
 export const CardIcon = styled(Icon)`
@@ -21,9 +20,9 @@ export const CardTitle = styled(Ellipsified)`
 `;
 
 export const CardTitlePrimary = styled.span`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;
 
 export const CardTitleSecondary = styled.span`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

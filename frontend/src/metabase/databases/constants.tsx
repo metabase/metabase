@@ -39,6 +39,12 @@ export const ELEVATED_ENGINES = [
   "snowflake",
 ];
 
+// Although some drivers like MongoDB or H2 have table editing capabilities,
+// they were not thoroughly tested and verified.
+// We want to, for now at least, allow users to turn on table editing
+// just for PostgreSQL and MySQL databases.
+export const ALLOWED_ENGINES_FOR_TABLE_EDITING = ["postgres", "mysql"];
+
 export const ENGINE_LOGO: Record<string, string> = {
   athena: "athena.svg",
   bigquery: "bigquery.svg",

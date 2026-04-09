@@ -2,7 +2,10 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import { getVisualization } from "metabase/visualizations";
-import type { VisualizationSettingDefinition } from "metabase/visualizations/types";
+import type {
+  VisualizationSettingDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import type {
   Card,
   TableColumnOrderSetting,
@@ -65,11 +68,26 @@ const mergeTableColumns = (
 };
 
 export const isSettingHiddenOnDashboards = (
-  vizSettingDefinition: VisualizationSettingDefinition<unknown, unknown>,
+  vizSettingDefinition: VisualizationSettingDefinition,
 ) => {
   // strict check as by default all settings are visible on dashboards
   return vizSettingDefinition.dashboard === false;
 };
+
+/**
+ * Filters out visualization settings that should not be persisted in dashcards.
+ * Settings with `dashboard: false` are hidden from dashboard UI and should not
+ * be saved to avoid overriding the card's settings (like graph.dimensions, graph.metrics).
+ */
+export function sanitizeDashcardSettings(
+  settings: VisualizationSettings,
+  vizSettingsDefs: VisualizationSettingsDefinitions,
+): VisualizationSettings {
+  return _.pick(settings, (_, key) => {
+    const settingDef = vizSettingsDefs[key];
+    return !settingDef || !isSettingHiddenOnDashboards(settingDef);
+  });
+}
 
 export function extendCardWithDashcardSettings(
   card: Card | VirtualCard,

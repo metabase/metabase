@@ -1,7 +1,7 @@
 .QueryBuilderViewRoot {
   display: flex;
   flex-direction: column;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   height: 100%;
   position: relative;
 }

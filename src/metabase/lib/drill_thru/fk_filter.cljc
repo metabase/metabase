@@ -25,7 +25,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -51,16 +50,14 @@
              (lib.drill-thru.common/mbql-stage? query stage-number)
              (not (lib.types.isa/primary-key? column))
              (lib.types.isa/foreign-key? column))
-    (let [source (or (some->> query lib.util/source-table-id (lib.metadata/table query))
-                     (some->> query lib.util/source-card-id (lib.metadata/card query)))
-          filter-expr (if (= value :null)
+    (let [filter-expr (if (= value :null)
                         (lib.options/ensure-uuid (lib.filter/is-null column-ref))
                         (lib.options/ensure-uuid (lib.filter/= column-ref value)))]
       {:lib/type :metabase.lib.drill-thru/drill-thru
        :type     :drill-thru/fk-filter
        :filter   filter-expr
        :column-name (lib.metadata.calculation/display-name query stage-number column :long)
-       :table-name (lib.metadata.calculation/display-name query 0 source)})))
+       :table-name (lib.metadata.calculation/display-name query 0 (lib.metadata.calculation/primary-source query))})))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/fk-filter
   [_query _stage-number drill-thru]

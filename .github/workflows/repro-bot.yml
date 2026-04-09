@@ -1,0 +1,274 @@
+name: "Repro Bot"
+
+on:
+  issues:
+    types:
+      - labeled
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to reproduce"
+        required: true
+        type: string
+      repro_bot_branch:
+        description: "Branch of repro-bot to use"
+        required: false
+        default: "main"
+        type: string
+
+jobs:
+  repro-bot:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      issues: read
+      id-token: write
+    if: |
+      (github.event_name == 'issues' && github.event.label.name == '.Run Repro Bot' && github.event.issue.state == 'open') ||
+      (github.event_name == 'workflow_dispatch')
+
+    steps:
+      - name: Get issue number
+        id: issue
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ISSUE_NUMBER="${DISPATCH_ISSUE_NUMBER}"
+          else
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
+          fi
+          echo "number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+          echo "Issue: https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
+
+        env:
+          DISPATCH_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-backend
+      - uses: ./.github/actions/prepare-frontend
+
+      - name: Checkout repro-bot
+        uses: actions/checkout@v6
+        with:
+          repository: metabase/repro-bot
+          ref: ${{ github.event.inputs.repro_bot_branch || 'main' }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          path: repro-bot
+
+      - name: Pre-clone metabase bare git repo
+        run: git clone --bare "https://github.com/${{ github.repository }}.git" repro-bot/git/metabase
+
+      - name: Capture Node.js path for MCP subprocesses
+        run: echo "NODE_BIN_DIR=$(dirname $(which node))" >> $GITHUB_ENV
+
+      - name: Pre-install MCP server dependencies
+        run: uv sync --directory repro-bot/mcp
+
+      - name: Install playwright-cli
+        run: |
+          npm install -g @playwright/cli@latest
+          playwright-cli install --skills
+
+      - name: Install bbin and clj-nrepl-eval
+        run: |
+          # Install babashka
+          curl -sLO https://raw.githubusercontent.com/babashka/babashka/master/install
+          chmod +x install
+          sudo ./install
+          rm install
+
+          # Install bbin
+          mkdir -p ~/.bbin/bin
+          curl -sL https://raw.githubusercontent.com/babashka/bbin/main/bbin > ~/.bbin/bin/bbin
+          chmod +x ~/.bbin/bin/bbin
+          export PATH="$HOME/.bbin/bin:$PATH"
+          export BBIN_HOME="$HOME/.bbin"
+
+          # Install clj-nrepl-eval via bbin
+          bbin install https://github.com/bhauman/clojure-mcp-light.git \
+            --tag v0.2.1 \
+            --as clj-nrepl-eval \
+            --main-opts '["-m" "clojure-mcp-light.nrepl-eval"]'
+
+          # Add to PATH for the rest of the workflow
+          echo "$HOME/.bbin/bin" >> $GITHUB_PATH
+
+          # Verify
+          clj-nrepl-eval --help | head -3
+
+      - name: Register MCP servers
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY_REPRO_BOT }}
+        run: |
+          UV_PATH="$(which uv)"
+          jq -n \
+            --arg uv "$UV_PATH" \
+            --arg key "$LINEAR_API_KEY" \
+            --arg workspace "${{ github.workspace }}" \
+            '{
+              mcpServers: {
+                "metabase-repro": {
+                  command: $uv,
+                  args: ["run", "--directory", ($workspace + "/repro-bot/mcp"), "--with", "fastmcp", "python", "-m", "metabase_repro"]
+                },
+                "linear-server": {
+                  url: "https://mcp.linear.app/mcp",
+                  type: "http",
+                  headers: {
+                    Authorization: ("Bearer " + $key)
+                  }
+                }
+              }
+            }' > ~/.claude.json
+
+      - name: Generate GitHub App Token
+        uses: actions/create-github-app-token@v2
+        id: claude-app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
+      - name: Run repro-bot with Claude Code
+        id: claude
+        continue-on-error: true
+        uses: anthropics/claude-code-action@3ac52d0da9f8ec9ca7b4dc23bb477e36ef9c77a9 # v1
+        env:
+          CLAUDE_CODE_DEBUG_LOGS_DIR: /tmp/claude-debug-logs
+          CLAUDE_WORKING_DIR: ${{ github.workspace }}/repro-bot
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
+          GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPRO_NODE_MODULES_DIR: ${{ github.workspace }}/node_modules
+        timeout-minutes: 30
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_REPRO_BOT }}
+          github_token: ${{ steps.claude-app-token.outputs.token }}
+          allowed_bots: linear
+          prompt: |
+            IMPORTANT: Your working directory is the repo root, but repro-bot lives in the `repro-bot/` subdirectory.
+            First, run `cd ${{ github.workspace }}/repro-bot` to change into the repro-bot directory before doing anything else.
+
+            Then read and follow the instructions in .claude/commands/repro.md to investigate this GitHub issue:
+            https://github.com/${{ github.repository }}/issues/${{ steps.issue.outputs.number }}
+
+            ## CI Environment Notes
+            - The bare git repo has been pre-cloned at git/metabase. The master worktree still needs setup via setup_master_worktree().
+            - The GITHUB_ACTIONS_RUN_URL environment variable is set. If any phase fails catastrophically, follow the CI error handling in repro.md to post the error to Linear with the action run URL.
+            - Docker is available for appdb (Postgres/MySQL/MariaDB) if needed.
+            - Java and Python/uv are pre-installed.
+          claude_args: >-
+            --allowedTools
+            "Glob,
+            Grep,
+            Read,
+            ToolSearch,
+            Skill(*),
+            WebSearch,
+            WebFetch(domain:docs.metabase.com),
+            WebFetch(domain:metabase.com),
+            WebFetch(domain:www.metabase.com),
+            Edit(//./**),
+            Edit(repro/**),
+            Edit(/tmp/**),
+            Write(//./**),
+            Write(repro/**),
+            Write(/tmp/**),
+            Bash(base64 *),
+            Bash(cat *),
+            Bash(cd *),
+            Bash(clj-nrepl-eval *),
+            Bash(clojure *),
+            Bash(cp *),
+            Bash(diff *),
+            Bash(docker *),
+            Bash(echo *),
+            Bash(find *),
+            Bash(gh api repos/metabase/metabase/*),
+            Bash(gh issue list * --repo metabase/metabase *),
+            Bash(gh issue view * --repo metabase/metabase *),
+            Bash(gh release *),
+            Bash(gh search *),
+            Bash(git *),
+            Bash(grep *),
+            Bash(head *),
+            Bash(jar *),
+            Bash(jq *),
+            Bash(kill *),
+            Bash(ls *),
+            Bash(mkdir *),
+            Bash(mv *),
+            Bash(npx playwright-cli:*),
+            Bash(pgrep *),
+            Bash(playwright-cli:*),
+            Bash(printf *),
+            Bash(ps *),
+            Bash(psql *),
+            Bash(PGPASSWORD=*),
+            Bash(python -m mcp.metabase_repro *),
+            Bash(python3 *),
+            Bash(sed *),
+            Bash(sort *),
+            Bash(strings *),
+            Bash(tail *),
+            Bash(tee *),
+            Bash(touch *),
+            Bash(unzip *),
+            Bash(wc *),
+            Bash(which *),
+            Bash(xargs *),
+            mcp__metabase-repro__api_call,
+            mcp__metabase-repro__browser_snapshot,
+            mcp__metabase-repro__check_setup,
+            mcp__metabase-repro__check_setup_token,
+            mcp__metabase-repro__cleanup,
+            mcp__metabase-repro__create_env,
+            mcp__metabase-repro__get_session_token,
+            mcp__metabase-repro__get_status,
+            mcp__metabase-repro__jar_download,
+            mcp__metabase-repro__repl_eval,
+            mcp__metabase-repro__reset_metabase,
+            mcp__metabase-repro__run_test,
+            mcp__metabase-repro__save_test_patch,
+            mcp__metabase-repro__setup_master_worktree,
+            mcp__metabase-repro__setup_worktree,
+            mcp__metabase-repro__start_appdb,
+            mcp__metabase-repro__start_metabase,
+            mcp__metabase-repro__stop_appdb_tool,
+            mcp__metabase-repro__stop_metabase,
+            mcp__linear-server__create_attachment,
+            mcp__linear-server__get_issue,
+            mcp__linear-server__list_comments,
+            mcp__linear-server__list_issues,
+            mcp__linear-server__save_comment"
+            --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
+
+      - name: Verify repro-bot completed successfully
+        run: |
+          if [ "${{ steps.claude.outcome }}" = "failure" ]; then
+            echo "::error::Claude Code crashed or exited with an error"
+            exit 1
+          fi
+
+          EXEC_FILE="${{ steps.claude.outputs.execution_file }}"
+          if [ -z "$EXEC_FILE" ] || [ ! -f "$EXEC_FILE" ]; then
+            echo "::error::No execution file found"
+            exit 1
+          fi
+
+          if ! grep -q "mcp__linear-server__" "$EXEC_FILE"; then
+            echo "::error::Claude did not post a comment on Linear"
+            exit 1
+          fi
+
+          echo "Repro-bot completed successfully and posted to Linear"
+
+      - name: Upload repro-bot artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: repro-bot-${{ steps.issue.outputs.number }}
+          if-no-files-found: ignore
+          path: |
+            repro-bot/repro/*/SUGGESTIONS.md
+            repro-bot/repro/*/*.log
+            repro-bot/repro/*/*.patch
+            repro-bot/repro/*/playwright/**
+            ${{ steps.claude.outputs.execution_file }}

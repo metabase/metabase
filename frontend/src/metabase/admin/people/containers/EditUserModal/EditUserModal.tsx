@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import type { Params } from "react-router/lib/Router";
 import { t } from "ttag";
 
 import {
@@ -15,7 +14,7 @@ import { UserForm } from "../../forms/UserForm";
 
 interface EditUserModalProps {
   onClose: () => void;
-  params: Params;
+  params: { userId?: string };
   external?: boolean;
 }
 

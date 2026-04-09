@@ -17,7 +17,10 @@ export const getTextInputStyles = (params: {
   },
   input: {
     color: match(params)
-      .with({ disabled: false }, () => `var(--mb-color-text-dark) !important`)
+      .with(
+        { disabled: false },
+        () => `var(--mb-color-text-primary) !important`,
+      )
       .otherwise(() => `var(--mb-color-text-primary) !important`),
     fontFamily: fontFamilyMonospace,
   },

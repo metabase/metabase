@@ -8,19 +8,22 @@
    [metabase.server.middleware.json]
    [metabase.server.protocols]
    [metabase.server.routes]
+   [metabase.server.streaming-response]
    [potemkin :as p]))
 
 (comment
   metabase.server.handler/keep-me
   metabase.server.instance/keep-me
   metabase.server.protocols/keep-me
-  metabase.server.routes/keep-me)
+  metabase.server.routes/keep-me
+  metabase.server.streaming-response/keep-me)
 
 (p/import-vars
  [metabase.server.handler
   make-handler]
  [metabase.server.instance
   instance
+  server-port
   start-web-server!
   stop-web-server!]
   ;; TODO -- I think all of this stuff probably belongs in [[metabase.request.*]]
@@ -30,4 +33,6 @@
   make-routes]
  [metabase.server.middleware.json
   wrap-json-body
-  wrap-streamed-json-response])
+  wrap-streamed-json-response]
+ [metabase.server.streaming-response
+  streaming-response-schema])

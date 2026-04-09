@@ -801,8 +801,9 @@ function getTableCell(columnName, rowIndex) {
     const columnHeaderIndex = $columnHeaders
       .toArray()
       .findIndex(($columnHeader) => $columnHeader.textContent === columnName);
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByRole("row")
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.tableInteractiveBody()
+      .findAllByRole("row")
       .eq(rowIndex)
       .findAllByTestId("cell-data")
       .eq(columnHeaderIndex)
@@ -821,11 +822,7 @@ function addQuestionFromQueryBuilder({
   H.openQuestionActions();
   H.popover().findByText("Add to dashboard").click();
 
-  H.entityPickerModal().within(() => {
-    H.modal().findByText("Dashboards").click();
-    H.modal().findByText("36275").click();
-    cy.button("Select").click();
-  });
+  H.pickEntity({ path: ["Our analytics", "36275"], select: true });
 
   H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
   H.undoToast().should("contain", "Undo");

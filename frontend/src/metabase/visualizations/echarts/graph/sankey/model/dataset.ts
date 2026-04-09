@@ -3,7 +3,12 @@ import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns"
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
+import {
+  type DatasetColumn,
+  type RawSeries,
+  type RowValue,
+  getRowsForStableKeys,
+} from "metabase-types/api";
 
 import { NULL_CHAR } from "../../../cartesian/constants/dataset";
 
@@ -53,12 +58,26 @@ export const getSankeyData = (
       data: { rows, cols },
     },
   ] = rawSeries;
+  const rowsForKeys = getRowsForStableKeys(rawSeries[0].data);
 
   // getColumnKey and isMetric are slow so we compute needed metadata here instead of when iterating through rows
   const columnInfos = cols.map((column) => ({
     key: getColumnKey(column),
     isMetric: isMetric(column),
   }));
+
+  const displayNameMap = new Map<RowValue, RowValue>();
+  if (rawSeries[0].data.untranslatedRows) {
+    const untranslatedRows = rawSeries[0].data.untranslatedRows;
+    untranslatedRows.forEach((untranslatedRow, index) => {
+      for (const column of [sankeyColumns.source, sankeyColumns.target]) {
+        const key = untranslatedRow[column.index];
+        if (!displayNameMap.has(key)) {
+          displayNameMap.set(key, rows[index][column.index]);
+        }
+      }
+    });
+  }
 
   const valueToNode = new Map<RowValue, SankeyNode>();
 
@@ -70,6 +89,7 @@ export const getSankeyData = (
   ): SankeyNode {
     const node = valueToNode.get(value) ?? {
       rawName: value,
+      displayName: displayNameMap.get(value) ?? value,
       level,
       hasInputs: false,
       hasOutputs: false,
@@ -114,9 +134,10 @@ export const getSankeyData = (
 
   const linkMap = new Map<string, SankeyLink>();
 
-  rows.forEach((row) => {
-    const source = row[sankeyColumns.source.index];
-    const target = row[sankeyColumns.target.index];
+  rows.forEach((row, rowIndex) => {
+    const keyRow = rowsForKeys[rowIndex];
+    const source = keyRow[sankeyColumns.source.index];
+    const target = keyRow[sankeyColumns.target.index];
     const value = row[sankeyColumns.value.index];
     const linkKey = `${NULL_CHAR}${source}->${target}`;
 

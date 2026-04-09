@@ -22,6 +22,7 @@ import type {
   VirtualCardDisplay,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type {
   ActionDisplayType,
@@ -64,6 +65,7 @@ export interface Dashboard {
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
+  can_set_cache_policy?: boolean;
   cache_ttl: number | null;
   "last-edit-info": {
     id: number;
@@ -86,6 +88,7 @@ export interface Dashboard {
   param_fields?: Record<ParameterId, Field[]>;
 
   moderation_reviews: ModerationReview[];
+  view_count?: number;
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
@@ -345,7 +348,8 @@ export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
 
 export type GetRemappedDashboardParameterValueRequest = {
-  dashboard_id: DashboardId;
+  dashboard_id?: DashboardId;
+  entityIdentifier?: EntityUuid | EntityToken;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
 };

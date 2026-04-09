@@ -11,6 +11,7 @@ import {
   DataPermissionType,
   DataPermissionValue,
   type EntityId,
+  type PermissionOption,
   type PermissionSectionConfig,
   type PermissionSubject,
   type SchemaEntityId,
@@ -36,7 +37,7 @@ const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
   return null;
 };
 
-export const DOWNLOAD_PERMISSION_OPTIONS = {
+export const DOWNLOAD_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`No`,

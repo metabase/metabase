@@ -90,7 +90,7 @@ export const PaletteContainer = withRouter(
               pos="absolute"
               top={26}
             >
-              <Icon c="text-dark" name="search" />
+              <Icon c="text-primary" name="search" />
             </Stack>
           </Box>
 

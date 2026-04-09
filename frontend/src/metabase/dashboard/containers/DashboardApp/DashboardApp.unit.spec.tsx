@@ -16,6 +16,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
@@ -109,6 +110,7 @@ async function setup({ dashboard }: Options = {}) {
         entities: createMockEntitiesState({
           databases: [TEST_DATABASE_WITH_ACTIONS],
         }),
+        settings: mockSettings({ "site-url": "http://localhost:3000" }),
       },
     },
   );

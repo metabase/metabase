@@ -55,7 +55,7 @@
                                      :value      2022}]})]
       (is (=? {:type         :drill-thru/zoom-in.timeseries
                :dimension    {:column     {:id                               (meta/id :orders :created-at)
-                                           :metabase.lib.field/temporal-unit :year}
+                                           :lib/temporal-unit :year}
                               :column-ref [:field {} (meta/id :orders :created-at)]
                               :value      2022}
                :next-unit    :quarter
@@ -87,7 +87,7 @@
                                          :value      "2022-04-01T00:00:00"}]})]
           (is (=? {:type         :drill-thru/zoom-in.timeseries
                    :dimension    {:column     {:id                               (meta/id :orders :created-at)
-                                               :metabase.lib.field/temporal-unit :quarter}
+                                               :lib/temporal-unit :quarter}
                                   :column-ref [:field {} (meta/id :orders :created-at)]
                                   :value      "2022-04-01T00:00:00"}
                    :next-unit    :month

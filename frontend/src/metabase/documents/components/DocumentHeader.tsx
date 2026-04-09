@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import DateTime, {
+import { useListCommentsQuery } from "metabase/api";
+import {
+  DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
@@ -28,6 +30,7 @@ import type { Document } from "metabase-types/api";
 import { DocumentPublicLinkPopover } from "../../embedding/components/PublicLinkPopover";
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
+import { getListCommentsQuery } from "../utils/api";
 
 import S from "./DocumentHeader.module.css";
 
@@ -48,9 +51,10 @@ interface DocumentHeaderProps {
   onTitleSubmit?: () => void;
   onSave: () => void;
   onMove: () => void;
+  onDuplicate: () => void;
   onToggleBookmark: () => void;
   onArchive: () => void;
-  hasComments?: boolean;
+  onShowHistory: () => void;
 }
 
 export const DocumentHeader = ({
@@ -64,10 +68,17 @@ export const DocumentHeader = ({
   onTitleSubmit,
   onSave,
   onMove,
+  onDuplicate,
   onToggleBookmark,
   onArchive,
-  hasComments = false,
+  onShowHistory,
 }: DocumentHeaderProps) => {
+  const { hasComments } = useListCommentsQuery(getListCommentsQuery(document), {
+    selectFromResult: ({ data }) => ({
+      hasComments: !isNewDocument && !!data?.comments?.length,
+    }),
+  });
+
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isAdmin = useSelector(getUserIsAdmin);
   const [isPublicLinkPopoverOpen, setIsPublicLinkPopoverOpen] = useState(false);
@@ -239,10 +250,22 @@ export const DocumentHeader = ({
                     </Menu.Item>
                   )}
                   <Menu.Item
+                    leftSection={<Icon name="clone" />}
+                    onClick={onDuplicate}
+                  >
+                    {c("A verb, not a noun").t`Duplicate`}
+                  </Menu.Item>
+                  <Menu.Item
                     leftSection={<Icon name={"bookmark"} />}
                     onClick={onToggleBookmark}
                   >
                     {isBookmarked ? t`Remove from Bookmarks` : t`Bookmark`}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<Icon name="history" />}
+                    onClick={onShowHistory}
+                  >
+                    {t`History`}
                   </Menu.Item>
                   {canWrite && (
                     <>

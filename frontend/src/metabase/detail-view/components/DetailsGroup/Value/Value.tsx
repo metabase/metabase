@@ -32,7 +32,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   const json = useMemo(() => getJson(column, value), [column, value]);
 
   if (isEmptyValue) {
-    return <Text c="text-light">{t`empty`}</Text>;
+    return <Text c="text-tertiary">{t`empty`}</Text>;
   }
 
   if (json) {
@@ -49,7 +49,7 @@ export const Value = ({ children, column, field, value }: Props) => {
   if (isFK(column) && newTableId != null && !isValidLink) {
     return (
       <Text
-        bg="var(--mb-color-bg-light)"
+        bg="background-secondary"
         c="text-primary"
         className={S.fk}
         component={Link}
@@ -67,7 +67,7 @@ export const Value = ({ children, column, field, value }: Props) => {
     return (
       <Stack className={S.value} gap="sm" align="flex-start">
         <Box
-          bg="var(--mb-color-background-light)"
+          bg="background-secondary"
           className={S.imageFrame}
           mah={FRAME_SIZE}
           maw={FRAME_SIZE}

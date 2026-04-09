@@ -1,8 +1,9 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
+import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import type { ButtonProps } from "embedding-sdk-bundle/types/ui";
-import { isQuestionDirty } from "metabase/query_builder/utils/question";
+import { isQuestionDirty } from "metabase/querying/common/utils/question";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -24,16 +25,18 @@ export type SaveButtonProps = {
 export const shouldShowSaveButton = ({
   question,
   originalQuestion,
+  canWriteToTargetCollection,
 }: {
   question?: Question;
   originalQuestion?: Question;
+  canWriteToTargetCollection: boolean;
 }) => {
   const canSave = question && Lib.canSave(question.query(), question.type());
   const isQuestionChanged = originalQuestion
     ? isQuestionDirty(question, originalQuestion)
     : true;
 
-  return Boolean(isQuestionChanged && canSave);
+  return Boolean(isQuestionChanged && canSave) && canWriteToTargetCollection;
 };
 
 /**
@@ -46,11 +49,18 @@ export const shouldShowSaveButton = ({
  * @param props
  */
 export const SaveButton = ({ ...buttonProps }: SaveButtonProps = {}) => {
-  const { question, originalQuestion } = useSdkQuestionContext();
+  const { question, originalQuestion, isSaveEnabled, targetCollection } =
+    useSdkQuestionContext();
+
+  const { canWrite: canWriteToTargetCollection } = useCollectionData(
+    targetCollection,
+    { skipCollectionFetching: !isSaveEnabled },
+  );
 
   const isSaveButtonEnabled = shouldShowSaveButton({
     question,
     originalQuestion,
+    canWriteToTargetCollection,
   });
 
   return (

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { editSummary } from "metabase/redux/query-builder";
 import type {
   ClickActionBase,
   Drill,
@@ -46,6 +47,6 @@ export const summarizeColumnDrill: Drill<Lib.SummarizeColumnDrillThruInfo> = ({
     question: () => applyDrill(drill, operator).setDefaultDisplay(),
     action: () => (dispatch: Dispatch) =>
       // HACK: drill through closes sidebars, so open sidebar asynchronously
-      setTimeout(() => dispatch({ type: "metabase/qb/EDIT_SUMMARY" })),
+      setTimeout(() => dispatch(editSummary())),
   }));
 };

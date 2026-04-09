@@ -93,7 +93,7 @@ export function PeopleListingApp({
       return t`People`;
     }
 
-    return external ? t`Tenant users` : t`Internal Users`;
+    return external ? t`Tenant users` : t`Internal users`;
   }, [external, isUsingTenants]);
 
   return (
@@ -101,7 +101,9 @@ export function PeopleListingApp({
       <Group justify="space-between" w="100%" mb="lg">
         <Title order={1}>{pageTitle}</Title>
 
-        {!external && <PLUGIN_TENANTS.EditUserStrategySettingsButton />}
+        {!external && (
+          <PLUGIN_TENANTS.EditUserStrategySettingsButton page="people" />
+        )}
       </Group>
 
       {isAdmin && hasDeactivatedUsers && (

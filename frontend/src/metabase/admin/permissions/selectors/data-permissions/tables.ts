@@ -16,7 +16,11 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
 import { navigateToGranularPermissions } from "../../permissions";
-import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
+import type {
+  PermissionSectionConfig,
+  SchemaEntityId,
+  SpecialGroupType,
+} from "../../types";
 import {
   DataPermission,
   DataPermissionType,
@@ -180,16 +184,27 @@ const buildNativePermission = (
   };
 };
 
-export const buildTablesPermissions = (
-  entityId: SchemaEntityId,
-  groupId: number,
-  isAdmin: boolean,
-  isExternal: boolean,
-  permissions: GroupsPermissions,
-  originalPermissions: GroupsPermissions,
-  defaultGroup: Group,
-  database: Database,
-): PermissionSectionConfig[] => {
+export const buildTablesPermissions = ({
+  entityId,
+  groupId,
+  groupType,
+  permissions,
+  originalPermissions,
+  defaultGroup,
+  database,
+  showTransformPermissions,
+}: {
+  entityId: SchemaEntityId;
+  groupId: number;
+  groupType: SpecialGroupType;
+  permissions: GroupsPermissions;
+  originalPermissions: GroupsPermissions;
+  defaultGroup: Group;
+  database: Database;
+  showTransformPermissions: boolean;
+}): PermissionSectionConfig[] => {
+  const isAdmin = groupType === "admin";
+
   const accessPermission = buildAccessPermission(
     entityId,
     groupId,
@@ -216,15 +231,15 @@ export const buildTablesPermissions = (
   return _.compact([
     shouldShowViewDataColumn && accessPermission,
     nativePermission,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions({
       entityId,
       groupId,
-      isAdmin,
-      isExternal,
+      groupType,
       permissions,
-      accessPermission.value,
+      dataAccessPermissionValue: accessPermission.value,
       defaultGroup,
-      "tables",
-    ),
+      permissionSubject: "tables",
+      showTransformPermissions,
+    }),
   ]);
 };

@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.application
-  "`/advanced-permisisons/application` Routes.
+  "`/advanced-permissions/application` Routes.
   Implements the Permissions routes needed for application permission - a class of permissions that control access to
   features like access Setting pages, access monitoring tools ... etc"
   (:require

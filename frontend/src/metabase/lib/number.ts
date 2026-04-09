@@ -3,6 +3,14 @@ const INTEGER_REGEX = /^[+-]?\d+$/;
 export type NumberValue = number | bigint;
 
 export function parseNumber(value: string): NumberValue | null {
+  // TODO(eric, 2025-12-23): we should check if the string is a valid number
+  // if value === "1j", this function returns 1
+  // I tried it and it broke a number of tests
+  // Example:
+  //   if (!Number.isFinite(Number(value))) {
+  //     return null;
+  //    }
+
   const number = parseFloat(value);
   if (!Number.isFinite(number)) {
     return null;

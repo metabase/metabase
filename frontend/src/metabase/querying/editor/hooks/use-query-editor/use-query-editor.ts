@@ -1,4 +1,5 @@
 import * as Lib from "metabase-lib";
+import type { DatasetQuery } from "metabase-types/api";
 
 import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
 import { useQueryControls } from "../use-query-controls";
@@ -13,6 +14,7 @@ type UseQueryEditorProps = {
   proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
+  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
 };
 
 export function useQueryEditor({
@@ -22,13 +24,15 @@ export function useQueryEditor({
   proposedQuery,
   onChangeQuery,
   onChangeUiState,
+  onRunQueryStart,
 }: UseQueryEditorProps) {
-  const { question, proposedQuestion, setQuestion } = useQueryQuestion(
-    query,
-    proposedQuery,
-    uiOptions,
-    onChangeQuery,
-  );
+  const {
+    question,
+    proposedQuestion,
+    setQuestion,
+    setParameterValues,
+    parameterValues,
+  } = useQueryQuestion(query, proposedQuery, uiOptions, onChangeQuery);
   const { isLoading, error } = useQueryMetadata(question);
   const {
     result,
@@ -38,7 +42,7 @@ export function useQueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question, uiState, onChangeUiState);
+  } = useQueryResults(question, uiState, onChangeUiState, onRunQueryStart);
   const {
     selectedText,
     openModal,
@@ -50,6 +54,7 @@ export function useQueryEditor({
     toggleDataReferenceSidebar,
     toggleSnippetSidebar,
     toggleNativeQuerySidebar,
+    toggleTemplateTagsSidebar,
     togglePreviewQueryModal,
   } = useQueryControls(question, uiState, setQuestion, onChangeUiState);
   const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -67,17 +72,20 @@ export function useQueryEditor({
     isRunning,
     isResultDirty,
     setQuestion,
+    setParameterValues,
     runQuery,
     cancelQuery,
     openModal,
     setSelectionRange,
     setModalSnippet,
     openSnippetModalWithSelectedText,
+    parameterValues,
     insertSnippet,
     convertToNative,
     toggleDataReferenceSidebar,
     toggleSnippetSidebar,
     togglePreviewQueryModal,
     toggleNativeQuerySidebar,
+    toggleTemplateTagsSidebar,
   };
 }

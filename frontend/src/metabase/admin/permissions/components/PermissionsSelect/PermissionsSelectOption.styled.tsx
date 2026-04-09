@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 export const PermissionsSelectOptionRoot = styled.div`
@@ -17,7 +17,7 @@ export const IconContainer = styled.div<{ color: ColorName }>`
   border-radius: 3px;
   width: 20px;
   height: 20px;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: ${(props) => color(props.color)};
   flex-shrink: 0;
 `;

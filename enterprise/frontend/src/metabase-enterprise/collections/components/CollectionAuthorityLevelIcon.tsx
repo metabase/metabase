@@ -12,7 +12,7 @@ export const CollectionAuthorityLevelIcon: CollectionAuthorityLevelIconComponent
     }
     const level = AUTHORITY_LEVELS[String(collection.authority_level)];
     const levelColor = level.color ? color(level.color) : undefined;
-    const iconColor = archived ? color("text-light") : levelColor;
+    const iconColor = archived ? color("text-tertiary") : levelColor;
     return (
       <Icon
         {...iconProps}

@@ -1,7 +1,7 @@
 import { Fragment, useMemo } from "react";
 import { c } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import { getIcon } from "metabase/lib/icon";
 import { useSelector } from "metabase/lib/redux";
@@ -47,7 +47,7 @@ export const QuestionSources = () => {
             <Link to={href} variant="brand">
               <Flex gap="sm" lh="1.25rem" maw="20rem">
                 {iconProps ? (
-                  <Icon mt={2} c="text-dark" {...iconProps} />
+                  <Icon mt={2} c="text-primary" {...iconProps} />
                 ) : null}
                 {name}
               </Flex>

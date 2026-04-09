@@ -10,13 +10,14 @@
    [metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util :as bigquery.qp.reconciliation-tu]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -178,7 +179,13 @@
                        "  COUNT(*) AS `count`"
                        "FROM"
                        "  `v4_test_data.venues`"
-                       "  LEFT JOIN `v4_test_data.categories` AS `categories__via__category_id` ON `v4_test_data.venues`.`category_id` = `categories__via__category_id`.`id`"
+                       "  LEFT JOIN ("
+                       "    SELECT"
+                       "      `v4_test_data.categories`.`id` AS `id`,"
+                       "      `v4_test_data.categories`.`name` AS `name`"
+                       "    FROM"
+                       "      `v4_test_data.categories`"
+                       "  ) AS `categories__via__category_id` ON `v4_test_data.venues`.`category_id` = `categories__via__category_id`.`id`"
                        "GROUP BY"
                        "  `categories__via__category_id__name`"
                        "ORDER BY"
@@ -486,7 +493,7 @@
     (mt/with-driver :bigquery-cloud-sdk
       (qp.store/with-metadata-provider (mt/id)
         (mt/with-temporary-setting-values [start-of-week :sunday]
-          (is (= ["DATE_TRUNC(`source`.`date`, week(sunday))"]
+          (is (= ["DATE_TRUNC(`__mb_source`.`date`, week(sunday))"]
                  (sql.qp/format-honeysql
                   :bigquery-cloud-sdk
                   (sql.qp/->honeysql
@@ -1046,7 +1053,17 @@
                                  "  `Organizacao__via__venue_id`.`name` AS `Organizacao__via__venue_id__name`"
                                  "FROM"
                                  "  `v4_test_data.checkins`"
-                                 "  LEFT JOIN `v4_test_data.Organização` AS `Organizacao__via__venue_id` ON `v4_test_data.checkins`.`venue_id` = `Organizacao__via__venue_id`.`id`"
+                                 "  LEFT JOIN ("
+                                 "    SELECT"
+                                 "      `v4_test_data.Organização`.`id` AS `id`,"
+                                 "      `v4_test_data.Organização`.`name` AS `name`,"
+                                 "      `v4_test_data.Organização`.`category_id` AS `category_id`,"
+                                 "      `v4_test_data.Organização`.`latitude` AS `latitude`,"
+                                 "      `v4_test_data.Organização`.`longitude` AS `longitude`,"
+                                 "      `v4_test_data.Organização`.`price` AS `price`"
+                                 "    FROM"
+                                 "      `v4_test_data.Organização`"
+                                 "  ) AS `Organizacao__via__venue_id` ON `v4_test_data.checkins`.`venue_id` = `Organizacao__via__venue_id`.`id`"
                                  "LIMIT"
                                  "  1"]
                     :params     nil
@@ -1096,7 +1113,7 @@
         (mt/with-native-query-testing-context query
           (is (= (with-test-db-name
                    {:query      ["SELECT"
-                                 "  `source`.`count` AS `count`,"
+                                 "  `__mb_source`.`count` AS `count`,"
                                  "  COUNT(*) AS `count_2`"
                                  "FROM"
                                  "  ("
@@ -1113,7 +1130,7 @@
                                  "      `date`"
                                  "    ORDER BY"
                                  "      `date` ASC"
-                                 "  ) AS `source`"
+                                 "  ) AS `__mb_source`"
                                  "GROUP BY"
                                  "  `count`"
                                  "ORDER BY"
@@ -1121,7 +1138,7 @@
                                  "LIMIT"
                                  "  2"]
                     :params     nil
-                    :table-name "source"
+                    :table-name "__mb_source"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1162,20 +1179,20 @@
                      :breakout     [[:field "source" {:base-type :type/Text}]]
                      :source-query {:native "select 1 as `val`, '2' as `source`"}})]
         (is (= {:query      ["SELECT"
-                             "  `source`.`source` AS `source`,"
+                             "  `__mb_source`.`source` AS `source`,"
                              "  COUNT(*) AS `count`"
                              "FROM"
                              "  ("
                              "    select"
                              "      1 as `val`,"
                              "      '2' as `source`"
-                             "  ) AS `source`"
+                             "  ) AS `__mb_source`"
                              "GROUP BY"
                              "  `source`"
                              "ORDER BY"
                              "  `source` ASC"]
                 :params     nil
-                :table-name "source"
+                :table-name "__mb_source"
                 :mbql?      true}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1246,16 +1263,16 @@
                                 (lib/aggregate (lib/sum orders-total))
                                 (lib/limit 3))]
       (is (= ["SELECT"
-              "  `source`.`created_at` AS `created_at`,"
+              "  `__mb_source`.`created_at` AS `created_at`,"
               "  SUM(COUNT(*)) OVER ("
               "    ORDER BY"
-              "      `source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
+              "      `__mb_source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
               "  ) AS `count`,"
-              "  SUM(SUM(`source`.`total`)) OVER ("
+              "  SUM(SUM(`__mb_source`.`total`)) OVER ("
               "    ORDER BY"
-              "      `source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
+              "      `__mb_source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
               "  ) AS `sum`,"
-              "  SUM(`source`.`total`) AS `sum_2`"
+              "  SUM(`__mb_source`.`total`) AS `sum_2`"
               "FROM"
               "  ("
               "    SELECT"
@@ -1266,7 +1283,7 @@
               "      `test_data.orders`.`total` AS `total`"
               "    FROM"
               "      `test_data.orders`"
-              "  ) AS `source`"
+              "  ) AS `__mb_source`"
               "GROUP BY"
               "  `created_at`"
               "ORDER BY"
@@ -1293,3 +1310,63 @@
                                 [[[:= $name "Won"] [:datetime-add $created_at 0 :month]]]
                                 {:default [:datetime-add $birth_date 0 :month]}]}
                  :filter [:time-interval [:expression "asdfdsa"] -12 :month]}))))))
+
+(mt/defdataset timestamp-dataset
+  [["ts_table" [{:field-name "user_id"
+                 :base-type :type/Integer}
+                {:field-name "created_at"
+                 :base-type :type/DateTimeWithLocalTZ}]
+    [[1 #t "2025-03-01 23:30:00Z"]
+     [2 #t "2025-03-01 23:30:00Z"]
+     [3 #t "2025-03-01 23:30:00Z"]
+     [1 #t "2025-03-08 23:30:00Z"]
+     [2 #t "2025-03-08 23:30:00Z"]
+     [1 #t "2025-03-15 23:30:00Z"]
+     [3 #t "2025-03-15 23:30:00Z"]
+     [2 #t "2025-03-22 23:30:00Z"]
+     [3 #t "2025-03-22 23:30:00Z"]
+     [1 #t "2025-03-29 23:30:00Z"]
+     [2 #t "2025-03-29 23:30:00Z"]
+     [3 #t "2025-03-29 23:30:00Z"]]]
+   ["dt_table" [{:field-name "user_id"
+                 :base-type :type/Integer}
+                {:field-name "created_at"
+                 :base-type :type/DateTime}]
+    [[1 #t "2025-03-01 23:30:00"]
+     [2 #t "2025-03-01 23:30:00"]
+     [3 #t "2025-03-01 23:30:00"]
+     [1 #t "2025-03-08 23:30:00"]
+     [2 #t "2025-03-08 23:30:00"]
+     [1 #t "2025-03-15 23:30:00"]
+     [3 #t "2025-03-15 23:30:00"]
+     [2 #t "2025-03-22 23:30:00"]
+     [3 #t "2025-03-22 23:30:00"]
+     [1 #t "2025-03-29 23:30:00"]
+     [2 #t "2025-03-29 23:30:00"]
+     [3 #t "2025-03-29 23:30:00"]]]])
+
+(deftest timestamp-aggregation-with-timezone-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset timestamp-dataset
+      (doseq [table [:ts_table :dt_table]
+              timezone ["Europe/Paris" "Database default"]]
+        (let [mp (mt/metadata-provider)
+              the-table (lib.metadata/table mp (mt/id table))
+              user-id-col (lib.metadata/field mp (mt/id table :user_id))
+              created-at-col (lib.metadata/field mp (mt/id table :created_at))
+              base-query (-> (lib/query mp the-table)
+                             (lib/expression "created_at_year" (lib/get-year created-at-col)))
+              query (-> base-query
+                        (lib/aggregate (lib/distinct user-id-col))
+                        (lib/breakout (lib/with-temporal-bucket created-at-col :week-of-year))
+                        (lib/breakout (lib.expression/expression-ref base-query 0 "created_at_year")))]
+          (mt/with-report-timezone-id! timezone
+            (let [exp-rows (cond->> [[8 2025 3]
+                                     [9 2025 2]
+                                     [10 2025 2]
+                                     [11 2025 2]
+                                     [12 2025 3]]
+                             (and (= table :ts_table) (= timezone "Europe/Paris"))
+                             (mapv #(update % 0 inc)))]
+              (is (= exp-rows
+                     (mt/formatted-rows [int int int] (qp/process-query query)))))))))))

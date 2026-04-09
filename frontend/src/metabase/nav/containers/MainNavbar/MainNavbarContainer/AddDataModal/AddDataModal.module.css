@@ -4,7 +4,7 @@
 
   &[data-active="true"] {
     color: var(--mb-color-brand);
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-selected);
   }
 }
 
@@ -37,13 +37,13 @@
 }
 
 .dropZone {
-  background-color: var(--mb-color-background-light);
+  background-color: var(--mb-color-background-secondary);
   border: 1px dashed var(--mb-color-border);
   border-radius: var(--default-border-radius);
   flex: 1;
 
   &.isActive {
-    background-color: var(--mb-color-brand-alpha-04);
+    background-color: var(--mb-color-background-hover);
     border-color: var(--mb-color-background-selected);
   }
 }

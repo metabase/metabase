@@ -3,7 +3,7 @@ import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getFullName } from "metabase/lib/user";
@@ -74,7 +74,7 @@ export const PeopleListRow = ({
 
   return (
     <tr key={user.id}>
-      <Flex component="td" align="center" gap="md" c="text-white">
+      <Flex component="td" align="center" gap="md" c="text-primary-inverse">
         <UserAvatar bg={userToColor(user)} user={user} />
         <Text fw="700">{getFullName(user) ?? "-"}</Text>
       </Flex>

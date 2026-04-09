@@ -92,6 +92,24 @@ export const PlainLink = Link.extend({
     };
   },
 
+  parseHTML() {
+    return [
+      {
+        tag: "a[href]:not([data-type='smart-link'])",
+        getAttrs: (element) => {
+          if (typeof element === "string") {
+            return false;
+          }
+          // Don't parse smart-link elements as plain links
+          if (element.getAttribute("data-type") === "smart-link") {
+            return false;
+          }
+          return null;
+        },
+      },
+    ];
+  },
+
   addInputRules() {
     return [
       linkInputRule({

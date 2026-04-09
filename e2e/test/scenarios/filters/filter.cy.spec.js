@@ -82,7 +82,7 @@ describe("scenarios > question > filter", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("12872");
     cy.log("At the moment of unfixed issue, it's showing '0'");
     cy.findByTestId("scalar-value").contains("1");
@@ -174,10 +174,10 @@ describe("scenarios > question > filter", () => {
       .should("have.text", "2")
       .click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(AGGREGATED_FILTER);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Created At is after/i)
       .find(".Icon-close")
       .click();
@@ -185,7 +185,7 @@ describe("scenarios > question > filter", () => {
     cy.log(
       "**Removing or changing filters shouldn't remove aggregated filter**",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(AGGREGATED_FILTER);
   });
 
@@ -255,21 +255,21 @@ describe("scenarios > question > filter", () => {
     );
 
     cy.get("[data-testid=cell-data]").contains("Widget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row");
   });
 
   it("should reject Enter when the filter expression is invalid", () => {
     H.openReviewsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
     H.enterCustomColumnDetails({ formula: "[Rating] > 2E{enter}" }); // there should numbers after 'E'
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Missing exponent");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rating is greater than 2").should("not.exist");
   });
 
@@ -339,9 +339,9 @@ describe("scenarios > question > filter", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: "[su", blur: false });
 
@@ -355,7 +355,7 @@ describe("scenarios > question > filter", () => {
   it("should filter using IsNull() and IsEmpty()", () => {
     H.openReviewsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
     H.enterCustomColumnDetails({ formula: "NOT IsNull([Rating])" });
@@ -364,7 +364,7 @@ describe("scenarios > question > filter", () => {
 
     cy.findByTestId("query-builder-root").icon("add").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
     H.enterCustomColumnDetails({
@@ -376,64 +376,64 @@ describe("scenarios > question > filter", () => {
     // check that filter is applied and rows displayed
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 1,112 rows");
   });
 
   it("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
     H.openReviewsTable();
     H.tableHeaderClick("Reviewer");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     H.selectFilterOperator("Is empty");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
     // filter out everything
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 0 rows");
 
     // change the corresponding custom expression
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Reviewer is empty").click();
     cy.get(".Icon-chevronleft").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("isEmpty([Reviewer])");
     H.CustomExpressionEditor.clear().type("NOT IsEmpty([Reviewer])").blur();
 
     cy.button("Update").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 1,112 rows");
   });
 
   it("should convert 'is empty' on a numeric column to a custom expression using IsNull()", () => {
     H.openReviewsTable();
     H.tableHeaderClick("Rating");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     H.selectFilterOperator("Is empty");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add filter").click();
 
     // filter out everything
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 0 rows");
 
     // change the corresponding custom expression
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rating is empty").click();
     cy.get(".Icon-chevronleft").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("isNull([Rating])");
     H.CustomExpressionEditor.clear()
       .type("NOT IsNull([Rating])", { delay: 50 })
       .blur();
     cy.button("Update").should("not.be.disabled").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 1,112 rows");
   });
 
@@ -455,12 +455,12 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains('doesNotContain([Title], "Wallet", "case-insensitive")');
   });
 
@@ -482,7 +482,7 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     H.popover().findByText("Custom Expression").click();
@@ -542,20 +542,20 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("wilma-muller");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Reviewer contains MULLER").click();
     cy.get(".Icon-chevronleft").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains('contains([Reviewer], "MULLER", "case-insensitive")');
     cy.button("Update").click();
     cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("wilma-muller");
   });
 
@@ -599,13 +599,13 @@ describe("scenarios > question > filter", () => {
       });
 
       cy.get("[data-testid=cell-data]").contains("Count").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter by this column").click();
       cy.findByPlaceholderText("Enter a number").type("42");
       cy.button("Update filter").should("not.be.disabled").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doohickey");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Gizmo").should("not.exist");
     },
   );
@@ -702,7 +702,7 @@ describe("scenarios > question > filter", () => {
   it("should allow hiding the suggestion list with Escape", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
     // Try to auto-complete Tax
@@ -762,7 +762,7 @@ describe("scenarios > question > filter", () => {
     H.openPeopleTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     H.popover().findByText("State").click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("AL").click();
     cy.button("Add filter").isVisibleInPopover();
   });
@@ -797,13 +797,12 @@ describe("scenarios > question > filter", () => {
 
     assertOnLegendLabels();
     H.cartesianChartCircleWithColors(["#88BF4D", "#509EE3", "#A989C5"]);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     cy.findByTestId("save-question-modal")
       .findByLabelText(/Where do you want to save this/)
       .click();
     H.pickEntity({
-      tab: "Browse",
       path: ["Our analytics"],
     });
     H.entityPickerModal().findByText("Select this collection").click();
@@ -849,23 +848,23 @@ describe("scenarios > question > filter", () => {
     it("adding an ID filter shouldn't cause page error and page reload (metabase#16198-2)", () => {
       H.openOrdersTable({ mode: "notebook" });
       H.filter({ mode: "notebook" });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom Expression").click();
       H.CustomExpressionEditor.type("[Total] < [Product → Price]").blur();
       H.CustomExpressionEditor.format();
       cy.button("Done").click();
       // Filter currently says "Total is less than..." but it can change in https://github.com/metabase/metabase/pull/16174 to "Total < Price"
       // See: https://github.com/metabase/metabase/pull/16209#discussion_r638129099
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Total/);
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.icon("add").last().click();
       H.popover().findByText(/^ID$/i).click();
       cy.findByPlaceholderText("Enter an ID").type("1");
       cy.button("Add filter").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/^Total/);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Something went wrong").should("not.exist");
     });
 
@@ -891,12 +890,12 @@ describe("scenarios > question > filter", () => {
       });
 
       // cy.findByText(/^Total/);
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.icon("add").last().click();
       H.clauseStepPopover().findByText(/^ID$/i).click();
       cy.findByPlaceholderText("Enter an ID").type("1");
       cy.button("Add filter").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total is equal to 123")
         .parent()
         .find(".Icon-close")
@@ -988,7 +987,7 @@ describe("scenarios > question > filter", () => {
     it("with case", () => {
       H.openNotebook();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom column").click();
       H.enterCustomColumnDetails({
         formula: "Case(boolean, 45, -10)",

@@ -35,7 +35,7 @@
    col
    :semantic_type
    (fn [original-value]
-     ;; If we already know the semantic type, becouse it is stored, don't classify again, but try to refine semantic
+     ;; If we already know the semantic type, because it is stored, don't classify again, but try to refine semantic
      ;; type set upstream for aggregation cols (which come back as :type/Number).
      (case original-value
        (nil :type/Number) (classifiers.name/infer-semantic-type-by-name col)

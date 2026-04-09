@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 
 import { Title } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 interface Props {
   children: ReactNode;
-  color?: string;
+  color?: ColorName;
 }
 
 export const VariationDetails = ({ children, color }: Props) => {

@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useUrlWithUtm } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { isEEBuild } from "metabase/lib/utils";

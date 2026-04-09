@@ -8,19 +8,11 @@ Code in this directory should carefully reference external code, including code 
 
 ## Build
 
-You can build the SDK NPM package with `yarn build-embedding-sdk-package`.
-You can build the SDK bundle with `yarn build-release:embedding-sdk-bundle`
+You can build the SDK NPM package with `bun run build-embedding-sdk-package`.
 
-#### embedding-sdk:dev
+The SDK bundle is built with the core app frontend and served by the core app, so you'll probably want to have `build-hot` (with `MB_EDITION=ee`) running.
 
-The `embedding-sdk:dev` command builds both SDK NPM package and SDK bundle in the `watch` mode.
-
-It runs a local dev server that serves compiled files; the server is used by `Cypress`.
-
-It uses `tsc --incremental` to generate the dts files and fixes them automatically by running the fixup script on watch.
-
-The `tsc` command will output a lot of errors, to keep the terminal output under control you may want to run the three different `embedding-sdk:dev:*` commands on different terminals.
-There is a VS code task named `Run embedding sdk dev commands` that does that
+If you have `SKIP_EMBEDDING_SDK`, you'll have to unset it for the sdk bundle to be built.
 
 ## Storybook
 
@@ -36,7 +28,7 @@ Storybook expects an instance running on `localhost:3000` with some configuratio
 - on [/admin/embedding/modular](http://localhost:3000/admin/embedding/modular)
   - Enable the "SDK for React" card
 
-Then you can run `yarn storybook-embedding-sdk` to start storybook.
+Then you can run `bun run storybook-embedding-sdk` to start storybook.
 
 Storybook will use the source files and not the built package.
 
@@ -57,15 +49,13 @@ MB_PRO_SELF_HOSTED_TOKEN=${usual token from password manager}
 ```
 
 Cypress will use the built package, so you'll have to build the sdk first (see above).
-We recommend running either the dev or the watch command to have shorter a feedback loop.
+Make sure `build-hot` is running (with `MB_EDITION=ee`) — it builds the SDK bundle that the package loads at runtime.
 
-To start the cypress for the e2e tests:
+To start cypress for the e2e tests:
 
 ```bash
-CYPRESS_TESTING_TYPE="component" yarn test-cypress
+CYPRESS_TESTING_TYPE="component" bun run test-cypress
 ```
-
-Then in a separate terminal run `yarn embedding-sdk:dev` to build SDK NPM package and SDK bundle in the `watch` mode.
 
 ### Sample Apps compatibility with Embedding SDK tests
 
@@ -78,13 +68,13 @@ Define one of the following environment variables with enterprise token: `CYPRES
 To run these tests locally, run:
 
 ```
-SDK_TEST_SUITE=<sample_app_repo_name>-e2e yarn test-cypress-host-sample-apps
+SDK_TEST_SUITE=<sample_app_repo_name>-e2e bun run test-cypress-host-sample-apps
 ```
 
 For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 
 ```
-SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e yarn test-cypress-host-sample-apps
+SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e bun run test-cypress-host-sample-apps
 ```
 
 ##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
@@ -130,13 +120,13 @@ Tests a bit similar to Sample App tests, but:
 To run these tests locally, run:
 
 ```
-ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e HOST_APP_ENVIRONMENT=production yarn test-cypress-host-sample-apps
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e HOST_APP_ENVIRONMENT=production bun run test-cypress-host-sample-apps
 ```
 
 For example for the `vite-6-host-app` Host App, run:
 
 ```
-ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e HOST_APP_ENVIRONMENT=production yarn test-cypress-host-sample-apps
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e HOST_APP_ENVIRONMENT=production bun run test-cypress-host-sample-apps
 ```
 
 #### CI runs

@@ -3,7 +3,6 @@ import { checkNotNull } from "metabase/lib/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Database, Field, Table } from "metabase-types/api";
 import {
-  createMockDateTimeFieldFingerprint,
   createMockField,
   createMockFieldDimension,
   createMockTable,
@@ -282,44 +281,6 @@ describe("Field", () => {
       });
 
       expect(field.targetObjectName()).toBe("field");
-    });
-  });
-
-  describe("getDefaultDateTimeUnit", () => {
-    describe("when the field is of type `type/DateTime`", () => {
-      it("should return 'day'", () => {
-        const field = setup({
-          fields: [
-            createMockField({
-              id: FIELD_ID,
-            }),
-          ],
-        });
-
-        expect(field.getDefaultDateTimeUnit()).toBe("day");
-      });
-    });
-  });
-
-  describe("when field is of type `type/DateTime`", () => {
-    it("should return a time unit depending on the number of days in the 'fingerprint'", () => {
-      const field = setup({
-        fields: [
-          createMockField({
-            id: FIELD_ID,
-            fingerprint: {
-              type: {
-                "type/DateTime": createMockDateTimeFieldFingerprint({
-                  earliest: "2019-03-01T00:00:00Z",
-                  latest: "2021-01-01T00:00:00Z",
-                }),
-              },
-            },
-          }),
-        ],
-      });
-
-      expect(field.getDefaultDateTimeUnit()).toBe("month");
     });
   });
 
@@ -605,37 +566,6 @@ describe("Field", () => {
 
         expect(field.getUniqueId()).toBe(1);
       });
-    });
-  });
-
-  describe("isComparableWith", () => {
-    const field = setup({
-      fields: [
-        createMockField({
-          id: FIELD_ID,
-          effective_type: "type/MongoBSONID",
-        }),
-        createMockField({
-          id: 2,
-          effective_type: "type/Integer",
-        }),
-      ],
-    });
-    const metadata = field.metadata;
-    const mongoField = metadata?.field(FIELD_ID);
-    const integerField = metadata?.field(2);
-
-    it("should return true for 2 MongoBSONID fields", () => {
-      expect(mongoField?.isComparableWith(mongoField)).toBe(true);
-    });
-
-    it("should return true for 2 non-MongoBSONID fields", () => {
-      expect(integerField?.isComparableWith(integerField)).toBe(true);
-    });
-
-    it("should return false for MongoBSONID field and other field", () => {
-      expect(mongoField?.isComparableWith(integerField)).toBe(false);
-      expect(integerField?.isComparableWith(mongoField)).toBe(false);
     });
   });
 });

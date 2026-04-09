@@ -4,8 +4,8 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.lib.core :as lib]
+   [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -38,7 +38,7 @@
 ;;; if parameters specify `:stage-number`, it means the original stage number before we started preprocessing the
 ;;; query (i.e., before we expanded source cards and what not)
 
-(mu/defn- num-stages-prepended-by-preprocessing :- ::lib.schema.common/int-greater-than-or-equal-to-zero
+(mu/defn- num-stages-prepended-by-preprocessing :- nat-int?
   "Parameters can specify the `:stage-number` they should be applied to, but this is relative to the stage number of the
   query as it was originally passed in. The preprocessing middleware that expands source cards can introduce additional
   stages at the beginning of the query, so to get the actual stage number a parameter should affect we have to offset it
@@ -55,12 +55,8 @@
   the [[num-stages-prepended-by-preprocessing]])."
   [query     :- ::lib.schema/query
    parameter :- ::lib.schema.parameter/parameter]
-  (let [stage-number (or (-> parameter
-                             :target
-                             lib/->pMBQL
-                             lib/options
-                             :stage-number)
-                         0)]
+  (let [stage-number (lib.parameters/parameter-target-stage-number
+                      (:target parameter))]
     (if (not (neg? stage-number))
       ;; for a non-negative stage number add the offset to it as mentioned above
       (+ stage-number (num-stages-prepended-by-preprocessing query))
@@ -134,8 +130,8 @@
        (u/update-if-exists stage :template-tags assoc-database-id-in-snippet-tag (:database query))))))
 
 (mu/defn substitute-parameters :- ::lib.schema/query
-  "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholers with appropriate values
-  and/or modifiying the query as appropriate. This looks for maps that have the key `:parameters` and/or
+  "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholders with appropriate values
+  and/or modifying the query as appropriate. This looks for maps that have the key `:parameters` and/or
   `:template-tags` and removes those keys, splicing appropriate conditions into the queries they affect.
 
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as

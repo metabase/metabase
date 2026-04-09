@@ -6,20 +6,26 @@
   border-width: 1px;
 
   &:hover {
-    border-color: var(--mb-color-text-light);
+    border-color: var(--mb-color-text-tertiary);
   }
 }
 
 .Selected {
-  border-color: var(--mb-color-text-light);
+  border-color: var(--mb-color-text-tertiary);
 
   &:hover {
-    border-color: var(--mb-color-text-dark);
+    border-color: var(--mb-color-text-primary);
   }
 }
 
 .Auto {
   border-style: dashed;
+}
+
+.XSmall {
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
 }
 
 .Small {

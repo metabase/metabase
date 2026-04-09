@@ -4,6 +4,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -46,6 +47,7 @@ const setup = async ({
   isActive,
   readOnly = false,
 }: SetupOpts) => {
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
@@ -94,7 +96,7 @@ const setup = async ({
  * would have been used in tests instead of the actual implementation.
  */
 const importDatasetQueryEditor = async () => {
-  const { default: DatasetQueryEditor } = await import(
+  const { DatasetQueryEditor } = await import(
     "metabase/query_builder/components/DatasetEditor/DatasetQueryEditor"
   );
   return DatasetQueryEditor;

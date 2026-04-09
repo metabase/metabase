@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [empty? not-empty])
   (:require
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.performance :refer [empty? not-empty]])
   (:import
@@ -26,22 +27,38 @@
 
 (defn- update-ssl-db-details
   [db-details]
-  (-> db-details
-      (driver-api/clean-secret-properties-from-details :mongo)
-      (assoc :client-ssl-key (driver-api/secret-value-as-string :mongo db-details "client-ssl-key"))))
+  ;; Must capture secret value BEFORE cleaning, as clean-secret-properties-from-details
+  ;; will remove the secret properties (client-ssl-key-value or client-ssl-key-id)
+  (let [client-ssl-key (driver-api/secret-value-as-string :mongo db-details "client-ssl-key")]
+    (-> db-details
+        (driver-api/clean-secret-properties-from-details :mongo)
+        (assoc :client-ssl-key client-ssl-key))))
 
 (defn details-normalized
   "Gets db-details for `database`. Details are then validated and ssl related keys are updated."
   [database]
   (let [db-details
         (cond
-          (integer? database)             (driver-api/with-metadata-provider database
-                                            (:details (driver-api/database (driver-api/metadata-provider))))
-          (string? database)              {:dbname database}
-          (:dbname (:details database))   (:details database) ; entire Database obj
-          (:dbname database)              database            ; connection details map only
-          (:conn-uri database)            database            ; connection URI has all the parameters
-          (:conn-uri (:details database)) (:details database)
+          (integer? database)
+          (driver-api/with-metadata-provider database
+            (driver.conn/effective-details (driver-api/database (driver-api/metadata-provider))))
+
+          (string? database)
+          {:dbname database}
+
+          ;; Full Database object - use effective-details to respect connection type
+          (:dbname (:details database))
+          (driver.conn/effective-details database)
+
+          (:dbname database)
+          database ; connection details map only
+
+          (:conn-uri database)
+          database ; connection URI has all the parameters
+
+          (:conn-uri (:details database))
+          (driver.conn/effective-details database)
+
           :else
           (throw (ex-info (tru "Unable to to get database details.")
                           {:database database})))]

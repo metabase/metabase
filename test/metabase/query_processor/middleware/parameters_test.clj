@@ -489,7 +489,7 @@
                                                 :effective-type                                    :type/Integer
                                                 :lib/expression-name                               "Quantity_2"
                                                 :lib/uuid                                          "a9212400-3b5f-4034-b7a0-f8848579af30"
-                                                :metabase.lib.query/transformation-added-base-type true}
+                                                :lib/transformation-added-base-type true}
                                                (meta/id :orders :quantity)]]}]
                :parameters   [{:id     "c77842b9"
                                :target [:dimension

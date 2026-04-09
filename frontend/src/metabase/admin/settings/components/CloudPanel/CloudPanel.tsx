@@ -6,8 +6,10 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useStoreUrl } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
+import { type Plan, getPlan } from "metabase/common/utils/plan";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { getSetting } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
@@ -26,7 +28,11 @@ import {
 
 interface CloudPanelProps {
   getPollingInterval?: (migration: CloudMigration) => number | undefined;
-  onMigrationStart?: (checkoutUrl: string, migration: CloudMigration) => void;
+  onMigrationStart?: (
+    storeUrl: string,
+    plan: Plan,
+    migration: CloudMigration,
+  ) => void;
 }
 
 export const CloudPanel = ({
@@ -71,12 +77,15 @@ export const CloudPanel = ({
   const [createCloudMigration, createCloudMigrationResult] =
     useCreateCloudMigrationMutation();
 
-  const checkoutUrl = useStoreUrl("checkout");
+  const storeUrl = useStoreUrl("checkout");
+  const plan = useSelector((state) =>
+    getPlan(getSetting(state, "token-features")),
+  );
 
   const handleCreateMigration = async () => {
     const newMigration = await createCloudMigration().unwrap();
     await dispatch(refreshSiteSettings());
-    onMigrationStart(checkoutUrl, newMigration);
+    onMigrationStart(storeUrl, plan, newMigration);
   };
 
   return (
@@ -90,17 +99,19 @@ export const CloudPanel = ({
       <Box>
         {migration && isInProgressMigration(migration) && (
           <MigrationInProgress
+            storeUrl={storeUrl}
+            plan={plan}
             migration={migration}
-            checkoutUrl={checkoutUrl}
           />
         )}
 
         {migration && migrationState === "done" && (
           <MigrationSuccess
+            storeUrl={storeUrl}
+            plan={plan}
             migration={migration}
             restartMigration={handleCreateMigration}
             isRestarting={createCloudMigrationResult.isLoading}
-            checkoutUrl={checkoutUrl}
           />
         )}
 

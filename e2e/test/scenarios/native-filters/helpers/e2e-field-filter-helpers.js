@@ -163,7 +163,7 @@ function addBetweenFilter([low, high] = [], buttonLabel = "Add filter") {
   popover().within(() => {
     cy.get("input").first().type(`${low}`);
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("input").last().type(`${high}`);
   });
 

@@ -29,6 +29,7 @@
    [metabase.request.schema :as request.schema]
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
+   [metabase.tracing.core :as tracing]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -102,6 +103,7 @@
       (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
+                            [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      [[:core_session :session]]
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]
@@ -147,6 +149,7 @@
        (cond-> {:select    [[:api_key.user_id :metabase-user-id]
                             [:api_key.key :api-key]
                             [:user.is_superuser :is-superuser?]
+                            [:user.is_data_analyst :is-data-analyst?]
                             [:user.locale :user-locale]]
                 :from      :api_key
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
@@ -244,7 +247,9 @@
   token OR a valid API key was passed."
   [handler]
   (fn [request respond raise]
-    (handler (merge-current-user-info request) respond raise)))
+    (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
+                     (merge-current-user-info request))]
+      (handler request' respond raise))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               bind-current-user                                                |

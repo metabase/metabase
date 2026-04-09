@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { darken } from "metabase/lib/colors";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Icon } from "metabase/ui";
+import { darken } from "metabase/ui/colors";
 
 export const StoreIconRoot = styled(ExternalLink)`
   margin-right: var(--mantine-spacing-sm);
@@ -17,11 +17,11 @@ export const StoreIconWrapper = styled.div`
   height: 40px;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   transition: all 300ms ease-in-out;
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: ${() => darken("filter")};
   }
 

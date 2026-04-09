@@ -12,7 +12,8 @@
   (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
                 " something smart to avoid creating infinite cache entries")
     (let [unique-schema [:re {:id (rand)} #"\d{4}"]]
-      (is (= 1 (with-returning-cache-miss-count
+      ;; 2 misses as we cache both the Schema and validator.
+      (is (= 2 (with-returning-cache-miss-count
                  (mr/validate unique-schema "1234"))))
       (is (= 0 (with-returning-cache-miss-count
                  (mr/validate unique-schema "1234")
@@ -23,7 +24,8 @@
   (testing (str "For things that aren't ever equal when you re-evaluate them (like Regex literals) maybe sure we do"
                 " something smart to avoid creating infinite cache entries")
     (let [unique-id (rand)]
-      (is (= 1 (with-returning-cache-miss-count
+      ;; 2 misses as we cache both the Schema and validator.
+      (is (= 2 (with-returning-cache-miss-count
                  (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234"))))
       (let [validator-key-set (set (keys (:validator @@#'mr/cache)))]
         (is (contains? validator-key-set
@@ -35,7 +37,7 @@
                (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234")
                (mr/validate [:and {:id unique-id} :string [:re #"\d{4}"]] "1234")))
           "Calling validate with a previously cached schema does not miss cache")
-      (is (= 3
+      (is (= 6
              (with-returning-cache-miss-count
                ;; one
                (mr/validate [:and {:id unique-id} [:re #"\d{1}"] :string] "1234")

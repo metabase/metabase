@@ -10,20 +10,29 @@ import type {
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type {
   ClickActionModeGetter,
+  ClickActionsMode,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, DashboardId } from "metabase-types/api";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { EntityToken } from "metabase-types/api/entity";
+import type {
+  EmbeddingDataPicker,
+  EmbeddingEntityType,
+} from "metabase-types/store/embedding-data-picker";
 
 type SdkQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
   entityTypes?: EmbeddingEntityType[];
+
+  /**
+   * Controls the menu for selecting data sources in questions. You can opt for the full data picker by setting `dataPicker = "staged"`.
+   */
+  dataPicker?: EmbeddingDataPicker;
 
   /**
    * Whether to show the save button.
@@ -41,9 +50,14 @@ type SdkQuestionConfig = {
   hiddenParameters?: string[];
 
   /**
-   * Enables the ability to download results in the interactive question.
+   * Enables the ability to download results in the question.
    */
   withDownloads?: boolean;
+
+  /**
+   * Enables the ability to set up alerts on the question.
+   */
+  withAlerts?: boolean;
 
   /**
    * The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.
@@ -141,14 +155,15 @@ export type SdkQuestionContextType = Omit<
     | "isSaveEnabled"
     | "targetCollection"
     | "withDownloads"
+    | "withAlerts"
     | "backToDashboard"
     | "hiddenParameters"
     | "onVisualizationChange"
   > & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;
-    mode: QueryClickActionsMode | Mode | null | undefined;
+    mode: QueryClickActionsMode | ClickActionsMode | null | undefined;
     originalId: SdkQuestionId | null;
-    token: string | null | undefined;
+    token: EntityToken | null | undefined;
     resetQuestion: () => void;
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;

@@ -1,5 +1,3 @@
-import type * as React from "react";
-
 import {
   CardHeaderLink,
   CardHeaderStatic,
@@ -18,7 +16,7 @@ export interface HelpCardProps {
   children: React.ReactNode;
 }
 
-const HelpCard = ({
+const HelpCardInner = ({
   title,
   helpUrl,
   isFullyClickable = true,
@@ -43,7 +41,6 @@ const HelpCard = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(HelpCard, {
+export const HelpCard = Object.assign(HelpCardInner, {
   Section: CardMessage,
 });

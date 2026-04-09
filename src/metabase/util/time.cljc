@@ -26,6 +26,7 @@
   zone-offset-part-regex]
  [internal
   valid?
+  same-time?
   same-day?
   same-month?
   same-year?
@@ -35,6 +36,7 @@
   add
   extract
   format-for-base-type
+  format-date-for-filter
   local-date
   local-date-time
   local-time])
@@ -126,3 +128,12 @@
                        :cljs js/parseInt)
                     (str/split date-str #"-|:|T"))]
     (into parts (repeat (- 6 (count parts)) 0))))
+
+#?(:cljs
+   (defn dayjs-utc->local-date
+     "Convert a dayjs UTC value to a JavaScript Date in local time, preserving the time values.
+      This is needed because coerce-to-timestamp returns dayjs objects in UTC mode, but the FE expects
+      Date objects in local time with the same year/month/day/hour/minute/second values.
+      dayjs.local(true) doesn't work like moment.local(true), so we format and reparse as local time."
+     [value]
+     (internal/dayjs-utc->local-date value)))

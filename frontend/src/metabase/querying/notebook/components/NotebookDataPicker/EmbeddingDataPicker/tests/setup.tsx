@@ -16,6 +16,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 import { createMockState } from "metabase-types/store/mocks";
+import { createMockEmbeddingDataPickerState } from "metabase-types/store/mocks/embedding-data-picker";
 
 import { EmbeddingDataPicker } from "../EmbeddingDataPicker";
 
@@ -56,9 +57,9 @@ export function setup({
     entityTypes
       ? {
           storeInitialState: createMockState({
-            embeddingDataPicker: {
+            embeddingDataPicker: createMockEmbeddingDataPickerState({
               entityTypes,
-            },
+            }),
           }),
         }
       : undefined,

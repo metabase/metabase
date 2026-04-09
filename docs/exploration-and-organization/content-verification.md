@@ -47,8 +47,9 @@ Admins can verify the following items:
 - [Metrics](../data-modeling/metrics.md)
 - [Dashboards](../dashboards/introduction.md)
 
-Dashboard verification status has no affect on its questions. Questions must be verified independently.
+Dashboard verification status has no effect on its questions. Questions must be verified independently.
 
 ## Further reading
 
 - [Official collections](./collections.md#official-collections)
+- [Library](../data-studio/library.md)

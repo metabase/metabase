@@ -4,7 +4,7 @@
   cursor: pointer;
 
   &::placeholder {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     font-weight: 700;
   }
 
@@ -18,16 +18,16 @@
 }
 
 .MoveParameterMenuOptionIcon {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .MoveParameterMenuOptionText {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .MoveParameterMenuOption[aria-selected="true"] {
   .MoveParameterMenuOptionIcon,
   .MoveParameterMenuOptionText {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 }

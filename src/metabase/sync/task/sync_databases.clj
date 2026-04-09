@@ -21,6 +21,7 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
@@ -88,12 +89,16 @@
                     e))]
       (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
       (database-routing/with-database-routing-off
-        (let [metadata-results (sync-metadata/sync-db-metadata! database)
-              analyze-results (when (:is_full_sync database)
-                                (analyze/analyze-db! database))
+        (let [db-id            (:id database)
+              metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
+                                 (sync-metadata/sync-db-metadata! database))
+              analyze-results  (when (:is_full_sync database)
+                                 (tracing/with-span :sync "sync.analyze" {:db/id db-id}
+                                   (analyze/analyze-db! database)))
               refingerprint-results (when (and (:refingerprint database)
                                                (should-refingerprint-fields? analyze-results))
-                                      (analyze/refingerprint-db! database))]
+                                      (tracing/with-span :sync "sync.refingerprint" {:db/id db-id}
+                                        (analyze/refingerprint-db! database)))]
           (cond-> {:metadata-results metadata-results}
             analyze-results (assoc :analyze-results analyze-results)
             refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))

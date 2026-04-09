@@ -235,7 +235,7 @@
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
 
-(deftest ^:parallel bookmark-test
+(deftest bookmark-test
   (let [crowberto (mt/user->id :crowberto)
         rasta     (mt/user->id :rasta)]
     (mt/with-temp [:model/Card {c1 :id} {}
@@ -274,7 +274,7 @@
                     ["collection" c1 "collection normal"]]
                    (search-results :bookmarked "collection" {:current-user-id crowberto})))))))))
 
-(deftest ^:parallel user-recency-test
+(deftest user-recency-test
   (let [user-id     (mt/user->id :crowberto)
         right-now   (Instant/now)
         long-ago    (.minus right-now 10 ChronoUnit/DAYS)
@@ -305,7 +305,7 @@
                   ["dataset" c3 "card unseen"]]
                  (search-results :user-recency "card" {:current-user-id user-id}))))))))
 
-(deftest ^:parallel mine-test
+(deftest mine-test
   (let [crowberto (mt/user->id :crowberto)
         rasta     (mt/user->id :rasta)]
     (with-index-contents [{:model "card" :id 1 :name "crow's fly card" :creator_id crowberto}

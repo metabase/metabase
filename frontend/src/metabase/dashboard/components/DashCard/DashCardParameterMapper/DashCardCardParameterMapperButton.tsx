@@ -2,14 +2,13 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Button } from "metabase/common/components/Button";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { Box, Flex, Icon, Popover, Tooltip } from "metabase/ui";
+import { Box, Ellipsified, Flex, Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, ParameterTarget } from "metabase-types/api";
+import type { Card, ParameterTarget, VirtualCard } from "metabase-types/api";
 
 import S from "./DashCardParameterMapper.module.css";
 
@@ -18,7 +17,7 @@ interface DashCardCardParameterMapperButtonProps {
   isVirtual: boolean;
   isQuestion: boolean;
   question: Question | undefined;
-  card: Card;
+  card: Card | VirtualCard;
   handleChangeTarget: (target: ParameterTarget | null) => void;
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;

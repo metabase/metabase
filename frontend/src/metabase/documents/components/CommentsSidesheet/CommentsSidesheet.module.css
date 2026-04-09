@@ -25,7 +25,7 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 }
 
 .tabPanel {

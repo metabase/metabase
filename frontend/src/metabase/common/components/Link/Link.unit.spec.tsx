@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 
-import Link from "./Link";
+import { Link } from "./Link";
 
 describe("Link", () => {
   it("should render correctly", () => {

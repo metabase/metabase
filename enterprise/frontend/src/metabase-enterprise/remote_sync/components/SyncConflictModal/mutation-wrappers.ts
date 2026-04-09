@@ -35,8 +35,7 @@ export const usePushChangesAction = () => {
 
           sendToast({
             message: c("{0} is the GitHub branch name")
-              .t`Changes pushed to branch ${branch} successfully.`,
-            timeout: 8000,
+              .t`Pushing changes to branch ${branch}...`,
           });
           closeModal();
         } catch (error) {

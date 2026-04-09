@@ -1,0 +1,47 @@
+import { type ComponentProps, memo } from "react";
+
+import CS from "metabase/css/core/index.css";
+import type { IconName } from "metabase/ui";
+import { Group, Icon, Text } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import { Ellipsified } from "metabase/ui/components/data-display/Ellipsified";
+
+interface EntityNameCellProps {
+  icon?: IconName;
+  name: React.ReactNode;
+  iconColor?: ColorName;
+  wrap?: boolean;
+  ellipsifiedProps?: ComponentProps<typeof Ellipsified>;
+  tooltipOpenDelay?: number;
+  "data-testid"?: string;
+}
+
+export const EntityNameCell = memo(function EntityNameCell({
+  icon,
+  name,
+  iconColor = "brand",
+  wrap = false,
+  tooltipOpenDelay = 600,
+  ellipsifiedProps,
+  "data-testid": testId,
+}: EntityNameCellProps) {
+  return (
+    <Group data-testid={testId} gap="sm" wrap="nowrap" miw={0}>
+      {icon && <Icon name={icon} c={iconColor} className={CS.flexNoShrink} />}
+      {wrap ? (
+        <Text flex={1} miw={0}>
+          {name}
+        </Text>
+      ) : (
+        <Ellipsified
+          flex={1}
+          miw={0}
+          tooltipProps={{ openDelay: tooltipOpenDelay }}
+          {...ellipsifiedProps}
+        >
+          {name}
+        </Ellipsified>
+      )}
+    </Group>
+  );
+});

@@ -119,4 +119,5 @@ FieldTypeDetail.propTypes = {
   isEditing: PropTypes.bool.isRequired,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(FieldTypeDetail);

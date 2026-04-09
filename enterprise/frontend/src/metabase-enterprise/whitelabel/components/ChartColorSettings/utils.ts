@@ -1,3 +1,4 @@
+import type { ColorInstance } from "color";
 import Color from "color";
 import _ from "underscore";
 
@@ -43,12 +44,12 @@ export const getAutoChartColors = (
 };
 
 const getAutoColors = (
-  oldColors: (Color | undefined)[],
-  fallbackColor: Color,
+  oldColors: (ColorInstance | undefined)[],
+  fallbackColor: ColorInstance,
 ) => {
   const oldColor = oldColors.find((color) => color != null);
 
-  const autoColors: Color[] = [];
+  const autoColors: ColorInstance[] = [];
   oldColors.forEach((_color, index) => {
     if (index === 0 && !oldColor) {
       autoColors.push(fallbackColor);
@@ -66,7 +67,7 @@ const getAutoColors = (
   return oldColors.map((color) => (color ? color : availableColors.shift()));
 };
 
-const getNextColor = (color: Color) => {
+const getNextColor = (color: ColorInstance) => {
   const newHueChange = color.hue() >= 90 && color.hue() <= 130 ? 60 : 45;
   const newHue = (color.hue() + newHueChange) % 360;
   const newSaturation = newHue <= 65 || newHue >= 345 ? 55 : 40;
@@ -74,11 +75,14 @@ const getNextColor = (color: Color) => {
   return color.hue(newHue).saturationv(newSaturation).value(90);
 };
 
-const isSimilarColor = (newColor: Color, oldColor: Color) => {
+const isSimilarColor = (newColor: ColorInstance, oldColor: ColorInstance) => {
   return Math.abs(newColor.hue() - oldColor.hue()) <= 20;
 };
 
-const isSimilarToColors = (newColor: Color, colors: (Color | undefined)[]) => {
+const isSimilarToColors = (
+  newColor: ColorInstance,
+  colors: (ColorInstance | undefined)[],
+) => {
   return colors.some(
     (oldColor) => oldColor && isSimilarColor(newColor, oldColor),
   );

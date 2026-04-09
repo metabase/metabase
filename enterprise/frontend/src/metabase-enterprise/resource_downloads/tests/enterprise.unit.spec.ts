@@ -4,7 +4,7 @@ import { downloadsEnabledTestData, setup } from "./setup";
 
 describe("[EE - no features] resource downloads plugin", () => {
   beforeAll(() => {
-    setup({ hasEnterprisePlugins: false });
+    setup({});
   });
 
   describe("areDownloadsEnabled - should always return true if we don't have the whitelabel feature", () => {

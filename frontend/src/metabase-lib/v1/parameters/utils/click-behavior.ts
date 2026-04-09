@@ -237,6 +237,7 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
           dimension: undefined,
           snippet: undefined,
           "temporal-unit": undefined,
+          table: undefined,
           text: TYPE.Text,
           number: TYPE.Number,
           date: TYPE.Temporal,
@@ -415,7 +416,9 @@ export function formatSourceForTarget(
 
       if (
         typeof sourceDateUnit === "string" &&
-        ["week", "month", "quarter", "year"].includes(sourceDateUnit)
+        ["week", "month", "quarter", "year", "hour", "minute"].includes(
+          sourceDateUnit,
+        )
       ) {
         return formatDateToRangeForParameter(datum.value, sourceDateUnit);
       }
@@ -455,6 +458,9 @@ function formatDateForParameterType(
   } else if (parameterType === "date/quarter-year") {
     return m.format("[Q]Q-YYYY");
   } else if (parameterType === "date/single") {
+    if (unit === "hour" || unit === "minute") {
+      return m.format("YYYY-MM-DDTHH:mm");
+    }
     return m.format("YYYY-MM-DD");
   } else if (parameterType === "date/all-options") {
     return formatDateTimeForParameter(value, unit);

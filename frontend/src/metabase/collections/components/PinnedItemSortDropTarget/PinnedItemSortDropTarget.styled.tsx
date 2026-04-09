@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import { GAP_REM } from "metabase/collections/components/PinnedItemOverview/PinnedItemOverview.styled";
-import PinnedItemSortDropTarget from "metabase/common/components/dnd/PinnedItemSortDropTarget";
+import { PinnedItemSortDropTarget } from "metabase/common/components/dnd/PinnedItemSortDropTarget";
 import { color } from "metabase/ui/utils/colors";
 
 export type PinDropTargetProps = {
@@ -44,12 +44,12 @@ export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
   border-left: ${(props) =>
     props.isFrontTarget &&
     `4px solid ${
-      props.hovered ? color("brand") : "var(--mb-color-bg-medium)"
+      props.hovered ? color("brand") : "var(--mb-color-background-tertiary)"
     }`};
   border-right: ${(props) =>
     props.isBackTarget &&
     `4px solid ${
-      props.hovered ? color("brand") : "var(--mb-color-bg-medium)"
+      props.hovered ? color("brand") : "var(--mb-color-background-tertiary)"
     }`};
   display: ${(props) => !(props.hovered || props.highlighted) && "none"};
 `;

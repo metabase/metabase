@@ -38,6 +38,12 @@
 
 (defenterprise delete-associated-database-router!
   "OSS version, does nothing"
-  metabase-enterprise.database-routing.model
+  metabase-enterprise.database-routing.models
   [_db-id]
   nil)
+
+(defenterprise db-routing-enabled?
+  "Returns whether or not the given database is either a router or destination database."
+  metabase-enterprise.database-routing.models
+  [_db-or-id]
+  false)

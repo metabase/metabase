@@ -1,0 +1,7 @@
+.SidebarContentTitle {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 0.5rem;
+}

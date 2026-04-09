@@ -1,7 +1,8 @@
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
+
+import { QueryVisualization } from "../../../../components/QueryVisualization";
 
 import S from "./QueryEditorVisualization.module.css";
 
@@ -37,6 +38,7 @@ export function QueryEditorVisualization({
         isRunnable={isRunnable}
         isRunning={isRunning}
         isDirty
+        queryBuilderMode="dataset"
         isResultDirty={isResultDirty}
         isNativeEditorOpen={isNative}
         isDirtyStateShownForError={!isNative}

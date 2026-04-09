@@ -19,6 +19,12 @@ import {
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import type { MantineThemeOverride } from "metabase/ui";
+import type {
+  MetabaseAccentColorKey,
+  MetabaseColorKey,
+} from "metabase/ui/colors";
+import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
+import type { ColorSettings } from "metabase-types/api";
 
 import { colorTuple } from "./color-tuple";
 
@@ -37,6 +43,7 @@ const stripUndefinedKeys = <T>(x: T): unknown =>
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
   font: string | undefined,
+  whitelabeledColors?: ColorSettings | undefined,
 ): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
@@ -56,10 +63,24 @@ export function getEmbeddingThemeOverride(
     },
 
     components: getEmbeddingComponentOverrides(),
+    colors: {},
   };
 
+  // Apply whitelabeled colors from appearance settings
+  for (const key in whitelabeledColors) {
+    if (!override.colors) {
+      override.colors = {};
+    }
+
+    override.colors[key as MetabaseColorKey] = colorTuple(
+      whitelabeledColors[key],
+    );
+  }
+
   if (theme.colors) {
-    override.colors = {};
+    if (!override.colors) {
+      override.colors = {};
+    }
 
     const userColors = { ...theme.colors };
 
@@ -99,6 +120,21 @@ export function getEmbeddingThemeOverride(
         for (const themeColorName of themeColorNames) {
           override.colors[themeColorName] = colorTuple(color);
         }
+      }
+    }
+
+    if (theme.colors.charts) {
+      const accents = mapChartColorsToAccents(theme.colors.charts);
+
+      for (const _accentKey in accents) {
+        const accentKey = _accentKey as MetabaseAccentColorKey;
+        const accentColor = accents[accentKey];
+
+        if (!accentColor) {
+          continue;
+        }
+
+        override.colors[accentKey] = colorTuple(accentColor);
       }
     }
   }

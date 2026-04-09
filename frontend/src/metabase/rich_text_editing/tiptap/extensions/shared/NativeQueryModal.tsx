@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
@@ -11,9 +12,10 @@ import {
 } from "metabase/documents/documents.slice";
 import { isMac } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { createRawSeries } from "metabase/query_builder/utils";
+import { DataReference } from "metabase/querying/components/DataReference/DataReference";
+import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -25,11 +27,6 @@ import type { Card, DatabaseId, Dataset, RawSeries } from "metabase-types/api";
 
 import S from "./NativeQueryModal.module.css";
 
-type DataReferenceStackItem = {
-  type: string;
-  item: unknown;
-};
-
 interface NativeQueryModalProps {
   card: Card;
   isOpen: boolean;
@@ -38,17 +35,12 @@ interface NativeQueryModalProps {
   initialDataset?: Dataset;
 }
 
-const EDITOR_HEIGHT_RATIO = 0.4;
-const EDITOR_MIN_HEIGHT = 200;
-const EDITOR_HEIGHT_OFFSET = 80;
-
 const MODAL_SIDEBAR_FEATURES = {
   dataReference: true,
   variables: false,
   snippets: false,
   promptInput: false,
   formatQuery: false,
-  aiGeneration: false,
 } as const;
 
 const getRunQueryShortcut = () => (isMac() ? t`⌘ + return` : t`Ctrl + enter`);
@@ -98,13 +90,13 @@ const QueryExecutionEmptyState = ({
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
         </Box>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
             <b key="shortcut">({keyboardShortcut})</b>
           )}`}
         </Text>
-        <Text c="text-medium">{t`Here's where your results will appear`}</Text>
+        <Text c="text-secondary">{t`Here's where your results will appear`}</Text>
       </Stack>
     </Flex>
   );
@@ -128,7 +120,7 @@ export const NativeQueryModal = ({
     useState(false);
   const [isShowingDataReference, setIsShowingDataReference] = useState(false);
   const [dataReferenceStack, setDataReferenceStack] = useState<
-    DataReferenceStackItem[]
+    DataReferenceItem[]
   >([]);
 
   const [
@@ -139,6 +131,8 @@ export const NativeQueryModal = ({
   const [currentQueryPromise, setCurrentQueryPromise] = useState<ReturnType<
     typeof triggerQuery
   > | null>(null);
+
+  const { ref: mainRef, height: totalHeight } = useElementSize();
 
   const isQueryRunning = isLoading || isFetching;
 
@@ -303,6 +297,11 @@ export const NativeQueryModal = ({
     );
   }
 
+  const nativeQuery =
+    modifiedQuestion?.legacyNativeQuery() ??
+    question?.legacyNativeQuery() ??
+    null;
+
   return (
     <Modal
       opened={isOpen}
@@ -323,24 +322,20 @@ export const NativeQueryModal = ({
             mih={0}
             miw={0}
             className={S.mainContent}
+            ref={mainRef}
           >
             <Box pos="relative" className={S.editorContainer}>
-              {(modifiedQuestion?.legacyNativeQuery() ||
-                question?.legacyNativeQuery()) && (
+              {nativeQuery && (
                 <NativeQueryEditor
                   question={modifiedQuestion}
-                  query={
-                    modifiedQuestion?.legacyNativeQuery() ??
-                    question?.legacyNativeQuery() ??
-                    {}
-                  }
+                  query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
                   hasTopBar
                   hasEditingSidebar
                   hasParametersList={false}
                   sidebarFeatures={MODAL_SIDEBAR_FEATURES}
-                  viewHeight={400}
+                  availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}
                   isResultDirty={false}
@@ -348,7 +343,6 @@ export const NativeQueryModal = ({
                   isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
                   isShowingSnippetSidebar={false}
                   setDatasetQuery={setDatasetQuery}
-                  runQuestionQuery={handleRunQuery}
                   runQuery={handleRunQuery}
                   cancelQuery={handleCancelQuery}
                   toggleTemplateTagsEditor={() =>
@@ -359,7 +353,7 @@ export const NativeQueryModal = ({
                       const databaseId = modifiedQuestion.databaseId();
                       if (databaseId) {
                         setDataReferenceStack([
-                          { type: "database", item: { id: databaseId } },
+                          { type: "database", id: databaseId },
                         ]);
                       }
                     }
@@ -380,21 +374,6 @@ export const NativeQueryModal = ({
                     setModifiedQuestion(newQuestion);
                   }}
                   resizable
-                  resizableBoxProps={{
-                    height: Math.max(
-                      EDITOR_MIN_HEIGHT,
-                      Math.floor(
-                        window.innerHeight * EDITOR_HEIGHT_RATIO -
-                          EDITOR_HEIGHT_OFFSET,
-                      ),
-                    ),
-                    style: {
-                      border: "none",
-                      width: "100%",
-                      minWidth: 0,
-                      overflow: "hidden",
-                    },
-                  }}
                 />
               )}
             </Box>
@@ -446,7 +425,7 @@ export const NativeQueryModal = ({
             <Box
               w="350px"
               miw="350px"
-              bg="var(--mb-color-bg-white)"
+              bg="background-primary"
               className={S.dataReferenceSidebar}
             >
               <DataReference
@@ -459,7 +438,7 @@ export const NativeQueryModal = ({
                     setDataReferenceStack(dataReferenceStack.slice(0, -1));
                   }
                 }}
-                pushDataReferenceStack={(item: DataReferenceStackItem) => {
+                pushDataReferenceStack={(item: DataReferenceItem) => {
                   setDataReferenceStack([...dataReferenceStack, item]);
                 }}
               />
@@ -473,7 +452,7 @@ export const NativeQueryModal = ({
           justify="flex-end"
           gap="0.5rem"
           p="1rem"
-          bg="var(--mb-color-bg-white)"
+          bg="background-primary"
           className={S.footer}
         >
           <Button variant="subtle" onClick={onClose}>

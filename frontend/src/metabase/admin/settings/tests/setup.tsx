@@ -1,7 +1,10 @@
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupApiKeyEndpoints,
   setupDatabasesEndpoints,
@@ -10,6 +13,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
+  setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
   setupTokenStatusEndpoint,
   setupUploadManagementEndpoint,
@@ -19,7 +23,7 @@ import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getSettingsRoutes } from "metabase/admin/settingsRoutes";
-import type { TokenFeature } from "metabase-types/api";
+import type { TokenFeature, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -36,7 +40,11 @@ export const ossRoutes: RouteMap = {
   root: { path: "", testPattern: /site name/i },
   general: { path: "/general", testPattern: /site name/i },
   email: { path: "/email", testPattern: /SMTP/i },
-  notifications: { path: "/notifications", testPattern: /Connect to Slack/i },
+  slack: {
+    path: "/slack",
+    testPattern: /Create a Slack app and connect to it/i,
+  },
+  webhooks: { path: "/webhooks", testPattern: /Configure webhooks/i },
   authentication: {
     path: "/authentication",
     testPattern: /Sign in with Google/i,
@@ -96,11 +104,17 @@ export const routeObjtoArray = (map: RouteMap) => {
 };
 
 export const setup = async ({
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   hasTokenFeatures = false,
   isAdmin = true,
   features = {},
   initialRoute = "",
+}: {
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
+  hasTokenFeatures?: boolean;
+  isAdmin?: boolean;
+  features?: Partial<TokenFeatures>;
+  initialRoute?: string;
 }) => {
   const tokenFeatures = createMockTokenFeatures({});
   if (hasTokenFeatures) {
@@ -128,6 +142,7 @@ export const setup = async ({
   setupGroupsEndpoint([]);
   setupDatabasesEndpoints([]);
   setupSlackManifestEndpoint();
+  setupSlackAppInfoEndpoint();
   setupUploadManagementEndpoint([]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
@@ -136,6 +151,7 @@ export const setup = async ({
   });
 
   fetchMock.get("path:/api/cloud-migration", { status: 204 });
+  fetchMock.get("path:/api/ee/sso/oidc", []);
 
   const user = createMockUser({
     is_superuser: isAdmin,
@@ -146,8 +162,12 @@ export const setup = async ({
     settings: mockSettings(settings),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    if (enterprisePlugins === "*") {
+      setupEnterprisePlugins();
+    } else {
+      enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
+    }
     setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 

@@ -13,3 +13,6 @@ export function getSeriesYAxisIndex(
 
   return leftAxisModel.seriesKeys.includes(dataKey) ? 0 : 1;
 }
+
+export const getPaddedAxisLabel = (label: string | number): string =>
+  ` ${label} `; // spaces force padding between ticks

@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import Tooltip from "./Tooltip";
+import { Tooltip } from "./Tooltip";
 
 export default {
   title: "Deprecated/Components/Tooltip",

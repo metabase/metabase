@@ -2,8 +2,8 @@ import dayjs from "dayjs";
 import { isElementOfType } from "react-dom/test-utils";
 
 import { mockSettings } from "__support__/settings";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import {
   capitalize,
   formatDateTimeWithUnit,
@@ -146,7 +146,7 @@ describe("formatting", () => {
         expect(formatNumber(1000n, options)).toEqual("10,000");
       });
 
-      it("should resepect 'decimals' setting", () => {
+      it("should respect 'decimals' setting", () => {
         expect(formatNumber(500000, { compact: true, decimals: 0 })).toBe(
           "500k",
         );
@@ -717,7 +717,7 @@ describe("formatting", () => {
       ["month", "April 2022"],
       ["year", "2022"],
     ])(
-      "should include weekday when date unit is smaller or equal whan a week",
+      "should include weekday when date unit is smaller than or equal to a week",
       (unit, formatted) => {
         const dateString = "2022-04-27T06:00:00.000Z";
 

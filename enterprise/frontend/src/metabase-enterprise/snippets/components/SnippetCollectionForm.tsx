@@ -4,13 +4,14 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import Button from "metabase/common/components/Button";
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
+import { Button } from "metabase/common/components/Button";
+import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import FormInput from "metabase/common/components/FormInput";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import FormTextArea from "metabase/common/components/FormTextArea";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import { FormInput } from "metabase/common/components/FormInput";
+import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
+import { FormTextArea } from "metabase/common/components/FormTextArea";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
@@ -109,18 +110,8 @@ function SnippetCollectionForm({
   );
 
   const shouldDisableItem = useCallback(
-    (item: CollectionPickerItem) => {
-      if (passedCollection.id === undefined) {
-        return false;
-      } else {
-        return (
-          item.effective_location
-            ?.split("/")
-            .includes(String(passedCollection.id)) ||
-          passedCollection.id === item.id
-        );
-      }
-    },
+    (item: OmniPickerItem) =>
+      isItemInCollectionOrItsDescendants(item, passedCollection.id),
     [passedCollection.id],
   );
 
@@ -147,9 +138,9 @@ function SnippetCollectionForm({
           <FormCollectionPicker
             name="parent_id"
             title={t`Folder this should be in`}
-            type="snippet-collections"
             collectionPickerModalProps={{
-              shouldDisableItem: shouldDisableItem,
+              isDisabledItem: shouldDisableItem,
+              namespaces: ["snippets"],
             }}
           />
           <FormFooter>

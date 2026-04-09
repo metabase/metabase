@@ -1,9 +1,9 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 
-import ColorPicker from "./ColorPicker";
+import { ColorPicker } from "./ColorPicker";
 
 export default {
   title: "Components/ColorPicker",

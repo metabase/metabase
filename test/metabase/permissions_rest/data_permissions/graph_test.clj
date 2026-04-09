@@ -51,6 +51,7 @@
            {database-id-1
             {:perms/view-data :blocked
              :perms/create-queries :no
+             :perms/transforms :no
              :perms/download-results :no}}})))))
 
 (deftest update-db-level-create-queries-permissions!-test
@@ -80,14 +81,16 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries :query-builder
-             :perms/view-data :unrestricted}}}
+             :perms/view-data :unrestricted
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
             {:create-queries :no}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries :no}}}
+            {:perms/create-queries :no
+             :perms/transforms :no}}}
 
           {group-id-1
            {database-id-1
@@ -148,6 +151,7 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries :no
+             :perms/transforms :no
              :perms/view-data {"PUBLIC"
                                {table-id-1 :unrestricted
                                 table-id-2 :legacy-no-self-service}
@@ -158,11 +162,13 @@
           {group-id-1
            {database-id-1
             {:create-queries :query-builder-and-native
-             :view-data :unrestricted}}}
+             :view-data :unrestricted
+             :transforms :yes}}}
           {group-id-1
            {database-id-1
             {:perms/create-queries :query-builder-and-native
-             :perms/view-data :unrestricted}}}
+             :perms/view-data :unrestricted
+             :perms/transforms :yes}}}
 
           ;; Setting data access permissions at the schema-level
           {group-id-1
@@ -173,13 +179,14 @@
           {group-id-1
            {database-id-1
             {:perms/create-queries :no
+             :perms/transforms :no
              :perms/view-data {"PUBLIC"
                                {table-id-1 :unrestricted
                                 table-id-2 :unrestricted}
                                ""
                                {table-id-3 :legacy-no-self-service}}}}}
 
-          ;; Setting block permissions for the database also sets :create-queries and :download-results to :no
+          ;; Setting block permissions for the database also sets :create-queries and :download-results to :no and :transforms to :no
           {group-id-1
            {database-id-1
             {:view-data :blocked}}}
@@ -187,6 +194,7 @@
            {database-id-1
             {:perms/create-queries :no
              :perms/view-data :blocked
+             :perms/transforms :no
              :perms/download-results :no}}})))))
 
 (deftest update-db-level-download-permissions!-test

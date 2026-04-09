@@ -2,7 +2,7 @@ import { type FormEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import NumericInput from "metabase/common/components/NumericInput";
+import { NumericInput } from "metabase/common/components/NumericInput";
 import CS from "metabase/css/core/index.css";
 import { parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";

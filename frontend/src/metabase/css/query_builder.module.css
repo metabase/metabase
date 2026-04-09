@@ -13,7 +13,7 @@
   text-transform: uppercase;
   font-size: 10px;
   font-weight: 700;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .QueryFilters {
@@ -65,7 +65,7 @@
   align-items: center;
   cursor: pointer;
   padding: 0.75rem 1.5rem 0.75rem 0.75rem;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 }
 
 .SelectionItem:hover {
@@ -87,15 +87,15 @@
 }
 
 .SelectionItem:hover :global(.Icon) {
-  color: var(--mb-color-text-white) !important;
+  color: var(--mb-color-text-primary-inverse) !important;
 }
 
 .SelectionItem:hover .SelectionModuleDisplay {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .SelectionItem:hover .SelectionModuleDescription {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .SelectionItem.SelectionItemSelected :global(.Icon-check) {
@@ -108,7 +108,7 @@
 }
 
 .SelectionModuleDescription {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.8rem;
 }
 
@@ -169,7 +169,7 @@
   font-size: 10px;
   text-align: center;
   text-transform: uppercase;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   padding-left: var(--padding-1);
   padding-right: var(--padding-1);
   position: absolute;
@@ -194,7 +194,7 @@
   flex-direction: column;
   font-size: 0.9em;
   z-index: 2;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
 }
 
@@ -248,7 +248,7 @@
 }
 
 .GuiBuilderSectionLabel {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   position: absolute;
   top: -7px;
   left: 10px;
@@ -293,14 +293,14 @@
   max-height: 200px;
   overflow: scroll;
   padding: 1em;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border: 1px solid var(--mb-color-border);
   border-radius: 2px;
   white-space: pre-wrap;
 }
 
 .QuestionTooltipTarget {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   border: 2px solid currentColor;
   border-radius: 99px;
   width: 20px;
@@ -326,7 +326,7 @@
 .Overlay {
   background-color: color-mix(
     in srgb,
-    var(--mb-color-bg-white) 75%,
+    var(--mb-color-background-primary) 75%,
     transparent
   );
   transition:
@@ -340,7 +340,7 @@
       background-color: color-mix(
         in srgb,
         var(--mb-color-brand) 3%,
-        color-mix(in srgb, var(--mb-color-bg-white) 75%, transparent)
+        color-mix(in srgb, var(--mb-color-background-primary) 75%, transparent)
       );
     }
   }

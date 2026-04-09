@@ -23,7 +23,7 @@
   (t/days 1))
 
 (defn indexes
-  "The current 'pending' and 'active' indexes for the given co-ordinates, where they exist."
+  "The current 'pending' and 'active' indexes for the given coordinates, where they exist."
   [engine version]
   (let [pending-cut-off (t/minus (t/offset-date-time) pending-table-cut-off)]
     (->> (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]

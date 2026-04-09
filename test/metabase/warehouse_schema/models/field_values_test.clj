@@ -94,7 +94,7 @@
                                      :base_type        "type/Boolean"}
                                     true}
 
-                                   "retired/sensitive/hidden/details-only fields should always be excluded"
+                                   "retired/sensitive/hidden fields should always be excluded"
                                    {{:base_type        :type/Boolean
                                      :has_field_values :list
                                      :visibility_type  :retired}
@@ -118,16 +118,30 @@
                                     {:has_field_values :list
                                      :visibility_type  :hidden
                                      :base_type        :type/Text}
-                                    false
+                                    false}
 
-                                    {:base_type        :type/Boolean
+                                   "details-only fields should be included (fixes #10851)"
+                                   {{:base_type        :type/Boolean
                                      :has_field_values :list
                                      :visibility_type  :details-only}
-                                    false
+                                    true
 
                                     {:has_field_values :list
                                      :visibility_type  :details-only
                                      :base_type        :type/Text}
+                                    true}
+
+                                   "fields with preview_display=false should be excluded"
+                                   {{:base_type        :type/Boolean
+                                     :has_field_values :list
+                                     :visibility_type  :normal
+                                     :preview_display  false}
+                                    false
+
+                                    {:has_field_values :list
+                                     :visibility_type  :details-only
+                                     :base_type        :type/Text
+                                     :preview_display  false}
                                     false}
 
                                    "date/time based fields should always be excluded"
@@ -241,8 +255,8 @@
       (t2/delete! :model/FieldValues :field_id (mt/id :categories :name) :type :full)
       (is (= :full (-> (t2/select-one :model/Field :id (mt/id :categories :name))
                        field-values/get-or-create-full-field-values!
-                       :type))
-          (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :full))))
+                       :type)))
+      (is (= 1 (t2/count :model/FieldValues :field_id (mt/id :categories :name) :type :full)))
 
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
         (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :categories :name)

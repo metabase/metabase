@@ -18,16 +18,16 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
-   [metabase.test.data.env :as te]
+   [metabase.test.data.env :as te] ; codespell:ignore
    [metabase.test.data.interface :as tx]
    [metabase.test.data.oracle :as oracle.tx]
    [metabase.test.data.sql :as sql.tx]
@@ -156,8 +156,24 @@
                       {:name "tunnel-pass"}
                       {:name "tunnel-private-key"}
                       {:name "tunnel-private-key-passphrase"}
+                      {:name       "tunnel-known-hosts-options"
+                       :type       "select"
+                       :options    [{:name  "Local file path"
+                                     :value "local"}
+                                    {:name  "Uploaded file path"
+                                     :value "uploaded"}]
+                       :visible-if {"tunnel-enabled" true}}
+                      {:name       "tunnel-known-hosts-value"
+                       :type       "textFile"
+                       :visible-if {:tunnel-known-hosts-options "uploaded"
+                                    "tunnel-enabled" true}}
+                      {:name       "tunnel-known-hosts-path"
+                       :type       "string"
+                       :visible-if {:tunnel-known-hosts-options "local"
+                                    "tunnel-enabled" true}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
+                      {:name "write-data-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -165,6 +181,8 @@
                       {:name "refingerprint"}]
             actual   (->> (driver/connection-properties :oracle)
                           (driver.u/connection-props-server->client :oracle))]
+        (is (= (count expected) (count actual))
+            (str "actual names: " (pr-str (mapv :name actual))))
         (is (= expected (mt/select-keys-sequentially expected actual)))))))
 
 (deftest ^:parallel test-ssh-connection
@@ -261,7 +279,7 @@
                    "FROM"
                    "  ("
                    "    SELECT"
-                   "      \"source\".\"s\" \"s\""
+                   "      \"__mb_source\".\"s\" \"s\""
                    "    FROM"
                    "      ("
                    "        SELECT"
@@ -269,7 +287,7 @@
                    "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
                    "        FROM"
                    "          \"public\".\"table\""
-                   "      ) \"source\""
+                   "      ) \"__mb_source\""
                    "  )"
                    "WHERE"
                    "  rownum <= 3"]]
@@ -440,7 +458,7 @@
                                   tx/*database-name-override* "test-data"
                                   ;; Only run the embedded test with the :oracle driver. For example, run it with :h2
                                   ;; results in errors because of column name formatting.
-                                  te/*test-drivers* (constantly #{:oracle})]
+                                  te/*test-drivers* (constantly #{:oracle})] ; codespell:ignore te
                           (testing " and execute a query correctly"
                             (qp-test.order-by-test/order-by-test))))))))))))
       (log/warn (u/format-color 'yellow
@@ -549,7 +567,7 @@
   (mt/test-driver :oracle
     (mt/dataset date-cols-with-datetime-values
       (testing "Oracle's DATE columns are mapped to type/DateTime (#49440)"
-        (testing "Filtering by datetime retuns expected results"
+        (testing "Filtering by datetime returns expected results"
           (let [query (mt/mbql-query dates_with_time
                         {:filter [:= [:field %date_with_time {:base-type :type/DateTime}] "2024-11-05T12:12:12"]})]
             (mt/with-native-query-testing-context query

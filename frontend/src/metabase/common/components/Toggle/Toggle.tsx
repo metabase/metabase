@@ -13,13 +13,13 @@ export interface ToggleProps
 }
 
 /** @deprecated use metabase/ui Switch instead */
-const Toggle = forwardRef(function Toggle(
+export const Toggle = forwardRef(function Toggle(
   { className, value, small, color, onChange, ...rest }: ToggleProps,
   ref: Ref<HTMLInputElement>,
 ): JSX.Element {
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      onChange && onChange(event.currentTarget.checked);
+      onChange?.(event.currentTarget.checked);
     },
     [onChange],
   );
@@ -39,6 +39,3 @@ const Toggle = forwardRef(function Toggle(
     />
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Toggle;

@@ -55,12 +55,7 @@ const getMetricColumnData = (
   });
 };
 
-const getColumnData = (
-  columns: ColumnDescriptor[],
-  datum: GroupedDatum,
-  rawRows: RowValues[],
-  seriesIndex: number,
-) => {
+const getColumnData = (columns: ColumnDescriptor[], rawRows: RowValues[]) => {
   return columns
     .map((columnDescriptor) => {
       const { column, index } = columnDescriptor;
@@ -75,7 +70,7 @@ const getColumnData = (
 
         value = formatNullable(metricSum);
       } else {
-        value = datum.rawRows[seriesIndex][index];
+        value = rawRows[0]?.[index];
       }
 
       return value != null
@@ -91,15 +86,18 @@ const getColumnData = (
 
 const getColumnsData = (
   chartColumns: CartesianChartColumns,
-  series: Series<GroupedDatum, unknown>,
-  seriesIndex: number,
+  series: Series<GroupedDatum>,
   datum: GroupedDatum,
   datasetColumns: DatasetColumn[],
   visualizationSettings: VisualizationSettings,
 ) => {
+  const columnTitle =
+    visualizationSettings["graph.x_axis.title_text"] ??
+    chartColumns.dimension.column.display_name;
+
   const data = [
     {
-      key: chartColumns.dimension.column.display_name,
+      key: columnTitle,
       value: formatNullable(datum.dimensionValue),
       col: chartColumns.dimension.column,
     },
@@ -133,9 +131,7 @@ const getColumnsData = (
     datasetColumns,
   );
 
-  data.push(
-    ...getColumnData(otherColumnsDescriptors, datum, rawRows, seriesIndex),
-  );
+  data.push(...getColumnData(otherColumnsDescriptors, rawRows));
   return data;
 };
 
@@ -145,11 +141,10 @@ export const getClickData = (
   chartColumns: CartesianChartColumns,
   datasetColumns: DatasetColumn[],
 ): ClickObject => {
-  const { series, seriesIndex, datum } = bar;
+  const { series, datum } = bar;
   const data = getColumnsData(
     chartColumns,
     series,
-    seriesIndex,
     datum,
     datasetColumns,
     visualizationSettings,
@@ -314,7 +309,6 @@ export const getHoverData = (
     const data = getColumnsData(
       chartColumns,
       bar.series,
-      bar.seriesIndex,
       bar.datum,
       datasetColumns,
       settings,

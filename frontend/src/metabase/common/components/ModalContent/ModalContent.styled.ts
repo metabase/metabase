@@ -10,11 +10,11 @@ export const ActionsWrapper = styled.div`
 `;
 
 export const ModalContentActionIcon = styled(Icon)`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 `;
 

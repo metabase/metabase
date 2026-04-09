@@ -1,5 +1,5 @@
 .metabaseLink {
-  --mb-color-background: var(--mb-color-bg-light);
+  --mb-color-background: var(--mb-color-background-secondary);
   /* SVG logo */
   --mb-color-logo-text: #5a6072;
   --mb-color-logo-primary: var(--mb-color-metabase-brand);
@@ -13,17 +13,17 @@
   border: 1px solid var(--mb-color-border);
   border-radius: 0.75rem;
   padding: 0.4688rem 0.75rem;
-  background: var(--mb-color-background);
+  background: var(--mb-color-background-primary);
   color: var(--mb-color-text-primary);
 }
 
 .light {
-  --mb-color-text-primary: var(--mb-color-text-medium);
+  --mb-color-text-primary: var(--mb-color-text-secondary);
 }
 
 .dark {
-  --mb-color-border: var(--mb-color-text-medium);
-  --mb-color-background: #2f353a;
+  --mb-color-border: var(--mb-color-text-secondary);
+  --mb-color-background-primary: #2f353a;
   /* SVG logo */
   --mb-color-logo-text: var(--mb-color-text-primary);
   --mb-color-logo-primary: var(--mb-color-text-primary);

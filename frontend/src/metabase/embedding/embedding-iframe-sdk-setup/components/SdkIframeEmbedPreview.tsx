@@ -17,8 +17,8 @@ import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embe
 import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
-import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
+import { colors as defaultMetabaseColors } from "metabase/ui/colors";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
@@ -147,7 +147,7 @@ const SdkIframeEmbedPreviewInner = () => {
     <Card
       className={S.EmbedPreviewIframe}
       id="iframe-embed-container"
-      bg={theme?.colors?.background}
+      style={{ backgroundColor: theme?.colors?.background }}
       h="100%"
       ref={containerRef}
       pos="relative"

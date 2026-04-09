@@ -1,6 +1,5 @@
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Text } from "metabase/ui";
+import { Ellipsified, Text } from "metabase/ui";
 
 interface ScalarPeriodProps {
   period: string | number | JSX.Element | null;
@@ -19,7 +18,11 @@ export function ScalarPeriod({ period, onClick }: ScalarPeriodProps) {
       className={DashboardS.fullscreenNormalText}
       onClick={onClick}
     >
-      <Ellipsified tooltip={period} lines={1} placement="bottom">
+      <Ellipsified
+        tooltip={period}
+        lines={1}
+        tooltipProps={{ position: "bottom" }}
+      >
         {period}
       </Ellipsified>
     </Text>

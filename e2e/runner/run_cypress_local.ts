@@ -17,6 +17,9 @@ const options = {
   GENERATE_SNAPSHOTS: true,
   JAR_PATH: undefined,
   ...booleanify(process.env),
+  // If this token is present in your env when Cypress runs, it's a mistake.
+  // Cypress needs to start from a clean slate in order to set the token programmatically.
+  MB_PREMIUM_EMBEDDING_TOKEN: undefined,
 };
 
 process.env = unBooleanify(options);
@@ -73,7 +76,7 @@ const init = async () => {
       printBold("⚠️ Your backend is already running");
       console.log(`If tests fail or if something doesn't work:
       - Kill the pid ${backendPid}
-      - Run *yarn test-cypress* again
+      - Run *bun run test-cypress* again
       - This will spin up the live backend with the correct settings for e2e tests
     `);
     } else {
@@ -100,14 +103,17 @@ const init = async () => {
     shell("echo 'Existing snapshots:' && ls -1 e2e/snapshots");
   }
 
-  const isFrontendRunning = shell("lsof -ti:8080 || echo ''", { quiet: true });
+  const frontendPort = process.env.MB_FRONTEND_DEV_PORT || 8080;
+  const isFrontendRunning = shell(`lsof -ti:${frontendPort} || echo ''`, {
+    quiet: true,
+  });
   if (
     !isFrontendRunning &&
     options.CYPRESS_TESTING_TYPE === "e2e" &&
     !runningFromJar
   ) {
     printBold(
-      "⚠️⚠️ You don't have your frontend running. You should probably run yarn build-hot ⚠️⚠️",
+      `⚠️⚠️ You don't have your frontend running on port ${frontendPort}. You should probably run bun run build-hot ⚠️⚠️`,
     );
   }
 
@@ -135,9 +141,11 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
     "🧹 Containers are running in background. If you wish to stop them, run:\n`docker compose -f ./e2e/test/scenarios/docker-compose.yml down`",
   );
 
-  typeof exitCode === "number"
-    ? process.exit(exitCode)
-    : process.exit(SUCCESS_EXIT_CODE);
+  if (typeof exitCode === "number") {
+    process.exit(exitCode);
+  } else {
+    process.exit(SUCCESS_EXIT_CODE);
+  }
 };
 
 init()

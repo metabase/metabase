@@ -15,9 +15,12 @@
    [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [toucan2.core :as t2]))
 
+(defn- crufty-field? [db field-metadata]
+  (crufty/name? (:name field-metadata)
+                (some-> db :settings :auto-cruft-columns)))
+
 (defn- compute-new-visibility-type [db field-metadata]
-  (if (crufty/name? (:name field-metadata)
-                    (some-> db :settings :auto-cruft-columns))
+  (if (crufty-field? db field-metadata)
     :details-only
     ;; n.b. if it was auto-crufted in the past, removing it from auto-cruft will NOT make it visible because old
     ;; visibility-type will be :details-only. This only changes things to be hidden. If you want to make it visible
@@ -45,7 +48,8 @@
          old-database-is-nullable       :database-is-nullable
          old-db-partitioned             :database-partitioned
          old-db-required                :database-required
-         old-visibility-type            :visibility-type} metabase-field
+         old-visibility-type            :visibility-type
+         old-preview-display            :preview-display} metabase-field
         {new-database-type              :database-type
          new-base-type                  :base-type
          new-field-comment              :field-comment
@@ -92,8 +96,11 @@
         new-db-generated?        (not= old-database-is-generated new-database-is-generated)
         new-db-nullable?         (not= old-database-is-nullable new-database-is-nullable)
         new-db-partitioned?      (not= new-db-partitioned old-db-partitioned)
-        new-db-required?         (not= old-db-required new-db-required)
-        new-visibility-type?     (not= old-visibility-type new-visibility-type)
+        new-db-required?           (not= old-db-required new-db-required)
+        new-visibility-type?       (not= old-visibility-type new-visibility-type)
+        ;; set preview_display=false for crufty fields (prevents FieldValues from being created)
+        is-crufty?                 (crufty-field? database field-metadata)
+        set-preview-display-false? (and is-crufty? old-preview-display)
 
         ;; calculate combined updates
         updates
@@ -197,7 +204,9 @@
                       new-db-required)
            {:database_required new-db-required})
          (when new-visibility-type?
-           {:visibility_type new-visibility-type}))]
+           {:visibility_type new-visibility-type})
+         (when set-preview-display-false?
+           {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
              (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))

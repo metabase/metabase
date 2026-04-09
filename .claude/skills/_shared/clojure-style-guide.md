@@ -29,7 +29,7 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 
 **Comments:**
 
-- `TODO` format: `;; TODO (Name M/D/YY) -- description`
+- `TODO` format: `;; TODO (Name YYYY-MM-DD) -- description`
 
 ## Code Organization
 
@@ -42,7 +42,7 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 
 - Break up functions > 20 lines
 - Lines ≤ 120 characters
-- No blank lines within definition forms (except pairwise `let`/`cond`)
+- No blank non-comment lines within definition forms (except pairwise `let`/`cond`)
 
 ## Style Conventions
 

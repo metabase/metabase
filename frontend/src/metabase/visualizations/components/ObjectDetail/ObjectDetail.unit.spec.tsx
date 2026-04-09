@@ -30,7 +30,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import ObjectDetail from "./ObjectDetail";
+import { ObjectDetail } from "./ObjectDetail";
 
 registerVisualizations();
 
@@ -111,6 +111,7 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
       isObjectDetail
       onVisualizationClick={jest.fn()}
       visualizationIsClickable={jest.fn()}
+      isDashboard={false}
     />,
     {
       storeInitialState: state,

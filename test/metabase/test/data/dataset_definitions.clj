@@ -166,7 +166,11 @@
                                                                           (for [[idx [username last-login password-text]] (m/indexed rows)]
                                                                             [username last-login password-text (if (zero? idx)
                                                                                                                  1
-                                                                                                                 idx)])))))
+                                                                                                                 idx)])))
+                                     ;; Self-referencing FKs require disabling FK checks during data loading on MySQL 9.6+,
+                                     ;; which enforces FK constraints row-by-row during bulk INSERT.
+                                     (fn [dbdef]
+                                       (assoc-in dbdef [:options :disable-fk-checks] true))))
 
 (tx/defdataset attempted-murders
   "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the

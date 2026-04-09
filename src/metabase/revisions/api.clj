@@ -6,13 +6,16 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
 
 (def ^:private entity->model
   {"card"      :model/Card
    "dashboard" :model/Dashboard
    "document"  :model/Document
-   "segment"   :model/Segment})
+   "measure"   :model/Measure
+   "segment"   :model/Segment
+   "transform" :model/Transform})
 
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
@@ -23,6 +26,8 @@
 (defn- model-and-instance [entity-name id]
   (let [model (entity->model entity-name)]
     (assert (keyword? model))
+    ;; Ensure the model namespace is loaded before using it
+    (t2.model/resolve-model model)
     [model (t2/select-one model :id id)]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -77,5 +82,7 @@
                            [:id     ms/PositiveInt]]]
   (let [model (entity->model entity)]
     (assert (keyword? model))
+    ;; Ensure the model namespace is loaded before using it
+    (t2.model/resolve-model model)
     (api/read-check model id)
     (revision/revisions+details model id)))

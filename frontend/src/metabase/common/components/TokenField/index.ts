@@ -1,3 +1,2 @@
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./TokenField";
+export { TokenField } from "./TokenField";
 export * from "./utils";

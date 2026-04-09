@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 
-import ListSearchField from "./ListSearchField";
+import { ListSearchField } from "./ListSearchField";
 
 describe("ListSearchField", () => {
   it("should render", async () => {

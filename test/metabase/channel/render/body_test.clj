@@ -12,7 +12,7 @@
    [metabase.formatter.core :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]))
@@ -20,7 +20,7 @@
 (use-fixtures :each
   (fn warn-possible-rebuild
     [thunk]
-    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n"
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `bun run build-static-viz`\n"
       (thunk))))
 
 (def ^:private pacific-tz "America/Los_Angeles")
@@ -540,6 +540,106 @@
                                     (filter row-names))]
             (is (= (map :key (get-in funnel-card [:visualization_settings :funnel.rows]))
                    section-labels))))))))
+
+;; Test data with numeric first column and text second column
+;; This matches the bug scenario: SELECT 100 as val, 'step 1' as step
+(def ^:private funnel-numeric-first-rows
+  [[100 "homepage"]
+   [50 "cart"]
+   [25 "checkout"]
+   [10 "purchase"]])
+
+(tx/defdataset funnel-numeric-first-data
+  [["stages"
+    [{:field-name "val", :base-type :type/Integer}
+     {:field-name "step", :base-type :type/Text}]
+    funnel-numeric-first-rows]])
+
+(deftest render-funnel-with-numeric-first-column-test
+  (testing "Static-viz Funnel Chart auto-detects dimension/metric when metric column is first (#28568)"
+    (mt/dataset funnel-numeric-first-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           :fields       [[:field (mt/id :stages :val)]
+                                          [:field (mt/id :stages :step)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings {}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names  (into #{} (map second funnel-numeric-first-rows))
+                doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+                labels     (->> doc
+                                (hik.s/select (hik.s/tag :tspan))
+                                (mapv (comp first :content))
+                                (filter row-names))]
+            (is (not (render-error? pulse-body)))
+            (is (seq labels) "Dimension labels (step names) should appear in the rendered funnel"))))))
+  (testing "Explicit funnel.dimension setting is honored even when metric is first"
+    (mt/dataset funnel-numeric-first-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           :fields       [[:field (mt/id :stages :val)]
+                                          [:field (mt/id :stages :step)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings {:funnel.dimension "STEP"}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names  (into #{} (map second funnel-numeric-first-rows))
+                doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+                labels     (->> doc
+                                (hik.s/select (hik.s/tag :tspan))
+                                (mapv (comp first :content))
+                                (filter row-names))]
+            (is (not (render-error? pulse-body)))
+            (is (seq labels) "Dimension labels should appear when funnel.dimension is set")))))))
+
+;; Test data with 3 columns where dimension is at index 2
+;; This matches the bug scenario: SELECT 'foo' as col, 100 as val, 'step 1' as step
+(def ^:private funnel-three-col-rows
+  [["foo" 100 "homepage"]
+   ["bar" 50  "cart"]
+   ["baz" 25  "checkout"]
+   ["qux" 10  "purchase"]])
+
+(tx/defdataset funnel-three-col-data
+  [["stages"
+    [{:field-name "col", :base-type :type/Text}
+     {:field-name "val", :base-type :type/Integer}
+     {:field-name "step", :base-type :type/Text}]
+    funnel-three-col-rows]])
+
+(deftest render-funnel-with-three-columns-explicit-settings-test
+  (testing "Static-viz Funnel Chart works when dimension is at index 2 with explicit funnel.dimension and funnel.metric"
+    (mt/dataset funnel-three-col-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           :fields       [[:field (mt/id :stages :col)]
+                                          [:field (mt/id :stages :val)]
+                                          [:field (mt/id :stages :step)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings {:funnel.dimension "STEP"
+                                                   :funnel.metric    "VAL"}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names  (into #{} (map #(nth % 2) funnel-three-col-rows))
+                doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+                labels     (->> doc
+                                (hik.s/select (hik.s/tag :tspan))
+                                (mapv (comp first :content))
+                                (filter row-names))]
+            (is (not (render-error? pulse-body))
+                "3-column funnel with explicit dimension/metric should not error")
+            (is (seq labels)
+                "Dimension labels (step names) should appear in the rendered funnel")))))))
 
 (deftest render-pie-chart-test
   (testing "The static-viz pie chart renders correctly."

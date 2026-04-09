@@ -1,0 +1,21 @@
+/* @import "../../../admin/upsells/components/Upsells.base.module.css"; */
+
+.UpsellCardComponent {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--mb-color-upsell-secondary);
+  background-color: var(--mb-color-background-primary);
+
+  &.Large {
+    .MainStack {
+      padding-top: 2rem;
+      padding-bottom: 3rem;
+    }
+  }
+
+  &.Default {
+    .Title {
+      font-size: 0.875rem;
+    }
+  }
+}

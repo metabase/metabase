@@ -21,14 +21,13 @@ import {
   isItemPinned,
   isPreviewShown,
 } from "metabase/collections/utils";
-import CheckBox from "metabase/common/components/CheckBox";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import EntityMenu from "metabase/common/components/EntityMenu";
-import Swapper from "metabase/common/components/Swapper";
+import { CheckBox } from "metabase/common/components/CheckBox";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { Swapper } from "metabase/common/components/Swapper";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import type { IconName, IconProps } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Ellipsified, Icon } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
 import {
@@ -234,7 +233,7 @@ function EntityItemMenu({
         action: onDeletePermanently,
         color: "danger",
         hoverColor: "danger",
-        hoverBgColor: "bg-error",
+        hoverBgColor: "background-error",
       });
     }
 
@@ -272,7 +271,7 @@ function EntityItemMenu({
   );
 }
 
-const EntityItem = ({
+export const EntityItem = ({
   name,
   iconName,
   onPin,
@@ -351,6 +350,3 @@ const EntityItem = ({
 EntityItem.IconCheckBox = EntityIconCheckBox;
 EntityItem.Name = EntityItemName;
 EntityItem.Menu = EntityItemMenu;
-
-// eslint-disable-next-line import/no-default-export
-export default EntityItem;

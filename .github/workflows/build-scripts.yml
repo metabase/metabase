@@ -10,7 +10,7 @@ on:
 jobs:
 
   test-build-scripts:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
     - uses: actions/checkout@v4
     - name: Prepare back-end environment

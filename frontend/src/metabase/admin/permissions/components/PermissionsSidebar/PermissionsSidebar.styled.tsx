@@ -19,13 +19,13 @@ export const SidebarHeader = styled.div`
 
 export const BackIcon = styled(Icon)`
   margin-right: 0.5rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 `;
 
 export const BackButton = styled.button`
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-family: var(--mb-default-font-family);
   font-weight: 700;
   font-size: 14px;

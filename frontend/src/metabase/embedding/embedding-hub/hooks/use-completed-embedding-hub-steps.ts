@@ -11,27 +11,43 @@ export const useCompletedEmbeddingHubSteps = (): {
   data: Record<EmbeddingHubStepId, boolean>;
   isLoading: boolean;
 } => {
-  const { data: embeddingHubChecklist, isLoading } =
+  const { data: checklistResponse, isLoading } =
     useGetEmbeddingHubChecklistQuery(undefined, {
       refetchOnMountOrArgChange: true,
     });
 
   const data = useMemo(() => {
-    if (isLoading || !embeddingHubChecklist) {
+    const checklist = checklistResponse?.checklist;
+
+    if (isLoading || !checklist) {
       return {
+        // main checklist
         "create-test-embed": false,
         "add-data": false,
         "create-dashboard": false,
         "configure-row-column-security": false,
-        "secure-embeds": false,
+        "sso-configured": false,
         "embed-production": false,
-        "create-models": false,
-        "setup-tenants": false,
+        "data-permissions-and-enable-tenants": false,
+
+        // "configure data permissions and enable tenants" sub-checklist
+        "create-tenants": false,
+        "enable-tenants": false,
+        "setup-data-segregation-strategy": false,
+
+        // "configure SSO" sub-checklist
+        "sso-auth-manual-tested": false,
       };
     }
 
-    return embeddingHubChecklist;
-  }, [embeddingHubChecklist, isLoading]);
+    // For the main embedding hub, the SSO step is only complete if both
+    // SSO is configured AND the user has manually acknowledged it works
+    return {
+      ...checklist,
+      "sso-configured":
+        checklist["sso-configured"] && checklist["sso-auth-manual-tested"],
+    };
+  }, [checklistResponse, isLoading]);
 
   return { data, isLoading };
 };

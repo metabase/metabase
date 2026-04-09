@@ -12,18 +12,12 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept(
-      "PUT",
-      "/api/setting/notebook-native-preview-shown",
-      cy.spy().as("updatePreviewStateSpy"),
-    );
   });
 
-  it("should not an show empty sidebar when no data source is selected", () => {
-    H.activateToken("pro-self-hosted");
+  it("should not show empty sidebar when no data source is selected", () => {
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
     H.openReviewsTable({ mode: "notebook", limit: 1 });
-    cy.findByLabelText("View SQL").click();
+    openSidebar();
     cy.wait("@nativeDataset");
 
     cy.findByTestId("app-bar").findByLabelText("New").click();
@@ -37,14 +31,21 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
-  it("smoke test: should show the preview sidebar, update it, persist it and close it", () => {
+  it("smoke test: should show the preview sidebar, update it, and close it", () => {
     const defaultRowLimit = 1048575;
     const queryLimit = 2;
 
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
 
     H.openReviewsTable({ mode: "notebook", limit: queryLimit });
-    cy.findByLabelText("View SQL").click();
+    openSidebar();
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.log("Refreshing the page does not persist the sidebar state");
+    cy.reload();
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+    openSidebar();
     cy.wait("@nativeDataset");
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
@@ -54,18 +55,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
         .and("contain", queryLimit);
       cy.button("Convert this question to SQL").should("exist");
     });
-
-    cy.log(
-      "Sidebar state should be persisted when navigating away from the notebook",
-    );
-    H.visualize();
-    cy.findAllByTestId("header-cell").should("contain", "Rating");
-    cy.findByTestId("native-query-preview-sidebar")
-      .should("exist")
-      .and("not.be.visible");
-
-    H.openNotebook();
-    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
 
     cy.log("Modifying GUI query should update the SQL preview");
     cy.findByTestId("step-limit-0-0").icon("close").click({ force: true });
@@ -77,7 +66,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       .and("not.contain", queryLimit);
 
     cy.log("It should be possible to close the sidebar");
-    cy.findByLabelText("Hide SQL").click();
+    closeSidebar();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
@@ -100,11 +89,8 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       cy.location("pathname").should("eq", "/question/notebook");
 
       cy.log("Opening a preview sidebar should completely cover the notebook");
-      cy.findByLabelText("View SQL").click();
+      openSidebar();
       cy.location("pathname").should("eq", "/question/notebook");
-
-      cy.log("user setting should not be updated on small screens");
-      cy.get("@updatePreviewStateSpy").should("not.have.been.called");
 
       cy.log(
         "It shouldn't be possible to click on any of the notebook elements",
@@ -128,63 +114,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     },
   );
 
-  it("should disregard user setting on small screens when navigating (metabase#48170)", () => {
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
-
-    cy.get("@updatePreviewStateSpy").should("have.callCount", 0);
-    cy.findByLabelText("View SQL").click(); // set setting to true
-    cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
-    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
-
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options").should("be.visible");
-
-    resizeScreen("small");
-
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-  });
-
-  it("should disregard user setting on small screens when resizing (metabase#48170)", () => {
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
-
-    cy.get("@updatePreviewStateSpy").should("have.callCount", 0);
-    cy.findByLabelText("View SQL").click(); // set setting to true
-    cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
-    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
-
-    cy.log(
-      "resizing from large to small screen, setting: open, ui state: open",
-    );
-    resizeScreen("small");
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-
-    cy.findByLabelText("View SQL").click();
-    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
-
-    cy.log(
-      "resizing from small to large screen, setting: open, ui state: closed",
-    );
-    cy.findByLabelText("Hide SQL").click();
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-    resizeScreen("large");
-    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
-
-    cy.log(
-      "resizing from small to large screen, setting: closed, ui state: open",
-    );
-    cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
-    cy.findByLabelText("Hide SQL").click(); // set setting to false
-    cy.get("@updatePreviewStateSpy").should("have.callCount", 2);
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-    resizeScreen("small");
-    cy.findByLabelText("View SQL").click();
-    cy.get("@updatePreviewStateSpy").should("have.callCount", 2);
-    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
-    resizeScreen("large");
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-  });
-
   it("sidebar should be resizable", () => {
     const toleranceDelta = 0.5;
 
@@ -200,14 +129,12 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-    cy.intercept("PUT", "/api/setting/notebook-native-preview-shown").as(
-      "updatePreviewState",
-    );
+    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
 
     H.openReviewsTable({ mode: "notebook", limit: 1 });
     cy.wait("@metadata");
-    cy.findByLabelText("View SQL").click();
-    cy.wait(["@updatePreviewState", "@sessionProperties"]);
+    openSidebar();
+    cy.wait(["@nativeDataset", "@sessionProperties"]);
 
     cy.log(
       "It should not be possible to shrink the sidebar below its min (initial) width",
@@ -233,6 +160,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.signInAsAdmin();
     H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
     H.openNotebook();
+    openSidebar();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
       .then(($sidebar) => {
@@ -247,7 +175,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     H.openNotebook();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
-    cy.findByLabelText("View SQL").click();
+    openSidebar();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
       .then(($sidebar) => {
@@ -334,7 +262,7 @@ describe(
       });
 
       cy.log("Simple question");
-      cy.findByLabelText("View native query").click();
+      openSidebar("native");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
@@ -355,14 +283,14 @@ describe(
         "should be possible to save a question and `Explore results` (metabase#32121)",
       );
       H.saveQuestion("foo", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
       cy.findByTestId("qb-header").findByText("Explore results").click();
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
 
       cy.log("The generated query should be valid (metabase#38181)");
-      H.openNotebook(); // SQL sidebar state was persisted so it's already open now
+      H.openNotebook();
+      openSidebar("native");
       cy.findByTestId("native-query-preview-sidebar").within(() => {
         cy.findByText("Native query for this question").should("exist");
         H.NativeEditor.get()
@@ -417,7 +345,7 @@ describe(
           "Small Marble Shoes",
         );
         H.openNotebook();
-        cy.findByLabelText("View native query").click();
+        openSidebar("native");
 
         cy.findByTestId("native-query-preview-sidebar").within(() => {
           cy.findByText("Native query for this question").should("exist");
@@ -467,7 +395,7 @@ describe("scenarios > notebook > native query preview sidebar tracking events", 
       event: "notebook_native_preview_shown",
     });
 
-    cy.findByLabelText("Hide SQL").click();
+    closeSidebar();
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
     H.expectUnstructuredSnowplowEvent({
@@ -525,13 +453,12 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
   });
 }
 
-function resizeScreen(size: "small" | "large") {
-  const width = size === "small" ? 800 : 1280;
-  cy.viewport(width, 800);
+function openSidebar(variant: "sql" | "native" = "sql") {
+  const label = variant === "sql" ? "View SQL" : "View native query";
+  cy.findByLabelText(label).should("be.visible").click();
+}
 
-  // We need to wait for react to re-render but nothing really changes on the screen
-  // when changing viewport size, so it's hard to detect when it happens.
-  // Let's dummy-interact with the app to make sure it re-rendered.
-  cy.findByLabelText("Settings menu").click(); // open menu
-  cy.findByLabelText("Settings menu").click(); // close menu
+function closeSidebar(variant: "sql" | "native" = "sql") {
+  const label = variant === "sql" ? "Hide SQL" : "Hide native query";
+  cy.findByLabelText(label).should("be.visible").click();
 }

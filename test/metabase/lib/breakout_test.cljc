@@ -266,20 +266,20 @@
                    {:id (meta/id :venues :latitude) :name "LATITUDE"}
                    {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                    {:id (meta/id :venues :price) :name "PRICE"}
-                   {:lib/type     :metadata/column
-                    :name         "ID"
-                    :display-name "ID"
-                    :source-alias "Cat"
-                    :id           (meta/id :categories :id)
-                    :table-id     (meta/id :categories)
-                    :base-type    :type/BigInteger}
-                   {:lib/type     :metadata/column
-                    :name         "NAME"
-                    :display-name "Name"
-                    :source-alias "Cat"
-                    :id           (meta/id :categories :name)
-                    :table-id     (meta/id :categories)
-                    :base-type    :type/Text}]
+                   {:lib/type                     :metadata/column
+                    :name                         "ID"
+                    :display-name                 "ID"
+                    :lib/join-alias "Cat"
+                    :id                           (meta/id :categories :id)
+                    :table-id                     (meta/id :categories)
+                    :base-type                    :type/BigInteger}
+                   {:lib/type                     :metadata/column
+                    :name                         "NAME"
+                    :display-name                 "Name"
+                    :lib/join-alias "Cat"
+                    :id                           (meta/id :categories :name)
+                    :table-id                     (meta/id :categories)
+                    :base-type                    :type/Text}]
                   (lib/breakoutable-columns query))))))))
 
 (deftest ^:parallel breakoutable-columns-source-card-test
@@ -558,7 +558,7 @@
             [nil          "PRICE"]
             ["Categories" "ID"] ; this column is not projected, but should still be returned.
             ["Categories" "NAME"]]
-           (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
+           (map (juxt :lib/join-alias :lib/source-column-alias)
                 (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)

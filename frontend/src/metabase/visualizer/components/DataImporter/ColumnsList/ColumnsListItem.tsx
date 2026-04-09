@@ -6,8 +6,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { displayNameForColumn } from "metabase/lib/formatting";
+import { Ellipsified } from "metabase/ui";
 import {
   ActionIcon,
   Flex,
@@ -47,7 +47,7 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
         style.border = "2px solid var(--mb-color-brand)";
         style.boxShadow = "0px 1px 4px 1px var(--mb-color-shadow)";
         style.cursor = "grab";
-        style.backgroundColor = "var(--mb-color-bg-light)";
+        style.backgroundColor = "var(--mb-color-background-secondary)";
         style.borderRadius = "var(--default-border-radius)";
       }
       return style;

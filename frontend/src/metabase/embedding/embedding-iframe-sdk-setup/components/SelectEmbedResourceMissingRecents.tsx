@@ -24,18 +24,18 @@ export const SelectEmbedResourceMissingRecents = ({
       py="xl"
       data-testid="embed-resource-missing-recents"
     >
-      <Icon name={embedIcon} size={48} c="text-light" />
+      <Icon name={embedIcon} size={48} c="text-tertiary" />
 
       <Stack align="center" gap="xs">
         <Text fw="bold" size="md">
           {getEmptyStateTitle(experience)}
         </Text>
 
-        <Text size="sm" c="text-medium" ta="center">
+        <Text size="sm" c="text-secondary" ta="center">
           {getEmptyStateDescription(experience)}
         </Text>
 
-        <Text size="sm" c="text-medium" ta="center">
+        <Text size="sm" c="text-secondary" ta="center">
           {getSearchLink(experience, openPicker)}
         </Text>
       </Stack>

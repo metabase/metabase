@@ -1,4 +1,6 @@
+import type { Extension } from "@uiw/react-codemirror";
 import cx from "classnames";
+import _ from "underscore";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 
@@ -12,6 +14,7 @@ export function PythonEditor({
   withPandasCompletions,
   className,
   readOnly,
+  extensions: externalExtensions,
   ...rest
 }: {
   value: string;
@@ -21,7 +24,13 @@ export function PythonEditor({
   withPandasCompletions?: boolean;
   className?: string;
   readOnly?: boolean;
+  extensions?: Extension[];
 }) {
+  const extensions = _.compact([
+    ...(externalExtensions ?? []),
+    withPandasCompletions ? completion : undefined,
+  ]);
+
   return (
     <CodeEditor
       className={cx(S.editor, className)}
@@ -29,7 +38,7 @@ export function PythonEditor({
       proposedValue={proposedValue}
       onChange={onChange}
       language="python"
-      extensions={withPandasCompletions ? completion : undefined}
+      extensions={extensions}
       readOnly={readOnly}
       {...rest}
     />

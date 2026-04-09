@@ -1,4 +1,4 @@
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import type { Tenant } from "metabase-types/api";
 
 const groupColorPalette = [

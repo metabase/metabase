@@ -24,7 +24,7 @@
 (defenterprise impersonated-user?
   "Returns a boolean if the current user is in a group that has a connection impersonation in place for any database.
   Note: this function does not check whether the impersonation is *enforced* for the current user, since another group's
-  permissions may supercede it. Will throw an error if [[api/*current-user-id*]] is not bound."
+  permissions may supersede it. Will throw an error if [[api/*current-user-id*]] is not bound."
   :feature :advanced-permissions
   []
   (boolean

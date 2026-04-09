@@ -5,10 +5,27 @@ export const createMockRemoteSyncEntity = (
 ): RemoteSyncEntity => ({
   id: 1,
   name: "My Question",
-  description: null,
-  created_at: "2015-01-01T20:10:30.200",
-  updated_at: "2015-01-01T20:10:30.200",
   model: "card",
   sync_status: "update",
   ...opts,
 });
+
+export const createMockDirtyCardEntity = (
+  opts?: Partial<RemoteSyncEntity>,
+): RemoteSyncEntity =>
+  createMockRemoteSyncEntity({
+    id: 1,
+    model: "card",
+    collection_id: 1,
+    ...opts,
+  });
+
+export const createMockDirtyTransformEntity = (
+  opts?: Partial<RemoteSyncEntity>,
+): RemoteSyncEntity =>
+  createMockRemoteSyncEntity({
+    id: 10,
+    model: "transform",
+    name: "Test Transform",
+    ...opts,
+  });

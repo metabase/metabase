@@ -54,7 +54,7 @@
 
 ;; https://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-sync/com/mongodb/client/MongoCollection.html#listIndexes()
 (defn list-indexes
-  "Return vector of Documets describing indexes."
+  "Return vector of Documents describing indexes."
   [^MongoCollection coll & {:as opts}]
   (mongo.conversion/from-document (.listIndexes coll) opts))
 

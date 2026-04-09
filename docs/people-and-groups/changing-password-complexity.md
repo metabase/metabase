@@ -15,7 +15,7 @@ Metabase offers a couple controls for administrators who prefer to increase the 
     export MB_PASSWORD_COMPLEXITY=strong
     export MB_PASSWORD_LENGTH=10
 
-The settings above can be used independently, so it's fine to use only one or the other. By default Metabase use complexity = `normal` and a password length of 6. The following options are available for complexity choice:
+The settings above can be used independently, so it's fine to use only one or the other. By default Metabase uses complexity = `normal` and a password length of 6. The following options are available for complexity choice:
 
 - `weak` = no character constraints
 - `normal` = at least 1 digit
@@ -29,7 +29,7 @@ By default, Metabase also prevents users from setting passwords that are in a li
 If your instance is hosted on Metabase Cloud, passwords must:
 
 - Be at least 12 characters long
-- Contain at least: 
+- Contain at least:
   - 2 lowercase letters
   - 2 uppercase letters
   - 1 digit
@@ -39,4 +39,4 @@ If your instance is hosted on Metabase Cloud, passwords must:
 
 {% include plans-blockquote.html feature="Disabling password logins" %}
 
-On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin settings** > **Authentication**.
+On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin** > **Settings** > **Authentication**.

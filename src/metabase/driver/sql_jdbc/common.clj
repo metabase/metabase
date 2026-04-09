@@ -61,7 +61,7 @@
      :always (assoc :subname (conn-str-with-additional-opts connection-string seperator-style additional-options)))))
 
 (defn additional-options->map
-  "Attempts to parse the entires within the `additional-options` string into a map of keys to values. `separator-style`
+  "Attempts to parse the entries within the `additional-options` string into a map of keys to values. `separator-style`
   works as in the other functions in this namespace (since it influences the separator that appears between pairs).
 
   `opt-name-val-separator?` is an optional parameter that indicates the string that appears between keys and values. If

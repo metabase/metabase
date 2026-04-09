@@ -61,7 +61,10 @@ describe("DatabaseForm", () => {
         ...TEST_ENGINES.h2,
         "details-fields":
           TEST_ENGINES.h2["details-fields"]?.map((field) => {
-            if (field.name === "is-destination-database") {
+            if (
+              field.type !== "group" &&
+              field.name === "is-destination-database"
+            ) {
               return {
                 name: "is-destination-database",
                 type: "hidden",
@@ -69,7 +72,10 @@ describe("DatabaseForm", () => {
               };
             }
 
-            if (field.name === "let-user-control-scheduling") {
+            if (
+              field.type !== "group" &&
+              field.name === "let-user-control-scheduling"
+            ) {
               return {
                 name: "let-user-control-scheduling",
                 type: "boolean",
@@ -156,7 +162,7 @@ describe("DatabaseForm with provider name", () => {
     });
 
     const connectionString =
-      "jdbc:postgresql://user:passs@pooler.ap-southeast-1.aws.neon.tech:5432/mydb";
+      "jdbc:postgresql://user:pass@pooler.ap-southeast-1.aws.neon.tech:5432/mydb";
     await userEvent.type(
       screen.getByLabelText("Connection string (optional)"),
       connectionString,
@@ -181,7 +187,7 @@ describe("DatabaseForm with provider name", () => {
       },
     });
 
-    const connectionString = "jdbc:postgresql://user:passs@localhost:5432/mydb";
+    const connectionString = "jdbc:postgresql://user:pass@localhost:5432/mydb";
     await userEvent.type(
       screen.getByLabelText("Connection string (optional)"),
       connectionString,

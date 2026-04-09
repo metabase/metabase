@@ -1,13 +1,4 @@
-import { useRef, useState } from "react";
-import { useLocation } from "react-use";
-import { t } from "ttag";
-
-import { getErrorMessage } from "metabase/api/utils";
-import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
 import type {
-  ExecutePythonTransformResponse,
-  PythonTransformSource,
-  PythonTransformSourceDraft,
   PythonTransformTableAliases,
   Table,
   TableId,
@@ -18,7 +9,7 @@ export function updateTransformSignature(
   tables: PythonTransformTableAliases,
   tableInfo: Table[],
 ): string {
-  const tableAliases = Object.keys(tables);
+  const tableAliases = tables.map((t) => t.alias);
 
   const transformRegex = /^def\s+transform\s*\([^)]*\)\s*:\s*\n(\s*)/m;
 
@@ -55,8 +46,8 @@ export function updateTransformSignature(
       const newArgsSection = tableAliases
         .map((alias) => {
           const padding = " ".repeat(maxAliasLength - alias.length);
-          const tableId = tables[alias];
-          const tableName = getTableName(tableId);
+          const tableId = tables.find((t) => t.alias === alias)?.table_id;
+          const tableName = tableId != null ? getTableName(tableId) : undefined;
           return `        ${alias}:${padding} DataFrame containing the data from the "${tableName}" table`;
         })
         .join("\n");
@@ -127,8 +118,8 @@ ${newSignature}
 ${tableAliases
   .map((alias) => {
     const padding = " ".repeat(maxAliasLength - alias.length);
-    const tableId = tables[alias];
-    const tableName = getTableName(tableId);
+    const tableId = tables.find((t) => t.alias === alias)?.table_id;
+    const tableName = tableId != null ? getTableName(tableId) : undefined;
     if (alias === tableName) {
       return `        ${alias}:${padding} DataFrame containing the data from the corresponding table`;
     }
@@ -146,76 +137,4 @@ ${tableAliases
 `;
 
   return script + functionTemplate;
-}
-
-export type ExecutionResult = {
-  output?: string;
-  stdout?: string;
-  stderr?: string;
-  error?: string;
-};
-
-type TestPythonScriptState = {
-  executionResult: ExecutionResult | null;
-  isRunning: boolean;
-  run: () => void;
-  cancel: () => void;
-};
-
-export function useTestPythonTransform(
-  source: PythonTransformSourceDraft,
-): TestPythonScriptState {
-  const [executePython, { isLoading: isRunning }] = useExecutePythonMutation();
-  const abort = useRef<(() => void) | null>(null);
-  const [executionResult, setData] =
-    useState<ExecutePythonTransformResponse | null>(null);
-
-  const run = async () => {
-    if (source["source-database"] === undefined) {
-      return null;
-    }
-    const request = executePython({
-      code: source.body,
-      tables: source["source-tables"],
-    });
-    abort.current = () => request.abort();
-
-    try {
-      const data = await request.unwrap();
-      setData(data);
-    } catch (error) {
-      if (typeof error === "object" && error !== null) {
-        if ("name" in error && error.name === "AbortError") {
-          setData({ error: t`Python script execution was canceled` });
-          return;
-        }
-      }
-
-      const errorMessage = getErrorMessage(error, t`An unknown error occurred`);
-      setData({ error: errorMessage });
-    }
-  };
-
-  const cancel = () => {
-    abort.current?.();
-  };
-
-  return {
-    executionResult,
-    isRunning,
-    run,
-    cancel,
-  };
-}
-
-export function isPythonTransformSource(
-  source: PythonTransformSourceDraft,
-): source is PythonTransformSource {
-  return source.type === "python" && source["source-database"] !== undefined;
-}
-
-export function useShouldShowPythonDebugger() {
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  return params.get("debugger") === "1";
 }

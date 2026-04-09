@@ -54,14 +54,14 @@ Use this to scan through changes efficiently:
 - [ ] Public vars in `src` or `enterprise/backend/src` have useful docstrings
 - [ ] Docstrings use Markdown conventions
 - [ ] References use `[[other-var]]` not backticks
-- [ ] `TODO` comments include author and date: `;; TODO (Name 1/1/25) -- description`
+- [ ] `TODO` comments include author and date: `;; TODO (Name 2025-01-01) -- description`
 
 ### Code Organization
 
 - [ ] Everything `^:private` unless used elsewhere
 - [ ] No `declare` when avoidable (public functions near end)
 - [ ] Functions under 20 lines when possible
-- [ ] No blank lines within definition forms (except pairwise constructs in `let`/`cond`)
+- [ ] No blank, non-comment lines within definition forms (except pairwise constructs in `let`/`cond`)
 - [ ] Lines ≤ 120 characters
 
 ### Tests
@@ -118,7 +118,7 @@ Quick scan for common issues:
 | `update-db`, `save-model`                    | Missing `!` for side effects: `update-db!`, `save-model!`   |
 | `snake_case_var`                             | Should use kebab-case                                       |
 | Public var without docstring                 | Add docstring explaining purpose                            |
-| `;; TODO fix this`                           | Missing author/date: `;; TODO (Name 1/1/25) -- description` |
+| `;; TODO fix this`                           | Missing author/date: `;; TODO (Name 2025-01-01) -- description` |
 | `(defn foo ...)` in namespace used elsewhere | Should be `(defn ^:private foo ...)`                        |
 | Function > 20 lines                          | Consider breaking up into smaller functions                 |
 | `/api/dashboards/:id`                        | Use singular: `/api/dashboard/:id`                          |

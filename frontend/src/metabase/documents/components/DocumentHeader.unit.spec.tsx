@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
 
@@ -24,9 +25,10 @@ const setup = ({
   onTitleChange = jest.fn(),
   onSave = jest.fn(),
   onMove = jest.fn(),
+  onDuplicate = jest.fn(),
   onToggleBookmark = jest.fn(),
   onArchive = jest.fn(),
-  onToggleComments = jest.fn(),
+  onShowHistory = jest.fn(),
 } = {}) => {
   const props = {
     document,
@@ -38,10 +40,16 @@ const setup = ({
     onTitleChange,
     onSave,
     onMove,
+    onDuplicate,
     onToggleBookmark,
     onArchive,
-    onToggleComments,
+    onShowHistory,
   };
+
+  setupCommentEndpoints([], {
+    target_type: "document",
+    target_id: document.id,
+  });
 
   renderWithProviders(<DocumentHeader {...props} />, {
     storeInitialState: {
@@ -162,6 +170,8 @@ describe("DocumentHeader", () => {
 
       expect(screen.getByText("Move")).toBeInTheDocument();
       expect(screen.getByText("Move to trash")).toBeInTheDocument();
+
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
     });
 
     it("should not show move and archive options when user cannot write", async () => {
@@ -170,6 +180,9 @@ describe("DocumentHeader", () => {
 
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+
+      // User can still duplicate the document
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
     });
 
     it("should call onMove when move is clicked", async () => {
@@ -195,6 +208,7 @@ describe("DocumentHeader", () => {
       await userEvent.click(screen.getByLabelText("More options"));
 
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
+      expect(screen.queryByText("Duplicate")).not.toBeInTheDocument();
       expect(screen.queryByText("Bookmark")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
@@ -204,6 +218,18 @@ describe("DocumentHeader", () => {
         document: { ...defaultDocument, archived: true },
       });
       expect(screen.queryByLabelText("More options")).not.toBeInTheDocument();
+    });
+
+    it("should call onDuplicate when duplicate is clicked", async () => {
+      const onDuplicate = jest.fn();
+      setup({
+        isNewDocument: false,
+        documentTitle: "Test Document",
+        onDuplicate,
+      });
+      await userEvent.click(screen.getByLabelText("More options"));
+      await userEvent.click(screen.getByText("Duplicate"));
+      expect(onDuplicate).toHaveBeenCalled();
     });
   });
 });

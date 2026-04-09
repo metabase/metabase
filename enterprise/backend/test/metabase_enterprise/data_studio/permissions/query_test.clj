@@ -14,8 +14,8 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (deftest published-table-test
-  (testing "Published tables grant query access via collection permissions only with data-studio enabled\n"
-    (doseq [features             [#{} #{:data-studio}]
+  (testing "Published tables grant query access via collection permissions only with library enabled\n"
+    (doseq [features             [#{} #{:library}]
             collection-readable? [false true]
             table-is-published?  [false true]
             view-data            [:unrestricted :blocked]]
@@ -50,15 +50,15 @@
                                                                     #{(perms/collection-read-path collection-id)}
                                                                     #{}))]
                     (perms/disable-perms-cache
-                      ;; Query is only runnable when: data-studio enabled AND collection readable AND table published AND view-data unrestricted
-                      (is (= (and (contains? features :data-studio)
+                      ;; Query is only runnable when: library enabled AND collection readable AND table published AND view-data unrestricted
+                      (is (= (and (contains? features :library)
                                   collection-readable?
                                   table-is-published?
                                   (not= view-data :blocked))
                              (query-perms/can-run-query? mbql-query))))))))))))))
 
 (deftest published-table-does-not-grant-view-data-test
-  (mt/with-premium-features #{:data-studio}
+  (mt/with-premium-features #{:library}
     (testing "Published tables with collection permissions should NOT grant view-data permissions"
       (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
         (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -92,7 +92,7 @@
 
 (deftest published-table-grants-database-access-test
   (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (testing "POST /api/dataset in EE: published table access GRANTS database access"
         (t2/with-transaction [_conn nil {:rollback-only true}]
           (mt/with-temp [:model/User       {user-id :id} {:email "ee-db-access-test@example.com"}
@@ -132,7 +132,8 @@
               (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
               ;; Without collection permission, query should fail at database check (403)
               (testing "Query should fail because user has no collection permission on published table"
-                (is (= "You don't have permissions to do that."
-                       (mt/with-current-user user-id
-                         (mt/user-http-request user-id :post 403 "dataset"
-                                               (mt/mbql-query venues {:limit 1})))))))))))))
+                (is (=? {:status "failed"
+                         :error  "You do not have permissions to run this query."}
+                        (mt/with-current-user user-id
+                          (mt/user-http-request user-id :post 403 "dataset"
+                                                (mt/mbql-query venues {:limit 1})))))))))))))

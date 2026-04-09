@@ -18,7 +18,6 @@ const NOT_AUTHORIZED_TRIGGERS = [
   /\/api\/collection\/\d+(?:\/items)?$/,
   /\/api\/card\/\d+$/,
   /\/api\/pulse\/\d+$/,
-  /\/api\/dataset$/,
 ];
 
 init(mainReducers, getRoutes, (store) => {

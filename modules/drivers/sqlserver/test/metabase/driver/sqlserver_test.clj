@@ -15,18 +15,20 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
-   [metabase.query-processor :as qp]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [next.jdbc]))
+   [next.jdbc]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -122,7 +124,7 @@
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
       (is (= {:query ["SELECT"
-                      "  TOP(1048575) \"source\".\"name\" AS \"name\""
+                      "  TOP(1048575) \"__mb_source\".\"name\" AS \"name\""
                       "FROM"
                       "  ("
                       "    SELECT"
@@ -131,7 +133,7 @@
                       "      \"dbo\".\"venues\""
                       "    ORDER BY"
                       "      \"dbo\".\"venues\".\"id\" ASC"
-                      "  ) AS \"source\""]
+                      "  ) AS \"__mb_source\""]
               :params nil}
              (-> (mt/mbql-query venues
                    {:source-query {:source-table $$venues
@@ -145,7 +147,7 @@
     (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
                   "clauses that may have been set in the query")
       (is (= {:query  ["SELECT"
-                       "  TOP(10) \"source\".\"name\" AS \"name\""
+                       "  TOP(10) \"__mb_source\".\"name\" AS \"name\""
                        "FROM"
                        "  ("
                        "    SELECT"
@@ -154,7 +156,7 @@
                        "      \"dbo\".\"venues\""
                        "    ORDER BY"
                        "      \"dbo\".\"venues\".\"id\" ASC"
-                       "  ) AS \"source\""]
+                       "  ) AS \"__mb_source\""]
               :params nil}
              (-> (qp.compile/compile
                   (mt/mbql-query venues
@@ -180,7 +182,7 @@
                            (lib/limit nil))]
       (mt/with-metadata-provider (mt/id)
         (is (= {:query  ["SELECT"
-                         "  \"source\".\"name\" AS \"name\""
+                         "  \"__mb_source\".\"name\" AS \"name\""
                          "FROM"
                          "  ("
                          "    SELECT"
@@ -189,9 +191,9 @@
                          "      \"dbo\".\"venues\""
                          "    ORDER BY"
                          "      \"dbo\".\"venues\".\"id\" ASC"
-                         "  ) AS \"source\""
+                         "  ) AS \"__mb_source\""
                          "ORDER BY"
-                         "  \"source\".\"id\" ASC"]
+                         "  \"__mb_source\".\"id\" ASC"]
                 :params nil}
                (-> (driver/mbql->native :sqlserver preprocessed)
                    (update :query (fn [sql]
@@ -644,6 +646,85 @@
                   (is (= expected-types
                          (map :base_type results-metadata-cols))))))))))))
 
+(deftest ^:parallel predicate-expression-in-custom-column-test
+  (mt/test-driver :sqlserver
+    (let [mp    (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          id (lib.metadata/field mp (mt/id :products :id))
+          price (lib.metadata/field mp (mt/id :products :price))
+          category (lib.metadata/field mp (mt/id :products :category))]
+      (testing "predicate expression with >"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "price_gt60" (lib/> price 60))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "price_gt60")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [2 "Doohickey" 70.08 true]
+                  [3 "Doohickey" 35.39 false]
+                  [4 "Doohickey" 73.99 true]
+                  [5 "Gadget" 82.75 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with contains"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "contains_get" (lib/contains category "get"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "contains_get")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [2 "Doohickey" 70.08 false]
+                  [3 "Doohickey" 35.39 false]
+                  [4 "Doohickey" 73.99 false]
+                  [5 "Gadget" 82.75 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with not"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "not_predicate" (lib/not (lib/> price 60)))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "not_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 true]
+                  [2 "Doohickey" 70.08 false]
+                  [3 "Doohickey" 35.39 true]
+                  [4 "Doohickey" 73.99 false]
+                  [5 "Gadget" 82.75 false]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with or, and a filter"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "or_predicate" (lib/or (lib/> price 60) (lib/contains category "get")))
+                        (lib/filter (lib/contains category "g"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "or_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [5 "Gadget" 82.75 true]
+                  [9 "Widget" 58.31 true]
+                  [10 "Gizmo" 31.79 false]
+                  [11 "Gadget" 88.3 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with and, and a filter"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "and_predicate" (lib/and (lib/> price 60) (lib/contains category "get")))
+                        (lib/filter (lib/contains category "g"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "and_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [5 "Gadget" 82.75 true]
+                  [9 "Widget" 58.31 false]
+                  [10 "Gizmo" 31.79 false]
+                  [11 "Gadget" 88.3 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "nested predicate expression, and a filter"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "nested_predicate" (lib/and (lib/and (lib/> price 30) (lib/< price 60))
+                                                                    (lib/or (lib/contains category "wid")
+                                                                            (lib/contains category "gad"))))
+                        (lib/filter (lib/contains category "g"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "nested_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [5 "Gadget" 82.75 false]
+                  [9 "Widget" 58.31 true]
+                  [10 "Gizmo" 31.79 false]
+                  [11 "Gadget" 88.3 false]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver
     (testing "Should match datetime fields even in non-default timezone (#30454)"
@@ -709,19 +790,23 @@
 (deftest ^:parallel default-database-role-test
   (testing "SQL Server default database role handling"
     (testing "returns role when explicitly configured"
-      (let [database {:details {:user "login_user" :role "db_user"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "login_user" :role "db_user"}}]
         (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
 
     (testing "returns nil when no role is configured"
-      (let [database {:details {:user "login_user"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "login_user"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
 
     (testing "returns nil even when user is 'sa'"
-      (let [database {:details {:user "sa"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "sa"}}]
         (is (nil? (driver.sql/default-database-role :sqlserver database)))))
 
     (testing "ignores user field and only uses role field"
-      (let [database {:details {:user "login_user" :role "impersonation_user"}}]
+      (let [database {:lib/type :metadata/database
+                      :details {:user "login_user" :role "impersonation_user"}}]
         (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))
 
 (deftest ^:parallel wtf-test
@@ -757,6 +842,19 @@
                                                     driver-api/qp.add.source-table  driver-api/qp.add.none
                                                     driver-api/qp.add.desired-alias nil}]})))))))
 
+(mt/defdataset ^:private bigint-identity-data
+  [["bigint_identity_test"
+    [{:field-name "id", :base-type {:native "BIGINT IDENTITY(1,1)"}, :pk? true}
+     {:field-name "name", :base-type :type/Text}]
+    []]])
+
+(deftest bigint-identity-base-type-test
+  (testing "BIGINT IDENTITY columns should sync as :type/BigInteger, not :type/* (#68631)"
+    (mt/test-driver :sqlserver
+      (mt/dataset bigint-identity-data
+        (is (= :type/BigInteger
+               (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
+
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct SQL Server types"
     (are [base-type expected] (= expected (driver/type->database-type :sqlserver base-type))
@@ -775,9 +873,12 @@
 (deftest ^:parallel compile-transform-test
   (mt/test-driver :sqlserver
     (testing "compile-transform creates SELECT INTO"
-      (is (= ["SELECT * INTO \"PRODUCTS_COPY\" FROM products" nil]
-             (driver/compile-transform :sqlserver {:query {:query "SELECT * FROM products"}
-                                                   :output-table "PRODUCTS_COPY"}))))
+      ;; Both formats are valid T-SQL: double-quoted identifiers (Macaw/JSQLParser)
+      ;; and bracketed identifiers (SQLGlot). SQL Server accepts both.
+      (is (contains? #{["SELECT * INTO \"PRODUCTS_COPY\" FROM products" nil]
+                       ["SELECT * INTO [PRODUCTS_COPY] FROM products" nil]}
+                     (driver/compile-transform :sqlserver {:query {:query "SELECT * FROM products"}
+                                                           :output-table "PRODUCTS_COPY"}))))
     (testing "compile-insert generates INSERT INTO"
       (is (= ["INSERT INTO \"PRODUCTS_COPY\" SELECT * FROM products" nil]
              (driver/compile-insert :sqlserver {:query {:query "SELECT * FROM products"}

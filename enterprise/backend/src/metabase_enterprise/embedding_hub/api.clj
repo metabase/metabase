@@ -38,7 +38,7 @@
        (t2/exists? :model/Sandbox)))
 
 (defn- has-configured-sso? []
-  (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled) (sso-settings/jwt-configured))
+  (or (and (premium-features/has-feature? :sso-jwt) (sso-settings/jwt-enabled-and-configured))
       (and (premium-features/has-feature? :sso-saml) (sso-settings/saml-enabled) (sso-settings/saml-configured))))
 
 (defn- has-user-created-models? []
@@ -53,21 +53,95 @@
                                                               :where  [:= :is_sample true]}]]
                                     [:is :collection_id nil]]]}))
 
-(defn- embedding-hub-checklist []
-  {"add-data"                      (has-user-added-database?)
-   "create-dashboard"              (has-user-created-dashboard?)
-   "create-models"                 (has-user-created-models?)
-   "configure-row-column-security" (has-configured-sandboxes?)
-   "create-test-embed"             (embedding.settings/embedding-hub-test-embed-snippet-created)
-   "embed-production"              (embedding.settings/embedding-hub-production-embed-snippet-created)
-   "secure-embeds"                 (has-configured-sso?)
-   "setup-tenants"                 (perms/use-tenants)})
+(defn- has-user-created-tenants? []
+  (t2/exists? :model/Tenant :is_active true))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/checklist"
+(defn- has-shared-tenant-collections? []
+  (t2/exists? :model/Collection {:where [:and
+                                         [:= :namespace "shared-tenant-collection"]
+                                         [:= :archived false]]}))
+
+(defn- shared-collection-has-dashboards? []
+  (when-let [shared-coll-id (t2/select-one-pk :model/Collection {:where [:and
+                                                                         [:= :namespace "shared-tenant-collection"]
+                                                                         [:= :archived false]]})]
+    (t2/exists? :model/Dashboard {:where [:and
+                                          [:= :collection_id shared-coll-id]
+                                          [:= :archived false]]})))
+
+(defn- has-configured-data-segregation-strategy? []
+  ;; Check if any of the 3 data segregation strategies are enabled:
+  ;; 1. Row and Column Level Security (Sandboxing)
+  ;; 2. Connection Impersonation
+  ;; 3. Database Routing
+  (or (has-configured-sandboxes?)
+      (t2/exists? :model/ConnectionImpersonation)
+      (t2/exists? :model/DatabaseRouter)))
+
+(defn- active-data-segregation-strategy []
+  (cond
+    (has-configured-sandboxes?)              "row-column-level-security"
+    (t2/exists? :model/ConnectionImpersonation) "connection-impersonation"
+    (t2/exists? :model/DatabaseRouter)       "database-routing"
+    :else                                    nil))
+
+(defn- has-published-guest-embed? []
+  ;; Check if at least one card or dashboard has embedding enabled (is published as a guest embed)
+  (or (t2/exists? :model/Card :enable_embedding true)
+      (t2/exists? :model/Dashboard :enable_embedding true)))
+
+(defn- embedding-hub-checklist []
+  (let [enable-tenants?                  (and (perms/use-tenants)
+                                              (has-shared-tenant-collections?))
+        create-tenants?                  (has-user-created-tenants?)
+        setup-data-segregation-strategy? (has-configured-data-segregation-strategy?)]
+    {"checklist"
+     {;; for the main embedding hub checklist
+      "add-data"                          (has-user-added-database?)
+      "create-dashboard"                  (has-user-created-dashboard?)
+      "create-models"                     (has-user-created-models?)
+      "configure-row-column-security"     (has-configured-sandboxes?)
+      "create-test-embed"                 (or (has-published-guest-embed?)
+                                              (embedding.settings/embedding-hub-test-embed-snippet-created))
+      "embed-production"                  (embedding.settings/embedding-hub-production-embed-snippet-created)
+      "data-permissions-and-enable-tenants" (and enable-tenants?
+                                                 create-tenants?
+                                                 setup-data-segregation-strategy?)
+
+      ;; for the "configure data permissions and enable tenants" sub-checklist page
+      "enable-tenants"                    enable-tenants?
+      "move-dashboard-to-shared"          (boolean (shared-collection-has-dashboards?))
+      "create-tenants"                    create-tenants?
+      "setup-data-segregation-strategy"   setup-data-segregation-strategy?
+
+      ;; for the "configure SSO" sub-checklist page
+      "sso-configured"                    (has-configured-sso?)
+      "sso-auth-manual-tested"            (embedding.settings/embedding-hub-sso-auth-manual-tested)}
+
+     "data-isolation-strategy"           (active-data-segregation-strategy)}))
+
+(def ^:private EmbeddingHubChecklistResponse
+  "Schema for the embedding hub checklist response."
+  [:map {:closed true}
+   ["checklist"
+    [:map {:closed true}
+     ["add-data"                             :boolean]
+     ["create-dashboard"                     :boolean]
+     ["create-models"                        :boolean]
+     ["configure-row-column-security"        :boolean]
+     ["create-test-embed"                    :boolean]
+     ["embed-production"                     :boolean]
+     ["sso-configured"                       :boolean]
+     ["data-permissions-and-enable-tenants"  :boolean]
+     ["enable-tenants"                       :boolean]
+     ["move-dashboard-to-shared"             :boolean]
+     ["create-tenants"                       :boolean]
+     ["setup-data-segregation-strategy"      :boolean]
+     ["sso-auth-manual-tested"               :boolean]]]
+   ["data-isolation-strategy"
+    [:maybe [:enum "row-column-level-security" "connection-impersonation" "database-routing"]]]])
+
+(api.macros/defendpoint :get "/checklist" :- EmbeddingHubChecklistResponse
   "Get the embedding hub checklist status, indicating which setup steps have been completed."
   []
   (embedding-hub-checklist))

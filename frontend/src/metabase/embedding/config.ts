@@ -1,3 +1,6 @@
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isWithinIframe } from "metabase/lib/dom";
+
 type InternalEmbeddingConfig = {
   isPublicEmbedding: boolean;
   isStaticEmbedding: boolean;
@@ -22,4 +25,8 @@ export function isPublicEmbedding() {
 
 export function isStaticEmbedding() {
   return EMBEDDING_CONFIG.isStaticEmbedding;
+}
+
+export function isEmbedding() {
+  return isWithinIframe() || isEmbeddingSdk();
 }

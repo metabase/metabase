@@ -5,7 +5,10 @@
    [metabase.task-history.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
+  (:import
+   (java.time Clock Instant ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -108,10 +111,11 @@
         (task-history/with-task-history {:task            task-name
                                          :task_details    {:id 1}
                                          :on-success-info (fn [info result]
-                                                            (testing "info should have task_details and updated status"
-                                                              (is (= {:task_details {:id 1}
-                                                                      :status       :success}
-                                                                     info)))
+                                                            (testing "info should have task_details, logs, and updated status"
+                                                              (is (=? {:task_details {:id 1}
+                                                                       :logs         (mt/malli=? vector?)
+                                                                       :status       :success}
+                                                                      info)))
                                                             (update info :task_details assoc :result result))}
           42)
         (is (= {:status       :success
@@ -144,3 +148,97 @@
                                 :original-info {:id 1}
                                 :reason         "test"}}
                 (t2/select-one [:model/TaskHistory :status :task_details] :task task-name)))))))
+
+(deftest log-capture-test
+  (mt/with-model-cleanup [:model/TaskHistory]
+    (testing "logs are captured on success"
+      (let [task-name (mt/random-name)]
+        (binding [task-history/*log-capture-clock* (Clock/fixed (Instant/ofEpochMilli 1000) (ZoneId/of "UTC"))]
+          (task-history/with-task-history {:task task-name}
+            (log/info "info message")
+            (log/warn "warning message")
+            (log/error "error message")))
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :success status))
+          (is (=? [{:level "info",  :msg "info message",    :timestamp "1970-01-01T00:00:01Z", :fqns string?}
+                   {:level "warn",  :msg "warning message", :timestamp "1970-01-01T00:00:01Z", :fqns string?}
+                   {:level "error", :msg "error message",   :timestamp "1970-01-01T00:00:01Z", :fqns string?}]
+                  logs)))))
+
+    (testing "logs are captured on failure"
+      (let [task-name (mt/random-name)]
+        (u/ignore-exceptions
+          (task-history/with-task-history {:task task-name}
+            (log/info "before exception")
+            (throw (ex-info "Test failure" {:reason :test}))))
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :failed status))
+          (is (=? [{:level "info", :msg "before exception", :timestamp string?, :fqns string?}] logs)))))
+
+    (testing "exception details are captured in logs"
+      (let [task-name (mt/random-name)]
+        (u/ignore-exceptions
+          (task-history/with-task-history {:task task-name}
+            (log/error (Exception. "Test exception") "error message")))
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :success status))
+          (is (=? [{:level     "error"
+                    :msg       "error message"
+                    :timestamp string?
+                    :fqns      string?
+                    :exception (mt/malli=? [:sequential string?])}]
+                  logs)))))
+
+    (testing "debug/trace are elided"
+      (let [task-name (mt/random-name)]
+        (task-history/with-task-history {:task task-name}
+          (log/error "error")
+          (log/fatal "fatal"))
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :success status))
+          (is (=? [{:level "error"} {:level "fatal"}] logs)))))
+
+    (testing "task with no logs"
+      (let [task-name (mt/random-name)]
+        (task-history/with-task-history {:task task-name})
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :success status))
+          (is (= [] logs)))))))
+
+(deftest log-truncation-test
+  (mt/with-model-cleanup [:model/TaskHistory]
+    (testing "logs are truncated when threshold is exceeded"
+      (let [task-name (mt/random-name)
+            threshold 5]
+        (with-redefs [task-history/log-capture-truncation-threshold threshold]
+          (binding [task-history/*log-capture-clock* (Clock/fixed (Instant/ofEpochMilli 1000) (ZoneId/of "UTC"))]
+            (task-history/with-task-history {:task task-name}
+              ;; Generate more messages than the threshold
+              (dotimes [i 10]
+                (set! task-history/*log-capture-clock* (Clock/fixed (Instant/ofEpochMilli (+ 1000 i)) (ZoneId/of "UTC")))
+                (log/info (str "message " i))
+                (log/warn (str "warning " i))))))
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :success status))
+          (testing "logs include truncation message plus threshold entries"
+            (is (= (inc threshold) (count logs))))
+          (testing "first entry is truncation message"
+            (let [{:keys [level timestamp msg trunc]} (first logs)]
+              (is (= "info" level))
+              (is (= "1970-01-01T00:00:01.007Z" timestamp) ":timestamp is of the last removed message")
+              (is (= "[truncated] 15 messages" msg))
+              (testing "truncation metadata tracks removed messages by level"
+                (let [{:keys [start-timestamp last-timestamp levels]} trunc]
+                  (is (= "1970-01-01T00:00:01Z" start-timestamp))
+                  (is (= "1970-01-01T00:00:01.007Z" last-timestamp))
+                  (is (= {:info 8, :warn 7} levels))))))
+          (testing "remaining entries are the most recent messages"
+            (let [remaining-logs (rest logs)]
+              (is (= threshold (count remaining-logs)))
+              ;; The last 5 entries should be the final messages
+              (is (=? [{:level "warn" :msg "warning 7" :timestamp "1970-01-01T00:00:01.007Z" :fqns string?}
+                       {:level "info" :msg "message 8" :timestamp "1970-01-01T00:00:01.008Z" :fqns string?}
+                       {:level "warn" :msg "warning 8" :timestamp "1970-01-01T00:00:01.008Z" :fqns string?}
+                       {:level "info" :msg "message 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}
+                       {:level "warn" :msg "warning 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}]
+                      remaining-logs)))))))))

@@ -54,7 +54,11 @@ describe("useDispatch", () => {
       setup({
         thunk: () => (_dispatch: any, getState: () => State) => {
           const email = getState().currentUser?.email;
-          email ? foundEmailState() : didNotFindEmailState();
+          if (email) {
+            foundEmailState();
+          } else {
+            didNotFindEmailState();
+          }
         },
       });
       expect(foundEmailState).toHaveBeenCalled();

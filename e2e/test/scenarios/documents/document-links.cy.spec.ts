@@ -132,5 +132,116 @@ describe("Links in documents", () => {
         .icon("eye_crossed_out")
         .should("exist");
     });
+
+    it("should allow adding a smart link using the suggestion menu", () => {
+      cy.visit("/document/new");
+      H.documentContent().click();
+
+      cy.log("Trigger suggestion menu with /");
+      H.addToDocument("/", false);
+
+      cy.log("Select Link from the suggestion menu");
+      H.commandSuggestionItem("Link").click();
+
+      H.addToDocument(PRODUCTS_AVERAGE_BY_CATEGORY.name.substring(0, 5), false);
+
+      cy.log("Select the first item from the list");
+      H.commandSuggestionDialog().findAllByRole("option").first().click();
+
+      cy.log("Verify smart link was added");
+      H.documentContent()
+        .findByRole("link", {
+          name: new RegExp(PRODUCTS_AVERAGE_BY_CATEGORY.name),
+        })
+        .should("exist");
+    });
+
+    it("should allow adding a smart link using 'Browse all' option in suggestion menu", () => {
+      cy.visit("/document/new");
+
+      openLinkSuggestionBrowseAllPicker();
+
+      H.modal().within(() => {
+        cy.findByText("Choose an item to link").should("be.visible");
+
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders in a dashboard").click();
+        cy.button("Select").should("be.visible").and("be.enabled").click();
+      });
+
+      cy.log("Verify dashboard smart link was added");
+      H.documentContent()
+        .findByRole("link", {
+          name: new RegExp("Orders in a dashboard"),
+        })
+        .should("exist");
+
+      cy.log("Add collection link");
+      H.addToDocument("", true);
+
+      openLinkSuggestionBrowseAllPicker();
+      H.modal().within(() => {
+        cy.findByText("All personal collections").click();
+
+        cy.log(
+          "Verify that synthetic collections are not available for using as links",
+        );
+        cy.button("Select").should("be.visible").and("be.disabled");
+
+        cy.findAllByText("Bobby Tables's Personal Collection")
+          .should("have.length", 2)
+          .last()
+          .click();
+        cy.button("Select").should("be.visible").and("be.enabled").click();
+      });
+
+      cy.log("Verify collection smart link was added");
+      H.documentContent()
+        .findByRole("link", {
+          name: new RegExp("Bobby Tables's Personal Collection"),
+        })
+        .should("exist");
+    });
+
+    it("should allow adding a smart link using 'Browse all' option in mention menu", () => {
+      cy.visit("/document/new");
+
+      openLinkMentionMenuBrowseAllPicker();
+
+      H.modal().within(() => {
+        cy.findByText("Choose an item to link").should("be.visible");
+
+        H.pickEntity({ path: ["Databases", "Sample Database", "Products"] });
+        cy.button("Select").should("be.visible").and("be.enabled").click();
+      });
+
+      cy.log("Verify table smart link was added");
+      H.documentContent()
+        .findByRole("link", {
+          name: new RegExp("Products"),
+        })
+        .should("exist");
+    });
   });
 });
+
+function openLinkSuggestionBrowseAllPicker() {
+  H.documentContent().click();
+
+  cy.log("Trigger suggestion menu with /");
+  H.addToDocument("/", false);
+
+  cy.log("Select Link from the suggestion menu");
+  H.commandSuggestionItem("Link").click();
+
+  H.commandSuggestionItem(/Browse all/).click();
+}
+
+function openLinkMentionMenuBrowseAllPicker() {
+  H.documentContent().click();
+
+  cy.log("Trigger mention menu with @");
+  H.addToDocument("@", false);
+
+  H.documentMentionItem(/Browse all/).click();
+}

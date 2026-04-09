@@ -8,10 +8,13 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
-    - merge:
-        - port
-        - helper-text: Leave empty to use Dynamic Ports, or input specific port. Standard port is 1433.
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - host
+          - merge:
+              - port
+              - helper-text: Leave empty to use Dynamic Ports, or input specific port. Standard port is 1433.
     - merge:
         - dbname
         - name: db
@@ -26,8 +29,11 @@ driver:
       helper-text: User used to run system queries, required if the connection's user cannot be impersonated, such as the 'sa' user.
       placeholder: user
     - cloud-ip-address-info
-    - ssl
-    - ssh-tunnel
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssl
+        - ssh-tunnel
     - advanced-options-start
     - merge:
         - additional-options

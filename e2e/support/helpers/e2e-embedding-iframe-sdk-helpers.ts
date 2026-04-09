@@ -15,7 +15,7 @@ import {
   mockAuthProviderAndJwtSignIn,
 } from "./embedding-sdk-testing";
 
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
 const EMBED_JS_PATH = "http://localhost:4000/app/embed.js";
 
@@ -26,6 +26,7 @@ export interface BaseEmbedTestPageOptions {
   // Passed to defineMetabaseConfig
   metabaseConfig?: {
     isGuest?: boolean;
+    guestEmbedProviderUri?: string;
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
@@ -60,10 +61,19 @@ export interface MetabaseElement {
   };
 }
 export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
-  cy.get("iframe[data-metabase-embed]").should("have.length", n);
-  cy.get("iframe[data-iframe-loaded]").should("have.length", n, {
-    timeout: 10_000, // the iframe can slow to load, we need to wait to decrease flakiness
-  });
+  // we do need _all_ these timeouts to decrease flakiness
+  // see https://github.com/metabase/metabase/pull/66954#issuecomment-3661512082
+  cy.get("iframe[data-metabase-embed]", { timeout: 40_000 }).should(
+    "have.length",
+    n,
+  );
+  cy.get("iframe[data-iframe-loaded]", { timeout: 40_000 }).should(
+    "have.length",
+    n,
+    {
+      timeout: 40_000, // the iframe can slow to load, we need to wait to decrease flakiness
+    },
+  );
 };
 
 export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
@@ -79,7 +89,7 @@ export const getSimpleEmbedIframeContent = (iframeIndex = 0) => {
     "have.length.greaterThan",
     iframeIndex,
     {
-      timeout: 10_000, // the iframe can slow to load, we need to wait to decrease flakiness
+      timeout: 40_000, // the iframe can slow to load, we need to wait to decrease flakiness
     },
   );
 
@@ -309,6 +319,7 @@ export const getNewEmbedScriptTag = ({
 export const getNewEmbedConfigurationScript = ({
   instanceUrl = "http://localhost:4000",
   isGuest,
+  guestEmbedProviderUri,
   theme,
   apiKey,
   useExistingUserSession,
@@ -318,6 +329,7 @@ export const getNewEmbedConfigurationScript = ({
   const config = {
     instanceUrl,
     isGuest,
+    guestEmbedProviderUri,
     apiKey,
     useExistingUserSession,
     theme,
@@ -364,7 +376,7 @@ export const visitCustomHtmlPage = (
  * to point it to the rspack dev server.
  */
 export const mockEmbedJsToDevServer = () => {
-  if (Cypress.env("CI")) {
+  if (Cypress.expose("CI")) {
     // we don't need this logic in CI, let's skip the check to avoid slowing down the tests
     return;
   }

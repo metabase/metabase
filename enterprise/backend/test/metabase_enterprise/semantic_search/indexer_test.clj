@@ -303,16 +303,9 @@
                                                        index-metadata
                                                        index
                                                        indexing-state)]
-              (let [{:keys [^Thread thread caught-ex]} @loop-thread
-                    max-wait 1000
-                    wait-time (u/start-timer)]
+              (let [{:keys [^Thread thread caught-ex]} @loop-thread]
                 (testing "exits"
-                  (is
-                   (loop []
-                     (cond
-                       (not (.isAlive thread)) true
-                       (< max-wait (u/since-ms wait-time)) false
-                       :else (recur))))
+                  (is (mt/poll-until 1000 (not (.isAlive thread))))
                   (testing "did not wait too long"
                     (is (<= (u/since-ms run-time) 500)))
                   (testing "did not crash"
@@ -334,16 +327,9 @@
                                                        index-metadata
                                                        index
                                                        indexing-state)]
-              (let [{:keys [^Thread thread caught-ex]} @loop-thread
-                    wait-time (u/start-timer)
-                    max-wait 1000]
+              (let [{:keys [^Thread thread caught-ex]} @loop-thread]
                 (testing "exits"
-                  (is
-                   (loop []
-                     (cond
-                       (not (.isAlive thread)) true
-                       (< max-wait (u/since-ms wait-time)) false
-                       :else (recur))))
+                  (is (mt/poll-until 1000 (not (.isAlive thread))))
                   (testing "has seen our row before exiting"
                     (is (= 1 (count @indexed))))
                   (testing "did not wait too long"
@@ -729,48 +715,35 @@
 
               (testing "dead letter queue is drained, everything can eventually be indexed"
                 (with-open [loop-thread (open-loop-thread! pgvector index-metadata index (fresh-indexing-state))]
-                  (let [{:keys [^Thread thread]} @loop-thread
-                        start-time (u/start-timer)]
+                  (let [{:keys [^Thread thread]} @loop-thread]
                     (testing "stall is cleared (dlq allowed us to seek to the gate tail)"
-                      (is
-                       (loop []
-                         (cond
-                           (< 1000 (u/since-ms start-time)) false
-                           (nil? (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))) true
-                           :else (recur)))))
+                      (is (mt/poll-until
+                           1000
+                           (nil? (:indexer_stalled_at (get-metadata-row! pgvector index-metadata index))))))
 
                     (testing "good docs get indexed right away, despite the poison"
-                      (is
-                       (= (frequencies (map :id good-docs))
-                          (frequencies (map :model_id
-                                            (loop [indexed-docs (get-indexed-docs)]
-                                              (cond
-                                                (< 1000 (u/since-ms start-time)) indexed-docs
-                                                (= (count good-docs) (count indexed-docs)) indexed-docs
-                                                :else (recur (get-indexed-docs)))))))))
+                      (is (mt/poll-until
+                           1000
+                           (= (frequencies (map :id good-docs))
+                              (frequencies (map :model_id (get-indexed-docs)))))))
 
                     (testing "only 1 dlq entry left"
-                      (is (= 1 (count (get-dlq-rows! pgvector index-metadata @index-id-ref)))))
+                      (is (mt/poll-until
+                           1000
+                           (= 1 (count (get-dlq-rows! pgvector index-metadata @index-id-ref))))))
 
                     (testing "clear the poison"
                       (vreset! poisoned-doc-id nil)
                       (testing "all docs get indexed"
-                        (is
-                         (= (frequencies (map :id all-docs))
-                            (frequencies (map :model_id
-                                              (loop [indexed-docs (get-indexed-docs)]
-                                                (cond
-                                                  (< 1000 (u/since-ms start-time)) indexed-docs
-                                                  (= (count all-docs) (count indexed-docs)) indexed-docs
-                                                  :else (recur (get-indexed-docs))))))))))
+                        (is (mt/poll-until
+                             1000
+                             (= (frequencies (map :id all-docs))
+                                (frequencies (map :model_id (get-indexed-docs))))))))
 
-                    (testing "dlq drained (allow for a bit of time)"
-                      (is (= []
-                             (loop [rows (get-dlq-rows! pgvector index-metadata @index-id-ref)]
-                               (cond
-                                 (< 1000 (u/since-ms start-time)) rows
-                                 (empty? rows) rows
-                                 :else (recur (get-dlq-rows! pgvector index-metadata @index-id-ref)))))))
+                    (testing "dlq drained"
+                      (is (mt/poll-until
+                           1000
+                           (empty? (get-dlq-rows! pgvector index-metadata @index-id-ref)))))
 
                     (.interrupt thread)
                     (is (.join thread (Duration/ofSeconds 1)) "dies in a reasonable amount of time")))))))))))

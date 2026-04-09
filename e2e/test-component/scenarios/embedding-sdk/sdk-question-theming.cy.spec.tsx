@@ -10,7 +10,6 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box } from "metabase/ui";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -53,7 +52,6 @@ describe(
       setupInteractiveQuestionWithTheme({
         colors: {
           background: BACKGROUND_COLOR,
-          "background-hover": "rgb(14, 17, 20)",
           "text-primary": "rgb(255, 255, 255)",
           brand: "rgb(253, 121, 168)",
         },
@@ -61,29 +59,6 @@ describe(
 
       getSdkRoot().within(() => {
         cy.findByText("Product ID").should("be.visible");
-
-        const buttonHoverBg = lighten(BACKGROUND_COLOR, 0.5);
-
-        const customColumn = "[aria-label='Custom column']";
-
-        // Should be the lightened version of the background color
-        cy.findByTestId("notebook-button")
-          .should("be.visible")
-          .realHover()
-          .should(($el) => assertBackgroundColorEqual($el, buttonHoverBg));
-
-        // Should be the lightened version of the background color
-        cy.findByTestId("chart-type-selector-button")
-          .should("be.visible")
-          .realHover()
-          .should(($el) => assertBackgroundColorEqual($el, buttonHoverBg));
-
-        cy.findByTestId("notebook-button").click();
-
-        // Should be the lightened version of the background color, same as the notebook button hover.
-        cy.get(customColumn).should(($el) =>
-          assertBackgroundColorEqual($el, buttonHoverBg),
-        );
 
         cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
           assertBackgroundColorEqual($el, lighten(BACKGROUND_COLOR, 0.5)),
@@ -120,7 +95,6 @@ describe(
       setupInteractiveQuestionWithTheme({
         colors: {
           background: BACKGROUND_COLOR,
-          "background-hover": "rgb(245, 245, 245)",
           "text-primary": "rgb(51, 51, 51)",
           brand: "rgb(253, 121, 168)",
         },
@@ -128,15 +102,6 @@ describe(
 
       getSdkRoot().within(() => {
         cy.findByText("Product ID").should("be.visible");
-
-        const customColumn = "[aria-label='Custom column']";
-
-        cy.findByTestId("notebook-button").click();
-
-        // Should be the slightly darker version of the background color, same as the notebook button hover
-        cy.get(customColumn).should(($el) =>
-          assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.05)),
-        );
 
         cy.findByTestId("interactive-question-result-toolbar").should(($el) =>
           assertBackgroundColorEqual($el, darken(BACKGROUND_COLOR, 0.04)),
@@ -209,8 +174,10 @@ describe(
         });
 
         cy.findByTestId("table-body")
+          .findByTestId("center-center-quadrant")
           .findAllByRole("gridcell")
-          .first()
+          .eq(1)
+          .findByTestId("body-cell-container")
           .should(($el) => {
             assertBackgroundColorEqual($el, CELL_COLOR);
           });
@@ -270,9 +237,9 @@ function getColorDifferencePercentage(color1: string, color2: string) {
 function setupInteractiveQuestionWithTheme(theme: MetabaseTheme) {
   cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(
-      <Box bg={theme.colors?.background} h="100vh">
+      <div style={{ background: theme.colors?.background, height: "100vh" }}>
         <InteractiveQuestion questionId={questionId} />
-      </Box>,
+      </div>,
       { sdkProviderProps: { theme } },
     );
   });

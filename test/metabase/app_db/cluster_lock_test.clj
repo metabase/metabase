@@ -24,7 +24,7 @@
         (future (sut/with-cluster-lock ::test-lock (a/>!! ready-chan :ready) (a/<!! fin-chan)))
         (a/<!! ready-chan) ;; make sure the future above starts
         (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"Failed to run statement with cluster lock"
+             clojure.lang.ExceptionInfo #"Failed to obtain cluster lock"
              (sut/with-cluster-lock ::test-lock (Thread/sleep 1))))
         (a/>!! fin-chan :done)))
     (testing "cluster no retry on other error"

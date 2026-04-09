@@ -11,17 +11,23 @@ export interface RelatedSettingItem {
 
 export const getModularEmbeddingRelatedSettingItems = ({
   isUsingTenants,
+  hasSimpleEmbedding,
 }: {
   isUsingTenants?: boolean;
+  hasSimpleEmbedding?: boolean;
 }): RelatedSettingItem[] => {
   const isTenantsFeatureAvailable = PLUGIN_TENANTS.isEnabled;
 
   const items: RelatedSettingItem[] = [
-    {
-      icon: "shield_outline",
-      name: t`Security`,
-      to: "/admin/embedding/security",
-    },
+    ...(hasSimpleEmbedding
+      ? [
+          {
+            icon: "shield_outline" as const,
+            name: t`Security`,
+            to: "/admin/embedding/security",
+          },
+        ]
+      : []),
     {
       icon: "lock",
       name: t`Authentication`,
@@ -42,18 +48,22 @@ export const getModularEmbeddingRelatedSettingItems = ({
       name: t`Permissions`,
       to: "/admin/permissions",
     },
-    {
-      icon: "palette",
-      name: t`Appearance`,
-      to: "/admin/settings/appearance",
-    },
+    ...(hasSimpleEmbedding
+      ? [
+          {
+            icon: "palette" as const,
+            name: t`Appearance`,
+            to: "/admin/settings/appearance",
+          },
+        ]
+      : []),
     ...(isTenantsFeatureAvailable
       ? [
           {
             icon: "globe" as const,
             name: t`Tenants`,
             to: isUsingTenants
-              ? "/admin/tenants"
+              ? "/admin/people/tenants"
               : "/admin/people/user-strategy",
           },
         ]
@@ -90,42 +100,3 @@ export const getGuestEmbedsRelatedSettingItems = (): RelatedSettingItem[] => [
     to: "/admin/settings/appearance",
   },
 ];
-
-export const getInteractiveEmbeddingRelatedSettingItems =
-  (): RelatedSettingItem[] => [
-    {
-      icon: "shield_outline",
-      name: t`Security`,
-      to: "/admin/embedding/security",
-    },
-    {
-      icon: "lock",
-      name: t`Authentication`,
-      to: "/admin/settings/authentication",
-    },
-    {
-      icon: "database",
-      name: t`Databases`,
-      to: "/admin/databases",
-    },
-    {
-      icon: "person",
-      name: t`People`,
-      to: "/admin/people",
-    },
-    {
-      icon: "group",
-      name: t`Permissions`,
-      to: "/admin/permissions",
-    },
-    {
-      icon: "metabot",
-      name: t`Embedded Metabot`,
-      to: "/admin/metabot/2",
-    },
-    {
-      icon: "palette",
-      name: t`Appearance`,
-      to: "/admin/settings/appearance",
-    },
-  ];

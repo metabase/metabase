@@ -53,9 +53,14 @@ on:
         type: boolean
         default: false
 
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
 jobs:
   green-check-stub:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 2
     steps:
     - name: Stub
@@ -63,7 +68,7 @@ jobs:
   check-version:
     # skips everything if the tag_name is 'none' because all later jobs depend on this job
     if: ${{ inputs.tag_name != 'none' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       ee: ${{ fromJson(steps.canonical_version.outputs.result).ee }}
@@ -79,9 +84,11 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
       uses: actions/github-script@v7
       id: canonical_version
@@ -136,7 +143,7 @@ jobs:
           throw new Error("No edition selected to tag");
 
   copy-to-s3:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: check-version
     timeout-minutes: 5
     strategy:
@@ -144,10 +151,9 @@ jobs:
         edition: ${{ fromJson(needs.check-version.outputs.edition_matrix) }}
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
     - name: Determine the source path
       uses: actions/github-script@v7
@@ -219,7 +225,7 @@ jobs:
         fi
 
   tag-docker-image:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: check-version
     timeout-minutes: 5
     strategy:
@@ -241,7 +247,7 @@ jobs:
         fi
 
     - name: Login to Docker Hub
-      uses: docker/login-action@v3
+      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
       with:
         username: ${{ secrets.DOCKERHUB_RELEASE_USERNAME }}
         password: ${{ secrets.DOCKERHUB_RELEASE_TOKEN }}
@@ -253,9 +259,10 @@ jobs:
           $DOCKERHUB_REPO\:$DOCKERHUB_VERSION
 
   push-git-tags:
-    permissions: write-all
+    permissions:
+      contents: write
     needs: check-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -286,7 +293,7 @@ jobs:
 
   update-version-info:
     if: ${{ !inputs.dot-x-tag }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: check-version
     timeout-minutes: 5
     strategy:
@@ -297,16 +304,17 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
     steps:
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Generate new version info
       uses: actions/github-script@v7
       id: new_version_info

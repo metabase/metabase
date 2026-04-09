@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Flex, Pill, Popover, Text, UnstyledButton } from "metabase/ui";
 import type { Group, Member, User } from "metabase-types/api";
@@ -95,7 +95,7 @@ export function AddMemberRow({
                   <Pill
                     key={user.id}
                     size="xl"
-                    bg="bg-medium"
+                    bg="background-tertiary"
                     c="text-primary"
                     ms={index > 0 ? "sm" : ""}
                     withRemoveButton

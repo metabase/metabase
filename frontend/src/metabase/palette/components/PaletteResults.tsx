@@ -6,6 +6,7 @@ import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   Flex,
@@ -28,6 +29,53 @@ import { PaletteResultItem } from "./PaletteResultItem";
 import { PaletteResultList } from "./PaletteResultsList";
 
 const PAGE_SIZE = 4;
+
+const FullSearchCTA = ({
+  locationQuery,
+  searchResults,
+  searchTerm,
+  onClick,
+}: {
+  locationQuery: Query;
+  searchResults: SearchResponse;
+  searchTerm: string;
+  onClick: () => void;
+}) => {
+  const showOtherUsersCollections = useShowOtherUsersCollections();
+  if (!searchResults.total && !showOtherUsersCollections) {
+    return null;
+  }
+
+  const promptSearchEverything =
+    !searchResults.total && showOtherUsersCollections;
+
+  return (
+    <Text
+      c="brand"
+      component={Link}
+      fw={700}
+      id="search-results-metadata"
+      to={{
+        pathname: "search",
+        query: {
+          ...locationQuery,
+          q: searchTerm,
+        },
+      }}
+      className={S.viewAndFilterResults}
+      onClick={onClick}
+    >
+      <Group align="center" gap={rem(4)}>
+        <span>
+          {promptSearchEverything
+            ? t`Search everything`
+            : t`View and filter all ${searchResults.total} results`}
+        </span>
+        <Icon name="chevronright" size={12} />
+      </Group>
+    </Text>
+  );
+};
 
 type Props = Omit<StackProps, "children"> & {
   locationQuery: Query;
@@ -112,20 +160,11 @@ export const PaletteResults = ({
                 >
                   {item}
 
-                  {item === t`Results` && searchResults?.data.length && (
-                    <Text
-                      c="brand"
-                      component={Link}
-                      fw={700}
-                      id="search-results-metadata"
-                      to={{
-                        pathname: "search",
-                        query: {
-                          ...locationQuery,
-                          q: searchTerm,
-                        },
-                      }}
-                      className={S.viewAndFilterResults}
+                  {item === t`Results` && searchResults && (
+                    <FullSearchCTA
+                      locationQuery={locationQuery}
+                      searchResults={searchResults}
+                      searchTerm={searchTerm}
                       onClick={() => {
                         query.setVisualState(VisualState.hidden);
 
@@ -140,13 +179,7 @@ export const PaletteResults = ({
                           searchTerm,
                         });
                       }}
-                    >
-                      <Group align="center" gap={rem(4)}>
-                        <span>{t`View and filter all ${searchResults?.total} results`}</span>
-
-                        <Icon name="chevronright" size={12} />
-                      </Group>
-                    </Text>
+                    />
                   )}
                 </Group>
               ) : (
@@ -164,10 +197,10 @@ function PaletteEmptyState() {
   return (
     <Stack align="center" justify="center" py="6rem" px="2rem" gap={0}>
       <Image src={NoResults} alt="no results" w={115} h={65} />
-      <Text c="text-medium" fw={700} mt="xl">
+      <Text c="text-secondary" fw={700} mt="xl">
         {t`No recent items`}
       </Text>
-      <Text c="text-light" size="sm" mt="xs" ta="center">
+      <Text c="text-tertiary" size="sm" mt="xs" ta="center">
         {t`Items you've recently viewed will appear here.`}
       </Text>
     </Stack>

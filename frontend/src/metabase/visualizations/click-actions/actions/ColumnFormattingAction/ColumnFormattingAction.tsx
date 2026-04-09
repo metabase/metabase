@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { t } from "ttag";
 
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
@@ -54,19 +55,24 @@ export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
       (widget) => widget.id === "column_settings",
     );
 
-    const extraProps = {
+    const { id, ...extraProps } = {
       ...columnSettingsWidget,
       props: {
-        ...columnSettingsWidget.props,
+        ...columnSettingsWidget?.props,
         initialKey: getColumnKey(column),
       },
     };
+
+    if (!columnSettingsWidget || id == null) {
+      return <Fragment />;
+    }
 
     return (
       <PopoverRoot>
         <ChartSettingsWidget
           {...extraProps}
-          key={columnSettingsWidget.id}
+          id={id}
+          key={columnSettingsWidget?.id}
           hidden={false}
           dataTestId={POPOVER_TEST_ID}
         />

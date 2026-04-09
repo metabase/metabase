@@ -91,12 +91,15 @@
   can-read-setting?
   current-user-readable-visibilities
   custom-disabled-reasons!
+  default-value
   defsetting
   disabled-for-db-reasons
+  env-var-name
   env-var-value
   export?
   get
   get-raw-value
+  log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?
   migrate-encrypted-settings!

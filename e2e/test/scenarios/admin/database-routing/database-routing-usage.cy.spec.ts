@@ -9,7 +9,7 @@ import { interceptPerformanceRoutes } from "../performance/helpers/e2e-performan
 import {
   BASE_POSTGRES_DESTINATION_DB_INFO,
   DB_ROUTER_USERS,
-  configurDbRoutingViaAPI,
+  configureDbRoutingViaAPI,
   createDbWithIdentifierTable,
   createDestinationDatabasesViaAPI,
   signInAs,
@@ -33,7 +33,7 @@ describe("admin > database > database routing", { tags: ["@external"] }, () => {
     });
 
     H.addPostgresDatabase("lead", false, "lead", "leadDbId").then(function () {
-      configurDbRoutingViaAPI({
+      configureDbRoutingViaAPI({
         router_database_id: this.leadDbId,
         user_attribute: "destination_database",
       });

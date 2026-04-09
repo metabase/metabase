@@ -146,11 +146,11 @@ const RadioItem = <TValue,>({
   const { RadioLabel, RadioContainer } = VARIANTS[variant];
 
   const handleChange = useCallback(() => {
-    onChange && onChange(value);
+    onChange?.(value);
   }, [value, onChange]);
 
   const handleClick = useCallback(() => {
-    onOptionClick && onOptionClick(value);
+    onOptionClick?.(value);
   }, [value, onOptionClick]);
 
   return (
@@ -212,7 +212,7 @@ function isDefaultOption<TValue>(
 /**
  * @deprecated: use Radio from "metabase/ui"
  */
-const Radio = Object.assign(BaseRadio, {
+export const Radio = Object.assign(BaseRadio, {
   RadioGroupVariants: [RadioGroupBubble, RadioGroupNormal],
   RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal],
   RadioLabelText: RadioLabelText,
@@ -222,6 +222,3 @@ const Radio = Object.assign(BaseRadio, {
     RadioContainerUnderlined,
   ],
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Radio;

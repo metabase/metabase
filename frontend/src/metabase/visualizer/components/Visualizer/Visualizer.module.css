@@ -35,7 +35,7 @@
   transition: var(--transition-duration);
   grid-area: dataSidebar;
   min-width: 0;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 }
 
 .dataSidebarContent {

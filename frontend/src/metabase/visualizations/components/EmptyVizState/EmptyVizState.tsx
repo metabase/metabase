@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
@@ -14,7 +14,7 @@ import { getEmptyVizConfig } from "./utils";
 export interface EmptyVizStateProps {
   chartType?: VisualizationDisplay;
   isSummarizeSidebarOpen?: boolean;
-  onEditSummary?: () => void;
+  editSummary?: () => void;
   isNativeView: boolean;
 }
 
@@ -28,14 +28,15 @@ const utmTags = {
 export const EmptyVizState = ({
   chartType,
   isSummarizeSidebarOpen,
-  onEditSummary,
+  editSummary,
   isNativeView,
 }: EmptyVizStateProps) => {
   const isValidChartType =
     isCardDisplayType(chartType) &&
     chartType !== "table" &&
     chartType !== "object" &&
-    chartType !== "list";
+    chartType !== "list" &&
+    chartType !== "boxplot";
 
   const emptyVizChart = isValidChartType ? chartType : "bar";
 
@@ -52,7 +53,7 @@ export const EmptyVizState = ({
 
   const hasDocsLink = !!docsLink;
   const showNativeEmptyState = !hasDocsLink && isNativeView;
-  const showQBEmptyState = !hasDocsLink && !isNativeView && !!onEditSummary;
+  const showQBEmptyState = !hasDocsLink && !isNativeView && !!editSummary;
 
   return (
     <Flex
@@ -79,7 +80,7 @@ export const EmptyVizState = ({
               <ExternalLink href={url}>
                 <Group gap="xs">
                   <strong>{secondaryText}</strong>
-                  <Icon name="external" color="brand" />
+                  <Icon name="external" c="brand" />
                 </Group>
               </ExternalLink>
             )}
@@ -95,11 +96,11 @@ export const EmptyVizState = ({
                 isSummarizeSidebarOpen ? (
                   <strong key="summarize">{t`Summarize`}</strong>
                 ) : (
-                  <SummarizeCTA onClick={onEditSummary} key="summarize-cta" />
+                  <SummarizeCTA onClick={editSummary} key="summarize-cta" />
                 )
               } at the top right corner. ${primaryText}`}
             </Text>
-            <Text c="text-light">{secondaryText}</Text>
+            <Text c="text-tertiary">{secondaryText}</Text>
           </>
         )}
 

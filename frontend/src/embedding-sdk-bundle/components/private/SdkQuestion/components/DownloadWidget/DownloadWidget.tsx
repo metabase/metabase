@@ -1,9 +1,13 @@
-import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
+import { useMemo } from "react";
+
 import {
+  QuestionDownloadWidget,
   type UseDownloadDataParams,
   useDownloadData,
-} from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
+} from "metabase/common/components/QuestionDownloadWidget";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import type { StackProps } from "metabase/ui";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import { useSdkQuestionContext } from "../../context";
 
@@ -20,11 +24,22 @@ const DownloadWidgetInner = ({
   ...rest
 }: DownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
-  const { withDownloads, token } = useSdkQuestionContext();
+  const { withDownloads } = useSdkQuestionContext();
+  const { token } = useEmbeddingEntityContext();
+
+  const visualizationSettings = useMemo(
+    () =>
+      getComputedSettingsForSeries([
+        { card: question.card(), data: result.data },
+      ]),
+    [question, result],
+  );
+
   const [, handleDownload] = useDownloadData({
     question,
     result,
     token,
+    visualizationSettings,
   });
 
   return (

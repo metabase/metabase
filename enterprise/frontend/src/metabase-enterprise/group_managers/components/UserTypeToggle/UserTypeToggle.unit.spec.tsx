@@ -10,7 +10,7 @@ describe("UserTypeToggle", () => {
     const onChange = jest.fn();
     renderWithTheme(<UserTypeToggle isManager={true} onChange={onChange} />);
 
-    userEvent.hover(screen.getByTestId("user-type-toggle"));
+    await userEvent.hover(screen.getByTestId("user-type-toggle"));
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Turn into Member",
@@ -21,7 +21,7 @@ describe("UserTypeToggle", () => {
     const onChange = jest.fn();
     renderWithTheme(<UserTypeToggle isManager={false} onChange={onChange} />);
 
-    userEvent.hover(screen.getByTestId("user-type-toggle"));
+    await userEvent.hover(screen.getByTestId("user-type-toggle"));
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Turn into Manager",

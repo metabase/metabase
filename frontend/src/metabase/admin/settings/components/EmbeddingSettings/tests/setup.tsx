@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
   setupPropertiesEndpoints,
@@ -6,10 +6,12 @@ import {
   setupTokenStatusEndpoint,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
+  setupUpsellEndpoints,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { waitFor } from "__support__/ui";
+import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
@@ -24,8 +26,8 @@ export interface SetupOpts {
   isEmbeddingSdkEnabled?: Settings["enable-embedding-sdk"];
   isEmbeddingSimpleEnabled?: Settings["enable-embedding-simple"];
   isHosted?: Settings["is-hosted?"];
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
@@ -34,8 +36,8 @@ export async function setup({
   isEmbeddingSdkEnabled = false,
   isEmbeddingSimpleEnabled = false,
   isHosted = false,
-  hasEnterprisePlugins = false,
   tokenFeatures = {},
+  enterprisePlugins,
 }: SetupOpts) {
   const settings = createMockSettings({
     "show-sdk-embed-terms": showSdkEmbedTerms,
@@ -49,8 +51,13 @@ export async function setup({
     settings: mockSettings(settings),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins?.length) {
+    PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
+
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
+
     setupTokenStatusEndpoint({ valid: true });
   }
 
@@ -58,6 +65,7 @@ export async function setup({
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
   setupUpdateSettingsEndpoint();
+  setupUpsellEndpoints();
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-dev_instances",

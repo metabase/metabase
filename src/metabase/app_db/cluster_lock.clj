@@ -24,7 +24,7 @@
   (or (instance? SQLIntegrityConstraintViolationException e)
       (instance? SQLIntegrityConstraintViolationException (ex-cause e))
       ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
-      (str/includes? (ex-message e) "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\"")
+      (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
@@ -59,7 +59,7 @@
         (t2/query-one {:insert-into [:metabase_cluster_lock]
                        :columns [:lock_name]
                        :values [[lock-name-str]]})))
-    (log/debug "Obtained cluster lock")
+    (log/debugf "Obtained cluster lock: %s" lock-name-str)
     (thunk)))
 
 (mu/defn do-with-cluster-lock
@@ -85,13 +85,14 @@
                 (do-with-cluster-lock* lock-name-str timeout-seconds thunk))
               (catch Throwable e
                 (if (retryable? e)
-                  (throw (ex-info "Failed to run statement with cluster lock"
-                                  {:retries (:max-retries config)}
+                  (throw (ex-info (str "Failed to obtain cluster lock: " lock-name-str)
+                                  {:lock-name lock-name
+                                   :retries (:max-retries config)}
                                   e))
                   (throw e)))))))
 
 (defmacro with-cluster-lock
-  "Run `body` in a tranactions that tries to take a lock from the metabase_cluster_lock table of
+  "Run `body` in a transaction that tries to take a lock from the metabase_cluster_lock table of
   the specified name to coordinate concurrency with other metabase instances sharing the appdb."
   ([lock-options & body]
    `(do-with-cluster-lock ~lock-options (fn [] ~@body))))

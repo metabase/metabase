@@ -1,5 +1,5 @@
 (ns metabase.channel.render.js.svg
-  "Functions to render charts as svg strings by using graal's js engine. A bundle is built by `yarn build-static-viz`
+  "Functions to render charts as svg strings by using graal's js engine. A bundle is built by `bun run build-static-viz`
   which has charting library. This namespace has some wrapper functions to invoke those functions. Interop is very
   strange, as the jvm datastructures, not just serialized versions are used. This is why we have the `toJSArray` and
   `toJSMap` functions to turn Clojure's normal datastructures into js native structures."
@@ -25,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 
-;; the bundle path goes through webpack. Changes require a `yarn build-static-viz`
+;; the bundle path goes through webpack. Changes require a `bun run build-static-viz`
 (def ^:private bundle-path
   "frontend_client/app/dist/lib-static-viz.bundle.js")
 
@@ -169,6 +169,11 @@
   "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
 
+(def ^:dynamic ^:private *svg-background-color*
+  "Background color for rendered PNG images. Set to nil for transparent background.
+  Defaults to white to ensure charts are readable in dark mode email clients."
+  java.awt.Color/WHITE)
+
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
@@ -180,6 +185,8 @@
       (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH *svg-render-width*)
       (when *svg-render-height*
         (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT *svg-render-height*))
+      (when *svg-background-color*
+        (.addTranscodingHint transcoder PNGTranscoder/KEY_BACKGROUND_COLOR *svg-background-color*))
       (.transcode transcoder in out))
     (.toByteArray os)))
 
@@ -253,6 +260,7 @@
   "Entrypoint for rendering an SVG icon as a PNG, with a specific color"
   [icon-name color]
   (let [svg-string (icon-svg-string icon-name color)]
-    (binding [*svg-render-width*  (float 33)
-              *svg-render-height* (float 33)]
+    (binding [*svg-render-width*       (float 33)
+              *svg-render-height*      (float 33)
+              *svg-background-color*   nil]
       (svg-string->bytes svg-string))))

@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { EntityIdCard } from "metabase/common/components/EntityIdCard";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import {
   Sidesheet,
   SidesheetCard,
@@ -19,8 +19,8 @@ import { InsightsUpsellTab } from "metabase/dashboard/components/DashboardInfoSi
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { onCloseQuestionInfo } from "metabase/query_builder/actions";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
+import { onCloseQuestionInfo } from "metabase/redux/query-builder";
 import { Flex, Icon, Stack, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 

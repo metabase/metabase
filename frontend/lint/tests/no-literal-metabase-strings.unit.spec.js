@@ -1,12 +1,14 @@
 import { RuleTester } from "eslint";
 
-import noLiteralMetabaseString from "../eslint-rules/no-literal-metabase-strings";
+import rule from "../eslint-plugin-metabase/rules/no-literal-metabase-strings";
 
 const ruleTester = new RuleTester({
-  parserOptions: {
+  languageOptions: {
     ecmaVersion: 2015,
     sourceType: "module",
-    ecmaFeatures: { jsx: true },
+    parserOptions: {
+      ecmaFeatures: { jsx: true },
+    },
   },
 });
 
@@ -22,17 +24,14 @@ import OpenInMetabase from "../components/OpenInMetabase";`,
 export { MetabaseLinksToggleWidget } from "./MetabaseLinksToggleWidget";`,
   },
   {
+    // "Metabase in * reexports"
+    code: `
+export * from "./MetabaseLinksToggleWidget";`,
+  },
+  {
     // "No Metabase string",
     code: `
   const label = "some string"`,
-  },
-  {
-    // "Detect disabled rule next line",
-    code: `
-  function MyComponent() {
-    // eslint-disable-next-line no-literal-metabase-strings -- In admin settings
-    return <div>Metabase store {"interpolation"} something else</div>;
-  }`,
   },
 ];
 
@@ -119,37 +118,12 @@ const INVALID_CASES = [
   }`,
     error: /Metabase string must not be used directly./,
   },
-  {
-    name: "Detect disabled rule next line",
-    code: `
-  function MyComponent() {
-    // eslint-disable-next-line no-literal-metabase-strings
-    return <div>Metabase store {"interpolation"} something else</div>;
-  }`,
-    error:
-      /Please add comment to indicate the reason why this rule needs to be disabled./,
-  },
-  {
-    name: "Detect disabled rule block",
-    code: `
-  /* eslint-disable no-literal-metabase-strings */
-  function MyComponent() {
-    return <div>Metabase store {"interpolation"} something else</div>;
-  }`,
-    error: "Please use inline disable with comments instead.",
-  },
 ];
 
-ruleTester.run("no-literal-metabase-strings", noLiteralMetabaseString, {
+ruleTester.run("no-literal-metabase-strings", rule, {
   valid: VALID_CASES,
-  invalid: INVALID_CASES.map((invalidCase) => {
-    return {
-      code: invalidCase.code,
-      errors: [
-        {
-          message: invalidCase.error,
-        },
-      ],
-    };
-  }),
+  invalid: INVALID_CASES.map((invalidCase) => ({
+    code: invalidCase.code,
+    errors: [{ message: invalidCase.error }],
+  })),
 });

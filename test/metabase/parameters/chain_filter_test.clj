@@ -808,19 +808,32 @@
                                                                               (#'chain-filter/find-joins* a b c false))
                                                                              ([a b c d]
                                                                               (#'chain-filter/find-joins* a b c d)))]
-          (testing "receiver_id is active and should be used for the join"
+          (testing "with both FKs active, both are returned"
             (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
+                     :rhs {:table $$users, :field %users.id}}
+                    {:lhs {:table $$messages, :field %messages.sender_id}
                      :rhs {:table $$users, :field %users.id}}]
-                   (#'chain-filter/find-joins (mt/id) $$messages $$users))))
+                   (->> (#'chain-filter/find-joins (mt/id) $$messages $$users)
+                        (sort-by (comp :field :lhs))))))
 
           (try
             (t2/update! :model/Field {:id %messages.receiver_id} {:active false})
-            (testing "check that it switches to sender once receiver is inactive"
+            (testing "check that it switches to sender only once receiver is inactive"
               (is (= [{:lhs {:table $$messages, :field %messages.sender_id}
                        :rhs {:table $$users, :field %users.id}}]
                      (#'chain-filter/find-joins (mt/id) $$messages $$users))))
             (finally
               (t2/update! :model/Field {:id %messages.receiver_id} {:active true})))
+
+          (try
+            (t2/update! :model/Field {:id %messages.sender_id} {:active false})
+            (testing "check that it switches to receiver only once sender is inactive"
+              (is (= [{:lhs {:table $$messages, :field %messages.receiver_id}
+                       :rhs {:table $$users, :field %users.id}}]
+                     (#'chain-filter/find-joins (mt/id) $$messages $$users))))
+            (finally
+              (t2/update! :model/Field {:id %messages.sender_id} {:active true})))
+
           ;; mark field
           (t2/update! :model/Field {:id %users.id} {:active false})
           (testing "there are no connections when PK is inactive"

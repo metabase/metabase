@@ -26,25 +26,33 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "fetchRequestToken",
     "useExistingUserSession",
     "isGuest",
+    "jwtProviderUri",
+    "pluginsConfig",
+    "guestEmbedProviderUri",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
+    "autoRefreshInterval",
     "withTitle",
     "withDownloads",
     "withSubscriptions",
     "initialParameters",
     "hiddenParameters",
     "drills",
+    "enableEntityNavigation",
+    "customContext",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
     "questionId",
     "isSaveEnabled",
     "withTitle",
     "withDownloads",
+    "withAlerts",
     "initialSqlParameters",
     "hiddenParameters",
     "drills",
     "entityTypes",
+    "customContext",
   ] satisfies (keyof QuestionEmbedOptions)[],
   exploration: [
     "template",
@@ -62,9 +70,15 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "dataPickerEntityTypes",
     "withNewQuestion",
     "withNewDashboard",
+    "enableEntityNavigation",
   ] satisfies (keyof BrowserEmbedOptions)[],
-  metabot: ["layout"] satisfies (keyof MetabotEmbedOptions)[],
+  metabot: [
+    "layout",
+    "isSaveEnabled",
+    "targetCollection",
+  ] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
+
 export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
   base: [
     "apiKey",
@@ -75,6 +89,7 @@ export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "token",
+    "autoRefreshInterval",
     "withTitle",
     "withDownloads",
     "initialParameters",
@@ -125,3 +140,9 @@ export const DISABLE_UPDATE_FOR_KEYS = [
 ] as const satisfies AllowedEmbedSettingKey[];
 
 export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";
+
+/**
+ * Used to allow parallel loading of EmbedJS iframes
+ */
+export const EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME =
+  "embed-js-identifier";

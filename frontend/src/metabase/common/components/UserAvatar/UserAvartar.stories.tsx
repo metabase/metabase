@@ -1,4 +1,4 @@
-import UserAvatar from "./UserAvatar";
+import { UserAvatar } from "./UserAvatar";
 
 export default {
   title: "Components/UserAvatar",

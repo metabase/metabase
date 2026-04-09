@@ -80,6 +80,35 @@
           (t2/delete! :model/Notification (:id notification))
           (is (not (t2/exists? :model/NotificationCard notification-card-id))))))))
 
+(deftest delete-card-cleans-up-notifications-test
+  (testing "deleting a card should remove all associated notifications, both active and inactive"
+    (notification.tu/with-notification-cleanup!
+      (mt/with-temp [:model/Card {card-id :id} {:name          "alert cleanup test card"
+                                                :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+        (let [active-notification   (models.notification/create-notification!
+                                     {:payload_type :notification/card
+                                      :payload      {:card_id card-id}
+                                      :creator_id   (mt/user->id :crowberto)}
+                                     []
+                                     [])
+              inactive-notification (models.notification/create-notification!
+                                     {:payload_type :notification/card
+                                      :payload      {:card_id card-id}
+                                      :active       false
+                                      :creator_id   (mt/user->id :crowberto)}
+                                     []
+                                     [])]
+          (testing "sanity: both notifications and notification cards exist"
+            (is (t2/exists? :model/Notification (:id active-notification)))
+            (is (t2/exists? :model/Notification (:id inactive-notification)))
+            (is (= 2 (t2/count :model/NotificationCard :card_id card-id))))
+          (t2/delete! :model/Card card-id)
+          (testing "both notifications should be removed when the card is deleted"
+            (is (not (t2/exists? :model/Notification (:id active-notification))))
+            (is (not (t2/exists? :model/Notification (:id inactive-notification)))))
+          (testing "notification card payloads should also be removed"
+            (is (not (t2/exists? :model/NotificationCard :card_id card-id)))))))))
+
 (deftest notification-subscription-type-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
     (testing "success path"
@@ -106,8 +135,13 @@
 (deftest notification-subscription-event-name-test
   (mt/with-temp [:model/Notification {n-id :id} {}]
     (testing "success path"
-      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
-                                                                             :event_name      (first (descendants :metabase/event))
+      ;; we derive other keywords into this hierarchy
+      ;; like ::api-events, :metabase.audit-app.events.audit-log/remote-sync-event, etc. This was non-deterministic
+      ;; for a long time
+      (let [random-event (first (filter (comp #{"event"} namespace)
+                                        (descendants :metabase/event)))
+            sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
+                                                                             :event_name      random-event
                                                                              :notification_id n-id})]
         (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
 

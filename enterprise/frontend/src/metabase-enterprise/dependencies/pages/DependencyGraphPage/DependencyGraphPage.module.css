@@ -1,0 +1,5 @@
+.appSwitcher {
+  margin-left: auto;
+  margin-right: 2.5rem;
+  background-color: var(--mb-color-background-secondary);
+}

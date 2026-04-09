@@ -1,5 +1,7 @@
+import { useState } from "react";
 import _ from "underscore";
 
+import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { DropdownSidebarFilter } from "metabase/search/components/DropdownSidebarFilter";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
@@ -8,6 +10,7 @@ import { CreatedByFilter } from "metabase/search/components/filters/CreatedByFil
 import { LastEditedAtFilter } from "metabase/search/components/filters/LastEditedAtFilter";
 import { LastEditedByFilter } from "metabase/search/components/filters/LastEditedByFilter";
 import { NativeQueryFilter } from "metabase/search/components/filters/NativeQueryFilter";
+import { PersonalCollectionsFilter } from "metabase/search/components/filters/PersonalCollectionsFilter";
 import { SearchTrashedItemsFilter } from "metabase/search/components/filters/SearchTrashedItemsFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { SearchFilterKeys } from "metabase/search/constants";
@@ -25,6 +28,10 @@ type SearchSidebarProps = {
 };
 
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
+  const [openFilterKey, setOpenFilterKey] = useState<FilterTypeKeys | null>(
+    null,
+  );
+
   const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
@@ -34,6 +41,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
     [SearchFilterKeys.Verified]: PLUGIN_CONTENT_VERIFICATION.VerifiedFilter,
     [SearchFilterKeys.NativeQuery]: NativeQueryFilter,
     [SearchFilterKeys.SearchTrashedItems]: SearchTrashedItemsFilter,
+    [SearchFilterKeys.PersonalCollections]: PersonalCollectionsFilter,
   };
 
   const onOutputChange = (key: FilterTypeKeys, val?: SearchQueryParamValue) => {
@@ -72,11 +80,23 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
           data-testid={`${key}-search-filter`}
           value={filterValue}
           onChange={(value) => onOutputChange(key, Filter.toUrl(value))}
+          isOpen={openFilterKey === key}
+          onOpenChange={(isOpen) => {
+            if (isOpen) {
+              setOpenFilterKey(key);
+            } else if (openFilterKey === key) {
+              // Only close if this filter is still the one that's open
+              // This prevents race condition when clicking another filter
+              setOpenFilterKey(null);
+            }
+          }}
         />
       );
     }
     return null;
   };
+
+  const showOtherUsersCollections = useShowOtherUsersCollections();
 
   return (
     <Stack gap="lg">
@@ -92,6 +112,8 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
       {getFilter(SearchFilterKeys.Verified)}
       {getFilter(SearchFilterKeys.NativeQuery)}
       {getFilter(SearchFilterKeys.SearchTrashedItems)}
+      {showOtherUsersCollections &&
+        getFilter(SearchFilterKeys.PersonalCollections)}
     </Stack>
   );
 };

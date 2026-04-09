@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   findRequests,
   setupDashboardEndpoints,
@@ -24,21 +24,24 @@ import { createMockState } from "metabase-types/store/mocks";
 import { SdkIframeEmbedSetupModal } from "../SdkIframeEmbedSetupModal";
 
 export const setup = (options?: {
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   simpleEmbeddingEnabled?: boolean;
   showSimpleEmbedTerms?: boolean;
   jwtReady?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
+  hasEmailSetup?: boolean;
 }) => {
-  const { hasEnterprisePlugins = true } = options ?? {};
+  const { enterprisePlugins } = options ?? {};
 
   const mockDatabase = createMockDatabase();
   const mockDashboard = createMockDashboard({
     enable_embedding: true,
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   const tokenFeatures = createMockTokenFeatures({
@@ -50,6 +53,7 @@ export const setup = (options?: {
     "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
+    "jwt-enabled-and-configured": options?.jwtReady ?? false,
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
@@ -63,7 +67,9 @@ export const setup = (options?: {
   );
   setupUpdateSettingsEndpoint();
   setupUpdateSettingEndpoint();
-  setupNotificationChannelsEndpoints({});
+  setupNotificationChannelsEndpoints(
+    options?.hasEmailSetup ? { email: { configured: true } as any } : {},
+  );
 
   renderWithProviders(
     <SdkIframeEmbedSetupModal

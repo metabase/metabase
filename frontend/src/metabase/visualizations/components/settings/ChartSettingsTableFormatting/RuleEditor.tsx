@@ -135,7 +135,12 @@ export const RuleEditor = ({
             </Text>
             <Box>
               <Select<ColumnFormattingOperator>
-                comboboxProps={{ withinPortal: false }}
+                comboboxProps={{
+                  withinPortal: false,
+                  middlewares: {
+                    flip: false,
+                  },
+                }}
                 value={rule.operator}
                 onChange={(operator) => onChange({ ...rule, operator })}
                 data={_.pairs(operators).map(([value, label]) => ({
@@ -290,7 +295,11 @@ const RuleEditorValueInput = ({
   onChange: (rule: ColumnFormattingSetting) => void;
   disabled?: boolean;
 }) => {
-  if (!hasOperand) {
+  if (
+    !hasOperand ||
+    typeof rule.value === "boolean" ||
+    typeof rule.value === "object"
+  ) {
     return null;
   }
 

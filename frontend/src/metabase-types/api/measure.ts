@@ -1,0 +1,93 @@
+import type { FieldValue } from "./field";
+import type { DatasetQuery, OpaqueDatasetQuery } from "./query";
+import type { Table, TableId } from "./table";
+import type { UserInfo } from "./user";
+
+export type MeasureId = number;
+export type DimensionId = string;
+
+export type MetricDimensionGroup = {
+  id: string;
+  type: "main" | "connection";
+  display_name: string;
+};
+
+export type MetricDimensionSource = {
+  type: string;
+  "field-id": number;
+};
+
+export type MetricDimension = {
+  id: DimensionId;
+  display_name: string;
+  effective_type: string;
+  semantic_type: string | null;
+  group?: MetricDimensionGroup;
+  sources?: MetricDimensionSource[];
+};
+
+export type DimensionMappingTarget = ["field", Record<string, unknown>, number];
+
+export type DimensionMapping = {
+  dimension_id: DimensionId;
+  table_id: number;
+  target: DimensionMappingTarget;
+};
+
+export interface Measure {
+  id: MeasureId;
+  name: string;
+  description: string | null;
+  table_id: TableId;
+  table?: Table;
+  archived: boolean;
+  definition: OpaqueDatasetQuery;
+  definition_description?: string;
+  revision_message?: string;
+  created_at: string;
+  creator_id: number;
+  creator?: UserInfo;
+  updated_at: string;
+  result_column_name?: string;
+  dimensions?: MetricDimension[];
+  dimension_mappings?: DimensionMapping[];
+}
+
+export interface CreateMeasureRequest {
+  name: string;
+  table_id: TableId;
+  definition: DatasetQuery;
+  description?: string;
+}
+
+export interface UpdateMeasureRequest {
+  id: MeasureId;
+  name?: string;
+  definition?: DatasetQuery;
+  revision_message: string;
+  archived?: boolean;
+  description?: string;
+}
+
+export type GetMeasureDimensionValuesRequest = {
+  measureId: MeasureId;
+  dimensionId: DimensionId;
+};
+
+export type GetMeasureDimensionValuesResponse = {
+  values: FieldValue[];
+  has_more_values: boolean;
+};
+
+export type SearchMeasureDimensionValuesRequest = {
+  measureId: MeasureId;
+  dimensionId: DimensionId;
+  query: string;
+  limit: number;
+};
+
+export type GetRemappedMeasureDimensionValueRequest = {
+  measureId: MeasureId;
+  dimensionId: DimensionId;
+  value: string;
+};

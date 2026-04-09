@@ -21,18 +21,18 @@ import { getDatabase } from "../../utils/metadata";
 
 import { getIsLoadingDatabaseTables } from "./permission-editor";
 
-type DataTreeNodeItem = {
+export type DataTreeNodeItem = {
   entityId: EntityId;
   children?: DataTreeNodeItem[];
 } & ITreeNodeItem;
 
-type DataSidebarProps = {
+export type DataSidebarProps = {
   title?: string;
   description?: string;
   entityGroups: DataTreeNodeItem[][];
   entityViewFocus?: "database";
-  selectedId?: string | null;
-  filterPlaceholder?: string;
+  selectedId?: string;
+  filterPlaceholder: string;
 };
 
 const getRouteParams = (
@@ -54,6 +54,7 @@ const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
   const entities = metadata
     .databasesList({ savedQuestions: false })
     .filter((db) => !PLUGIN_AUDIT.isAuditDb(db as DatabaseType))
+    .filter((db) => !(db as DatabaseType).router_database_id)
     .map((database) => ({
       id: database.id,
       name: database.name,
@@ -73,7 +74,7 @@ const getTablesSidebar = (
   schemaName?: string,
   tableId?: string,
 ): DataSidebarProps => {
-  let selectedId = null;
+  let selectedId: string | undefined = undefined;
 
   if (tableId != null) {
     selectedId = getTableId(tableId);

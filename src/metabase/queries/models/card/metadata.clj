@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -81,14 +80,14 @@ saved later when it is ready."
 
 (defn normalize-dataset-query
   "Normalize the query `dataset-query` received via an HTTP call.
-  Handles both (legacy) MBQL and pMBQL queries."
+  Handles both (legacy) MBQL and MBQL 5 queries."
   {:deprecated "0.57.0"}
   [dataset-query]
   (lib-be/normalize-query dataset-query))
 
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
-  [[metadata-sync-wait-ms]] for it to be recalcuated; if not recalculated by then, returns a map with
+  [[metadata-sync-wait-ms]] for it to be recalculated; if not recalculated by then, returns a map with
   `:metadata-future`. Otherwise returns a map with `:metadata`.
 
   Takes the `original-query` so it can determine if existing `metadata` might still be valid. Takes `dataset?` since
@@ -119,7 +118,7 @@ saved later when it is ready."
         (log/debug "Reusing provided metadata")
         {:metadata metadata})
 
-      ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
+      ;; frontend always sends query. But sometimes programmatic don't (cypress, API usage). Returning an empty channel
       ;; means the metadata won't be updated at all.
       (nil? query)
       (do
@@ -176,7 +175,11 @@ saved later when it is ready."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
-                 (qp.preprocess/query->expected-cols query)))))
+                 (qp.preprocess/query->expected-cols
+                  ;; 1. This function is called when storing metadata.
+                  ;; 2. The metadata for storage shouldn't have remaps.
+                  ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
+                  (assoc-in query [:middleware :disable-remaps?] true))))))
 
 (defn infer-metadata-with-model-overrides
   "Does a fresh [[infer-metadata]] for the provided query.
@@ -189,7 +192,8 @@ saved later when it is ready."
         model-metadata (when model? (:result_metadata card))
         ;; If this is a model, include that model metadata so QP will infer correctly overridden metadata.
         query          (cond-> query
-                         model-metadata (update :info merge {:metadata/model-metadata model-metadata}))]
+                         model-metadata (update :info merge {:metadata/model-metadata   model-metadata
+                                                             :metadata/own-model-query? true}))]
     (infer-metadata query)))
 
 ;; TODO: Refactor this to use idents rather than names, so it's more robust.
@@ -243,4 +247,4 @@ saved later when it is ready."
            (log/debug "Attempting to infer result metadata for Card")
            (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))
        ;; now normalize the result metadata as needed so it passes the output schema check
-       (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))
+       (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))))))

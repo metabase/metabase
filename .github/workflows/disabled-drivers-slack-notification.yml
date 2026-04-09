@@ -1,0 +1,80 @@
+name: Disabled Drivers Slack Notification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1" # every Monday at 9:00 UTC
+
+jobs:
+  notify-disabled-drivers:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/Jod
+
+      - name: Install Slack SDK
+        run: npm install @slack/web-api
+
+      - name: Check disabled drivers and notify Slack
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: |
+            const { WebClient } = require('@slack/web-api');
+
+            // Fetch the config
+            const response = await fetch('https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json');
+            const config = await response.json();
+
+            const drivers = config.ignored?.drivers || [];
+            const lastUpdated = config.metadata?.last_updated || 'unknown';
+            const reason = config.metadata?.reason || 'No reason provided';
+
+            if (drivers.length === 0) {
+              console.log('No drivers are currently disabled. Skipping Slack notification.');
+              return;
+            }
+
+            if (!process.env.SLACK_BOT_TOKEN) {
+              throw new Error('SLACK_BOT_TOKEN is required');
+            }
+
+            const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
+
+            await slack.chat.postMessage({
+              channel: 'engineering-ci',
+              text: 'CI Disabled Drivers Report',
+              blocks: [
+                {
+                  type: 'section',
+                  text: {
+                    type: 'mrkdwn',
+                    text: `:no_entry: *CI Disabled Drivers*\n${drivers.map(d => `\`${d}\``).join('  ')}`
+                  },
+                  accessory: {
+                    type: 'button',
+                    text: {
+                      type: 'plain_text',
+                      text: 'View Config',
+                      emoji: true
+                    },
+                    url: 'https://github.com/metabase/ci-test-config/blob/master/ci-test-config.json'
+                  }
+                },
+                {
+                  type: 'context',
+                  elements: [
+                    {
+                      type: 'mrkdwn',
+                      text: `${reason} · :clock1: *${lastUpdated}*`
+                    }
+                  ]
+                }
+              ]
+            });
+
+            console.log('Slack notification sent successfully');

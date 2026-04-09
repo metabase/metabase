@@ -34,7 +34,7 @@ export const TableNav = ({ rowName, table, ...props }: Props) => {
           <Separator />
 
           <Breadcrumb
-            href={`/browse/databases/${table.db_id}/schema/${table.schema}`}
+            href={`/browse/databases/${table.db_id}/schema/${encodeURIComponent(table.schema)}`}
           >
             {table.schema}
           </Breadcrumb>

@@ -7,13 +7,13 @@ import { t } from "ttag";
 
 import {
   useDatabaseListQuery,
-  useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
+import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import {
   closeModal,
@@ -35,6 +35,27 @@ import {
   useRegisterShortcut,
 } from "./useRegisterShortcut";
 
+export const BASIC_ACTION_ORDER = [
+  "create-new-question",
+  "create-new-native-query",
+  "create-new-dashboard",
+  "create-new-document",
+  "create-new-collection",
+  "create-new-model",
+  "create-new-metric",
+  "download-diagnostics",
+  "navigate-admin-settings",
+  "navigate-embed-js",
+  "navigate-personal-collection",
+  "navigate-user-settings",
+  "navigate-trash",
+  "navigate-home",
+  "navigate-data-studio",
+  "navigate-browse-model",
+  "navigate-browse-database",
+  "navigate-browse-metric",
+];
+
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
   ...props
@@ -54,13 +75,13 @@ export const useCommandPaletteBasicActions = ({
 
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
   const isAdmin = useSelector(getUserIsAdmin);
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
 
   const hasDataAccess = useSelector(canUserCreateQueries);
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
   const hasModels = models.length > 0;
-  const hasEmbedJsFeature = useHasTokenFeature("embedding_simple");
 
   const openNewModal = useCallback(
     (modalId: ModalName) => {
@@ -70,12 +91,9 @@ export const useCommandPaletteBasicActions = ({
     [dispatch],
   );
   const openNewModalWithProps = useCallback(
-    <TProps extends Record<string, unknown>>(
-      modalId: ModalName,
-      props?: TProps,
-    ) => {
+    (payload: Parameters<typeof setOpenModalWithProps>[0]) => {
       dispatch(closeModal());
-      dispatch(setOpenModalWithProps({ id: modalId, props }));
+      dispatch(setOpenModalWithProps(payload));
     },
     [dispatch],
   );
@@ -176,24 +194,16 @@ export const useCommandPaletteBasicActions = ({
         section: "basic",
         icon: "metric",
         perform: () => {
+          trackMetricCreateStarted("command_palette");
           dispatch(closeModal());
-          dispatch(push("metric/query"));
-          dispatch(
-            push(
-              Urls.newQuestion({
-                mode: "query",
-                cardType: "metric",
-                collectionId,
-              }),
-            ),
-          );
+          dispatch(push(Urls.newMetric({ collectionId })));
         },
       });
     }
 
     actions.push({
-      id: "report-issue",
-      name: t`Report an issue`,
+      id: "download-diagnostics",
+      name: t`Download diagnostics`,
       section: "basic",
       icon: "bug",
       keywords: "bug, issue, problem, error, diagnostic",
@@ -203,36 +213,6 @@ export const useCommandPaletteBasicActions = ({
       },
     });
 
-    const browseActions: RegisterShortcutProps[] = [
-      {
-        id: "navigate-browse-model",
-        name: t`Browse models`,
-        section: "basic",
-        icon: "model",
-        perform: () => {
-          dispatch(push("/browse/models"));
-        },
-      },
-      {
-        id: "navigate-browse-database",
-        name: t`Browse databases`,
-        section: "basic",
-        icon: "database",
-        perform: () => {
-          dispatch(push("/browse/databases"));
-        },
-      },
-      {
-        id: "navigate-browse-metric",
-        name: t`Browse Metrics`,
-        section: "basic",
-        icon: "metric",
-        perform: () => {
-          dispatch(push("/browse/metrics"));
-        },
-      },
-    ];
-
     if (isAdmin) {
       actions.push({
         id: "navigate-admin-settings",
@@ -240,19 +220,21 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
-    if (isAdmin && hasEmbedJsFeature) {
+    if (isAdmin) {
       actions.push({
         id: "navigate-embed-js",
         section: "basic",
         icon: "embed",
-        keywords: "embed flow, new embed, embed js",
+        keywords:
+          "embed flow, new embed, embed js, modular embedding, guest embed",
         perform: () =>
-          openNewModalWithProps<
-            Pick<SdkIframeEmbedSetupModalProps, "initialState">
-          >("embed", {
-            initialState: {
-              isGuest: true,
-              useExistingUserSession: true,
+          openNewModalWithProps({
+            id: "embed",
+            props: {
+              initialState: {
+                isGuest: true,
+                useExistingUserSession: true,
+              },
             },
           }),
       });
@@ -280,17 +262,54 @@ export const useCommandPaletteBasicActions = ({
       },
     );
 
+    if (hasDataStudioAccess) {
+      actions.push({
+        id: "navigate-data-studio",
+        perform: () => dispatch(push("/data-studio")),
+      });
+    }
+
+    const browseActions: RegisterShortcutProps[] = [
+      {
+        id: "navigate-browse-model",
+        name: t`Browse models`,
+        section: "basic",
+        icon: "model",
+        perform: () => {
+          dispatch(push("/browse/models"));
+        },
+      },
+      {
+        id: "navigate-browse-database",
+        name: t`Browse databases`,
+        section: "basic",
+        icon: "database",
+        perform: () => {
+          dispatch(push("/browse/databases"));
+        },
+      },
+      {
+        id: "navigate-browse-metric",
+        name: t`Browse metrics`,
+        section: "basic",
+        icon: "metric",
+        perform: () => {
+          dispatch(push("/browse/metrics"));
+        },
+      },
+    ];
+
     return [...actions, ...browseActions];
   }, [
     dispatch,
     hasDataAccess,
+    hasDataStudioAccess,
     hasNativeWrite,
     collectionId,
     openNewModal,
     openNewModalWithProps,
     isAdmin,
     personalCollectionId,
-    hasEmbedJsFeature,
   ]);
 
   useRegisterShortcut(initialActions, [initialActions]);

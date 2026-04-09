@@ -40,5 +40,8 @@
   {:style/indent :defn}
   [drivers & body]
   `(doseq [driver# ~drivers]
-     (test-driver driver#
-       ~@body)))
+     ;; If we're already within a mt/test-drivers, this macro acts as an additional filter
+     ;; i.e. nesting this macro allows us to test the intersection of the corresponding sets
+     (when (or (nil? driver/*driver*) (= driver# driver/*driver*))
+       (test-driver driver#
+         ~@body))))

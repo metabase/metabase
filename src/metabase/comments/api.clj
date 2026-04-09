@@ -9,9 +9,10 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
+   [metabase.comments.render :as comments.render]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.users-rest.api :as api.user]
+   [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -20,7 +21,7 @@
    [toucan2.core :as t2]))
 
 ;;; TODO (Cam 10/28/25) -- don't capitalize constants https://guide.clojure.style/#naming-constants
-(def ^:private TYPE->MODEL
+(def ^:private type->model
   {"document" :model/Document})
 
 (defn- entity-archived?
@@ -52,7 +53,6 @@
    [:target_type [:enum "document"]]
    [:target_id   ms/PositiveInt]
    [:content     CommentContent]
-   [:html        :string]
    [:child_target_id {:optional true} [:maybe :string]]
    [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -60,7 +60,6 @@
   "Schema for updating a comment"
   [:map
    [:content {:optional true} CommentContent]
-   [:html    {:optional true} :string]
    [:is_resolved {:optional true} :boolean]])
 
 ;;; routes
@@ -107,7 +106,7 @@
   (if (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))
     {:disabled true
      :comments []}
-    (let [_entity  (api/read-check (TYPE->MODEL target_type) target_id)
+    (let [_entity  (api/read-check (type->model target_type) target_id)
           comments (-> (t2/select :model/Comment
                                   {:where    [:and
                                               [:= :target_type target_type]
@@ -121,7 +120,7 @@
   [{:keys [target_type target_id parent_comment_id] :as comment}
    & [{:keys [entity parent]
        ;; if you don't pass them we'll try to fetch them
-       :or   {entity (t2/select-one (TYPE->MODEL target_type) :id target_id)
+       :or   {entity (t2/select-one (type->model target_type) :id target_id)
               parent (when parent_comment_id
                        (t2/select-one :model/Comment :id parent_comment_id))}}]]
   (let [clause     (if parent_comment_id
@@ -143,9 +142,9 @@
                     :document_href  (urlpath-for entity)
                     :created_at     (:created_at comment)
                     :author         (:common_name (:creator comment))
-                    :comment        (:content_html comment)
+                    :comment        (comments.render/content->html (:content comment))
                     :parent_author  (:common_name (:creator parent))
-                    :parent_comment (:content_html parent)
+                    :parent_comment (some-> parent :content comments.render/content->html)
                     :style            {:color_text_dark   channel.render/color-text-dark
                                        :color_text_light  channel.render/color-text-light
                                        :color_text_medium channel.render/color-text-medium}}]
@@ -166,8 +165,8 @@
   "Create a new comment"
   [_route-params
    _query-params
-   {:keys [target_type target_id child_target_id parent_comment_id content html]} :- CreateComment]
-  (let [entity     (-> (api/read-check (TYPE->MODEL target_type) target_id)
+   {:keys [target_type target_id child_target_id parent_comment_id content]} :- CreateComment]
+  (let [entity     (-> (api/read-check (type->model target_type) target_id)
                        (u/prog1 (api/check-400 (not (entity-archived? <>))
                                                "Cannot comment on archived entities")))
         ;; If this is a reply, validate the parent comment exists and belongs to same entity
@@ -184,7 +183,6 @@
                                                        :child_target_id   child_target_id
                                                        :parent_comment_id parent_comment_id
                                                        :content           content
-                                                       :content_html      html
                                                        :creator_id        api/*current-user-id*})
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
@@ -203,9 +201,9 @@
   "Update a comment"
   [{:keys [comment-id]} :- [:map [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [content html is_resolved]} :- UpdateComment]
+   {:keys [content is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))
-        entity  (-> (api/read-check (TYPE->MODEL (:target_type comment)) (:target_id comment))
+        entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
                                             "Cannot edit comments on archived entities")))]
 
@@ -221,7 +219,7 @@
       ;; Anyone with write permission to target entity can resolve/unresolve
       (api/write-check entity))
 
-    (when-let [updates (-> {:content content :html html :is_resolved is_resolved}
+    (when-let [updates (-> {:content content :is_resolved is_resolved}
                            u/remove-nils
                            not-empty)]
       (t2/update! :model/Comment comment-id updates))
@@ -243,7 +241,7 @@
    _query-params]
   (let [comment (api/check-404 (t2/select-one :model/Comment :id comment-id))]
 
-    (-> (api/read-check (TYPE->MODEL (:target_type comment)) (:target_id comment))
+    (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot delete comments on archived entities")))
 
@@ -275,7 +273,7 @@
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")
 
-    (-> (api/read-check (TYPE->MODEL (:target_type comment)) (:target_id comment))
+    (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot react to comments on archived entities")))
 
@@ -291,8 +289,8 @@
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
 
-  (let [clauses (user/filter-clauses nil nil nil nil {:limit  (request/limit)
-                                                      :offset (request/offset)})]
+  (let [clauses (user/filter-clauses {:limit  (request/limit)
+                                      :offset (request/offset)})]
     ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
     ;; do not forget to uncomment tests (both api and e2e)
     {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]
@@ -304,7 +302,7 @@
      :total  (:count (t2/query-one
                       (merge {:select [[[:count [:distinct :core_user.id]] :count]]
                               :from   :core_user}
-                             (api.user/filter-clauses-without-paging clauses))))
+                             (users/filter-clauses-without-paging clauses))))
      :limit  (request/limit)
      :offset (request/offset)}))
 

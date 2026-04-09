@@ -83,13 +83,42 @@ describe("scenarios > data studio > library > tables", () => {
         .contains("Table description updated")
         .should("be.visible");
     });
+
+    it("should be able to view additional properties in sidebar", () => {
+      H.DataStudio.Tables.Overview.descriptionSidebar().within(() => {
+        cy.findByText("Entity type").should("be.visible");
+
+        cy.findByText("Last edited at").should("be.visible");
+
+        cy.findByText("Database").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+
+        cy.findByText("Source").should("be.visible");
+        cy.findByPlaceholderText("Select a data source").should(
+          "have.value",
+          "Ingested",
+        );
+
+        cy.findByText("Owner").should("be.visible");
+
+        cy.findByPlaceholderText("Pick someone, or type an email").should(
+          "have.value",
+          "No owner",
+        );
+        cy.findByText("Fields").should("be.visible");
+
+        cy.findByText("Dependents").should("be.visible");
+      });
+    });
   });
 
   describe("fields", () => {
-    it("should be able to rename fields", () => {
+    beforeEach(() => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
+    });
 
+    it("should be able to rename fields", () => {
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.tableHeaderColumn("Total").should("be.visible");
 
@@ -103,6 +132,23 @@ describe("scenarios > data studio > library > tables", () => {
 
       H.DataStudio.Tables.overviewTab().click();
       H.tableHeaderColumn("Total changed").should("be.visible");
+    });
+
+    it("should allow you to close field details and preview panels", () => {
+      H.DataStudio.Tables.visitFieldsPage(ORDERS_ID);
+      H.DataModel.TableSection.clickField("Total");
+      H.DataModel.FieldSection.getPreviewButton().click({
+        scrollBehavior: "center",
+      });
+
+      H.DataModel.FieldSection.getCloseButton().click();
+
+      H.DataModel.PreviewSection.get().should("not.exist");
+      H.DataModel.FieldSection.get().should("not.exist");
+
+      H.DataModel.TableSection.clickField("Discount");
+      H.DataModel.PreviewSection.get().should("not.exist");
+      H.DataModel.FieldSection.get().should("exist");
     });
   });
 

@@ -4,7 +4,7 @@ import { Meta } from "@storybook/blocks";
 
 # UserHasSeenAll
 
-The `UserHasSeenAll` component provides a context for the `<UserHasSeen>` componet to (optionally) register with, allowing us to render different things if there are items under this component that are determined to have been unseen.
+The `UserHasSeenAll` component provides a context for the `<UserHasSeen>` component to (optionally) register with, allowing us to render different things if there are items under this component that are determined to have been unseen.
 This works by comparing a stored value of ids (using the user key value api) against the ids of `<UserHasSeen>` that are rendered as children.
 This is most useful for being able to direct a users attention to something that is currently not being rendered on the screen (indicator dot on a menu trigger, for example)
 

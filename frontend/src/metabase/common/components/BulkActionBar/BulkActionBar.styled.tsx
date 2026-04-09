@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Card from "metabase/common/components/Card";
+import { Card } from "metabase/common/components/Card";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
 export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
@@ -15,7 +15,7 @@ export const BulkActionsToast = styled.div<{ isNavbarOpen: boolean }>`
 `;
 
 export const ToastCard = styled(Card)`
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   padding: 0.75rem var(--mantine-spacing-md);
   display: flex;
   align-items: center;

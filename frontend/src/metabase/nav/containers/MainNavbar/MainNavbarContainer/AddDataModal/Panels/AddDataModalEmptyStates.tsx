@@ -127,7 +127,7 @@ const AddDataEmptyState = ({
         <Title order={2} size="h4" mb="xs">
           {title}
         </Title>
-        <Text c="text-medium">{subtitle}</Text>
+        <Text c="text-secondary">{subtitle}</Text>
       </Box>
       {ctaLink && (
         <Button

@@ -2,10 +2,13 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import type {
-  ExportFormat,
-  TableExportFormat,
-} from "metabase/common/types/export";
+import {
+  type FormatPreference,
+  QuestionDownloadWidget,
+  type UseDownloadDataParams,
+  useDownloadData,
+} from "metabase/common/components/QuestionDownloadWidget";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   ActionIcon,
@@ -17,13 +20,9 @@ import {
 } from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
 
-import { QuestionDownloadWidget } from "../QuestionDownloadWidget";
-import {
-  type UseDownloadDataParams,
-  useDownloadData,
-} from "../QuestionDownloadWidget/use-download-data";
-
 import S from "./QuestionDownloadPopover.module.css";
+
+export type { FormatPreference };
 
 export type QuestionDownloadPopoverProps = {
   className?: string;
@@ -31,11 +30,6 @@ export type QuestionDownloadPopoverProps = {
 } & Pick<UseDownloadDataParams, "question" | "result"> &
   Pick<ActionIconProps, "variant"> &
   Partial<Omit<UseDownloadDataParams, "question" | "result">>;
-
-export type FormatPreference = {
-  last_download_format: ExportFormat;
-  last_table_download_format: TableExportFormat;
-};
 
 export type BaseQuestionDownloadPopoverProps = QuestionDownloadPopoverProps & {
   formatPreference?: FormatPreference;
@@ -47,13 +41,12 @@ const BaseQuestionDownloadPopover = ({
   result,
   dashboardId,
   dashcardId,
-  uuid,
-  token,
   visualizationSettings,
   variant,
   floating,
   formatPreference,
 }: BaseQuestionDownloadPopoverProps) => {
+  const { uuid, token } = useEmbeddingEntityContext();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [, handleDownload] = useDownloadData({
@@ -134,6 +127,3 @@ const shouldRender = ({ result }: ShouldRenderDownloadPopoverProps) => {
 
 QuestionDownloadPopover.shouldRender = shouldRender;
 PublicOrEmbeddedQuestionDownloadPopover.shouldRender = shouldRender;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QuestionDownloadPopover;

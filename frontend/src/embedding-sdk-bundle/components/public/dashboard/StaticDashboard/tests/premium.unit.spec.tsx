@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 
 import type { SdkDashboardProps } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboard";
 
+import { addPremiumAutoRefreshTests } from "../../shared-tests/auto-refresh.spec";
 import { addPremiumSubscriptionsTests } from "../../shared-tests/subscriptions.spec";
 import {
   type SetupSdkDashboardOptions,
@@ -21,7 +22,7 @@ const setupPremium = async (
     tokenFeatures: {
       embedding_sdk: true,
     },
-    enterprisePlugins: ["sdk_subscriptions"],
+    enterprisePlugins: ["sdk_notifications"],
     component: StaticDashboard as ComponentType<SdkDashboardProps>,
   });
 };
@@ -29,4 +30,5 @@ console.warn = () => {};
 
 describe("StaticDashboard", () => {
   addPremiumSubscriptionsTests(setupPremium);
+  addPremiumAutoRefreshTests(setupPremium);
 });

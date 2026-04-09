@@ -43,19 +43,22 @@ function aggregation(source: string) {
 
 describe("old recursive-parser tests", () => {
   it("should parse numeric literals", () => {
-    expect(expr("0")).toEqual(value(0, "type/Integer"));
-    expect(expr("42")).toEqual(value(42, "type/Integer"));
-    expect(expr("1.0")).toEqual(value(1, "type/Integer"));
-    expect(expr("0.123")).toEqual(value(0.123, "type/Float"));
+    // Numbers are returned as raw values (except bigints which need type info)
+    expect(expr("0")).toEqual(0);
+    expect(expr("42")).toEqual(42);
+    expect(expr("1.0")).toEqual(1);
+    expect(expr("0.123")).toEqual(0.123);
+    // Bigints are wrapped because they serialize as strings
     expect(expr("9223372036854775807")).toEqual(
       value("9223372036854775807", "type/BigInteger"),
     );
   });
 
   it("should parse string literals", () => {
-    expect(expr("'Universe'")).toEqual(value("Universe", "type/Text"));
-    expect(expr('"answer"')).toEqual(value("answer", "type/Text"));
-    expect(expr('"\\""')).toEqual(value('"', "type/Text"));
+    // Strings are returned as raw values
+    expect(expr("'Universe'")).toEqual("Universe");
+    expect(expr('"answer"')).toEqual("answer");
+    expect(expr('"\\""')).toEqual('"');
 
     expect(expr("length('Universe')")).toEqual(op("length", "Universe"));
     expect(expr('length("answer")')).toEqual(op("length", "answer"));
@@ -75,15 +78,15 @@ describe("old recursive-parser tests", () => {
   });
 
   it("should parse unary expressions", () => {
-    expect(expr("+6")).toEqual(value(6, "type/Integer"));
-    expect(expr("++7")).toEqual(value(7, "type/Integer"));
-    expect(expr("-+8")).toEqual(value(-8, "type/Integer"));
+    expect(expr("+6")).toEqual(6);
+    expect(expr("++7")).toEqual(7);
+    expect(expr("-+8")).toEqual(-8);
   });
 
   it("should flatten unary expressions", () => {
-    expect(expr("--5")).toEqual(value(5, "type/Integer"));
-    expect(expr("- 6")).toEqual(value(-6, "type/Integer"));
-    expect(expr("+-7")).toEqual(value(-7, "type/Integer"));
+    expect(expr("--5")).toEqual(5);
+    expect(expr("- 6")).toEqual(-6);
+    expect(expr("+-7")).toEqual(-7);
     expect(expr("sqrt(-1)")).toEqual(op("sqrt", -1));
     expect(expr("- [Total]")).toEqual(op("-", fields.orders.TOTAL));
     expect(expr("-[Total]")).toEqual(op("-", fields.orders.TOTAL));
@@ -441,8 +444,9 @@ describe("Specific expressions", () => {
   });
 
   it("should support negated numbers", () => {
-    expect(expr(`-10`)).toEqual(value(-10, "type/Integer"));
-    expect(expr(`-3.1415`)).toEqual(value(-3.1415, "type/Float"));
+    expect(expr(`-10`)).toEqual(-10);
+    expect(expr(`-3.1415`)).toEqual(-3.1415);
+    // Bigints are still wrapped because they need to be serialized as strings
     expect(expr(`-9223372036854775809`)).toEqual(
       value("-9223372036854775809", "type/BigInteger"),
     );

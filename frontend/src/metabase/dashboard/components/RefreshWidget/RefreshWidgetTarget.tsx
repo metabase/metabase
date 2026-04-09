@@ -44,6 +44,7 @@ export const RefreshWidgetTarget = ({
       }
       name="clock"
       aria-label={t`Auto Refresh`}
+      {...buttonProps}
     >
       <CountdownIcon
         width={16}

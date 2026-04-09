@@ -66,7 +66,7 @@ tokens.forEach((token) => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       codeBlock().last().should("have.text", IFRAME_CODE);
 
       H.modal()

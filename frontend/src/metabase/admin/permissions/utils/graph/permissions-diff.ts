@@ -5,6 +5,11 @@ import type {
   GroupsPermissions,
 } from "metabase-types/api";
 
+import type {
+  DatabasePermissionsDiff,
+  GroupPermissionsDiff,
+  PermissionsGraphDiff,
+} from "../../types";
 import { DataPermission } from "../../types";
 
 import {
@@ -24,11 +29,11 @@ function diffDatabasePermissions(
   oldPerms: GroupsPermissions,
   groupId: number,
   database: Database,
-) {
+): Partial<DatabasePermissionsDiff> {
   const databaseDiff: {
-    grantedTables: any;
-    revokedTables: any;
-    native?: any;
+    grantedTables: NonNullable<DatabasePermissionsDiff["grantedTables"]>;
+    revokedTables: NonNullable<DatabasePermissionsDiff["revokedTables"]>;
+    native?: DatabasePermissionsDiff["native"];
   } = {
     grantedTables: {},
     revokedTables: {},
@@ -91,8 +96,10 @@ function diffGroupPermissions(
   oldPerms: GroupsPermissions,
   groupId: number,
   databases: Database[],
-) {
-  const groupDiff: { databases: any } = { databases: {} };
+): Partial<GroupPermissionsDiff> {
+  const groupDiff: {
+    databases: Record<number | string, Partial<DatabasePermissionsDiff>>;
+  } = { databases: {} };
   for (const database of databases) {
     groupDiff.databases[database.id] = diffDatabasePermissions(
       newPerms,
@@ -106,7 +113,7 @@ function diffGroupPermissions(
     }
   }
   deleteIfEmpty(groupDiff, "databases");
-  return groupDiff;
+  return groupDiff as Partial<GroupPermissionsDiff>;
 }
 
 export function diffDataPermissions(
@@ -114,8 +121,10 @@ export function diffDataPermissions(
   oldPerms: GroupsPermissions,
   groups: Group[],
   databases: Database[],
-) {
-  const permissionsDiff: { groups: any } = { groups: {} };
+): PermissionsGraphDiff {
+  const permissionsDiff: {
+    groups: Record<number | string, Partial<GroupPermissionsDiff>>;
+  } = { groups: {} };
   if (newPerms && oldPerms && databases) {
     for (const group of groups) {
       permissionsDiff.groups[group.id] = diffGroupPermissions(
@@ -130,5 +139,5 @@ export function diffDataPermissions(
       }
     }
   }
-  return permissionsDiff;
+  return permissionsDiff as PermissionsGraphDiff;
 }

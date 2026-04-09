@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import type { StackedTooltipModel } from "metabase/visualizations/types";
 
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
@@ -58,7 +58,7 @@ const StackedDataTooltip = ({
   const trimmedBodyRows = groupExcessiveTooltipRows(
     sortedBodyRows,
     MAX_BODY_ROWS,
-    hasColorIndicators ? color("text-light") : undefined,
+    hasColorIndicators ? color("text-tertiary") : undefined,
   );
 
   return (

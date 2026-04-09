@@ -6,7 +6,7 @@ title: LDAP
 
 Metabase supports authentication with Lightweight Directory Access Protocol (LDAP).
 
-You can find SSO options under **Admin settings** > **Settings** > **Authentication**.
+You can find SSO options under **Admin** > **Settings** > **Authentication**.
 
 ## Required LDAP attributes
 
@@ -24,11 +24,13 @@ Your LDAP directory must have the email field populated for each entry that will
 
 ## Enabling LDAP authentication
 
-In the **Admin settings** > **Settings** > **Authentication** tab, go to the LDAP section and click **Set up**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the relevant details.
+In the **Admin** > **Settings** > **Authentication** > **LDAP**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the relevant details.
 
 ## User provisioning
 
-When a person logs in via LDAP, Metabase can create a Metabase account for them automatically (if they don't already have a Metabase account).
+User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via LDAP.
+
+If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
 
 ## Server settings
 

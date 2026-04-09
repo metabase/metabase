@@ -18,14 +18,22 @@ on:
 
 jobs:
   collect-and-average-timings:
-    runs-on: ubuntu-22.04
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
       DAYS_BACK: ${{ inputs.days_back || 7 }}
     steps:
+      - name: Generate GitHub App Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -41,7 +49,7 @@ jobs:
             const result = await collectAndAverageTimings({
               github,
               context,
-              token: '${{ secrets.GITHUB_TOKEN }}',
+              token: '${{ steps.app-token.outputs.token }}',
               daysBack: ${{ env.DAYS_BACK }},
               existingTimingsPath: 'e2e/support/timings.json'
             });
@@ -57,9 +65,9 @@ jobs:
           echo "Branch name will be: $BRANCH_NAME"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           branch: ${{ env.BRANCH_NAME }}
           base: master
           commit-message: |
@@ -89,4 +97,7 @@ jobs:
             Co-Authored-By: GitHub Actions <actions@github.com>
           labels: |
             .CI & Tests
+            no-backport
           add-paths: e2e/support/timings.json
+          team-reviewers: |
+            devexp

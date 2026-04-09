@@ -5,7 +5,7 @@
   There are currently two implementations of humanization logic, previously three.
   Which implementation is used is determined by the Setting `humanization-strategy`.
   `:simple`, which merely replaces underscores and dashes with spaces, and `:none`,
-  which predictibly is merely an identity function that does nothing to the results.
+  which predictably is merely an identity function that does nothing to the results.
 
   There used to also be `:advanced`, which was the default until enough customers
   complained that we first fixed it and then the fix wasn't good enough so we removed it."
@@ -29,7 +29,7 @@
     (name->human-readable-name \"cool_toucans\")                         ;-> \"Cool Toucans\"
     ;; this is the same as:
     (name->human-readable-name (humanization-strategy) \"cool_toucans\") ;-> \"Cool Toucans\"
-    ;; specifiy a different strategy:
+    ;; specify a different strategy:
     (name->human-readable-name :none \"cool_toucans\")                   ;-> \"cool_toucans\""
   ([s]
    (name->human-readable-name (humanization-strategy) s))

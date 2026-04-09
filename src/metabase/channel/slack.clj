@@ -61,8 +61,7 @@
 (defn- do-slack-request [request-fn endpoint request]
   (let [token (or (get-in request [:query-params :token])
                   (get-in request [:form-params :token])
-                  (channel.settings/unobfuscated-slack-app-token)
-                  (channel.settings/slack-token))]
+                  (channel.settings/unobfuscated-slack-app-token))]
     (when token
       (let [url     (str "https://slack.com/api/" (name endpoint))
             _       (log/tracef "Slack API request: %s %s" (pr-str url) (pr-str request))
@@ -79,7 +78,7 @@
           (catch Throwable e
             (throw (ex-info (.getMessage e) (merge (ex-data e) {:url url}) e))))))))
 
-(defn- GET
+(defn GET
   "Make a GET request to the Slack API."
   [endpoint & {:as query-params}]
   (do-slack-request http/get endpoint {:query-params query-params}))
@@ -170,7 +169,7 @@
         (throw e)))))
 
 (defn user-transform
-  "Tranformation from slack api user to our own internal representation."
+  "Transformation from slack api user to our own internal representation."
   [member]
   {:display-name (str \@ (:name member))
    :type         "user"
@@ -226,7 +225,7 @@
 (defn bug-report-channel
   "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
   [[slack-bug-report-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
-  throws an error that advices an admin to create it."
+  throws an error that advises an admin to create it."
   []
   (let [channel-name (channel.settings/slack-bug-report-channel)]
     (if (channel-exists? channel-name)
@@ -324,7 +323,7 @@
                        [:text        {:optional true} :string]
                        [:attachments {:optional true} [:sequential :map]]]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
-  (let [base-params    {:username "MetaBot"
+  (let [base-params    {:username "Metabot"
                         :icon_url "http://static.metabase.com/metabot_slack_avatar_whitebg.png"}
         message-params (update-vals message-content #(if (string? %) % (json/encode %)))]
     ;; https://api.slack.com/methods/chat.postMessage

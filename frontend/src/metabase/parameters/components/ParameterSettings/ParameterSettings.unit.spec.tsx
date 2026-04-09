@@ -129,7 +129,7 @@ describe("ParameterSidebar", () => {
     beforeEach(() => {
       setup({
         parameter: createMockUiParameter({
-          type: "id",
+          type: "number/=",
           sectionId: "id",
         }),
       });
@@ -139,8 +139,8 @@ describe("ParameterSidebar", () => {
       expect(screen.getByDisplayValue("ID")).toBeInTheDocument();
     });
 
-    it("should not render operator", () => {
-      expect(screen.getAllByDisplayValue("id").length).toBe(1);
+    it("should render operator", () => {
+      expect(screen.getByDisplayValue("Numeric ID")).toBeInTheDocument();
     });
   });
 

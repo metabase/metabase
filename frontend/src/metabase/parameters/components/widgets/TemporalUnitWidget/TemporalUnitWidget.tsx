@@ -1,4 +1,4 @@
-import { TemporalUnitPicker } from "metabase/querying/filters/components/TemporalUnitPicker";
+import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
 import * as Lib from "metabase-lib";
 import type { Parameter, TemporalUnit } from "metabase-types/api";
 

@@ -10,6 +10,7 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
@@ -59,12 +60,16 @@
   project ID associated with the service account credentials."
   []
   (when (driver-api/initialized?)
-    (when-let [{:keys [details], driver :engine, :as database} (driver-api/database (driver-api/metadata-provider))]
+    (when-let [{driver :engine, :as database} (driver-api/database (driver-api/metadata-provider))]
       ;; this is mostly here to catch tests that do something dumb like try to run a BigQuery tests with a MBQL query
       ;; targeting the H2 test database
       (when driver
         (assert (isa? driver/hierarchy driver :bigquery-cloud-sdk) "Sanity check: Database is not a BigQuery database"))
-      (let [project-id-override (:project-id details)
+      ;; :project-id-from-credentials is a database-level cache managed by this driver. We store and read it from
+      ;; `:details` regardless of connection type. This is valid so long as read and write service accounts share a
+      ;; project ID. If they don't, [[bigquery.common/populate-project-id-from-credentials!]] will log a warning.
+      (let [details             (driver.conn/default-details database)
+            project-id-override (:project-id details)
             project-id-creds    (:project-id-from-credentials details)
             ret-fn              (fn [proj-id-1 proj-id-2]
                                   (when (and (some? proj-id-1) (not= proj-id-1 proj-id-2))
@@ -267,7 +272,8 @@
 
 (defmethod temporal-type ::h2x/identifier
   [identifier]
-  (:bigquery-cloud-sdk/temporal-type (meta identifier)))
+  (or (:bigquery-cloud-sdk/temporal-type (meta identifier))
+      (:bigquery-cloud-sdk/base-temporal-type (meta identifier))))
 
 (defmethod temporal-type :absolute-datetime
   [[_ t _]]
@@ -674,6 +680,12 @@
   [_driver [_ nfc-path]]
   nfc-path)
 
+(defn- with-base-temporal-type
+  [[_ _id-or-name {:keys [base-type]} :as clause]]
+  (if (not (instance? clojure.lang.IObj clause))
+    clause
+    (vary-meta clause assoc :bigquery-cloud-sdk/base-temporal-type (base-type->temporal-type base-type))))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver [_field id-or-name opts :as field-clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
@@ -685,7 +697,9 @@
       ;; attach temporal type info to the field clause, this will get attached to the resulting [[h2x/identifier]] by
       ;; SQL QP parent method, and we can access that inside other things like [[sql.qp/date]] implementations which it
       ;; may call in turn.
-      (let [field-clause (with-temporal-type field-clause (temporal-type field-clause))
+      (let [field-clause (-> field-clause
+                             (with-temporal-type (temporal-type field-clause))
+                             with-base-temporal-type)
             stored-field  (when (integer? id-or-name)
                             (driver-api/field (driver-api/metadata-provider) id-or-name))
             result       (parent-method driver field-clause)
@@ -845,7 +859,7 @@
 (defn- adjust-order-by-clause
   [[dir [_clause _id-or-name opts :as clause]]]
   [dir
-   ;; Following code ensures that only selected columns (with exception of those comming from different source than
+   ;; Following code ensures that only selected columns (with exception of those coming from different source than
    ;; this source table and having no binning and no bucketing) are forced to use aliases.
    ;;
    ;; This solves Bigquery's inability to use expression from group by in order by.

@@ -6,6 +6,6 @@
 }
 
 .EmptyDescription {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-weight: 700;
 }

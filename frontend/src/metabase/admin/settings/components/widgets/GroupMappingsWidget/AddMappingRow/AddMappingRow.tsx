@@ -1,10 +1,9 @@
 import cx from "classnames";
-import type * as React from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
 import type { MappingsType } from "metabase/admin/types";
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import CS from "metabase/css/core/index.css";
 
 type AddMappingRowProps = {

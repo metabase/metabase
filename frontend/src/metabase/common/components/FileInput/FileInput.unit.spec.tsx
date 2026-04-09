@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 
-import FileInput from "./FileInput";
+import { FileInput } from "./FileInput";
 
 describe("FileInput", () => {
   it("should render correctly", () => {

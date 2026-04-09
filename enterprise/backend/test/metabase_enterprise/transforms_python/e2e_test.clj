@@ -3,11 +3,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -15,7 +15,7 @@
 (deftest transforms-python-with-library-test
   (testing "Python transform execution with common library"
     (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (mt.util/with-discard-model-updates! [:model/PythonLibrary]
             ;; Create or update the python library
@@ -44,10 +44,10 @@
                       transform-payload {:name   "Library Test Transform"
                                          :source {:type  "python"
                                                   :source-database (mt/id)
-                                                  :source-tables {}
+                                                  :source-tables []
                                                   :body transform-body}
                                          :target (assoc target :database (mt/id))}
-                      {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                      {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform"
                                                                transform-payload)]
                   (transforms.tu/test-run transform-id)
                   (transforms.tu/wait-for-table table-name 5000)
@@ -62,7 +62,7 @@
 (deftest execute-transforms-python-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
@@ -71,13 +71,13 @@
               (let [original           {:name   "Gadget Products"
                                         :source {:type  "python"
                                                  :source-database (mt/id)
-                                                 :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                 :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                  :body  (str "import pandas as pd\n"
                                                              "\n"
                                                              "def transform():\n"
                                                              "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                         :target  (assoc target :database (mt/id))}
-                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform"
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform"
                                                              original)]
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 5000)

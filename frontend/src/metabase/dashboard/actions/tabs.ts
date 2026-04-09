@@ -3,13 +3,12 @@ import type { Draft } from "@reduxjs/toolkit";
 import { createAction, createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import {
-  CANCEL_EDITING_DASHBOARD,
-  INITIALIZE,
-} from "metabase/dashboard/actions/core";
+import { CANCEL_EDITING_DASHBOARD } from "metabase/dashboard/actions/core";
 import { Dashboards } from "metabase/entities/dashboards";
+import { isVirtualDashCard } from "metabase/lib/dashboard";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { checkNotNull } from "metabase/lib/types";
+import { INITIALIZE, selectTab } from "metabase/redux/dashboard";
 import { addUndo } from "metabase/redux/undo";
 import type {
   DashCardId,
@@ -22,6 +21,7 @@ import type {
   GetState,
   SelectedTabId,
   StoreDashboard,
+  StoreDashcard,
   TabDeletionId,
 } from "metabase-types/store";
 
@@ -31,7 +31,6 @@ import { getDashCardById } from "../selectors";
 import {
   calculateDashCardRowAfterUndo,
   generateTemporaryDashcardId,
-  isVirtualDashCard,
 } from "../utils";
 
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
@@ -58,9 +57,6 @@ type MoveTabPayload = {
   sourceTabId: DashboardTabId;
   destinationTabId: DashboardTabId;
 };
-type SelectTabPayload = {
-  tabId: DashboardTabId | null;
-};
 type MoveDashCardToTabPayload = {
   dashCardId: DashCardId;
   destinationTabId: DashboardTabId;
@@ -81,7 +77,7 @@ const DELETE_TAB = "metabase/dashboard/DELETE_TAB";
 const UNDO_DELETE_TAB = "metabase/dashboard/UNDO_DELETE_TAB";
 const RENAME_TAB = "metabase/dashboard/RENAME_TAB";
 const MOVE_TAB = "metabase/dashboard/MOVE_TAB";
-const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
+export { SELECT_TAB } from "metabase/redux/dashboard";
 const MOVE_DASHCARD_TO_TAB = "metabase/dashboard/MOVE_DASHCARD_TO_TAB";
 const UNDO_MOVE_DASHCARD_TO_TAB =
   "metabase/dashboard/UNDO_MOVE_DASHCARD_TO_TAB";
@@ -150,8 +146,6 @@ export function duplicateTab(sourceTabId: DashboardTabId | null) {
   return duplicateTabAction({ sourceTabId, newTabId });
 }
 
-export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
-
 function _selectTab({
   state,
   tabId,
@@ -219,7 +213,7 @@ export function getPrevDashAndTabs({
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
-  const prevDash = dashId ? state.dashboards[dashId] : null;
+  const prevDash = dashId ? (state as DashboardState).dashboards[dashId] : null;
   const prevTabs =
     prevDash?.tabs?.filter((t) => !filterRemovedTabs || !t.isRemoved) ?? [];
 
@@ -367,7 +361,7 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-          if (isVirtualDashCard(sourceDashCard)) {
+          if (isVirtualDashCard(sourceDashCard as StoreDashcard)) {
             return;
           }
 
@@ -546,6 +540,9 @@ export const tabsReducer = createReducer<DashboardState>(
     );
 
     builder.addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
+      if (!payload.dashboard) {
+        return;
+      }
       const { dashcards: newDashcards, tabs: newTabs } = payload.dashboard;
 
       const { prevDash, prevTabs } = getPrevDashAndTabs({

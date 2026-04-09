@@ -2,13 +2,13 @@ import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { DatePicker } from "metabase/querying/filters/components/DatePicker";
+import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import type {
   DatePickerOperator,
   DatePickerShortcut,
   DatePickerValue,
   RelativeIntervalDirection,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import {
   deserializeDateParameterValue,
   serializeDateParameterValue,

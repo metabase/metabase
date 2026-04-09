@@ -69,7 +69,7 @@ describe("Google Drive > Connect / Disconnect modal", () => {
     expect(await screen.findByText("Import Google Sheets")).toBeInTheDocument();
   });
 
-  it("should show service acocunt email", async () => {
+  it("should show service account email", async () => {
     setup({
       status: "not-connected",
     });

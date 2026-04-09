@@ -10,10 +10,12 @@ import {
 import type { HeaderItem } from "./types";
 import {
   addMissingCardBreakouts,
+  checkRenderable,
   getColumnValues,
   getLeftHeaderWidths,
   isColumnValid,
   isFormattablePivotColumn,
+  leftHeaderCellSizeAndPositionGetter,
   updateValueWithCurrentColumns,
 } from "./utils";
 
@@ -167,7 +169,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
   });
 
   describe("addMissingCardBreakouts", () => {
-    it("should not mess with pivot settings that aren't misssing breakouts", () => {
+    it("should not mess with pivot settings that aren't missing breakouts", () => {
       const oldPivotSettings: PivotTableColumnSplitSetting = {
         columns: [cols[0].name],
         rows: [cols[1].name, cols[2].name],
@@ -297,6 +299,33 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
     });
   });
 
+  describe("checkRenderable", () => {
+    it("should throw when pivot_rows_truncated is set", () => {
+      const data = {
+        cols: [
+          createMockColumn({ source: "breakout", name: "field-1" }),
+          createMockColumn({ source: "aggregation", name: "count" }),
+        ],
+        rows: [],
+        pivot_rows_truncated: 100000,
+      };
+      expect(() => checkRenderable([{ data }] as any, {} as any)).toThrow(
+        /Too many rows/,
+      );
+    });
+
+    it("should not throw when pivot_rows_truncated is not set", () => {
+      const data = {
+        cols: [
+          createMockColumn({ source: "breakout", name: "field-1" }),
+          createMockColumn({ source: "aggregation", name: "count" }),
+        ],
+        rows: [],
+      };
+      expect(() => checkRenderable([{ data }] as any, {} as any)).not.toThrow();
+    });
+  });
+
   describe("getColumnValues", () => {
     it("can collect column values from left header data", () => {
       const data = [
@@ -353,6 +382,35 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         { values: ["bar1", "bar2"], hasSubtotal: false },
         { values: ["baz1"], hasSubtotal: true },
       ]);
+    });
+  });
+
+  describe("leftHeaderCellSizeAndPositionGetter", () => {
+    it("should return the correct width for a subtotal", () => {
+      const result = leftHeaderCellSizeAndPositionGetter(
+        { depth: 1, maxDepthBelow: 0, isSubtotal: true } as HeaderItem,
+        [100, 100, 100],
+        [0, 1, 2],
+      );
+      expect(result.width).toBe(200);
+    });
+
+    it("should return the correct width for a non-subtotal", () => {
+      const result = leftHeaderCellSizeAndPositionGetter(
+        { depth: 1, maxDepthBelow: 1, isSubtotal: false } as HeaderItem,
+        [100, 100, 100],
+        [0, 1, 2],
+      );
+      expect(result.width).toBe(100);
+    });
+
+    it("non-subtotal widths should not increase when columns are collapsed", () => {
+      const result = leftHeaderCellSizeAndPositionGetter(
+        { depth: 1, maxDepthBelow: 0, isSubtotal: false } as HeaderItem,
+        [100, 100, 100],
+        [0, 1, 2],
+      );
+      expect(result.width).toBe(100);
     });
   });
 });

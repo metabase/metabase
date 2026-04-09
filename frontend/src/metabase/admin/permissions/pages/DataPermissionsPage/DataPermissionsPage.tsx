@@ -9,15 +9,14 @@ import { Groups } from "metabase/entities/groups";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, Group, PermissionsGraph } from "metabase-types/api";
+import type { DatabaseId, Group } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
 import {
-  LOAD_DATA_PERMISSIONS_FOR_GROUP,
+  loadDataPermissionsForGroup,
   restoreLoadedPermissions,
   saveDataPermissions,
 } from "../../permissions";
@@ -52,18 +51,12 @@ function DataPermissionsPage({
 
   const { loading: isLoadingAllUsers } = useAsync(async () => {
     const allUsers = groups.find(isDefaultGroup);
-    const result = await PermissionsApi.graphForGroup({
-      groupId: allUsers?.id,
-    });
-    await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
+    await dispatch(loadDataPermissionsForGroup(allUsers?.id));
   }, []);
 
   const { loading: isLoadingAdminstrators } = useAsync(async () => {
     const admins = groups.find(isAdminGroup);
-    const result = await PermissionsApi.graphForGroup({
-      groupId: admins?.id,
-    });
-    await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
+    await dispatch(loadDataPermissionsForGroup(admins?.id));
   }, []);
 
   const { isLoading: isLoadingTables } = useGetDatabaseMetadataQuery(
@@ -90,7 +83,7 @@ function DataPermissionsPage({
       tab="data"
       onLoad={resetPermissions}
       onSave={savePermissions}
-      diff={diff as PermissionsGraph}
+      diff={diff}
       isDirty={isDirty}
       route={route}
       helpContent={<DataPermissionsHelp />}

@@ -1,14 +1,15 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { screen } from "__support__/ui";
+import type { AuthSettingsPageTab } from "metabase/plugins";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 import { setup as OSSSetup } from "./AuthenticationSettingsPage.setup";
 
 const setup = async (
   extraSettings?: Partial<EnterpriseSettings>,
-  tab = "authentication",
+  tab: AuthSettingsPageTab = "authentication",
 ) => {
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("auth");
   return OSSSetup(extraSettings, true, tab);
 };
 

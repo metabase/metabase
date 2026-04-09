@@ -1,9 +1,11 @@
-import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import _ from "underscore";
 
+import {
+  useDeleteCacheConfigsMutation,
+  useUpdateCacheConfigMutation,
+} from "metabase/api";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { CacheConfigApi } from "metabase/services";
 import type {
   CacheConfig,
   CacheStrategy,
@@ -20,10 +22,11 @@ import {
 
 export const useSaveStrategy = (
   targetId: number | null,
-  configs: CacheConfig[],
-  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>,
   model: CacheableModel | null,
 ) => {
+  const [updateCacheConfig] = useUpdateCacheConfigMutation();
+  const [deleteCacheConfigs] = useDeleteCacheConfigsMutation();
+
   const saveStrategy = useCallback(
     async (values: CacheStrategy) => {
       if (targetId === null || model === null) {
@@ -32,21 +35,17 @@ export const useSaveStrategy = (
       const { strategies } = PLUGIN_CACHING;
 
       const isRoot = targetId === rootId;
+      const apiModel = model === "metric" ? "question" : model;
       const baseConfig: Pick<CacheConfig, "model" | "model_id"> = {
-        model: isRoot ? "root" : model,
+        model: isRoot ? "root" : apiModel,
         model_id: targetId,
       };
-
-      const otherConfigs = configs.filter(
-        (config) => config.model_id !== targetId,
-      );
       const shouldDeleteStrategy =
         values.type === "inherit" ||
         // To set "don't cache" as the root strategy, we delete the root strategy
         (isRoot && values.type === "nocache");
       if (shouldDeleteStrategy) {
-        await CacheConfigApi.delete(baseConfig, { hasBody: true });
-        setConfigs(otherConfigs);
+        await deleteCacheConfigs(baseConfig).unwrap();
       } else {
         // If you change strategies, Formik will keep the old values
         // for fields that are not in the new strategy,
@@ -64,16 +63,14 @@ export const useSaveStrategy = (
         };
 
         const translatedConfig = translateConfigToAPI(newConfig);
-        await CacheConfigApi.update(translatedConfig);
+        await updateCacheConfig(translatedConfig).unwrap();
 
         if (newConfig.strategy.type === "ttl") {
           newConfig.strategy = populateMinDurationSeconds(newConfig.strategy);
         }
-
-        setConfigs([...otherConfigs, newConfig]);
       }
     },
-    [configs, setConfigs, targetId, model],
+    [targetId, model, updateCacheConfig, deleteCacheConfigs],
   );
   return saveStrategy;
 };

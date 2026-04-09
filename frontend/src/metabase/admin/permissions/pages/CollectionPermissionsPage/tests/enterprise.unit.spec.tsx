@@ -16,20 +16,28 @@ import {
 const tokenFeatures = { tenants: true, audit_app: true };
 
 describe("Admin > CollectionPermissionsPage (enterprise)", () => {
-  describe("Tenant Collections Tab", () => {
+  describe("Shared collections Tab", () => {
     it("shows the tab when tenants are enabled", async () => {
-      setup({ tokenFeatures, settings: { "use-tenants": true } });
+      setup({
+        tokenFeatures,
+        enterprisePlugins: ["tenants", "audit_app"],
+        settings: { "use-tenants": true },
+      });
 
       expect(
-        await screen.findByRole("radio", { name: "Tenant Collections" }),
+        await screen.findByRole("radio", { name: "Shared collections" }),
       ).toBeInTheDocument();
     });
 
     it("hides the tab when tenants are disabled", async () => {
-      setup({ tokenFeatures, settings: { "use-tenants": false } });
+      setup({
+        tokenFeatures,
+        enterprisePlugins: ["tenants", "audit_app"],
+        settings: { "use-tenants": false },
+      });
 
       expect(
-        screen.queryByRole("radio", { name: "Tenant Collections" }),
+        screen.queryByRole("radio", { name: "Shared collections" }),
       ).not.toBeInTheDocument();
     });
   });
@@ -38,13 +46,14 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
     it("should not be able get access to Our Analytics", async () => {
       await setup({
         tokenFeatures,
+        enterprisePlugins: ["tenants", "audit_app"],
         initialRoute: "/admin/permissions/collections/root",
         permissionGroups: defaultPermissionGroupsWithTenants,
         permissionsGraph: defaultPermissionsGraphWithTenants,
       });
 
       await assertCollectionAccessForGroup("Administrators", "Curate");
-      await assertCollectionAccessForGroup("All Internal Users", "View");
+      await assertCollectionAccessForGroup("All internal users", "View");
       await assertCollectionAccessForGroup("Other Users", "View");
       await assertCollectionAccessForGroup("All tenant users", "No access");
       await assertCollectionAccessIsDisabled("All tenant users");
@@ -53,13 +62,14 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
     it("should not be able get access to normal collections", async () => {
       await setup({
         tokenFeatures,
+        enterprisePlugins: ["tenants", "audit_app"],
         initialRoute: "/admin/permissions/collections/2",
         permissionGroups: defaultPermissionGroupsWithTenants,
         permissionsGraph: defaultPermissionsGraphWithTenants,
       });
 
       await assertCollectionAccessForGroup("Administrators", "Curate");
-      await assertCollectionAccessForGroup("All Internal Users", "Curate");
+      await assertCollectionAccessForGroup("All internal users", "Curate");
       await assertCollectionAccessForGroup("Other Users", "View");
       await assertCollectionAccessForGroup("All Tenant users", "No access");
       await assertCollectionAccessIsDisabled("All Tenant users");
@@ -95,11 +105,12 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures,
+        tokenFeatures: { audit_app: true },
+        enterprisePlugins: ["audit_app", "collections"],
       });
 
       await assertCollectionAccessForGroup("Administrators", "View");
-      await assertCollectionAccessForGroup("All Internal Users", "View");
+      await assertCollectionAccessForGroup("All internal users", "View");
       await assertCollectionAccessForGroup("Other Users", "View");
 
       await userEvent.click(await getCollectionPermissionCell("Other Users"));
@@ -113,11 +124,12 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures,
+        tokenFeatures: { audit_app: true },
+        enterprisePlugins: ["audit_app", "collections"],
       });
 
       await assertCollectionAccessForGroup("Administrators", "View");
-      await assertCollectionAccessForGroup("All Internal Users", "View");
+      await assertCollectionAccessForGroup("All internal users", "View");
       await assertCollectionAccessForGroup("Other Users", "View");
       await assertCollectionAccessIsDisabled("Administrators");
 
@@ -137,13 +149,15 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures,
+        tokenFeatures: { audit_app: true },
+        enterprisePlugins: ["audit_app", "collections"],
       });
 
-      // change all users users view to no access
-      await userEvent.click(
-        await screen.findAllByText("View").then((dropdowns) => dropdowns[0]),
-      );
+      // change all internal users view to no access
+      const allUsersRow = await screen.findByRole("row", {
+        name: /All internal users/i,
+      });
+      await userEvent.click(within(allUsersRow).getByText("View"));
       await userEvent.click(await screen.findByText("No access"));
 
       expect(

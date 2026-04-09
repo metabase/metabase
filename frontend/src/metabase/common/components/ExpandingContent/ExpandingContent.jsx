@@ -5,7 +5,7 @@ import { Component } from "react";
 import CS from "metabase/css/core/index.css";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
-class ExpandingContent extends Component {
+export class ExpandingContent extends Component {
   constructor({ isInitiallyOpen }) {
     super();
     this.state = {
@@ -75,5 +75,3 @@ class ExpandingContent extends Component {
     );
   }
 }
-
-export default ExpandingContent;

@@ -20,6 +20,7 @@ import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-stat
 import { type Deferred, defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { isObject } from "metabase-types/guards";
 
 type LoadQuestionResult = Promise<
@@ -59,7 +60,7 @@ export interface LoadQuestionHookResult {
 
 type UseLoadQuestionParams = LoadSdkQuestionParams & {
   isGuestEmbed: boolean;
-  token: string | null | undefined;
+  token: EntityToken | null | undefined;
 };
 
 export function useLoadQuestion({
@@ -80,6 +81,18 @@ export function useLoadQuestion({
     questionState;
 
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+
+  /**
+   * Token change isn't an indicator to re-run the query. When users are refreshing
+   * the guest embeds token, the token will change, but not questionId. So we can
+   * rely on questionId that will change the loadAndQueryQuestion value and trigger
+   * the query again.
+   *
+   * As a reference, dashboards don't use this approach. It detects if the
+   * dashboardId has changed before triggering the query. So, the idea is quite similar.
+   */
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
 
   const deferredRef = useRef<Deferred>();
 
@@ -114,7 +127,7 @@ export function useLoadQuestion({
           options,
           deserializedCard,
           questionId,
-          token,
+          token: tokenRef.current,
           initialSqlParameters,
           targetDashboardId,
         }),
@@ -125,7 +138,7 @@ export function useLoadQuestion({
       const results = await runQuestionQuerySdk({
         question: questionState.question,
         isGuestEmbed,
-        token,
+        token: tokenRef.current,
         originalQuestion: questionState.originalQuestion,
         parameterValues: questionState.parameterValues,
         cancelDeferred: deferred(),
@@ -168,7 +181,6 @@ export function useLoadQuestion({
     isGuestEmbed,
     sqlParameterKey,
     questionId,
-    token,
     targetDashboardId,
   ]);
 

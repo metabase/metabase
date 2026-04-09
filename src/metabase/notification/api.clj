@@ -9,6 +9,7 @@
 
 (p/import-vars
  [metabase.notification.api.notification
+  create-notification!
   list-notifications
   get-notification
   unsubscribe-user!])

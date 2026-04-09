@@ -1,8 +1,8 @@
 import { t } from "ttag";
 import { uniq } from "underscore";
 
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
 import { Sortable } from "metabase/common/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/common/components/TabButton";
 import { TabButton } from "metabase/common/components/TabButton";
@@ -10,7 +10,7 @@ import { TabRow } from "metabase/common/components/TabRow";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { isVirtualDashCard } from "metabase/dashboard/utils";
+import { isVirtualDashCard } from "metabase/lib/dashboard";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex, List } from "metabase/ui";
 import type { SelectedTabId } from "metabase-types/store";
@@ -134,7 +134,12 @@ export function DashboardTabs() {
           />
         ) : (
           tabs.map((tab) => (
-            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
+            <Sortable
+              key={tab.id}
+              id={tab.id}
+              disabled={!isEditing}
+              role="presentation"
+            >
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}

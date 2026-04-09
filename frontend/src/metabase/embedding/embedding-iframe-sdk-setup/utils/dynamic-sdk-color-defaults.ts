@@ -6,10 +6,6 @@ import type { EmbedFlowDerivedDefaultColorConfig } from "./types";
  */
 export const EMBED_FLOW_DERIVED_COLORS_CONFIG: EmbedFlowDerivedDefaultColorConfig =
   {
-    "background-hover": {
-      light: { source: "background", darken: 0.01 },
-      dark: { source: "background", lighten: 0.5 },
-    },
     "background-disabled": {
       light: { source: "background", darken: 0.03 },
       dark: { source: "background", lighten: 0.2 },
@@ -17,10 +13,6 @@ export const EMBED_FLOW_DERIVED_COLORS_CONFIG: EmbedFlowDerivedDefaultColorConfi
     "background-secondary": {
       light: { source: "background", darken: 0.02 },
       dark: { source: "background", darken: 0.2 },
-    },
-    "background-light": {
-      light: { source: "background", darken: 0.02 },
-      dark: { source: "background", lighten: 0.6 },
     },
     "text-secondary": {
       light: { source: "text-primary", lighten: 0.3 },

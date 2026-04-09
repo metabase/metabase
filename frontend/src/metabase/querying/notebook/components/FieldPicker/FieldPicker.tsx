@@ -5,6 +5,7 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -44,6 +45,7 @@ export const FieldPicker = ({
   isColumnDisabled,
   ...props
 }: FieldPickerProps) => {
+  const tc = useTranslateContent();
   const items = useMemo(() => {
     const items = columns.map((column) => ({
       column,
@@ -99,7 +101,9 @@ export const FieldPicker = ({
                 position="top-start"
                 size={16}
               />
-              <div className={S.ItemTitle}>{item.columnInfo.displayName}</div>
+              <div className={S.ItemTitle}>
+                {tc(item.columnInfo.displayName)}
+              </div>
             </HoverParent>
           </li>
         ))}

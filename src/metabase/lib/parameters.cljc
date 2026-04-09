@@ -52,7 +52,7 @@
 (mu/defn parameter-target-field-ref :- [:maybe :mbql.clause/field]
   "If a parameter `:target` wraps a legacy `:field` ref, find it, convert it to MBQL 5, and return it."
   [target :- ::lib.schema.parameter/target]
-  (some-> target parameter-target-legacy-field-ref lib.convert/->pMBQL))
+  (some-> target parameter-target-legacy-field-ref lib.convert/->mbql5))
 
 (mu/defn parameter-target-field-id :- [:maybe ::lib.schema.id/field]
   "If a parameter `:target` wraps a field ID ref return the Field ID."
@@ -81,7 +81,7 @@
 (mu/defn parameter-target-expression-ref :- [:maybe :mbql.clause/expression]
   "If a parameter `:target` wraps a legacy `:expression` ref, find it, convert it to MBQL 5, and return it."
   [target :- ::lib.schema.parameter/target]
-  (some-> target parameter-target-legacy-expression-ref lib.convert/->pMBQL))
+  (some-> target parameter-target-legacy-expression-ref lib.convert/->mbql5))
 
 (mu/defn parameter-target-expression-name :- [:maybe :string]
   "If a parameter `:target` wraps an `:expression` ref return the expression name."
@@ -109,6 +109,31 @@
     :dimension (let [[_tag _dimension opts] target]
                  opts)
     nil))
+
+(mu/defn parameter-target-stage-number :- :int
+  "Return the stage-number from a parameter target's dimension options,
+   or 0 (first stage) if not specified."
+  [target :- ::lib.schema.parameter/target]
+  (or (some-> target parameter-target-dimension-options :stage-number)
+      0))
+
+(mu/defn update-parameter-target-field-ref :- ::lib.schema.parameter/target
+  "If parameter `:target` wraps a legacy `:field` ref, convert it to MBQL 5, apply `(apply f field-ref args)`, convert
+  the result back to legacy, and place it back in the target. If there is no `:field` ref, returns target unchanged."
+  [target :- ::lib.schema.parameter/target
+   f & args]
+  (if-let [field-ref (parameter-target-field-ref target)]
+    (let [new-legacy-ref (-> (apply f field-ref args)
+                             lib.convert/->legacy-MBQL)]
+      (case (first target)
+        :dimension (let [[tag _ref opts] target]
+                     (cond-> [tag new-legacy-ref]
+                       opts (conj opts)))
+        :variable  (let [[tag _ref] target]
+                     [tag new-legacy-ref])
+        :field     new-legacy-ref
+        target))
+    target))
 
 (mu/defn update-parameter-target-dimension-options :- ::lib.schema.parameter/target
   "If parameter `:target` is a `:dimension` pseudo-clause, update the options map associated with it, if any. If it is

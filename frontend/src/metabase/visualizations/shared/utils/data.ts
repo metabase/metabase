@@ -20,11 +20,11 @@ import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
-import type {
-  DatasetData,
-  RowValue,
-  RowValues,
-  SeriesOrderSetting,
+import {
+  type DatasetData,
+  type RowValue,
+  type SeriesOrderSetting,
+  getRowsForStableKeys,
 } from "metabase-types/api";
 
 import { getChartMetrics } from "./series";
@@ -52,7 +52,7 @@ const sumMetrics = (left: MetricDatum, right: MetricDatum): MetricDatum => {
 };
 
 export const getGroupedDataset = (
-  rows: RowValues[],
+  data: Pick<DatasetData, "rows" | "untranslatedRows">,
   chartColumns: CartesianChartColumns,
   settings: ComputedVisualizationSettings,
   columnFormatter: ColumnFormatter,
@@ -60,8 +60,9 @@ export const getGroupedDataset = (
   const { dimension } = chartColumns;
 
   const groupedData = new Map<RowValue, GroupedDatum>();
+  const rowsForBreakoutKeys = getRowsForStableKeys(data);
 
-  for (const row of rows) {
+  data.rows.forEach((row, rowIndex) => {
     const dimensionValue = row[dimension.index];
 
     const datum = groupedData.get(dimensionValue) ?? {
@@ -87,7 +88,7 @@ export const getGroupedDataset = (
 
     if ("breakout" in chartColumns) {
       const breakoutName = columnFormatter(
-        row[chartColumns.breakout.index],
+        rowsForBreakoutKeys[rowIndex][chartColumns.breakout.index],
         chartColumns.breakout.column,
       );
 
@@ -111,7 +112,7 @@ export const getGroupedDataset = (
     datum.rawRows.push(row);
 
     groupedData.set(dimensionValue, datum);
-  }
+  });
 
   return Array.from(groupedData.values());
 };
@@ -173,59 +174,71 @@ const getBreakoutDistinctValues = (
   data: DatasetData,
   breakout: ColumnDescriptor,
   columnFormatter: ColumnFormatter,
-) => {
-  const formattedDistinctValues: string[] = [];
+): Map<string, string> => {
+  const result = new Map<string, string>();
   const usedRawValues = new Set<RowValue>();
 
-  data.rows.forEach((row) => {
-    const rawValue = row[breakout.index];
+  const rowsForKeys = getRowsForStableKeys(data);
+  for (let index = 0; index < rowsForKeys.length; index++) {
+    const rawValue = rowsForKeys[index][breakout.index];
 
     if (usedRawValues.has(rawValue)) {
-      return;
+      continue;
     }
 
     usedRawValues.add(rawValue);
-    formattedDistinctValues.push(columnFormatter(rawValue, breakout.column));
-  });
+    const formattedKey = columnFormatter(rawValue, breakout.column);
+    const displayValue = data.untranslatedRows
+      ? columnFormatter(data.rows[index][breakout.index], breakout.column)
+      : formattedKey;
+    result.set(formattedKey, displayValue);
+  }
 
-  return formattedDistinctValues;
+  return result;
 };
 
 const getBreakoutSeries = (
-  breakoutValues: RowValue[],
+  breakoutValues: Map<string, string>,
   metric: ColumnDescriptor,
   dimension: ColumnDescriptor,
+  settings: ComputedVisualizationSettings,
 ): Series<GroupedDatum, SeriesInfo>[] => {
-  return breakoutValues.map((breakoutValue) => {
-    const breakoutName = String(breakoutValue);
-    return {
-      seriesKey: breakoutName,
-      seriesName: breakoutName,
-      yAccessor: (datum: GroupedDatum) =>
-        formatNullable(
-          typeof datum.dimensionValue === "object"
-            ? JSON.stringify(datum.dimensionValue)
-            : datum.dimensionValue,
-        ),
-      xAccessor: (datum: GroupedDatum) =>
-        datum.breakout?.[breakoutName]?.metrics[metric.column.name] ?? null,
-      seriesInfo: {
-        metricColumn: metric.column,
-        dimensionColumn: dimension.column,
-        breakoutValue,
-      },
-    };
-  });
+  return Array.from(breakoutValues.entries()).map(
+    ([breakoutKey, displayValue]) => {
+      const customName = settings?.series_settings?.[breakoutKey]?.title;
+      return {
+        seriesKey: breakoutKey,
+        seriesName: customName ?? displayValue,
+        yAccessor: (datum: GroupedDatum) =>
+          formatNullable(
+            typeof datum.dimensionValue === "object"
+              ? JSON.stringify(datum.dimensionValue)
+              : datum.dimensionValue,
+          ),
+        xAccessor: (datum: GroupedDatum) =>
+          datum.breakout?.[breakoutKey]?.metrics[metric.column.name] ?? null,
+        seriesInfo: {
+          metricColumn: metric.column,
+          dimensionColumn: dimension.column,
+          breakoutValue: breakoutKey,
+        },
+      };
+    },
+  );
 };
 
 const getMultipleMetricSeries = (
   dimension: ColumnDescriptor,
   metrics: ColumnDescriptor[],
+  settings: ComputedVisualizationSettings,
 ): Series<GroupedDatum, SeriesInfo>[] => {
   return metrics.map((metric) => {
+    const seriesKey = metric.column.name;
+    const customName = settings?.series_settings?.[seriesKey]?.title;
+    const defaultName = metric.column.display_name ?? metric.column.name;
     return {
-      seriesKey: metric.column.name,
-      seriesName: metric.column.display_name ?? metric.column.name,
+      seriesKey,
+      seriesName: customName ?? defaultName,
       yAccessor: (datum: GroupedDatum) =>
         typeof datum.dimensionValue === "object"
           ? JSON.stringify(datum.dimensionValue)
@@ -243,6 +256,7 @@ export const getSeries = (
   data: DatasetData,
   chartColumns: CartesianChartColumns,
   columnFormatter: ColumnFormatter,
+  settings: ComputedVisualizationSettings,
 ): Series<GroupedDatum, SeriesInfo>[] => {
   if ("breakout" in chartColumns) {
     const breakoutValues = getBreakoutDistinctValues(
@@ -255,10 +269,15 @@ export const getSeries = (
       breakoutValues,
       chartColumns.metric,
       chartColumns.dimension,
+      settings,
     );
   }
 
-  return getMultipleMetricSeries(chartColumns.dimension, chartColumns.metrics);
+  return getMultipleMetricSeries(
+    chartColumns.dimension,
+    chartColumns.metrics,
+    settings,
+  );
 };
 
 export const getOrderedSeries = (
@@ -282,7 +301,7 @@ export const getOrderedSeries = (
     });
 };
 
-export const sanatizeResultData = (data: DatasetData) => {
+export const sanitizeResultData = (data: DatasetData) => {
   return {
     ...data,
     cols: data.cols.filter((col) => col.name !== "pivot-grouping"),

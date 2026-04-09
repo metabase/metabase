@@ -424,7 +424,7 @@ describe("cartesian", () => {
       expect(state.settings).toEqual({ "graph.metrics": ["COLUMN_2"] });
     });
 
-    it("should add a dimenion column", () => {
+    it("should add a dimension column", () => {
       const state: VisualizerVizDefinitionWithColumns = {
         display: "bar",
         columns: [],

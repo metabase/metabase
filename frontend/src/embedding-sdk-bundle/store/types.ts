@@ -5,7 +5,6 @@ import type {
   Store,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
-import type { JSX } from "react";
 
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
@@ -21,6 +20,7 @@ import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
   token: MetabaseEmbeddingSessionToken | null;
+  rawToken: string | null; // Raw JWT string for guest embeds token refresh
   loading: boolean;
   error: SerializedError | null;
 };
@@ -41,9 +41,9 @@ export type SdkState = {
   plugins: null | MetabasePluginsConfig;
   eventHandlers: null | SdkEventHandlersConfig;
   usageProblem: null | SdkUsageProblem;
-  loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
+  pluginsReady: boolean;
 };
 
 export interface SdkStoreState extends State {

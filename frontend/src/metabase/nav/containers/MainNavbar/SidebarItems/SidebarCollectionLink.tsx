@@ -2,15 +2,17 @@ import type { KeyboardEvent } from "react";
 import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import CollectionDropTarget from "metabase/common/components/dnd/CollectionDropTarget";
+import { CollectionDropTarget } from "metabase/common/components/dnd/CollectionDropTarget";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { getIsTenantUser } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
 
 import {
@@ -50,6 +52,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   ) {
     const wasHovered = usePrevious(isHovered);
     const timeoutId = useRef<number>();
+    const isTenantUser = useSelector(getIsTenantUser);
 
     useEffect(() => {
       const justHovered = !wasHovered && isHovered;
@@ -74,17 +77,21 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         }
         switch (event.key) {
           case "ArrowRight":
-            !isExpanded && onToggleExpand();
+            if (!isExpanded) {
+              onToggleExpand();
+            }
             break;
           case "ArrowLeft":
-            isExpanded && onToggleExpand();
+            if (isExpanded) {
+              onToggleExpand();
+            }
             break;
         }
       },
       [isExpanded, hasChildren, onToggleExpand],
     );
 
-    const icon = getCollectionIcon(collection);
+    const icon = getCollectionIcon(collection, { isTenantUser });
     const isRegularCollection = PLUGIN_COLLECTIONS.isRegularCollection(
       collection as unknown as Collection,
     );

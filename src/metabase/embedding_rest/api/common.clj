@@ -303,12 +303,14 @@
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [pre-card-id  (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
         card-id      (eid-translation/->id :model/Card pre-card-id)
-        token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+        token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        resolved-embedding-params (or embedding-params
+                                      (t2/select-one-fn :embedding_params :model/Card :id card-id))]
     (-> (apply api.public/public-card :id card-id, constraints)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
-        (remove-locked-and-disabled-params (or embedding-params
-                                               (t2/select-one-fn :embedding_params :model/Card :id card-id))))))
+        (remove-locked-and-disabled-params resolved-embedding-params)
+        (assoc :embedding_params resolved-embedding-params))))
 
 (defn- get-embed-card-context
   "If a certain export-format is given, return the correct embedded card context."
@@ -450,7 +452,7 @@
       (catch Throwable e
         (let [e (ex-info (.getMessage e)
                          {:card-id (u/the-id card)
-                          :card-params (:parametres card)
+                          :card-params (:parameters card)
                           :allowed-param-slugs embedding-params
                           :slug->id            slug->id
                           :id->slug            id->slug
@@ -495,7 +497,7 @@
       (catch Throwable e
         (let [e (ex-info (.getMessage e)
                          {:card-id (u/the-id card)
-                          :card-params (:parametres card)
+                          :card-params (:parameters card)
                           :allowed-param-slugs embedding-params
                           :slug->id            slug->id
                           :id->slug            id->slug

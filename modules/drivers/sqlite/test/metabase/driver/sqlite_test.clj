@@ -5,8 +5,11 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.query-processor :as qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -18,6 +21,23 @@
   (mt/test-driver :sqlite
     (is (= "UTC"
            (driver/db-default-timezone :sqlite (mt/db))))))
+
+(deftest current-user-table-privileges-test
+  (testing "SQLite table privileges normalization"
+    (mt/test-driver :sqlite
+      (is (= {"people"     {:role nil, :schema nil, :table "people", :select true, :insert true, :update true, :delete true}
+              "reviews"    {:role nil, :schema nil, :table "reviews", :select true, :insert true, :update true, :delete true}
+              "checkins"   {:role nil, :schema nil, :table "checkins", :select true, :insert true, :update true, :delete true}
+              "users"      {:role nil, :schema nil, :table "users", :select true, :insert true, :update true, :delete true}
+              "orders"     {:role nil, :schema nil, :table "orders", :select true, :insert true, :update true, :delete true}
+              "venues"     {:role nil, :schema nil, :table "venues", :select true, :insert true, :update true, :delete true}
+              "categories" {:role nil, :schema nil, :table "categories", :select true, :insert true, :update true, :delete true}
+              "products"   {:role nil, :schema nil, :table "products", :select true, :insert true, :update true, :delete true}}
+             (into {}
+                   (map (fn [m] [(:table m) m])
+                        (sql-jdbc.sync/current-user-table-privileges
+                         :sqlite
+                         (sql-jdbc.conn/db->pooled-connection-spec (mt/db))))))))))
 
 (deftest ^:parallel filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"
@@ -116,7 +136,7 @@
   {:name        table-name
    :schema      nil
    :description nil
-   :is_writable nil})
+   :is_writable true})
 
 (deftest timestamp-test-db
   (let [driver :sqlite]
@@ -137,9 +157,9 @@
                        (driver/describe-database driver db))))
 
               (testing "timestamp column should exist"
-                (is (= {:name "timestamp_table"
-                        :schema nil
-                        :fields #{{:name                       "created_at"
+                (is (=? {:name "timestamp_table"
+                         :schema nil
+                         :fields [{:name                       "created_at"
                                    :database-type              "TIMESTAMP"
                                    :base-type                  :type/DateTime
                                    :database-position          0
@@ -147,8 +167,9 @@
                                    :json-unfolding             false
                                    :database-is-auto-increment false
                                    :database-is-nullable       true
-                                   :database-is-generated      false}}}
-                       (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))))))))))))
+                                   :database-is-generated      false}]}
+                        (-> (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))
+                            (update :fields (partial sort-by :name)))))))))))))
 
 (deftest select-query-datetime
   (mt/test-driver :sqlite
@@ -214,13 +235,13 @@
 (deftest ^:parallel duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
-      (is (= '{:select   [source.CATEGORY AS CATEGORY
+      (is (= '{:select   [__mb_source.CATEGORY AS CATEGORY
                           COUNT (*)         AS count]
                :from     [{:select [products.category || ? AS CATEGORY]
                            :from   [products]}
-                          AS source]
-               :group-by [source.CATEGORY]
-               :order-by [source.CATEGORY ASC]
+                          AS __mb_source]
+               :group-by [__mb_source.CATEGORY]
+               :order-by [__mb_source.CATEGORY ASC]
                :limit    [1]}
              (sql.qp-test-util/query->sql-map
               (mt/mbql-query products
@@ -253,3 +274,23 @@
                clojure.lang.ExceptionInfo
                #"SQL error or missing database \(no such table: fdw_test\.products\)"
                (qp/process-query (mt/native-query {:query "SELECT count(*) FROM fdw_test.products;"})))))))))
+
+(deftest ^:parallel non-date-in-date-columns-are-returned-test
+  (mt/test-driver :sqlite
+    (mt/dataset (mt/dataset-definition
+                 "sqlite_mixed_dates"
+                 [["mixed_dates_table"
+                   [{:field-name "dates"
+                     :base-type :type/Date}]
+                   [["2026-01-01"]
+                    ["not available"]
+                    ["2026-03-01"]]]])
+      (let [mp (mt/metadata-provider)]
+        (is (= [[1 "2026-01-01T00:00:00Z"]
+                [2 "not available"]
+                [3 "2026-03-01T00:00:00Z"]]
+               (->> (mt/id :mixed_dates_table)
+                    (lib.metadata/table mp)
+                    (lib/query mp)
+                    (qp/process-query)
+                    (mt/rows))))))))

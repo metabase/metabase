@@ -590,3 +590,70 @@
                                        :type :temporal-unit}})
              lib/add-parameters-for-template-tags
              :parameters))))
+
+(deftest ^:parallel validate-template-tags-test
+  (testing "valid template tags should return no errors"
+    (are
+     [template-tags]
+     (= [] (lib.native/validate-template-tags
+            (lib/query (lib.tu/metadata-provider-with-mock-cards)
+                       {:database (meta/id)
+                        :type     :native
+                        :native   {:query         {}
+                                   :template-tags template-tags}})))
+      {}
+
+      {"mytag" {:type :number
+                :name "mytag"
+                :display-name "My Tag"
+                :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}))
+
+  (testing "invalid template tags should return the correct errors"
+    (mu/disable-enforcement
+      (are
+       [errors template-tags]
+       (= errors (lib.native/validate-template-tags
+                  (lib/query (lib.tu/metadata-provider-with-mock-cards)
+                             {:database (meta/id)
+                              :type     :native
+                              :native   {:query         {}
+                                         :template-tags template-tags}})))
+        [{:tag-name "mytag"
+          :error/message "The variable \"mytag\" needs to be mapped to a field."}]
+        {"mytag" {:type :dimension
+                  :name "mytag"
+                  :display-name "My Tag"
+                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}
+
+        [{:tag-name "mytag"
+          :error/message "The variable \"mytag\" needs to be mapped to a field."}]
+        {"mytag" {:type :temporal-unit
+                  :name "mytag"
+                  :display-name "My Tag"
+                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}
+
+        [{:tag-name "mytag"
+          :error/message "Missing widget label: mytag"}]
+        {"mytag" {:type :number
+                  :name "mytag"
+                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}
+
+        [{:tag-name "mytag"
+          :error/message "Missing widget label: mytag"}
+         {:tag-name "mytag"
+          :error/message "The variable \"mytag\" needs to be mapped to a field."}]
+        {"mytag" {:type :dimension
+                  :name "mytag"
+                  :id "9ae1ea5e-ac33-4574-bc95-ff595b0ac1a7"}}))))
+
+(defn- table-tag-query [mp template-tag-overrides]
+  (let [base-query (lib.native/native-query mp "select * from {{table}}")
+        template-tag (get (lib.native/template-tags base-query) "table")]
+    (lib.native/with-template-tags base-query
+      {"table" (merge template-tag {:type :table} template-tag-overrides)})))
+
+(deftest ^:parallel basic-native-query-table-references-test
+  (testing "should find id-based native query table references"
+    (is (= #{{:table (meta/id :orders)}}
+           (lib.native/native-query-table-references
+            (table-tag-query meta/metadata-provider {:table-id (meta/id :orders)}))))))

@@ -11,7 +11,7 @@ export interface AvatarProps {
 }
 
 export const Avatar = styled.div<AvatarProps>`
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   width: 3em;
   height: 3em;
   display: flex;

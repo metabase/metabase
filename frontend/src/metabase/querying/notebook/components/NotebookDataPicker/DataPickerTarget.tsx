@@ -2,9 +2,9 @@ import type React from "react";
 import { type MouseEvent, type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
+import { isEmbedding } from "metabase/embedding/config";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import * as Urls from "metabase/lib/urls";
-import { getIsEmbedding } from "metabase/selectors/embed";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -37,12 +37,13 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
   }: DataPickerTargetProps,
   ref: Ref<HTMLButtonElement>,
 ) {
+  const tc = useTranslateContent();
   const tableInfo =
     table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
-  const isEmbedding = useSelector(getIsEmbedding);
+  const isEmbed = isEmbedding();
 
   const openDataSourceInNewTab = () => {
-    if (isEmbedding) {
+    if (isEmbed) {
       return;
     }
     const url = getUrl({ query, table, stageIndex });
@@ -86,7 +87,7 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
         {tableInfo && (
           <Icon name={getTableIcon(tableInfo)} style={{ flexShrink: 0 }} />
         )}
-        {tableInfo?.displayName ?? placeholder}
+        {tc(tableInfo?.displayName) ?? placeholder}
       </Flex>
     </UnstyledButton>
   );

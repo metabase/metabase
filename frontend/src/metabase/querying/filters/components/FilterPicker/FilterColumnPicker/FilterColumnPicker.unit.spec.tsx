@@ -1,7 +1,7 @@
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import type * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";
 
 import { FilterColumnPicker } from "./FilterColumnPicker";
@@ -27,7 +27,7 @@ function setup({ query, stageIndexes }: SetupOpts) {
 
 describe("FilterColumnPicker", () => {
   test("The info icon should exist on each column", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const stageIndexes = [0];
     setup({ query, stageIndexes });
     expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
@@ -36,7 +36,7 @@ describe("FilterColumnPicker", () => {
   });
 
   test("Searching by displayName should works (#39622)", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const stageIndexes = [0];
     setup({ query, stageIndexes });
 

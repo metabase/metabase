@@ -31,13 +31,13 @@ export const ListThreadContainer = styled.div`
 `;
 
 export const ListIcon = styled(Icon)`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   width: 1.5rem;
   height: 1.5rem;
 `;
 
 export const ListIconText = styled.div`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   margin-top: 0.375rem;
   margin-left: 0.75rem;
 `;

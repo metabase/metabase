@@ -1,26 +1,17 @@
 import type { AddDataTab } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/utils";
-import type { IconName } from "metabase/ui";
 
 export type EmbeddingHubStepId =
   | "create-test-embed"
   | "add-data"
   | "create-dashboard"
   | "configure-row-column-security"
-  | "secure-embeds"
+  | "sso-configured"
   | "embed-production"
-  | "create-models"
-  | "setup-tenants";
+  | "data-permissions-and-enable-tenants";
 
 export interface EmbeddingHubStep {
   id: EmbeddingHubStepId;
   title: string;
-  icon: IconName;
-
-  image?: EmbeddingHubImage;
-  video?: EmbeddingHubVideo;
-
-  /** Show an info alert box above the CTA */
-  infoAlert?: EmbeddingHubInfoAlert;
 
   actions: EmbeddingHubAction[];
 }
@@ -28,14 +19,10 @@ export interface EmbeddingHubStep {
 export type EmbeddingHubModalToTrigger =
   | { type: "add-data"; initialTab: AddDataTab }
   | { type: "new-dashboard" }
-  | { type: "xray-dashboard" };
+  | { type: "xray-dashboard" }
+  | { type: "user-strategy" };
 
-/** `always` is always shown. `locked` only shows on locked steps */
-export type EmbeddingHubInfoAlert =
-  | { type: "always"; message: string }
-  | { type: "locked"; message: string };
-
-interface EmbeddingHubAction {
+export interface EmbeddingHubAction {
   stepId?: EmbeddingHubStepId;
 
   title: string;
@@ -62,16 +49,4 @@ interface EmbeddingHubAction {
   modal?: EmbeddingHubModalToTrigger;
 
   optional?: boolean;
-}
-
-interface EmbeddingHubImage {
-  src: string;
-  srcSet?: string;
-  alt: string;
-}
-
-export interface EmbeddingHubVideo {
-  id: string;
-  trackingId: string;
-  title: string;
 }

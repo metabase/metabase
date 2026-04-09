@@ -6,7 +6,7 @@ on:
 
 jobs:
   get-container-info:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: Get container info
     outputs:
@@ -55,28 +55,28 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
-      commit: ${{ github.event.inputs.commit || github.sha }}
+      edition: ${{ matrix.edition }}
+      commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
       repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
       tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
       release: "false"
       build-args: |
-        GIT_COMMIT_SHA=${{ github.event.inputs.commit || github.sha }}
+        GIT_COMMIT_SHA=${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
 
   run-trivy:
     needs: [get-container-info, containerize]
     strategy:
       matrix:
         edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Run Trivy vulnerability scanner
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commit || github.sha }}
+          ref: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
         env:
           TRIVY_OFFLINE_SCAN: true
           repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
@@ -85,7 +85,6 @@ jobs:
           image-ref: docker.io/${{ env.repo }}:${{ env.tag }}
           format: sarif
           output: trivy-results.sarif
-          version: "v0.57.1"
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -94,7 +93,7 @@ jobs:
   post-comment:
     needs: [get-container-info, containerize]
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Post PR comment
     steps:
       - name: Check out the code
@@ -107,7 +106,7 @@ jobs:
           edition: ee
 
       - name: Post PR comment
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405 # v2
         with:
           header: docker-build-status
           message: |
