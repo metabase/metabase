@@ -6,6 +6,12 @@ title: Driver interface changelog
 
 ## Metabase 0.60.0
 
+- Added `combine-pivot-queries` multimethod. Given a sequence of compiled pivot subqueries with column
+  alignment metadata and a canonical column layout, combine them into a single native query (e.g. using
+  `UNION ALL`). Returns `{:query sql-string, :params [...]}` or `nil` if not supported. The default
+  `:sql-jdbc` implementation wraps each subquery in a column-aligning `SELECT` and combines them with
+  `UNION ALL`, sending a single query to the database instead of N sequential queries.
+
 - Added `validate-impersonated-query` multimethod. This is used for drivers to perform validation on impersonated native queries.
   It should return the query if it is valid and throw otherwise.
 

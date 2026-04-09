@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.execute-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.config.core :as config]
@@ -214,3 +215,63 @@
                    (fn [_conn] nil)))
                 (is (pos? (mt/metric-value system :metabase-db-connection/write-op
                                            {:connection-type "write-data"})))))))))))
+
+(deftest ^:parallel combine-pivot-queries-test
+  (testing "combine-pivot-queries produces valid UNION ALL SQL"
+    (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+      (let [canonical {:breakout-aliases  ["CATEGORY" "SOURCE"]
+                       :breakout-db-types ["TEXT" "TEXT"]
+                       :agg-aliases       ["count"]}
+            subqueries [{:compiled          {:query "SELECT c AS \"CATEGORY\", s AS \"SOURCE\", COUNT(*) AS \"count\" FROM t GROUP BY c, s"
+                                             :params []}
+                         :breakout-indexes  [0 1]
+                         :breakout-aliases  ["CATEGORY" "SOURCE"]
+                         :agg-aliases       ["count"]
+                         :group-bitmask     0}
+                        {:compiled          {:query "SELECT c AS \"CATEGORY\", COUNT(*) AS \"count\" FROM t GROUP BY c"
+                                             :params ["param1"]}
+                         :breakout-indexes  [0]
+                         :breakout-aliases  ["CATEGORY"]
+                         :agg-aliases       ["count"]
+                         :group-bitmask     2}
+                        {:compiled          {:query "SELECT COUNT(*) AS \"count\" FROM t"
+                                             :params []}
+                         :breakout-indexes  []
+                         :breakout-aliases  []
+                         :agg-aliases       ["count"]
+                         :group-bitmask     3}]
+            result (sql-jdbc.execute/combine-pivot-queries driver/*driver* subqueries canonical)]
+        (testing "returns a map with :query and :params"
+          (is (string? (:query result)))
+          (is (vector? (:params result))))
+        (testing "SQL contains UNION ALL"
+          (is (str/includes? (:query result) "UNION ALL")))
+        (testing "params are concatenated in order"
+          (is (= ["param1"] (:params result))))
+        (testing "SQL references subquery alias"
+          (is (str/includes? (:query result) "pivot_subquery")))
+        (testing "NULL cast for missing breakouts"
+          (is (str/includes? (:query result) "CAST(NULL AS TEXT)"))))))
+
+  (testing "combine-pivot-queries generates correct bitmask literals"
+    (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+      (let [canonical {:breakout-aliases  ["A"]
+                       :breakout-db-types ["INTEGER"]
+                       :agg-aliases       ["total"]}
+            subqueries [{:compiled         {:query "SELECT a, SUM(x) AS \"total\" FROM t GROUP BY a"
+                                            :params []}
+                         :breakout-indexes [0]
+                         :breakout-aliases ["A"]
+                         :agg-aliases      ["total"]
+                         :group-bitmask    0}
+                        {:compiled         {:query "SELECT SUM(x) AS \"total\" FROM t"
+                                            :params []}
+                         :breakout-indexes []
+                         :breakout-aliases []
+                         :agg-aliases      ["total"]
+                         :group-bitmask    1}]
+            result (sql-jdbc.execute/combine-pivot-queries driver/*driver* subqueries canonical)]
+        (testing "bitmask 0 for full query"
+          (is (str/includes? (:query result) "0 AS")))
+        (testing "bitmask 1 for grand-total query"
+          (is (str/includes? (:query result) "1 AS")))))))

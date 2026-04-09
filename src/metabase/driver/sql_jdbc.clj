@@ -86,6 +86,10 @@
   [driver query context respond]
   (sql-jdbc.execute/execute-reducible-query driver query context respond))
 
+(defmethod driver/combine-pivot-queries :sql-jdbc
+  [driver compiled-pivot-queries canonical-columns]
+  (sql-jdbc.execute/combine-pivot-queries driver compiled-pivot-queries canonical-columns))
+
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
   (sql-jdbc.conn/invalidate-pool-for-db! database)

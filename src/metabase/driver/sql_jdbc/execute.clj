@@ -20,10 +20,12 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -817,6 +819,50 @@
                                         (name driver)))
                            (catch Throwable _
                              (log/warn "Statement cancelation failed.")))))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Pivot UNION ALL Support                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- quote-field-identifier
+  "Quote a single column name using the driver's SQL quoting style."
+  [driver col-name]
+  (first (sql.qp/format-honeysql driver (h2x/identifier :field col-name))))
+
+(defn- wrap-pivot-subquery-sql
+  "Build a wrapper SELECT around a compiled pivot subquery that aligns its columns with the
+  canonical pivot column layout by adding NULLs for missing breakouts, the pivot-grouping bitmask,
+  and aggregation columns."
+  [driver canonical-columns subquery]
+  (let [qi                 (partial quote-field-identifier driver)
+        breakout-index-set (set (:breakout-indexes subquery))
+        sq                 (qi "pivot_subquery")
+        breakout-parts     (map-indexed
+                            (fn [i alias]
+                              (if (breakout-index-set i)
+                                (str sq "." (qi alias))
+                                (str "CAST(NULL AS " (nth (:breakout-db-types canonical-columns) i) ") AS " (qi alias))))
+                            (:breakout-aliases canonical-columns))
+        pivot-part         (str (:group-bitmask subquery) " AS " (qi "pivot-grouping"))
+        agg-parts          (map (fn [alias]
+                                  (str sq "." (qi alias)))
+                                (:agg-aliases canonical-columns))
+        select-clause      (str/join ", " (concat breakout-parts [pivot-part] agg-parts))
+        inner-sql          (:query (:compiled subquery))]
+    (str "SELECT " select-clause " FROM (" inner-sql ") AS " sq)))
+
+(defn combine-pivot-queries
+  "Combine multiple compiled pivot subqueries into a single `UNION ALL` query. Each subquery is
+  wrapped in a SELECT that aligns its columns to the canonical layout. Returns
+  `{:query sql, :params [...]}`.
+
+  See [[metabase.driver/combine-pivot-queries]] for the schema of `compiled-pivot-queries` and
+  `canonical-columns`."
+  [driver compiled-pivot-queries canonical-columns]
+  (let [wrapped-sqls (mapv (partial wrap-pivot-subquery-sql driver canonical-columns) compiled-pivot-queries)
+        combined-sql (str/join " UNION ALL " wrapped-sqls)
+        all-params   (into [] (mapcat (comp :params :compiled)) compiled-pivot-queries)]
+    {:query combined-sql :params all-params}))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
