@@ -46,13 +46,5 @@ export function EntityIcon({
     );
   }
 
-  return (
-    <Icon
-      name={name}
-      size={size}
-      color={color as ColorName}
-      style={style}
-      {...rest}
-    />
-  );
+  return <Icon name={name} size={size} color={color} style={style} {...rest} />;
 }
