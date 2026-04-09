@@ -32,9 +32,9 @@
    {:keys [type]} :- [:map [:type ::frontend-error-type]]
    req]
   (try
-    (throttle/with-throttling [frontend-errors-throttler (request/ip-address req)]
-      (prometheus/inc! :metabase-frontend/errors {:type type})
-      api/generic-204-no-content)
+    (throttle/check frontend-errors-throttler (request/ip-address req))
+    (prometheus/inc! :metabase-frontend/errors {:type type})
+    api/generic-204-no-content
     (catch ExceptionInfo e
       (if (u.throttle/throttle-exception? e)
         (u.throttle/throttle-response e {:error (ex-message e)})
