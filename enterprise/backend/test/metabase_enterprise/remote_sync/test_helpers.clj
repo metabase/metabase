@@ -641,3 +641,16 @@ serdes/meta:
 "
           name entity-id content (or collection-id "null")
           entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
+
+(defn generate-transform-tag-yaml
+  "Generates YAML content for a TransformTag with the given `entity-id` and `name`."
+  [entity-id name]
+  (format "created_at: '2024-08-28T09:46:18.671622Z'
+entity_id: %s
+name: %s
+serdes/meta:
+- id: %s
+  label: %s
+  model: TransformTag
+"
+          entity-id name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))

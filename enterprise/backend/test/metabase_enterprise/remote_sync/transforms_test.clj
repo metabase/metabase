@@ -930,3 +930,30 @@ serdes/meta:
                 "Custom PythonLibrary should be in removal paths")
             (is (not (some #(str/includes? % transforms-python/builtin-entity-id) paths))
                 "Built-in PythonLibrary should NOT be in removal paths")))))))
+
+(deftest import-removes-transform-tag-not-on-remote-test
+  (testing "Import removes non-built-in TransformTags that don't exist on the remote (regression: UXW-3710)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask :model/TransformTag :model/Collection]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                local-tag-entity-id (u/generate-nano-id)
+                remote-tag-entity-id (u/generate-nano-id)
+                coll-entity-id (u/generate-nano-id)]
+            (mt/with-temp [:model/TransformTag {local-tag-id :id} {:name "Local Tag"
+                                                                   :entity_id local-tag-entity-id
+                                                                   :built_in_type nil}]
+              (is (t2/exists? :model/TransformTag :id local-tag-id))
+              (let [test-files {"main" {"collections/transforms/transforms_collection/transforms_collection.yaml"
+                                        (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms Collection")
+                                        "transforms/transform_tags/remote_tag.yaml"
+                                        (test-helpers/generate-transform-tag-yaml remote-tag-entity-id "Remote Tag")}}
+                    mock-source (test-helpers/create-mock-source :initial-files test-files)
+                    result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
+                (is (= :success (:status result))
+                    (str "Import should succeed but got: " (:message result)))
+                (is (not (t2/exists? :model/TransformTag :id local-tag-id))
+                    "Local transform tag should be deleted after import since it wasn't on remote")
+                (is (t2/exists? :model/TransformTag :entity_id remote-tag-entity-id)
+                    "Remote transform tag should be imported"))))))))
