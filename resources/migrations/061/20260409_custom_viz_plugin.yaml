@@ -25,7 +25,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: repo_url
-                  type: varchar(1024)
+                  type: varchar(512)
                   remarks: Git repository URL
                   constraints:
                     unique: true
