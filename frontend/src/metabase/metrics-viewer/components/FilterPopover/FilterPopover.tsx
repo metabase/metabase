@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { Box, Popover } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 
+import { trackMetricsViewerFilterAdded } from "../../analytics";
 import type { SourceColorMap } from "../../types/viewer-state";
 import type { DefinitionSource } from "../../utils/definition-sources";
 
@@ -33,6 +34,7 @@ export function FilterPopover({
   const handleFilterApplied = useCallback(() => {
     setIsOpen(false);
     setContentKey((key) => key + 1);
+    trackMetricsViewerFilterAdded("metric_filter");
   }, []);
 
   const handleToggle = useCallback(() => {

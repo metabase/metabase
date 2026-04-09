@@ -271,6 +271,12 @@ describe("scenarios > metrics > explorer", () => {
     interceptDatasetQuery();
     cy.intercept("GET", "/api/metric/*").as("getMetric");
     cy.intercept("GET", "/api/measure/*").as("getMeasure");
+    H.resetSnowplow();
+    H.enableTracking();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   // ============================================================================
@@ -330,8 +336,15 @@ describe("scenarios > metrics > explorer", () => {
   describe("Adding metrics and measures", () => {
     it("should add multiple metrics", () => {
       H.MetricsViewer.goToViewer();
+
       addMetric("Count of products");
       cy.wait("@dataset");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_metric_added",
+        event_detail: "metric",
+      });
+
       addMetric("Count of orders");
       cy.wait("@dataset");
       verifyMetricCount(2);
@@ -341,6 +354,10 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Should allow me to add measures");
       addMetric("Test Measure");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_metric_added",
+        event_detail: "measure",
+      });
 
       cy.log("no results");
       H.MetricsViewer.searchInput().type("{end}, xyznonexistent");
@@ -880,6 +897,9 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.assertVizType("Line");
 
       switchToTab("State");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_dimension_tab_switched",
+      });
       H.MetricsViewer.assertAllVizTypes("Map", 2);
 
       switchToTab("Category");
@@ -1016,6 +1036,10 @@ describe("scenarios > metrics > explorer", () => {
         "Source",
       ]);
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_dimension_tab_added",
+      });
+
       cy.log("new tab should be selected and show correct viz type");
       H.MetricsViewer.tablist()
         .findByRole("tab", { name: "Source" })
@@ -1080,6 +1104,10 @@ describe("scenarios > metrics > explorer", () => {
         "Title",
         "Category",
       ]);
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_dimension_tab_removed",
+      });
 
       cy.log("navigating back should undo changes");
 
@@ -1181,15 +1209,32 @@ describe("scenarios > metrics > explorer", () => {
         .should("contain.text", "Gadget")
         .should("contain.text", "Category");
 
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_added",
+        triggered_from: "metric_filter",
+      });
+
+      cy.log("edit the filter to change the selection");
+      H.MetricsViewer.getAllFilterPills().eq(0).click();
+      H.popover().findByText("Gizmo").click();
+      H.popover().findByRole("button", { name: "Update filter" }).click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_edited",
+        triggered_from: "metric_filter",
+      });
+
       H.MetricsViewer.breakoutLegend()
         .should("contain.text", "Doohickey")
-        .should("contain.text", "Gadget");
+        .should("contain.text", "Gadget")
+        .should("contain.text", "Gizmo");
 
       switchToTab("Category");
       H.MetricsViewer.getMetricVisualization().should(
         "contain.text",
         "Doohickey",
       );
+      H.MetricsViewer.getMetricVisualization().should("contain.text", "Gizmo");
 
       cy.log("filter on a per tab level");
 
@@ -1200,14 +1245,26 @@ describe("scenarios > metrics > explorer", () => {
       H.popover().findByText("Doohickey").click();
 
       H.popover().findByRole("button", { name: "Add filter" }).click();
+      H.MetricsViewer.getMerticControls().findByRole("button", {
+        name: /is Doohickey/,
+      });
       H.MetricsViewer.getMetricVisualization().should(
-        "not.contain.text",
+        "contain.text",
         "Doohickey",
       );
+      H.MetricsViewer.getMetricVisualization().should(
+        "not.contain.text",
+        "Gizmo",
+      );
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_added",
+        triggered_from: "dimension_filter",
+      });
 
       cy.log("remove filter");
       switchToTab("State");
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 3);
 
       H.MetricsViewer.getAllFilterPills()
         .should("have.length", 1)
@@ -1215,38 +1272,67 @@ describe("scenarios > metrics > explorer", () => {
         .findByRole("button", { name: "Remove" })
         .click();
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 4);
+      H.MetricsViewer.getAllFilterPills().should("have.length", 0);
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_removed",
+        triggered_from: "metric_filter",
+      });
 
       cy.log("navigating back should undo changes");
+
+      // re-apply global filter
       cy.go("back");
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
+
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 3);
+      H.MetricsViewer.getAllFilterPills().should("have.length", 1);
+
+      // switch back to category tab
       cy.go("back");
       H.MetricsViewer.getTab("Category").should(
         "have.attr",
         "aria-selected",
         "true",
       );
+
+      // Remove tab filter
       cy.go("back");
       H.MetricsViewer.getMetricVisualization().should(
         "contain.text",
         "Doohickey",
       );
+      H.MetricsViewer.getMetricVisualization().should("contain.text", "Gizmo");
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /All values/ })
+        .should("exist");
 
       cy.log("navigating forward should re-apply changes");
+      // re-apply tab filter
       cy.go("forward");
 
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /is Doohickey/ })
+        .should("exist");
       H.MetricsViewer.getMetricVisualization().should(
-        "not.contain.text",
+        "contain.text",
         "Doohickey",
       );
+      H.MetricsViewer.getMetricVisualization().should(
+        "not.contain.text",
+        "Gizmo",
+      );
+      // change tab back to state
       cy.go("forward");
       H.MetricsViewer.getTab("State").should(
         "have.attr",
         "aria-selected",
         "true",
       );
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 3);
+      // remove global filter
       cy.go("forward");
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 4);
+      H.MetricsViewer.getAllFilterPills().should("have.length", 0);
     });
 
     it("Should allow me to apply filters to each metric individually", () => {
@@ -1319,14 +1405,35 @@ describe("scenarios > metrics > explorer", () => {
         10,
       );
 
+      cy.log("edit the dimension filter to change the date range");
       H.MetricsViewer.getMerticControls()
         .findByRole("button", { name: /February/i })
+        .click();
+      H.popover().within(() => {
+        cy.findByRole("textbox", { name: "Start date" })
+          .clear()
+          .type("January 1, 2024");
+        cy.button("Update filter").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_edited",
+        triggered_from: "dimension_filter",
+      });
+
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /January/i })
         .click();
       H.popover().findByRole("button", { name: "Clear" }).click();
       H.MetricsViewer.getMetricVisualizationDataPoints().should(
         "have.length",
         85,
       );
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_removed",
+        triggered_from: "dimension_filter",
+      });
     });
 
     it("should preserve breakout colors when a dimension filter hides some values", () => {

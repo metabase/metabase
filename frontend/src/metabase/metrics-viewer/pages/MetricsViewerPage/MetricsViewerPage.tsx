@@ -1,8 +1,13 @@
 import type { Location } from "history";
+import { useCallback } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
+import {
+  trackMetricsViewerMetricAdded,
+  trackMetricsViewerMetricRemoved,
+} from "../../analytics";
 import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
 import {
   MetricsViewerEmptyState,
@@ -14,6 +19,7 @@ import {
   MetricsViewerTabs,
 } from "../../components/MetricsViewerTabs";
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
+import type { SelectedMetric } from "../../types/viewer-state";
 
 import S from "./MetricsViewerPage.module.css";
 
@@ -56,6 +62,22 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     setFormulaEntities,
   } = useMetricsViewerResult;
 
+  const handleAddMetric = useCallback(
+    (metric: SelectedMetric) => {
+      addMetric(metric);
+      trackMetricsViewerMetricAdded(metric.id, metric.sourceType);
+    },
+    [addMetric],
+  );
+
+  const handleRemoveMetric = useCallback(
+    (metricId: number, sourceType: "metric" | "measure") => {
+      removeMetric(metricId, sourceType);
+      trackMetricsViewerMetricRemoved(metricId, sourceType);
+    },
+    [removeMetric],
+  );
+
   if (!initialLoadComplete) {
     // parsing formulas won't work until the initial set of definitions are loaded
     return (
@@ -79,8 +101,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
           onFormulaEntitiesChange={setFormulaEntities}
           selectedMetrics={selectedMetrics}
           metricColors={sourceColors}
-          onAddMetric={addMetric}
-          onRemoveMetric={removeMetric}
+          onAddMetric={handleAddMetric}
+          onRemoveMetric={handleRemoveMetric}
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
         />

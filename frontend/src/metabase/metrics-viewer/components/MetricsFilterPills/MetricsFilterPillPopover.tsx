@@ -1,6 +1,10 @@
 import { useState } from "react";
 
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import {
+  trackMetricsViewerFilterEdited,
+  trackMetricsViewerFilterRemoved,
+} from "metabase/metrics-viewer/analytics";
 import type { IconName } from "metabase/ui";
 import { Badge, Flex, Popover, Text } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
@@ -38,11 +42,13 @@ export function MetricsFilterPillPopover({
 
   const handleSelect = (newFilter: LibMetric.FilterClause) => {
     onUpdate(newFilter);
+    trackMetricsViewerFilterEdited("metric_filter");
     setIsOpened(false);
   };
 
   const handleRemove = () => {
     onRemove();
+    trackMetricsViewerFilterRemoved("metric_filter");
     setIsOpened(false);
   };
 
