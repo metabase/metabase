@@ -11,25 +11,11 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
-   [metabase.test :as mt]
-   [metabase.util.malli :as mu]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
-
-;; Mock tool for testing
-(mu/defn test-search-tool
-  "Mock search tool that returns test data."
-  [{:keys [_query]} :- [:map {:closed true}
-                        [:query :string]]]
-  {:structured-output {:data [{:id 1 :name "Test Result"}]}})
-
-(def test-tools
-  {"search" {:tool-name "search"
-             :schema    (:schema (meta #'test-search-tool))
-             :doc       (:doc (meta #'test-search-tool))
-             :fn        test-search-tool}})
 
 (defn- run-agent-loop!
   "run-agent-loop for side effects, discarding results.
