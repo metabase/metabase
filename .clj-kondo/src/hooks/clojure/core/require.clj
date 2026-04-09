@@ -15,7 +15,7 @@
       (doseq [required-namespace required-namespaces]
         ;; ignore namespaces outside of the module system.
         (when (modules/module config required-namespace)
-          (when-let [error (modules/usage-error config current-module required-namespace)]
+          (when-let [error (modules/usage-error config current-ns current-module required-namespace)]
             (hooks/reg-finding! (assoc (meta node)
                                        :message error
                                        :type    :metabase/modules))))))))

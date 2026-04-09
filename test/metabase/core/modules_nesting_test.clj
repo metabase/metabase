@@ -264,8 +264,38 @@
 ;;;; usage-error behavior under nesting
 ;;;; -------------------------------------------------------------------------
 
-(defn- usage-error [config current-module required-namespace]
-  ((hook-fn 'usage-error) config current-module required-namespace))
+(defn- synthesize-ns-for-module
+  "Given a module symbol and its config entry, produce a plausible namespace
+  symbol that resolves to that module. Used in test fixtures where the exact
+  caller namespace doesn't matter — we just need something the module
+  resolver recognizes as belonging to the module."
+  [config module-sym]
+  (let [prefix (or (get-in config [:metabase/modules module-sym :ns-prefix])
+                   (if (= (namespace module-sym) "enterprise")
+                     (str "metabase-enterprise." (name module-sym))
+                     (str "metabase." (name module-sym))))]
+    (symbol (str prefix ".core"))))
+
+(defn- usage-error
+  "Test helper that calls the loaded kondo hook's `usage-error`.
+
+  Three-arg form: pass a module symbol as the caller. The helper synthesizes
+  a plausible namespace for that module (`<ns-prefix>.core`) and passes it
+  as `current-ns` to the real function. Use this when the test doesn't
+  care about the caller's specific namespace.
+
+  Four-arg form: pass both `current-ns` and `current-module` explicitly.
+  Use this when the test specifically exercises behavior that depends on
+  which namespace inside the module is doing the require — e.g., the
+  `:private` rule that allows only `<parent>.init`/`.core` to load
+  private children."
+  ([config current-module required-namespace]
+   (usage-error config
+                (synthesize-ns-for-module config current-module)
+                current-module
+                required-namespace))
+  ([config current-ns current-module required-namespace]
+   ((hook-fn 'usage-error) config current-ns current-module required-namespace)))
 
 (deftest ^:parallel usage-error-parent-needs-explicit-uses-and-api-test
   (testing "Parent accessing descendant must declare :uses and go through descendant's :api — no implicit access"
@@ -394,6 +424,110 @@
                                                   :api  :any}}}]
       (is (nil? (usage-error config 'caller 'metabase.lib.schema.foo)))
       (is (nil? (usage-error config 'caller 'metabase.lib.core))))))
+
+;;;; -------------------------------------------------------------------------
+;;;; :private module flag
+;;;;
+;;;; A module declared `:private true` may be named ONLY by its direct parent.
+;;;; Not by same-subtree siblings, not by cross-subtree outsiders, and not by
+;;;; `:uses :any` callers. This is the tightest visibility tier — `:open`
+;;;; loosens encapsulation (outsiders can name the child), `:private` tightens
+;;;; it (even siblings can't).
+;;;; -------------------------------------------------------------------------
+
+(deftest ^:parallel usage-error-private-only-init-or-core-can-reach-test
+  (testing (str "A :private module may be statically required only by its direct parent's "
+                "canonical entry-point namespaces (<parent>.init and <parent>.core). "
+                "Other namespaces inside the parent module, even though they belong to "
+                "the parent module, must use classloader/require for dynamic loading.")
+    (let [config {:metabase/modules {'foo            {:uses #{'foo.enterprise}
+                                                      :api  :any}
+                                     'foo.enterprise {:private true
+                                                      :api     #{'metabase.foo.enterprise.core}
+                                                      :uses    #{}}}}]
+      (testing "metabase.foo.init CAN statically require metabase.foo.enterprise.core"
+        (is (nil? (usage-error config 'metabase.foo.init 'foo 'metabase.foo.enterprise.core))))
+      (testing "metabase.foo.core CAN statically require metabase.foo.enterprise.core"
+        (is (nil? (usage-error config 'metabase.foo.core 'foo 'metabase.foo.enterprise.core))))
+      (testing "metabase.foo.bar (a non-init non-core namespace inside foo) CANNOT"
+        (is (some? (usage-error config 'metabase.foo.bar 'foo 'metabase.foo.enterprise.core))
+            (str "foo.bar belongs to module foo and foo has foo.enterprise in :uses, "
+                 "but foo.bar is not foo.init or foo.core — the private-loader rule "
+                 "restricts static requires to those two canonical entry points.")))
+      (testing "metabase.foo.utils similarly denied"
+        (is (some? (usage-error config 'metabase.foo.utils 'foo 'metabase.foo.enterprise.core))))
+      (testing "parent-via-init can still be denied if the ns is not in the child's :api"
+        (is (some? (usage-error config 'metabase.foo.init 'foo 'metabase.foo.enterprise.internal)))))))
+
+(deftest ^:parallel usage-error-private-sibling-cannot-reach-test
+  (testing "Siblings of a :private module cannot reach it even through their own init ns"
+    (let [config {:metabase/modules {'foo            {:api :any}
+                                     'foo.enterprise {:private true
+                                                      :api     #{'metabase.foo.enterprise.core}
+                                                      :uses    #{}}
+                                     ;; `foo.bar` is a sibling module of `foo.enterprise` under `foo`.
+                                     'foo.bar        {:uses #{'foo.enterprise}
+                                                      :api  :any}}}]
+      (is (some? (usage-error config 'metabase.foo.bar.init 'foo.bar 'metabase.foo.enterprise.core))
+          (str "foo.bar is a sibling module of foo.enterprise, not the direct parent. "
+               "Even foo.bar's init namespace can't reach the private sibling — the "
+               "private-loader exception only applies to the direct parent's init/core.")))))
+
+(deftest ^:parallel usage-error-private-outsider-cannot-reach-test
+  (testing "Modules outside the private module's subtree cannot reach it"
+    (let [config {:metabase/modules {'foo            {:api :any}
+                                     'foo.enterprise {:private true
+                                                      :api     #{'metabase.foo.enterprise.core}
+                                                      :uses    #{}}
+                                     'bar            {:uses #{'foo.enterprise}
+                                                      :api  :any}}}]
+      (is (some? (usage-error config 'metabase.bar.core 'bar 'metabase.foo.enterprise.core))
+          "bar is outside foo's subtree and cannot reach the private foo.enterprise"))))
+
+(deftest ^:parallel usage-error-private-uses-any-does-not-cover-test
+  (testing "`:uses :any` does NOT cover :private modules — privacy overrides the wildcard"
+    (let [config {:metabase/modules {'foo            {:api :any}
+                                     'foo.enterprise {:private true
+                                                      :api     :any
+                                                      :uses    #{}}
+                                     'aggregator     {:uses :any
+                                                      :api  :any}}}]
+      (is (some? (usage-error config 'metabase.aggregator.core 'aggregator 'metabase.foo.enterprise.anything))
+          (str ":uses :any reaches any non-private module, but foo.enterprise is "
+               "declared :private. The aggregator cannot reach it statically — it "
+               "would have to use classloader/require for dynamic loading instead.")))))
+
+(deftest ^:parallel usage-error-private-grandchild-of-parent-test
+  (testing "Only the DIRECT parent can name a private module — grandparent cannot"
+    (let [config {:metabase/modules {'foo                 {:api  :any
+                                                           :uses #{}}
+                                     'foo.bar             {:api  :any
+                                                           :uses #{'foo.bar.enterprise}}
+                                     'foo.bar.enterprise  {:private true
+                                                           :api     :any
+                                                           :uses    #{}}}}]
+      (testing "direct parent foo.bar (via its init ns) CAN reach foo.bar.enterprise"
+        (is (nil? (usage-error config 'metabase.foo.bar.init 'foo.bar 'metabase.foo.bar.enterprise.thing))))
+      (testing "grandparent foo (via its init ns) CANNOT reach foo.bar.enterprise — not the direct parent"
+        (is (some? (usage-error config 'metabase.foo.init 'foo 'metabase.foo.bar.enterprise.thing)))))))
+
+(deftest ^:parallel usage-error-private-ns-prefix-respected-test
+  (testing "The private-loader check uses the parent's effective :ns-prefix, not the module name"
+    ;; foo has explicit :ns-prefix, so its init/core entry points are
+    ;; metabase.something-else.init / .core, NOT metabase.foo.init / .core.
+    (let [config {:metabase/modules {'foo            {:ns-prefix "metabase.something-else"
+                                                      :uses      #{'foo.enterprise}
+                                                      :api       :any}
+                                     'foo.enterprise {:ns-prefix "metabase-enterprise.foo"
+                                                      :private   true
+                                                      :api       :any
+                                                      :uses      #{}}}}]
+      (testing "metabase.something-else.init (the actual :ns-prefix.init) is allowed"
+        (is (nil? (usage-error config 'metabase.something-else.init 'foo 'metabase-enterprise.foo.core))))
+      (testing "metabase.something-else.core is allowed"
+        (is (nil? (usage-error config 'metabase.something-else.core 'foo 'metabase-enterprise.foo.core))))
+      (testing "some other ns under the same prefix (not .init or .core) is NOT allowed"
+        (is (some? (usage-error config 'metabase.something-else.other 'foo 'metabase-enterprise.foo.core)))))))
 
 (deftest ^:parallel usage-error-backwards-compat-flat-config-test
   (testing "With no nested modules declared, behavior matches the flat pre-nesting model"

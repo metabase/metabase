@@ -316,6 +316,28 @@
   [config module]
   (get-in config [:metabase/modules module :uses]))
 
+(defn- private-module?
+  "True if `m` is declared `:private true` in config. Private modules may be
+  named ONLY by their direct parent in `:uses`, AND even within the parent
+  only the `.init` and `.core` canonical entry-point namespaces may
+  statically require anything that resolves to the private module. Any
+  other namespace inside the parent must use dynamic loading
+  (`classloader/require`) if it needs to trigger private side-effects at
+  runtime."
+  [config m]
+  (true? (get-in config [:metabase/modules m :private])))
+
+(defn- private-loader-ns?
+  "True if `current-ns` is one of the canonical entry-point namespaces for
+  `parent-module` — i.e., `<parent-ns-prefix>.init` or `<parent-ns-prefix>.core`.
+  These are the only namespaces within the parent module that may statically
+  require namespaces resolving to a `:private` child module; anything else
+  inside the parent must use dynamic loading."
+  [config parent-module current-ns]
+  (let [parent-prefix (module-ns-prefix config parent-module)]
+    (or (= current-ns (symbol (str parent-prefix ".init")))
+        (= current-ns (symbol (str parent-prefix ".core"))))))
+
 (defn allowed-module?
   "True if `current-module` is allowed to depend on `required-module` based on
   `current-module`'s `:uses` declaration.
@@ -327,12 +349,27 @@
   NOT cover it.
 
   The `:any` value is the one wildcard: a module declared `:uses :any` may
-  depend on anything (subject to the orthogonal subtree-membership rules
-  enforced at config-validation time)."
+  depend on any non-private module (subject to the orthogonal
+  subtree-membership rules enforced at config-validation time).
+
+  `:private` rule: if `required-module` is marked `:private true`, only its
+  direct parent may name it. This overrides `:any` — `:uses :any` does NOT
+  cover private modules. The only exception is when `current-module` is
+  the direct parent of `required-module`."
   [config current-module required-module]
   (let [allowed-modules (allowed-modules config current-module)]
-    (or (= allowed-modules :any)
-        (boolean (contains? (set allowed-modules) required-module)))))
+    (cond
+      ;; Private modules are only nameable by their direct parent. This
+      ;; check comes first because it overrides both `:any` and exact-match.
+      (private-module? config required-module)
+      (= current-module (parent-module required-module))
+
+      ;; `:uses :any` is a wildcard for non-private modules.
+      (= allowed-modules :any)
+      true
+
+      :else
+      (boolean (contains? (set allowed-modules) required-module)))))
 
 (defn- allowed-module-namespace?
   "True if `ns-symb` (the namespace being required) is an allowed reference
@@ -349,15 +386,22 @@
         (contains? friends current-module))))
 
 (defn usage-error
-  "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the
-  error type if there is one, otherwise `nil` if there are no errors.
+  "Find usage errors when a `required-namespace` is required from `current-ns`
+  (which belongs to `current-module`). Returns a string describing the error
+  type if there is one, otherwise `nil` if there are no errors.
 
-  Strict checks: the required module must be in current's `:uses`, and the
-  required namespace must be in the required module's `:api` (or current
-  must be in required's `:friends`). No implicit visibility based on
-  parent/sibling/descendant relationships — every cross-module access goes
-  through `:api`."
-  [config current-module required-namespace]
+  Strict checks applied in order:
+    1. The required module must be in current-module's `:uses`.
+    2. If the required module is `:private`, current-ns must be the
+       direct parent's canonical load point (`<parent>.init` or
+       `<parent>.core`). Other namespaces inside the parent must use
+       dynamic loading.
+    3. The required namespace must be in the required module's `:api`
+       (or current-module must be in required's `:friends`).
+
+  No implicit visibility based on parent/sibling/descendant relationships
+  beyond these checks — every cross-module access goes through `:api`."
+  [config current-ns current-module required-namespace]
   ;; ignore stuff not in a module i.e. non-Metabase stuff.
   (when-let [required-module (module config required-namespace)]
     (when-not (= current-module required-module)
@@ -366,6 +410,21 @@
         (format "Module %s should not be used in the %s module. [:metabase/modules %s :uses]"
                 required-module
                 current-module
+                current-module)
+
+        (and (private-module? config required-module)
+             (not (private-loader-ns? config current-module current-ns)))
+        (format (str "Namespace %s cannot statically require %s because it resolves to the "
+                     ":private module %s. Only %s's canonical entry points "
+                     "(%s.init or %s.core) may statically load a :private child. "
+                     "Other namespaces inside %s should use classloader/require for dynamic "
+                     "loading at runtime.")
+                current-ns
+                required-namespace
+                required-module
+                current-module
+                (module-ns-prefix config current-module)
+                (module-ns-prefix config current-module)
                 current-module)
 
         (not (allowed-module-namespace? config current-module required-namespace))

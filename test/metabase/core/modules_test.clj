@@ -203,23 +203,39 @@
           false))
       true)))
 
+(defn- private-module?
+  "True if `target` is declared `:private true` in its config entry."
+  [config target]
+  (true? (get-in config [target :private])))
+
 (defn- can-be-named-by?
   "True if `caller` is permitted to put `target` in its `:uses` declaration
   under the strict module model. Permitted iff:
+    - `target` is `:private`: only the direct parent of `target` may name
+      it (this overrides same-subtree and externally-referenceable rules),
     - they share a top-level subtree (anyone in the same subtree can name
       anyone else in the subtree), OR
     - `target` is externally referenceable (top-level OR `:open`ed all the
       way from the root)."
   [config caller target]
-  (or (= caller target)
-      (same-subtree? caller target)
-      (externally-referenceable? config target)))
+  (cond
+    (= caller target)
+    true
+
+    (private-module? config target)
+    (= caller (dev.deps-graph/module-parent target))
+
+    :else
+    (or (same-subtree? caller target)
+        (externally-referenceable? config target))))
 
 (deftest ^:parallel uses-references-must-be-namable-test
   (testing (str "Every entry in a module's `:uses` must be a module that the caller is "
-                "allowed to name. Outside-of-subtree callers may only name modules that "
-                "are externally referenceable (top-level OR `:open`ed by every ancestor "
-                "from the root). Same-subtree callers may name any module in the subtree.")
+                "allowed to name. `:private` modules may be named only by their direct "
+                "parent. Outside-of-subtree callers may only name modules that are "
+                "externally referenceable (top-level OR `:open`ed by every ancestor from "
+                "the root). Same-subtree callers may name any non-private module in the "
+                "subtree.")
     (let [config (dev.deps-graph/kondo-config)]
       (doseq [[caller cfg] config
               :let          [uses (:uses cfg)]
@@ -232,16 +248,24 @@
               :when         (contains? config target)]
         (testing (format "\n[%s :uses %s]" (pr-str caller) (pr-str target))
           (is (can-be-named-by? config caller target)
-              (format
-               (str "%s declares :uses #{%s} but cannot name %s under the strict module model. "
-                    "Either: (a) move %s into %s's top-level subtree (currently %s vs %s), or "
-                    "(b) ensure %s is externally referenceable by adding it to its parent's "
-                    ":open set (and recursively up to the top-level).")
-               caller target target
-               target caller
-               (top-level-ancestor caller)
-               (top-level-ancestor target)
-               target)))))))
+              (if (private-module? config target)
+                (format
+                 (str "%s declares :uses #{%s} but %s is :private. Private modules may "
+                      "be named only by their direct parent (%s). Remove the :uses entry, "
+                      "or drop :private from %s if the restriction is no longer needed.")
+                 caller target target
+                 (dev.deps-graph/module-parent target)
+                 target)
+                (format
+                 (str "%s declares :uses #{%s} but cannot name %s under the strict module model. "
+                      "Either: (a) move %s into %s's top-level subtree (currently %s vs %s), or "
+                      "(b) ensure %s is externally referenceable by adding it to its parent's "
+                      ":open set (and recursively up to the top-level).")
+                 caller target target
+                 target caller
+                 (top-level-ancestor caller)
+                 (top-level-ancestor target)
+                 target))))))))
 
 (deftest ^:parallel ns-prefix-uniqueness-test
   (testing (str "Every module has a unique effective :ns-prefix (explicit via :ns-prefix "

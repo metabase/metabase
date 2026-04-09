@@ -81,7 +81,7 @@
           (doseq [node  required-namespace-symb-nodes
                   :when (not (contains? (hooks.common/ignored-linters node) :metabase/modules))
                   :let  [required-namespace (hooks/sexpr node)
-                         error              (modules/usage-error config current-module required-namespace)]
+                         error              (modules/usage-error config ns-symb current-module required-namespace)]
                   :when error]
             (hooks/reg-finding! (assoc (meta node)
                                        :message error
