@@ -2,9 +2,6 @@ import {
   DndContext,
   type DndContextProps,
   type DragEndEvent,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
 } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
@@ -13,6 +10,7 @@ import { useMergedRef } from "@mantine/hooks";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
+import { useDndSensors } from "metabase/common/hooks";
 import { Icon } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 
@@ -142,12 +140,7 @@ function ClauseStepDndContext<T>({
   children,
   onReorder,
 }: ClauseStepDndContextProps<T>) {
-  const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: { distance: 15 },
-  });
-  const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: { distance: 15 },
-  });
+  const sensors = useDndSensors({ distance: 15 });
 
   const handleSortEnd: DndContextProps["onDragEnd"] = useCallback(
     (input: DragEndEvent) => {
@@ -162,7 +155,7 @@ function ClauseStepDndContext<T>({
 
   return (
     <DndContext
-      sensors={[mouseSensor, touchSensor]}
+      sensors={sensors}
       modifiers={[restrictToParentElement]}
       onDragEnd={handleSortEnd}
     >

@@ -1,4 +1,3 @@
-import { MouseSensor, TouchSensor, useSensor } from "@dnd-kit/core";
 import cx from "classnames";
 import { forwardRef, useCallback, useMemo } from "react";
 
@@ -7,6 +6,7 @@ import type {
   RenderItemProps,
 } from "metabase/common/components/Sortable";
 import { SortableList } from "metabase/common/components/Sortable";
+import { useDndSensors } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -48,12 +48,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
     },
     ref,
   ) {
-    const mouseSensor = useSensor(MouseSensor, {
-      activationConstraint: { distance: 15 },
-    });
-    const touchSensor = useSensor(TouchSensor, {
-      activationConstraint: { distance: 15 },
-    });
+    const sensors = useDndSensors({ distance: 15 });
 
     const visibleValuePopulatedParameters = useMemo(
       () => getVisibleParameters(parameters, hideParameters),
@@ -136,7 +131,7 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
             getId={getId}
             renderItem={renderItem}
             onSortEnd={handleSortEnd}
-            sensors={[mouseSensor, touchSensor]}
+            sensors={sensors}
           />
         ) : (
           <>

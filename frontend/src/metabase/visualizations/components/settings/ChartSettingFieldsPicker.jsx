@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import { MouseSensor, TouchSensor, useSensor } from "@dnd-kit/core";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Sortable, SortableList } from "metabase/common/components/Sortable";
+import { useDndSensors } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { moveElement } from "metabase/lib/arrays";
 
@@ -42,12 +42,7 @@ export const ChartSettingFieldsPicker = ({
   );
   const getId = useCallback((field) => field, []);
 
-  const mouseSensor = useSensor(MouseSensor, {
-    activationConstraint: { distance: 15 },
-  });
-  const touchSensor = useSensor(TouchSensor, {
-    activationConstraint: { distance: 15 },
-  });
+  const sensors = useDndSensors({ distance: 15 });
 
   const handleDragEnd = ({ id: sortableField, newIndex }) => {
     const field = convertField(sortableField);
@@ -140,7 +135,7 @@ export const ChartSettingFieldsPicker = ({
           renderItem={renderItem}
           items={sortableFields}
           onSortEnd={handleDragEnd}
-          sensors={[mouseSensor, touchSensor]}
+          sensors={sensors}
           dividers={[]}
         />
       ) : (
