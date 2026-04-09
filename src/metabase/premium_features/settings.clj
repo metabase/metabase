@@ -1,6 +1,7 @@
 (ns metabase.premium-features.settings
   "Impls for settings that need to fetch token status live in [[metabase.premium-features.token-check]]."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -300,6 +301,7 @@
   :getter (fn []
             (and (has-feature? :admin-security-center)
                  (not ((requiring-resolve 'metabase.premium-features.token-check/is-trial?)))
+                 (not= (mdb/db-type) :h2)
                  (or config/is-dev?
                      (not (is-hosted?))))))
 
