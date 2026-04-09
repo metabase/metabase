@@ -4,6 +4,11 @@
   overflow: hidden;
   background: var(--mb-color-background-primary);
   transition: border-color 150ms ease;
+  box-shadow: 0 2px 8px 0 var(--mb-color-shadow);
+}
+
+.container:hover {
+  border: 1px solid var(--mb-color-brand);
 }
 
 .container:focus-within {
