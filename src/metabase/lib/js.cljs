@@ -99,27 +99,16 @@
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 ;;; metabase.analytics.impl registers the CLJS reporter for [[metabase.analytics.interface]].
 
-(defn ^:export internal-analytics-inc
-  "Increment an internal analytics counter. Exposed for use from TypeScript."
-  [metric labels amount]
-  (analytics.interface/inc! (keyword metric)
-                            (js->clj labels :keywordize-keys true)
-                            (or amount 1)))
-
-(defn ^:export internal-analytics-observe
-  "Record an internal analytics observation. Exposed for use from TypeScript."
-  [metric labels amount]
-  (analytics.interface/observe! (keyword metric)
-                                (js->clj labels :keywordize-keys true)
-                                (or amount 1)))
 (comment lib.core/keep-me
          metabase.analytics.impl/keep-me)
 
 ;; Expose for E2E testing
 (when (exists? js/window)
   (set! (.-__internalAnalytics js/window)
-        #js {:inc     internal-analytics-inc
-             :observe internal-analytics-observe}))
+        #js {:inc (fn [metric labels amount]
+                    (analytics.interface/inc! (keyword metric)
+                                              (js->clj labels :keywordize-keys true)
+                                              (or amount 1)))}))
 
 (defn ^:export suggestedName
   "Return a nice description of a query.

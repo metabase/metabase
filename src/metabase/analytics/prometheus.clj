@@ -743,19 +743,6 @@
      (setup!))
    (prometheus/inc (:registry system) metric (qualified-vals labels) amount)))
 
-(defn inc-if-initialized!
-  "Call iapetos.core/inc on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
-  ([metric] (when system (inc! metric nil 1)))
-  ([metric labels-or-amount]
-   (when system
-     (if (number? labels-or-amount)
-       (inc! metric nil labels-or-amount)
-       (inc! metric labels-or-amount 1))))
-  ([metric labels amount]
-   (when system
-     (prometheus/inc (:registry system) metric (qualified-vals labels) amount))))
-
 (defn dec!
   "Call iapetos.core/dec on the metric in the global registry.
    Inits registry if it's not been initialized yet.

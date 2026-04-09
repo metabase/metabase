@@ -40,5 +40,4 @@
         :observe (prometheus/observe! metric labels (or amount 1))
         :clear   (prometheus/clear! metric))
       (catch Exception e
-        (log/warnf e "Failed to record internal analytics event %s %s" op metric))))
-  nil)
+        (log/warnf e "Failed to record internal analytics event %s %s" op metric)))))

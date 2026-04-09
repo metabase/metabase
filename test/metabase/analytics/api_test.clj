@@ -19,8 +19,8 @@
                                       {:events [{:op :inc :metric :test/counter :labels {:x "y"} :amount 1}
                                                 {:op :observe :metric :test/histogram :amount 42}]}))))
     (testing "rejects invalid payload"
-      (is (mt/user-http-request :rasta :post 400 "analytics/internal"
-                                {:events [{:op :bad :metric :test/counter}]})))
+      (mt/user-http-request :rasta :post 400 "analytics/internal"
+                            {:events [{:op :bad :metric :test/counter}]}))
     (testing "rejects missing events key"
-      (is (mt/user-http-request :rasta :post 400 "analytics/internal"
-                                {:not-events []})))))
+      (mt/user-http-request :rasta :post 400 "analytics/internal"
+                            {:not-events []}))))
