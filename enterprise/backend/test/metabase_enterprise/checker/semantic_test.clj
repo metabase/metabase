@@ -7,6 +7,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.checker.format.serdes :as serdes-format]
+   [metabase-enterprise.checker.provider :as provider]
    [metabase-enterprise.checker.semantic :as checker]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.checker.test-helpers :as helpers]
@@ -32,10 +33,10 @@
   (serdes-format/make-source (fixtures-path)))
 
 (defn- check-all [source]
-  (checker/check-entities source (serdes-format/source-index source) (serdes-format/all-card-ids source)))
+  (checker/check-entities source source (serdes-format/source-index source) (serdes-format/all-card-ids source)))
 
 (defn- check-specific [source card-ids]
-  (checker/check-entities source (serdes-format/source-index source) card-ids))
+  (checker/check-entities source source (serdes-format/source-index source) card-ids))
 
 ;;; ===========================================================================
 ;;; Tests Using Real YAML Files
@@ -139,8 +140,7 @@
   (testing "FK target in field metadata is resolved to integer ID"
     (let [source (make-test-source)
           index (serdes-format/source-index source)
-          store (store/make-store source index)
-          provider (checker/make-provider store)
+          provider (provider/make-provider (store/make-store source source index))
           ;; Get the product_id field which has FK to products.id
           fields (metabase.lib.metadata.protocols/metadatas
                   provider {:lib/type :metadata/column})
@@ -179,9 +179,8 @@
                                          :dataset_query {:database "Test Database"
                                                          :type "query"
                                                          :query {:source-table ["Test Database" "public" "orders"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["test-card"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["test-card"])
           result (get results "test-card")]
       (is (some? result) "Card should be found")
       (is (= "Test Card" (:name result)) "Card name should match")
@@ -199,9 +198,8 @@
                                          :dataset_query {:database "Nonexistent Database"
                                                          :type "query"
                                                          :query {:source-table ["Nonexistent Database" "public" "orders"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["test-card"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["test-card"])
           result (get results "test-card")]
       (is (some? result) "Card should be found")
       (is (= "Test Card" (:name result)) "Card name should match")
@@ -284,6 +282,22 @@
                   ["eid" {:name "Error Card" :error "Unknown database: foo"}])]
       (is (re-find #"error: Unknown database: foo" output)))))
 
+(deftest format-result-non-card-entity-test
+  (testing "format-result shows kind for non-card entities instead of Card ID"
+    (let [output (checker/format-result
+                  ["eid" {:name "My Dashboard" :entity-id "eid" :kind :dashboard
+                          :unresolved [{:type :collection :entity-id "bad" :message "not found"}]}])]
+      (is (re-find #"Kind: dashboard" output))
+      (is (not (re-find #"Card ID" output))))))
+
+(deftest format-error-non-card-entity-test
+  (testing "format-error uses kind name for non-card entities"
+    (let [output (checker/format-error
+                  ["eid" {:name "My Transform" :entity-id "eid" :kind :transform
+                          :error "Unknown database: foo"}])]
+      (is (re-find #"^transform:" output))
+      (is (not (re-find #"^card:" output))))))
+
 ;;; ===========================================================================
 ;;; Sentinel ID Tests — unresolved refs get IDs so queries can be constructed
 ;;; ===========================================================================
@@ -306,9 +320,8 @@
                                                                  :breakout [[:field
                                                                              ["Test DB" "PUBLIC" "ORDERS" "NONEXISTENT_FIELD"]
                                                                              {:base-type :type/Text}]]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["bad-field"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["bad-field"])
           result (get results "bad-field")]
       (is (some? result))
       ;; Should NOT have an :error (query should build successfully with sentinel)
@@ -333,9 +346,8 @@
                                                                 :joins [{:source-table ["DB" "PUBLIC" "NONEXISTENT"]
                                                                          :alias "n"
                                                                          :condition [:= 1 1]}]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["bad-join"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["bad-join"])
           result (get results "bad-join")]
       (is (some? result))
       ;; Should NOT have an :error (query should build with sentinel)
@@ -367,9 +379,8 @@
                                            :dataset_query {:database "Test DB"
                                                            :type "native"
                                                            :native {:query "SELLECT * FROM ORDERS"}}}}}
-          source  (helpers/make-memory-source entities)
-          index   (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["bad-sql"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["bad-sql"])
           result  (get results "bad-sql")]
       (is (some? result))
       (is (or (seq (:native-errors result))
@@ -398,9 +409,8 @@
                                              :dataset_query {:database "Test DB"
                                                              :type "native"
                                                              :native {:query "SELECT ID, TOTAL FROM ORDERS"}}}}}
-          source  (helpers/make-memory-source entities)
-          index   (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["good-sql"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["good-sql"])
           result  (get results "good-sql")]
       (is (some? result))
       (is (nil? (:error result)) (str "Should not error: " (:error result)))
@@ -441,9 +451,8 @@
                                                                          :template-tags {"#1-mbql" {:type :card
                                                                                                     :name "#1-mbql"
                                                                                                     :card-id "mbql-card"}}}}}}}
-          source  (helpers/make-memory-source entities)
-          index   (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["native-card"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["native-card"])
           result  (get results "native-card")]
       (is (some? result))
       ;; ID exists in ORDERS and in the MBQL card's computed result-metadata,
@@ -482,9 +491,8 @@
                                                                       :template-tags {"#1-agg" {:type :card
                                                                                                 :name "#1-agg"
                                                                                                 :card-id "agg-card"}}}}}}}
-          source  (helpers/make-memory-source entities)
-          index   (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["ref-card"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["ref-card"])
           result  (get results "ref-card")]
       (is (some? result))
       (is (not (some #(and (= :missing-column (:type %))
@@ -508,9 +516,8 @@
                                             :dataset_query {:database "DB"
                                                             :type "native"
                                                             :native {:query "SELECT ID, TOTAL FROM ORDERS"}}}}}
-          source  (helpers/make-memory-source entities)
-          index   (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["sql-card"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["sql-card"])
           result  (get results "sql-card")]
       (is (some? result))
       (is (nil? (:error result)))
@@ -531,10 +538,9 @@
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]
                                                               :aggregation [["measure" "mSrAvgProdPrice00008x"]]}}}}}
-          source (helpers/make-memory-source entities)
-          index (assoc (helpers/make-memory-index entities)
-                       :measure {"mSrAvgProdPrice00008x" :memory})
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          index (assoc index :measure {"mSrAvgProdPrice00008x" :memory})
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)) (str "Should not error: " (:error result)))
       (is (empty? (filter #(= :measure (:type %)) (or (:unresolved result) [])))
@@ -551,9 +557,8 @@
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]
                                                               :aggregation [["measure" "xXxNoExIsT0MeAsUrExx1"]]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (some #(= :measure (:type %)) (or (:unresolved result) []))
           "Should have unresolved measure ref"))))
@@ -569,10 +574,9 @@
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]
                                                               :filter ["segment" "aB3kLmN9pQrStUvWxYz1a"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (assoc (helpers/make-memory-index entities)
-                       :segment {"aB3kLmN9pQrStUvWxYz1a" :memory})
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          index (assoc index :segment {"aB3kLmN9pQrStUvWxYz1a" :memory})
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)) (str "Should not error: " (:error result)))
       (is (empty? (filter #(= :segment (:type %)) (or (:unresolved result) [])))
@@ -589,9 +593,8 @@
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]
                                                               :filter ["segment" "xXxNoExIsT0SeGmEnTx12"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (some #(= :segment (:type %)) (or (:unresolved result) []))
           "Should have unresolved segment ref"))))
@@ -611,11 +614,10 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
-          source (helpers/make-memory-source entities)
+          [schema assets index] (helpers/make-sources-and-index entities)
           ;; Index includes the collection
-          index (assoc (helpers/make-memory-index entities)
-                       :collection {"coll-1" :memory})
-          results (checker/check-entities source index ["card-1"])
+          index (assoc index :collection {"coll-1" :memory})
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)))
       (is (empty? (:unresolved result)) "Valid collection_id should not produce unresolved refs"))))
@@ -631,9 +633,8 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (seq (:unresolved result)) "Missing collection should be flagged")
       (is (some #(= :collection (:type %)) (:unresolved result))
@@ -655,9 +656,8 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (seq (:unresolved result)) "collection_id pointing to a card should be flagged")
       (is (some #(and (= :collection (:type %))
@@ -676,9 +676,8 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)))
       (is (empty? (:unresolved result)) "nil collection_id should be fine"))))
@@ -698,9 +697,8 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (seq (:unresolved result)) "Missing dashboard_id should be flagged")
       (is (some #(= :dashboard (:type %)) (:unresolved result))
@@ -717,10 +715,9 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (assoc (helpers/make-memory-index entities)
-                       :dashboard {"dash-1" :memory})
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          index (assoc index :dashboard {"dash-1" :memory})
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)))
       (is (empty? (:unresolved result)) "Valid dashboard_id should not produce unresolved refs"))))
@@ -736,9 +733,8 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (nil? (:error result)))
       (is (empty? (:unresolved result)) "nil dashboard_id should be fine"))))
@@ -759,9 +755,8 @@
                                       :dataset_query {:database "DB"
                                                       :type "query"
                                                       :query {:source-table ["DB" "PUBLIC" "T"]}}}}}
-          source (helpers/make-memory-source entities)
-          index (helpers/make-memory-index entities)
-          results (checker/check-entities source index ["card-1"])
+          [schema assets index] (helpers/make-sources-and-index entities)
+          results (checker/check-entities schema assets index ["card-1"])
           result (get results "card-1")]
       (is (seq (:unresolved result)) "dashboard_id pointing to a card should be flagged")
       (is (some #(and (= :dashboard (:type %))
@@ -779,10 +774,11 @@
         (let [dash-file (io/file dir "dashboard.yaml")]
           (spit dash-file "name: My Dashboard\nentity_id: dash-1\ncollection_id: nonexistent\n")
           ;; Create a minimal source (no cards, no databases — we only care about collection_id)
-          (let [source (helpers/make-memory-source {:databases {} :tables {} :fields {} :cards {}})
+          (let [empty-entities {:databases {} :tables {} :fields {} :cards {}}
+                [schema assets _] (helpers/make-sources-and-index empty-entities)
                 index {:dashboard {"dash-1" (.getPath dash-file)}
                        :collection {}}
-                results (checker/check-entities source index [])]
+                results (checker/check-entities schema assets index [])]
             ;; The dashboard should appear in results with an unresolved collection ref
             (is (contains? results "dash-1") "Dashboard should be in results")
             (let [result (get results "dash-1")]
@@ -800,10 +796,11 @@
       (try
         (let [dash-file (io/file dir "dashboard.yaml")]
           (spit dash-file "name: Good Dashboard\nentity_id: dash-1\ncollection_id: coll-1\n")
-          (let [source (helpers/make-memory-source {:databases {} :tables {} :fields {} :cards {}})
+          (let [empty-entities {:databases {} :tables {} :fields {} :cards {}}
+                [schema assets _] (helpers/make-sources-and-index empty-entities)
                 index {:dashboard {"dash-1" (.getPath dash-file)}
                        :collection {"coll-1" :memory}}
-                results (checker/check-entities source index [])]
+                results (checker/check-entities schema assets index [])]
             ;; Valid dashboard should not appear (no errors)
             (is (not (contains? results "dash-1")) "Dashboard with valid collection_id should not be in results")))
         (finally
@@ -827,12 +824,13 @@
       (let [dash-file (io/file dir "dashboard.yaml")
             entity-id (:entity_id dashboard-data)]
         (spit dash-file (yaml/generate-string dashboard-data))
-        (let [source (helpers/make-memory-source {:databases {} :tables {} :fields {} :cards {}})
+        (let [empty-entities {:databases {} :tables {} :fields {} :cards {}}
+              [schema assets _] (helpers/make-sources-and-index empty-entities)
               index  (merge {:dashboard {entity-id (.getPath dash-file)}
                              :collection {}
                              :card {}}
                             extra-index)
-              results (checker/check-entities source index [])]
+              results (checker/check-entities schema assets index [])]
           (f results)))
       (finally
         (doseq [fl (reverse (file-seq dir))]
@@ -955,38 +953,24 @@
 ;;; ===========================================================================
 
 (defn- with-temp-transform
-  "Write a transform YAML to a temp file and run checks.
-   `transform-data` is a map that will be written as YAML.
+  "Run checks with a transform entity provided via in-memory source.
+   `transform-data` is a map representing the transform.
    `extra-index` is merged into the index (e.g. to add databases).
    Calls `(f results)` with the check results."
   [transform-data extra-index f]
-  (let [dir (java.io.File/createTempFile "transform-test" "")]
-    (.delete dir)
-    (.mkdirs dir)
-    (try
-      (let [transform-file (io/file dir "transform.yaml")
-            entity-id      (:entity_id transform-data)]
-        (spit transform-file (yaml/generate-string transform-data))
-        (let [source  (helpers/make-memory-source
-                       {:databases (get extra-index :_databases {})
-                        :tables    (get extra-index :_tables {})
-                        :fields    (get extra-index :_fields {})
-                        :cards     {}})
-              mem-index (helpers/make-memory-index
-                        {:databases (get extra-index :_databases {})
-                         :tables    (get extra-index :_tables {})
-                         :fields    (get extra-index :_fields {})
-                         :cards     {}})
-              index   (merge mem-index
-                             {:transform {entity-id (.getPath transform-file)}
-                              :collection {}
-                              :card {}}
-                             (dissoc extra-index :_databases :_tables :_fields))
-              results (checker/check-entities source index [])]
-          (f results)))
-      (finally
-        (doseq [fl (reverse (file-seq dir))]
-          (.delete ^java.io.File fl))))))
+  (let [entity-id (:entity_id transform-data)
+        entities  {:databases  (get extra-index :_databases {})
+                   :tables     (get extra-index :_tables {})
+                   :fields     (get extra-index :_fields {})
+                   :cards      {}
+                   :transforms {entity-id transform-data}}
+        [schema assets base-index] (helpers/make-sources-and-index entities)
+        index     (merge base-index
+                         {:collection {}
+                          :card {}}
+                         (dissoc extra-index :_databases :_tables :_fields))
+        results   (checker/check-entities schema assets index [])]
+    (f results)))
 
 (deftest transform-bad-native-sql-test
   (testing "Transform with invalid native SQL is flagged"

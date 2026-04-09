@@ -1,25 +1,26 @@
 (ns metabase-enterprise.checker.source
-  "MetadataSource protocol and CompositeSource.
+  "Protocols for resolving portable references to entity data.
 
-   A MetadataSource resolves portable references to entity data. It answers
-   'does this reference exist?' and 'give me the data for this reference'.
+   Two protocols separate the two concerns:
+
+   - **SchemaSource** resolves database schema references (databases, tables, fields).
+     Backed by the `--schema-dir` directory.
+   - **AssetsSource** resolves serialized entity references (cards, snippets, transforms,
+     segments). Backed by the `--export` directory.
 
    Portable references:
    - Database: string name
    - Table: [db-name schema-name table-name] where schema can be nil
    - Field: [db-name schema-name table-name field-name]
-   - Card: entity-id string
+   - Card/snippet/transform/segment: entity-id string
 
    The checker assigns integer IDs; sources just say 'yes this exists, here's the data'
-   or 'no, this reference is unresolved'.
-
-   CompositeSource delegates db/table/field resolution to one source and card
-   resolution to another. Used when --schema-dir and --export are separate.")
+   or 'no, this reference is unresolved'.")
 
 (set! *warn-on-reflection* true)
 
-(defprotocol MetadataSource
-  "Resolve portable references to entity data."
+(defprotocol SchemaSource
+  "Resolve database schema references to entity data."
 
   (resolve-database [this db-name]
     "Resolve database by name. Returns map with :name, :engine, :settings or nil.")
@@ -28,20 +29,19 @@
     "Resolve table by [db schema table]. Returns map with :name, :schema, :display-name, etc. or nil.")
 
   (resolve-field [this field-path]
-    "Resolve field by [db schema table field]. Returns map with :name, :base-type, :semantic-type, etc. or nil.")
+    "Resolve field by [db schema table field]. Returns map with :name, :base-type, :semantic-type, etc. or nil."))
+
+(defprotocol AssetsSource
+  "Resolve serialized entity references to entity data."
 
   (resolve-card [this entity-id]
-    "Resolve card by entity-id. Returns map with :name, :dataset-query, :result-metadata, etc. or nil."))
+    "Resolve card by entity-id. Returns map with :name, :dataset-query, :result-metadata, etc. or nil.")
 
-(deftype CompositeSource [db-source card-source]
-  MetadataSource
-  (resolve-database [_ db-name]   (resolve-database db-source db-name))
-  (resolve-table    [_ table-path] (resolve-table db-source table-path))
-  (resolve-field    [_ field-path] (resolve-field db-source field-path))
-  (resolve-card     [_ entity-id]  (resolve-card card-source entity-id)))
+  (resolve-snippet [this entity-id]
+    "Resolve native query snippet by entity-id. Returns map with :name, :content, etc. or nil.")
 
-(defn composite-source
-  "Create a source that resolves databases/tables/fields from `db-source`
-   and cards from `card-source`."
-  [db-source card-source]
-  (->CompositeSource db-source card-source))
+  (resolve-transform [this entity-id]
+    "Resolve transform by entity-id. Returns map with :name, :source, etc. or nil.")
+
+  (resolve-segment [this entity-id]
+    "Resolve segment by entity-id. Returns map with :name, :definition, etc. or nil."))

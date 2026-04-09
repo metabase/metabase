@@ -235,7 +235,7 @@
 ;;; ===========================================================================
 
 (deftype SerdesSource [export-dir index]
-  source/MetadataSource
+  source/SchemaSource
   (resolve-database [_ db-name]
     (when-let [file (get-in index [:database db-name])]
       (load-yaml file)))
@@ -248,8 +248,21 @@
     (when-let [file (get-in index [:field field-path])]
       (load-yaml file)))
 
+  source/AssetsSource
   (resolve-card [_ entity-id]
     (when-let [file (get-in index [:card entity-id])]
+      (load-yaml file)))
+
+  (resolve-snippet [_ entity-id]
+    (when-let [file (get-in index [:snippet entity-id])]
+      (load-yaml file)))
+
+  (resolve-transform [_ entity-id]
+    (when-let [file (get-in index [:transform entity-id])]
+      (load-yaml file)))
+
+  (resolve-segment [_ entity-id]
+    (when-let [file (get-in index [:segment entity-id])]
       (load-yaml file))))
 
 (defn make-source

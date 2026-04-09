@@ -72,18 +72,17 @@ clj -X:dev:test:ee:ee-dev :module enterprise/checker
 
 ### How checking works
 
-1. **Index** — walk YAML directories, build a file index of all entities by kind and ref
-2. **Source** — create `MetadataSource` implementations backed by the index (YAML loaded lazily on resolve). A `CompositeSource` combines db schemas from `--schema-dir` and entities from `--export`
-3. **Store** — assign synthetic integer IDs to portable refs (lib requires integer IDs). Cache loaded entities. Track bidirectional ref-to-ID mappings
-4. **Provider** — a `MetadataProvider` backed by the store converts YAML data to lib metadata format, resolving portable refs (path vectors like `["DB" "schema" "table"]`) to integer IDs
-5. **Query validation** — delegate to `deps.analysis/check-entity` which uses `lib/find-bad-refs` for MBQL and `deps.native-validation` for SQL
-6. **Structural checks** — validate entity relationships (collection_id, dashboard layout, document links) that query analysis doesn't cover
-7. **Results** — aggregate, format, and output
+1. **Sources** — `SchemaSource` resolves databases/tables/fields from `--schema-dir`. `AssetsSource` resolves cards/snippets/transforms/segments from `--export`. Both load YAML lazily on resolve.
+2. **Store** — combines both sources with a file index. Knows what entities exist, loads them on demand, assigns synthetic integer IDs (lib requires ints), caches everything.
+3. **Provider** — adapts the store into a `MetadataProvider` that `lib/query` understands. Converts raw YAML maps to lib metadata format, resolves portable refs to integer IDs, normalizes MBQL.
+4. **Validation** — query validation via `deps.analysis/check-entity` (MBQL + native SQL), plus structural checks (collection refs, dashboard layout, document links).
+5. **Results** — aggregate, format, and output.
 
 ### Namespaces
 
-- **`checker.format.serdes`** — serdes directory walking, YAML extraction, file index building, `SerdesSource` implementation
-- **`checker.source`** — `MetadataSource` protocol and `CompositeSource` for combining db and card sources
-- **`checker.store`** — mutable state: file index, bidirectional ID registry, entity caches. Loads entities lazily from the source
-- **`checker.semantic`** — converts YAML entities to lib metadata, builds a `MetadataProvider`, runs structural checks, delegates query validation to `deps.analysis/check-entity`, formats results
+- **`checker.source`** — `SchemaSource` and `AssetsSource` protocols
+- **`checker.format.serdes`** — serdes directory walking, YAML extraction, file index building, `SerdesSource` (implements both protocols)
+- **`checker.store`** — the store: combines sources + index, ID registry, entity caches, lazy loading
+- **`checker.provider`** — adapts store → lib `MetadataProvider`. Data conversion, MBQL normalization, reference resolution
+- **`checker.semantic`** — entity validation (structural checks, query checks via deps.analysis), result formatting, CLI orchestration
 - **`checker.cli`** — CLI entrypoint and argument parsing

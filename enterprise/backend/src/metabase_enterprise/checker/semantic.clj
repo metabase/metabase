@@ -1,35 +1,22 @@
 (ns metabase-enterprise.checker.semantic
-  "Semantic checker — validates entities from serdes YAML exports without a database.
+  "Entity validation — the checker's main entry point.
 
-   Bridges serdes export files into Metabase's lib/metadata system so that
-   existing validation infrastructure (deps.analysis/check-entity) can run
-   against YAML-backed entities.
+   Creates a store (checker.store) from sources, wraps it in a MetadataProvider
+   (checker.provider), then validates every entity:
+   - Query validation via deps.analysis/check-entity (MBQL + native SQL)
+   - Structural checks (collection_id, dashboard layout, document links)
 
-   Architecture:
-   1. A *store* (checker.store) holds a MetadataSource, a file index for
-      enumeration, a bidirectional ID registry (portable refs ↔ synthetic
-      integer IDs), and entity caches.
-   2. Entities are loaded lazily from YAML and cached with assigned IDs.
-   3. A MetadataProvider backed by the store serves lib/query.
-   4. Query validation delegates to deps.analysis/check-entity, which uses
-      lib/find-bad-refs for MBQL and deps.native-validation for SQL.
-   5. Structural checks (collection_id, dashboard layout, document links)
-      are checker-specific — they validate entity relationships not covered
-      by query analysis.
-   6. Unresolved refs get sentinel IDs so queries can still be constructed
-      and bad refs can be reported with context."
+   Public API:
+   - `(check export-dir schema-dir)` — check all entities, returns results map
+   - `(setup export-dir schema-dir)` + `(check-one ctx entity-id)` — REPL workflow"
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase-enterprise.checker.format.serdes :as serdes]
-   [metabase-enterprise.checker.source :as source]
+   [metabase-enterprise.checker.provider :as provider]
    [metabase-enterprise.checker.store :as store]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.serialization.resolve :as resolve]
    [metabase.query-processor.interface :as qp.i]
    ;; sql-tools.init registers multimethod implementations needed by deps.native-validation
    [metabase.sql-tools.init]
@@ -46,448 +33,6 @@
 ;;;   {:type :field :path ["DB" "schema" "table" "field"]}
 ;;;   {:type :table :path ["DB" "schema" "table"]}
 ;;;   {:type :database :name "DB"}
-;;; ===========================================================================
-
-(defn- resolve-ref
-  "Try to resolve `ref` of `kind`. Returns integer ID or nil.
-   On failure, appends failure-info to `!failures` atom (if provided).
-
-   When `sentinel?` is true, assigns a sentinel ID for unresolved refs instead
-   of returning nil. This allows query construction to proceed so that
-   lib/find-bad-refs can report the issue. The sentinel ID has no backing
-   metadata in the provider, so lib will flag it."
-  [store kind ref !failures failure-info & {:keys [sentinel?]}]
-  (when ref
-    (or (store/ref->id store kind ref)
-        (case kind
-          (:field :table :database :card)
-          (let [resolve-fn (case kind
-                             :field    source/resolve-field
-                             :table    source/resolve-table
-                             :database source/resolve-database
-                             :card     source/resolve-card)]
-            (when (resolve-fn (store/source store) ref)
-              (store/get-or-assign! store kind ref)))
-          ;; For measures, segments, and other index-only kinds: check the index directly
-          (when (store/in-index? store kind ref)
-            (store/get-or-assign! store kind ref)))
-        (do (when !failures (swap! !failures conj failure-info))
-            (when sentinel?
-              ;; Assign an ID so the query can be constructed, but no metadata
-              ;; will exist for this ID — lib/find-bad-refs will catch it.
-              (store/get-or-assign! store kind ref))))))
-
-(defn- resolve-field-path
-  ([store !failures field-path]
-   (resolve-ref store :field field-path !failures {:type :field :path field-path}))
-  ([store !failures field-path sentinel?]
-   (resolve-ref store :field field-path !failures {:type :field :path field-path} :sentinel? sentinel?)))
-
-(defn- resolve-table-path
-  ([store !failures table-path]
-   (resolve-ref store :table table-path !failures {:type :table :path table-path}))
-  ([store !failures table-path sentinel?]
-   (resolve-ref store :table table-path !failures {:type :table :path table-path} :sentinel? sentinel?)))
-
-(defn- resolve-db-name [store !failures db-name]
-  (resolve-ref store :database db-name !failures {:type :database :name db-name}))
-
-(defn- resolve-card-entity-id [store !failures entity-id]
-  (resolve-ref store :card entity-id !failures {:type :card :entity-id entity-id}))
-
-;;; ---------------------------------------------------------------------------
-;;; SerdesImportResolver — bridges store-based resolution into import-mbql
-;;; ---------------------------------------------------------------------------
-
-(defn- make-import-resolver
-  "Build a `SerdesImportResolver` that resolves against `store`,
-   collecting failures in `!failures` (an atom, or nil to discard).
-
-   When `sentinel?` is true, unresolved field/table refs get sentinel IDs
-   instead of nil, allowing query construction to proceed."
-  [store !failures & {:keys [sentinel?]}]
-  (reify resolve/SerdesImportResolver
-    (import-fk [_ eid model]
-      #_{:clj-kondo/ignore [:case-symbol-test]}
-      (case model
-        Card               (resolve-card-entity-id store !failures eid)
-        Segment            (resolve-ref store :segment eid !failures {:type :segment :entity-id eid})
-        Measure            (resolve-ref store :measure eid !failures {:type :measure :entity-id eid})
-        NativeQuerySnippet (resolve-ref store :snippet eid !failures {:type :snippet :entity-id eid})
-        (do (when !failures
-              (swap! !failures conj {:type :unknown :model model :entity-id eid}))
-            nil)))
-    (import-fk-keyed [_ portable model field]
-      (case [model field]
-        [:model/Database :name] (resolve-db-name store !failures portable)
-        (do (when !failures
-              (swap! !failures conj {:type :keyed-lookup :model model :field field :value portable}))
-            nil)))
-    (import-user [_ _email] nil)
-    (import-table-fk [_ path] (resolve-table-path store !failures path sentinel?))
-    (import-field-fk [_ path] (resolve-field-path store !failures path sentinel?))))
-
-;;; ===========================================================================
-;;; Data conversion — entity maps from source → lib metadata maps
-;;; ===========================================================================
-
-(defn- ->database-metadata [data]
-  {:lib/type     :metadata/database
-   :id           (:id data)
-   :name         (:name data)
-   :engine       (keyword (:engine data))
-   :dbms-version (:dbms_version data)
-   :features     #{:foreign-keys :nested-queries :expressions :native-parameters
-                   :basic-aggregations :standard-deviation-aggregations
-                   :expression-aggregations :left-join :right-join :inner-join :full-join}
-   :settings     (:settings data)})
-
-(defn- ->table-metadata [data]
-  {:lib/type        :metadata/table
-   :id              (:id data)
-   :name            (:name data)
-   :display-name    (:display_name data)
-   :schema          (:schema data)
-   :db-id           (:db_id data)
-   :active          (if (contains? data :active) (:active data) true)
-   :visibility-type (some-> (:visibility_type data) keyword)})
-
-(defn- ->field-metadata
-  "Convert a cached field entity to lib metadata. Resolves FK targets if present."
-  [store !failures data]
-  (cond-> {:lib/type        :metadata/column
-           :id              (:id data)
-           :table-id        (:table_id data)
-           :name            (:name data)
-           :display-name    (:display_name data)
-           :base-type       (keyword (:base_type data))
-           :effective-type  (or (some-> (:effective_type data) keyword)
-                                (keyword (:base_type data)))
-           :semantic-type   (some-> (:semantic_type data) keyword)
-           :database-type   (:database_type data)
-           :active          (if (contains? data :active) (:active data) true)
-           :visibility-type (some-> (:visibility_type data) keyword)
-           :position        (:position data)}
-    (vector? (:fk_target_field_id data))
-    (as-> m (if-let [fk-id (resolve-field-path store !failures (:fk_target_field_id data))]
-              (assoc m :fk-target-field-id fk-id)
-              m))))
-
-(defn- field-ref-has-nil? [ref]
-  (and (vector? ref) (= :field (first ref)) (nil? (second ref))))
-
-(defn- convert-result-metadata-column [resolver store !failures col]
-  (binding [resolve/*import-resolver* resolver]
-    (cond-> col
-      (vector? (:id col))
-      (as-> c (if-let [id (resolve-field-path store !failures (:id col))]
-                (assoc c :id id) (dissoc c :id)))
-      (vector? (:table_id col))
-      (as-> c (if-let [id (resolve-table-path store !failures (:table_id col))]
-                (assoc c :table_id id) (dissoc c :table_id)))
-      (vector? (:fk_target_field_id col))
-      (as-> c (if-let [id (resolve-field-path store !failures (:fk_target_field_id col))]
-                (assoc c :fk_target_field_id id) (dissoc c :fk_target_field_id)))
-      (:field_ref col)
-      (as-> c (let [ref (resolve/import-mbql (:field_ref col))]
-                (if (field-ref-has-nil? ref) (dissoc c :field_ref) (assoc c :field_ref ref)))))))
-
-(defn- mbql-operator?
-  "Does this string look like an MBQL operator rather than a portable ref element?
-   MBQL operators are lowercase/symbol strings like \"field\", \">\", \"case\", \"time-interval\".
-   Portable ref elements are database/table names that contain spaces or start with uppercase."
-  [^String s]
-  (and (not (str/blank? s))
-       (not (str/includes? s " "))
-       (let [c (.charAt s 0)]
-         (not (Character/isUpperCase c)))))
-
-(def ^:private temporal-unit-strings
-  "String values that should be keywordized when they appear as MBQL arguments.
-   These are temporal bucketing units and modes that YAML gives us as strings."
-  #{"day" "day-of-month" "day-of-week" "day-of-year" "default"
-    "hour" "hour-of-day" "millisecond" "minute" "minute-of-hour"
-    "month" "month-of-year" "quarter" "quarter-of-year"
-    "second" "second-of-minute" "week" "week-of-year" "year" "year-of-era"
-    ;; day-of-week modes
-    "iso" "us" "instance"
-    ;; relative-datetime
-    "current"})
-
-(defn- maybe-keywordize-arg
-  "Keywordize a string argument if it's a known keyword value (temporal unit, mode, etc.).
-   Leaves all other strings as-is (column names, search strings, etc.)."
-  [form]
-  (if (and (string? form) (contains? temporal-unit-strings form))
-    (keyword form)
-    form))
-
-(defn- keywordize-mbql-operators
-  "Walk a data structure and keywordize MBQL operators and known keyword arguments.
-   YAML parses everything as strings, but MBQL expects keyword operators
-   and keyword-valued arguments (temporal units, modes, etc.).
-
-   Operators (first position) are keywordized if they look like MBQL operators.
-   Arguments are only keywordized if they match a known set of keyword values
-   (temporal units, modes). This avoids incorrectly keywordizing string literals
-   like column names or search strings."
-  [form]
-  (cond
-    (and (vector? form) (seq form) (string? (first form)) (mbql-operator? (first form)))
-    (into [(keyword (first form))] (map #(-> % keywordize-mbql-operators maybe-keywordize-arg)) (rest form))
-
-    (vector? form)
-    (mapv keywordize-mbql-operators form)
-
-    (map? form)
-    (reduce-kv (fn [m k v] (assoc m k (keywordize-mbql-operators v))) {} form)
-
-    (sequential? form)
-    (map keywordize-mbql-operators form)
-
-    :else form))
-
-(defn- convert-dataset-query
-  "Convert a dataset query from serdes format, resolving paths to IDs.
-
-   Pipeline:
-   1. keywordize-mbql-operators — turn string operators/args into keywords
-   2. resolve/import-mbql — resolve portable refs (path vectors) to integer IDs
-   3. Sentinel IDs assigned for unresolved refs so queries can still be constructed"
-  [store !failures query]
-  (when query
-    (try
-      (let [;; Step 1: keywordize string operators and keyword args within stages
-            query   (update query :stages
-                            (fn [stages]
-                              (mapv (fn [stage]
-                                      (-> stage
-                                          (m/update-existing :native keywordize-mbql-operators)
-                                          (cond-> (not (:native stage))
-                                            (keywordize-mbql-operators))))
-                                    (or stages []))))
-            ;; Step 2: resolve portable refs to integer IDs
-            db-name (:database query)
-            db-id   (when (string? db-name) (resolve-db-name store !failures db-name))
-            query   (cond-> query db-id (assoc :database db-id))
-            resolver (make-import-resolver store !failures :sentinel? true)
-            query   (binding [resolve/*import-resolver* resolver]
-                      (resolve/import-mbql query))]
-        query)
-      (catch Exception _
-        ;; If normalization/resolution fails, return the partially-processed query.
-        ;; The caller will handle the error downstream.
-        (let [db-name (:database query)
-              db-id   (when (string? db-name) (resolve-db-name store !failures db-name))]
-          (cond-> query db-id (assoc :database db-id)))))))
-
-(declare compute-result-metadata)
-
-(defn- ->card-metadata
-  "Convert a cached card entity to lib metadata. Returns the metadata map with
-   ::resolution-failures and ::missing-database keys when resolution fails."
-  [store data]
-  (let [!failures (atom [])
-        resolver   (make-import-resolver store !failures)
-        table-id   (when-let [t (:table_id data)]
-                     (if (vector? t)
-                       (resolve-table-path store !failures t)
-                       t))
-        db-name    (get-in data [:dataset_query :database])
-        db-id      (when (string? db-name) (resolve-db-name store !failures db-name))
-        dataset-query   (convert-dataset-query store !failures (:dataset_query data))
-        result-metadata (if-let [cols (seq (:result_metadata data))]
-                          (->> cols
-                               (map (partial convert-result-metadata-column resolver store !failures))
-                               (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column]))
-                          ;; No result_metadata in YAML — compute from the query so that
-                          ;; deps.analysis/card-column-exists? can verify card subquery columns.
-                          (when (and dataset-query db-id)
-                            (compute-result-metadata store dataset-query)))]
-    (cond-> {:lib/type        :metadata/card
-             :id              (:id data)
-             :name            (:name data)
-             :type            (some-> (:type data) keyword)
-             :dataset-query   dataset-query
-             :result-metadata result-metadata
-             :archived        (:archived data)}
-      db-id              (assoc :database-id db-id)
-      (not db-id)        (assoc ::missing-database db-name)
-      table-id           (assoc :table-id table-id)
-      (seq @!failures)   (assoc ::resolution-failures (vec (distinct @!failures))))))
-
-(defn- ->transform-metadata
-  "Convert a cached transform entity to lib metadata with its source query resolved."
-  [store data]
-  (let [!failures (atom [])
-        query     (convert-dataset-query store !failures (get-in data [:source :query]))]
-    (cond-> {:lib/type :metadata/transform
-             :id       (:id data)
-             :name     (:name data)
-             :source   (assoc (:source data) :query query)}
-      (seq @!failures) (assoc ::resolution-failures (vec (distinct @!failures))))))
-
-(defn- ->segment-metadata
-  "Convert a cached segment entity to lib metadata with its definition resolved."
-  [store data]
-  (let [!failures   (atom [])
-        definition  (convert-dataset-query store !failures (:definition data))]
-    (cond-> {:lib/type   :metadata/segment
-             :id         (:id data)
-             :name       (:name data)
-             :definition definition}
-      (seq @!failures) (assoc ::resolution-failures (vec (distinct @!failures))))))
-
-;;; ===========================================================================
-;;; MetadataProvider — serves lib/query from the store
-;;; ===========================================================================
-
-(deftype SourceMetadataProvider [store]
-  lib.metadata.protocols/MetadataProvider
-  (database [_this]
-    (when-let [db-name (first (store/all-database-names store))]
-      (when-let [data (store/load-database! store db-name)]
-        (->database-metadata data))))
-
-  (metadatas [_this {:keys [lib/type id table-id name]}]
-    (case type
-      :metadata/table
-      (vec
-       (if id
-         (for [tid id
-               :let [path (store/id->ref store :table tid)]
-               :when path
-               :let [data (store/load-table! store path)]
-               :when data]
-           (->table-metadata data))
-         (for [path (store/all-table-paths store)
-               :let [data (store/load-table! store path)]
-               :when data]
-           (->table-metadata data))))
-
-      :metadata/column
-      (vec
-       (cond
-         id
-         (for [fid id
-               :let [path (store/id->ref store :field fid)]
-               :when path
-               :let [data (store/load-field! store path)]
-               :when data]
-           (->field-metadata store nil data))
-
-         table-id
-         (let [table-path (store/id->ref store :table table-id)]
-           (when table-path
-             (for [fpath (store/fields-for-table store table-path)
-                   :let [data (store/load-field! store fpath)]
-                   :when data]
-               (->field-metadata store nil data))))
-
-         :else
-         (for [path (store/all-field-paths store)
-               :let [data (store/load-field! store path)]
-               :when data]
-           (->field-metadata store nil data))))
-
-      :metadata/card
-      (vec
-       (if id
-         (for [cid id
-               :let [eid (store/id->ref store :card cid)]
-               :when eid
-               :let [data (store/load-card! store eid)]
-               :when data]
-           (->card-metadata store data))
-         (for [eid (store/all-card-ids store)
-               :let [data (store/load-card! store eid)]
-               :when data]
-           (->card-metadata store data))))
-
-      :metadata/native-query-snippet
-      (vec
-       (cond
-         id
-         (for [sid id
-               :let [eid (store/id->ref store :snippet sid)]
-               :when eid
-               :let [data (store/load-snippet! store eid)]
-               :when data]
-           {:lib/type :metadata/native-query-snippet
-            :id       (:id data)
-            :name     (:name data)
-            :content  (:content data)})
-
-         name
-         (for [eid (store/all-refs store :snippet)
-               :let [data (store/load-snippet! store eid)]
-               :when data
-               :when (contains? name (:name data))]
-           {:lib/type :metadata/native-query-snippet
-            :id       (:id data)
-            :name     (:name data)
-            :content  (:content data)})
-
-         :else []))
-
-      :metadata/transform
-      (vec
-       (if id
-         (for [tid id
-               :let [eid (store/id->ref store :transform tid)]
-               :when eid
-               :let [data (store/load-transform! store eid)]
-               :when data]
-           (->transform-metadata store data))
-         (for [eid (store/all-refs store :transform)
-               :let [data (store/load-transform! store eid)]
-               :when data]
-           (->transform-metadata store data))))
-
-      :metadata/segment
-      (vec
-       (if id
-         (for [sid id
-               :let [eid (store/id->ref store :segment sid)]
-               :when eid
-               :let [data (store/load-segment! store eid)]
-               :when data]
-           (->segment-metadata store data))
-         (for [eid (store/all-refs store :segment)
-               :let [data (store/load-segment! store eid)]
-               :when data]
-           (->segment-metadata store data))))
-
-      nil))
-
-  (setting [_this _key] nil)
-
-  lib.metadata.protocols/CachedMetadataProvider
-  (cached-metadatas [this type ids]
-    (lib.metadata.protocols/metadatas this {:lib/type type :id (set ids)}))
-  (store-metadata! [_this _obj] nil)
-  (cached-value [_this _k not-found] not-found)
-  (cache-value! [_this _k _v] nil)
-  (has-cache? [_this] true)
-  (clear-cache! [_this] nil))
-
-(defn make-provider
-  "Create a MetadataProvider backed by a store."
-  [store]
-  (->SourceMetadataProvider store))
-
-(defn- compute-result-metadata
-  "Compute result metadata for a resolved dataset-query by building a lib query
-   and calling returned-columns. Used when YAML has no result_metadata so that
-   deps.analysis can verify card subquery column references."
-  [store dataset-query]
-  (try
-    (let [provider (make-provider store)
-          query    (lib/query provider dataset-query)]
-      (mapv #(select-keys % [:name :base-type :effective-type :semantic-type :display-name])
-            (lib/returned-columns query)))
-    (catch Exception _ nil)))
-
 ;;; ===========================================================================
 ;;; Common entity checks — apply to any entity type
 ;;;
@@ -800,8 +345,8 @@
           (swap! unresolved conj {:type :database :name db-name
                                   :message (str "transform references database " db-name " which is not in the schema")}))
         ;; Resolution failures from converting transform metadata
-        (let [transform-meta (->transform-metadata store data)]
-          (swap! unresolved into (or (::resolution-failures transform-meta) []))
+        (let [transform-meta (provider/transform-metadata store data)]
+          (swap! unresolved into (or (:provider/resolution-failures transform-meta) []))
           ;; Validate via deps.analysis
           (let [errors (try
                          (deps.analysis/check-entity provider :transform transform-id)
@@ -819,14 +364,25 @@
 ;;; Non-card entity checking — load from files, run common + type-specific checks
 ;;; ===========================================================================
 
-(defn- check-entity-from-file
-  "Load an entity YAML file from the index and run checks.
+(defn- load-entity-data
+  "Load entity data for a non-card entity. Uses the source for entity types that
+   support it (transforms, segments, snippets), falls back to YAML file for others."
+  [store kind entity-id]
+  (case kind
+    :transform (store/load-transform! store entity-id)
+    :segment   (store/load-segment! store entity-id)
+    :snippet   (store/load-snippet! store entity-id)
+    (when-let [file (store/index-file store kind entity-id)]
+      (serdes/load-yaml file))))
+
+(defn- check-entity-from-index
+  "Load a non-card entity and run checks.
    Runs common checks on all entities, plus type-specific checks.
    Returns [entity-id result-map] or nil if all checks pass."
   [store provider kind entity-id]
-  (when-let [file (store/index-file store kind entity-id)]
+  (when (store/in-index? store kind entity-id)
     (try
-      (let [data           (serdes/load-yaml file)
+      (let [data           (load-entity-data store kind entity-id)
             common         (check-common store data)
             type-specific  (case kind
                              :dashboard  {:unresolved (check-dashboard store data)}
@@ -860,12 +416,12 @@
   (into {}
         (keep identity)
         (concat
-         (map #(check-entity-from-file store provider :dashboard %) (store/all-refs store :dashboard))
-         (map #(check-entity-from-file store provider :collection %) (store/all-refs store :collection))
-         (map #(check-entity-from-file store provider :document %) (store/all-refs store :document))
-         (map #(check-entity-from-file store provider :measure %) (store/all-refs store :measure))
-         (map #(check-entity-from-file store provider :segment %) (store/all-refs store :segment))
-         (map #(check-entity-from-file store provider :transform %) (store/all-refs store :transform)))))
+         (map #(check-entity-from-index store provider :dashboard %) (store/all-refs store :dashboard))
+         (map #(check-entity-from-index store provider :collection %) (store/all-refs store :collection))
+         (map #(check-entity-from-index store provider :document %) (store/all-refs store :document))
+         (map #(check-entity-from-index store provider :measure %) (store/all-refs store :measure))
+         (map #(check-entity-from-index store provider :segment %) (store/all-refs store :segment))
+         (map #(check-entity-from-index store provider :transform %) (store/all-refs store :transform)))))
 
 ;;; ===========================================================================
 ;;; Card validation
@@ -922,10 +478,10 @@
           card-id         (:id data)
           common-failures (check-common store data)
           ;; Resolution failures from converting the card to lib metadata
-          card-meta       (->card-metadata store data)
-          resolution-failures (::resolution-failures card-meta)
+          card-meta       (provider/card-metadata store data)
+          resolution-failures (:provider/resolution-failures card-meta)
           ;; Use deps.analysis for query validation (bad refs + native SQL)
-          errors          (when-not (::missing-database card-meta)
+          errors          (when-not (:provider/missing-database card-meta)
                             (try
                               (deps.analysis/check-entity provider :card card-id)
                               (catch Exception e
@@ -940,8 +496,8 @@
                               (extract-refs-from-query store query provider #{card-id}))
                             (catch Exception _ nil))
           all-unresolved  (into (vec (concat resolution-failures
-                                             (when (::missing-database card-meta)
-                                               [{:type :database :name (::missing-database card-meta)}])))
+                                             (when (:provider/missing-database card-meta)
+                                               [{:type :database :name (:provider/missing-database card-meta)}])))
                                 common-failures)]
       (cond-> {:card-id    card-id
                :name       (:name data)
@@ -950,7 +506,7 @@
         refs                   (assoc :refs refs)
         (seq bad-refs)         (assoc :bad-refs bad-refs)
         (seq native-errors)    (assoc :native-errors native-errors)
-        (::missing-database card-meta) (assoc :error (str "Unknown database: " (::missing-database card-meta)))))
+        (:provider/missing-database card-meta) (assoc :error (str "Unknown database: " (:provider/missing-database card-meta)))))
     (catch Exception e
       (let [data (try (store/load-card! store entity-id) (catch Exception _ nil))]
         {:entity-id entity-id
@@ -976,17 +532,18 @@
    Returns `{entity-id result-map}`. See the Results processing section for the
    result-map shape.
 
-   `source`   — a MetadataSource for resolving entities
-   `index`    — a file index: `{kind {ref file-path}}` (see store/make-store)
-   `card-ids` — seq of card entity-ids to check (cards need special handling
-                via MetadataProvider; other entity types are checked from files)"
-  [source index card-ids]
+   `schema-source` — a SchemaSource for resolving databases/tables/fields
+   `assets-source` — an AssetsSource for resolving cards/snippets/transforms/segments
+   `index`         — a file index: `{kind {ref file-path}}` (see store/make-store)
+   `card-ids`      — seq of card entity-ids to check (cards need special handling
+                     via MetadataProvider; other entity types are checked from files)"
+  [schema-source assets-source index card-ids]
   (binding [mu.fn/*enforce* false
             ;; Skip QP middleware that requires the app DB (impersonation, permissions)
             ;; since the checker runs without a database connection.
             qp.i/*skip-middleware-because-app-db-access* true]
-    (let [store         (store/make-store source index)
-          provider      (make-provider store)
+    (let [store         (store/make-store schema-source assets-source index)
+          provider      (provider/make-provider store)
           card-results  (into {}
                               (for [eid card-ids]
                                 [eid (check-card store provider eid)]))
@@ -1054,10 +611,12 @@
   (group-by (comp result-status second) results))
 
 (defn format-result
-  "Format a single card result as a human-readable string."
+  "Format a single entity result as a human-readable string."
   [[entity-id result]]
   (let [lines (atom [(str "=== " (:name result) " [" entity-id "] ===")
-                     (str "  Card ID: " (:card-id result))])
+                     (if-let [kind (:kind result)]
+                       (str "  Kind: " (name kind))
+                       (str "  Card ID: " (:card-id result)))])
         {:keys [tables fields source-cards]} (:refs result)]
     (when (seq tables)
       (swap! lines conj (str "  Tables: " (str/join ", " tables))))
@@ -1091,7 +650,8 @@
   [[entity-id result]]
   (let [status (result-status result)]
     (when (not= :ok status)
-      (let [lines (atom [(str "card: " (:name result) " (entity_id: " entity-id ")")])]
+      (let [kind-label (if-let [kind (:kind result)] (name kind) "card")
+            lines (atom [(str kind-label ": " (:name result) " (entity_id: " entity-id ")")])]
         (when-let [unresolved (seq (:unresolved result))]
           (doseq [{:keys [type path entity-id name message]} unresolved]
             (swap! lines conj (str "  unresolved " (clojure.core/name type) ": "
@@ -1108,17 +668,16 @@
           (swap! lines conj (str "  error: " (:error result))))
         (str/join "\n" @lines)))))
 
-(defn- make-source-and-index
-  "Build a composite source (db schemas from `schema-dir`, cards from `export-dir`)
+(defn- make-sources-and-index
+  "Build schema and assets sources from `schema-dir` and `export-dir`,
    and a merged file index."
   [export-dir schema-dir]
-  (let [db-source    (serdes/make-database-source schema-dir)
-        export-source (serdes/make-source export-dir)
-        src          (source/composite-source db-source export-source)
-        db-index     (serdes/source-index db-source)
-        export-index (serdes/source-index export-source)
-        index        (merge db-index (select-keys export-index [:card :dashboard :collection :document :measure :segment :snippet :transform :duplicates]))]
-    {:source src :index index :export-source export-source}))
+  (let [schema-source (serdes/make-database-source schema-dir)
+        assets-source (serdes/make-source export-dir)
+        schema-index  (serdes/source-index schema-source)
+        assets-index  (serdes/source-index assets-source)
+        index         (merge schema-index (select-keys assets-index [:card :dashboard :collection :document :measure :segment :snippet :transform :duplicates]))]
+    {:schema-source schema-source :assets-source assets-source :index index}))
 
 (defn check
   "Check entities in an export directory against database schemas.
@@ -1127,18 +686,15 @@
    `schema-dir`  — directory containing serdes-exported database schemas
    `entity-ids`  — optional seq of card entity-ids to check (defaults to all cards)
 
-   Returns `{:results results-map, :source MetadataSource}` where results-map
-   is `{entity-id result-map}`. See the Results processing section above for
-   the result-map and summary-map shapes."
+   Returns `{:results results-map}` where results-map is `{entity-id result-map}`.
+   See the Results processing section above for the result-map and summary-map shapes."
   ([export-dir schema-dir]
-   (let [{:keys [source index export-source]} (make-source-and-index export-dir schema-dir)
-         card-ids (serdes/all-card-ids export-source)]
-     {:results (check-entities source index card-ids)
-      :source  source}))
+   (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)
+         card-ids (serdes/all-card-ids assets-source)]
+     {:results (check-entities schema-source assets-source index card-ids)}))
   ([export-dir schema-dir entity-ids]
-   (let [{:keys [source index]} (make-source-and-index export-dir schema-dir)]
-     {:results (check-entities source index entity-ids)
-      :source  source})))
+   (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)]
+     {:results (check-entities schema-source assets-source index entity-ids)})))
 
 (defn setup
   "Create a store and provider for REPL iteration.
@@ -1149,10 +705,10 @@
      (check-one ctx \"entity-id\")
      (check-one ctx \"entity-id\" :verbose true)"
   [export-dir schema-dir]
-  (let [{:keys [source index]} (make-source-and-index export-dir schema-dir)
+  (let [{:keys [schema-source assets-source index]} (make-sources-and-index export-dir schema-dir)
         store    (binding [mu.fn/*enforce* false]
-                   (store/make-store source index))
-        provider (make-provider store)]
+                   (store/make-store schema-source assets-source index))
+        provider (provider/make-provider store)]
     {:store store :provider provider :index index}))
 
 (defn check-one

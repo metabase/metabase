@@ -22,9 +22,8 @@
    :cards     {"card-1" {:name "Card 1" :entity_id "card-1"}}})
 
 (defn- make-test-store []
-  (store/make-store
-   (helpers/make-memory-source test-entities)
-   (helpers/make-memory-index test-entities)))
+  (let [[schema assets index] (helpers/make-sources-and-index test-entities)]
+    (store/make-store schema assets index)))
 
 ;;; ===========================================================================
 ;;; Index query tests
@@ -58,12 +57,13 @@
 
 (deftest index-kind-of-multi-kind-test
   (testing "index-kind-of distinguishes between kinds"
-    (let [source (helpers/make-memory-source {:databases {} :tables {} :fields {} :cards {}})
+    (let [empty-entities {:databases {} :tables {} :fields {} :cards {}}
+          [schema assets _] (helpers/make-sources-and-index empty-entities)
           index  {:card       {"eid-1" :memory}
                   :dashboard  {"eid-2" :memory}
                   :collection {"eid-3" :memory}
                   :document   {"eid-4" :memory}}
-          store  (store/make-store source index)]
+          store  (store/make-store schema assets index)]
       (is (= :card       (store/index-kind-of store "eid-1")))
       (is (= :dashboard  (store/index-kind-of store "eid-2")))
       (is (= :collection (store/index-kind-of store "eid-3")))
@@ -210,8 +210,14 @@
       (is (some? (store/ref->id store :table ["DB" "PUBLIC" "ORDERS"]))
           "Table should have an assigned ID after loading a field"))))
 
-(deftest source-accessor-test
-  (let [src   (helpers/make-memory-source test-entities)
-        store (store/make-store src (helpers/make-memory-index test-entities))]
-    (testing "source returns the MetadataSource from the store"
-      (is (identical? src (store/source store))))))
+(deftest schema-source-accessor-test
+  (let [[schema assets index] (helpers/make-sources-and-index test-entities)
+        store (store/make-store schema assets index)]
+    (testing "schema-source returns the SchemaSource from the store"
+      (is (identical? schema (store/schema-source store))))))
+
+(deftest assets-source-accessor-test
+  (let [[schema assets index] (helpers/make-sources-and-index test-entities)
+        store (store/make-store schema assets index)]
+    (testing "assets-source returns the AssetsSource from the store"
+      (is (identical? assets (store/assets-source store))))))

@@ -1,18 +1,20 @@
 (ns metabase-enterprise.checker.store
-  "Checker store — source + file index + ID registry + entity caches.
+  "The store knows what entities exist and can load them.
 
-   The store is an atom holding:
-   - A MetadataSource for resolving entities from disk/memory
-   - A file index of all known refs by kind
-   - A fields-by-table index for efficient table→fields lookup
-   - A bidirectional ID registry (portable refs ↔ synthetic integer IDs)
-   - Entity caches (raw data with :id stamped on)
+   It combines three things:
+   - A **SchemaSource** for resolving databases, tables, and fields
+   - An **AssetsSource** for resolving cards, snippets, transforms, and segments
+   - A **file index** that enumerates all known entities by kind and ref
 
-   All mutable state lives in the store atom. There are no dynamic vars —
-   the store is passed explicitly to every function that needs it."
+   On top of that it maintains:
+   - A bidirectional **ID registry** (portable refs ↔ synthetic integer IDs,
+     because lib requires integer IDs)
+   - **Entity caches** (loaded data with :id stamped on)
+
+   Entities are loaded lazily from sources and cached on first access.
+   The store is an atom passed explicitly — no dynamic vars."
   (:require
-   [metabase-enterprise.checker.source :as source]
-   [metabase.util.yaml :as yaml]))
+   [metabase-enterprise.checker.source :as source]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,11 +39,13 @@
 (defn make-store
   "Create a fresh store for a checking session.
 
-   `source` is a MetadataSource for resolving entities.
+   `schema-source` is a SchemaSource for resolving databases/tables/fields.
+   `assets-source` is an AssetsSource for resolving cards/snippets/transforms/segments.
    `index` is a file index: `{kind {ref file-path}}` where kind is
-   :database, :table, :field, :card."
-  [source index]
-  (atom {:source          source
+   :database, :table, :field, :card, etc."
+  [schema-source assets-source index]
+  (atom {:schema-source   schema-source
+         :assets-source   assets-source
          :index           index
          :fields-by-table (build-fields-by-table (:field index))
          :id-counter      0
@@ -139,10 +143,15 @@
 ;;; Entity loading — lazy load from source, cache with assigned IDs
 ;;; ===========================================================================
 
-(defn source
-  "Get the MetadataSource from the store."
+(defn schema-source
+  "Get the SchemaSource from the store."
   [store]
-  (:source @store))
+  (:schema-source @store))
+
+(defn assets-source
+  "Get the AssetsSource from the store."
+  [store]
+  (:assets-source @store))
 
 (defn cached-entity
   "Look up a cached entity by kind and ref. Returns nil if not cached."
@@ -153,11 +162,13 @@
   (swap! store assoc-in [:entities kind ref] data)
   data)
 
+;; --- Schema entities ---
+
 (defn load-database!
   "Load and cache a database, assigning it an integer ID. Returns data or nil."
   [store db-name]
   (or (cached-entity store :database db-name)
-      (when-let [data (source/resolve-database (source store) db-name)]
+      (when-let [data (source/resolve-database (schema-source store) db-name)]
         (let [id (get-or-assign! store :database db-name)]
           (cache-entity! store :database db-name (assoc data :id id))))))
 
@@ -165,7 +176,7 @@
   "Load and cache a table, assigning it and its database integer IDs."
   [store table-path]
   (or (cached-entity store :table table-path)
-      (when-let [data (source/resolve-table (source store) table-path)]
+      (when-let [data (source/resolve-table (schema-source store) table-path)]
         (let [[db-name _ _] table-path
               id    (get-or-assign! store :table table-path)
               db-id (get-or-assign! store :database db-name)]
@@ -175,43 +186,42 @@
   "Load and cache a field, assigning it and its table integer IDs."
   [store field-path]
   (or (cached-entity store :field field-path)
-      (when-let [data (source/resolve-field (source store) field-path)]
+      (when-let [data (source/resolve-field (schema-source store) field-path)]
         (let [[db-name schema table-name _] field-path
               id       (get-or-assign! store :field field-path)
               table-id (get-or-assign! store :table [db-name schema table-name])]
           (cache-entity! store :field field-path (assoc data :id id :table_id table-id))))))
 
+;; --- Asset entities ---
+
 (defn load-card!
   "Load and cache a card, assigning it an integer ID."
   [store entity-id]
   (or (cached-entity store :card entity-id)
-      (when-let [data (source/resolve-card (source store) entity-id)]
+      (when-let [data (source/resolve-card (assets-source store) entity-id)]
         (let [id (get-or-assign! store :card entity-id)]
           (cache-entity! store :card entity-id (assoc data :id id))))))
 
 (defn load-snippet!
-  "Load and cache a snippet from the file index, assigning it an integer ID."
+  "Load and cache a snippet, assigning it an integer ID."
   [store entity-id]
   (or (cached-entity store :snippet entity-id)
-      (when-let [file (index-file store :snippet entity-id)]
-        (let [data (yaml/parse-string (slurp file))
-              id   (get-or-assign! store :snippet entity-id)]
+      (when-let [data (source/resolve-snippet (assets-source store) entity-id)]
+        (let [id (get-or-assign! store :snippet entity-id)]
           (cache-entity! store :snippet entity-id (assoc data :id id))))))
 
 (defn load-transform!
-  "Load and cache a transform from the file index, assigning it an integer ID."
+  "Load and cache a transform, assigning it an integer ID."
   [store entity-id]
   (or (cached-entity store :transform entity-id)
-      (when-let [file (index-file store :transform entity-id)]
-        (let [data (yaml/parse-string (slurp file))
-              id   (get-or-assign! store :transform entity-id)]
+      (when-let [data (source/resolve-transform (assets-source store) entity-id)]
+        (let [id (get-or-assign! store :transform entity-id)]
           (cache-entity! store :transform entity-id (assoc data :id id))))))
 
 (defn load-segment!
-  "Load and cache a segment from the file index, assigning it an integer ID."
+  "Load and cache a segment, assigning it an integer ID."
   [store entity-id]
   (or (cached-entity store :segment entity-id)
-      (when-let [file (index-file store :segment entity-id)]
-        (let [data (yaml/parse-string (slurp file))
-              id   (get-or-assign! store :segment entity-id)]
+      (when-let [data (source/resolve-segment (assets-source store) entity-id)]
+        (let [id (get-or-assign! store :segment entity-id)]
           (cache-entity! store :segment entity-id (assoc data :id id))))))
