@@ -67,7 +67,7 @@
    E.g., 'https://github.com/user/custom-heatmap' -> 'custom-heatmap'
          'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'"
   [^String url]
-  (-> url
+  (-> (.getPath (URI. url))
       (str/replace #"\.git$" "")
       (str/split #"/")
       last))
