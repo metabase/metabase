@@ -49,9 +49,12 @@ const EmbeddingThemeActionMenu = ({
 }) => {
   return (
     <Menu position="bottom-end">
+      {/* stopPropagation prevents triggering the card's onEdit when clicking the menu */}
       <Menu.Target>
-        {/** This avoids triggering the card's onEdit when we click on the ellipsis menu. */}
-        <ActionIcon onClick={(e) => e.stopPropagation()}>
+        <ActionIcon
+          aria-label={t`Duplicate and delete`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>

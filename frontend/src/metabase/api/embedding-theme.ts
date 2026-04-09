@@ -58,6 +58,11 @@ export const embeddingThemeApi = Api.injectEndpoints({
           idTag("embed-theme", id),
         ]),
     }),
+    copyEmbeddingTheme: builder.mutation<EmbeddingTheme, number>({
+      query: (id) => ({ method: "POST", url: `/api/embed-theme/${id}/copy` }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("embed-theme")]),
+    }),
   }),
 });
 
@@ -67,4 +72,5 @@ export const {
   useCreateEmbeddingThemeMutation,
   useUpdateEmbeddingThemeMutation,
   useDeleteEmbeddingThemeMutation,
+  useCopyEmbeddingThemeMutation,
 } = embeddingThemeApi;

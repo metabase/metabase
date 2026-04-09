@@ -2786,4 +2786,3 @@
       (testing "all embedding themes are extracted"
         (is (= #{light-eid dark-eid}
                (ids-by-model "EmbeddingTheme" (extract/extract {}))))))))
-
