@@ -20,6 +20,7 @@ import type { MetricIdentityEntry, MetricNameMap } from "./utils";
 import {
   applyTrackedDefinitions,
   buildExpressionText,
+  buildFullTextWithIdentities,
   cleanupParens,
   filterSearchResults,
   findInvalidRanges,
@@ -1223,5 +1224,193 @@ describe("applyTrackedDefinitions", () => {
       revenueBreakoutDef,
     );
     expect((entities[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildFullTextWithIdentities
+// ---------------------------------------------------------------------------
+
+describe("buildFullTextWithIdentities", () => {
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:2": "Costs",
+    "metric:3": "123",
+  };
+
+  const revenueDef = { "display-name": "Revenue" } as any;
+  const costsDef = { "display-name": "Costs" } as any;
+  const numericDef = { "display-name": "123" } as any;
+
+  it("produces text and identity ranges for standalone metrics", () => {
+    const entities: MetricsViewerFormulaEntity[] = [
+      { id: "metric:1", type: "metric", definition: revenueDef },
+      { id: "metric:2", type: "metric", definition: costsDef },
+    ];
+    expect(buildFullTextWithIdentities(entities, metricNames)).toEqual({
+      text: "Revenue, Costs",
+      identities: [
+        {
+          sourceId: "metric:1",
+          from: 0,
+          to: 7,
+          definition: revenueDef,
+          slotIndex: 0,
+        },
+        {
+          sourceId: "metric:2",
+          from: 9,
+          to: 14,
+          definition: costsDef,
+          slotIndex: 1,
+        },
+      ],
+    });
+  });
+
+  it("produces identity ranges for metrics inside expressions", () => {
+    const entities: MetricsViewerFormulaEntity[] = [
+      {
+        id: "expression:Revenue + Costs" as const,
+        type: "expression",
+        name: "Revenue + Costs",
+        tokens: [
+          { type: "metric", sourceId: "metric:1" as const, count: 1 },
+          { type: "operator", op: "+" as const },
+          { type: "metric", sourceId: "metric:2" as const, count: 1 },
+        ],
+      },
+    ];
+    expect(buildFullTextWithIdentities(entities, metricNames)).toEqual({
+      text: "Revenue + Costs",
+      identities: [
+        {
+          sourceId: "metric:1",
+          from: 0,
+          to: 7,
+          definition: null,
+          slotIndex: 0,
+        },
+        {
+          sourceId: "metric:2",
+          from: 10,
+          to: 15,
+          definition: null,
+          slotIndex: 1,
+        },
+      ],
+    });
+  });
+
+  it("handles numeric metric names", () => {
+    const entities: MetricsViewerFormulaEntity[] = [
+      { id: "metric:3", type: "metric", definition: numericDef },
+    ];
+    expect(buildFullTextWithIdentities(entities, metricNames)).toEqual({
+      text: "123",
+      identities: [
+        {
+          sourceId: "metric:3",
+          from: 0,
+          to: 3,
+          definition: numericDef,
+          slotIndex: 0,
+        },
+      ],
+    });
+  });
+
+  it("handles numeric metric in an expression with a constant", () => {
+    const entities: MetricsViewerFormulaEntity[] = [
+      {
+        id: "expression:123 + 456" as const,
+        type: "expression",
+        name: "123 + 456",
+        tokens: [
+          { type: "metric", sourceId: "metric:3" as const, count: 1 },
+          { type: "operator", op: "+" as const },
+          { type: "constant", value: 456 },
+        ],
+      },
+    ];
+    expect(buildFullTextWithIdentities(entities, metricNames)).toEqual({
+      text: "123 + 456",
+      identities: [
+        {
+          sourceId: "metric:3",
+          from: 0,
+          to: 3,
+          definition: null,
+          slotIndex: 0,
+        },
+      ],
+    });
+  });
+
+  it("handles empty entities", () => {
+    expect(buildFullTextWithIdentities([], metricNames)).toEqual({
+      text: "",
+      identities: [],
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseFullText with identities (numeric metric disambiguation)
+// ---------------------------------------------------------------------------
+
+describe("parseFullText with identities", () => {
+  const metricNames: MetricNameMap = {
+    "metric:1": "Revenue",
+    "metric:3": "123",
+  };
+
+  function identity(
+    sourceId: MetricSourceId,
+    from: number,
+    to: number,
+  ): MetricIdentityEntry {
+    return { sourceId, from, to, definition: null, slotIndex: 0 };
+  }
+
+  it("treats '123' as a metric when identity range covers it", () => {
+    const identities = [identity("metric:3", 0, 3)];
+    const result = parseFullText("123 + 456", metricNames, identities);
+    expect(result).toEqual([
+      {
+        id: "expression:123 + 456",
+        type: "expression",
+        name: "123 + 456",
+        tokens: [
+          { type: "metric", sourceId: "metric:3", count: 1 },
+          { type: "operator", op: "+" },
+          { type: "constant", value: 456 },
+        ],
+      },
+    ]);
+  });
+
+  it("treats '123' as a number when no identity covers it", () => {
+    const result = parseFullText("123 + 456", metricNames);
+    expect(result).toEqual([
+      {
+        id: "expression:123 + 456",
+        type: "expression",
+        name: "123 + 456",
+        tokens: [
+          { type: "constant", value: 123 },
+          { type: "operator", op: "+" },
+          { type: "constant", value: 456 },
+        ],
+      },
+    ]);
+  });
+
+  it("handles numeric metric as standalone", () => {
+    const identities = [identity("metric:3", 0, 3)];
+    const result = parseFullText("123", metricNames, identities);
+    expect(result).toEqual([
+      { id: "metric:3", type: "metric", definition: null },
+    ]);
   });
 });
