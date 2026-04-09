@@ -8,5 +8,5 @@ import { getNonce, setNonce } from "get-nonce";
 setNonce(window.MetabaseNonce ?? "");
 
 export function getCspNonce() {
-  return getNonce() ?? "";
+  return getNonce();
 }
