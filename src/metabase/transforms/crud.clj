@@ -52,10 +52,8 @@
 (defn validate-target-schema!
   "Require a non-blank `:target.schema` when the target database supports schemas.
 
-  Databases that support schemas (Postgres, Snowflake, SQL Server, etc.) need every Metabase
-  table to be qualified by its schema — otherwise post-run sync can't match the physical table
-  and the resulting Metabase table has no fields. Databases that don't support schemas
-  (MySQL, MariaDB, SQLite) are allowed to have a nil schema."
+  On schemas-supporting drivers a nil schema makes post-run sync miss the physical table
+  and leaves the Metabase table with zero fields."
   [transform]
   (let [db-id (transforms-base.i/target-db-id transform)
         db    (t2/select-one :model/Database db-id)]

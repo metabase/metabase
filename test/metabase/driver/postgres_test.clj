@@ -1096,9 +1096,6 @@
 
 (deftest create-schema-if-needed-nil-guard-test
   (testing "create-schema-if-needed! is a no-op when schema is nil or blank (GDGT-2144)"
-    ;; Previously, a nil `schema` silently generated `CREATE SCHEMA IF NOT EXISTS \"null\";`
-    ;; because Clojure's `%s` format specifier stringifies nil to \"null\", creating a
-    ;; schema literally named \"null\" in the target DB.
     (let [executed-queries (atom [])]
       (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec queries]
                                                   (swap! executed-queries conj queries))]
@@ -1110,10 +1107,6 @@
 
 (deftest ^:parallel describe-fields-sql-nil-schema-test
   (testing "describe-fields-sql for Postgres drops nil `schema-names` rather than rendering `IN (NULL)` (GDGT-2144)"
-    ;; Previously, passing [nil] as `:schema-names` generated `c.table_schema IN (NULL)`, which
-    ;; matches no rows in SQL and caused transforms without a target schema to sync zero fields.
-    ;; After the fix, nil entries are removed; if nothing remains, the schema filter is omitted
-    ;; entirely so the query degrades to filtering by table name only.
     (let [[nil-schema-sql & nil-schema-params] (sql-jdbc.sync/describe-fields-sql
                                                 :postgres
                                                 {:schema-names [nil]

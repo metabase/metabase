@@ -65,9 +65,7 @@ type EditTransformValues = {
   schema: string | null;
 };
 
-// `schema` is required on databases that support schemas (Postgres, Snowflake, etc.) and
-// optional on those that don't (MySQL, MariaDB). The `$supportsSchemas` flag is threaded in
-// via `FormProvider`'s `validationContext`. See GDGT-2144.
+// `$supportsSchemas` is threaded in via `FormProvider`'s `validationContext`; see `LoginForm.tsx`.
 export const EDIT_TRANSFORM_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   schema: Yup.string()

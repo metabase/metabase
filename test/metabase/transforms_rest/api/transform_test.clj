@@ -142,8 +142,6 @@
                   (if (driver.u/supports? driver/*driver* :schemas (mt/db))
                     (testing "nil schema is rejected with 400 on schemas-supporting driver"
                       (let [response (mt/user-http-request :lucky :post 400 "transform" (request nil))]
-                        ;; `response` is the raw 400 body string when `check-400` throws; any format
-                        ;; is acceptable as long as no transform was created.
                         (is (nil? (:id response)))))
                     (testing "nil schema is allowed on non-schemas drivers"
                       (let [response (mt/user-http-request :lucky :post 200 "transform" (request nil))]
