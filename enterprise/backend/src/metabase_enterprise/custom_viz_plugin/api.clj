@@ -228,14 +228,6 @@
     (catch Throwable e
       (raise e))))
 
-(defn- validate-asset-path
-  "Validate that an asset path is a safe relative filename (no directory traversal).
-   Returns the path or throws on invalid input."
-  ^String [^String raw-path]
-  (when-not (manifest/safe-relative-path? raw-path)
-    (throw (ex-info "Invalid asset path" {:status-code 400 :path raw-path})))
-  raw-path)
-
 (api.macros/defendpoint :get "/:id/asset" :- :any
   "Serve a static image asset from the plugin's cached assets.
    The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)
@@ -249,22 +241,20 @@
    respond
    raise]
   (try
-    (let [asset-path   (validate-asset-path path)
-          content-type (manifest/asset-content-type asset-path)]
-      (when-not content-type
-        (throw (ex-info "Unsupported asset type" {:status-code 404})))
-      (let [_plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-            dev?    (cache/resolve-dev-bundle id)
-            bytes   (cache/resolve-asset id asset-path)]
-        (if bytes
-          (respond {:status  200
-                    :headers (cond-> {"Content-Type" content-type}
-                               dev?       (assoc "Cache-Control" "no-store")
-                               (not dev?) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
-                    :body    (java.io.ByteArrayInputStream. bytes)})
-          (respond {:status  404
-                    :headers {"Content-Type" "application/json"}
-                    :body    "{\"error\": \"Asset not found\"}"}))))
+    (let [_plugin      (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+          content-type (or (manifest/asset-content-type path)
+                           (throw (ex-info "Unsupported asset type" {:status-code 404})))
+          dev?         (cache/resolve-dev-bundle id)
+          bytes        (cache/resolve-asset id path)]
+      (if bytes
+        (respond {:status  200
+                  :headers (cond-> {"Content-Type" content-type}
+                             dev?       (assoc "Cache-Control" "no-store")
+                             (not dev?) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
+                  :body    (java.io.ByteArrayInputStream. bytes)})
+        (respond {:status  404
+                  :headers {"Content-Type" "application/json"}
+                  :body    "{\"error\": \"Asset not found\"}"})))
     (catch Throwable e
       (raise e))))
 
