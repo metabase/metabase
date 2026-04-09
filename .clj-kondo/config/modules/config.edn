@@ -156,7 +156,6 @@
   agent-api
   {:team    "Metabot"
    :api     #{metabase.agent-api.api}
-   :friends #{enterprise/agent-api}
    :uses    #{api
               auth-identity
               lib
@@ -1060,8 +1059,7 @@
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
-              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
-              }}
+              enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
 
   lib-be
   {:team "Querying Platform"
@@ -2631,13 +2629,6 @@
                     :model/Sandbox
                     :model/Table}}
 
-  enterprise/agent-api
-  {:team "Metabot"
-   :api  #{metabase-enterprise.agent-api.workspace}
-   :uses #{api
-           util
-           enterprise/workspaces}}
-
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -2958,8 +2949,7 @@
   enterprise/metabot
   {:team    "Metabot"
    :api     #{}
-   :friends #{enterprise/agent-api
-              slackbot
+   :friends #{slackbot
               mcp
               metabot}
    :uses    #{api
@@ -3297,7 +3287,6 @@
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
-   :friends #{enterprise/agent-api}
    :uses #{api
            app-db
            config

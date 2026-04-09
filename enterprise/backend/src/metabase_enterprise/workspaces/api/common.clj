@@ -1,6 +1,6 @@
 (ns metabase-enterprise.workspaces.api.common
   "Shared schemas, validations, and handler logic for workspace API routes.
-  Used by both `workspaces.api` and `agent-api.workspace` (agent routes)."
+  Used by `workspaces.api` only currently, but may be shared with agent APIs in future."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -365,8 +365,7 @@
                                   (target->spec driver table-id-map))))
 
 ;;; ---------------------------------------- Shared endpoint handlers ----------------------------------------
-;; These functions contain the handler logic shared between the regular workspace API
-;; (`workspaces/api.clj`) and the agent workspace API (`agent-api/workspace.clj`).
+;; These functions contain the handler logic for the workspace API (`workspaces/api.clj`).
 ;; Each `defendpoint` becomes a thin wrapper that calls the corresponding function here.
 
 (def ^:private log-limit "Maximum number of recent workspace log items to show" 20)
