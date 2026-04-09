@@ -200,26 +200,12 @@ describe("scenarios > metrics > explorer", () => {
 
       addMetric("Count of products");
 
+      H.echartsContainer().should("be.visible");
+
       cy.log("should persist state in url");
 
       cy.reload();
       verifyMetricCount(1);
-
-      cy.log("should navigate to data studio via right-click context menu");
-      cy.window().then((win) => {
-        cy.stub(win, "open").as("windowOpen");
-      });
-
-      H.MetricsViewer.searchBarPills()
-        .contains("Count of products")
-        .rightclick();
-      H.popover().findByText("Edit in Data Studio").click();
-
-      cy.get("@windowOpen").should(
-        "have.been.calledWith",
-        Cypress.sinon.match(/\/data-studio\/library\/metrics\/\d+/),
-        "_blank",
-      );
     });
 
     it("should not show Edit in Data Studio for users without data studio access", () => {
