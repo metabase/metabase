@@ -108,7 +108,7 @@ type CommonSettings = {
   click_behavior: ClickBehavior | undefined;
 };
 
-type FinalSettings<
+export type FinalSettings<
   CustomVisualizationSettings extends Record<string, unknown>,
 > = CustomVisualizationSettings & CommonSettings;
 
