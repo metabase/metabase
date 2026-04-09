@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 
 import { color } from "metabase/ui/colors";
@@ -5,14 +6,7 @@ import type { StackedTooltipModel } from "metabase/visualizations/types";
 
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
 
-import {
-  DataPointHeader,
-  DataPointRoot,
-  DataPointTable,
-  DataPointTableBody,
-  DataPointTableFooter,
-  DataPointTableHeader,
-} from "./StackedDataTooltip.styled";
+import S from "./StackedDataTooltip.module.css";
 import {
   getPercent,
   getSortedRows,
@@ -62,14 +56,18 @@ const StackedDataTooltip = ({
   );
 
   return (
-    <DataPointRoot>
+    <div className={S.dataPointRoot}>
       {headerTitle && (
-        <DataPointHeader data-testid="tooltip-header">
+        <header className={S.dataPointHeader} data-testid="tooltip-header">
           {headerTitle}
-        </DataPointHeader>
+        </header>
       )}
-      <DataPointTable>
-        <DataPointTableHeader hasBottomSpacing={sortedBodyRows.length > 0}>
+      <table className={S.dataPointTable}>
+        <thead
+          className={cx({
+            [S.tableRowSpacing]: sortedBodyRows.length > 0,
+          })}
+        >
           {sortedHeaderRows.map((row, index) => (
             <TooltipRow
               key={index}
@@ -80,10 +78,10 @@ const StackedDataTooltip = ({
               {...row}
             />
           ))}
-        </DataPointTableHeader>
+        </thead>
 
         {trimmedBodyRows.length > 0 && (
-          <DataPointTableBody>
+          <tbody className={S.dataPointTableBody}>
             {trimmedBodyRows.map((row, index) => (
               <TooltipRow
                 key={index}
@@ -93,11 +91,11 @@ const StackedDataTooltip = ({
                 {...row}
               />
             ))}
-          </DataPointTableBody>
+          </tbody>
         )}
 
         {showTotal && isShowingTotalSensible && (
-          <DataPointTableFooter>
+          <tfoot className={S.dataPointTableFooter}>
             <TooltipTotalRow
               value={totalFormatter(rowsTotal)}
               hasIcon={hasColorIndicators}
@@ -107,10 +105,10 @@ const StackedDataTooltip = ({
                   : undefined
               }
             />
-          </DataPointTableFooter>
+          </tfoot>
         )}
-      </DataPointTable>
-    </DataPointRoot>
+      </table>
+    </div>
   );
 };
 
