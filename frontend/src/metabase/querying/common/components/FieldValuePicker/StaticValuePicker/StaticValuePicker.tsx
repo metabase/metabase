@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { type ComboboxProps, MultiAutocomplete } from "metabase/ui";
+import { MultiAutocomplete } from "metabase/common/components/MultiAutocomplete";
+import type { ComboboxProps } from "metabase/ui";
 
 interface StaticValuePickerProps {
   selectedValues: string[];

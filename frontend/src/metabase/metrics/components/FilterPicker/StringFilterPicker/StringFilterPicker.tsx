@@ -2,7 +2,8 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Checkbox, Flex, MultiAutocomplete } from "metabase/ui";
+import { MultiAutocomplete } from "metabase/common/components/MultiAutocomplete";
+import { Box, Checkbox, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 

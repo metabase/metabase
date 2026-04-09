@@ -1,0 +1,1 @@
+export { MultiAutocomplete } from "./MultiAutocomplete";

@@ -19,6 +19,7 @@ import {
 } from "metabase/api";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
+import { MultiAutocomplete } from "metabase/common/components/MultiAutocomplete";
 import {
   TokenField,
   parseStringValue,
@@ -38,7 +39,6 @@ import { addRemappings } from "metabase/redux/metadata";
 import {
   type ComboboxItem,
   Loader,
-  MultiAutocomplete,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";

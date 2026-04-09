@@ -1,9 +1,10 @@
 import { type ChangeEvent, type FormEvent, useState } from "react";
 import { t } from "ttag";
 
+import { MultiAutocomplete } from "metabase/common/components/MultiAutocomplete";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { deserializeStringParameterValue } from "metabase/querying/parameters/utils/parsing";
-import { Box, MultiAutocomplete, TextInput } from "metabase/ui";
+import { Box, TextInput } from "metabase/ui";
 import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 

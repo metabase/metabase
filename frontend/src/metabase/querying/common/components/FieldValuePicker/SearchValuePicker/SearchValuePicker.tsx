@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import { MultiAutocomplete } from "metabase/common/components/MultiAutocomplete";
 import {
   getFieldOption,
   getFieldOptions,
@@ -10,7 +11,6 @@ import {
   type ComboboxItem,
   type ComboboxProps,
   Loader,
-  MultiAutocomplete,
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";
