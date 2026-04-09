@@ -51,6 +51,7 @@ function createMockChartMeasurements(
     outerHeight: 0,
     outerWidth,
     axisEnabledSetting: true,
+    panelGap: 0,
   };
 }
 
