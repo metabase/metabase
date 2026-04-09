@@ -452,5 +452,5 @@
         "Formatting result should be a string.")
     (is (str/includes? result "select 1")
         "Formatting result should contain the native query string")
-    (is (str/includes? result "select 1")
+    (is (str/includes? result "1111")
         "Formatting result should contain database id")))
