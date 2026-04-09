@@ -35,6 +35,7 @@
   "Valid Table ID"
   pos-int?)
 
+;; TODO: change to a vector with database/schema/table/field-name(s)
 (mr/def ::field
   "Valid Field ID"
   [:schema
