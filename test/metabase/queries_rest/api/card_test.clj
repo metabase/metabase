@@ -3730,9 +3730,9 @@
    (fn [card]
      (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))))
 
-(deftest save-mlv2-card-test
+(deftest save-mbql5-card-test
   (testing "POST /api/card"
-    (testing "Should be able to save a Card with an MLv2 query (#39024)"
+    (testing "Should be able to save a Card with an MBQL 5 query (#39024)"
       (mt/with-model-cleanup [:model/Card]
         (let [metadata-provider (mt/metadata-provider)
               venues            (lib.metadata/table metadata-provider (mt/id :venues))
@@ -3749,9 +3749,9 @@
                                                    :source-table (mt/id :venues)}]}}
                   response)))))))
 
-(deftest ^:parallel run-mlv2-card-query-test
+(deftest ^:parallel run-mbql5-card-query-test
   (testing "POST /api/card/:id/query"
-    (testing "Should be able to run a query for a Card with an MLv2 query (#39024)"
+    (testing "Should be able to run a query for a Card with an MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)

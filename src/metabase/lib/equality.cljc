@@ -554,7 +554,7 @@ are known to be the same."
   to `needles` with the corresponding index into the `haystack`, or -1 if not found.
 
   DISCOURAGED: This is intended for use only by [[metabase.lib.js/find-column-indexes-from-legacy-refs]].
-  Other MLv2 code should use [[find-matching-column]] if the `haystack` is columns, or
+  Other Lib code should use [[find-matching-column]] if the `haystack` is columns, or
   [[find-matching-ref]] if it's refs."
   [query        :- ::lib.schema/query
    stage-number :- :int

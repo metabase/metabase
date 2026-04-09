@@ -3545,14 +3545,14 @@
           (is (some? (mt/user-http-request :rasta :get 200 (chain-filter-search-url dashboard-id "abc" "red")))))))))
 
 (deftest parameter-values-from-card-test-4
-  ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by MLv2,
+  ;; TODO: Re-enable this test, or delete it. Now that mapping dashboard filters to fields on cards is powered by Lib,
   ;; the FE does not use the /api/table/:card__id/query_metadata API call to determine the fields which can be filtered
   ;; on a saved question. It uses `Lib.filterableColumns` instead, which given a saved question with aggregations in the
   ;; last stage will return the pre-aggregation columns on that last stage. That allows linking the dashboard filter not
   ;; to the aggregations and breakouts, but to the pre-aggregation columns which feed into the aggregations.
   ;; This is typically what's wanted for filtering an aggregated query in a dashboard: filtering SUM(subtotal) to a
   ;; time range, product category, etc.
-  ;; This test should either (1) be rehabilitated to use MLv2 to get the set of columns for filtering a dashcard (like
+  ;; This test should either (1) be rehabilitated to use Lib to get the set of columns for filtering a dashcard (like
   ;; the FE); or (2) just be dropped if it's not providing value.
   #_(testing "field selection should compatible with field-id from /api/table/:card__id/query_metadata"
     ;; FE use the id returned by /api/table/:card__id/query_metadata
@@ -4681,9 +4681,9 @@
       :email-body-pattern        "href="
       :match-email-body-pattern? false})))
 
-(deftest run-mlv2-dashcard-query-test
+(deftest run-mbql5-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
-    (testing "Should be able to run a query for a DashCard with an MLv2 query (#39024)"
+    (testing "Should be able to run a query for a DashCard with an MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
