@@ -45,8 +45,10 @@
                 count-after-throttling    (mt/metric-value system :metabase-frontend/errors {:type "component-crash"})]
             (is (< initial-count count-after-first-request))
             (is (= count-after-first-request count-after-throttling))
-            (is (str/starts-with? (get-in resp [:body :error]) "Too many attempts!"))
-            (is (string? (get-in resp [:headers "Retry-After"])))))))
+            (is (=? {:status  429
+                     :headers {"Retry-After" string?}
+                     :body    {:error #(str/starts-with? % "Too many attempts!")}}
+                    resp))))))
 
     (testing "POST /api/frontend-errors throttles requests from the same IP even if the browser ID changes"
       (mt/with-prometheus-system! [_ system]
@@ -67,7 +69,9 @@
                                                                              {:type "component-crash"})
                   count-after-throttling   (mt/metric-value system :metabase-frontend/errors {:type "component-crash"})]
               (is (= (inc initial-count) count-after-throttling))
-              (is (str/starts-with? (get-in resp [:body :error]) "Too many attempts!")))))))
+              (is (=? {:status 429
+                       :body   {:error #(str/starts-with? % "Too many attempts!")}}
+                      resp)))))))
 
     (testing "POST /api/frontend-errors throttles repeated requests from the same IP even without a browser cookie"
       (mt/with-prometheus-system! [_ system]
@@ -84,8 +88,10 @@
                                                                             {:type "component-crash"})
                   count-after-throttling (mt/metric-value system :metabase-frontend/errors {:type "component-crash"})]
               (is (= (inc initial-count) count-after-throttling))
-              (is (str/starts-with? (get-in resp [:body :error]) "Too many attempts!"))
-              (is (string? (get-in resp [:headers "Retry-After"]))))))))
+              (is (=? {:status  429
+                       :headers {"Retry-After" string?}
+                       :body    {:error #(str/starts-with? % "Too many attempts!")}}
+                      resp)))))))
 
     (testing "POST /api/frontend-errors throttles repeated invalid payloads before validation"
       (with-redefs [frontend-errors.api/frontend-errors-throttler
@@ -102,5 +108,7 @@
           (let [resp (mt/user-http-request-full-response :crowberto :post 429 "frontend-errors"
                                                          request-options
                                                          {:type "still-bogus"})]
-            (is (str/starts-with? (get-in resp [:body :error]) "Too many attempts!"))
-            (is (string? (get-in resp [:headers "Retry-After"])))))))))
+            (is (=? {:status  429
+                     :headers {"Retry-After" string?}
+                     :body    {:error #(str/starts-with? % "Too many attempts!")}}
+                    resp))))))))
