@@ -1035,7 +1035,6 @@
   internal-stats.enterprise
   {:team      "UX West"
    :ns-prefix "metabase-enterprise.internal-stats"
-   :private   true
    :api       #{}
    :uses      #{premium-features
                 settings}}
