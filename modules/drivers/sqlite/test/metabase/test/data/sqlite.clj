@@ -68,21 +68,17 @@
           (commas [& args]
             (interpose ", " args))
           (sql-list [& args]
-            (concat ["("]
-                    (apply commas args)
-                    [")"]))
+            (concat ["("] (apply commas args) [")"]))
           (field [field-name]
             (sql.tx/format-and-quote-field-name driver field-name))
           (field-def [field-definition]
             (sql.tx/field-definition-sql driver field-definition))
           (field-defs []
-            (for [field-definition field-definitions]
-              (field-def field-definition)))
+            (map field-def field-definitions))
           (primary-key []
             (spaces
              "PRIMARY KEY"
-             (apply sql-list (for [field-name (sql.tx/fielddefs->pk-field-names field-definitions)]
-                               (field field-name)))))
+             (apply sql-list (map field (sql.tx/fielddefs->pk-field-names field-definitions)))))
           (foreign-key [field-definition]
             (spaces
              "FOREIGN KEY"
@@ -91,9 +87,9 @@
              (table (name (:fk field-definition)))
              (sql-list (field (sql.tx/pk-field-name driver)))))
           (foreign-keys []
-            (for [field-definition field-definitions
-                  :when            (:fk field-definition)]
-              (foreign-key field-definition)))]
+            (->> field-definitions
+                 (filter :fk)
+                 (map foreign-key)))]
     (let [parts (spaces
                  "CREATE TABLE"
                  (table table-name)
