@@ -2987,8 +2987,6 @@
    :api  #{metabase-enterprise.metabot-analytics.api}
    :uses #{api
            driver
-           lib
-           lib-be
            metabot
            request
            sql-tools

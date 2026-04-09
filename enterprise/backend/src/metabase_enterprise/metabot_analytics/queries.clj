@@ -34,39 +34,74 @@
         []))
     []))
 
+(defn- query-generation-tool?
+  "True when `tool-name` is one of the metabot tools that emits a query."
+  [tool-name]
+  (contains? metabot.tools/query-generation-tool-names tool-name))
+
+(defn- notebook-tool?
+  "True when `tool-name` is the notebook-query construction tool."
+  [tool-name]
+  (= tool-name "construct_notebook_query"))
+
+(defn- successful-tool-output?
+  "True when `output-block` exists, is not marked errored, and carries
+   structured output."
+  [output-block]
+  (and output-block
+       (not (:error output-block))
+       (tool-output->structured (:result output-block))))
+
+(defn- sql-for-tool-call
+  "Best-effort SQL text for a successful SQL tool call. Prefer the structured
+   output's final query text; for create/replace we can fall back to input args.
+   Edit tool only persists diffs in input, so no fallback there."
+  [tool-name arguments structured]
+  (or (:query-content structured)
+      (case tool-name
+        "create_sql_query"  (:sql_query arguments)
+        "replace_sql_query" (:new_query arguments)
+        nil)))
+
+(defn- sql-query-row
+  [{:keys [message-id]} tool-name input-block structured database-id]
+  (let [sql (sql-for-tool-call tool-name (:arguments input-block) structured)]
+    {:tool        tool-name
+     :call_id     (:id input-block)
+     :message_id  message-id
+     :query_id    (:query-id structured)
+     :query_type  "sql"
+     :sql         sql
+     :mbql        nil
+     :database_id database-id
+     :tables      (referenced-table-names database-id sql)}))
+
+(defn- notebook-query-row
+  [{:keys [message-id]} tool-name input-block structured query database-id]
+  {:tool        tool-name
+   :call_id     (:id input-block)
+   :message_id  message-id
+   :query_id    (:query-id structured)
+   :query_type  "notebook"
+   :sql         nil
+   :mbql        query
+   :database_id database-id
+   :tables      []})
+
 (defn- query-block-pair->row
   "Build a generated-query row from an in-app metabot tool-input/tool-output
   pair. Returns nil for tools we don't track or for failed/missing outputs
   (errored rows are filtered out at the source — v1 doesn't render them)."
   [{:keys [message-id]} input-block output-block]
   (let [tool-name (:function input-block)]
-    (when (contains? metabot.tools/query-generation-tool-names tool-name)
-      (let [arguments  (:arguments input-block)
-            result     (:result output-block)
-            structured (tool-output->structured result)]
-        (when (and structured (not (:error output-block)))
-          (let [query       (:query structured)
-                notebook?   (= tool-name "construct_notebook_query")
-                ;; Edit tool only emits diffs as input, so the input arg
-                ;; fallback only helps create/replace.
-                sql         (when-not notebook?
-                              (or (:query-content structured)
-                                  (case tool-name
-                                    "create_sql_query"  (:sql_query arguments)
-                                    "replace_sql_query" (:new_query arguments)
-                                    nil)))
-                database-id (or (:database structured) (:database query))]
-            {:tool        tool-name
-             :call_id     (:id input-block)
-             :message_id  message-id
-             :query_id    (:query-id structured)
-             :query_type  (if notebook? "notebook" "sql")
-             :sql         sql
-             :mbql        (when notebook? query)
-             :database_id database-id
-             :tables      (if notebook?
-                            []
-                            (referenced-table-names database-id sql))}))))))
+    (when (and (query-generation-tool? tool-name)
+               (successful-tool-output? output-block))
+      (let [structured  (tool-output->structured (:result output-block))
+            query       (:query structured)
+            database-id (or (:database structured) (:database query))]
+        (if (notebook-tool? tool-name)
+          (notebook-query-row {:message-id message-id} tool-name input-block structured query database-id)
+          (sql-query-row {:message-id message-id} tool-name input-block structured database-id))))))
 
 (defn- message->generated-queries
   "Extract generated-query rows from a single `MetabotMessage`. Pairs each
