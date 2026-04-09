@@ -62,6 +62,7 @@ export type ConversationDetail = {
   message_count: number;
   total_tokens: number;
   model: string | null;
+  slack_permalink: string | null;
   chat_messages: MetabotChatMessage[];
   queries: GeneratedQuery[];
 };

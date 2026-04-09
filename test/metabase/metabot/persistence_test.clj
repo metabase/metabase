@@ -1,10 +1,15 @@
 (ns metabase.metabot.persistence-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.metabot.persistence :as metabot-persistence]
-   [metabase.util.json :as json]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest message->chat-messages-test
   (testing "user text block"
@@ -95,3 +100,24 @@
     (is (= "hi" (:message (nth result 0))))
     (is (= "hello!" (:message (nth result 1))))
     (is (= {:ok true} (json/decode+kw (:result (nth result 2)))))))
+
+(deftest store-message-persists-slack-conversation-metadata-test
+  (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (let [conversation-id (str (random-uuid))
+          team-id         "T123"
+          channel-id      "C123"
+          thread-ts       "1712785577.123456"]
+      (mt/with-current-user (mt/user->id :rasta)
+        (metabot-persistence/store-message!
+         conversation-id
+         "slackbot"
+         [{:role "user" :content "hello"}]
+         :slack-team-id team-id
+         :channel-id channel-id
+         :slack-thread-ts thread-ts
+         :slack-msg-id "1712785577.123456"))
+      (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+        (is (= (mt/user->id :rasta) (:user_id conversation)))
+        (is (= team-id (:slack_team_id conversation)))
+        (is (= channel-id (:slack_channel_id conversation)))
+        (is (= thread-ts (:slack_thread_ts conversation)))))))

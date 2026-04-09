@@ -8,37 +8,114 @@
   (:require
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
+   [metabase.channel.settings :as channel.settings]
    [metabase.metabot.persistence :as metabot-persistence]
+   [metabase.slackbot.client :as slackbot.client]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(def ^:private default-limit  50)
+(def ^:private default-offset 0)
+
+(defn- trim-user
+  "Trim a hydrated core_user down to the minimal shape the frontend uses
+   (`MetabotUserInfo`)."
+  [user]
+  (some-> user (select-keys [:id :email :first_name :last_name])))
+
+(def ^:private sort-columns
+  "Allow-list of API sort keys → HoneySQL column refs, to keep user input out
+   of the `:order-by` clause."
+  {"created_at"    :c.created_at
+   "message_count" :message_count
+   "total_tokens"  :total_tokens})
+
 (def ^:private list-query
-  "HoneySQL query that selects one row per conversation with aggregate
-   message stats, ordered newest-first."
+  "HoneySQL query that selects one row per conversation with the aggregate
+   message stats the frontend needs. Filters, sorting, and paging are applied
+   by [[list-conversations]]."
   {:select    [:c.*
                [[:count :m.id] :message_count]
+               [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
+               [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
-               [[:max :m.created_at] :last_message_at]]
+               [[:max :m.created_at] :last_message_at]
+               ;; First assistant message's profile_id, matching the
+               ;; `v_metabot_conversations` analytics view. User messages carry
+               ;; a placeholder `profile_id` and are excluded.
+               [{:select   [:mm.profile_id]
+                 :from     [[:metabot_message :mm]]
+                 :where    [:and
+                            [:= :mm.conversation_id :c.id]
+                            [:= :mm.role "assistant"]
+                            [:= :mm.deleted_at nil]]
+                 :order-by [[:mm.created_at :asc]]
+                 :limit    1}
+                :model]]
    :from      [[:metabot_conversation :c]]
    :left-join [[:metabot_message :m] [:and
                                       [:= :m.conversation_id :c.id]
                                       [:= :m.deleted_at nil]]]
-   :group-by  [:c.id]
-   :order-by  [[:c.created_at :desc] [:c.id :asc]]})
+   :group-by  [:c.id]})
+
+(defn- row->summary
+  "Reshape a raw list-query row into the response shape the frontend expects:
+   renames the conversation's `:id` to `:conversation_id`, trims the hydrated
+   user, and keeps only the aggregate fields the summary payload needs."
+  [row]
+  {:conversation_id         (:id row)
+   :created_at              (:created_at row)
+   :summary                 (:summary row)
+   :message_count           (:message_count row)
+   :user_message_count      (:user_message_count row)
+   :assistant_message_count (:assistant_message_count row)
+   :total_tokens            (:total_tokens row)
+   :last_message_at         (:last_message_at row)
+   :model                   (:model row)
+   :user                    (trim-user (:user row))})
 
 (defn list-conversations
   "Return a paginated `{:data :total :limit :offset}` map of conversation
-   summaries, ordered by creation time descending."
-  [{:keys [limit offset]}]
-  (let [total   (:count (t2/query-one {:select [[[:count :*] :count]]
-                                       :from   [:metabot_conversation]}))
-        results (t2/select :model/MetabotConversation
-                           (assoc list-query :limit limit :offset offset))]
-    {:data   (t2/hydrate results :user)
+   summaries. Supports optional filtering by `user-id` and sorting by an
+   allow-listed `sort-by` column in either direction (defaults to newest-first)."
+  [{:keys [limit offset user-id sort-by sort-dir]}]
+  (let [limit     (or limit default-limit)
+        offset    (or offset default-offset)
+        where     (when user-id [:= :c.user_id user-id])
+        sort-col  (get sort-columns sort-by :c.created_at)
+        direction (if (= sort-dir "asc") :asc :desc)
+        total     (:count (t2/query-one {:select [[[:count :*] :count]]
+                                         :from   [[:metabot_conversation :c]]
+                                         :where  where}))
+        rows      (t2/select :model/MetabotConversation
+                             (cond-> (assoc list-query
+                                            :order-by [[sort-col direction] [:c.id :asc]]
+                                            :limit    limit
+                                            :offset   offset)
+                               where (assoc :where where)))]
+    {:data   (map row->summary (t2/hydrate rows :user))
      :total  total
      :limit  limit
      :offset offset}))
+
+(defn- slack-permalink
+  "Best-effort Slack permalink for a Slack-originated conversation."
+  [{:keys [slack_channel_id slack_thread_ts]}]
+  (when (and slack_channel_id
+             slack_thread_ts
+             (channel.settings/slack-configured?))
+    (try
+      (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
+            {:keys [ok permalink]} (slackbot.client/get-permalink client
+                                                                  {:channel slack_channel_id
+                                                                   :ts      slack_thread_ts})]
+        (when ok
+          permalink))
+      (catch Exception e
+        (log/warn e "Unable to fetch Slack permalink for metabot conversation")
+        nil))))
 
 (defn fetch-conversation-detail
   "Fetch a conversation with its user info, the frontend-ready flattened
@@ -55,9 +132,12 @@
       {:conversation_id (:id conversation)
        :created_at      (:created_at conversation)
        :summary         (:summary conversation)
-       :user            (:user hydrated)
+       :user            (trim-user (:user hydrated))
        :message_count   (count messages)
        :total_tokens    (transduce (keep :total_tokens) + 0 messages)
-       :model           (some :model messages)
+       ;; Only assistant messages carry a real `profile_id`; user-message
+       ;; rows use a placeholder that shouldn't be surfaced as the "model".
+       :model           (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
+       :slack_permalink (slack-permalink conversation)
        :chat_messages   (metabot-persistence/messages->chat-messages messages)
        :queries         (analytics.queries/messages->generated-queries messages)})))

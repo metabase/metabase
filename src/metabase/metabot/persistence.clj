@@ -9,7 +9,7 @@
 
 (defn store-message!
   "Persist messages to MetabotConversation and MetabotMessage tables."
-  [conversation-id profile-id messages & {:keys [slack-msg-id channel-id user-id ai-proxy?]}]
+  [conversation-id profile-id messages & {:keys [slack-msg-id channel-id slack-team-id slack-thread-ts user-id ai-proxy?]}]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -19,8 +19,11 @@
         messages (-> (remove #(or (= % state) (= % finish)) messages)
                      vec)]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (constantly (cond-> {:user_id    api/*current-user-id*}
-                                            state (assoc :state state))))
+                              (constantly (cond-> {:user_id api/*current-user-id*}
+                                            state           (assoc :state state)
+                                            slack-team-id   (assoc :slack_team_id slack-team-id)
+                                            channel-id      (assoc :slack_channel_id channel-id)
+                                            slack-thread-ts (assoc :slack_thread_ts slack-thread-ts))))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert-returning-pk! :model/MetabotMessage
                              (cond-> {:conversation_id conversation-id

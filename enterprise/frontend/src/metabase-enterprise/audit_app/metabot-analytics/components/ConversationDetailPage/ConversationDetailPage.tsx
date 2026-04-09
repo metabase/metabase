@@ -103,6 +103,16 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
             <Text size="sm" c="text-secondary">
               <DateTime value={conversation.created_at} unit="day" />
             </Text>
+            {conversation.slack_permalink && (
+              <Anchor
+                href={conversation.slack_permalink}
+                target="_blank"
+                rel="noreferrer"
+                size="sm"
+              >
+                {t`Open in Slack`}
+              </Anchor>
+            )}
           </Flex>
         </div>
       </Flex>

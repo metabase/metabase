@@ -156,6 +156,13 @@
                                               :inclusive true}))]
     (first messages)))
 
+(defn get-permalink
+  "Fetch a stable Slack permalink for a message."
+  [client {:keys [channel ts]}]
+  (:body (slack-get client "/chat.getPermalink"
+                    {:channel channel
+                     :message_ts ts})))
+
 (defn delete-message
   "Remove a Slack message"
   [client message]
