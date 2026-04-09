@@ -181,13 +181,13 @@
                  :source              source
                  :tag                 tag})
                (usage/log-ai-usage!
-                {:source             (or tag source "unknown")
-                 :model              model
-                 :prompt-tokens      prompt
-                 :completion-tokens  completion
-                 :conversation-id    session-id
-                 :profile-id         profile-id
-                 :request-id         request-id})))
+                {:source            (or tag source "unknown")
+                 :model             model
+                 :prompt-tokens     prompt
+                 :completion-tokens completion
+                 :conversation-id   session-id
+                 :profile-id        profile-id
+                 :request-id        request-id})))
            part))))
 
 (defn- report-tool-usage-xf

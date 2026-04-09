@@ -75,11 +75,10 @@
   []
   (api/check-superuser)
   (analytics.conversations/list-conversations
-   {:limit  (or (request/limit) 50)
-    :offset (or (request/offset) 0)}))
+   {:limit  (request/limit)
+    :offset (request/offset)}))
 
-(api.macros/defendpoint :get "/conversations/:id"
-  :- ConversationDetail
+(api.macros/defendpoint :get "/conversations/:id" :- ConversationDetail
   "Return full details for a specific conversation including all messages."
   [{:keys [id]} :- ConversationIdParams]
   (api/check-superuser)

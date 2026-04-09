@@ -121,7 +121,7 @@
         (is (= [] (:tables row)))))))
 
 (deftest construct-notebook-query-pmbql-test
-  (testing "pMBQL with string-valued schema keys (the on-disk shape after JSON round-trip) is normalized then converted to legacy MBQL"
+  (testing "pMBQL is passed through to the frontend as-is, without conversion to legacy MBQL"
     (with-stubbed-tables! []
       (fn []
         (let [pmbql {:lib/type "mbql/query"
@@ -142,8 +142,7 @@
                                                             :query    pmbql}}}]}])
               row   (first rows)]
           (is (= "notebook" (:query_type row)))
-          (is (= {:database 1 :type :query :query {:source-table 5}}
-                 (:mbql row)))
+          (is (= pmbql (:mbql row)))
           (is (= 1 (:database_id row))))))))
 
 ;;; ------------------------- filtered-out cases -------------------------

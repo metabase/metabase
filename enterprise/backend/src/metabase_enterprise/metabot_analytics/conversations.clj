@@ -15,11 +15,8 @@
 
 (def ^:private list-query
   "HoneySQL query that selects one row per conversation with aggregate
-   message stats."
-  {:select    [[:c.id :conversation_id]
-               [:c.created_at :created_at]
-               [:c.user_id :user_id]
-               [:c.summary :summary]
+   message stats, ordered newest-first."
+  {:select    [:c.*
                [[:count :m.id] :message_count]
                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
                [[:max :m.created_at] :last_message_at]]
@@ -27,20 +24,18 @@
    :left-join [[:metabot_message :m] [:and
                                       [:= :m.conversation_id :c.id]
                                       [:= :m.deleted_at nil]]]
-   :group-by  [:c.id :c.created_at :c.user_id :c.summary]})
+   :group-by  [:c.id]
+   :order-by  [[:c.created_at :desc] [:c.id :asc]]})
 
 (defn list-conversations
   "Return a paginated `{:data :total :limit :offset}` map of conversation
    summaries, ordered by creation time descending."
   [{:keys [limit offset]}]
-  (let [total   (or (:count (t2/query-one {:select [[[:count :*] :count]]
-                                           :from   [:metabot_conversation]}))
-                    0)
-        results (t2/query (assoc list-query
-                                 :order-by [[:c.created_at :desc] [:c.id :asc]]
-                                 :limit limit
-                                 :offset offset))]
-    {:data   (t2/hydrate (mapv #(t2/instance :model/MetabotConversation %) results) :user)
+  (let [total   (:count (t2/query-one {:select [[[:count :*] :count]]
+                                       :from   [:metabot_conversation]}))
+        results (t2/select :model/MetabotConversation
+                           (assoc list-query :limit limit :offset offset))]
+    {:data   (t2/hydrate results :user)
      :total  total
      :limit  limit
      :offset offset}))
@@ -62,7 +57,7 @@
        :summary         (:summary conversation)
        :user            (:user hydrated)
        :message_count   (count messages)
-       :total_tokens    (reduce + 0 (keep :total_tokens messages))
+       :total_tokens    (transduce (keep :total_tokens) + 0 messages)
        :model           (some :model messages)
        :chat_messages   (metabot-persistence/messages->chat-messages messages)
        :queries         (analytics.queries/messages->generated-queries messages)})))

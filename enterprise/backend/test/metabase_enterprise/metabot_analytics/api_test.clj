@@ -168,7 +168,12 @@
           (is (= 3 (:total response)))
           (is (= 1 (:limit response)))
           (is (= 1 (:offset response)))
-          (is (= [convo-2] (map :conversation_id (:data response))))))))
+          (is (= [convo-2] (map :conversation_id (:data response)))))
+        (testing "total still reflects the full count when paging past the end"
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "%s&limit=10&offset=999" response-path))]
+            (is (= 3 (:total response)))
+            (is (= [] (:data response))))))))
 
   (deftest list-conversations-sorting-test
     (with-list-conversations-fixture!
