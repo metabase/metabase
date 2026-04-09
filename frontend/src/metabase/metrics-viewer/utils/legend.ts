@@ -42,11 +42,6 @@ export function buildLegendGroups(
     }
 
     const colors = activeBreakoutColors[entry.id];
-    const color = getSingleColor(colors);
-    if (!color) {
-      continue;
-    }
-
     const definitionName = getDefinitionName(entry.definition);
     const breakoutProjection = getEntryBreakout(entry);
 
@@ -78,7 +73,8 @@ export function buildLegendGroups(
         items,
       });
     } else {
-      if (!definitionName) {
+      const color = getSingleColor(colors);
+      if (!color || !definitionName) {
         continue;
       }
       groups.push({
