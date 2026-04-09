@@ -115,7 +115,7 @@
              (premium-features/enable-custom-viz?)
              (render.util/custom-viz-display? display-type)
              (let [identifier (subs (name display-type) (count "custom:"))
-                   plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+                   plugin  (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
                (some-> plugin custom-viz-plugin/resolve-bundle :content)))
         (chart-type :javascript_visualization "display-type is a custom visualization with static support")
 
