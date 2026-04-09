@@ -526,7 +526,7 @@
   "For tenant root collections, localize the name to the user's locale.
 
   OSS version: returns collections unchanged."
-  metabase-enterprise.tenants.model
+  metabase-enterprise.tenants.models
   [collections]
   collections)
 

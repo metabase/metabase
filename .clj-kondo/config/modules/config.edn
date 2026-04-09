@@ -156,7 +156,6 @@
   agent-api
   {:team    "Metabot"
    :api     #{metabase.agent-api.api}
-   :friends #{enterprise/agent-api}
    :uses    #{api
               auth-identity
               lib
@@ -1004,8 +1003,7 @@
 
   internal-stats
   {:team "UX West"
-   :api  #{metabase.internal-stats.core
-           metabase.internal-stats.metabot}
+   :api  #{metabase.internal-stats.core}
    :uses #{app-db
            models
            util}
@@ -1198,7 +1196,6 @@
               config
               documents
               driver
-              internal-stats
               legacy-mbql
               lib
               lib-be
@@ -1225,7 +1222,7 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1255,7 +1252,10 @@
            request
            server
            util}
-   :model-imports #{:model/Card :model/Field :model/Measure :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
 
   model-persistence
   {:team "Graphy"
@@ -1289,33 +1289,15 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
-           metabase.models.transforms.transform
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
            app-db
            classloader
-           collections
-           events
            legacy-mbql
            lib
-           lib-be
-           permissions
-           query-processor
-           remote-sync
-           search
            settings
-           transforms
-           transforms-base
-           util
-           warehouse-schema}
-   :friends #{transforms}
-   :model-exports #{:model/Transform
-                    :model/TransformJob
-                    :model/TransformJobTransformTag
-                    :model/TransformRun
-                    :model/TransformTag
-                    :model/TransformTransformTag}
+           util}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1392,8 +1374,11 @@
    :uses #{api
            appearance
            models
+           request
            settings
            system
+           task
+           tracing
            util}}
 
   ;; TODO -- too many API namespaces
@@ -1554,7 +1539,10 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Document}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Document}}
 
   pulse
   {:team "Gadget"
@@ -2018,7 +2006,8 @@
   source-swap
   {:team "Graphy"
    :api  #{metabase.source-swap.core
-           metabase.source-swap.schema}
+           metabase.source-swap.schema
+           metabase.source-swap.util}
    :uses #{driver
            lib
            sql-tools
@@ -2159,7 +2148,7 @@
            premium-features
            search
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/AiUsageLog :model/Card :model/Dashboard}}
 
   tiles
   {:team "UX West"
@@ -2205,32 +2194,41 @@
            metabase.transforms.util}
    :uses #{analytics
            api
+           app-db
            channel
+           collections
            database-routing
            driver
            events
            lib
+           lib-be
            models
+           permissions
            premium-features
            queries
            query-processor
+           remote-sync
            revisions
+           search
            settings
            task
            task-history
            tracing
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :friends #{models
               enterprise/transforms-python
               enterprise/workspaces}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/Table
-                    :model/Transform
+   :model-exports #{:model/Transform
                     :model/TransformJob
                     :model/TransformJobTransformTag
-                    :model/TransformTransformTag
+                    :model/TransformRun
+                    :model/TransformTag}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Table
                     :model/User}}
 
   transforms-base
@@ -2238,12 +2236,12 @@
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
            metabase.transforms-base.util}
+   ;; TODO regressions — transforms-base should not depend on :model/Transform or
+   ;; :model/TransformRun directly. Remove once the module is agnostic to global
+   ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
    :model-imports #{:model/Database
                     :model/DatabaseRouter
                     :model/Table
-                    ;; TODO regressions — transforms-base should not depend on
-                    ;; these directly. Remove once the module is agnostic to
-                    ;; global versus workspace transforms.
                     :model/Transform
                     :model/TransformRun}
    :uses #{driver
@@ -2639,13 +2637,6 @@
                     :model/Sandbox
                     :model/Table}}
 
-  enterprise/agent-api
-  {:team "Metabot"
-   :api  #{metabase-enterprise.agent-api.workspace}
-   :uses #{api
-           util
-           enterprise/workspaces}}
-
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -2835,8 +2826,7 @@
            warehouse-schema
            warehouses}
    :model-exports #{:model/DatabaseRouter}
-   :model-imports #{:model/Database
-                    :model/Transform}}
+   :model-imports #{:model/Database :model/Transform}}
 
   enterprise/dependencies
   {:team "Graphy"
@@ -2965,20 +2955,25 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api.routes}
-   :friends #{enterprise/agent-api
-              slackbot
+   :api     #{metabase-enterprise.metabot.api
+              metabase-enterprise.metabot.api.routes
+              metabase-enterprise.metabot.init}
+   :friends #{slackbot
               mcp
               metabot}
    :uses    #{api
               lib-be
               metabot
               models
+              permissions
               premium-features
+              settings
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
-   :model-imports #{:model/Card
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Transform}}
@@ -3049,6 +3044,7 @@
            task
            transforms
            util
+           warehouse-schema
            enterprise/dependencies}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -3307,7 +3303,6 @@
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
-   :friends #{enterprise/agent-api}
    :uses #{api
            api-scope
            app-db

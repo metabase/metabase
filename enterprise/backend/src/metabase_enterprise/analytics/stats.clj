@@ -15,7 +15,7 @@
   []
   [{:name      :sso-jwt
     :available (premium-features/enable-sso-jwt?)
-    :enabled   (ee-sso-settings/jwt-enabled)}
+    :enabled   (ee-sso-settings/jwt-enabled-and-configured)}
    {:name      :sso-saml
     :available (premium-features/enable-sso-saml?)
     :enabled   (ee-sso-settings/saml-enabled)}

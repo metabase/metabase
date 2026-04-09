@@ -1,0 +1,275 @@
+name: Recent activity
+entity_id: WlQ-en2l-iRRCvO2-v5j1
+created_at: '2023-11-01T01:06:15.554648Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_audit_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - fields:
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_audit_log, topic]
+    - - field
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ}
+      - [Internal Metabase Database, public, v_audit_log, timestamp]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_audit_log, entity_qualified_id]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_audit_log, details]
+    joins:
+    - alias: People - User
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_audit_log, user_id]
+        - - field
+          - {base-type: type/Integer, join-alias: People - User, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_users, user_id]
+      fields: none
+      stages:
+      - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: 5fa53b54-915b-47fa-b366-12e4a72f1081}
+      lib/type: mbql/join
+    - alias: Content - Entity Qualified
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Text, effective-type: type/Text}
+          - [Internal Metabase Database, public, v_audit_log, entity_qualified_id]
+        - - field
+          - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+          - [Internal Metabase Database, public, v_content, entity_qualified_id]
+      fields:
+      - - field
+        - {base-type: type/Integer, join-alias: Content - Entity Qualified, effective-type: type/Integer}
+        - [Internal Metabase Database, public, v_content, entity_id]
+      - - field
+        - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_content, entity_type]
+      - - field
+        - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_content, name]
+      stages:
+      - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: 5c0a9907-5997-44d5-a284-0066f5f48973}
+      lib/type: mbql/join
+    limit: 200
+    order-by:
+    - - desc
+      - {}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ}
+        - [Internal Metabase Database, public, v_audit_log, timestamp]
+    source-card: -lNDM3tJmuL5ltGbX0oyT
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Topic
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_audit_log, topic]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_audit_log, topic]
+  name: topic
+  nfc_path: null
+  parent_id: null
+  position: 1
+  semantic_type: type/Category
+  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_audit_log]
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Timestamp
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_audit_log, timestamp]
+  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_audit_log, timestamp]
+  name: timestamp
+  nfc_path: null
+  parent_id: null
+  position: 2
+  semantic_type: type/CreationTimestamp
+  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_audit_log]
+  unit: default
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Entity Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_audit_log, entity_qualified_id]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_audit_log, entity_qualified_id]
+  name: entity_qualified_id
+  nfc_path: null
+  parent_id: null
+  position: 7
+  semantic_type: type/Category
+  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_audit_log]
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Details
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_audit_log, details]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_audit_log, details]
+  name: details
+  nfc_path: null
+  parent_id: null
+  position: 8
+  semantic_type: type/Category
+  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_audit_log]
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Content - Entity Qualified → Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - {base-type: type/Integer, join-alias: Content - Entity Qualified}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_content, entity_id]
+  name: entity_id
+  nfc_path: null
+  parent_id: null
+  position: 0
+  semantic_type: type/PK
+  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Content - Entity Qualified → Entity Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, entity_type]
+  - {base-type: type/Text, join-alias: Content - Entity Qualified}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_content, entity_type]
+  name: entity_type
+  nfc_path: null
+  parent_id: null
+  position: 2
+  semantic_type: type/Category
+  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Content - Entity Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, name]
+  - {base-type: type/Text, join-alias: Content - Entity Qualified}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_content, name]
+  name: name
+  nfc_path: null
+  parent_id: null
+  position: 6
+  semantic_type: type/Name
+  settings: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+visualization_settings:
+  column_settings:
+    '["name","name"]': {column_title: Content name, link_url: '/{{entity_type}}/{{entity_id}}', view_as: link}
+  table.cell_column: details
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_audit_log, timestamp]
+    - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
+    name: timestamp
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_audit_log, topic]
+    - {base-type: type/Text}
+    name: topic
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_content, name]
+    - {base-type: type/Text, join-alias: Content - Entity Qualified}
+    name: name
+  - enabled: false
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_audit_log, entity_qualified_id]
+    - {base-type: type/Text}
+    name: entity_qualified_id
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_audit_log, details]
+    - {base-type: type/Text}
+    name: details
+  - enabled: false
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_content, entity_id]
+    - {base-type: type/Integer, join-alias: Content - Entity Qualified}
+    name: entity_id
+  - enabled: false
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_content, entity_type]
+    - {base-type: type/Text, join-alias: Content - Entity Qualified}
+    name: entity_type
+  table.pivot_column: topic
+card_schema: 23
+serdes/meta:
+- {id: WlQ-en2l-iRRCvO2-v5j1, label: recent_activity, model: Card}
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
+source_card_id: -lNDM3tJmuL5ltGbX0oyT
+type: question
