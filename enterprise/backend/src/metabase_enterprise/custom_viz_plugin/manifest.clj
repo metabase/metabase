@@ -31,16 +31,15 @@
 
 (defn compatible?
   "Check whether a plugin with the given metabase_version range string is compatible with the
-   current Metabase version. Uses npm/node-semver range syntax (e.g. \">=59\", \"^59\", \">=59 <61\").
+   current Metabase version. Uses npm/node-semver range syntax (e.g. \">=1.59\", \"^1.59\", \">=1.59 <1.61\").
    Returns true if no range is specified, or if the current version satisfies the range.
    In dev mode (no version info), always returns true."
   [{:keys [metabase_version]}]
-  (let [major (config/current-major-version)
-        minor (config/current-minor-version)]
-    (if (or config/is-dev? (nil? major) (str/blank? metabase_version))
+  (let [current-version (:tag config/mb-version-info)]
+    (if (or config/is-dev? (nil? current-version) (str/blank? metabase_version))
       true
       (try
-        (let [current (Semver/coerce (str major "." (or minor 0) ".0"))]
+        (let [current (Semver/coerce current-version)]
           (.satisfies current ^String metabase_version))
         (catch SemverException e
           (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
@@ -68,7 +67,7 @@
   (let [lower (u/lower-case-en path)]
     (some #(str/ends-with? lower %) allowed-asset-extensions)))
 
-(defn- safe-relative-path?
+(defn safe-relative-path?
   "Returns true if path normalizes to a relative path with no directory traversal."
   [^String path]
   (let [normalized (.normalize (java.nio.file.Path/of path (into-array String [])))]
@@ -88,3 +87,16 @@
                          (when (and (image-file? icon-dark) (safe-relative-path? icon-dark)) icon-dark))]
     (distinct (concat declared (when icon-name [icon-name])
                       (when icon-dark-name [icon-dark-name])))))
+
+(defn asset-content-type
+  "Return the MIME content type for an allowed asset file, or nil if not recognized.
+   Allows image files and JSON files (for locale translations)."
+  [^String path]
+  (cond
+    (str/ends-with? path ".json")
+    "application/json"
+
+    :else
+    (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
+      (when (and ct (str/starts-with? ct "image/"))
+        ct))))
