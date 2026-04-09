@@ -28,6 +28,7 @@ databaseChangeLog:
                   type: varchar(1024)
                   remarks: Git repository URL
                   constraints:
+                    unique: true
                     nullable: false
               - column:
                   name: access_token
@@ -47,6 +48,7 @@ databaseChangeLog:
                   remarks: Unique identifier used as visualization display type
                   constraints:
                     nullable: false
+                    unique: true
               - column:
                   name: status
                   type: varchar(32)
@@ -114,37 +116,3 @@ databaseChangeLog:
                   name: dev_bundle_url
                   type: varchar(1024)
                   remarks: Dev server URL for hot-reload development (e.g. http://localhost:5174)
-
-  - changeSet:
-      id: v61.2026-04-09T10:00:01
-      author: sgavrylov
-      failOnError: false
-      comment: Add unique constraint on custom_viz_plugin.repo_url
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: custom_viz_plugin
-                indexName: uq_custom_viz_plugin_repo_url
-      changes:
-        - addUniqueConstraint:
-            tableName: custom_viz_plugin
-            columnNames: repo_url
-            constraintName: uq_custom_viz_plugin_repo_url
-
-  - changeSet:
-      id: v61.2026-04-09T10:00:02
-      author: sgavrylov
-      failOnError: false
-      comment: Add unique constraint on custom_viz_plugin.identifier
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: custom_viz_plugin
-                indexName: uq_custom_viz_plugin_identifier
-      changes:
-        - addUniqueConstraint:
-            tableName: custom_viz_plugin
-            columnNames: identifier
-            constraintName: uq_custom_viz_plugin_identifier
