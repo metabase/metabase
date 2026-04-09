@@ -2,7 +2,6 @@
   "CLJS implementation of [[metabase.analytics.interface/Reporter]].
   Batches events and POSTs them to the backend, which records them as Prometheus metrics."
   (:require
-   ["metabase/lib/internal-analytics" :as internal-analytics]
    [metabase.analytics.interface :as analytics.interface]))
 
 (defonce ^:private buffer (atom []))
@@ -16,7 +15,8 @@
   []
   (when-let [events (not-empty @buffer)]
     (reset! buffer [])
-    (internal-analytics/postInternalAnalytics (clj->js events))))
+    (let [post-fn (.-postInternalAnalytics (js/require "metabase/lib/internal-analytics"))]
+      (post-fn (clj->js events)))))
 
 (defonce ^:private _interval
   (js/setInterval flush-buffer! flush-interval-ms))

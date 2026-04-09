@@ -37,6 +37,11 @@
 
 (defonce ^:private reporter (atom nil))
 
+(defn get-reporter
+  "Return the currently registered [[Reporter]], or nil."
+  []
+  @reporter)
+
 (defn set-reporter!
   "Register a [[Reporter]] implementation. Called once per runtime at init time."
   [r]
