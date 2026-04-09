@@ -52,29 +52,60 @@
 (defn- parent-module
   "The direct parent module of `m`, or `nil` if `m` is top-level.
 
-    (parent-module 'lib.schema)         => 'lib
-    (parent-module 'lib.schema.foo)     => 'lib.schema
-    (parent-module 'lib)                => nil
-    (parent-module 'enterprise/foo.bar) => enterprise/foo
-    (parent-module 'enterprise/foo)     => nil"
-  [m]
-  (let [[ns-part parts] (split-module m)]
-    (when (> (count parts) 1)
-      (join-module [ns-part (butlast parts)]))))
+  Two sources of parent-child relationships:
+
+    1. **Dotted names**: `lib.schema` is a child of `lib`. Pure
+       syntactic — always active.
+
+    2. **`enterprise/X` shorthand**: `enterprise/X` is a child of the
+       OSS module `X` (a simple symbol with no namespace part), but
+       ONLY when `X` is actually declared in `declared-modules`. If
+       `X` isn't declared, `enterprise/X` is treated as top-level.
+       This branch is active only when the caller provides a
+       `declared-modules` set.
+
+  Examples:
+
+    (parent-module 'lib.schema)                 => 'lib
+    (parent-module 'lib.schema.foo)             => 'lib.schema
+    (parent-module 'lib)                        => nil
+    (parent-module 'enterprise/foo.bar)         => 'enterprise/foo
+    (parent-module 'enterprise/foo)             => nil       ; no shorthand without declared
+    (parent-module #{'foo} 'enterprise/foo)     => 'foo      ; shorthand: foo declared
+    (parent-module #{} 'enterprise/foo)         => nil       ; shorthand: foo not declared
+    (parent-module #{'foo} 'enterprise/other)   => nil       ; shorthand: other not declared"
+  ([m] (parent-module nil m))
+  ([declared-modules m]
+   (let [[ns-part parts] (split-module m)]
+     (cond
+       ;; Dotted name: pure syntactic parent.
+       (> (count parts) 1)
+       (join-module [ns-part (butlast parts)])
+
+       ;; `enterprise/X` shorthand: parent is OSS `X` if declared.
+       (and (= ns-part "enterprise") declared-modules)
+       (let [oss (symbol (first parts))]
+         (when (contains? declared-modules oss) oss))
+
+       :else nil))))
 
 (defn- ancestor-chain
   "Seq of ancestor modules of `m`, from direct parent up to top-level ancestor.
-  Empty if `m` is top-level.
-
-    (ancestor-chain 'lib.schema.foo) => (lib.schema lib)"
-  [m]
-  (take-while some? (iterate parent-module (parent-module m))))
+  Empty if `m` is top-level. Honors the `enterprise/X` shorthand when
+  `declared-modules` is provided."
+  ([m] (ancestor-chain nil m))
+  ([declared-modules m]
+   (take-while some?
+               (iterate #(parent-module declared-modules %)
+                        (parent-module declared-modules m)))))
 
 (defn- ancestor?
   "True if `maybe-ancestor` is a strict ancestor of `maybe-descendant`
   (parent, grandparent, etc., but not the module itself)."
-  [maybe-ancestor maybe-descendant]
-  (boolean (some #(= maybe-ancestor %) (ancestor-chain maybe-descendant))))
+  ([a b] (ancestor? nil a b))
+  ([declared-modules maybe-ancestor maybe-descendant]
+   (boolean (some #(= maybe-ancestor %)
+                  (ancestor-chain declared-modules maybe-descendant)))))
 
 (defn- siblings?
   "True if `a` and `b` share the same direct parent (and thus are siblings
@@ -83,10 +114,11 @@
 
   Returns a proper boolean (never `nil`), so callers using `false?`/`true?`
   on the result get the expected behavior."
-  [a b]
-  (let [pa (parent-module a)
-        pb (parent-module b)]
-    (boolean (and pa pb (= pa pb)))))
+  ([a b] (siblings? nil a b))
+  ([declared-modules a b]
+   (let [pa (parent-module declared-modules a)
+         pb (parent-module declared-modules b)]
+     (boolean (and pa pb (= pa pb))))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Visibility rules
@@ -117,14 +149,39 @@
 ;;;; declared-dependency + :api check, nothing more.
 ;;;; -------------------------------------------------------------------------
 
+(defn- declared-modules
+  "Set of module symbols declared in the `:metabase/modules` config."
+  [config]
+  (set (keys (get config :metabase/modules))))
+
+(defn- top-level-oss-module?
+  "True if `m` is a top-level OSS module symbol — i.e., no namespace part
+  and a name with no dots. `lib` qualifies; `lib.schema` does not (nested);
+  `enterprise/lib` does not (enterprise namespace part)."
+  [m]
+  (and (nil? (namespace m))
+       (not (str/includes? (name m) "."))))
+
 (defn- open-children
-  "Set of direct child module symbols that `parent` explicitly exposes via
-  its `:open` key. Returns `#{}` if no `:open` is declared."
+  "Set of direct child module symbols that `parent` exposes. Combines the
+  explicit `:open` set from config with the auto-opened `enterprise/X`
+  counterpart if `parent` is a top-level OSS module `X` and `enterprise/X`
+  is declared. The auto-open exists so that outside callers (e.g. the
+  `metabase-enterprise.core.init` loader chain) can statically reference
+  each OSS module's EE companion without needing to explicitly list it
+  in `:open`."
   [config parent]
-  (set (get-in config [:metabase/modules parent :open])))
+  (let [explicit (set (get-in config [:metabase/modules parent :open]))
+        ee-child (when (top-level-oss-module? parent)
+                   (let [candidate (symbol "enterprise" (name parent))]
+                     (when (contains? (declared-modules config) candidate)
+                       candidate)))]
+    (cond-> explicit
+      ee-child (conj ee-child))))
 
 (defn- opens-child?
-  "True if `parent` explicitly lists `child` in its `:open` set."
+  "True if `parent` exposes `child` via its `:open` set (explicit or
+  auto-opened via the `enterprise/X` shorthand)."
   [config parent child]
   (contains? (open-children config parent) child))
 
@@ -137,19 +194,28 @@
   NOT used at require-lint time — requires are checked strictly against
   the caller's declared `:uses` and the target's `:api`."
   [config m]
-  (if-let [p (parent-module m)]
-    (and (opens-child? config p m)
-         (externally-visible? config p))
-    true))
+  (let [declared (declared-modules config)]
+    (loop [m m]
+      (if-let [p (parent-module declared m)]
+        (if (and (opens-child? config p m)
+                 ;; Walk up to verify p itself is externally visible.
+                 ;; We recurse inline because we already computed declared.
+                 (or (nil? (parent-module declared p))
+                     (externally-visible? config p)))
+          true
+          false)
+        true))))
 
 (defn- external-face
   "The closest externally-visible ancestor of `m` (or `m` itself if it is
   externally visible). Used by the subtree-membership lint to compute the
   module that an outsider would have to name in lieu of `m` itself."
   [config m]
-  (if (externally-visible? config m)
-    m
-    (external-face config (parent-module m))))
+  (let [declared (declared-modules config)]
+    (loop [m m]
+      (if (externally-visible? config m)
+        m
+        (recur (parent-module declared m))))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Namespace → module resolution (prefix-map based)

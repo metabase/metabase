@@ -425,6 +425,106 @@
       (is (nil? (usage-error config 'caller 'metabase.lib.schema.foo)))
       (is (nil? (usage-error config 'caller 'metabase.lib.core))))))
 
+;;;; -------------------------------------------------------------------------
+;;;; `enterprise/X` shorthand: EE module as a nested child of OSS X
+;;;;
+;;;; When an `enterprise/X` module is declared in config and an OSS module
+;;;; `X` is also declared, the system treats `enterprise/X` as if it were a
+;;;; nested child of `X` — same subtree, auto-opened in `X`'s `:open` set.
+;;;; This lets EE modules be organized as companions to their OSS
+;;;; counterparts without needing to rename anything or declare explicit
+;;;; `:ns-prefix` / `:open` entries.
+;;;;
+;;;; If `X` is NOT declared (e.g. `enterprise/sandbox` with no OSS
+;;;; counterpart), the shorthand falls back: `enterprise/sandbox` stays a
+;;;; top-level module, externally referenceable by anyone.
+;;;; -------------------------------------------------------------------------
+
+(deftest ^:parallel parent-module-shorthand-test
+  (testing "`parent-module` honors the `enterprise/X` shorthand when declared modules are known"
+    (let [parent-module (hook-fn 'parent-module)]
+      (testing "no declared modules: enterprise/X is top-level (pure syntactic)"
+        (is (nil? (parent-module 'enterprise/internal-stats))))
+      (testing "empty declared set: same as no declared — no shorthand activation"
+        (is (nil? (parent-module #{} 'enterprise/internal-stats))))
+      (testing "declared set includes OSS X: enterprise/X's parent is X"
+        (is (= 'internal-stats
+               (parent-module #{'internal-stats} 'enterprise/internal-stats))))
+      (testing "declared set does NOT include OSS X: enterprise/X is still top-level"
+        (is (nil? (parent-module #{'other-module} 'enterprise/internal-stats))))
+      (testing "dotted-name children still work via pure syntactic rule"
+        (is (= 'lib
+               (parent-module #{'lib} 'lib.schema))))
+      (testing "deeply-nested enterprise names fall back to syntactic rule"
+        (is (= 'enterprise/transforms
+               (parent-module #{'transforms} 'enterprise/transforms.python)))))))
+
+(deftest ^:parallel open-children-auto-opens-enterprise-test
+  (testing "`open-children` auto-includes `enterprise/X` when X is a declared OSS top-level"
+    (let [open-children (hook-fn 'open-children)]
+      (testing "no enterprise counterpart declared: only the explicit :open set"
+        (let [config {:metabase/modules {'lib {:open #{'lib.schema}}}}]
+          (is (= #{'lib.schema} (open-children config 'lib)))))
+      (testing "enterprise/X counterpart declared: auto-included in :open"
+        (let [config {:metabase/modules {'cache            {}
+                                         'enterprise/cache {}}}]
+          (is (= #{'enterprise/cache} (open-children config 'cache)))))
+      (testing "combines explicit and auto-opened"
+        (let [config {:metabase/modules {'lib             {:open #{'lib.schema}}
+                                         'enterprise/lib  {}}}]
+          (is (= #{'lib.schema 'enterprise/lib} (open-children config 'lib)))))
+      (testing "nested modules (not top-level) do NOT get auto-opened enterprise counterparts"
+        ;; `foo.bar` is not top-level (has a dot in its name), so
+        ;; `enterprise/foo.bar` is not auto-opened on it even if declared.
+        ;; `foo.bar` has no explicit `:open` set, so open-children should be #{}.
+        (let [config {:metabase/modules {'foo                 {:open #{'foo.bar}}
+                                         'foo.bar             {}
+                                         'enterprise/foo.bar  {}}}]
+          (is (= #{} (open-children config 'foo.bar))))))))
+
+(deftest ^:parallel usage-error-enterprise-shorthand-allows-cross-subtree-access-test
+  (testing (str "Under the shorthand, `enterprise/X` is in the X subtree. Other modules "
+                "can still reach it via the auto-opened `:open` set. `enterprise/core`'s "
+                "init chain, for instance, can statically require `enterprise/cache` "
+                "because `cache` auto-opens `enterprise/cache`.")
+    (let [config {:metabase/modules {'core              {:api :any}
+                                     'cache             {:api :any}
+                                     'enterprise/core   {:api :any
+                                                         :uses #{'enterprise/cache}}
+                                     'enterprise/cache  {:api :any
+                                                         :uses #{}}}}]
+      (testing "enterprise/core can statically require enterprise/cache"
+        (is (nil? (usage-error config 'metabase-enterprise.core.init 'enterprise/core
+                               'metabase-enterprise.cache.core)))))))
+
+(deftest ^:parallel usage-error-enterprise-shorthand-same-subtree-access-test
+  (testing "OSS X and enterprise/X are same-subtree after shorthand — both in X's subtree"
+    (let [config {:metabase/modules {'cache             {:api :any
+                                                         :uses #{'enterprise/cache}}
+                                     'enterprise/cache  {:api :any
+                                                         :uses #{'cache}}}}]
+      (testing "OSS cache → enterprise/cache via :uses is allowed (same subtree)"
+        (is (nil? (usage-error config 'metabase.cache.init 'cache
+                               'metabase-enterprise.cache.core))))
+      (testing "enterprise/cache → OSS cache via :uses is allowed (same subtree, reverse direction)"
+        (is (nil? (usage-error config 'metabase-enterprise.cache.init 'enterprise/cache
+                               'metabase.cache.core)))))))
+
+(deftest ^:parallel usage-error-enterprise-without-oss-counterpart-stays-top-level-test
+  (testing (str "An `enterprise/X` module whose OSS counterpart `X` is NOT declared stays "
+                "top-level — no phantom parent. Anyone can name it directly since top-level "
+                "modules are always externally referenceable.")
+    (let [config {:metabase/modules {'enterprise/sandbox {:api :any
+                                                          :uses #{}}
+                                     'unrelated          {:api :any
+                                                          :uses #{'enterprise/sandbox}}}}]
+      ;; `unrelated` is in a different subtree, but `enterprise/sandbox`
+      ;; has no OSS parent (sandbox isn't declared), so it's top-level
+      ;; and externally referenceable.
+      (testing "unrelated can reach top-level enterprise/sandbox"
+        (is (nil? (usage-error config 'metabase.unrelated.core 'unrelated
+                               'metabase-enterprise.sandbox.core)))))))
+
 (deftest ^:parallel usage-error-backwards-compat-flat-config-test
   (testing "With no nested modules declared, behavior matches the flat pre-nesting model"
     (let [config {:metabase/modules {'lib             {:api  #{'metabase.lib.core

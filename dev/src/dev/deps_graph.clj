@@ -506,18 +506,35 @@
 (defn module-parent
   "Direct parent of a nested module symbol, or nil if top-level.
   Mirror of `hooks.common.modules/parent-module`. Public so the
-  modules-test suite can use it for the subtree-membership lint check."
-  [m]
-  (let [[ns-part parts] (module-split m)]
-    (when (> (count parts) 1)
-      (module-join [ns-part (butlast parts)]))))
+  modules-test suite can use it for the subtree-membership lint check.
+
+  With an optional `declared-modules` set, activates the `enterprise/X`
+  shorthand: `enterprise/X` is treated as a nested child of the OSS
+  module `X` when `X` is declared. Without the set, `enterprise/X`
+  is treated as top-level (pure syntactic behavior)."
+  ([m] (module-parent nil m))
+  ([declared-modules m]
+   (let [[ns-part parts] (module-split m)]
+     (cond
+       (> (count parts) 1)
+       (module-join [ns-part (butlast parts)])
+
+       (and (= ns-part "enterprise") declared-modules)
+       (let [oss (symbol (first parts))]
+         (when (contains? declared-modules oss) oss))
+
+       :else nil))))
 
 (defn module-ancestor-chain
   "Seq of ancestor module symbols of `m`, from direct parent up to top-level
   ancestor. Empty if `m` is top-level. Public for use by the
-  subtree-membership lint check in the modules-test suite."
-  [m]
-  (take-while some? (iterate module-parent (module-parent m))))
+  subtree-membership lint check in the modules-test suite. Honors the
+  `enterprise/X` shorthand when `declared-modules` is provided."
+  ([m] (module-ancestor-chain nil m))
+  ([declared-modules m]
+   (take-while some?
+               (iterate #(module-parent declared-modules %)
+                        (module-parent declared-modules m)))))
 
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`.

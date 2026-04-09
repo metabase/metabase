@@ -178,18 +178,44 @@
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))
 
+(defn- declared-modules-set
+  "Set of declared module symbols from the kondo config (the outer keys)."
+  [config]
+  (set (keys config)))
+
 (defn- top-level-ancestor
   "Return the topmost ancestor of module `m` (or `m` itself if it's already
-  top-level). Used for subtree-membership checks."
-  [m]
-  (or (last (dev.deps-graph/module-ancestor-chain m)) m))
+  top-level). Used for subtree-membership checks. Honors the `enterprise/X`
+  shorthand when `declared` is provided."
+  [declared m]
+  (or (last (dev.deps-graph/module-ancestor-chain declared m)) m))
 
 (defn- same-subtree?
   "True if `caller` and `target` share a top-level ancestor — i.e., they're
   both descendants of the same top-level module (or one of them is the
   top-level ancestor of the other)."
-  [caller target]
-  (= (top-level-ancestor caller) (top-level-ancestor target)))
+  [declared caller target]
+  (= (top-level-ancestor declared caller) (top-level-ancestor declared target)))
+
+(defn- top-level-oss-module?
+  "True if `m` is a top-level OSS module symbol — no namespace part and a
+  name with no dots. Mirror of `hooks.common.modules/top-level-oss-module?`."
+  [m]
+  (and (nil? (namespace m))
+       (not (str/includes? (name m) "."))))
+
+(defn- open-children*
+  "Mirror of `hooks.common.modules/open-children`. Returns the `:open` set
+  for `parent` including the auto-opened `enterprise/X` counterpart when
+  `parent` is a top-level OSS module with a declared EE counterpart."
+  [config parent]
+  (let [explicit (set (get-in config [parent :open]))
+        ee-child (when (top-level-oss-module? parent)
+                   (let [candidate (symbol "enterprise" (name parent))]
+                     (when (contains? config candidate)
+                       candidate)))]
+    (cond-> explicit
+      ee-child (conj ee-child))))
 
 (defn- externally-referenceable?
   "True if `target` may be named in the `:uses` of a module outside its
@@ -198,13 +224,13 @@
   ancestor is implicitly externally referenceable). Mirror of the
   `externally-visible?` helper in the kondo hook."
   [config target]
-  (loop [m target]
-    (if-let [p (dev.deps-graph/module-parent m)]
-      (let [parent-opens (set (get-in config [p :open]))]
-        (if (contains? parent-opens m)
+  (let [declared (declared-modules-set config)]
+    (loop [m target]
+      (if-let [p (dev.deps-graph/module-parent declared m)]
+        (if (contains? (open-children* config p) m)
           (recur p)
-          false))
-      true)))
+          false)
+        true))))
 
 (defn- can-be-named-by?
   "True if `caller` is permitted to put `target` in its `:uses` declaration
@@ -212,18 +238,24 @@
     - they share a top-level subtree (anyone in the same subtree can name
       anyone else in the subtree), OR
     - `target` is externally referenceable (top-level OR `:open`ed all the
-      way from the root)."
+      way from the root).
+
+  Uses the declared-modules set (from the config) so that the `enterprise/X`
+  shorthand is honored: `enterprise/X` is treated as a child of the OSS
+  module `X` when `X` is declared."
   [config caller target]
-  (or (= caller target)
-      (same-subtree? caller target)
-      (externally-referenceable? config target)))
+  (let [declared (declared-modules-set config)]
+    (or (= caller target)
+        (same-subtree? declared caller target)
+        (externally-referenceable? config target))))
 
 (deftest ^:parallel uses-references-must-be-namable-test
   (testing (str "Every entry in a module's `:uses` must be a module that the caller is "
                 "allowed to name. Outside-of-subtree callers may only name modules that "
                 "are externally referenceable (top-level OR `:open`ed by every ancestor "
                 "from the root). Same-subtree callers may name any module in the subtree.")
-    (let [config (dev.deps-graph/kondo-config)]
+    (let [config   (dev.deps-graph/kondo-config)
+          declared (declared-modules-set config)]
       (doseq [[caller cfg] config
               :let          [uses (:uses cfg)]
               :when         (set? uses)
@@ -242,8 +274,8 @@
                     ":open set (and recursively up to the top-level).")
                caller target target
                target caller
-               (top-level-ancestor caller)
-               (top-level-ancestor target)
+               (top-level-ancestor declared caller)
+               (top-level-ancestor declared target)
                target)))))))
 
 (deftest ^:parallel ns-prefix-uniqueness-test
