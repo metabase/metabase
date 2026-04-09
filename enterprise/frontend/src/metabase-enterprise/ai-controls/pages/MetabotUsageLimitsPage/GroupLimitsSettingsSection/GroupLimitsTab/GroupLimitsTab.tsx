@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { isDefaultGroup } from "metabase/utils/groups";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Stack, Text, TextInput } from "metabase/ui";
+import { isDefaultGroup } from "metabase/utils/groups";
 import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
 import type { GroupInfo } from "metabase-types/api";
