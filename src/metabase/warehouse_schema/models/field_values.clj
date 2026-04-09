@@ -412,6 +412,73 @@
       (log/error e "Error fetching field values")
       nil)))
 
+(defn- limit-values [values]
+  (loop [str-length 0
+         acc (sorted-set)
+         values values]
+    (let [new-str-length (+ str-length (count (str (first values))))]
+      (cond
+        (empty? values)
+        {:values (vec acc)
+         :has_more_values false}
+
+        (nil? (first values)) ;; skip NULLs
+        (recur str-length acc (rest values))
+
+        (contains? acc (first values))
+        (recur str-length acc (rest values))
+
+        (or
+         (> new-str-length *total-max-length*)
+         ;; I don't think this can be true, but just in case
+         (> (inc (count acc)) *absolute-max-distinct-values-limit*))
+        {:values (vec acc)
+         :has_more_values true}
+
+        (= (inc (count acc)) *absolute-max-distinct-values-limit*)
+        {:values (vec (conj acc (first values)))
+         :has_more_values true} ;; 1000 distinct in 1000 rows, probably more
+
+        :else
+        (recur new-str-length (conj acc (first values)) (rest values))))))
+
+(defn- rows->per-field-distinct-values
+  "Process multi-column result rows into per-field distinct value maps.
+   `fields` is the ordered seq of fields corresponding to column indices.
+   Returns {field-id -> {:values [v1 v2 ...], :has_more_values bool}}."
+  [fields rows]
+  (let [cols (if (seq rows)
+               (apply mapv vector rows)
+               (mapv (fn [_] []) fields))]
+    (into {}
+          (map-indexed
+           (fn [i field]
+             [(:id field) (limit-values (get cols i))])
+           (vec fields)))))
+
+(defn bulk-distinct-values
+  "Fetch distinct values for multiple fields from the same table in a single query.
+   Uses `SELECT col1, col2, ... FROM table LIMIT 1000` instead of one GROUP BY per field.
+   Returns {field-id -> {:values [v1 v2 ...], :has_more_values bool}}, or nil on failure."
+  [table-id fields]
+  (try
+    (let [metadata-cols (mapv (fn [field]
+                                (cond-> field
+                                  (t2/model field) (lib-be/instance->metadata :metadata/column)))
+                              fields)
+          result        ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
+                         table-id
+                         (fn [query]
+                           (-> query
+                               (lib/with-fields metadata-cols)
+                               (lib/limit *absolute-max-distinct-values-limit*)))
+                         nil)
+          rows          (-> result :data :rows)]
+      (rows->per-field-distinct-values fields rows))
+    (catch Throwable e
+      (log/error e "Error in bulk-distinct-values, will fall back to per-field queries")
+      nil)))
+
 (defn- delete-duplicates-and-return-latest!
   "Takes a list of field values, return a map of field-id -> latest FieldValues.
 
@@ -454,6 +521,50 @@
    (when (seq field-ids)
      (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))))
 
+(defn persist-field-values!
+  "Persist pre-fetched distinct values for a field. Compares with existing FieldValues and
+   creates/updates/skips/deletes as needed. Returns a status keyword (::fv-skipped, ::fv-updated,
+   ::fv-created, or ::fv-deleted).
+
+   `existing-fv` is the existing FieldValues record (or nil).
+   `values` is a collection of scalar values.
+   `has_more_values` is a boolean indicating if the list is incomplete."
+  [field existing-fv values has_more_values]
+  (let [field-name (or (:name field) (:id field))]
+    (cond
+      (empty? values)
+      (do
+        (clear-field-values-for-field! field)
+        ::fv-deleted)
+
+      ;; if FieldValues object doesn't exist create one
+      (nil? existing-fv)
+      (do
+        (log/debugf "Storing FieldValues for Field %s..." field-name)
+        (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
+                                  (constantly {:has_more_values       has_more_values
+                                               :values                values
+                                               :human_readable_values nil}))
+        ::fv-created)
+
+      ;; if existing FieldValues won't change, skip it
+      (and (= (:values existing-fv) values)
+           (= (:has_more_values existing-fv) has_more_values))
+      (do
+        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
+        ::fv-skipped)
+
+      ;; if the FieldValues object already exists then update values in it
+      :else
+      (do
+        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+        (t2/update! :model/FieldValues (u/the-id existing-fv)
+                    (m/remove-vals nil?
+                                   {:has_more_values       has_more_values
+                                    :values                values
+                                    :human_readable_values (fixup-human-readable-values existing-fv values)}))
+        ::fv-updated))))
+
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
@@ -466,42 +577,8 @@
           {unwrapped-values :values
            :keys [has_more_values]} (distinct-values field)
           ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
-          values                    (seq (map first unwrapped-values))
-          field-name                (or (:name field) (:id field))]
-      (cond
-        (and values
-             (= (:values field-values) values)
-             (= (:has_more_values field-values) has_more_values))
-        (do
-          (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
-          ::fv-skipped)
-
-        ;; if the FieldValues object already exists then update values in it
-        (and field-values values)
-        (do
-          (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-          (t2/update! :model/FieldValues (u/the-id field-values)
-                      (m/remove-vals nil?
-                                     {:has_more_values       has_more_values
-                                      :values                values
-                                      :human_readable_values (fixup-human-readable-values field-values values)}))
-          ::fv-updated)
-
-        ;; if FieldValues object doesn't exist create one
-        values
-        (do
-          (log/debugf "Storing FieldValues for Field %s..." field-name)
-          (app-db/select-or-insert! :model/FieldValues {:field_id (u/the-id field), :type :full}
-                                    (constantly {:has_more_values       has_more_values
-                                                 :values                values
-                                                 :human_readable_values human-readable-values}))
-          ::fv-created)
-
-        ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
-        :else
-        (do
-          (clear-field-values-for-field! field)
-          ::fv-deleted)))
+          values                    (seq (map first unwrapped-values))]
+      (persist-field-values! field field-values values has_more_values))
     (do
       (clear-field-values-for-field! field)
       ::fv-deleted)))
