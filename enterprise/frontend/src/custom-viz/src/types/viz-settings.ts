@@ -90,9 +90,9 @@ export type MultiselectProps = {
 
 type OmitBaseWidgetProps<P> = keyof BaseWidgetProps<
   unknown,
-  unknown
+  Record<string, unknown>
 > extends keyof P
-  ? Omit<P, keyof BaseWidgetProps<unknown, unknown>>
+  ? Omit<P, keyof BaseWidgetProps<unknown, Record<string, unknown>>>
   : P;
 
 type PropsFromWidget<W> = W extends WidgetName
@@ -101,16 +101,16 @@ type PropsFromWidget<W> = W extends WidgetName
     ? OmitBaseWidgetProps<P>
     : never;
 
-type CommonSettings = {
-  "card.title": string | undefined | null;
-  "card.description": string | undefined | null;
-  "card.hide_empty": boolean | undefined | null;
-  click_behavior: ClickBehavior | undefined;
+type CommonVisualizationSettings = {
+  "card.title"?: string | undefined | null;
+  "card.description"?: string | undefined | null;
+  "card.hide_empty"?: boolean | undefined | null;
+  click_behavior?: ClickBehavior | undefined;
 };
 
-export type FinalSettings<
-  CustomVisualizationSettings extends Record<string, unknown>,
-> = CustomVisualizationSettings & CommonSettings;
+export type CustomVisualizationSettings<
+  TSettings extends Record<string, unknown>,
+> = TSettings & CommonVisualizationSettings;
 
 export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
   () => <
@@ -224,7 +224,10 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
      * @param settings - All settings resolved so far, respecting `readDependencies` ordering.
      * @returns `true` to keep the stored value, `false` to fall back to`getDefault`.
      */
-    isValid?: (series: Series, settings: FinalSettings<TSettings>) => boolean;
+    isValid?: (
+      series: Series,
+      settings: CustomVisualizationSettings<TSettings>,
+    ) => boolean;
 
     /**
      * Computes the default value for this setting when no stored value exists,
@@ -241,7 +244,7 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
      */
     getDefault?: (
       series: Series,
-      settings: FinalSettings<TSettings>,
+      settings: CustomVisualizationSettings<TSettings>,
     ) => TSettings[Key];
 
     /**
@@ -266,7 +269,7 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
       ? never
       : (
           series: Series,
-          vizSettings: FinalSettings<TSettings>,
+          vizSettings: CustomVisualizationSettings<TSettings>,
         ) => PropsFromWidget<W>;
 
     /**
@@ -288,7 +291,7 @@ export type CreateDefineSetting<TSettings extends Record<string, unknown>> =
      */
     getValue?: (
       series: Series,
-      settings: FinalSettings<TSettings>,
+      settings: CustomVisualizationSettings<TSettings>,
     ) => TSettings[Key];
   }) => CustomVisualizationSettingDefinition<TSettings>;
 

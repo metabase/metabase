@@ -5,7 +5,7 @@ import type { TextHeightMeasurer, TextWidthMeasurer } from "./measure-text";
 import type {
   CreateDefineSetting,
   CustomVisualizationSettingDefinition,
-  FinalSettings,
+  CustomVisualizationSettings,
 } from "./viz-settings";
 
 /**
@@ -79,7 +79,7 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
    */
   checkRenderable: (
     series: Series,
-    settings: FinalSettings<TSettings>,
+    settings: CustomVisualizationSettings<TSettings>,
   ) => void | never;
 
   /**
@@ -95,11 +95,16 @@ export type CustomVisualization<TSettings extends Record<string, unknown>> = {
   >;
 };
 
-export type BaseWidgetProps<TValue, TSettings> = {
+export type BaseWidgetProps<
+  TValue,
+  TSettings extends Record<string, unknown>,
+> = {
   id: string;
   value: TValue | undefined;
   onChange: (value?: TValue | null) => void;
-  onChangeSettings: (settings: Partial<TSettings>) => void;
+  onChangeSettings: (
+    settings: Partial<CustomVisualizationSettings<TSettings>>,
+  ) => void;
 };
 
 export type VisualizationGridSize = {
@@ -123,9 +128,11 @@ export type CustomVisualizationProps<
 
   series: Series;
 
-  settings: FinalSettings<TSettings>;
+  settings: CustomVisualizationSettings<TSettings>;
 
-  onClick: (clickObject: ClickObject<FinalSettings<TSettings>> | null) => void;
+  onClick: (
+    clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
+  ) => void;
 
   onHover: (hoverObject?: HoverObject | null) => void;
 };
@@ -141,11 +148,13 @@ export interface RenderingContext {
 }
 
 // Equivalent of StaticVisualizationProps
-export type CustomStaticVisualizationProps<TSettings> = {
+export type CustomStaticVisualizationProps<
+  TSettings extends Record<string, unknown>,
+> = {
   series: Series;
   renderingContext: RenderingContext;
   isStorybook?: boolean;
-  settings: TSettings;
+  settings: CustomVisualizationSettings<TSettings>;
   hasDevWatermark?: boolean;
 };
 
@@ -157,7 +166,7 @@ export type ClickObject<TSettings extends Record<string, unknown>> = {
   element?: Element;
   // seriesIndex?: number;
   // cardId?: CardId;
-  settings?: FinalSettings<TSettings>;
+  settings?: CustomVisualizationSettings<TSettings>;
   // columnShortcuts?: boolean;
   origin?: {
     row: RowValue[];
