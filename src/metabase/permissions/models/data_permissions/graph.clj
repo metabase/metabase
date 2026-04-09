@@ -389,9 +389,9 @@
   impersonations and sandboxes are consistent if necessary."
   ([graph-updates :- api.permission-graph/DataPermissionsGraph]
    (when (seq graph-updates)
-     (let [group-updates (:groups graph-updates)]
-       (check-audit-db-permissions group-updates)
-       (t2/with-transaction [_conn]
+     (data-perms/with-global-permissions-lock
+       (let [group-updates (:groups graph-updates)]
+         (check-audit-db-permissions group-updates)
          (update-data-perms-graph!* group-updates)
          (delete-impersonations-if-needed-after-permissions-change! group-updates)
          (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
