@@ -85,6 +85,5 @@ clj -X:dev:test:ee:ee-dev :module enterprise/checker
 - **`checker.format.serdes`** — serdes directory walking, YAML extraction, file index building, `SerdesSource` implementation
 - **`checker.source`** — `MetadataSource` protocol and `CompositeSource` for combining db and card sources
 - **`checker.store`** — mutable state: file index, bidirectional ID registry, entity caches. Loads entities lazily from the source
-- **`checker.semantic`** — the bridge. Converts YAML entities to lib metadata, builds a `MetadataProvider`, runs structural checks, delegates query validation to `deps.analysis/check-entity`, formats results
-- **`checker.native`** — standalone SQL utilities (ref extraction, structural validation). Not called by the checker pipeline; `deps.analysis` handles query validation internally
+- **`checker.semantic`** — converts YAML entities to lib metadata, builds a `MetadataProvider`, runs structural checks, delegates query validation to `deps.analysis/check-entity`, formats results
 - **`checker.cli`** — CLI entrypoint and argument parsing

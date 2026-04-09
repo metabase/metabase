@@ -101,7 +101,7 @@
 (defn entrypoint
   "Main entrypoint for checker mode. Receives raw args. Intended to enter from
   metabase.core.bootstrap/run-standalone-mode so that it can skip loading everything that
-  metabase.core.core/entrypoint loads. This entrypoint owns the process and will call S"
+  metabase.core.core/entrypoint loads. This entrypoint owns the process and will call System/exit."
   [args]
   (let [{:keys [options errors summary]} (cli/parse-opts args cli-spec)
         {:keys [export help]} options]
