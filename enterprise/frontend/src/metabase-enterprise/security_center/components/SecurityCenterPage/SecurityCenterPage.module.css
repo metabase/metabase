@@ -27,20 +27,6 @@
   }
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.syncing {
-  animation: spin 1s linear infinite;
-}
-
 .content {
   flex: 1;
   min-height: 0;

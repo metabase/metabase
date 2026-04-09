@@ -5,7 +5,16 @@ import { useSyncSecurityAdvisoriesMutation } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { Box, Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import { trackSecurityCenterPageViewed } from "../../analytics";
 import {
@@ -136,10 +145,7 @@ export function SecurityCenterPage() {
             <Button
               variant="subtle"
               leftSection={
-                <Icon
-                  name="sync"
-                  className={isSyncInProgress ? S.syncing : undefined}
-                />
+                isSyncInProgress ? <Loader size="1rem" /> : <Icon name="sync" />
               }
               onClick={handleSync}
               disabled={isSyncInProgress}
