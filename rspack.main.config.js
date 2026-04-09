@@ -2,15 +2,14 @@
 /* eslint-env node */
 
 const fs = require("fs");
-const zlib = require("zlib");
 
 const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
-
-// TODO(romeovs): Use compression-rspack-plugin once the configs are using ES modules
-const CompressionPlugin = require("compression-webpack-plugin");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
 
 const {
   IS_DEV_MODE,
@@ -305,29 +304,7 @@ const config = {
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
-    ...(isDevMode
-      ? []
-      : [
-          new CompressionPlugin({
-            algorithm: "gzip",
-            test: /\.(js|css)$/,
-            filename: "[path][base].gz",
-            compressionOptions: {
-              level: 9,
-            },
-          }),
-          new CompressionPlugin({
-            algorithm: "brotliCompress",
-            test: /\.(js|css)$/,
-            filename: "[path][base].br",
-            compressionOptions: {
-              // @ts-expect-error
-              params: {
-                [zlib.constants.BROTLI_PARAM_QUALITY]: 11,
-              },
-            },
-          }),
-        ]),
+    ...COMPRESSION_CONFIG,
   ],
 };
 

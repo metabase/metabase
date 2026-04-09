@@ -7,6 +7,10 @@ const {
   CopyJsFromTmpDirectoryPlugin,
 } = require("./frontend/build/shared/rspack/copy-js-from-tmp-directory-plugin");
 
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
+
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
@@ -77,6 +81,7 @@ module.exports = {
       copySourceMap: false,
       cleanupInDevMode: true,
     }),
+    ...COMPRESSION_CONFIG,
   ],
   resolve: {
     extensions: [".js", ".ts"],
