@@ -728,6 +728,15 @@
   [normalized-query]
   (columns->predicted-fields (lib/returned-columns normalized-query)))
 
+(defn- find-table-by-name
+  "Look up a table by name (case-insensitive) in the metadata provider."
+  [metadata-provider table-name]
+  (some (fn [t]
+          (when (= (u/lower-case-en (:name t))
+                   (u/lower-case-en table-name))
+            t))
+        (lib.metadata/tables metadata-provider)))
+
 (defn- resolve-returned-field-type
   "Given a returned field spec from sql-parsing field-references, resolve its base type
   by looking up the source column via the metadata provider. Returns `:type/*` for computed fields."
@@ -742,28 +751,60 @@
                                           source-chain))
                                   (:source-columns field-spec))]
       (if source-table-name
-        (let [tables       (lib.metadata/tables metadata-provider)
-              source-table (some (fn [t]
-                                   (when (= (u/lower-case-en (:name t))
-                                            (u/lower-case-en source-table-name))
-                                     t))
-                                 tables)]
-          (if source-table
-            (let [fields (lib.metadata/fields metadata-provider (:id source-table))
-                  field  (some (fn [f]
-                                 (when (= (u/lower-case-en (:name f))
-                                          (u/lower-case-en col-name))
-                                   f))
-                               fields)]
-              (or (:base-type field) :type/*))
-            :type/*))
+        (if-let [source-table (find-table-by-name metadata-provider source-table-name)]
+          (let [fields (lib.metadata/fields metadata-provider (:id source-table))
+                field  (some (fn [f]
+                               (when (= (u/lower-case-en (:name f))
+                                        (u/lower-case-en col-name))
+                                 f))
+                             fields)]
+            (or (:base-type field) :type/*))
+          :type/*)
         :type/*))
     :type/*))
+
+(defn- expand-all-columns
+  "Expand an `:all-columns` field-spec (i.e. `SELECT *` or `SELECT t.*`) into individual
+  field entries by looking up the table's fields in the metadata provider.
+  Returns a sequence of maps with `:name` and `:base-type`, or nil if the table can't be resolved."
+  [field-spec metadata-provider]
+  (when-let [table-name (get-in field-spec [:table :table])]
+    (when-let [table (find-table-by-name metadata-provider table-name)]
+      (let [fields (lib.metadata/fields metadata-provider (:id table))]
+        (->> fields
+             (filter :active)
+             (sort-by :position)
+             (mapv (fn [f]
+                     {:name      (:name f)
+                      :base-type (or (:base-type f) :type/*)})))))))
+
+(defn- expand-returned-fields
+  "Process returned-fields from sql-parsing, expanding any `:all-columns` specs into
+  individual field entries. Returns a flat sequence of maps with `:name` and `:base-type`."
+  [returned-fields metadata-provider driver]
+  (into []
+        (mapcat (fn [field-spec]
+                  (case (:type field-spec)
+                    :all-columns
+                    (or (expand-all-columns field-spec metadata-provider)
+                        ;; If we can't resolve the table, skip — we can't predict field names
+                        [])
+                    ;; For single-column, custom-field, etc., keep as-is with resolved type
+                    (let [raw-name  (or (:alias field-spec) (:column field-spec))
+                          col-name  (when raw-name (sql.normalize/normalize-name driver raw-name))
+                          base-type (resolve-returned-field-type field-spec metadata-provider)]
+                      (when col-name
+                        [{:name col-name :base-type base-type}])))))
+        returned-fields))
 
 (defn- predict-native-fields
   "Predict fields for a native SQL query using sql-parsing field-references.
   Parses the SQL to determine returned column names and resolves their types
   by looking up source columns in the appdb.
+
+  Handles `SELECT *` by expanding the wildcard against the table's known fields
+  from the metadata provider. This works even for chained transforms because
+  serdes imports dependencies first, so upstream transform fields are already seeded.
 
   Column names are normalized using the driver's casing rules (e.g., lowercase for Postgres,
   uppercase for Snowflake) so that seeded field names match what the physical database will
@@ -774,20 +815,18 @@
     (when driver
       (let [sql             (lib/raw-native-query normalized-query)
             dialect         (sql-parsing/driver->dialect driver)
-            {:keys [returned-fields]} (sql-parsing/field-references dialect sql)]
+            {:keys [returned-fields]} (sql-parsing/field-references dialect sql)
+            expanded (expand-returned-fields returned-fields normalized-query driver)]
         (into []
               (map-indexed
-               (fn [position field-spec]
-                 (let [raw-name  (or (:alias field-spec) (:column field-spec))
-                       col-name  (sql.normalize/normalize-name driver raw-name)
-                       base-type (resolve-returned-field-type field-spec normalized-query)]
-                   {:name           col-name
-                    :display-name   (humanization/name->human-readable-name col-name)
-                    :base-type      base-type
-                    :effective-type base-type
-                    :semantic-type  nil
-                    :position       position})))
-              returned-fields)))))
+               (fn [position {:keys [name base-type]}]
+                 {:name           name
+                  :display-name   (humanization/name->human-readable-name name)
+                  :base-type      base-type
+                  :effective-type base-type
+                  :semantic-type  nil
+                  :position       position}))
+              expanded)))))
 
 (defn predict-target-fields
   "Predict what fields a transform's target table will have, based on its source.
