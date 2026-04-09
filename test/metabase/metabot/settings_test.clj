@@ -161,4 +161,3 @@
         (is (= "metabase/anthropic/claude-sonnet-4" (metabot.settings/llm-metabot-provider))))
       (mt/with-temporary-setting-values [llm-metabot-provider "metabase/openrouter/anthropic/claude-haiku-4-5"]
         (is (= "metabase/openrouter/anthropic/claude-haiku-4-5" (metabot.settings/llm-metabot-provider)))))))
-
