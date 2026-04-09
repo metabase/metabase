@@ -1,11 +1,7 @@
+import type { AddOnProductType } from "./store";
+
 export interface PurchaseCloudAddOnRequest {
-  product_type:
-    | "metabase-ai"
-    | "metabase-ai-tiered"
-    | "metabase-ai-managed"
-    | "python-execution"
-    | "transforms-basic-metered"
-    | "transforms-advanced";
+  product_type: AddOnProductType;
   quantity?: number;
   terms_of_service?: boolean;
 }

@@ -9,6 +9,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { AddOnProductType } from "metabase-types/api/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { useTransformsBilling } from "./useTransformsBilling";
@@ -23,7 +24,7 @@ type SetupOpts = {
   hasBasicTransformsAddOn?: boolean;
   hasAdvancedTransformsAddOn?: boolean;
   previousAddOns?: Array<{
-    product_type: string;
+    product_type: AddOnProductType;
     self_service: boolean;
   }>;
 };
@@ -169,7 +170,7 @@ describe("useTransformsBilling", () => {
     it("should return hadTransforms=false when previous transforms add-on is not self-service", async () => {
       const { result } = setup({
         previousAddOns: [
-          { product_type: "transforms-basic", self_service: false },
+          { product_type: "transforms-basic-metered", self_service: false },
         ],
       });
 

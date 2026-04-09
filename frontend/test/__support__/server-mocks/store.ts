@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 import { match } from "ts-pattern";
 
 import { createMockCloudAddOns } from "metabase-types/api/mocks/add-ons";
+import type { AddOnProductType } from "metabase-types/api/store";
 
 export function setupBillingEndpoints({
   billingPeriodMonths = 12,
@@ -21,7 +22,7 @@ export function setupBillingEndpoints({
   transformsAdvancedPrice?: number;
   trialDays?: number;
   previousAddOns?: Array<{
-    product_type: string;
+    product_type: AddOnProductType;
     self_service: boolean;
   }>;
 } = {}) {
