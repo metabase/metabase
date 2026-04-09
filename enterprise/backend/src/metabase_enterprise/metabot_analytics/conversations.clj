@@ -69,7 +69,7 @@
    :message_count           (:message_count row)
    :user_message_count      (:user_message_count row)
    :assistant_message_count (:assistant_message_count row)
-   :total_tokens            (:total_tokens row)
+   :total_tokens            (long (:total_tokens row 0))
    :last_message_at         (:last_message_at row)
    :model                   (:model row)
    :user                    (trim-user (:user row))})
