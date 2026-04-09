@@ -287,18 +287,11 @@ export async function loadCustomVizPlugin(
       width: number | null;
       height: number | null;
     }) =>
-      React.createElement(
-        "div",
-        {
-          "data-testid": "custom-viz-container",
-          style: { width: "100%", height: "100%" },
-        },
-        React.createElement(vizDef.VisualizationComponent, {
-          ...rest,
-          onClick: onVisualizationClick,
-          onHover: onHoverChange,
-        }),
-      );
+      React.createElement(vizDef.VisualizationComponent, {
+        ...rest,
+        onClick: onVisualizationClick,
+        onHover: onHoverChange,
+      });
 
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(

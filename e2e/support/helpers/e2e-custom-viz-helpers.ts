@@ -1,5 +1,7 @@
 import type { CustomVizPlugin } from "metabase-types/api";
 
+import { addCustomVizPlugin } from "./api";
+
 export const CUSTOM_VIZ_REPO_PATH =
   Cypress.config("projectRoot") + "/e2e/tmp/custom-viz-repo";
 
@@ -13,7 +15,7 @@ export const CUSTOM_VIZ_FIXTURE_PATH =
 export const CUSTOM_VIZ_IDENTIFIER = "custom-viz-repo";
 
 // Frontend display type: "custom:{identifier}"
-export const CUSTOM_VIZ_DISPLAY = `custom:${CUSTOM_VIZ_IDENTIFIER}`;
+export const CUSTOM_VIZ_DISPLAY = "custom:" + CUSTOM_VIZ_IDENTIFIER;
 
 // Second repo for multi-plugin tests
 export const CUSTOM_VIZ_REPO_PATH_2 =
@@ -71,31 +73,13 @@ export function setupCustomVizRepo2() {
 }
 
 /**
- * Register a custom viz plugin via API (fast path).
- * The backend clone is synchronous — returns the plugin with status.
- */
-export function addCustomVizPlugin(
-  repoUrl = CUSTOM_VIZ_REPO_URL,
-  accessToken?: string,
-  pinnedVersion?: string,
-): Cypress.Chainable<CustomVizPlugin> {
-  return cy
-    .request<CustomVizPlugin>("POST", "/api/ee/custom-viz-plugin", {
-      repo_url: repoUrl,
-      access_token: accessToken,
-      pinned_version: pinnedVersion,
-    })
-    .then(({ body }) => body);
-}
-
-/**
  * Setup local repo + register plugin in one call.
  * This is the most common beforeEach pattern for tests
  * that need a working plugin but don't test the install flow.
  */
 export function setupCustomVizPlugin(): Cypress.Chainable<CustomVizPlugin> {
   setupCustomVizRepo();
-  return addCustomVizPlugin();
+  return addCustomVizPlugin(CUSTOM_VIZ_REPO_URL);
 }
 
 // -- Intercept helpers --
@@ -120,26 +104,6 @@ export function interceptPluginRefresh() {
 
 export function waitForPluginBundle() {
   return cy.wait("@pluginBundle");
-}
-
-// -- Plugin management helpers --
-
-export function removeAllCustomVizPlugins() {
-  cy.request<CustomVizPlugin[]>("GET", "/api/ee/custom-viz-plugin").then(
-    ({ body: plugins }) => {
-      for (const plugin of plugins) {
-        cy.request("DELETE", `/api/ee/custom-viz-plugin/${plugin.id}`);
-      }
-    },
-  );
-}
-
-export function refreshCustomVizPlugin(
-  id: number,
-): Cypress.Chainable<CustomVizPlugin> {
-  return cy
-    .request<CustomVizPlugin>("POST", `/api/ee/custom-viz-plugin/${id}/refresh`)
-    .then(({ body }) => body);
 }
 
 /**
@@ -173,4 +137,10 @@ export function visitCustomVizDevelopment() {
 
 export function visitCustomVizEditForm(id: number) {
   cy.visit(`/admin/settings/custom-visualizations/edit/${id}`);
+}
+
+// -- UI helpers --
+
+export function getAddVisualizationLink() {
+  return cy.findByRole("link", { name: /Add visualization/ });
 }

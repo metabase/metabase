@@ -45,22 +45,18 @@ var __customVizPlugin__ = (function () {
         StaticVisualizationComponent: a(e),
       }
     ),
-    i = (t) => (t) => {
-      let { height: n, series: r, settings: i, width: a } = t,
-        { threshold: o } = i,
-        s = r[0].data.rows[0][0];
-      if (typeof s != `number` || typeof o != `number`)
+    i = (t) => (props) => {
+      let { series, settings } = props,
+        { threshold: threshold } = settings,
+        value = series[0].data.rows[0][0];
+      if (typeof value != `number` || typeof threshold != `number`)
         throw Error(`Value and threshold need to be numbers`);
       return e(`div`, {
-        style: {
-          display: `flex`,
-          justifyContent: `center`,
-          alignItems: `center`,
-          width: a,
-          height: n,
-          fontSize: `10rem`,
-        },
-        children: s >= o ? `👍` : `👎`,
+        children: [
+          e(`h1`, { children: `Custom viz rendered successfully` }),
+          e(`div`, { children: `Threshold: ${threshold}` }),
+          e(`div`, { children: `Value: ${value}` }),
+        ],
       });
     },
     a = (t) => (n) => {
@@ -70,18 +66,11 @@ var __customVizPlugin__ = (function () {
       if (typeof o != `number` || typeof a != `number`)
         throw Error(`Value and threshold need to be numbers`);
       return e(`div`, {
-        style: {
-          display: `flex`,
-          justifyContent: `center`,
-          alignItems: `center`,
-          width: 540,
-          height: 360,
-          fontSize: `10rem`,
-        },
-        children:
-          o >= a
-            ? e(`img`, { src: t(`thumbs-up.png`) })
-            : e(`img`, { src: t(`thumbs-down.png`) }),
+        children: [
+          e(`h1`, { children: `Custom viz rendered successfully` }),
+          e(`div`, { children: `Threshold: ${threshold}` }),
+          e(`div`, { children: `Value: ${value}` }),
+        ],
       });
     };
   return r;

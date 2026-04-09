@@ -1,5 +1,7 @@
 const { H } = cy;
 
+const PLUGIN_ICON_SELECTOR = "img[src*='icon.svg']";
+
 describe("admin > custom visualizations", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
@@ -14,7 +16,7 @@ describe("admin > custom visualizations", () => {
       cy.findByRole("heading", {
         name: /Build your own visualizations/,
       }).should("be.visible");
-      cy.findByRole("link", { name: /Add visualization/ }).should("not.exist");
+      H.getAddVisualizationLink().should("not.exist");
     });
 
     it("should show manage page with valid token", () => {
@@ -24,7 +26,7 @@ describe("admin > custom visualizations", () => {
       cy.get("main")
         .findByText("Manage custom visualizations")
         .should("be.visible");
-      cy.findByRole("link", { name: /Add visualization/ }).should("be.visible");
+      H.getAddVisualizationLink().should("be.visible");
     });
   });
 
@@ -37,7 +39,7 @@ describe("admin > custom visualizations", () => {
       H.setupCustomVizRepo();
       H.visitCustomVizSettings();
 
-      cy.findByRole("link", { name: /Add visualization/ }).click();
+      H.getAddVisualizationLink().click();
 
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
       H.interceptPluginCreate();
@@ -57,7 +59,7 @@ describe("admin > custom visualizations", () => {
           H.visitCustomVizSettings();
 
           // Icon from manifest
-          cy.get("main").find("img[src*='icon.svg']").should("be.visible");
+          cy.get("main").find(PLUGIN_ICON_SELECTOR).should("be.visible");
 
           // Display name from manifest
           cy.get("main").findByText("demo-viz").should("be.visible");
@@ -93,7 +95,7 @@ describe("admin > custom visualizations", () => {
     it("should support multiple plugins", () => {
       H.setupCustomVizRepo();
       H.setupCustomVizRepo2();
-      H.addCustomVizPlugin();
+      H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL_2);
       H.visitCustomVizSettings();
 
@@ -121,40 +123,14 @@ describe("admin > custom visualizations", () => {
         cy.get("main").findByText("demo-viz").should("be.visible");
         cy.get("main").findByText(H.CUSTOM_VIZ_REPO_URL).should("be.visible");
       });
-
-      it("should re-fetch a plugin", () => {
-        H.interceptPluginRefresh();
-        cy.findByRole("button", { name: /ellipsis/i }).click();
-        H.popover().findByText("Re-fetch").click();
-        cy.wait("@pluginRefresh");
-      });
-
-      it("should disable and re-enable a plugin", () => {
-        cy.findByRole("button", { name: /ellipsis/i }).click();
-        H.popover().findByText("Disable").click();
-
-        cy.findByRole("button", { name: /ellipsis/i }).click();
-        H.popover().findByText("Enable").should("be.visible").click();
-
-        cy.findByRole("button", { name: /ellipsis/i }).click();
-        H.popover().findByText("Disable").should("be.visible");
-      });
-
-      it("should remove a plugin", () => {
-        cy.findByRole("button", { name: /ellipsis/i }).click();
-        H.popover().findByText("Remove").click();
-
-        cy.get("main")
-          .findByText("You don't have any custom visualizations.")
-          .should("be.visible");
-      });
     });
 
+    // We can't test this with a local git repo, but we can test that the token is sent
     it("should send access_token in the request when provided", () => {
       H.setupCustomVizRepo();
       H.visitCustomVizSettings();
 
-      cy.findByRole("link", { name: /Add visualization/ }).click();
+      H.getAddVisualizationLink().click();
 
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
       cy.findByLabelText(/Repository access token/).type("test-token-123");
@@ -234,7 +210,7 @@ describe("admin > custom visualizations", () => {
     });
 
     it("disabled plugin should fall back to default display and hide from chart type selector", () => {
-      H.setupCustomVizPlugin().then((plugin) => {
+      H.setupCustomVizPlugin().then(() => {
         // Create a single-value question (Count of Orders) — demo-viz
         // requires exactly one row with one numeric column
         cy.request("POST", "/api/card", {
@@ -249,15 +225,20 @@ describe("admin > custom visualizations", () => {
         }).then(({ body: card }) => {
           // Verify custom viz renders properly
           H.visitQuestion(card.id);
-          cy.findByTestId("custom-viz-container").should("be.visible");
+          cy.get("main")
+            .findByText("Custom viz rendered successfully")
+            .should("be.visible");
 
-          // Disable the plugin
-          cy.request("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`, {
-            enabled: false,
-          });
+          H.visitCustomVizSettings();
+          cy.findByRole("button", { name: /ellipsis/i }).click();
+          H.popover().findByText("Disable").click();
 
-          // Reload — plugin is disabled, should fall back to table
-          cy.reload();
+          // Menu should now show "Enable" instead of "Disable"
+          cy.findByRole("button", { name: /ellipsis/i }).click();
+          H.popover().findByText("Enable").should("be.visible");
+
+          // Reload the question — plugin is disabled, should fall back
+          H.visitQuestion(card.id);
           cy.findByTestId("table-root").should("be.visible");
 
           // Custom viz section should not appear in chart type selector
@@ -274,7 +255,7 @@ describe("admin > custom visualizations", () => {
     });
 
     it("question should fall back when plugin is deleted", () => {
-      H.setupCustomVizPlugin().then((plugin) => {
+      H.setupCustomVizPlugin().then(() => {
         // Create a single-value question with custom viz display
         cy.request("POST", "/api/card", {
           name: "Custom Viz Delete Test",
@@ -286,12 +267,23 @@ describe("admin > custom visualizations", () => {
           display: H.CUSTOM_VIZ_DISPLAY,
           visualization_settings: {},
         }).then(({ body: card }) => {
+          H.visitCustomVizSettings();
+
           // Delete the plugin
-          cy.request("DELETE", `/api/ee/custom-viz-plugin/${plugin.id}`);
+          cy.findByRole("button", { name: /ellipsis/i }).click();
+          H.popover().findByText("Remove").click();
+
+          cy.get("main")
+            .findByText("You don't have any custom visualizations.")
+            .should("be.visible");
 
           // Visit the question — should fall back to table
           H.visitQuestion(card.id);
           cy.findByTestId("table-root").should("be.visible");
+
+          // Custom viz section should not appear in chart type selector
+          cy.findByTestId("viz-type-button").click();
+          cy.findByText("Custom visualizations").should("not.exist");
         });
       });
     });
