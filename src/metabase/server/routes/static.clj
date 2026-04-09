@@ -6,26 +6,19 @@
    and lets us use higher compression levels during the build."
   (:require
    [clojure.string :as str]
+   [ring.util.mime-type :as mime]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private compressible-file-extensions
+(def ^:private compressible-content-types
   "Content types for which we look for pre-compressed variants."
   #{"application/javascript" "text/javascript" "text/css"})
-
-(defn- extension->content-type
-  "Map file extension to content type. Only covers the types we pre-compress."
-  [path]
-  (cond
-    (str/ends-with? path ".js")  "application/javascript"
-    (str/ends-with? path ".css") "text/css"
-    :else                        nil))
 
 (defn- compressible-resource?
   "Returns true if the resource at `path` is compressible."
   [resource-path]
-  (compressible-content-types (extension->content-type resource-path)))
+  (compressible-content-types (mime/ext-mime-type resource-path)))
 
 (defn- accepts-encoding?
   "Returns true if the request Accept-Encoding header includes `encoding`."
