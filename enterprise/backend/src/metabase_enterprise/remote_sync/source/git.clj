@@ -14,8 +14,8 @@
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
-   (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref)
-   (org.eclipse.jgit.revwalk RevCommit RevWalk)
+   (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref Repository)
+   (org.eclipse.jgit.revwalk RevCommit RevTree RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
                                RemoteRefUpdate$Status UsernamePasswordCredentialsProvider)
    (org.eclipse.jgit.treewalk TreeWalk)))
@@ -208,6 +208,76 @@
       (let [loader (.open repo object-id)]
         (String. (.getBytes loader) "UTF-8")))))
 
+(defn- tree-diff
+  "Returns a map of {:updated #{paths} :deleted #{paths}} for files that differ between two trees.
+  :updated contains files that were added or modified in new-tree, :deleted contains files
+  that exist in old-tree but not in new-tree."
+  [^Repository repo ^RevTree old-tree ^RevTree new-tree]
+  (with-open [tw (TreeWalk. repo)]
+    (.addTree tw old-tree)
+    (.addTree tw new-tree)
+    (.setRecursive tw true)
+    (loop [updated #{} deleted #{}]
+      (if (.next tw)
+        (let [path (.getPathString tw)]
+          (if (not= (.getObjectId tw 0) (.getObjectId tw 1))
+            (if (= (.getFileMode tw 1) FileMode/MISSING)
+              (recur updated (conj deleted path))
+              (recur (conj updated path) deleted))
+            (recur updated deleted)))
+        {:updated updated :deleted deleted}))))
+
+(defn- apply-working-tree-updates!
+  "Checks out updated files from HEAD and removes deleted files in a local repo's working tree."
+  [^Git repo-git updated-paths deleted-paths]
+  (when (seq updated-paths)
+    (let [checkout (doto (.checkout repo-git)
+                     (.setStartPoint "HEAD")
+                     (.setForced true))]
+      (doseq [path updated-paths]
+        (.addPath checkout path))
+      (.call checkout)))
+  (when (seq deleted-paths)
+    (let [rm (.rm repo-git)]
+      (doseq [path deleted-paths]
+        (.addFilepattern rm path))
+      (.call rm)))
+  (when (or (seq updated-paths) (seq deleted-paths))
+    (log/info "Synced local repo working tree to HEAD after push")))
+
+(defn- sync-local-repo!
+  "After pushing to a local file:// repo, syncs its index and working tree to HEAD.
+
+  When pushing to a non-bare local repo's checked-out branch, git updates the ref but not
+  the index or working tree, causing `git status` to show phantom staged deletions.
+
+  Computes the files changed by the push (diff between parent and HEAD), then selectively
+  checks out added/modified files and removes deleted files — skipping any that the user
+  has locally modified in the working tree. This preserves both staged and unstaged local
+  changes."
+  [^String remote-url ^String branch]
+  (let [url-path (-> (URI. remote-url) (.getPath) (io/file))
+        ;; The URL may point to the .git directory; Git/open needs the working tree root
+        repo-dir (if (= ".git" (.getName url-path)) (.getParentFile url-path) url-path)
+        repo-git (Git/open repo-dir)
+        repo     (.getRepository repo-git)]
+    (try
+      (when (and (not (.isBare repo))
+                 (= (.getBranch repo)
+                    (str/replace-first branch "refs/heads/" "")))
+        (with-open [rw (RevWalk. repo)]
+          (let [head-commit (.parseCommit rw (.resolve repo "HEAD"))]
+            (when (pos? (.getParentCount head-commit))
+              (let [parent-tree      (.getTree (.parseCommit rw (.getId (.getParent head-commit 0))))
+                    head-tree        (.getTree head-commit)
+                    {:keys [updated deleted]} (tree-diff repo parent-tree head-tree)
+                    locally-modified (into #{} (.getModified (.call (.status repo-git))))]
+                (apply-working-tree-updates! repo-git
+                                             (remove locally-modified updated)
+                                             (remove locally-modified deleted)))))))
+      (finally
+        (.close repo-git)))))
+
 (defn push-branch!
   "Pushes a local branch to the remote repository.
 
@@ -229,6 +299,8 @@
 
     (when-let [failures (seq (remove #(#{RemoteRefUpdate$Status/OK RemoteRefUpdate$Status/UP_TO_DATE} %) (map #(.getStatus ^RemoteRefUpdate %) push-results)))]
       (throw (ex-info (str "Failed to push branch " branch-name " to remote") {:failures failures})))
+    (when (str/starts-with? (:remote-url git-source) "file:")
+      (sync-local-repo! (:remote-url git-source) branch-name))
     push-response))
 
 (defn- top-level-dir
