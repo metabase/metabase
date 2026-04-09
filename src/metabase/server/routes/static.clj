@@ -26,17 +26,21 @@
   (some-> (get-in request [:headers "accept-encoding"])
           (str/includes? encoding)))
 
+(defn- compressed-path
+  "Returns the path of the pre-compressed artifact for a given encoding."
+  [resource-path encoding]
+  (str resource-path "." encoding))
+
 (defn- try-compressed-response
   "Try to serve a pre-compressed variant of `resource-path`. Returns a Ring
    response map if a compressed variant exists and the client accepts it,
    otherwise nil."
   [request resource-path encoding]
   (when (accepts-encoding? request encoding)
-    (when-let [resp (response/resource-response (str resource-path "." encoding))]
-      (-> resp
-          (response/content-type content-type)
-          (assoc-in [:headers "Content-Encoding"] encoding)
-          (assoc-in [:headers "Vary"] "Accept-Encoding")))))
+    (some-> (response/resource-response (compressed-path resource-path encoding))
+            (response/content-type (mime/ext-mime-type resource-path))
+            (assoc-in [:headers "Content-Encoding"] encoding)
+            (assoc-in [:headers "Vary"] "Accept-Encoding"))))
 
 (defn- serve-resource
   "Serve a static resource, preferring pre-compressed variants when available."
