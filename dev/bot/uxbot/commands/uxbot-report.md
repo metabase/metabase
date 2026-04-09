@@ -39,9 +39,9 @@ Generate a UX testing report based on the tasks you've worked on in this session
    - Example: `.uxbot/report-20260327-153000-create-question-and-dashboard.md`
    - Use relative paths for screenshot references (e.g., `screenshots/filename.png` relative to `.uxbot/`).
 
-6. **Generate PDF**: Run pandoc **from the `.uxbot/` directory** so relative screenshot paths resolve correctly:
+6. **Generate PDF**: Run `md-to-pdf` **from the `.uxbot/` directory** so relative screenshot paths resolve correctly:
    ```
-   cd .uxbot && pandoc report-<timestamp>-<slug>.md -o report-<timestamp>-<slug>.pdf --pdf-engine=weasyprint
+   cd .uxbot && npx -y md-to-pdf report-<timestamp>-<slug>.md
    ```
 
 7. **Present a brief summary** to the user with **full absolute paths** to both the markdown and PDF reports (use `pwd` to get the worktree root, e.g., `/Users/.../metabase-4__worktrees/uxbot-master/.uxbot/report-...-slug.pdf`).

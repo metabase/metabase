@@ -770,6 +770,35 @@
    :arg-schema [:tuple [:string {:name "issue-id"}]]
    :task (task! (bot-linear/print-issue! parsed))}
 
+  -bot-server-info
+  {:doc "Print server configuration (ports, config file, users, API keys) for bot agents"
+   :examples [["./bin/mage -bot-server-info" "Show server info"]]
+   :requires [[mage.bot.server-info :as server-info]]
+   :task (task! (server-info/server-info! parsed))}
+
+  -bot-api-call
+  {:doc "Make an API call to the local Metabase instance"
+   :examples [["./bin/mage -bot-api-call /api/health" "Health check"]
+              ["./bin/mage -bot-api-call /api/card --api-key mb_admin_apikey" "List cards as admin"]
+              ["./bin/mage -bot-api-call /api/card --method POST --api-key mb_admin_apikey --body '{\"dataset_query\":{}}'" "Create a card"]]
+   :requires [[mage.bot.api-call :as api-call]]
+   :arg-schema [:tuple [:string {:name "api-path"}]]
+   :options [[nil "--method METHOD" "HTTP method (GET, POST, PUT, DELETE)" :default "GET"]
+             [nil "--api-key KEY" "API key for x-api-key header"]
+             [nil "--body JSON" "JSON request body"]
+             [nil "--pretty BOOL" "Pretty-print JSON (default true)" :default "true"]]
+   :task (task! (api-call/api-call! parsed))}
+
+  -bot-git-readonly
+  {:doc "Execute a git or gh command only if it's a read-only operation"
+   :examples [["./bin/mage -bot-git-readonly git log --oneline -10" "View recent commits"]
+              ["./bin/mage -bot-git-readonly git diff origin/master...HEAD" "View branch diff"]
+              ["./bin/mage -bot-git-readonly gh pr view --json title,body" "View current PR"]
+              ["./bin/mage -bot-git-readonly gh pr list" "List open PRs"]]
+   :requires [[mage.bot.git-readonly :as git-readonly]]
+   ;; Bypass task! macro — args are passed through raw to git/gh, not parsed by tools.cli
+   :task (git-readonly/git-readonly! {:arguments (vec *command-line-args*)})}
+
   ;;; QABot tasks
 
   qabot-go

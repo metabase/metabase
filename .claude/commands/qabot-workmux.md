@@ -9,8 +9,6 @@ Verify these are available by running each check (stop if any fail):
 - `docker info` — Docker is running
 - Check `MB_PREMIUM_EMBEDDING_TOKEN` env var is set
 - `npx -y @playwright/mcp --version` — Playwright MCP is available
-- `pandoc --version` — pandoc is installed
-- `weasyprint --version` — weasyprint is installed
 - Check `node_modules/` exists in the project root (run `bun install` if not)
 
 Optional (warn but continue if missing):

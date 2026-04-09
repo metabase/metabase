@@ -1,0 +1,10 @@
+MAIN_WORKTREE=$(git worktree list --porcelain | head -1 | sed 's/^worktree //')
+LOCAL_HOOK="$MAIN_WORKTREE/.husky/local/post-checkout"
+
+if [ -x "$LOCAL_HOOK" ]; then
+  echo "husky post-checkout: running $LOCAL_HOOK"
+  "$LOCAL_HOOK" "$@"
+  echo "husky post-checkout: finished (exit $?)"
+else
+  echo "husky post-checkout: no local hook at $LOCAL_HOOK, skipping"
+fi
