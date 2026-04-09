@@ -79,7 +79,8 @@
 
   ;; fall back to serving _all_ other files under /app, preferring
   ;; pre-compressed (.br, .gz) variants when the browser supports them
-  (static/precompressed-resources "/" {:root "frontend_client/app"}))
+  (static/precompressed-resources "/" {:root "frontend_client/app"})
+  (route/not-found {:status 404 :body "Not found."}))
 
 (mu/defn- api-handler :- ::api.macros/handler
   [api-routes :- ::api.macros/handler]
