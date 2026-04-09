@@ -184,7 +184,10 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("database")]),
+        invalidateTags(error, [
+          listTag("database"),
+          listTag("embedding-hub-checklist"),
+        ]),
     }),
     updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({
       query: ({ id, ...body }) => ({
