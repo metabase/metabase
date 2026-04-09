@@ -648,7 +648,7 @@
   x [:ref ::ExpressionArg])
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
-;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
+;; aligns with the corresponding MBQL 5 schema and with the reference docs we publish.
 (defclause concat
   a    [:ref ::ExpressionArg]
   b    [:ref ::ExpressionArg]

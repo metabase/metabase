@@ -3,12 +3,12 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Root } from "react-dom/client";
 
 import {
-  MeasurementProviders,
   createMeasurementContainer,
   removeMeasurementContainer,
-} from "metabase/data-grid/utils/measure-utils";
+} from "metabase/lib/measure-container";
 import { renderRoot } from "metabase/lib/react-compat";
 import { SortableHeaderPill } from "metabase/ui";
+import { MeasurementProviders } from "metabase/ui/components/theme/MeasurementProviders";
 
 import {
   CELL_HORIZONTAL_PADDING,

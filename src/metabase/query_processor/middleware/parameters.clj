@@ -132,7 +132,7 @@
     ;; TODO: Native models should be within scope of dashboard filters, by applying the filter on an outer stage.
     ;; That doesn't work, so the logic below requires MBQL queries only to fix the regression.
     ;; Native models don't actual get filtered even when linked to dashboard filters, but that's not a regression.
-    ;; This can be fixed properly once this middleware is powered by MLv2. See #40011.
+    ;; This can be fixed properly once this middleware is powered by Lib. See #40011.
     (and (seq parameters)
          (:metadata/model-metadata info)
          (not (lib/native-stage? (lib/query-stage query -1))))

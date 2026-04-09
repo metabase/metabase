@@ -23,3 +23,5 @@
         (#'session-cleanup/cleanup-sessions!)
         (is (not (t2/exists? :model/Session :id (:id old-session))))
         (is (t2/exists? :model/Session :id (:id new-session)))))))
+
+;; cleanup-idle-sessions-test is in metabase-enterprise.api.session-test because it requires EE features.

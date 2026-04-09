@@ -10,7 +10,6 @@ import { DatabaseInfoSection } from "metabase/admin/databases/components/Databas
 import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import { Toggle } from "metabase/common/components/Toggle";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
-import { trackSimpleEvent } from "metabase/lib/analytics";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Alert, Box, Flex, Icon } from "metabase/ui";
 import type {
@@ -24,6 +23,8 @@ import {
   DATABASE_TABLE_EDITING_SETTING,
   isDatabaseTableEditingEnabled,
 } from "../settings";
+
+import { trackTableEditingSettingsToggled } from "./analytics";
 
 enum DisabledReasonKey {
   MissingDriverFeature = "driver-feature-missing",
@@ -55,12 +56,7 @@ export function AdminDatabaseTableEditingSection({
     try {
       setError(null);
 
-      trackSimpleEvent({
-        event: "edit_data_settings_toggled",
-        event_detail: enabled ? "on" : "off",
-        target_id: database.id,
-        triggered_from: "admin-settings-databases",
-      });
+      trackTableEditingSettingsToggled(enabled, database.id);
 
       await updateDatabase({
         id: database.id,

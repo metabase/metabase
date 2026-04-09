@@ -366,7 +366,7 @@
            (when table-id
              {:table_id table-id}))))))))
 
-;;; TODO -- move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and
+;;; TODO -- move this to [[metabase.query-processor.card]] or Lib so the logic can be shared between the backend and
 ;;; frontend (?)
 ;;;
 ;;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
