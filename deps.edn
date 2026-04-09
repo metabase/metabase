@@ -901,7 +901,7 @@
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.migrate"]}
 
-  ;; run tests against MLv2. Very fast since this is almost all ^:parallel
+  ;; run tests against Lib. Very fast since this is almost all ^:parallel
   :test/lib
   {:exec-args {:only ["test/metabase/lib"
                       "test/metabase/lib_be"]}}
@@ -928,7 +928,7 @@
   {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
                       "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
 
-;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
+;; test all MBQL related stuff: Lib, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql

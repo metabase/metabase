@@ -38,6 +38,7 @@ export const createMockSdkState = ({
     errorComponent: null,
     error: null,
     fetchRefreshTokenFn: null,
+    pluginsReady: true,
     ...opts,
   };
 };
