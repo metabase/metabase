@@ -41,6 +41,17 @@
         (swap! local-snapshots assoc id snapshot)
         snapshot))))
 
+;;; ------------------------------------------------ Paths ------------------------------------------------
+
+(def ^:private ^:const bundle-rel-path "index.js")
+
+(defn- asset-rel-path ^String [^String asset-name] (str "assets/" asset-name))
+
+(defn- git-path
+  "Prefix a relative path with dist/ for git repo layout."
+  ^String [^String rel-path]
+  (str "dist/" rel-path))
+
 ;;; ------------------------------------------------ Git Reads ------------------------------------------------
 
 (defn- read-bundle-from-git
@@ -49,7 +60,7 @@
   [plugin]
   (try
     (let [snapshot (plugin-snapshot plugin)
-          content  (rs.git/read-file snapshot "dist/index.js")]
+          content  (rs.git/read-file snapshot (git-path bundle-rel-path))]
       (when content
         {:content content :hash (content-hash content)}))
     (catch Exception e
@@ -59,11 +70,11 @@
 (defn- read-asset-from-git
   "Read a static asset from the local bare git repo at a given commit.
    Returns a byte array or nil."
-  ^bytes [snapshot ^String resolved-commit ^String asset-path]
+  ^bytes [snapshot ^String resolved-commit ^String asset-name]
   (try
-    (rs.git/read-file-bytes snapshot (str "dist/assets/" asset-path))
+    (rs.git/read-file-bytes snapshot (git-path (asset-rel-path asset-name)))
     (catch Exception e
-      (log/warnf "Failed to read asset %s from git at %s: %s" asset-path resolved-commit (ex-message e))
+      (log/warnf "Failed to read asset %s from git at %s: %s" asset-name resolved-commit (ex-message e))
       nil)))
 
 ;;; ------------------------------------------------ Fetch & Update ------------------------------------------------
@@ -76,8 +87,8 @@
     (let [source        (rs.git/git-source repo_url nil access_token nil)
           snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
           commit-sha    (:version snapshot)
-          _content       (or (rs.git/read-file snapshot "dist/index.js")
-                             (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
+          _content       (or (rs.git/read-file snapshot (git-path bundle-rel-path))
+                             (throw (ex-info (str (git-path bundle-rel-path) " not found in repository") {:commit commit-sha})))
           manifest-str  (or (rs.git/read-file snapshot (manifest/manifest-path))
                             (throw (ex-info (str (manifest/manifest-path) " not found in repository")
                                             {:commit commit-sha})))
@@ -136,14 +147,12 @@
 
 (defn get-asset
   "Get a static asset for a plugin. Reads from the local bare git repo at the resolved commit.
-   Only serves assets whitelisted by the plugin's manifest.
    Returns a byte array or nil."
-  ^bytes [plugin-id ^String asset-path]
+  ^bytes [plugin-id ^String asset-name]
   (when-let [{:keys [resolved_commit] :as plugin} (select-plugin-for-read plugin-id)]
-    (when (and resolved_commit
-               (asset-whitelisted? plugin asset-path))
+    (when resolved_commit
       (let [snapshot (plugin-snapshot plugin)]
-        (read-asset-from-git snapshot resolved_commit asset-path)))))
+        (read-asset-from-git snapshot resolved_commit asset-name)))))
 
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
@@ -161,39 +170,41 @@
   (validate-dev-url! url)
   (if (str/ends-with? url "/") url (str url "/")))
 
+(defn- dev-url
+  "Build a full dev URL by joining the base URL with a relative path."
+  ^String [^String base-url ^String relative-path]
+  (str (dev-base-url base-url) relative-path))
+
+(def ^:private http-opts
+  {:socket-timeout 5000 :connection-timeout 5000})
+
 (defn fetch-dev-bundle
-  "Fetch a JS bundle from a dev base URL (appends /index.js).
+  "Fetch a JS bundle from a dev base URL.
    Returns {:content str :hash str} or nil."
   [^String base-url]
-  (let [url     (str (dev-base-url base-url) "index.js")
-        content (:body (http/get url {:as :string
-                                      :socket-timeout 5000
-                                      :connection-timeout 5000}))]
+  (let [content (:body (http/get (dev-url base-url bundle-rel-path)
+                                 (assoc http-opts :as :string)))]
     {:content content
      :hash    (content-hash content)}))
 
 (defn fetch-dev-manifest
-  "Fetch and parse the manifest (metabase-plugin.json) from a dev base URL.
+  "Fetch and parse the manifest from a dev base URL.
    Returns the parsed manifest map or nil on failure."
   [^String base-url]
-  (let [url (str (dev-base-url base-url) (manifest/manifest-path))]
-    (try
-      (let [content (:body (http/get url {:as :string
-                                          :socket-timeout 5000
-                                          :connection-timeout 5000}))]
-        (manifest/parse-manifest content))
-      (catch Exception e
-        (log/debugf "No manifest at %s: %s" url (ex-message e))
-        nil))))
+  (try
+    (let [content (:body (http/get (dev-url base-url (manifest/manifest-path))
+                                   (assoc http-opts :as :string)))]
+      (manifest/parse-manifest content))
+    (catch Exception e
+      (log/debugf "No manifest at %s: %s" base-url (ex-message e))
+      nil)))
 
 (defn fetch-dev-asset
-  "Fetch a static asset from a dev base URL (appends /assets/<path>).
+  "Fetch a static asset from a dev base URL.
    Returns the bytes or nil on failure."
-  ^bytes [^String base-url ^String asset-path]
-  (let [url (str (dev-base-url base-url) "assets/" asset-path)]
-    (:body (http/get url {:as :byte-array
-                          :socket-timeout 5000
-                          :connection-timeout 5000}))))
+  ^bytes [^String base-url ^String asset-name]
+  (:body (http/get (dev-url base-url (asset-rel-path asset-name))
+                   (assoc http-opts :as :byte-array))))
 
 (defn set-or-clear-dev-bundle!
   "Set or clear the dev base URL for a plugin. Persists to the database."
@@ -224,8 +235,11 @@
 
 (defn resolve-asset
   "Resolve a static asset for a plugin, respecting dev base URL if set.
+   Only serves assets whitelisted by the plugin's manifest.
    Returns a byte array or nil."
-  ^bytes [plugin-id ^String asset-path]
-  (if-let [dev-url (resolve-dev-bundle plugin-id)]
-    (fetch-dev-asset dev-url asset-path)
-    (get-asset plugin-id asset-path)))
+  ^bytes [plugin-id ^String asset-name]
+  (when-let [plugin (select-plugin-for-read plugin-id)]
+    (when (asset-whitelisted? plugin asset-name)
+      (if-let [dev-url (resolve-dev-bundle plugin-id)]
+        (fetch-dev-asset dev-url asset-name)
+        (get-asset plugin-id asset-name)))))
