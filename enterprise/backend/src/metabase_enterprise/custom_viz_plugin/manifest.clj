@@ -35,12 +35,11 @@
    Returns true if no range is specified, or if the current version satisfies the range.
    In dev mode (no version info), always returns true."
   [{:keys [metabase_version]}]
-  (let [major (config/current-major-version)
-        minor (config/current-minor-version)]
-    (if (or config/is-dev? (nil? major) (str/blank? metabase_version))
+  (let [current-version (:tag config/mb-version-info)]
+    (if (or config/is-dev? (nil? current-version) (str/blank? metabase_version))
       true
       (try
-        (let [current (Semver/coerce (str major "." (or minor 0) ".0"))]
+        (let [current (Semver/coerce current-version)]
           (.satisfies current ^String metabase_version))
         (catch SemverException e
           (log/warnf "Invalid version range in manifest: %s — %s" metabase_version (ex-message e))
