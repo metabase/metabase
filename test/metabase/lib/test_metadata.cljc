@@ -223,6 +223,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :categories :id)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :categories :id)}
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -254,6 +255,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :categories :name)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :categories :name)}
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -312,6 +314,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :id)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :checkins :id)}
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -343,6 +346,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :date)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :checkins :date)}
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -375,6 +379,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :user-id)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :checkins :user-id)}
    :position            2
    :visibility-type     :normal
    :target              nil
@@ -406,6 +411,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :checkins :venue-id)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :checkins :venue-id)}
    :position            3
    :visibility-type     :normal
    :target              nil
@@ -461,6 +467,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :id)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :users :id)}
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -492,6 +499,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :name)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :users :name)}
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -529,6 +537,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :last-login)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :users :last-login)}
    :position            2
    :visibility-type     :normal
    :target              nil
@@ -561,6 +570,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :users :password)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :users :password)}
    :position            3
    :visibility-type     :sensitive
    :target              nil
@@ -622,6 +632,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :id)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :venues :id)}
    :position            0
    :visibility-type     :normal
    :target              nil
@@ -653,6 +664,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :name)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :venues :name)}
    :position            1
    :visibility-type     :normal
    :target              nil
@@ -690,6 +702,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :category-id)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :venues :category-id)}
    :position            2
    :visibility-type     :normal
    :target              nil
@@ -721,6 +734,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :latitude)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :venues :latitude)}
    :position            3
    :visibility-type     :normal
    :target              nil
@@ -759,6 +773,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :longitude)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :venues :longitude)}
    :position            4
    :visibility-type     :normal
    :target              nil
@@ -798,6 +813,7 @@
    :nfc-path            nil
    :parent-id           nil
    :id                  (id :venues :price)
+   :lib/column-key      {:lib/type :column/key, :column.field/id (id :venues :price)}
    :position            5
    :visibility-type     :normal
    :target              nil
@@ -862,6 +878,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :products :id)}
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -893,6 +910,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :rating)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :products :rating)}
    :database-is-auto-increment false
    :position                   6
    :visibility-type            :normal
@@ -930,6 +948,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :category)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :products :category)}
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -966,6 +985,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :price)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :products :price)}
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -1003,6 +1023,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :title)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :products :title)}
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -1039,6 +1060,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :created-at)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :products :created-at)}
    :database-is-auto-increment false
    :position                   7
    :visibility-type            :normal
@@ -1072,6 +1094,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :vendor)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :products :vendor)}
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -1108,6 +1131,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :products :ean)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :products :ean)}
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -1170,6 +1194,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :orders :id)}
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -1201,6 +1226,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :subtotal)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :orders :subtotal)}
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -1239,6 +1265,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :total)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :orders :total)}
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -1277,6 +1304,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :tax)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :orders :tax)}
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -1315,6 +1343,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :discount)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :orders :discount)}
    :database-is-auto-increment false
    :position                   6
    :visibility-type            :normal
@@ -1352,6 +1381,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :quantity)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :orders :quantity)}
    :database-is-auto-increment false
    :position                   8
    :visibility-type            :normal
@@ -1389,6 +1419,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :created-at)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :orders :created-at)}
    :database-is-auto-increment false
    :position                   7
    :visibility-type            :normal
@@ -1422,6 +1453,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :product-id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :orders :product-id)}
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -1453,6 +1485,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :orders :user-id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :orders :user-id)}
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -1511,6 +1544,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :id)}
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -1542,6 +1576,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :state)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :state)}
    :database-is-auto-increment false
    :position                   7
    :visibility-type            :normal
@@ -1578,6 +1613,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :city)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :city)}
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -1614,6 +1650,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :address)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :address)}
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -1650,6 +1687,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :name)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :name)}
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -1686,6 +1724,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :source)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :source)}
    :database-is-auto-increment false
    :position                   8
    :visibility-type            :normal
@@ -1722,6 +1761,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :zip)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :zip)}
    :database-is-auto-increment false
    :position                   10
    :visibility-type            :normal
@@ -1758,6 +1798,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :latitude)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :latitude)}
    :database-is-auto-increment false
    :position                   11
    :visibility-type            :normal
@@ -1795,6 +1836,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :password)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :password)}
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -1831,6 +1873,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :birth-date)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :birth-date)}
    :database-is-auto-increment false
    :position                   9
    :visibility-type            :normal
@@ -1863,6 +1906,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :longitude)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :longitude)}
    :database-is-auto-increment false
    :position                   6
    :visibility-type            :normal
@@ -1900,6 +1944,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :email)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :email)}
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -1936,6 +1981,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :people :created-at)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :people :created-at)}
    :database-is-auto-increment false
    :position                   12
    :visibility-type            :normal
@@ -2000,6 +2046,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :reviews :id)}
    :database-is-auto-increment true
    :position                   0
    :visibility-type            :normal
@@ -2031,6 +2078,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :created-at)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :reviews :created-at)}
    :database-is-auto-increment false
    :position                   5
    :visibility-type            :normal
@@ -2064,6 +2112,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :rating)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :reviews :rating)}
    :database-is-auto-increment false
    :position                   3
    :visibility-type            :normal
@@ -2101,6 +2150,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :reviewer)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :reviews :reviewer)}
    :database-is-auto-increment false
    :position                   2
    :visibility-type            :normal
@@ -2137,6 +2187,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :body)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :reviews :body)}
    :database-is-auto-increment false
    :position                   4
    :visibility-type            :normal
@@ -2173,6 +2224,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :reviews :product-id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :reviews :product-id)}
    :database-is-auto-increment false
    :position                   1
    :visibility-type            :normal
@@ -2228,6 +2280,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/accounts :id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :ic/accounts :id)}
    :last-analyzed              nil
    :database-is-auto-increment false
    :json-unfolding             false
@@ -2261,6 +2314,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/accounts :name)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :ic/accounts :name)}
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   1
@@ -2319,6 +2373,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/reports :id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :ic/reports :id)}
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   0
@@ -2353,6 +2408,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/reports :created-by)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :ic/reports :created-by)}
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   1
@@ -2385,6 +2441,7 @@
    :nfc-path                   nil
    :parent-id                  nil
    :id                         (id :ic/reports :updated-by)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :ic/reports :updated-by)}
    :database-is-auto-increment false
    :json-unfolding             false
    :position                   2
@@ -2429,6 +2486,7 @@
    :semantic-type              :type/PK
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/issues :id)}
    :name                       "ID"
    :coercion-strategy          nil
    :fingerprint-version        5
@@ -2462,6 +2520,7 @@
    :semantic-type              :type/FK
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :reporter-id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/issues :reporter-id)}
    :name                       "REPORTER_ID"
    :display-name               "Reporter ID"
    :coercion-strategy          nil
@@ -2499,6 +2558,7 @@
    :semantic-type              :type/FK
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :assignee-id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/issues :assignee-id)}
    :name                       "ASSIGNEE_ID"
    :display-name               "Assignee ID"
    :coercion-strategy          nil
@@ -2536,6 +2596,7 @@
    :semantic-type              :type/Category
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :is-open)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/issues :is-open)}
    :name                       "IS_OPEN"
    :display-name               "Is Open"
    :coercion-strategy          nil
@@ -2570,6 +2631,7 @@
    :semantic-type              nil
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :reported-at)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/issues :reported-at)}
    :name                       "REPORTED_AT"
    :display-name               "Reported At"
    :coercion-strategy          nil
@@ -2604,6 +2666,7 @@
    :semantic-type              nil
    :table-id                   (id :gh/issues)
    :id                         (id :gh/issues :closed-at)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/issues :closed-at)}
    :name                       "CLOSED_AT"
    :display-name               "Closed At"
    :coercion-strategy          nil
@@ -2663,6 +2726,7 @@
    :semantic-type              :type/PK
    :table-id                   (id :gh/users)
    :id                         (id :gh/users :id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/users :id)}
    :name                       "ID"
    :display-name               "Username"
    :coercion-strategy          nil
@@ -2700,6 +2764,7 @@
    :semantic-type              nil
    :table-id                   (id :gh/users)
    :id                         (id :gh/users :birthday)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/users :birthday)}
    :name                       "BIRTHDAY"
    :display-name               "Birthday"
    :coercion-strategy          nil
@@ -2733,6 +2798,7 @@
    :semantic-type              :type/Email
    :table-id                   (id :gh/users)
    :id                         (id :gh/users :email)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/users :email)}
    :name                       "EMAIL"
    :display-name               "Email"
    :coercion-strategy          nil
@@ -2792,6 +2858,7 @@
    :semantic-type              :type/PK
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/comments :id)}
    :name                       "ID"
    :display-name               "ID"
    :coercion-strategy          nil
@@ -2825,6 +2892,7 @@
    :semantic-type              :type/FK
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :author-id)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/comments :author-id)}
    :name                       "AUTHOR_ID"
    :display-name               "Author ID"
    :coercion-strategy          nil
@@ -2862,6 +2930,7 @@
    :semantic-type              :type/CreationDate
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :posted-at)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/comments :posted-at)}
    :name                       "POSTED_AT"
    :display-name               "Posted At"
    :coercion-strategy          nil
@@ -2896,6 +2965,7 @@
    :semantic-type              :type/FK
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :reply-to)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/comments :reply-to)}
    :name                       "REPLY_TO"
    :display-name               "Reply To"
    :coercion-strategy          nil
@@ -2929,6 +2999,7 @@
    :semantic-type              nil
    :table-id                   (id :gh/comments)
    :id                         (id :gh/comments :body-markdown)
+   :lib/column-key             {:lib/type :column/key, :column.field/id (id :gh/comments :body-markdown)}
    :name                       "BODY_MARKDOWN"
    :display-name               "Body Markdown"
    :coercion-strategy          nil
@@ -2994,6 +3065,7 @@
    :fingerprint          nil
    :fk-target-field-id   nil
    :id                   (id :feedback :id)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :feedback :id)}
    :name                 "ID"
    :nfc-path             nil
    :parent-id            nil
@@ -3017,6 +3089,7 @@
    :fingerprint          {:global {:distinct-count 642, :nil% 0.0}}
    :fk-target-field-id   (id :accounts :id)
    :id                   (id :feedback :account-id)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :feedback :account-id)}
    :name                 "ACCOUNT_ID"
    :nfc-path             nil
    :parent-id            nil
@@ -3045,6 +3118,7 @@
                                                :average-length 28.327102803738317}}}
    :fk-target-field-id   nil
    :id                   (id :feedback :email)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :feedback :email)}
    :name                 "EMAIL"
    :nfc-path             nil
    :parent-id            nil
@@ -3069,6 +3143,7 @@
                           :type   {:type/DateTime {:earliest "2020-11-20T00:00:00Z", :latest "2031-12-01T00:00:00Z"}}}
    :fk-target-field-id   nil
    :id                   (id :feedback :date-received)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :feedback :date-received)}
    :name                 "DATE_RECEIVED"
    :nfc-path             nil
    :parent-id            nil
@@ -3098,6 +3173,7 @@
                                                  :avg 3.3629283489096573}}}
    :fk-target-field-id   nil
    :id                   (id :feedback :rating)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :feedback :rating)}
    :name                 "RATING"
    :nfc-path             nil
    :parent-id            nil
@@ -3126,6 +3202,7 @@
                                                :average-length 6.453271028037383}}}
    :fk-target-field-id   nil
    :id                   (id :feedback :rating-mapped)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :feedback :rating-mapped)}
    :name                 "RATING_MAPPED"
    :nfc-path             nil
    :parent-id            nil
@@ -3154,6 +3231,7 @@
                                                :average-length 438.15264797507785}}}
    :fk-target-field-id   nil
    :id                   (id :feedback :body)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :feedback :body)}
    :name                 "BODY"
    :nfc-path             nil
    :parent-id            nil
@@ -3196,6 +3274,7 @@
    :fingerprint          nil
    :fk-target-field-id   nil
    :id                   (id :accounts :id)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :id)}
    :name                 "ID"
    :nfc-path             nil
    :parent-id            nil
@@ -3224,6 +3303,7 @@
                                                :average-length 28.185971943887775}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :email)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :email)}
    :name                 "EMAIL"
    :nfc-path             nil
    :parent-id            nil
@@ -3252,6 +3332,7 @@
                                                :average-length 5.997595190380761}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :first-name)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :first-name)}
    :name                 "FIRST_NAME"
    :nfc-path             nil
    :parent-id            nil
@@ -3280,6 +3361,7 @@
                                                :average-length 6.536673346693386}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :last-name)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :last-name)}
    :name                 "LAST_NAME"
    :nfc-path             nil
    :parent-id            nil
@@ -3308,6 +3390,7 @@
                                                :average-length 5.1062124248497}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :plan)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :plan)}
    :name                 "PLAN"
    :nfc-path             nil
    :parent-id            nil
@@ -3336,6 +3419,7 @@
                                                :average-length 4.4705410821643286}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :source)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :source)}
    :name                 "SOURCE"
    :nfc-path             nil
    :parent-id            nil
@@ -3365,6 +3449,7 @@
                                                  :avg 16.21763527054108}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :seats)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :seats)}
    :name                 "SEATS"
    :nfc-path             nil
    :parent-id            nil
@@ -3389,6 +3474,7 @@
                           :type   {:type/DateTime {:earliest "2020-09-15T16:11:50Z", :latest "2031-10-10T19:14:48Z"}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :created-at)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :created-at)}
    :name                 "CREATED_AT"
    :nfc-path             nil
    :parent-id            nil
@@ -3413,6 +3499,7 @@
                           :type   {:type/DateTime {:earliest "2020-09-30T12:00:00Z", :latest "2031-10-25T12:00:00Z"}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :trial-ends-at)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :trial-ends-at)}
    :name                 "TRIAL_ENDS_AT"
    :nfc-path             nil
    :parent-id            nil
@@ -3437,6 +3524,7 @@
                           :type   {:type/DateTime {:earliest "2020-10-01T15:43:40Z", :latest "2032-06-03T14:01:15Z"}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :canceled-at)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :canceled-at)}
    :name                 "CANCELED_AT"
    :nfc-path             nil
    :parent-id            nil
@@ -3460,6 +3548,7 @@
    :fingerprint          {:global {:distinct-count 2, :nil% 0.0}}
    :fk-target-field-id   nil
    :id                   (id :accounts :trial-converted)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :trial-converted)}
    :name                 "TRIAL_CONVERTED"
    :nfc-path             nil
    :parent-id            nil
@@ -3483,6 +3572,7 @@
    :fingerprint          {:global {:distinct-count 2, :nil% 0.0}}
    :fk-target-field-id   nil
    :id                   (id :accounts :active-subscription)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :active-subscription)}
    :name                 "ACTIVE_SUBSCRIPTION"
    :nfc-path             nil
    :parent-id            nil
@@ -3506,6 +3596,7 @@
    :fingerprint          {:global {:distinct-count 2, :nil% 0.0}}
    :fk-target-field-id   nil
    :id                   (id :accounts :legacy-plan)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :legacy-plan)}
    :name                 "LEGACY_PLAN"
    :nfc-path             nil
    :parent-id            nil
@@ -3535,6 +3626,7 @@
                                                  :avg 31.35760681046913}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :latitude)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :latitude)}
    :name                 "LATITUDE"
    :nfc-path             nil
    :parent-id            nil
@@ -3564,6 +3656,7 @@
                                                  :avg 2.6042336031796345}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :longitude)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :longitude)}
    :name                 "LONGITUDE"
    :nfc-path             nil
    :parent-id            nil
@@ -3592,6 +3685,7 @@
                                                :average-length 1.9983967935871743}}}
    :fk-target-field-id   nil
    :id                   (id :accounts :country)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :accounts :country)}
    :name                 "COUNTRY"
    :nfc-path             nil
    :parent-id            nil
@@ -3643,6 +3737,7 @@
    :fingerprint          nil
    :fk-target-field-id   nil
    :id                   (id :analytic-events :id)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :analytic-events :id)}
    :name                 "ID"
    :nfc-path             nil
    :parent-id            nil
@@ -3666,6 +3761,7 @@
    :fingerprint          {:global {:distinct-count 589, :nil% 0.0}}
    :fk-target-field-id   (id :accounts :id)
    :id                   (id :analytic-events :account-id)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :analytic-events :account-id)}
    :name                 "ACCOUNT_ID"
    :nfc-path             nil
    :parent-id            nil
@@ -3694,6 +3790,7 @@
                                                :average-length 11.3906}}}
    :fk-target-field-id   nil
    :id                   (id :analytic-events :event)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :analytic-events :event)}
    :name                 "EVENT"
    :nfc-path             nil
    :parent-id            nil
@@ -3718,6 +3815,7 @@
                           :type   {:type/DateTime {:earliest "2022-03-15T00:18:25Z", :latest "2022-04-11T20:24:02Z"}}}
    :fk-target-field-id   nil
    :id                   (id :analytic-events :timestamp)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :analytic-events :timestamp)}
    :name                 "TIMESTAMP"
    :nfc-path             nil
    :parent-id            nil
@@ -3746,6 +3844,7 @@
                                                :average-length 22.2674}}}
    :fk-target-field-id   nil
    :id                   (id :analytic-events :page-url)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :analytic-events :page-url)}
    :name                 "PAGE_URL"
    :nfc-path             nil
    :parent-id            nil
@@ -3770,6 +3869,7 @@
                           :type   {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 1.0552}}}
    :fk-target-field-id   nil
    :id                   (id :analytic-events :button-label)
+   :lib/column-key       {:lib/type :column/key :column.field/id (id :analytic-events :button-label)}
    :name                 "BUTTON_LABEL"
    :nfc-path             nil
    :parent-id            nil
@@ -3811,6 +3911,7 @@
    :fingerprint          nil
    :fk-target-field-id   nil
    :id                   (id :invoices :id)
+   :lib/column-key       {:lib/type :column/key, :column.field/id (id :invoices :id)}
    :name                 "ID"
    :nfc-path             nil
    :parent-id            nil
@@ -3834,6 +3935,7 @@
    :fingerprint          {:global {:distinct-count 1449, :nil% 0.0}}
    :fk-target-field-id   (id :accounts :id)
    :id                   (id :invoices :account-id)
+   :lib/column-key       {:lib/type :column/key, :column.field/id (id :invoices :account-id)}
    :name                 "ACCOUNT_ID"
    :nfc-path             nil
    :parent-id            nil
@@ -3863,6 +3965,7 @@
                                                  :avg 519.4153400000004}}}
    :fk-target-field-id   nil
    :id                   (id :invoices :payment)
+   :lib/column-key       {:lib/type :column/key, :column.field/id (id :invoices :payment)}
    :name                 "PAYMENT"
    :nfc-path             nil
    :parent-id            nil
@@ -3886,6 +3989,7 @@
    :fingerprint          {:global {:distinct-count 2, :nil% 0.0}}
    :fk-target-field-id   nil
    :id                   (id :invoices :expected-invoice)
+   :lib/column-key       {:lib/type :column/key, :column.field/id (id :invoices :expected-invoice)}
    :name                 "EXPECTED_INVOICE"
    :nfc-path             nil
    :parent-id            nil
@@ -3910,6 +4014,7 @@
                           :type   {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 5.2931}}}
    :fk-target-field-id   nil
    :id                   (id :invoices :plan)
+   :lib/column-key       {:lib/type :column/key, :column.field/id (id :invoices :plan)}
    :name                 "PLAN"
    :nfc-path             nil
    :parent-id            nil
@@ -3934,6 +4039,7 @@
                           :type   {:type/DateTime {:earliest "2020-09-30T00:00:00Z", :latest "2027-05-02T00:00:00Z"}}}
    :fk-target-field-id   nil
    :id                   (id :invoices :date-received)
+   :lib/column-key       {:lib/type :column/key, :column.field/id (id :invoices :date-received)}
    :name                 "DATE_RECEIVED"
    :nfc-path             nil
    :parent-id            nil

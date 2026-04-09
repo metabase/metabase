@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.field.util :as lib.field.util]
@@ -70,7 +71,7 @@
   * `field-metadata`      = Field metadata (`:metadata/column`) from the metadata provider for the Field with ID"
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    source-metadata-col   :- :map
-   card-id               :- [:maybe ::lib.schema.id/card]
+   card-id               :- ::lib.schema.id/card
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
                                 (perf/update-keys u/->kebab-case-en))
@@ -91,7 +92,9 @@
                               (assoc :lib/original-display-name (:display-name source-metadata-col)))
         col (merge
              {:base-type :type/*, :lib/type :metadata/column}
-             field-metadata
+             ;; Disregard the column key from the field-metadata; it's always the underlying field's key and might
+             ;; be missing a join, nested card, or other wrapping.
+             (dissoc field-metadata :lib/column-key)
              (m/filter-vals some? source-metadata-col)
              {:lib/type                :metadata/column
               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
@@ -113,31 +116,31 @@
         ;; [[metabase.warehouse-schema-rest.api.table/card-result-metadata->virtual-fields]]
         (u/assoc-default :effective-type (:base-type col))
         ;; add original display name IF not already present AND we have a value
-        (->> (lib.normalize/normalize ::lib.schema.metadata/column)))))
+        (->> (lib.normalize/normalize ::lib.schema.metadata/column))
+        (lib.column-key/from-card metadata-providerable card-id))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."
-  ([metadata-providerable cols]
-   (->card-metadata-columns metadata-providerable nil cols))
+  "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata.
 
-  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    card-or-id-or-nil     :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
-    cols                  :- [:maybe [:or
-                                      [:sequential ::lib.schema.metadata/lib-or-legacy-column]
-                                      [:map
-                                       [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
-   ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
-   ;; contains` :columns` as well.
-   (when-let [cols (not-empty (cond
-                                (map? cols)        (:columns cols)
-                                (sequential? cols) cols))]
-     (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-           card-id           (when card-or-id-or-nil (u/the-id card-or-id-or-nil))
-           field-ids         (not-empty (into #{} (keep :id) cols))
-           fields            (when field-ids
-                               (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/column, :id field-ids}))
-           field-id->field   (m/index-by :id fields)]
-       (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols)))))
+  If the metadata does not have `:lib/column-key`, this will add one, treating the card's columns as opaque."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card-or-id            :- [:or ::lib.schema.id/card ::lib.schema.metadata/card]
+   cols                  :- [:maybe [:or
+                                     [:sequential ::lib.schema.metadata/lib-or-legacy-column]
+                                     [:map
+                                      [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
+  ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
+  ;; contains` :columns` as well.
+  (when-let [cols (not-empty (cond
+                               (map? cols)        (:columns cols)
+                               (sequential? cols) cols))]
+    (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+          card-id           (u/the-id card-or-id)
+          field-ids         (not-empty (into #{} (keep :id) cols))
+          fields            (when field-ids
+                              (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/column, :id field-ids}))
+          field-id->field   (m/index-by :id fields)]
+      (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols))))
 
 (mr/def ::column
   [:merge
@@ -154,7 +157,8 @@
   #{})
 
 (defn- updated-result-metadata
-  "Get `:result-metadata` from Card, but merge in updated values of `:active` and `:visibility-type`."
+  "Get `:result-metadata` from Card, but merge in updated values of `:active` and `:visibility-type`, plus add
+  `:lib/column-key` values."
   [metadata-providerable card]
   (when-let [saved-metadata-cols (not-empty (:result-metadata card))]
     (let [ids                       (into #{} (keep :id) saved-metadata-cols)

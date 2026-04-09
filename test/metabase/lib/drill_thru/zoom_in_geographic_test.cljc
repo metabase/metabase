@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.metadata :as lib.metadata]
@@ -569,9 +570,13 @@
              :type      :drill-thru/zoom-in.geographic
              :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
              :column    state-col
-             :latitude  {:column    (meta/field-metadata :people :latitude)
+             :latitude  {:column    (-> (meta/field-metadata :people :latitude)
+                                        (update :lib/column-key
+                                                lib.column-key/explicitly-joined (first (lib/joins query))))
                          :bin-width 1}
-             :longitude {:column    (meta/field-metadata :people :longitude)
+             :longitude {:column    (-> (meta/field-metadata :people :longitude)
+                                        (update :lib/column-key
+                                                lib.column-key/explicitly-joined (first (lib/joins query))))
                          :bin-width 1}}
             zoom-in))
     (is (=? {:stages [{:filters  [[:= {} [:field {} (meta/id :people :state)] "MN"]]

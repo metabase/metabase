@@ -368,8 +368,9 @@
   "Merge in snake-cased `:metadata/model-metadata`."
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
-  (let [model-metadata (some->> (get-in query [:info :metadata/model-metadata])
-                                (lib.card/->card-metadata-columns query))]
+  (let [card-id        (get-in query [:info :card-id])
+        model-metadata (some->> (get-in query [:info :metadata/model-metadata])
+                                (lib.card/->card-metadata-columns query card-id))]
     (if-not (seq model-metadata)
       cols ; If not a model, nothing to change
       (let [last-stage (lib.util/query-stage query -1)
@@ -453,8 +454,10 @@
 ;;; TODO (Cam 6/12/25) -- remove `:lib/uuid` because it causes way to many test failures. Probably would be better to
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They
 ;;; should maybe have `:lib/source-uuid` but I don't think they should have `:lib/uuid`.
+;;; TODO (Braden 2026/01/16) It would be good to put `:lib/column-key` into result-metadata but it perturbs too many
+;;; tests. I agree with Cam's TODO above that the UUIDs should be dropped.
 (defn- remove-lib-uuids [col]
-  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref-style-for-result-metadata-purposes))
+  (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref-style-for-result-metadata-purposes :lib/column-key))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-map
   "Convert Lib-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love

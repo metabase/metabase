@@ -261,11 +261,12 @@
 
 (deftest ^:parallel native-model-field-ref-test
   (testing "should use name-based field refs for joined native models with mapped database fields (metabase#58829)"
-    (let [source-metadata [{:name          "_USER_ID"
-                            :display_name  "User ID"
-                            :base_type     :type/Integer
-                            :semantic_type :type/FK
-                            :fingerprint   {:global {:distinct-count 15, :nil% 0.0}}}]]
+    (let [source-metadata [{:name           "_USER_ID"
+                            :display_name   "User ID"
+                            :base_type      :type/Integer
+                            :semantic_type  :type/FK
+                            :lib/column-key {:lib/type :column/key, :column.native/unique-name "_USER_ID"}
+                            :fingerprint    {:global {:distinct-count 15, :nil% 0.0}}}]]
       (is (= (lib.tu.macros/mbql-query users
                {:fields [$id
                          [:field "_USER_ID" {:base-type          :type/Integer

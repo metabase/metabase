@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -283,35 +284,61 @@
                   (lib/breakoutable-columns query))))))))
 
 (deftest ^:parallel breakoutable-columns-source-card-test
-  (doseq [varr [#'lib.tu/query-with-source-card
-                #'lib.tu/query-with-source-card-with-result-metadata]
+  (doseq [[varr user-id-col-key count-col-key] [[#'lib.tu/query-with-source-card
+                                                 {:lib/type                        :column/key
+                                                  :column.card/card-id             1
+                                                  :column.card.opaque/column-alias "USER_ID"}
+                                                 {:lib/type                        :column/key
+                                                  :column.card/card-id             1
+                                                  :column.card.opaque/column-alias "count"}]
+                                                [#'lib.tu/query-with-source-card-with-result-metadata
+                                                 {:lib/type                        :column/key
+                                                  :column.card/card-id             1
+                                                  :column.card.opaque/column-alias "USER_ID"}
+                                                 {:lib/type                        :column/key
+                                                  :column.card/card-id             1
+                                                  :column.card.opaque/column-alias "count"}]]
           :let [query (@varr)]]
     (testing (str (pr-str varr) \newline (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
       (let [columns (lib/breakoutable-columns query)]
-        (is (=? [{:name         "USER_ID"
-                  :display-name "User ID"
-                  :base-type    :type/Integer
-                  :lib/source   :source/card}
-                 {:name         "count"
-                  :display-name "Count"
-                  :base-type    :type/Integer
-                  :lib/source   :source/card}
+        (is (=? [{:name           "USER_ID"
+                  :display-name   "User ID"
+                  :base-type      :type/Integer
+                  :lib/source     :source/card
+                  :lib/column-key user-id-col-key}
+                 {:name           "count"
+                  :display-name   "Count"
+                  :base-type      :type/Integer
+                  :lib/source     :source/card
+                  :lib/column-key count-col-key}
                  ;; Implicitly joinable columns
                  {:name         "ID"
                   :display-name "ID"
                   :base-type    :type/BigInteger
                   :lib/source   :source/implicitly-joinable
-                  :fk-field-id  (meta/id :checkins :user-id)}
+                  :fk-field-id  (meta/id :checkins :user-id)
+                  :lib/column-key {:lib/type :column/key
+                                   :column.implicit/fk-column     user-id-col-key
+                                   :column.implicit/target-column {:lib/type        :column/key
+                                                                   :column.field/id (meta/id :users :id)}}}
                  {:name         "NAME"
                   :display-name "Name"
                   :base-type    :type/Text
                   :lib/source   :source/implicitly-joinable
-                  :fk-field-id  (meta/id :checkins :user-id)}
+                  :fk-field-id  (meta/id :checkins :user-id)
+                  :lib/column-key {:lib/type :column/key
+                                   :column.implicit/fk-column     user-id-col-key
+                                   :column.implicit/target-column {:lib/type        :column/key
+                                                                   :column.field/id (meta/id :users :name)}}}
                  {:name         "LAST_LOGIN"
                   :display-name "Last Login"
                   :base-type    :type/DateTime
                   :lib/source   :source/implicitly-joinable
-                  :fk-field-id  (meta/id :checkins :user-id)}]
+                  :fk-field-id  (meta/id :checkins :user-id)
+                  :lib/column-key {:lib/type :column/key
+                                   :column.implicit/fk-column     user-id-col-key
+                                   :column.implicit/target-column {:lib/type        :column/key
+                                                                   :column.field/id (meta/id :users :last-login)}}}]
                 columns))
         (testing `lib/display-info
           (is (=? [{:name                   "USER_ID"
@@ -735,9 +762,11 @@
           breakouts  (lib/breakouts query)]
       (is (= 2
              (count breakouts)))
-      (is (=? category
+      (is (=? (assoc category :lib/column-key {:lib/type             :column/key
+                                               :column.breakout/uuid (lib.options/uuid (first breakouts))})
               (lib.breakout/breakout-column query (first breakouts))))
-      (is (=? price
+      (is (=? (assoc price :lib/column-key {:lib/type             :column/key
+                                            :column.breakout/uuid (lib.options/uuid (second breakouts))})
               (lib.breakout/breakout-column query (second breakouts)))))))
 
 (deftest ^:parallel breakout-column-test-2

@@ -240,7 +240,8 @@
                 native-query (str "SELECT " fields " FROM VENUES")
                 existing-metadata (add-preserved (default-card-results-native))
                 results (-> (mt/native-query   {:query native-query})
-                            (qp/userland-query {:metadata/model-metadata existing-metadata})
+                            (qp/userland-query {:metadata/model-metadata existing-metadata
+                                                :card-id                 123})
                             qp/process-query)]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))
@@ -257,7 +258,8 @@
                           (update query
                                   :info
                                   merge
-                                  {:metadata/model-metadata existing-metadata})))]
+                                  {:metadata/model-metadata existing-metadata
+                                   :card-id                 123})))]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))))))
 
