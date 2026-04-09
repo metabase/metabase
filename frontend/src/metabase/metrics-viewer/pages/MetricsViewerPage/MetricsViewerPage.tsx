@@ -32,11 +32,12 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     tabs,
     activeTab,
     activeTabId,
-    resultsByDefinitionId,
     errorsByDefinitionId,
     modifiedDefinitions,
+    series,
+    cardIdToDefinitionId,
+    activeBreakoutColors,
     sourceColors,
-    breakoutValuesBySourceId,
     selectedMetrics,
     sourceOrder,
     sourceDataById,
@@ -123,9 +124,10 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                 <MetricsViewerTabContent
                   definitions={definitions}
                   tab={activeTab}
-                  resultsByDefinitionId={resultsByDefinitionId}
                   errorsByDefinitionId={errorsByDefinitionId}
                   modifiedDefinitions={modifiedDefinitions}
+                  series={series}
+                  cardIdToDefinitionId={cardIdToDefinitionId}
                   sourceColors={sourceColors}
                   isExecuting={isExecuting}
                   onTabUpdate={updateActiveTab}
@@ -142,8 +144,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
             </Flex>
             <BreakoutLegend
               definitions={definitions}
-              breakoutValuesBySourceId={breakoutValuesBySourceId}
-              sourceColors={sourceColors}
+              activeBreakoutColors={activeBreakoutColors}
             />
           </Flex>
         </Stack>
