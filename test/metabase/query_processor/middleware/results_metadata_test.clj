@@ -521,7 +521,7 @@
                                            :breakout    [$product_id]
                                            :filter      [:= $product_id product-id]})})
             (mt/as-admin
-              (qp/process-query-for-card
+              (qp.card/process-query-for-card
                card-id :api
                :make-run (constantly
                           (fn [query info]
@@ -555,7 +555,7 @@
             ;; Bind *allow-arbitrary-mbql-parameters* as the dashboard code path does.
             (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
               (mt/as-admin
-                (qp/process-query-for-card
+                (qp.card/process-query-for-card
                  card-id :api
                  :parameters [{:id     "product-id-param"
                                :type   :id
