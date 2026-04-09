@@ -688,6 +688,43 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
 
+(deftest put-dashboard-hides-unreadable-cards-test
+  (testing "PUT /api/dashboard/:id should hide card details from collections the user cannot access (#UXW-3571)"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection    {accessible-coll-id :id} {:name "Accessible Collection"}
+                     :model/Collection    {restricted-coll-id :id} {:name "Restricted Collection"}
+                     :model/Card          {readable-card-id :id}   {:name          "Readable Card"
+                                                                    :collection_id accessible-coll-id
+                                                                    :dataset_query (mt/mbql-query venues)}
+                     :model/Card          {restricted-card-id :id} {:name          "Restricted Card"
+                                                                    :collection_id restricted-coll-id
+                                                                    :dataset_query (mt/mbql-query venues)}
+                     :model/Dashboard     {dashboard-id :id}       {:name          "Test Dashboard"
+                                                                    :collection_id accessible-coll-id}
+                     :model/DashboardCard _                        {:dashboard_id dashboard-id
+                                                                    :card_id      readable-card-id}
+                     :model/DashboardCard _                        {:dashboard_id dashboard-id
+                                                                    :card_id      restricted-card-id}]
+        ;; Grant read+write to accessible collection, no access to restricted collection
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) accessible-coll-id)
+        (let [get-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))
+              put-response (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                                 {:name "Test Dashboard"})
+              get-cards    (set (map :card (:dashcards get-response)))
+              put-cards    (set (map :card (:dashcards put-response)))]
+          (letfn [(restricted-card [cards]
+                    (first (filter #(= (:id %) restricted-card-id) cards)))
+                  (sensitive-keys [card]
+                    (select-keys card [:name :dataset_query :collection_id :creator_id :result_metadata :database_id]))]
+            (testing "GET hides restricted card details"
+              (is (empty? (sensitive-keys (restricted-card get-cards)))
+                  "Restricted card should not contain sensitive fields"))
+            (testing "PUT hides restricted card details the same way as GET"
+              (is (empty? (sensitive-keys (restricted-card put-cards)))
+                  "Restricted card should not contain sensitive fields"))
+            (testing "PUT and GET return the same card representations for restricted cards"
+              (is (= (restricted-card get-cards) (restricted-card put-cards))))))))))
+
 (deftest fetch-dashboard-in-personal-collection-test
   (testing "GET /api/dashboard/:id"
     (let [crowberto-personal-coll (t2/select-one :model/Collection :personal_owner_id (mt/user->id :crowberto))]
