@@ -40,8 +40,8 @@
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
     :model/MetabotPermissions
-    :model/PythonLibrary
     :model/PremiumFeaturesCache
+    :model/PythonLibrary
     :model/Query
     :model/QueryCache
     :model/QueryExecution
