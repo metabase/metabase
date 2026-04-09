@@ -1,7 +1,6 @@
 import cx from "classnames";
 import _ from "underscore";
 
-import { EntityIcon } from "metabase/common/components/EntityIcon";
 import type { IconProps } from "metabase/ui";
 import { Ellipsified } from "metabase/ui";
 
@@ -49,11 +48,11 @@ export function SelectListItem({
       hasRightIcon={!!rightIcon}
     >
       {icon && (
-        <EntityIcon
-          {...iconProps}
+        <ItemIcon
           iconUrl={iconUrl}
           className={classNames.icon}
           color="brand"
+          {...iconProps}
         />
       )}
       <ItemTitle
