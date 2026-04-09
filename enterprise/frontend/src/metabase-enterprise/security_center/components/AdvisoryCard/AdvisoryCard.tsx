@@ -62,7 +62,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
       onClick={() => onAcknowledge(advisory.advisory_id)}
       data-testid="acknowledge-button"
     >
-      {t`Dismiss`}
+      {t`Acknowledge`}
     </Anchor>
   );
 
