@@ -311,12 +311,8 @@ describe("Visualization", () => {
           },
         ]);
 
-        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "Count"
-        // Card2 gets a hash-based color since "Card2" doesn't match any preferred color
-        const card2Paths = [1, 2, 3, 4, 5, 6, 7].find(
-          (i) => chartPathsWithColor(color(`accent${i}` as any)).length === 2,
-        );
-        expect(card2Paths).toBeDefined();
+        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "count"
+        expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "Card2"
       });
     });
   });
