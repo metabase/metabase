@@ -31,7 +31,7 @@ export function EntityIcon({
 }: EntityIconProps) {
   const theme = useMantineTheme();
   const isDarkMode = theme.other.colorScheme === "dark";
-  const resolvedIconUrl = (isDarkMode && iconDarkUrl) || iconUrl;
+  const resolvedIconUrl = isDarkMode ? (iconDarkUrl ?? iconUrl) : iconUrl;
 
   if (resolvedIconUrl) {
     // color is intentionally not applied — CSS color has no effect on <img>
