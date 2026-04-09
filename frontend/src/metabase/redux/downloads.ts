@@ -34,7 +34,7 @@ import type {
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import type { DownloadsState, State } from "metabase-types/store";
 
-import { trackDownloadResults } from "./downloads-analytics";
+import { trackDownloadResults } from "./analytics";
 
 export interface DownloadQueryResultsOpts {
   type: string;
