@@ -27,6 +27,9 @@ interface DisplayTypeDefinition {
     def: MetricDefinition,
     dimension: DimensionMetadata,
   ) => VisualizationSettings;
+  combineSettings?: (
+    settings: VisualizationSettings[],
+  ) => VisualizationSettings;
 }
 
 interface BaseTabTypeDefinition {
@@ -197,13 +200,40 @@ function getMapSettings(
   };
 }
 
+function combineColors(
+  settings: VisualizationSettings[],
+): VisualizationSettings {
+  // getStoredSettingsForSeries only looks at settings on the first series
+  return settings.reduce((acc, setting) => {
+    return {
+      ...acc,
+      series_settings: {
+        ...acc["series_settings"],
+        ...setting["series_settings"],
+      },
+    };
+  });
+}
+
 export const DISPLAY_TYPE_REGISTRY: Record<
   MetricsViewerDisplayType,
   DisplayTypeDefinition
 > = {
-  line: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  area: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  bar: { supportsMultipleSeries: true, getSettings: getChartSettings },
+  line: {
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  area: {
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  bar: {
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
   row: { supportsMultipleSeries: true, getSettings: getChartSettings },
   scatter: { supportsMultipleSeries: true, getSettings: getScatterSettings },
   map: { supportsMultipleSeries: false, getSettings: getMapSettings },
