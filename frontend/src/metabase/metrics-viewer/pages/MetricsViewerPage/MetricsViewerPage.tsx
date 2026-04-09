@@ -1,7 +1,12 @@
 import type { Location } from "history";
+import { useCallback } from "react";
 
 import { Box, Flex, Stack } from "metabase/ui";
 
+import {
+  trackMetricsViewerMetricAdded,
+  trackMetricsViewerMetricRemoved,
+} from "../../analytics";
 import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
 import {
   MetricsViewerEmptyState,
@@ -13,6 +18,7 @@ import {
   MetricsViewerTabs,
 } from "../../components/MetricsViewerTabs";
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
+import type { SelectedMetric } from "../../types/viewer-state";
 
 import S from "./MetricsViewerPage.module.css";
 
@@ -49,6 +55,22 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     setBreakoutDimension,
   } = useMetricsViewer(props);
 
+  const handleAddMetric = useCallback(
+    (metric: SelectedMetric) => {
+      addMetric(metric);
+      trackMetricsViewerMetricAdded(metric.id, metric.sourceType);
+    },
+    [addMetric],
+  );
+
+  const handleRemoveMetric = useCallback(
+    (metricId: number, sourceType: "metric" | "measure") => {
+      removeMetric(metricId, sourceType);
+      trackMetricsViewerMetricRemoved(metricId, sourceType);
+    },
+    [removeMetric],
+  );
+
   const hasDefinitions = definitions.length > 0;
   const hasLoadedDefinitions = definitions.some(
     (entry) => entry.definition != null,
@@ -61,8 +83,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
           selectedMetrics={selectedMetrics}
           metricColors={sourceColors}
           definitions={definitions}
-          onAddMetric={addMetric}
-          onRemoveMetric={removeMetric}
+          onAddMetric={handleAddMetric}
+          onRemoveMetric={handleRemoveMetric}
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
           onUpdateDefinition={updateDefinition}
