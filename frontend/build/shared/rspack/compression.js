@@ -9,7 +9,7 @@ const SHOULD_COMPRESS =
     ? process.env.COMPRESSION === "true"
     : !IS_DEV_MODE;
 
-const COMPRESSION_ASSET_TEST = /\.(js|css)$/;
+const COMPRESSION_ASSET_TEST = /\.(js|css|svg)$/;
 
 export const COMPRESSION_CONFIG = SHOULD_COMPRESS
   ? [
