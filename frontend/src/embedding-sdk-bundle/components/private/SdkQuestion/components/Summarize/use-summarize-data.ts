@@ -12,6 +12,7 @@ import * as Lib from "metabase-lib";
 import { useSdkQuestionContext } from "../../context";
 
 export interface SDKAggregationItem extends AggregationItem {
+  stageIndex: number;
   onRemoveAggregation: () => void;
   onUpdateAggregation: (nextClause: Lib.Aggregable) => void;
 }
@@ -22,12 +23,13 @@ export const useSummarizeData = () => {
   const { locale } = useLocale();
 
   const query = question?.query();
-  const stageIndex = -1;
 
   const onQueryChange = useCallback(
     (newQuery: Lib.Query) => {
       if (question) {
-        updateQuestion(question.setQuery(newQuery), { run: true });
+        updateQuestion(question.setQuery(Lib.dropEmptyStages(newQuery)), {
+          run: true,
+        });
       }
     },
     [question, updateQuestion],
@@ -36,43 +38,70 @@ export const useSummarizeData = () => {
   const aggregationItems: SDKAggregationItem[] = useMemo(
     () =>
       query
-        ? getAggregationItems({ query, stageIndex }).map((aggregationItem) => {
-            const onRemoveAggregation = () => {
-              if (query) {
-                const nextQuery = Lib.removeClause(
-                  query,
-                  stageIndex,
-                  aggregationItem.aggregation,
-                );
-                onQueryChange(nextQuery);
-              }
-            };
+        ? Lib.stageIndexes(query)
+            .filter(
+              (stageIndex) =>
+                !hasAggregationWithoutBreakoutOnPrevStage(query, stageIndex),
+            )
+            .flatMap((stageIndex) =>
+              getAggregationItems({ query, stageIndex }).map(
+                (aggregationItem) => {
+                  const onRemoveAggregation = () => {
+                    if (query) {
+                      const nextQuery = Lib.removeClause(
+                        query,
+                        stageIndex,
+                        aggregationItem.aggregation,
+                      );
+                      onQueryChange(nextQuery);
+                    }
+                  };
 
-            const onUpdateAggregation = (nextClause: Lib.Aggregable) => {
-              const nextQuery = Lib.replaceClause(
-                query,
-                stageIndex,
-                aggregationItem.aggregation,
-                nextClause,
-              );
-              onQueryChange(nextQuery);
-            };
+                  const onUpdateAggregation = (nextClause: Lib.Aggregable) => {
+                    const nextQuery = Lib.replaceClause(
+                      query,
+                      stageIndex,
+                      aggregationItem.aggregation,
+                      nextClause,
+                    );
+                    onQueryChange(nextQuery);
+                  };
 
-            return {
-              ...aggregationItem,
-              displayName:
-                PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
-                  displayName: aggregationItem.displayName,
-                  tc,
-                  locale,
-                }),
-              onRemoveAggregation,
-              onUpdateAggregation,
-            };
-          })
+                  return {
+                    ...aggregationItem,
+                    stageIndex,
+                    displayName:
+                      PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+                        displayName: aggregationItem.displayName,
+                        tc,
+                        locale,
+                      }),
+                    onRemoveAggregation,
+                    onUpdateAggregation,
+                  };
+                },
+              ),
+            )
         : [],
-    [onQueryChange, query, stageIndex, tc, locale],
+    [onQueryChange, query, tc, locale],
   );
 
   return aggregationItems;
 };
+
+/**
+ * Matches the notebook editor's logic: a stage is hidden when
+ * the previous stage has aggregations but no breakouts.
+ * See `getQuestionSteps` in notebook/utils/steps.ts.
+ */
+function hasAggregationWithoutBreakoutOnPrevStage(
+  query: Lib.Query,
+  stageIndex: number,
+) {
+  if (stageIndex >= 1) {
+    const hasAggregations = Lib.aggregations(query, stageIndex - 1).length > 0;
+    const hasBreakouts = Lib.breakouts(query, stageIndex - 1).length > 0;
+    return hasAggregations && !hasBreakouts;
+  }
+  return false;
+}
