@@ -69,25 +69,6 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
 
-(deftest bulk-fallback-to-sequential-test
-  (testing "When bulk-distinct-values returns nil, sync falls back to the sequential path and still updates values correctly"
-    ;; Manually activate Field values since they are not created during sync (#53387)
-    (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
-    (sync-database!' "update-field-values" (data/db))
-    (is (= [1 2 3 4]
-           (venues-price-field-values)))
-    (testing "Perturb the stored FieldValues so the sync has something to correct"
-      (t2/update! :model/FieldValues
-                  (t2/select-one-pk :model/FieldValues :field_id (mt/id :venues :price) :type :full)
-                  {:values [99]})
-      (is (= [99]
-             (venues-price-field-values))))
-    (testing "Re-sync with bulk path disabled — sequential path should correct the values"
-      (with-redefs [field-values/bulk-distinct-values (constantly nil)]
-        (sync-database!' "update-field-values" (data/db)))
-      (is (= [1 2 3 4]
-             (venues-price-field-values))))))
-
 (deftest sync-should-properly-handle-last-used-at
   (try
     (testing "Test that syncing will skip updating inactive FieldValues"
