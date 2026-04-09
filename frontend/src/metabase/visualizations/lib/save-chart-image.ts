@@ -47,6 +47,7 @@ export const saveChartImage = async ({
   const canvas = await html2canvas(node, {
     scale: 2,
     useCORS: true,
+    cspNonce: window.MetabaseNonce,
     height: canvasHeight,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
