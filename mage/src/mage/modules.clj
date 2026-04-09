@@ -359,23 +359,23 @@
    quarantined-drivers
    updated]
   (cond
-    ;; Priority 1: Global skip (no backend changes)
-    skip
-    {:should-run false
-     :reason "workflow skip (no backend changes)"}
-
-    ;; Priority 2: H2 and Postgres always run when backend tests run
-    (#{:h2 :postgres} driver)
-    {:should-run true
-     :reason "H2/Postgres always run"}
-
-    ;; Priority 3: ci:run-all-drivers or ci:run-<driver> label
+    ;; Priority 1: ci:run-all-drivers or ci:run-<driver> label
     (or (contains? pr-labels "ci:run-all-drivers")
         (contains? pr-labels (run-driver-label driver)))
     {:should-run true
      :reason (if (contains? pr-labels "ci:run-all-drivers")
                "ci:run-all-drivers label"
                (str (run-driver-label driver) " label"))}
+
+    ;; Priority 2: Global skip (no backend changes)
+    skip
+    {:should-run false
+     :reason "workflow skip (no backend changes)"}
+
+    ;; Priority 3: H2 and Postgres always run when backend tests run
+    (#{:h2 :postgres} driver)
+    {:should-run true
+     :reason "H2/Postgres always run"}
 
     ;; Priority 4: Quarantined drivers (respected even on master/release)
     (contains? quarantined-drivers driver)
