@@ -344,8 +344,8 @@
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to MBQL 4 clauses so things work correctly.
-   
-   Instead of a general clojure.walk/walk, we use a series of specialized functions per visualization setting to 
+
+   Instead of a general clojure.walk/walk, we use a series of specialized functions per visualization setting to
    not incorrectly normalize column names like 'expression' as MBQL clauses."
   [viz-settings]
   (letfn [(normalize-column-settings-key [k]
