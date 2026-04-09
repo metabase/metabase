@@ -1,5 +1,6 @@
-const { H } = cy;
 import Color from "color";
+
+const { H } = cy;
 
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";

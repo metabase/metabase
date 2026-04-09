@@ -230,7 +230,7 @@ export const getDashcardHref = createSelector(
       !dashboard ||
       !dashcard ||
       !isQuestionDashCard(dashcard) ||
-      !dashcard.card.dataset_query // cards without queries will cause MLv2 to throw in getNewCardUrl
+      !dashcard.card.dataset_query // cards without queries will cause Lib to throw in getNewCardUrl
     ) {
       return undefined;
     }

@@ -182,7 +182,7 @@ DashCardMenu.shouldRender = ({
   }
 
   // Do not remove this check until we completely remove the old code related to Audit V1!
-  // MLv2 doesn't handle `internal` queries used for Audit V1.
+  // Lib doesn't handle `internal` queries used for Audit V1.
   const isInternalQuery = InternalQuery.isDatasetQueryType(
     question.datasetQuery(),
   );
