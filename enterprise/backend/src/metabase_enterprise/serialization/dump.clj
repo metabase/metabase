@@ -38,6 +38,12 @@
      (sequential? m) (mapv #(serialization-deep-sort % path) m)
      :else                  m)))
 
+(defn yaml-content
+  "Generate the YAML string version of the object"
+  [obj]
+  (yaml/generate-string (serialization-deep-sort obj)
+                        {:dumper-options {:flow-style :block :split-lines false}}))
+
 (defn spit-yaml!
   "Writes obj to filename and creates parent directories if necessary.
 
@@ -45,8 +51,7 @@
   [filename obj]
   (io/make-parents filename)
   (try
-    (spit filename (yaml/generate-string (serialization-deep-sort obj)
-                                         {:dumper-options {:flow-style :block :split-lines false}}))
+    (spit filename (yaml-content obj))
     (catch Exception e
       (if-not (.canWrite (.getParentFile (io/file filename)))
         (throw (ex-info (format "Destination path is not writeable: %s" filename) {:filename filename}))
