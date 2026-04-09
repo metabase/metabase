@@ -1,6 +1,10 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import {
+  trackMetricsViewerDimensionTabRemoved,
+  trackMetricsViewerDimensionTabSwitched,
+} from "metabase/metrics-viewer/analytics";
 import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
 import { ActionIcon, Icon, Skeleton, Tabs } from "metabase/ui";
 
@@ -43,8 +47,17 @@ export function MetricsViewerTabs({
     (e: React.MouseEvent, tabId: string) => {
       e.stopPropagation();
       onRemoveTab(tabId);
+      trackMetricsViewerDimensionTabRemoved();
     },
     [onRemoveTab],
+  );
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      onTabChange(value);
+      trackMetricsViewerDimensionTabSwitched();
+    },
+    [onTabChange],
   );
 
   const hasSharedDimensions = availableDimensions.shared.length > 0;
@@ -61,7 +74,7 @@ export function MetricsViewerTabs({
   return (
     <Tabs
       value={activeTabId}
-      onChange={(value) => value && onTabChange(value)}
+      onChange={(value) => value && handleTabChange(value)}
       w="auto"
     >
       <Tabs.List className={S.list} justify="flex-start">

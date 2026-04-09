@@ -560,7 +560,7 @@
      ((some-fn :source-table :source-query) query)
      (-> query
          #_{:clj-kondo/ignore [:deprecated-var]}
-         annotate.legacy-helper-fns/legacy-inner-query->mlv2-query
+         annotate.legacy-helper-fns/legacy-inner-query->mbql5-query
          (add-alias-info options)
          lib/->legacy-MBQL
          :query)

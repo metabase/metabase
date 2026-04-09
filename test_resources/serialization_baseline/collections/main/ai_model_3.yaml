@@ -1,8 +1,0 @@
-name: AI Model
-entity_id: gQuHAIM4C-7fToHzHyNNQ
-slug: ai_model
-created_at: '2025-06-09T20:12:13.732719Z'
-serdes/meta:
-- id: gQuHAIM4C-7fToHzHyNNQ
-  label: ai_model
-  model: Collection

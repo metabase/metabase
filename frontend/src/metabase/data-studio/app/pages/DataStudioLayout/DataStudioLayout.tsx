@@ -136,7 +136,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
 
           {canAccessDataModel && (
             <DataStudioTab
-              label={t`Data structure`}
+              label={t`Tables`}
               icon="open_folder"
               to={Urls.dataStudioData()}
               isSelected={currentTab === "data"}

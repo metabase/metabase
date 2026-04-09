@@ -69,7 +69,12 @@
                            ;; Use previous reference if possible:
                            (or (name->old-tag snippet-name) tag)))]
     (->> (update-vals new-tags (fn [tag]
-                                 (cond-> tag (snippet-tag? tag) (set-snippet-id))))
+                                 (cond-> tag
+                                   ;; Preserve :id from old tags if available
+                                   (get-in old-tags [(:name tag) :id])
+                                   (assoc :id (get-in old-tags [(:name tag) :id]))
+                                   (snippet-tag? tag)
+                                   (set-snippet-id))))
          (assoc snippet :template_tags))))
 
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]

@@ -20,7 +20,7 @@
 
 (declare ^:private $price)
 
-(defmacro ^:private pmbql-query
+(defmacro ^:private mbql5-query
   {:style/indent 1}
   [table-name & body]
   `(let [query#   (query-for-table-id ~(keyword table-name))
@@ -28,22 +28,22 @@
      (-> query#
          ~@body)))
 
-(defmacro ^:private run-pmbql-query
+(defmacro ^:private run-mbql5-query
   {:style/indent 1}
   [table-name & body]
-  `(qp/process-query (pmbql-query ~table-name ~@body)))
+  `(qp/process-query (mbql5-query ~table-name ~@body)))
 
 (deftest ^:parallel pipeline-queries-test
-  (testing "Ensure that the QP can handle pMBQL queries"
+  (testing "Ensure that the QP can handle MBQL 5 queries"
     (is (= [6]
            (mt/first-row
-            (run-pmbql-query :venues
+            (run-mbql5-query :venues
               (lib/aggregate (lib/count))
               (lib/filter (lib/= $price 4))))))))
 
 (deftest ^:parallel denormalized-pipeline-queries-test
-  (testing "Ensure that the QP can handle pMBQL queries as they'd come in from the REST API or application database"
-    (let [query (-> (pmbql-query :venues
+  (testing "Ensure that the QP can handle MBQL 5 queries as they'd come in from the REST API or application database"
+    (let [query (-> (mbql5-query :venues
                       (lib/aggregate (lib/count))
                       (lib/filter (lib/= $price 4)))
                     (dissoc :lib/metadata)

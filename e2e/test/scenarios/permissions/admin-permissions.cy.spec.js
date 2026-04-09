@@ -338,9 +338,10 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
           "readonly",
         ];
 
-        // client filter debounce
-        cy.wait(300);
-
+        cy.findAllByRole("menuitem").should(
+          "have.length",
+          filteredGroups.length,
+        );
         H.assertSidebarItems(filteredGroups);
       });
 

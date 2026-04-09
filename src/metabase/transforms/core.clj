@@ -1,17 +1,17 @@
 (ns metabase.transforms.core
   "API namespace for the `metabase.transforms` module."
   (:require
-   [metabase.models.transforms.transform]
-   [metabase.models.transforms.transform-job]
-   [metabase.models.transforms.transform-run]
-   [metabase.models.transforms.transform-run-cancelation]
-   [metabase.models.transforms.transform-tag]
    [metabase.transforms-base.ordering]
    [metabase.transforms-base.util]
    [metabase.transforms.canceling]
    [metabase.transforms.crud]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
+   [metabase.transforms.models.transform]
+   [metabase.transforms.models.transform-job]
+   [metabase.transforms.models.transform-run]
+   [metabase.transforms.models.transform-run-cancelation]
+   [metabase.transforms.models.transform-tag]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.util]
@@ -57,16 +57,16 @@
   update-job!
   delete-job!
   existing-trigger]
- [metabase.models.transforms.transform
+ [metabase.transforms.models.transform
   update-transform-tags!]
- [metabase.models.transforms.transform-run
+ [metabase.transforms.models.transform-run
   timeout-run!
   paged-runs
   running-run-for-transform-id]
- [metabase.models.transforms.transform-run-cancelation
+ [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]
- [metabase.models.transforms.transform-job
+ [metabase.transforms.models.transform-job
   update-job-tags!]
- [metabase.models.transforms.transform-tag
+ [metabase.transforms.models.transform-tag
   tag-name-exists?
   tag-name-exists-excluding?])
