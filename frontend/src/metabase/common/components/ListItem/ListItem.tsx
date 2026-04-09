@@ -1,14 +1,25 @@
-/* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { memo } from "react";
 
 import { Card } from "metabase/common/components/Card";
 import S from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
+import type { IconName } from "metabase/ui";
 import { Ellipsified, Icon } from "metabase/ui";
 
 import { ListItemLink, Root } from "./ListItem.styled";
+
+interface ListItemBaseProps {
+  "data-testid"?: string;
+  name: string;
+  description?: string;
+  placeholder?: string;
+  icon?: IconName;
+}
+
+export type ListItemProps =
+  | (ListItemBaseProps & { url: string; disabled?: false })
+  | (ListItemBaseProps & { url?: string; disabled: true });
 
 const ListItemInner = ({
   "data-testid": dataTestId,
@@ -18,7 +29,7 @@ const ListItemInner = ({
   disabled,
   placeholder,
   icon,
-}) => {
+}: ListItemProps) => {
   const card = (
     <Card
       hoverable
@@ -57,16 +68,6 @@ const ListItemInner = ({
       <ListItemLink to={url}>{card}</ListItemLink>
     </Root>
   );
-};
-
-ListItemInner.propTypes = {
-  "data-testid": PropTypes.string,
-  name: PropTypes.string.isRequired,
-  url: PropTypes.string,
-  description: PropTypes.string,
-  disabled: PropTypes.bool,
-  placeholder: PropTypes.string,
-  icon: PropTypes.string,
 };
 
 export const ListItem = memo(ListItemInner);
