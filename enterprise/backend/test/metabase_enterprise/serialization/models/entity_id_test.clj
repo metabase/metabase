@@ -32,7 +32,8 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/AnalysisFinding
+  #{:model/AiUsageLog
+    :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
     :model/AuthIdentity
@@ -57,7 +58,10 @@
     :model/LoginHistory
     :model/FieldValues
     :model/MetabotConversation
+    :model/MetabotGroupLimit
+    :model/MetabotInstanceLimit
     :model/MetabotMessage
+    :model/MetabotPermissions
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
@@ -66,6 +70,10 @@
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient
+    :model/OAuthAccessToken
+    :model/OAuthAuthorizationCode
+    :model/OAuthClient
+    :model/OAuthRefreshToken
     :model/ParameterCard
     :model/Permissions
     :model/PermissionsGroup

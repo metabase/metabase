@@ -1,5 +1,5 @@
 (ns metabase.llm.api
-  "API endpoints for LLM-powered SQL generation (OSS)."
+  "API endpoints for OSS BYOK SQL generation."
   (:require
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -13,6 +13,9 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.core :as metabot]
+   [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -53,7 +56,7 @@
          (when-let [resource (io/resource resource-path)]
            (slurp resource)))))))
 
-(def ^:private sql-generation-prompt-template "llm/prompts/sql-generation-system.mustache")
+(def ^:private sql-generation-prompt-template "metabot/prompts/system/one-shot-sql-generation.mustache")
 
 (def ^:private datetime-formatter
   (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss"))
@@ -90,13 +93,16 @@
                                   [:display_name :string]]]]]
   "List available LLM models from the configured provider.
 
-   Requires LLM to be configured (Anthropic API key set in admin settings)."
+   Requires LLM to be configured for the selected provider in admin settings."
   [_route-params
    _query-params]
-  (when-not (llm.settings/llm-anthropic-api-key)
-    (throw (ex-info (tru "LLM is not configured. Please set an Anthropic API key in admin settings.")
+  (when-not (metabot.settings/llm-metabot-configured?)
+    (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))
-  (llm.anthropic/list-models))
+  (let [provider-and-model (metabot.settings/llm-metabot-provider)
+        ai-proxy?          (metabot/metabase-provider? provider-and-model)
+        provider           (metabot/provider-and-model->provider provider-and-model)]
+    (metabot.self/list-models provider {:ai-proxy? ai-proxy?})))
 
 (def ^:private table-with-columns-schema
   "Schema for table metadata with columns returned by /extract-tables."
@@ -181,6 +187,8 @@
   (when-not (llm.settings/llm-anthropic-api-key)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
+  (when-let [limit-msg (metabot/check-usage-limits!)]
+    (throw (ex-info limit-msg {:status-code 429})))
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
                              (sql-gen-throttlers :user-id)    api/*current-user-id*]
     (let [{:keys [prompt database_id source_sql referenced_entities]} body
@@ -231,6 +239,11 @@
                 ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
                 :source              "oss_metabot"
                 :tag                 "oss-sqlgen"})
+              (metabot/log-ai-usage!
+               {:source            "oss-sql-gen"
+                :model             (:model usage)
+                :prompt-tokens     (:prompt usage)
+                :completion-tokens (:completion usage)})
               (track-sqlgen-event!
                {:duration-ms (u/since-ms start-timer)
                 :result "success"

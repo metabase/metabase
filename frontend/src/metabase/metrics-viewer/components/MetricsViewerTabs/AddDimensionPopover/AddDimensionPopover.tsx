@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { AccordionList } from "metabase/common/components/AccordionList";
+import { trackMetricsViewerDimensionTabAdded } from "metabase/metrics-viewer/analytics";
+import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
 import { ActionIcon, Icon, Popover } from "metabase/ui";
 
 import type { MetricSourceId } from "../../../types/viewer-state";
@@ -19,7 +21,7 @@ type AddDimensionPopoverProps = {
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
   hasMultipleSources: boolean;
-  onAddTab: (dimensionId: string) => void;
+  onAddTab: (tabInfo: TabInfo) => void;
 };
 
 export function AddDimensionPopover({
@@ -44,7 +46,8 @@ export function AddDimensionPopover({
 
   const handleSelect = useCallback(
     (item: DimensionPickerItem) => {
-      onAddTab(item.dimensionId);
+      onAddTab(item.tabInfo);
+      trackMetricsViewerDimensionTabAdded();
       setIsOpen(false);
     },
     [onAddTab],

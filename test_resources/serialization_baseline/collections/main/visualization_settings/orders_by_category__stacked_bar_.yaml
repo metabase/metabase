@@ -1,0 +1,132 @@
+name: Orders by Category (Stacked Bar)
+entity_id: ciG63nSLHKRTImt5iWEte
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: bar
+collection_id: cOlViZsEtTiNgS0ExAmP1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    breakout:
+    - - field
+      - temporal-unit: quarter
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+    joins:
+    - alias: Products
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {}
+          - - Sample Database
+            - PUBLIC
+            - ORDERS
+            - PRODUCT_ID
+        - - field
+          - {}
+          - - Sample Database
+            - PUBLIC
+            - PRODUCTS
+            - ID
+      fields: all
+      stages:
+      - source-table:
+        - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        lib/type: mbql.stage/mbql
+      strategy: left-join
+      lib/type: mbql/join
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: 'Created At: Quarter'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - temporal-unit: quarter
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  inherited_temporal_unit: quarter
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  unit: quarter
+  visibility_type: normal
+  lib/breakout?: true
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  lib/temporal-unit: quarter
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - CREATED_AT
+  - CATEGORY
+  graph.max_categories: 4
+  graph.max_categories_enabled: true
+  graph.metrics:
+  - count
+  graph.other_category_aggregation_fn: sum
+  graph.show_stack_values: total
+  graph.show_values: true
+  graph.x_axis.title_text: Quarter
+  graph.y_axis.title_text: Order Count
+  stackable.stack_type: stacked
+card_schema: 23
+serdes/meta:
+- id: ciG63nSLHKRTImt5iWEte
+  label: orders_by_category__stacked_bar_
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

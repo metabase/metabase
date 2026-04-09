@@ -63,6 +63,10 @@ export const TAG_TYPES = [
   "unique-tasks",
   "user-key-value",
   "tenant",
+  "metabot",
+  "metabot-entities-list",
+  "metabot-prompt-suggestions",
+  "metabot-permissions",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

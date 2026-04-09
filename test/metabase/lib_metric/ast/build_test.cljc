@@ -314,7 +314,7 @@
 
 (deftest ^:parallel mbql-filter->ast-filter-exclude-day-of-week-test
   (let [;; Exclude Monday (1) and Sunday (7) using ISO day-of-week
-        ;; This is the pMBQL shape produced by lib/fe_util/exclude-date-filter-clause
+        ;; This is the MBQL 5 shape produced by lib/fe_util/exclude-date-filter-clause
         result (ast.build/mbql-filter->ast-filter
                 [:!= {} [:get-day-of-week {} [:dimension {} uuid-2] :iso] 1 7])]
     (is (some? result) "should produce an AST filter node")
@@ -391,6 +391,7 @@
   (let [definition-with-projections (assoc (sample-definition)
                                            :projections [{:type :metric
                                                           :id 42
+                                                          :lib/uuid expr-uuid
                                                           :projection [[:dimension {} uuid-1]
                                                                        [:dimension {"temporal-unit" "year"} uuid-2]]}])
         ast (ast.build/from-definition definition-with-projections)]

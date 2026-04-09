@@ -8,6 +8,7 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isQuestionCard, isQuestionDashCard } from "metabase/lib/dashboard";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -56,8 +57,6 @@ import {
   hasDatabaseActionsEnabled,
   hasInlineParameters,
   isDashcardInlineParameter,
-  isQuestionCard,
-  isQuestionDashCard,
 } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
@@ -231,7 +230,7 @@ export const getDashcardHref = createSelector(
       !dashboard ||
       !dashcard ||
       !isQuestionDashCard(dashcard) ||
-      !dashcard.card.dataset_query // cards without queries will cause MLv2 to throw in getNewCardUrl
+      !dashcard.card.dataset_query // cards without queries will cause Lib to throw in getNewCardUrl
     ) {
       return undefined;
     }

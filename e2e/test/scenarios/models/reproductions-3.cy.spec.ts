@@ -974,7 +974,7 @@ describe("issue 45926", () => {
       cy.findByText(
         "changed the visualization settings and edited the metadata.",
       )
-        .closest("li")
+        .closest('[data-testid="revision-history-event"]')
         .findByTestId("question-revert-button")
         .click();
     });

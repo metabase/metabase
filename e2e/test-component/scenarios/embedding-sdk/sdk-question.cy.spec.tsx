@@ -76,6 +76,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByTestId("viz-settings-button").click();
 
       H.popover().within(() => {
+        cy.findByText("Display").click();
         cy.findByText("Show row index").click();
       });
 
@@ -85,13 +86,11 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText("#").should("be.visible");
 
       cy.findByTestId("table-body")
-        .get("[data-index='0']")
-        .within(() => {
-          cy.get("[data-column-id$='_INDEX']")
-            .realHover({ scrollBehavior: false })
-            .findByTestId("detail-shortcut")
-            .should("not.exist");
-        });
+        .find("[data-column-id$='_INDEX']")
+        .eq(0)
+        .realHover({ scrollBehavior: false })
+        .findByTestId("detail-shortcut")
+        .should("not.exist");
     });
   });
 

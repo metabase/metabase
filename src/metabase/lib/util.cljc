@@ -275,7 +275,7 @@
   MBQL 5 query. The key difference is that instead of having a `:query` with a `:source-query` with a `:source-query`
   and so forth, you have a vector of `:stages` where each stage serves as the source query for the next stage.
   Initially this was an implementation detail of a few functions, but it's easier to visualize and manipulate, so now
-  all of MLv2 deals with MBQL 5. See this Slack thread
+  all of Lib deals with MBQL 5. See this Slack thread
   https://metaboat.slack.com/archives/C04DN5VRQM6/p1677118410961169?thread_ts=1677112778.742589&cid=C04DN5VRQM6 for
   more information."
   [query]
@@ -508,7 +508,7 @@
                              (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"
                                              {:aggregation &match})))])))
 
-(mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
+(mu/defn normalized-query-type :- [:maybe [:enum #_MBQL5 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
   (when (map? query)

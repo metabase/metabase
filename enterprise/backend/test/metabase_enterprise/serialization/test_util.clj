@@ -59,7 +59,10 @@
 (defn -data-source-url [^metabase.app_db.data_source.DataSource data-source]
   (.url data-source))
 
-(defmacro with-db [data-source & body]
+;; TODO (Cam 2026-03-30) -- give this a clearer name, like `with-current-h2-app-db`
+(defmacro with-db
+  "Execute `body` with the current app DB bound to an H2 `data-source`."
+  [data-source & body]
   `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
      (with-open [conn# (.getConnection mdb.connection/*application-db*)]
        (binding [t2.conn/*current-connectable* conn#]
@@ -91,10 +94,10 @@
 
 (defmacro with-dbs
   "Create and set up in-memory H2 application databases for each symbol in the bindings vector, each of which is then
-   bound to the corresponding data-source when executing the body. You can then use [[with-db]] to make any of these
-   data-sources the current application database.
+  bound to the corresponding data-source when executing the body. You can then use [[with-db]] to make any of these
+  data-sources the current application database.
 
-   This is particularly useful for load/dump/serialization tests, where you need both a source and application db."
+  This is particularly useful for load/dump/serialization tests, where you need both a source and application db."
   {:style/indent [:defn]}
   [bindings & body]
   (let [arity (count bindings)

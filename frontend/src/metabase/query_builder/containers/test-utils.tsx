@@ -23,6 +23,7 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -48,7 +49,6 @@ import {
   createMockModelIndex,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockResultsMetadata,
   createMockSettings,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
@@ -207,8 +207,6 @@ export const TEST_MODEL_DATASET = createMockDataset({
 
 export const TEST_COLLECTION = createMockCollection();
 
-export const TEST_METADATA = createMockResultsMetadata();
-
 const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
 ) => {
@@ -245,8 +243,9 @@ export const setup = async ({
         : `#${serializeCardForUrl(card)}`
   }`,
 }: SetupOpts) => {
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([TEST_DB]);
-  setupCardDataset(dataset);
+  setupCardDataset({ dataset });
   setupSearchEndpoints([]);
   setupPropertiesEndpoints(createMockSettings());
   setupCollectionsEndpoints({ collections: [] });

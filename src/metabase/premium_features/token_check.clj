@@ -118,15 +118,6 @@
       t/local-date
       str))
 
-(defenterprise metabot-stats
-  "Stats for Metabot"
-  metabase-enterprise.metabot-v3.core
-  []
-  {:metabot-tokens     0
-   :metabot-queries    0
-   :metabot-users      0
-   :metabot-usage-date (yesterday)})
-
 (defenterprise transform-stats
   "Stats for Transforms"
   metabase-enterprise.transforms.core
@@ -149,7 +140,7 @@
         embedding-question-count  (internal-stats/embedding-question-count)
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
-                                         (metabot-stats)
+                                         (internal-stats/metabot-stats)
                                          (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
@@ -172,6 +163,7 @@
    [:valid                          :boolean]
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
+   [:canonical?    {:optional true} [:maybe :boolean]]
    [:features      {:optional true} [:sequential [:string {:min 1}]]]
    [:plan-alias    {:optional true} :string]
    [:trial         {:optional true} :boolean]
@@ -180,6 +172,7 @@
    [:company       {:optional true} [:string {:min 1}]]
    [:store-users   {:optional true} [:maybe [:sequential [:map
                                                           [:email :string]]]]]
+   [:meters        {:optional true} :map]
    [:quotas        {:optional true} [:sequential [:map]]]])
 
 (defn- http-fetch
@@ -198,12 +191,11 @@
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
       (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
-                               (some-> body json/decode+kw))
-      (<= 400 status 499) (or (some-> body json/decode+kw)
+                               (some-> body json/decode+kw (assoc :canonical? true)))
+      (<= 400 status 499) (or (some-> body json/decode+kw (assoc :canonical? true))
                               {:valid false
                                :status "Unable to validate token"
                                :error-details "Token validation provided no response"})
-
       ;; exceptions are not cached.
       :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
                 (throw (ex-info "An unknown error occurred when validating token." {:status status
@@ -566,7 +558,13 @@
                         {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
       (let [decoded (check-token new-value)]
         (when-not (:valid decoded)
-          (throw (ex-info "Invalid token" {:token (u.str/mask new-value)}))))
+          (throw (ex-info (:status decoded)
+                          {:error-details (:error-details decoded)
+                           ;; If MetaStore told us the token is invalid, use 400. If some other error occurred, a 503 is
+                           ;; probably more appropriate.
+                           :status-code (if (:canonical? decoded)
+                                          400
+                                          503)}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
     (events/publish-event! :event/set-premium-embedding-token {})
@@ -623,6 +621,14 @@
   (some-> (premium-features.settings/premium-embedding-token)
           (check-token)
           :quotas))
+
+(mu/defn meters :- [:maybe :map]
+  "Returns a map of current metered usage for the subscription."
+  []
+  (clear-cache!)
+  (some-> (premium-features.settings/premium-embedding-token)
+          (check-token)
+          :meters))
 
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."

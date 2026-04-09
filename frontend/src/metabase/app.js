@@ -35,6 +35,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
+import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
@@ -42,7 +43,8 @@ import { captureConsoleErrors } from "metabase/lib/errors";
 import { initTracing, rotateTraceId } from "metabase/lib/otel";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import MetabaseSettings from "metabase/lib/settings";
-import { PLUGIN_APP_INIT_FUNCTIONS, PLUGIN_METABOT } from "metabase/plugins";
+import { MetabotProvider } from "metabase/metabot/context";
+import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -69,7 +71,6 @@ function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
   const syncedHistory = syncHistoryWithStore(browserHistory, store);
-  const MetabotProvider = PLUGIN_METABOT.getMetabotProvider();
 
   createTracker(store);
 
@@ -104,6 +105,7 @@ function _init(reducers, getRoutes, callback) {
   );
 
   registerVisualizations();
+  registerDashboardVisualizations();
 
   store.dispatch(refreshSiteSettings());
 

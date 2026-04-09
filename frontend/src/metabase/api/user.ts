@@ -116,16 +116,21 @@ export const userApi = Api.injectEndpoints({
           dispatch(userUpdated(user));
         }),
     }),
+    getPasswordResetUrl: builder.mutation<
+      { password_reset_url: string },
+      UserId
+    >({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/user/${id}/password-reset-url`,
+      }),
+    }),
     listUserAttributes: builder.query<string[], void>({
       query: () => "/api/mt/user/attributes",
       providesTags: (response) => (response ? [listTag("user")] : []),
     }),
   }),
 });
-
-/** To minimize requests, useListUsersQuery should be invoked where possible
- * with this limit and an offset of 0 */
-export const STANDARD_USER_LIST_PAGE_SIZE = 27;
 
 export const {
   useListUsersQuery,
@@ -136,5 +141,6 @@ export const {
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,
+  useGetPasswordResetUrlMutation,
   useListUserAttributesQuery,
 } = userApi;

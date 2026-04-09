@@ -1,3 +1,7 @@
+import {
+  DIMENSION_PREDICATES,
+  getGeoSubtype,
+} from "metabase/metrics/common/utils/dimension-types";
 import type { IconName } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -8,13 +12,9 @@ import type {
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
-import {
-  getGeoSubtype,
-  getMapRegionForDimension,
-  isGeoDimension,
-} from "./geo-dimensions";
+import { getMapRegionForDimension } from "./geo-dimensions";
 
-// ── Shared types ──
+// ── Types ──
 
 export interface ChartTypeOption {
   type: MetricsViewerDisplayType;
@@ -27,12 +27,15 @@ interface DisplayTypeDefinition {
     def: MetricDefinition,
     dimension: DimensionMetadata,
   ) => VisualizationSettings;
+  combineSettings?: (
+    settings: VisualizationSettings[],
+  ) => VisualizationSettings;
 }
 
 interface BaseTabTypeDefinition {
   type: MetricsViewerTabType;
-  autoCreate: boolean;
   dimensionPredicate: (dimension: DimensionMetadata) => boolean;
+  autoCreate: boolean;
   dimensionSubtype?: (dimension: DimensionMetadata) => string | null;
   defaultDisplayType: MetricsViewerDisplayType;
   availableDisplayTypes: ChartTypeOption[];
@@ -41,7 +44,6 @@ interface BaseTabTypeDefinition {
 interface AggregateTabType extends BaseTabTypeDefinition {
   matchMode: "aggregate";
   fixedId: string;
-  fixedLabel: string;
 }
 
 interface ExactColumnTabType extends BaseTabTypeDefinition {
@@ -50,7 +52,7 @@ interface ExactColumnTabType extends BaseTabTypeDefinition {
 
 export type TabTypeDefinition = AggregateTabType | ExactColumnTabType;
 
-// ── Tab type registry ──
+// ── Chart type presets ──
 
 const STANDARD_CHART_TYPES: ChartTypeOption[] = [
   { type: "line", icon: "line" },
@@ -68,55 +70,49 @@ const NUMERIC_CHART_TYPES: ChartTypeOption[] = [
   { type: "scatter", icon: "bubble" },
 ];
 
+// ── Tab type registry ──
+
 export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
   {
     type: "time",
+    dimensionPredicate: DIMENSION_PREDICATES.time,
     autoCreate: true,
     matchMode: "aggregate",
     fixedId: "time",
-    fixedLabel: "Time",
-    dimensionPredicate: LibMetric.isDateOrDateTime,
     defaultDisplayType: "line",
     availableDisplayTypes: STANDARD_CHART_TYPES,
   },
   {
     type: "geo",
+    dimensionPredicate: DIMENSION_PREDICATES.geo,
     autoCreate: true,
     matchMode: "aggregate",
     fixedId: "geo",
-    fixedLabel: "Location",
-    dimensionPredicate: isGeoDimension,
     dimensionSubtype: getGeoSubtype,
     defaultDisplayType: "map",
     availableDisplayTypes: GEO_CHART_TYPES,
   },
   {
     type: "category",
+    dimensionPredicate: DIMENSION_PREDICATES.category,
     autoCreate: true,
     matchMode: "exact-column",
-    dimensionPredicate: (dimension) =>
-      LibMetric.isCategory(dimension) &&
-      !isGeoDimension(dimension) &&
-      !LibMetric.isBoolean(dimension),
     defaultDisplayType: "bar",
     availableDisplayTypes: STANDARD_CHART_TYPES,
   },
   {
     type: "boolean",
+    dimensionPredicate: DIMENSION_PREDICATES.boolean,
     autoCreate: true,
     matchMode: "exact-column",
-    dimensionPredicate: LibMetric.isBoolean,
     defaultDisplayType: "bar",
     availableDisplayTypes: STANDARD_CHART_TYPES,
   },
   {
     type: "numeric",
+    dimensionPredicate: DIMENSION_PREDICATES.numeric,
     autoCreate: false,
     matchMode: "exact-column",
-    dimensionPredicate: (dimension) =>
-      LibMetric.isNumeric(dimension) &&
-      !LibMetric.isID(dimension) &&
-      !LibMetric.isCoordinate(dimension),
     defaultDisplayType: "bar",
     availableDisplayTypes: NUMERIC_CHART_TYPES,
   },
@@ -204,13 +200,40 @@ function getMapSettings(
   };
 }
 
+function combineColors(
+  settings: VisualizationSettings[],
+): VisualizationSettings {
+  // getStoredSettingsForSeries only looks at settings on the first series
+  return settings.reduce((acc, setting) => {
+    return {
+      ...acc,
+      series_settings: {
+        ...acc["series_settings"],
+        ...setting["series_settings"],
+      },
+    };
+  });
+}
+
 export const DISPLAY_TYPE_REGISTRY: Record<
   MetricsViewerDisplayType,
   DisplayTypeDefinition
 > = {
-  line: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  area: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  bar: { supportsMultipleSeries: true, getSettings: getChartSettings },
+  line: {
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  area: {
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  bar: {
+    supportsMultipleSeries: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
   row: { supportsMultipleSeries: true, getSettings: getChartSettings },
   scatter: { supportsMultipleSeries: true, getSettings: getScatterSettings },
   map: { supportsMultipleSeries: false, getSettings: getMapSettings },

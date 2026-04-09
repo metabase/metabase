@@ -1,13 +1,19 @@
 import { useCallback, useMemo } from "react";
 
 import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
+import { isNotNull } from "metabase/lib/types";
 import type {
   DimensionMetadata,
   MetricDefinition,
   ProjectionClause,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
+import type {
+  CardId,
+  Dataset,
+  MetricBreakoutValuesResponse,
+  SingleSeries,
+} from "metabase-types/api";
 
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
@@ -15,6 +21,7 @@ import type {
   MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
   SelectedMetric,
+  SourceBreakoutColorMap,
   SourceColorMap,
 } from "../types/viewer-state";
 import {
@@ -34,14 +41,19 @@ import type {
   SourceDisplayInfo,
 } from "../utils/dimension-picker";
 import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
-import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
+import {
+  buildRawSeriesFromDefinitions,
+  computeSourceBreakoutColors,
+  getSelectedMetricsInfo,
+} from "../utils/series";
 import {
   createMeasureSourceId,
   createMetricSourceId,
   createSourceId,
 } from "../utils/source-ids";
 import {
-  createTabFromDimension,
+  type TabInfo,
+  createTabFromTabInfo,
   getDimensionsByType,
   resolveCommonTabLabel,
 } from "../utils/tabs";
@@ -62,6 +74,9 @@ export interface UseMetricsViewerResult {
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   isExecuting: (id: MetricSourceId) => boolean;
 
+  series: SingleSeries[];
+  cardIdToDefinitionId: Record<CardId, MetricSourceId>;
+  activeBreakoutColors: SourceBreakoutColorMap;
   sourceColors: SourceColorMap;
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
   selectedMetrics: SelectedMetric[];
@@ -73,7 +88,7 @@ export interface UseMetricsViewerResult {
   swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   removeMetric: (id: number, sourceType: "metric" | "measure") => void;
   changeTab: (tabId: string) => void;
-  addAndSelectTab: (dimensionId: string) => void;
+  addAndSelectTab: (tabInfo: TabInfo) => void;
   removeTab: (tabId: string) => void;
   updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
@@ -213,9 +228,45 @@ export function useMetricsViewer({
     [state.definitions, loadingIds],
   );
 
-  const sourceColors = useMemo(
-    () => computeSourceColors(state.definitions, breakoutValuesBySourceId),
+  const sourceBreakoutColors = useMemo(
+    () =>
+      computeSourceBreakoutColors(state.definitions, breakoutValuesBySourceId),
     [state.definitions, breakoutValuesBySourceId],
+  );
+
+  const { series, cardIdToDefinitionId, activeBreakoutColors } = useMemo(() => {
+    if (!activeTab) {
+      return { series: [], cardIdToDefinitionId: {}, activeBreakoutColors: {} };
+    }
+    return buildRawSeriesFromDefinitions(
+      state.definitions,
+      activeTab.dimensionMapping,
+      activeTab.display,
+      resultsByDefinitionId,
+      modifiedDefinitions,
+      sourceBreakoutColors,
+    );
+  }, [
+    state.definitions,
+    activeTab,
+    resultsByDefinitionId,
+    modifiedDefinitions,
+    sourceBreakoutColors,
+  ]);
+
+  const sourceColors = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(activeBreakoutColors).map(([sourceId, colors]) => [
+          sourceId,
+          colors === undefined
+            ? []
+            : typeof colors === "string"
+              ? [colors]
+              : Array.from(colors.values()),
+        ]),
+      ),
+    [activeBreakoutColors],
   );
 
   const definitionsBySourceId = useMemo(
@@ -254,8 +305,13 @@ export function useMetricsViewer({
     return result;
   }, [state.definitions]);
 
-  const existingTabIds = useMemo(
-    () => new Set(state.tabs.map((tab) => tab.id)),
+  const existingTabDimensionIds = useMemo(
+    () =>
+      new Set(
+        state.tabs
+          .flatMap((tab) => Object.values(tab.dimensionMapping))
+          .filter(isNotNull),
+      ),
     [state.tabs],
   );
 
@@ -283,8 +339,8 @@ export function useMetricsViewer({
           names.push(dimensionInfo.displayName);
         }
       }
-      const label = resolveCommonTabLabel(names, tab.label);
-      return label !== tab.label ? { ...tab, label } : tab;
+      const label = resolveCommonTabLabel(names);
+      return label != null && label !== tab.label ? { ...tab, label } : tab;
     });
   }, [state.tabs, state.definitions]);
 
@@ -293,9 +349,9 @@ export function useMetricsViewer({
       getAvailableDimensionsForPicker(
         definitionsBySourceId,
         sourceOrder,
-        existingTabIds,
+        existingTabDimensionIds,
       ),
-    [definitionsBySourceId, sourceOrder, existingTabIds],
+    [definitionsBySourceId, sourceOrder, existingTabDimensionIds],
   );
 
   const addMetric = useCallback(
@@ -336,12 +392,8 @@ export function useMetricsViewer({
   );
 
   const addAndSelectTab = useCallback(
-    (dimensionId: string) => {
-      const newTab = createTabFromDimension(
-        dimensionId,
-        definitionsBySourceId,
-        sourceOrder,
-      );
+    (tabInfo: TabInfo) => {
+      const newTab = createTabFromTabInfo(tabInfo);
       if (!newTab) {
         return;
       }
@@ -349,7 +401,7 @@ export function useMetricsViewer({
       addTab(newTab);
       changeTab(newTab.id);
     },
-    [definitionsBySourceId, sourceOrder, addTab, changeTab],
+    [addTab, changeTab],
   );
 
   const updateActiveTab = useCallback(
@@ -374,6 +426,9 @@ export function useMetricsViewer({
     modifiedDefinitions,
     isExecuting,
 
+    series,
+    cardIdToDefinitionId,
+    activeBreakoutColors,
     sourceColors,
     breakoutValuesBySourceId,
     selectedMetrics,

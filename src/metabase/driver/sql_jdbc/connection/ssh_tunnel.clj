@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection.ssh-tunnel
   "SSH tunnel support for JDBC-based DWs."
   (:require
+   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.util :as u]
@@ -10,6 +11,7 @@
    (java.util.concurrent TimeUnit)
    (org.apache.sshd.client SshClient)
    (org.apache.sshd.client.future ConnectFuture)
+   (org.apache.sshd.client.keyverifier KnownHostsServerKeyVerifier RejectAllServerKeyVerifier)
    (org.apache.sshd.client.session ClientSession)
    (org.apache.sshd.client.session.forward PortForwardingTracker)
    (org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$Decoder FilePasswordProvider$ResourceDecodeResult)
@@ -29,10 +31,25 @@
 
 (def ^:private ^Long default-ssh-timeout 30000)
 
-(def ^:private ^SshClient client
+(def ^:private ^SshClient default-client
   (doto (SshClient/setUpDefaultClient)
     (.start)
     (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)))
+
+(defn- create-client-with-known-hosts
+  "Create a new SshClient that verifies the server's host key against the given known_hosts content (UTF-8).
+  The caller is responsible for stopping this client when the tunnel is closed."
+  ^SshClient [^String known-hosts-content]
+  (let [tmp-file (doto (java.io.File/createTempFile "metabase-known-hosts_" ".txt")
+                   (.setReadable false false)
+                   (.setReadable true true)
+                   (.deleteOnExit))]
+    ;; KnownHostEntry reads files as UTF-8
+    (spit tmp-file known-hosts-content :encoding "UTF-8")
+    (doto (SshClient/setUpDefaultClient)
+      (.setServerKeyVerifier (KnownHostsServerKeyVerifier. RejectAllServerKeyVerifier/INSTANCE (.toPath tmp-file)))
+      (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)
+      (.start))))
 
 (def ^:private ^"[Lorg.apache.sshd.common.future.CancelOption;" no-cancel-options
   (make-array CancelOption 0))
@@ -60,12 +77,18 @@
 
 (defn- start-ssh-tunnel!
   "Opens a new ssh tunnel and returns the connection along with the dynamically assigned tunnel entrance port. It's the
-  callers responsibility to call [[close-tunnel!]] on the returned connection object."
+  callers responsibility to call [[close-tunnel!]] on the returned connection object.
+
+  When `:tunnel-known-hosts` is provided in the details, the server's host key is verified against it. If the key does
+  not match, connection is refused. When absent, any host key is accepted (backward-compatible behavior)."
   [{:keys [^String tunnel-host ^Integer tunnel-port ^String tunnel-user tunnel-pass tunnel-private-key
-           tunnel-private-key-passphrase host port]}]
+           tunnel-private-key-passphrase tunnel-known-hosts host port]}]
   {:pre [(integer? port)]}
-  (let [^Integer tunnel-port       (or tunnel-port default-ssh-tunnel-port)
-        ^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
+  (let [dedicated-client           (when tunnel-known-hosts
+                                     (create-client-with-known-hosts tunnel-known-hosts))
+        ^SshClient ssh-client      (or dedicated-client default-client)
+        ^Integer tunnel-port       (or tunnel-port default-ssh-tunnel-port)
+        ^ConnectFuture conn-future (.connect ssh-client tunnel-user tunnel-host tunnel-port)
         ^SessionHolder conn-status (.verify conn-future default-ssh-timeout no-cancel-options)
         hb-sec                     (driver.settings/ssh-heartbeat-interval-sec)
         session                    (doto ^ClientSession (.getSession conn-status)
@@ -81,7 +104,7 @@
         input-port                 (.. tracker getBoundAddress getPort)]
     (log/trace (u/format-color 'cyan "creating ssh tunnel (heartbeating every %d seconds) %s@%s:%s -L %s:%s:%s"
                                hb-sec tunnel-user tunnel-host tunnel-port input-port host port))
-    [session tracker]))
+    [session tracker dedicated-client]))
 
 (defn use-ssh-tunnel?
   "Is the SSH tunnel currently turned on for these connection details"
@@ -99,26 +122,42 @@
   For drivers that enter hosts including the protocol (https://host), copy the protocol over as well"
   [details]
   (if (use-ssh-tunnel? details)
-    (let [[_ proto host]                           (re-find #"(.*://)?(.*)" (:host details))
-          orig-port                                (let [p (:port details)]
-                                                     (if (string? p) (Integer/parseInt p) p))
-          [session ^PortForwardingTracker tracker] (start-ssh-tunnel! (assoc details :host host :port orig-port))
-          tunnel-entrance-port                     (.. tracker getBoundAddress getPort)
-          tunnel-entrance-host                     (.. tracker getBoundAddress getHostName)
-          details-with-tunnel                      (assoc details
-                                                          :port tunnel-entrance-port ;; This parameter is set dynamically when the connection is established
-                                                          :host (str proto "localhost") ;; SSH tunnel will always be through localhost
-                                                          :orig-port orig-port
-                                                          :tunnel-entrance-host tunnel-entrance-host
-                                                          :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
-                                                          :tunnel-enabled true
-                                                          :tunnel-session session
-                                                          :tunnel-tracker tracker)]
+    (let [[_ proto host]                                            (re-find #"(.*://)?(.*)" (:host details))
+          orig-port                                                 (let [p (:port details)]
+                                                                      (if (string? p) (Integer/parseInt p) p))
+          [session ^PortForwardingTracker tracker dedicated-client] (start-ssh-tunnel! (assoc details :host host :port orig-port))
+          tunnel-entrance-port                                      (.. tracker getBoundAddress getPort)
+          tunnel-entrance-host                                      (.. tracker getBoundAddress getHostName)
+          details-with-tunnel                                       (assoc details
+                                                                           :port tunnel-entrance-port ;; This parameter is set dynamically when the connection is established
+                                                                           :host (str proto "localhost") ;; SSH tunnel will always be through localhost
+                                                                           :orig-port orig-port
+                                                                           :tunnel-entrance-host tunnel-entrance-host
+                                                                           :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
+                                                                           :tunnel-enabled true
+                                                                           :tunnel-session session
+                                                                           :tunnel-tracker tracker
+                                                                           :tunnel-client dedicated-client)]
       details-with-tunnel)
     details))
 
+(defn resolve-known-hosts
+  "Resolve the tunnel-known-hosts secret value and assoc it as a plain string into details.
+  Handles both raw string values and base64-encoded data URLs from the UI file upload."
+  [db-details _driver]
+  (let [raw-value (or (:tunnel-known-hosts db-details)
+                      (:tunnel-known-hosts-value db-details))]
+    (if raw-value
+      (let [known-hosts (if (and (string? raw-value) (re-find #"^data:[^;]*;base64," raw-value))
+                          (-> raw-value
+                              (str/replace #"^data:[^;]*;base64," "")
+                              (as-> b64 (String. (.decode (java.util.Base64/getDecoder) ^String b64) "UTF-8")))
+                          raw-value)]
+        (assoc db-details :tunnel-known-hosts known-hosts))
+      db-details)))
+
 (defmethod driver/incorporate-ssh-tunnel-details :sql-jdbc
-  [_driver db-details]
+  [driver db-details]
   (cond
     ;; no ssh tunnel in use
     (not (use-ssh-tunnel? db-details))
@@ -130,14 +169,16 @@
 
     ;; tunnel in use, and is not open
     :else
-    (include-ssh-tunnel! db-details)))
+    (include-ssh-tunnel! (resolve-known-hosts db-details driver))))
 
 (defn close-tunnel!
   "Close a running tunnel session"
   [details]
   (when (and (use-ssh-tunnel? details) (ssh-tunnel-open? details))
     (log/tracef "Closing SSH tunnel: %s" (:tunnel-session details))
-    (.close ^ClientSession (:tunnel-session details))))
+    (.close ^ClientSession (:tunnel-session details)))
+  (when-let [^SshClient dedicated-client (:tunnel-client details)]
+    (.stop dedicated-client)))
 
 (defn do-with-ssh-tunnel
   "Starts an SSH tunnel, runs the supplied function with the tunnel open, then closes it"

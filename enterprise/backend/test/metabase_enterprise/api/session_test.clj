@@ -9,6 +9,7 @@
 
 (deftest properties-token-features-test
   (mt/with-premium-features #{:advanced-permissions
+                              :ai-controls
                               :attached-dwh
                               :audit-app
                               :cache-granular-controls
@@ -28,11 +29,8 @@
                               :embedding-simple
                               :embedding-hub
                               :hosting
-                              :llm-autodescription
-                              :metabot-v3
-                              :ai-entity-analysis
-                              :ai-sql-fixer
-                              :ai-sql-generation
+                              :metabase-ai-managed
+                              :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -48,7 +46,6 @@
                               :sso-ldap
                               :sso-oidc
                               :sso-saml
-                              :sso-slack
                               :support-users
                               :transforms-basic
                               :transforms-python
@@ -61,6 +58,7 @@
                               :workspaces
                               :writable-connection}
     (is (= {:advanced_permissions           true
+            :ai_controls                    true
             :attached_dwh                   true
             :audit_app                      true
             :cache_granular_controls        true
@@ -79,11 +77,8 @@
             :embedding_sdk                  true
             :embedding_simple               true
             :hosting                        true
-            :llm_autodescription            true
-            :metabot_v3                     true
-            :ai_entity_analysis             true
-            :ai_sql_fixer                   true
-            :ai_sql_generation              true
+            :metabase-ai-managed            true
+            :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true
@@ -98,7 +93,6 @@
             :sso_ldap                       true
             :sso_oidc                       true
             :sso_saml                       true
-            :sso_slack                      true
             :support-users                  true
             :table_data_editing             false
             :transforms-basic               true

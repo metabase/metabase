@@ -3,6 +3,7 @@ import {
   getActionExecutionMessage,
 } from "metabase/actions/utils";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { getDashboardType } from "metabase/lib/dashboard";
 import { addUndo } from "metabase/redux/undo";
 import { ActionsApi, PublicApi } from "metabase/services";
 import type {
@@ -14,29 +15,7 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import { getDashboardType } from "../utils";
-
-import { setDashCardAttributes } from "./core";
 import { closeSidebar, setSidebar } from "./ui";
-
-type EditableActionButtonAttrs = Pick<
-  ActionDashboardCard,
-  "card_id" | "action" | "parameter_mappings" | "visualization_settings"
->;
-
-export function updateButtonActionMapping(
-  dashCardId: number,
-  attributes: EditableActionButtonAttrs,
-) {
-  return (dispatch: Dispatch) => {
-    dispatch(
-      setDashCardAttributes({
-        id: dashCardId,
-        attributes: attributes,
-      }),
-    );
-  };
-}
 
 export type ExecuteRowActionPayload = {
   dashboard: Dashboard;

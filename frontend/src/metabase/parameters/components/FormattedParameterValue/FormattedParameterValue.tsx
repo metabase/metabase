@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useSetting } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
+import { Ellipsified } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
@@ -47,7 +47,9 @@ function FormattedParameterValue({
   const formattingSettings = useSetting("custom-formatting");
 
   if (parameterHasNoDisplayValue(value)) {
-    return placeholder;
+    return (
+      <Ellipsified showTooltip={!isPopoverOpen}>{placeholder}</Ellipsified>
+    );
   }
 
   const first = getValue(value);
@@ -88,7 +90,9 @@ function FormattedParameterValue({
     }
 
     return (
-      <span>{formatParameterValue(value, parameter, formattingSettings)}</span>
+      <span>
+        {formatParameterValue(tc(value), parameter, formattingSettings)}
+      </span>
     );
   };
 

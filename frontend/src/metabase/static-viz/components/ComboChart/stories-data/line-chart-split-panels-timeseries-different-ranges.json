@@ -1,0 +1,292 @@
+[
+  {
+    "card": {
+      "name": "split panels ranges",
+      "display": "line",
+      "visualization_settings": {
+        "graph.split_panels": true,
+        "graph.x_axis.scale": "timeseries",
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+        "graph.show_goal": true,
+        "graph.goal_value": 3.14159265359,
+        "graph.goal_label": "pi",
+        "graph.metrics": ["count"]
+      },
+      "result_metadata": [
+        {
+          "name": "CREATED_AT",
+          "display_name": "Created At: Week",
+          "base_type": "type/Date",
+          "effective_type": "type/Date",
+          "semantic_type": "type/CreationTimestamp",
+          "field_ref": [
+            "field",
+            13,
+            {
+              "temporal-unit": "week"
+            }
+          ],
+          "source": "breakout",
+          "unit": "week",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          }
+        },
+        {
+          "name": "CATEGORY",
+          "display_name": "Product → Category",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": "type/Category",
+          "field_ref": [
+            "field",
+            18,
+            {
+              "source-field": 14
+            }
+          ],
+          "source": "breakout",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          }
+        },
+        {
+          "name": "count",
+          "display_name": "Count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "source": "aggregation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1.1055595181506923,
+                "q3": 2.654792120088285,
+                "max": 5,
+                "sd": 1.0516231882424716,
+                "avg": 1.9655172413793103
+              }
+            }
+          }
+        }
+      ]
+    },
+    "data": {
+      "rows": [
+        ["2022-04-24T00:00:00Z", "Gadget", 1],
+        ["2022-05-01T00:00:00Z", "Gizmo", 2],
+        ["2022-05-08T00:00:00Z", "Doohickey", 1],
+        ["2022-05-08T00:00:00Z", "Gizmo", 2],
+        ["2022-05-08T00:00:00Z", "Widget", 1],
+        ["2022-05-15T00:00:00Z", "Gadget", 1],
+        ["2022-05-15T00:00:00Z", "Gizmo", 1],
+        ["2022-05-15T00:00:00Z", "Widget", 1],
+        ["2022-05-22T00:00:00Z", "Doohickey", 3],
+        ["2022-05-22T00:00:00Z", "Gadget", 2],
+        ["2022-05-22T00:00:00Z", "Widget", 1],
+        ["2022-05-29T00:00:00Z", "Doohickey", 1],
+        ["2022-05-29T00:00:00Z", "Gadget", 1],
+        ["2022-05-29T00:00:00Z", "Gizmo", 2],
+        ["2022-05-29T00:00:00Z", "Widget", 2],
+        ["2022-06-05T00:00:00Z", "Doohickey", 3],
+        ["2022-06-05T00:00:00Z", "Gizmo", 1],
+        ["2022-06-05T00:00:00Z", "Widget", 3],
+        ["2022-06-12T00:00:00Z", "Doohickey", 4],
+        ["2022-06-12T00:00:00Z", "Gadget", 2],
+        ["2022-06-12T00:00:00Z", "Widget", 2],
+        ["2022-06-19T00:00:00Z", "Doohickey", 2],
+        ["2022-06-19T00:00:00Z", "Gadget", 5],
+        ["2022-06-19T00:00:00Z", "Gizmo", 2],
+        ["2022-06-19T00:00:00Z", "Widget", 1],
+        ["2022-06-26T00:00:00Z", "Doohickey", 1],
+        ["2022-06-26T00:00:00Z", "Gadget", 3],
+        ["2022-06-26T00:00:00Z", "Gizmo", 3],
+        ["2022-06-26T00:00:00Z", "Widget", 3]
+      ],
+      "cols": [
+        {
+          "name": "CREATED_AT",
+          "display_name": "Created At: Week",
+          "base_type": "type/Date",
+          "effective_type": "type/Date",
+          "semantic_type": "type/CreationTimestamp",
+          "field_ref": [
+            "field",
+            13,
+            {
+              "temporal-unit": "week"
+            }
+          ],
+          "source": "breakout",
+          "unit": "week",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          }
+        },
+        {
+          "name": "CATEGORY",
+          "display_name": "Product → Category",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": "type/Category",
+          "field_ref": [
+            "field",
+            18,
+            {
+              "source-field": 14
+            }
+          ],
+          "source": "breakout",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          }
+        },
+        {
+          "name": "count",
+          "display_name": "Count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "source": "aggregation"
+        }
+      ],
+      "results_metadata": {
+        "columns": [
+          {
+            "name": "CREATED_AT",
+            "display_name": "Created At: Week",
+            "base_type": "type/Date",
+            "effective_type": "type/Date",
+            "semantic_type": "type/CreationTimestamp",
+            "field_ref": [
+              "field",
+              13,
+              {
+                "temporal-unit": "week"
+              }
+            ],
+            "source": "breakout",
+            "unit": "week",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            }
+          },
+          {
+            "name": "CATEGORY",
+            "display_name": "Product → Category",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": "type/Category",
+            "field_ref": [
+              "field",
+              18,
+              {
+                "source-field": 14
+              }
+            ],
+            "source": "breakout",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.375
+                }
+              }
+            }
+          },
+          {
+            "name": "count",
+            "display_name": "Count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "source": "aggregation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1.1055595181506923,
+                  "q3": 2.654792120088285,
+                  "max": 5,
+                  "sd": 1.0516231882424716,
+                  "avg": 1.9655172413793103
+                }
+              }
+            }
+          }
+        ]
+      },
+      "results_timezone": "UTC"
+    }
+  }
+]

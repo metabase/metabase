@@ -8,7 +8,7 @@
    [clojure.tools.reader :as tools.reader]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase.classloader.core :as classloader]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

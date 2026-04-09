@@ -13,8 +13,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-remaps :as remap]
    [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.parameters.dates :as params.dates]
@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -173,14 +174,31 @@
                     lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
                     hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
+(defn- coerce-to-local-datetime
+  "Coerce a temporal value to LocalDateTime, stripping any timezone information."
+  [t]
+  (condp instance? t
+    OffsetDateTime (t/local-date-time t)
+    ZonedDateTime  (t/local-date-time t)
+    Instant        (t/local-date-time t (t/zone-id "UTC"))
+    t))
+
+(defn- maybe-coerce-temporal
+  [base-type t]
+  (cond-> t
+    (and (isa? base-type :type/DateTime)
+         (not (isa? base-type :type/DateTimeWithTZ)))
+    coerce-to-local-datetime))
+
 (defn- parse-checkpoint-value
-  "Parse a serialized checkpoint value string according to its base-type keyword."
+  "Parse a serialized checkpoint value string according to its base-type keyword.
+  For temporal types, coerces the result to match the column's base-type."
   [base-type s]
   (cond
-    (not (string? s)) s
+    (not (string? s))               (maybe-coerce-temporal base-type s)
     (isa? base-type :type/Float)    (bigdec s)
     (isa? base-type :type/Number)   (biginteger s)
-    (isa? base-type :type/Temporal) (u.date/parse s)
+    (isa? base-type :type/Temporal) (maybe-coerce-temporal base-type (u.date/parse s))
     :else (throw (ex-info (str "Unsupported checkpoint type: " (pr-str base-type))
                           {:base-type base-type}))))
 
@@ -441,7 +459,6 @@
   "Post-processing steps after a transform has been executed successfully.
 
    Performs:
-   - Save watermark (if source-range-params provided)
    - Sync target table to AppDB
    - Set `transform_id` on the target table
    - Publish Metabase events (unless `:publish-events?` is false)
@@ -452,20 +469,13 @@
    to preserve the correct order of operations."
   [transform opts]
   (let [{:keys [target]} transform
-        {:keys [publish-events? source-range-params]
+        {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (t2/select-one :model/Database db-id)]
-    ;; Save watermark if source-range-params available
-    (when source-range-params
-      (save-watermark! (:id transform) source-range-params))
-    ;; Sync target table
-    (sync-target! target database)
-    ;; Mark the table as owned by this transform
-    (when-let [table (t2/select-one :model/Table
-                                    :db_id db-id
-                                    :schema (:schema target)
-                                    :name (:name target))]
+    ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
+    (when-let [table (sync-target! target database)]
+      (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
       (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
@@ -475,6 +485,11 @@
                                        :transform-type (keyword (:type target))
                                        :output-schema  (:schema target)
                                        :output-table   (qualified-table-name (:engine database) target)}}))))
+
+(defn output-table
+  "Return the output table created by a transform, looked up via `transform_id`."
+  [transform]
+  (t2/select-one :model/Table :transform_id (:id transform)))
 
 ;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
@@ -552,9 +567,12 @@
               (and (:table_id entry) (not (:table entry)))
               (merge (int-id->metadata (:table_id entry)) entry)
 
-              ;; Has table metadata but no table_id — look it up
+              ;; Has table metadata but no table_id — look it up, upsert transform target if not found
               (missing-table-id? entry)
-              (assoc entry :table_id (ref-lookup (source-table-ref->key entry)))
+              (assoc entry :table_id (or (ref-lookup (source-table-ref->key entry))
+                                         (when (and (:database_id entry) (:table entry))
+                                           (table/upsert-transform-target-table!
+                                            (:database_id entry) (:schema entry) (:table entry)))))
 
               ;; Already fully populated
               :else entry))
@@ -668,6 +686,16 @@
     identity))
 
 ;;; ------------------------------------------------- Misc -------------------------------------------------
+
+(defn upsert-target-table!
+  "Upsert a provisional table entry for a transform's target, creating it if it doesn't exist.
+  Returns the table ID.
+
+  Thin wrapper around [[metabase.warehouse-schema.models.table/upsert-transform-target-table!]] —
+  exists because the `models` module cannot depend on `warehouse-schema` directly, but can
+  depend on `transforms-base` (which is allowed to use `warehouse-schema`)."
+  [db-id schema table-name]
+  (table/upsert-transform-target-table! db-id schema table-name))
 
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern."

@@ -33,7 +33,8 @@ type MetricsViewerVisualizationProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToDefinitionId: Record<CardId, MetricSourceId>;
+  interactive?: boolean;
 };
 
 export function MetricsViewerVisualization({
@@ -46,20 +47,23 @@ export function MetricsViewerVisualization({
   definitions,
   tab,
   onTabUpdate,
-  cardIdToDimensionId,
+  cardIdToDefinitionId,
+  interactive = true,
 }: MetricsViewerVisualizationProps) {
   const { ref, width } = useElementSize();
   const cols = getGridColumns(width, rawSeries.length);
 
   const clickActionsMode = useMemo(
     () =>
-      new MetricsViewerClickActionsMode({
-        definitions,
-        tab,
-        onTabUpdate,
-        cardIdToDimensionId,
-      }),
-    [cardIdToDimensionId, definitions, onTabUpdate, tab],
+      interactive
+        ? new MetricsViewerClickActionsMode({
+            definitions,
+            tab,
+            onTabUpdate,
+            cardIdToDefinitionId,
+          })
+        : undefined,
+    [cardIdToDefinitionId, definitions, interactive, onTabUpdate, tab],
   );
 
   return (
@@ -86,10 +90,11 @@ export function MetricsViewerVisualization({
                   rawSeries={[series]}
                   isQueryBuilder={false}
                   hideLegend
-                  onBrush={onBrush}
+                  onBrush={interactive ? onBrush : undefined}
                   mode={clickActionsMode}
                   onChangeCardAndRun={noop}
                   autoAdjustSettings
+                  isMetricsViewer
                 />
               </DebouncedFrame>
             </Stack>
@@ -102,7 +107,7 @@ export function MetricsViewerVisualization({
             rawSeries={rawSeries}
             isQueryBuilder={false}
             hideLegend
-            onBrush={onBrush}
+            onBrush={interactive ? onBrush : undefined}
             mode={clickActionsMode}
             onChangeCardAndRun={noop}
           />

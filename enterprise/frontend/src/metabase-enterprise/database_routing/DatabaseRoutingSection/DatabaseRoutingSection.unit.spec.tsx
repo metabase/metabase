@@ -1,5 +1,6 @@
 import {
   setupDatabasesEndpoints,
+  setupListTransformsEndpoint,
   setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -22,6 +23,7 @@ interface SetupOpts {
 const setup = ({ database = createMockDatabase() }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
+  setupListTransformsEndpoint([]);
 
   renderWithProviders(<DatabaseRoutingSection database={database} />, {
     storeInitialState: {

@@ -70,16 +70,17 @@ function CartesianChartInner(props: VisualizationProps) {
     [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
 
-  const { chartModel, timelineEventsModel, option } = useModelsAndOption(
-    {
-      ...props,
-      width: chartSize.width,
-      height: chartSize.height,
-      hiddenSeries,
-      settings,
-    },
-    containerRef,
-  );
+  const { chartModel, timelineEventsModel, option, renderingContext } =
+    useModelsAndOption(
+      {
+        ...props,
+        width: chartSize.width,
+        height: chartSize.height,
+        hiddenSeries,
+        settings,
+      },
+      containerRef,
+    );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
@@ -126,6 +127,7 @@ function CartesianChartInner(props: VisualizationProps) {
     chartModel,
     timelineEventsModel,
     option,
+    renderingContext,
     props,
   );
 
