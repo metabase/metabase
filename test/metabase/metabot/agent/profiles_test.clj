@@ -190,4 +190,19 @@
                                                       (orig-has-feature feat)))]
         (is (= #{#'tools.transforms/write-transform-sql-tool}
                (set (#'profiles/filter-by-capabilities transform-tools
+                                                       ["permission:write_transforms"]))))))
+    (testing "Python transform tools not available when basic transforms are not available"
+      (with-redefs [premium-features/is-hosted? (constantly true)
+                    premium-features/has-feature? (fn [feat]
+                                                    (cond
+                                                      (#{:transforms-basic} feat)
+                                                      false
+
+                                                      (#{:transforms-python} feat)
+                                                      true
+
+                                                      :else
+                                                      (orig-has-feature feat)))]
+        (is (= #{}
+               (set (#'profiles/filter-by-capabilities transform-tools
                                                        ["permission:write_transforms"]))))))))
