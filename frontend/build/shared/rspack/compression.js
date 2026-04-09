@@ -9,11 +9,13 @@ const SHOULD_COMPRESS =
     ? process.env.COMPRESSION === "true"
     : !IS_DEV_MODE;
 
+const COMPRESSION_ASSET_TEST = /\.(js|css)$/;
+
 export const COMPRESSION_CONFIG = SHOULD_COMPRESS
   ? [
       new CompressionRspackPlugin({
         algorithm: "gzip",
-        test: /\.(js|css)$/,
+        test: COMPRESSION_ASSET_TEST,
         filename: "[path][base].gz",
         compressionOptions: {
           level: 9,
@@ -21,7 +23,7 @@ export const COMPRESSION_CONFIG = SHOULD_COMPRESS
       }),
       new CompressionRspackPlugin({
         algorithm: "brotliCompress",
-        test: /\.(js|css)$/,
+        test: COMPRESSION_ASSET_TEST,
         filename: "[path][base].br",
         compressionOptions: {
           params: {
