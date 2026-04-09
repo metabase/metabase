@@ -12,7 +12,6 @@
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
