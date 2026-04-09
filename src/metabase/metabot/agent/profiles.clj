@@ -125,8 +125,8 @@
   :tools               [#'tools/sql-search-tool
                         #'tools/read-resource-tool
                         #'tools/create-sql-query-code-edit-tool
-                        #'tools/edit-sql-query-code-edit-tool
-                        #'tools/replace-sql-query-code-edit-tool
+                        #'tools/edit-sql-query-tool
+                        #'tools/replace-sql-query-tool
                         #'tools/ask-for-sql-clarification-tool]})
 
 (register-profile!

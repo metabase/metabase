@@ -1,5 +1,6 @@
 (ns metabase.metabot.agent.user-context-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -435,3 +436,21 @@
                     {:user_is_viewing [{:type "table" :id (mt/id :orders)}]})]
         (is (re-find #"(?i)orders" result))
         (is (re-find #"(?i)field" result))))))
+
+(deftest ^:parallel format-user-context-with-legacy-query-test
+  (let [lq {:database 1111
+            :type :native
+            :native {:query "select 1"}}
+        {:keys [result error]}
+        (try {:result (user-context/format-viewing-context
+                       {:user_is_viewing [{:type "adhoc" :query lq}]})}
+             (catch Throwable t
+               {:error t}))]
+    (is (nil? error)
+        "Formatting of context with legacy query should yield no error.")
+    (is (string? result)
+        "Formatting result should be a string.")
+    (is (str/includes? result "select 1")
+        "Formatting result should contain the native query string")
+    (is (str/includes? result "1111")
+        "Formatting result should contain database id")))

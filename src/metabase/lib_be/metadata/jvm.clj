@@ -49,7 +49,7 @@
    :metadata/column ::lib.schema.metadata/column})
 
 (mu/defn instance->metadata
-  "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
+  "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a Lib style
   metadata instance with `:lib/type` and `kebab-case` keys."
   [instance      :- :map
    metadata-type :- :keyword]
