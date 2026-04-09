@@ -313,8 +313,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
           });
 
           cy.findByTestId("table-header").within(() => {
-            // This still uses DE i18n translation, as this values comes from BE, so we skip this part
-            /*cy.findByText("DE-Created At: Month").should("be.visible");*/
+            cy.findByText("DE-Created At: Monat").should("be.visible");
           });
         });
       });
@@ -460,8 +459,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
         });
 
         cy.findByTestId("table-header").within(() => {
-          // This still uses DE i18n translation, as this values comes from BE, so we skip this part
-          /*cy.findByText("DE-Created At: Month").should("be.visible");*/
+          cy.findByText("DE-Created At: Monat").should("be.visible");
         });
       });
     });
