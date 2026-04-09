@@ -73,6 +73,7 @@ export const getDomToCanvas = async (
   const { default: html2canvas } = await import("html2canvas-pro");
   return html2canvas(element, {
     useCORS: options.useCORS ?? true,
+    cspNonce: window.MetabaseNonce,
     width: options.width,
     height: options.height,
     scale: options.scale,
