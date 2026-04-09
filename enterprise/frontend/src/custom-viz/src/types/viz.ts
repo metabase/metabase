@@ -130,6 +130,8 @@ export type CustomVisualizationProps<
 
   settings: CustomVisualizationSettings<TSettings>;
 
+  colorScheme: "light" | "dark";
+
   onClick: (
     clickObject: ClickObject<CustomVisualizationSettings<TSettings>> | null,
   ) => void;
@@ -144,7 +146,8 @@ export interface RenderingContext {
   measureText: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
-  // theme: VisualizationTheme;
+  /** The current color scheme used for rendering. Defaults to "light" when not provided. */
+  colorScheme?: "light" | "dark";
 }
 
 // Equivalent of StaticVisualizationProps
