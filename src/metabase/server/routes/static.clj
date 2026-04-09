@@ -16,11 +16,6 @@
   "Content types for which we look for pre-compressed variants."
   #{"application/javascript" "text/javascript" "text/css"})
 
-(defn- compressible-resource?
-  "Returns true if the resource at `path` is compressible."
-  [resource-path]
-  (compressible-content-types (mime/ext-mime-type resource-path)))
-
 (defn- accepts-encoding?
   "Returns true if the request Accept-Encoding header includes `encoding`."
   [request encoding]
@@ -47,16 +42,14 @@
   "Serve a static resource, preferring pre-compressed variants when available."
   [request options]
   (let [root (:root options)
-        request-path (:* (:route-params request)
+        request-path (:* (:route-params request))
         resource-path (str root "/" request-path)]
-    (if (compressible-resource? resource-path)
-      (or (try-compressed-response request resource-path "br")
-          (try-compressed-response request resource-path "gz")
-          (response/resource-response resource-path))
-      (response/resource-response resource-path))))
+    (or (try-compressed-response request resource-path "br")
+        (try-compressed-response request resource-path "gz")
+        (response/resource-response resource-path))))
 
 (defn- add-wildcard [path]
-  (str path (if (string/ends-with path "/") "*" "/*")))
+  (str path (if (string/ends-with? path "/") "*" "/*")))
 
 (defn precompressed-resources
   "A Ring handler that serves classpath resources from `root`, preferring
