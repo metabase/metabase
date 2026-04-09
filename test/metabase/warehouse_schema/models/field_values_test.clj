@@ -303,7 +303,7 @@
        (mt/with-temp [:model/Database db {:engine       :h2
                                           :name         "foo"
                                           :is_full_sync true
-                                          :details      "{\"db\": \"mem:temp\"}"}]
+                                          :details      {:db "mem:temp"}}]
          ;; Sync the database so we have the new table and it's fields
          (sync/sync-database! db)
          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (u/the-id db) :name "FOO")

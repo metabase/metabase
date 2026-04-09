@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
    [java-time.api :as t]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.encryption :as encryption]
    [metabase.util.log :as log]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
@@ -63,7 +63,7 @@
 
 (defn- cached-results [query-hash strategy respond]
   (if-let [cached (fetch-cache-stmt strategy query-hash)]
-    (with-open [is (encryption/maybe-decrypt-stream (ByteArrayInputStream. cached))]
+    (with-open [is (encryption.impl/maybe-decrypt-stream (ByteArrayInputStream. cached))]
       (respond is))
     (respond nil)))
 
@@ -84,7 +84,7 @@
   creating a new entry."
   [^bytes query-hash ^bytes results]
   (log/debugf "Caching results for query with hash %s." (pr-str (i/short-hex-hash query-hash)))
-  (let [final-results (encryption/maybe-encrypt-for-stream results)
+  (let [final-results (encryption.impl/maybe-encrypt-for-stream results)
         timestamp     (t/offset-date-time)]
     (try
       (or (pos? (t2/update! :model/QueryCache {:query_hash query-hash}

@@ -304,6 +304,7 @@
            classloader
            config
            connection-pool
+           encryption
            task
            util}
    :model-imports #{:model/Database
@@ -456,6 +457,7 @@
            config
            dashboards
            driver
+           encryption
            events
            formatter
            lib
@@ -520,6 +522,7 @@
            auth-identity
            classloader
            config
+           encryption
            models
            query-processor
            search
@@ -917,6 +920,16 @@
            tiles
            util}
    :model-imports #{:model/Card :model/Dashboard}}
+
+  encryption
+  {:team "UX West"
+   :api  #{metabase.encryption.core
+           metabase.encryption.impl
+           metabase.encryption.init}
+   :uses #{config
+           models
+           settings
+           util}}
 
   events
   {:team "DevEx"
@@ -1723,6 +1736,7 @@
            config
            dashboards
            driver
+           encryption
            events
            formatter
            legacy-mbql
@@ -1986,6 +2000,7 @@
               api
               channel
               config
+              encryption
               formatter
               lib
               metabot
@@ -2042,6 +2057,7 @@
    :uses    #{api
               auth-identity
               config
+              encryption
               permissions
               premium-features
               request
@@ -2100,7 +2116,7 @@
   {:team "UX West"
    :api  #{metabase.system.core
            metabase.system.init}
-   :uses #{appearance settings util}}
+   :uses #{appearance encryption settings util}}
 
   task
   {:team "UX West"
@@ -3181,6 +3197,7 @@
            appearance
            auth-identity
            embedding
+           encryption
            premium-features
            request
            session

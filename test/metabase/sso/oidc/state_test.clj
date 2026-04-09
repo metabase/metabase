@@ -1,9 +1,9 @@
 (ns metabase.sso.oidc.state-test
   (:require
    [clojure.test :refer :all]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.sso.oidc.state :as oidc.state]
-   [metabase.system.settings :as system.settings]
-   [metabase.util.encryption :as encryption])
+   [metabase.system.settings :as system.settings])
   (:import
    (java.time Instant)))
 
@@ -22,18 +22,18 @@
 
 (def ^:private test-secret
   "Hashed test encryption key."
-  (encryption/secret-key->hash test-secret-key))
+  (encryption.impl/secret-key->hash test-secret-key))
 
 (defmacro with-test-encryption!
   "Run body with encryption enabled using a test secret key."
   [& body]
-  `(with-redefs [encryption/default-secret-key test-secret]
+  `(with-redefs [encryption.impl/default-secret-key test-secret]
      ~@body))
 
 (defmacro without-encryption!
   "Run body with encryption disabled."
   [& body]
-  `(with-redefs [encryption/default-secret-key nil]
+  `(with-redefs [encryption.impl/default-secret-key nil]
      ~@body))
 
 (defmacro with-site-url!

@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.feedback :as metabot.feedback]
    [metabase.permissions.core :as perms]
@@ -22,7 +23,6 @@
    [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -51,7 +51,8 @@
            ^Runnable (bound-fn* f)))
 
 (defn clear-slack-bot-settings!
-  "Clears all slackbot-related settings when Slack token is cleared."
+  "Clears all slackbot-related settings when Slack token is cleared.
+   This ensures enable-sso-slack? becomes false."
   []
   (setting/set-many! {:slack-connect-enabled        false
                       :slack-connect-client-id      nil
@@ -90,30 +91,27 @@
 
 (defn- send-auth-link
   "Respond to an incoming slack message with a request to authorize.
-   In channels, sends an ephemeral message (only visible to the user).
-   In DMs, sends a regular threaded reply."
+   For DMs, always threads the reply. For channel @mentions, only threads
+   if the original message was in a thread."
   [client event]
-  (let [msg     "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."
-        dm?     (slackbot.events/dm? event)
-        ;; always thread dms, but only thread in channels if message is within a thread already
-        thread-ts (if dm?
-                    (or (:thread_ts event) (:ts event))
-                    (:thread_ts event))
-        payload (cond-> {:channel (:channel event)
-                         :text msg
-                         :blocks [{:type "section"
-                                   :text {:type "mrkdwn"
-                                          :text msg}}
-                                  {:type "actions"
-                                   :elements [{:type "button"
-                                               :text {:type "plain_text"
-                                                      :text ":link: Connect to Metabase"
-                                                      :emoji true}
-                                               :url (slack-user-authorize-link)}]}]}
-                  thread-ts (assoc :thread_ts thread-ts))]
-    (if dm?
-      (slackbot.client/post-message client payload)
-      (slackbot.client/post-ephemeral-message client (assoc payload :user (:user event))))))
+  (let [user-mention (slackbot.events/user-mention (:user event))
+        msg-prefix (if (slackbot.events/dm? event) "" (str user-mention " "))
+        msg (str msg-prefix "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf.")]
+    (slackbot.client/post-message
+     client
+     (merge (slackbot.events/event->reply-context event)
+            {;; DMs: always thread. Channels: only thread if already in a thread.
+             :thread_ts (or (:thread_ts event) (:ts event))
+             :text msg
+             :blocks [{:type "section"
+                       :text {:type "mrkdwn"
+                              :text msg}}
+                      {:type "actions"
+                       :elements [{:type "button"
+                                   :text {:type "plain_text"
+                                          :text ":link: Connect to Metabase"
+                                          :emoji true}
+                                   :url (slack-user-authorize-link)}]}]}))))
 
 (defn- require-authenticated-slack-user!
   "Returns Metabase user-id if authenticated, nil otherwise.
@@ -355,7 +353,7 @@
                 (boolean (sso-settings/slack-connect-client-secret))
                 (boolean (slackbot.settings/metabot-slack-signing-secret))
                 (boolean (channel.settings/unobfuscated-slack-app-token))
-                (boolean (encryption/default-encryption-enabled?)))
+                (boolean (encryption.impl/default-encryption-enabled?)))
     (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))
 
 (mu/defn- handle-event-callback :- slackbot.events/SlackEventsResponse
@@ -503,15 +501,6 @@
          :label    {:type "plain_text" :text "What kind of issue are you reporting?"}}
         freeform-block]))})
 
-(defn- get-conversation-messages
-  "Retrieve all messages for a conversation from the database."
-  [conversation-id]
-  (when conversation-id
-    (t2/select :model/MetabotMessage
-               :conversation_id conversation-id
-               :deleted_at nil
-               {:order-by [[:created_at :asc]]})))
-
 (defn- build-base-feedback
   "Build the common feedback payload fields."
   [user-id conversation-id positive]
@@ -519,7 +508,7 @@
    :feedback          {:positive          positive
                        :message_id        conversation-id
                        :freeform_feedback ""}
-   :conversation_data {:messages (get-conversation-messages conversation-id)}
+   :conversation_data {}
    :version           config/mb-version-info
    :submission_time   (str (java.time.OffsetDateTime/now))
    :is_admin          (boolean (t2/select-one-fn :is_superuser :model/User :id user-id))

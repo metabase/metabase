@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.settings :as sso-settings]
-   [metabase.util.encryption :as encryption])
+   [metabase.encryption.impl :as encryption.impl])
   (:import
    (java.net URLEncoder URLDecoder)
    (java.time Instant)))
@@ -13,7 +13,7 @@
 
 (defn- hashed-key
   []
-  (encryption/secret-key->hash (sso-settings/sdk-encryption-validation-key)))
+  (encryption.impl/secret-key->hash (sso-settings/sdk-encryption-validation-key)))
 
 (defn generate-token
   "Generate a cryptographically secure token with built-in expiration."
@@ -22,7 +22,7 @@
         expiration (t/instant (t/plus timestamp (t/seconds 300)))
         nonce      (random-uuid)
         payload    (str (.getEpochSecond timestamp) "." (.getEpochSecond expiration) "." nonce)
-        encrypted  (encryption/encrypt (hashed-key) payload)]
+        encrypted  (encryption.impl/encrypt (hashed-key) payload)]
     (URLEncoder/encode encrypted "UTF-8")))
 
 (defn validate-token
@@ -33,7 +33,7 @@
         (not-empty token)
         (try
           (let [decoded-token     (URLDecoder/decode ^String token "UTF-8")
-                decrypted-payload (encryption/decrypt (hashed-key) decoded-token)
+                decrypted-payload (encryption.impl/decrypt (hashed-key) decoded-token)
                 [_ expiration _]  (str/split decrypted-payload #"\." 3)]
             (t/< (t/instant) (Instant/ofEpochSecond (Long/parseLong expiration))))
           (catch Exception _

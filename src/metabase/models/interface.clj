@@ -7,8 +7,6 @@
     !!!                                                                                             !!!
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
   (:require
-   [buddy.core.codecs :as codecs]
-   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -22,7 +20,6 @@
    [metabase.models.resolution]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
-   [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -292,32 +289,6 @@
   [tf assert-fn]
   (transform-validator-with-fixes tf assert-fn identity))
 
-(def encrypted-json-in
-  "Serialize encrypted json."
-  (comp encryption/maybe-encrypt json-in))
-
-(defn encrypted-json-out
-  "Deserialize encrypted json."
-  [v]
-  (let [decrypted (encryption/maybe-decrypt v)]
-    (try
-      (json/decode+kw decrypted)
-      (catch Throwable e
-        (if (or (encryption/possibly-encrypted-string? decrypted)
-                (encryption/possibly-encrypted-bytes? decrypted))
-          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
-        v))))
-
-;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
-;; cache the decrypted JSON for one hour
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
-
-(def transform-encrypted-json
-  "Transform for encrypted json."
-  {:in  encrypted-json-in
-   :out cached-encrypted-json-out})
-
 ;;; TODO (Cam 10/27/25) -- this stuff should be moved into a different module instead of the general models interface,
 ;;; either `queries` or a new module along with [[metabase.models.visualization-settings]].
 (mr/def ::viz-settings-ref
@@ -464,15 +435,12 @@
 (defn- blob->bytes [^Blob b]
   (.getBytes ^Blob b 0 (.length ^Blob b)))
 
-(defn- maybe-blob->bytes [v]
+(defn maybe-blob->bytes
+  "Convert a `Blob` to bytes, or return `v` as-is if it's not a `Blob`."
+  [v]
   (if (instance? Blob v)
     (blob->bytes v)
     v))
-
-(def transform-secret-value
-  "Transform for secret value."
-  {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
 
 #_(defn decompress
     "Decompress `compressed-bytes`."

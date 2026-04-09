@@ -17,13 +17,14 @@
    [metabase.channel.template.core :as channel.template]
    [metabase.channel.urls :as urls]
    [metabase.collections.models.collection :as collection]
+   [metabase.encryption.impl :as encryption.impl]
+   [metabase.lib.util :as lib.util]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -296,7 +297,7 @@
   once we migrate all the dashboard subscriptions to the new notification system."
   [pulse-id email]
   (codecs/bytes->hex
-   (encryption/validate-and-hash-secret-key
+   (encryption.impl/validate-and-hash-secret-key
     (json/encode {:salt     (channel.settings/site-uuid-for-unsubscribing-url)
                   :email    email
                   :pulse-id pulse-id}))))
@@ -305,7 +306,7 @@
   "Generates hash to allow for non-users to unsubscribe from notifications."
   [notification-id email]
   (codecs/bytes->hex
-   (encryption/validate-and-hash-secret-key
+   (encryption.impl/validate-and-hash-secret-key
     (json/encode {:salt            (channel.settings/site-uuid-for-unsubscribing-url)
                   :email           email
                   :notification-id notification-id}))))

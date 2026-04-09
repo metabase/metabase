@@ -41,29 +41,30 @@
   (is (= 99 (cloud-migration/abs-progress 100 51 99))))
 
 (deftest migrate!-test
-  (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))
-        progress-calls    (atom {:setup  []
-                                 :dump   []
-                                 :upload []
-                                 :done   []})
-        orig-set-progress @#'cloud-migration/set-progress]
-    (with-redefs [cloud-migration/cluster?     (constantly false)
-                  cloud-migration/set-progress (fn [id state n]
-                                                 (swap! progress-calls update state conj n)
-                                                 (orig-set-progress id state n))]
-      (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)
-        (testing "works"
-          (try
-            (#'cloud-migration/migrate! migration)
-            (finally
-              (task/stop-scheduler!)))
-          (is (-> @progress-calls :upload count (> 3))
-              "several progress calls during upload")
-          (is (->> @progress-calls :upload (every? #(and (<= 50 %) (< % 100))))
-              "progress calls are between 50 (inclusive) and 100 (exclusive)")
-          (is (= {:setup [1] :dump [20] :done [100]}
-                 (dissoc @progress-calls :upload))
-              "one progress call during other stages"))))))
+  (mt/with-premium-features #{}
+    (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))
+          progress-calls    (atom {:setup  []
+                                   :dump   []
+                                   :upload []
+                                   :done   []})
+          orig-set-progress @#'cloud-migration/set-progress]
+      (with-redefs [cloud-migration/cluster?     (constantly false)
+                    cloud-migration/set-progress (fn [id state n]
+                                                   (swap! progress-calls update state conj n)
+                                                   (orig-set-progress id state n))]
+        (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)
+          (testing "works"
+            (try
+              (#'cloud-migration/migrate! migration)
+              (finally
+                (task/stop-scheduler!)))
+            (is (-> @progress-calls :upload count (> 3))
+                "several progress calls during upload")
+            (is (->> @progress-calls :upload (every? #(and (<= 50 %) (< % 100))))
+                "progress calls are between 50 (inclusive) and 100 (exclusive)")
+            (is (= {:setup [1] :dump [20] :done [100]}
+                   (dissoc @progress-calls :upload))
+                "one progress call during other stages")))))))
 
 (deftest migrate!-test-managed-scheduler
   (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]

@@ -14,9 +14,9 @@
    [metabase.cmd.test-util :as cmd.test-util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.encryption.impl-test :as encryption-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n.impl :as i18n.impl]
    [toucan2.core :as t2]))
 

@@ -4,12 +4,12 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.encryption.impl :as encryption.impl]
    [metabase.server.instance :as server.instance]
    [metabase.sso.oidc.state :as oidc.state]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util.encryption :as encryption]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -24,7 +24,7 @@
 
 (def ^:private test-secret
   "Hashed test encryption key."
-  (encryption/secret-key->hash test-encryption-key))
+  (encryption.impl/secret-key->hash test-encryption-key))
 
 (defmacro ^:private with-ensure-encryption!
   "Ensures an encryption key is available for OIDC state operations.
@@ -32,9 +32,9 @@
    sets a test key. This avoids conflicts with encrypted settings
    in the DB that were written with the real key."
   [& body]
-  `(if (encryption/default-encryption-enabled?)
+  `(if (encryption.impl/default-encryption-enabled?)
      (do ~@body)
-     (with-redefs [encryption/default-secret-key test-secret]
+     (with-redefs [encryption.impl/default-secret-key test-secret]
        ~@body)))
 
 (defn- do-with-url-prefix-disabled
