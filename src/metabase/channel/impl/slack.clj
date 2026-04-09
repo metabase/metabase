@@ -15,9 +15,14 @@
    [metabase.util.markdown :as markdown]))
 
 (defn- notification-recipient->channel
+  "Returns the Slack channel target for a raw-value notification recipient.
+  Prefers the immutable `:channel_id` (e.g. \"C0ABC123\") over the display `:value`
+  (e.g. \"#my-channel\") so that delivery survives channel renames. Falls back to
+  `:value` for legacy subscriptions that pre-date channel ID storage."
   [notification-recipient]
   (when (= (:type notification-recipient) :notification-recipient/raw-value)
-    (-> notification-recipient :details :value)))
+    (let [details (:details notification-recipient)]
+      (or (:channel_id details) (:value details)))))
 
 (defn- escape-mkdwn
   "Escapes slack mkdwn special characters in the string, as specified here:
