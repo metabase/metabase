@@ -60,5 +60,8 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    max-width: 400px;
+    margin-inline: auto;
+    text-align: center;
   }
 }
