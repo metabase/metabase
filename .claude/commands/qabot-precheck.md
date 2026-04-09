@@ -46,26 +46,22 @@ Report which permissions are present, which are missing, and suggest the additio
 
 Run each of these and verify they don't error on startup (check exit code, don't worry about the output content):
 - `./bin/mage -bot-server-info` — should print server config
-- `./bin/mage -bot-api-call /api/health` — may fail if backend isn't running, but should at least resolve the port and attempt the call (exit 1 with "Connection failed" is OK, but a Clojure compilation error is not)
 - `./bin/mage -bot-git-readonly git status` — should print git status
-- `./bin/mage -bot-fetch-issue TEST 2>&1` — should fail with "Invalid issue identifier" or "LINEAR_API_KEY not set", not a compilation error
+- `./bin/mage -bot-fetch-issue TEST` — should fail with "Invalid issue identifier" or "LINEAR_API_KEY not set", not a compilation error
 
-### 4. Backend server (optional)
+**IMPORTANT:** When running Bash commands for these checks, do NOT append shell constructs like `; echo ...`, `&& ...`, `2>&1`, or pipe chains to the mage commands. The permission `Bash(./bin/mage *)` only matches commands that start with `./bin/mage` and contain nothing beyond its arguments. Chaining or redirecting turns it into a compound command that won't match the permission glob and will trigger a permission prompt.
 
-Run `./bin/mage -bot-api-call /api/health` and check the response.
-- If it returns `{"status":"ok"}` — backend is running, ready for full QA
-- If it fails with connection error — warn that backend must be running before `/qabot` is invoked
-- This is informational, not blocking for the precheck
-
-### 5. clojure-eval skill (optional)
+### 4. clojure-eval skill (optional)
 
 Check if the `/clojure-eval` skill is available by looking for it in the skill list. If not available, warn that REPL-based verification (server restart, log capture, function testing) won't be possible.
 
-### 6. PDF generation
+### 5. PDF generation
 
 Run `npx -y md-to-pdf --version` to verify the PDF generator is available via npx.
 
-### 7. Linear API key (optional)
+**IMPORTANT:** Run this as a standalone command — do not append `; echo ...` or other shell constructs, as this may not match the user's permission globs.
+
+### 6. Linear API key (optional)
 
 Check if `LINEAR_API_KEY` is set in the environment (via `./bin/mage -bot-server-info` output). If not, warn that Linear context won't be available but qabot can still run.
 
@@ -79,9 +75,8 @@ QABot Precheck Results
 
 [PASS] Playwright MCP configured in .mcp.json
 [PASS] Claude permissions: Read, Grep, Glob, Write, Skill, Bash(*), mcp__playwright__*
-[PASS] Mage commands: -bot-server-info, -bot-api-call, -bot-git-readonly, -bot-fetch-issue
+[PASS] Mage commands: -bot-server-info, -bot-git-readonly, -bot-fetch-issue
 [PASS] PDF generation (md-to-pdf via npx)
-[WARN] Backend not running (start it before running /qabot)
 [WARN] LINEAR_API_KEY not set (qabot will skip Linear context)
 [WARN] /clojure-eval skill not available (REPL testing disabled)
 
