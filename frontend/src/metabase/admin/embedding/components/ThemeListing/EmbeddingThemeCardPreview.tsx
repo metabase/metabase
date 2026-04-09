@@ -9,7 +9,6 @@ import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";
 
 import { useDefaultEmbeddingThemeSettings } from "../../hooks";
 
-// TODO(EMB-942): add embedding theme preview placeholder card
 export const EmbeddingThemeCardPreview = ({
   theme,
 }: {
@@ -61,7 +60,10 @@ export const EmbeddingThemeCardPreview = ({
     <svg
       viewBox="0 0 250 250"
       fill="none"
-      style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+      style={{
+        borderBottom: "1px solid var(--mb-color-border)",
+        fontFamily: theme.fontFamily ?? "inherit",
+      }}
     >
       <g>
         <path d="M0 0H251V251H0V0Z" fill={colorOf("background-secondary")} />
