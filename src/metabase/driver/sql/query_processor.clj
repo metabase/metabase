@@ -925,14 +925,20 @@
           casted-field         (cast-field-if-needed driver field-metadata identifier)
           database-type        (or (h2x/database-type casted-field)
                                    (:database-type field-metadata))
-          maybe-add-db-type    (fn [expr]
+          effective-type       (when-not database-type
+                                 (let [et (or (:effective-type options) (:base-type options))]
+                                   (when (isa? et :type/Temporal)
+                                     et)))
+          maybe-add-type-info  (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
-                                   (h2x/with-database-type-info expr database-type)))]
+                                   (if database-type
+                                     (h2x/with-database-type-info expr database-type)
+                                     (h2x/with-type-info expr {:effective-type effective-type}))))]
       (u/prog1
         (cond->> (if allow-casting? casted-field identifier)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
-          database-type            maybe-add-db-type
+          (or database-type effective-type) maybe-add-type-info
           (:temporal-unit options) (apply-temporal-bucketing driver options)
           (:binning options)       (apply-binning options))
         (log/trace (binding [*print-meta* true]
