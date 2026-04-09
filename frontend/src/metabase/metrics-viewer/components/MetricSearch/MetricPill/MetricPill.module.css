@@ -1,7 +1,7 @@
 .metricPill {
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--default-border-radius);
   cursor: pointer;
   transition: background-color 150ms ease;
 }
