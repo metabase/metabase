@@ -919,7 +919,7 @@
                       {:model "Field" :id "Some Field"}]}
                    (set (serdes/dependencies ser))))))))))
 
-(defn- pmbql-measure-definition
+(defn- mbql5-measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [db-id table-id field-id]
   (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
@@ -936,7 +936,7 @@
                        :model/Database   {db-id :id}        {:name "My Database"}
                        :model/Table      {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
                        :model/Field      {field-id :id}     {:name "Some Field" :table_id no-schema-id}]
-      (let [definition (pmbql-measure-definition db-id no-schema-id field-id)]
+      (let [definition (mbql5-measure-definition db-id no-schema-id field-id)]
         (ts/with-temp-dpc [:model/Measure
                            {m1-id  :id
                             m1-eid :entity_id}
@@ -974,7 +974,7 @@
                        :model/Database   {db-id :id}        {:name "My Database"}
                        :model/Table      {table-id :id}     {:name "My Table" :db_id db-id}
                        :model/Field      {field-id :id}     {:name "Amount" :table_id table-id}]
-      (let [base-definition (pmbql-measure-definition db-id table-id field-id)]
+      (let [base-definition (mbql5-measure-definition db-id table-id field-id)]
         (ts/with-temp-dpc [:model/Measure
                            {m1-id  :id
                             m1-eid :entity_id}
@@ -1729,12 +1729,17 @@
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db!
-    (ts/with-temp-dpc [:model/Collection    {coll1-id :id} {:name "Some Collection"}
-                       :model/Collection    {coll2-id :id} {:name "Other Collection"}
-                       :model/Collection    {coll3-id :id} {:name "Third Collection"}
-                       :model/Dashboard     {dash-id :id}  {:name "A Dashboard" :collection_id coll1-id}
-                       :model/Database      {db-id :id}    {}
-                       :model/Card          {card1-id :id} {:name "Some Card", :database_id db-id}
+    (ts/with-temp-dpc [:model/Collection    {coll1-id :id}              {:name "Some Collection"}
+                       :model/Collection    {coll2-id :id}              {:name "Other Collection"}
+                       :model/Collection    {coll3-id :id}              {:name "Third Collection"}
+                       :model/Collection    {clean-coll-id :id
+                                             clean-coll-eid :entity_id} {:name "Clean Collection"}
+                       :model/Dashboard     {dash-id :id}               {:name "A Dashboard" :collection_id coll1-id}
+                       :model/Database      {db-id :id}                 {}
+                       :model/Card          {card1-id :id}              {:name "Some Card", :database_id db-id}
+                       :model/Card          {clean-card-eid :entity_id} {:name          "Clean Card"
+                                                                         :collection_id clean-coll-id
+                                                                         :database_id   db-id}
                        :model/DashboardCard _              {:card_id card1-id :dashboard_id dash-id}
                        :model/Card          _              {:name          "Dependent Card"
                                                             :collection_id coll2-id
@@ -1792,7 +1797,20 @@
             (is (some #(str/starts-with? % "Failed to export Cards")
                       (into #{}
                             (map :message)
-                            (messages))))))))))
+                            (messages)))))))
+      (testing "exporting a clean collection works even when other collections have escape issues"
+        (let [extracted (into [] (extract/extract {:targets       [["Collection" clean-coll-id]]
+                                                   :no-settings   true
+                                                   :no-data-model true
+                                                   :no-transforms true}))]
+          (is (= #{clean-coll-eid} (ids-by-model "Collection" extracted)))
+          (is (= #{clean-card-eid} (ids-by-model "Card" extracted)))))
+      (testing "data-model-only export is not blocked by escape analysis"
+        (let [extracted (into [] (extract/extract {:no-collections true
+                                                   :no-settings    true
+                                                   :no-transforms  true}))]
+          (is (seq (filter #(= "Database" (-> % :serdes/meta last :model)) extracted))
+              "Databases should be exported even when cards reference personal collections"))))))
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db!
@@ -2031,7 +2049,11 @@
 
           (testing "metabot depends on its model entities"
             (is (= #{[{:model "Card" :id model-eid}]}
-                   (set (serdes/dependencies ser))))))))))
+                   (set (serdes/dependencies ser)))))
+
+          (testing "metabot storage-path uses top-level metabots directory"
+            (is (= [{:label "metabots"} {:label "Test Metabot" :key metabot-eid}]
+                   (serdes/storage-path ser {})))))))))
 
 (deftest metabot-collection-test
   (mt/with-empty-h2-app-db!
@@ -2687,3 +2709,48 @@
                     {:id "alpha" :name "A param" :type :category}]
           imported (serdes/import-parameters params)]
       (is (= ["zebra" "alpha"] (map :id imported))))))
+
+(deftest channel-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc
+      [:model/Channel {email-id :id} {:name "Email Channel"
+                                      :type :channel/email
+                                      :details {:host "smtp.example.com" :port 587}
+                                      :description "An email channel"}
+       :model/Channel {http-id :id}  {:name "HTTP Channel"
+                                      :type :channel/http
+                                      :details {:url "https://example.com/webhook"
+                                                :method "POST"
+                                                :auth-method "none"}
+                                      :description "An HTTP channel"}]
+      (testing "email channel extraction"
+        (let [ser (ts/extract-one "Channel" email-id)]
+          (is (=? {:serdes/meta [{:model "Channel" :id "Email Channel"}]
+                   :name "Email Channel"
+                   :type :channel/email
+                   :description "An email channel"
+                   :details {:host "smtp.example.com" :port 587}
+                   :created_at string?}
+                  ser))
+          (is (not (contains? ser :id)))
+          (is (not (contains? ser :active)))))
+
+      (testing "http channel extraction"
+        (let [ser (ts/extract-one "Channel" http-id)]
+          (is (=? {:serdes/meta [{:model "Channel" :id "HTTP Channel"}]
+                   :name "HTTP Channel"
+                   :type :channel/http
+                   :description "An HTTP channel"
+                   :details {:url "https://example.com/webhook"
+                             :method "POST"
+                             :auth-method "none"}
+                   :created_at string?}
+                  ser))))
+
+      (testing "channel storage-path uses top-level channels directory"
+        (let [ser (ts/extract-one "Channel" email-id)]
+          (is (= [{:label "channels"} {:label "Email Channel" :key "Email Channel"}]
+                 (serdes/storage-path ser {}))))
+        (let [ser (ts/extract-one "Channel" http-id)]
+          (is (= [{:label "channels"} {:label "HTTP Channel" :key "HTTP Channel"}]
+                 (serdes/storage-path ser {}))))))))

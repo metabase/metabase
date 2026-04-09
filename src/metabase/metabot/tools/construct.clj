@@ -6,6 +6,7 @@
    [malli.transform :as mtx]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.filters :as filter-tools]
@@ -250,7 +251,7 @@
 
 (defn- structured->query-data
   "Convert tool structured output to a map suitable for [[llm-rep/query->xml]].
-  Converts the pMBQL query to legacy MBQL, JSON-encodes it, and wraps result columns."
+  Converts the MBQL 5 query to legacy MBQL, JSON-encodes it, and wraps result columns."
   [{:keys [query-id query result-columns]}]
   (let [legacy-query (when (and (map? query) (:lib/type query))
                        #_{:clj-kondo/ignore [:discouraged-var]}
@@ -317,7 +318,8 @@
       {:output (str "Unsupported query_type: " query-type)})))
 
 (mu/defn ^{:tool-name "construct_notebook_query"
-           :decode    decode-tool-args}
+           :decode    decode-tool-args
+           :scope     scope/agent-notebook-create}
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table."
   [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]

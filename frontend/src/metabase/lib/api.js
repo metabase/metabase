@@ -125,15 +125,15 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
-        let { url, method, options } =
+        let { url, method, options, data } =
           await this.apiRequestManipulationMiddleware({
             url: urlTemplate,
             method: methodTemplate,
             options: { ...defaultOptions, ...invocationOptions },
+            // this will transform arrays to objects with numeric keys
+            // we shouldn't be using top level-arrays in the API
+            data: { ...rawData },
           });
-        // this will transform arrays to objects with numeric keys
-        // we shouldn't be using top level-arrays in the API
-        const data = { ...rawData };
         for (const tag of url.match(/:\w+/g) || []) {
           const paramName = tag.slice(1);
           let value = data[paramName];
@@ -376,16 +376,16 @@ export class Api extends EventEmitter {
   }
 
   /**
-   * @param data {import('metabase/plugins').OnBeforeRequestHandlerData}
-   * @return data {Promise<import('metabase/plugins').OnBeforeRequestHandlerData>}
+   * @param {import('metabase/plugins/oss/api').OnBeforeRequestHandlerConfig} data
+   * @return {Promise<import('metabase/plugins/oss/api').OnBeforeRequestHandlerConfig>}
    */
-  async apiRequestManipulationMiddleware(data) {
-    let { method, url, options } = data;
+  async apiRequestManipulationMiddleware(requestConfig) {
+    let { method, url, options, data } = requestConfig;
 
     /**
      * Handlers order is important.
      * Handlers are executed in order and each handler uses the data returned by a previous handler.
-     * @type {import('metabase/plugins').OnBeforeRequestHandler[]}
+     * @type {import('metabase/plugins/oss/api').OnBeforeRequestHandler[]}
      */
     const handlers = [];
 
@@ -394,6 +394,8 @@ export class Api extends EventEmitter {
         ...[
           PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
             .getOrRefreshSessionHandler,
+          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+            .getOrRefreshGuestSessionHandler,
           PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
             .overrideRequestsForGuestEmbeds,
         ],
@@ -413,6 +415,7 @@ export class Api extends EventEmitter {
           method,
           url,
           options,
+          data,
         });
 
         if (onBeforeRequestHandlerResult) {
@@ -430,11 +433,18 @@ export class Api extends EventEmitter {
               ...onBeforeRequestHandlerResult.options,
             };
           }
+
+          if (onBeforeRequestHandlerResult.data) {
+            data = {
+              ...data,
+              ...onBeforeRequestHandlerResult.data,
+            };
+          }
         }
       }
     }
 
-    return { method, url, options };
+    return { method, url, options, data };
   }
 }
 

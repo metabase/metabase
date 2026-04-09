@@ -28,10 +28,10 @@ describe("scenarios > embedding > admin settings > starter", () => {
       .findByRole("link", { name: /Guest embeds/ })
       .should("not.exist");
 
-    cy.log("Verify sidebar does not contain security settings link");
+    cy.log("Verify sidebar contains security settings link");
     cy.findByTestId("admin-layout-sidebar")
       .findByRole("link", { name: /Security/ })
-      .should("not.exist");
+      .should("exist");
   });
 
   it("should show embedding upsell on oss", () => {
@@ -47,11 +47,11 @@ describe("scenarios > embedding > admin settings > starter", () => {
     });
   });
 
-  it("should not show CORS setting", () => {
-    cy.visit("/admin/embedding");
+  it("should show CORS setting on security page", () => {
+    cy.visit("/admin/embedding/security");
 
     cy.findByTestId("admin-layout-content").within(() => {
-      cy.findByTestId("embedding-app-origins-sdk-setting").should("not.exist");
+      cy.findByText("Cross-Origin Resource Sharing (CORS)").should("exist");
     });
   });
 });

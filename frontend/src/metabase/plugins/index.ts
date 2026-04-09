@@ -74,6 +74,7 @@ export {
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
 } from "./oss/library";
+export { PLUGIN_METABOT } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
@@ -145,6 +146,7 @@ export {
   PLUGIN_WRITABLE_CONNECTION,
   type WritableConnectionInfoSectionProps,
 } from "./oss/writable-connection";
+export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
 
@@ -159,6 +161,7 @@ export type {
 // Export a single reinitialize function that calls all individual reinitialize functions
 import { reinitialize as reinitializeNotificationsSdk } from "../../embedding-sdk-bundle/components/public/notifications";
 
+import { reinitialize as reinitializeAiControls } from "./oss/ai-controls";
 import { reinitialize as reinitializeApi } from "./oss/api";
 import { reinitialize as reinitializeAudit } from "./oss/audit";
 import { reinitialize as reinitializeAuth } from "./oss/auth";
@@ -175,6 +178,7 @@ import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embed
 import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
 import { reinitialize as reinitializeEntities } from "./oss/entities";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
+import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
@@ -199,6 +203,7 @@ import { reinitialize as reinitializeWritableConnection } from "./oss/writable-c
 export function reinitialize() {
   reinitializeNotificationsSdk();
 
+  reinitializeAiControls();
   reinitializeApi();
   reinitializeAudit();
   reinitializeAuth();
@@ -214,6 +219,7 @@ export function reinitialize() {
   reinitializeEmbeddingSdk();
   reinitializeEntities();
   reinitializeLibrary();
+  reinitializeMetabot();
   reinitializeModelPersistence();
   reinitializeModeration();
   reinitializePermissions();

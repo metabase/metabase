@@ -48,6 +48,8 @@ export const DataModel = {
   },
   TableSection: {
     get: getTableSection,
+    clickFieldsTab,
+    clickDetailsTab,
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
     getQueryBuilderLink: getTableQueryBuilderLink,
@@ -318,6 +320,14 @@ function getTablePickerTables() {
 }
 
 /** table section helpers */
+
+function clickFieldsTab() {
+  cy.findByRole("tab", { name: /Fields/ }).click();
+}
+
+function clickDetailsTab() {
+  cy.findByRole("tab", { name: /Details/ }).click();
+}
 
 function getTableSection() {
   return cy.findByTestId("table-section");
