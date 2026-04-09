@@ -503,60 +503,33 @@
                [k (count v)]))
         (full-dependencies deps)))
 
-(defn- module-parent
-  "Direct parent of a module symbol, or nil if top-level.
-  Mirror of `hooks.common.modules/parent-module`."
+(defn module-parent
+  "Direct parent of a nested module symbol, or nil if top-level.
+  Mirror of `hooks.common.modules/parent-module`. Public so the
+  modules-test suite can use it for the subtree-membership lint check."
   [m]
   (let [[ns-part parts] (module-split m)]
     (when (> (count parts) 1)
       (module-join [ns-part (butlast parts)]))))
 
-(defn- module-ancestor-chain [m]
+(defn module-ancestor-chain
+  "Seq of ancestor module symbols of `m`, from direct parent up to top-level
+  ancestor. Empty if `m` is top-level. Public for use by the
+  subtree-membership lint check in the modules-test suite."
+  [m]
   (take-while some? (iterate module-parent (module-parent m))))
-
-(defn- module-ancestor? [maybe-ancestor maybe-descendant]
-  (boolean (some #(= maybe-ancestor %) (module-ancestor-chain maybe-descendant))))
-
-(defn- module-siblings? [a b]
-  (let [pa (module-parent a)
-        pb (module-parent b)]
-    (boolean (and pa pb (= pa pb)))))
-
-(defn- module-internally-visible?
-  "Mirror of `hooks.common.modules/internally-visible?`: viewer can see
-  viewed's internals without :api check if they share a subtree in the
-  nested module hierarchy. Returns a proper boolean."
-  [viewer viewed]
-  (boolean
-   (or (= viewer viewed)
-       (module-ancestor? viewer viewed)
-       (module-siblings? viewer viewed))))
-
-(defn- filter-implicit-deps
-  "Remove dependencies that are implicit under nested-module visibility rules:
-  a module does not need to declare its descendants or siblings in its `:uses`
-  because those are internally visible by construction.
-
-  Operates on a single module's raw dep set."
-  [module dep-set]
-  (into (empty dep-set)
-        (remove #(module-internally-visible? module %))
-        dep-set))
 
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`.
 
-  Under nested modules, `generate-config` reads the current Kondo config to
-  discover which modules have been declared (and their `:ns-prefix`es), then
-  uses longest-prefix matching to assign each namespace to its owning
-  module. Dependencies that are implicit under nested-module visibility
-  rules (parent → descendant, siblings) are filtered out of each module's
-  generated `:uses` so the config doesn't list them redundantly.
+  Under the strict module model, every dependency is explicit — there are
+  no implicit edges based on tree structure. `generate-config` produces a
+  literal one-to-one mapping from actual code dependencies (resolved via
+  the prefix map) to `:uses` entries, with no filtering.
 
-  For backwards compatibility the 2-arity form still accepts pre-computed
-  `deps`. When called that way, the caller is responsible for having
-  computed `deps` with the correct `prefix->module` map (or without one,
-  for the flat behavior)."
+  Reads the current kondo config to discover declared modules (and their
+  `:ns-prefix`es), then uses longest-prefix matching to assign each
+  namespace to its owning module."
   ([]
    (let [kc          (kondo-config)
          prefix->mod (build-prefix->module kc)]
@@ -566,7 +539,7 @@
    (into (sorted-map)
          (map (fn [[module uses]]
                 [module {:api  (externally-used-namespaces-ignoring-friends deps kondo-config module)
-                         :uses (filter-implicit-deps module uses)}]))
+                         :uses uses}]))
          (module-dependencies deps))))
 
 (defn kondo-config

@@ -91,23 +91,30 @@
 ;;;; -------------------------------------------------------------------------
 ;;;; Visibility rules
 ;;;;
-;;;; Given a module that wants to reference a namespace from another module,
-;;;; we answer two questions:
-;;;;
-;;;;   1. Can the viewer see the target's INTERNALS (no :api check required)?
-;;;;      Yes for: same module, parent→descendant, siblings.
-;;;;
-;;;;   2. If not, what's the target's EXTERNAL FACE — the module that
-;;;;      unrelated outside code must reference in its :uses?
-;;;;      Determined by walking up from the target. A module is externally
-;;;;      visible iff its parent `:open`s it (and the parent is itself
-;;;;      externally visible). Otherwise the face is the closest ancestor
-;;;;      that IS externally visible.
+;;;; STRICT MODEL: every cross-module access goes through the target's `:api`,
+;;;; and every dependency is declared in `:uses`. There is no implicit
+;;;; visibility based on tree relationships — neither parent→descendant nor
+;;;; descendant→parent nor sibling→sibling. The hierarchy exists for
+;;;; encapsulation scoping (controlled by `:open`), not for trust.
 ;;;;
 ;;;; The `:open` config key on a module is a SET of direct-child module
-;;;; symbols that the parent explicitly exposes to the outside world (as
-;;;; if they were top-level modules). An unspecified or empty `:open`
-;;;; means no children are externally visible — pure encapsulation.
+;;;; symbols that the parent explicitly promotes to externally-referenceable
+;;;; status. An unopened nested child is private to its top-level subtree:
+;;;; only modules sharing the same top-level ancestor may name it in their
+;;;; `:uses`. An opened child may be named by anyone. Either way, the
+;;;; dependency must be declared and the access must respect the target's
+;;;; `:api`.
+;;;;
+;;;; The opened-child-naming rule is enforced by a separate test
+;;;; (`uses-references-must-be-namable-test` in modules-test) rather than
+;;;; here at require-lint time, because it's a property of the config
+;;;; declarations, not of individual require forms.
+;;;;
+;;;; The helpers below (`open-children`, `opens-child?`, `externally-visible?`,
+;;;; `external-face`) are exported in the sense that they're available to
+;;;; that test and to dev tooling, but the kondo hook itself uses none of
+;;;; them at require-lint time. Require linting is now a strict
+;;;; declared-dependency + :api check, nothing more.
 ;;;; -------------------------------------------------------------------------
 
 (defn- open-children
@@ -122,11 +129,13 @@
   (contains? (open-children config parent) child))
 
 (defn- externally-visible?
-  "True if `m` is visible to unrelated outside code as a referenceable module.
+  "True if `m` may be named in the `:uses` of a module that is NOT in `m`'s
+  top-level subtree. This is the case iff `m` is top-level, OR `m`'s parent
+  has `m` in its `:open` set AND the parent is itself externally visible.
 
-  A module is externally visible iff it is top-level OR its parent both
-  `:open`s it AND is itself externally visible. The recursion bottoms out at
-  top-level modules."
+  Used by the subtree-membership lint to validate `:uses` declarations.
+  NOT used at require-lint time — requires are checked strictly against
+  the caller's declared `:uses` and the target's `:api`."
   [config m]
   (if-let [p (parent-module m)]
     (and (opens-child? config p m)
@@ -134,34 +143,13 @@
     true))
 
 (defn- external-face
-  "The module that unrelated outside code must reference in order to reach
-  anything inside `m`. If `m` is externally visible, returns `m` itself.
-  Otherwise returns the closest ancestor of `m` that IS externally visible
-  (which is guaranteed to exist, because the root is always externally
-  visible)."
+  "The closest externally-visible ancestor of `m` (or `m` itself if it is
+  externally visible). Used by the subtree-membership lint to compute the
+  module that an outsider would have to name in lieu of `m` itself."
   [config m]
   (if (externally-visible? config m)
     m
     (external-face config (parent-module m))))
-
-(defn- internally-visible?
-  "True if `viewer` can see `viewed`'s internals without going through the
-  target's `:api`. This is the case for:
-
-    - same module
-    - parent → descendant (any depth)
-    - siblings (same direct parent)
-
-  Crucially it is NOT the case for descendant → parent: a child can still
-  see its parent, but only through the parent's `:api` (same as any other
-  outside caller would).
-
-  Returns a proper boolean."
-  [viewer viewed]
-  (boolean
-   (or (= viewer viewed)
-       (ancestor? viewer viewed)
-       (siblings? viewer viewed))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Namespace → module resolution (prefix-map based)
@@ -332,71 +320,56 @@
   "True if `current-module` is allowed to depend on `required-module` based on
   `current-module`'s `:uses` declaration.
 
-  Under nested modules, `:uses lib` covers both `lib` and any of lib's
-  externally-visible descendants (those reached via `:open`). We walk from
-  the required module's external face upward through the ancestor chain,
-  and allow if any ancestor is declared in `current-module`'s `:uses`.
-  Every ancestor of the external face is itself externally-visible (by the
-  transitivity of `externally-visible?`), so this is the correct reach.
+  Strict exact-match: the resolved required module must be a literal entry
+  in `current-module`'s `:uses` set. There is no walking of `:open` chains,
+  no inheriting from ancestors. If `lib.schema` is what the require resolves
+  to, then `:uses #{lib.schema}` is what's required — `:uses #{lib}` does
+  NOT cover it.
 
-  Also accepts a `:uses` entry that literally names the required module,
-  even if it's not the canonical external face — backwards compat for flat
-  configs where `:uses` entries name modules directly."
+  The `:any` value is the one wildcard: a module declared `:uses :any` may
+  depend on anything (subject to the orthogonal subtree-membership rules
+  enforced at config-validation time)."
   [config current-module required-module]
   (let [allowed-modules (allowed-modules config current-module)]
-    (if (= allowed-modules :any)
-      true
-      (let [face        (external-face config required-module)
-            face-chain  (cons face (ancestor-chain face))
-            allowed-set (set allowed-modules)]
-        (boolean
-         (or (some allowed-set face-chain)
-             (contains? allowed-set required-module)))))))
+    (or (= allowed-modules :any)
+        (boolean (contains? (set allowed-modules) required-module)))))
 
 (defn- allowed-module-namespace?
   "True if `ns-symb` (the namespace being required) is an allowed reference
-  from `current-module`. Checks the external-face's `:api` list and
-  `:friends` list. Under flat configs (no nesting declared), the external
-  face of any module is the module itself, so this is equivalent to the
-  pre-nesting direct `:api`/`:friends` check."
+  from `current-module`. Strict check against the resolved required module's
+  own `:api` set (and its `:friends` list as the audited bypass). No
+  external-face walking — the required module is whatever longest-prefix
+  resolution returned, and the `:api` is that exact module's `:api`."
   [config current-module ns-symb]
-  (let [required-module     (module config ns-symb)
-        face                (external-face config required-module)
-        face-api-namespaces (module-api-namespaces config face)
-        face-friends        (module-friends config face)]
-    (or (empty? face-api-namespaces)
-        (contains? face-api-namespaces ns-symb)
-        (contains? face-friends current-module))))
+  (let [required-module        (module config ns-symb)
+        api-namespaces         (module-api-namespaces config required-module)
+        friends                (module-friends config required-module)]
+    (or (empty? api-namespaces)
+        (contains? api-namespaces ns-symb)
+        (contains? friends current-module))))
 
 (defn usage-error
   "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the
   error type if there is one, otherwise `nil` if there are no errors.
 
-  Historical note: this function used to carry a special-case clause that
-  forbade non-`-rest` modules from depending on `-rest` modules (plus an
-  exception for `-routes` and `core`). That invariant is now enforced
-  entirely at test time via
-  `metabase.core.modules-test/do-not-use-rest-modules-in-other-modules-test`,
-  which is the authoritative check. The inline kondo-hook duplicate has been
-  removed so that the hook can stay simple and suffix-based workarounds
-  don't proliferate."
+  Strict checks: the required module must be in current's `:uses`, and the
+  required namespace must be in the required module's `:api` (or current
+  must be in required's `:friends`). No implicit visibility based on
+  parent/sibling/descendant relationships — every cross-module access goes
+  through `:api`."
   [config current-module required-namespace]
   ;; ignore stuff not in a module i.e. non-Metabase stuff.
   (when-let [required-module (module config required-namespace)]
     (when-not (= current-module required-module)
-      ;; Nested-module early-exit: if the required module is internally
-      ;; visible to the current module (ancestor, descendant, or sibling),
-      ;; no :uses or :api check is required.
-      (when-not (internally-visible? current-module required-module)
-        (cond
-          (not (allowed-module? config current-module required-module))
-          (format "Module %s should not be used in the %s module. [:metabase/modules %s :uses]"
-                  required-module
-                  current-module
-                  current-module)
+      (cond
+        (not (allowed-module? config current-module required-module))
+        (format "Module %s should not be used in the %s module. [:metabase/modules %s :uses]"
+                required-module
+                current-module
+                current-module)
 
-          (not (allowed-module-namespace? config current-module required-namespace))
-          (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
-                  required-namespace
-                  required-module
-                  required-module))))))
+        (not (allowed-module-namespace? config current-module required-namespace))
+        (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
+                required-namespace
+                required-module
+                required-module)))))

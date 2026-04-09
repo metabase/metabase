@@ -251,28 +251,14 @@
           (is (= 'lib (external-face config 'lib.schema.foo))))))))
 
 ;;;; -------------------------------------------------------------------------
-;;;; internally-visible? (parent→descendant, sibling rules)
+;;;; STRICT MODEL: every cross-module access is an explicit :uses + :api
+;;;; check. There is no implicit visibility of any kind. Same-module access
+;;;; is the only thing that bypasses the lint, and that's just because
+;;;; there's no module boundary to cross.
+;;;;
+;;;; The `internally-visible?` helper has been removed entirely; the
+;;;; visibility-question tests below cover the strict model directly.
 ;;;; -------------------------------------------------------------------------
-
-(deftest ^:parallel internally-visible?-test
-  (testing "`internally-visible?` is the trust-boundary rule for sibling / ancestor-descendant access"
-    (let [internally-visible? (hook-fn 'internally-visible?)]
-      (testing "same module"
-        (is (true? (internally-visible? 'lib 'lib))))
-      (testing "parent sees descendant (direct and deep)"
-        (is (true? (internally-visible? 'lib 'lib.schema)))
-        (is (true? (internally-visible? 'lib 'lib.schema.foo))))
-      (testing "descendant → ancestor is NOT internally visible (must go through parent's :api)"
-        (is (false? (internally-visible? 'lib.schema 'lib)))
-        (is (false? (internally-visible? 'lib.schema.foo 'lib))))
-      (testing "siblings see each other"
-        (is (true? (internally-visible? 'lib.schema 'lib.be)))
-        (is (true? (internally-visible? 'lib.be 'lib.schema))))
-      (testing "unrelated top-level modules don't see each other internally"
-        (is (false? (internally-visible? 'lib 'query-processor)))
-        (is (false? (internally-visible? 'query-processor 'lib))))
-      (testing "cousins (same grandparent, different parent) don't see each other"
-        (is (false? (internally-visible? 'outer.one.foo 'outer.two.bar)))))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; usage-error behavior under nesting
@@ -281,23 +267,60 @@
 (defn- usage-error [config current-module required-namespace]
   ((hook-fn 'usage-error) config current-module required-namespace))
 
-(deftest ^:parallel usage-error-parent-sees-descendant-internals-test
-  (testing "Parent accessing descendant namespace is allowed without :uses or :api declaration"
-    (let [config {:metabase/modules {'lib        {:uses #{}}
-                                     'lib.schema {:api #{}
-                                                  :uses #{}}}}]
-      (is (nil? (usage-error config 'lib 'metabase.lib.schema.foo)))
-      (is (nil? (usage-error config 'lib 'metabase.lib.schema.nested.thing))))))
+(deftest ^:parallel usage-error-parent-needs-explicit-uses-and-api-test
+  (testing "Parent accessing descendant must declare :uses and go through descendant's :api — no implicit access"
+    (let [config-without-uses
+          {:metabase/modules {'lib        {:uses #{}}
+                              'lib.schema {:api  #{'metabase.lib.schema.foo}
+                                           :uses #{}}}}]
+      (is (some? (usage-error config-without-uses 'lib 'metabase.lib.schema.foo))
+          "lib does not declare :uses #{lib.schema} so the access is denied even though lib is the parent"))
+    (let [config-with-uses
+          {:metabase/modules {'lib        {:uses #{'lib.schema}}
+                              'lib.schema {:api  #{'metabase.lib.schema.foo}
+                                           :uses #{}}}}]
+      (is (nil? (usage-error config-with-uses 'lib 'metabase.lib.schema.foo))
+          "with :uses declared and the namespace in lib.schema's :api, the access is allowed")
+      (is (some? (usage-error config-with-uses 'lib 'metabase.lib.schema.private-ns))
+          "even with :uses declared, namespaces NOT in lib.schema's :api are denied"))))
 
-(deftest ^:parallel usage-error-sibling-access-test
-  (testing "Siblings see each other's internals without :api check"
-    (let [config {:metabase/modules {'lib        {:open #{}}
-                                     'lib.schema {:uses #{}
-                                                  :api  #{}}
-                                     'lib.be     {:uses #{}
-                                                  :api  #{}}}}]
-      (is (nil? (usage-error config 'lib.be 'metabase.lib.schema.foo)))
-      (is (nil? (usage-error config 'lib.schema 'metabase.lib.be.core))))))
+(deftest ^:parallel usage-error-siblings-need-explicit-uses-and-api-test
+  (testing "Siblings must declare :uses and go through each other's :api — no sibling trust"
+    (let [config-without-uses
+          {:metabase/modules {'lib        {}
+                              'lib.schema {:api  #{'metabase.lib.schema.foo}
+                                           :uses #{}}
+                              'lib.be     {:api  :any
+                                           :uses #{}}}}]
+      (is (some? (usage-error config-without-uses 'lib.be 'metabase.lib.schema.foo))
+          "lib.be does not declare :uses #{lib.schema}, so even sibling access is denied"))
+    (let [config-with-uses
+          {:metabase/modules {'lib        {}
+                              'lib.schema {:api  #{'metabase.lib.schema.foo}
+                                           :uses #{}}
+                              'lib.be     {:api  :any
+                                           :uses #{'lib.schema}}}}]
+      (is (nil? (usage-error config-with-uses 'lib.be 'metabase.lib.schema.foo))
+          "with :uses declared and the namespace in lib.schema's :api, the access is allowed")
+      (is (some? (usage-error config-with-uses 'lib.be 'metabase.lib.schema.private-ns))
+          "even with :uses declared, namespaces NOT in lib.schema's :api are denied"))))
+
+(deftest ^:parallel usage-error-child-must-declare-uses-on-parent-test
+  (testing "Child accessing parent must declare :uses on the parent — no implicit subtree access"
+    (let [config-without-uses
+          {:metabase/modules {'lib        {:api  #{'metabase.lib.core}
+                                           :uses #{}}
+                              'lib.schema {:api  :any
+                                           :uses #{}}}}]
+      (is (some? (usage-error config-without-uses 'lib.schema 'metabase.lib.core))
+          "lib.schema does not declare :uses #{lib} so it cannot access lib's namespaces"))
+    (let [config-with-uses
+          {:metabase/modules {'lib        {:api  #{'metabase.lib.core}
+                                           :uses #{}}
+                              'lib.schema {:api  :any
+                                           :uses #{'lib}}}}]
+      (is (nil? (usage-error config-with-uses 'lib.schema 'metabase.lib.core))
+          "with :uses declared and the namespace in lib's :api, child→parent access is allowed"))))
 
 (deftest ^:parallel usage-error-encapsulated-grandchild-denied-test
   (testing "Outside module cannot reach into an unopened nested module"
@@ -340,20 +363,37 @@
                                                        :api  :any}}}]
       (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))))))
 
-(deftest ^:parallel usage-error-uses-lib-covers-opened-child-test
-  (testing "Listing the parent in :uses covers the opened child via the external-face mechanism"
-    (let [config {:metabase/modules {'lib             {:open #{'lib.schema}
-                                                       :api  :any}
+(deftest ^:parallel usage-error-uses-must-name-resolved-module-exactly-test
+  (testing "`:uses` is matched exactly against the resolved required module — no walking up the tree"
+    (let [config {:metabase/modules {'lib             {:api  :any
+                                                       :uses #{}}
                                      'lib.schema      {:api  :any
                                                        :uses #{}}
                                      'query-processor {:uses #{'lib}
                                                        :api  :any}}}]
-      ;; query-processor declares :uses lib (the top-level parent). The required
-      ;; namespace resolves to lib.schema (longest-prefix). lib.schema is
-      ;; externally visible because lib opens it, and its external face is itself.
-      ;; The direct :uses entry for lib is accepted since the required module is
-      ;; a descendant of lib.
-      (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))))))
+      (is (some? (usage-error config 'query-processor 'metabase.lib.schema.foo))
+          (str ":uses #{lib} does NOT cover lib.schema even though lib is its parent. "
+               "The required namespace resolves to lib.schema (via longest-prefix matching) "
+               "and the :uses entry must name lib.schema directly."))
+      (is (nil? (usage-error config 'query-processor 'metabase.lib.core))
+          ":uses #{lib} covers references to namespaces that resolve to lib itself"))
+    (let [config {:metabase/modules {'lib             {:api  :any
+                                                       :uses #{}}
+                                     'lib.schema      {:api  :any
+                                                       :uses #{}}
+                                     'query-processor {:uses #{'lib 'lib.schema}
+                                                       :api  :any}}}]
+      (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))
+          "with both lib and lib.schema in :uses, the access works"))))
+
+(deftest ^:parallel usage-error-uses-any-allows-anything-test
+  (testing "`:uses :any` allows any module reference (subject to :api), regardless of nesting"
+    (let [config {:metabase/modules {'lib        {:api  :any}
+                                     'lib.schema {:api  :any}
+                                     'caller     {:uses :any
+                                                  :api  :any}}}]
+      (is (nil? (usage-error config 'caller 'metabase.lib.schema.foo)))
+      (is (nil? (usage-error config 'caller 'metabase.lib.core))))))
 
 (deftest ^:parallel usage-error-backwards-compat-flat-config-test
   (testing "With no nested modules declared, behavior matches the flat pre-nesting model"
