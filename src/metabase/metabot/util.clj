@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -99,3 +100,15 @@
                   (str/starts-with? res "<?xml") (subs (inc (.indexOf res "\n"))))))]
     (->> (map fmt bits)
          (str/join "\n"))))
+
+;;; MBQL utils (needed until we erradicate legacy from Metabot module)
+
+(defn extract-sql-content
+  "Extract SQL content from a dataset_query map.
+  Handles both legacy format and lib/query format."
+  [query]
+  (or
+   (and (lib/native-only-query? query)
+        (lib/raw-native-query query))
+   ;; Try legacy format
+   (get-in query [:native :query])))
