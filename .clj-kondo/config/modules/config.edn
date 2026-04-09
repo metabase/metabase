@@ -1069,8 +1069,7 @@
   lib-be
   {:team "Querying Platform"
    :api  #{metabase.lib-be.core
-           metabase.lib-be.init
-           metabase.lib-be.source-swap}
+           metabase.lib-be.init}
    :uses #{lib
            models
            settings
@@ -3054,7 +3053,6 @@
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/DashboardCardSeries
                     :model/Field
                     :model/Measure
                     :model/PersistedInfo
