@@ -142,15 +142,17 @@
                   (empty? computed)
                   root
 
-                  ;; Key missing — append `<newline><indent>:key <set>` to the module config map.
+                  ;; Key missing — append `<newline><indent>:key <set>` to the module config map,
+                  ;; splicing new children directly to avoid the separator spaces `append-child` inserts.
                   :else
-                  (z/root
-                   (-> mod-cfg
-                       (z/append-child (r.node/newlines 1))
-                       (z/append-child (r.node/spaces 3))
-                       (z/append-child config-key)
-                       (z/append-child (r.node/spaces 1))
-                       (z/append-child (r.parser/parse-string (model-set-str computed))))))))
+                  (let [m-node       (z/node mod-cfg)
+                        new-children (concat (r.node/children m-node)
+                                             [(r.node/newlines 1)
+                                              (r.node/spaces 3)
+                                              (r.node/keyword-node config-key)
+                                              (r.node/spaces 1)
+                                              (r.parser/parse-string (model-set-str computed))])]
+                    (z/root (z/replace mod-cfg (r.node/replace-children m-node new-children)))))))
             root
             [:model-exports :model-imports]))
          (z/root root-zloc)
