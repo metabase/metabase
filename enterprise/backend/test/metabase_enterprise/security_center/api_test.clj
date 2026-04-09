@@ -14,6 +14,16 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
+(defn- do-with-security-center-env-checks-skipped [thunk]
+  (try
+    (reset! premium-features/skip-security-center-env-checks true)
+    (thunk)
+    (finally
+      (reset! premium-features/skip-security-center-env-checks false))))
+
+(defmacro ^:private with-security-center-env-checks-skipped [& body]
+  `(do-with-security-center-env-checks-skipped (fn [] ~@body)))
+
 (def ^:private test-advisories
   "Default test advisories covering different severities and match statuses."
   [{:advisory_id       "SC-0000-001"
@@ -54,14 +64,14 @@
        ~@body)))
 
 (deftest list-advisories-test
-  (testing "GET /api/ee/security-center"
-    (testing "requires premium feature"
-      (mt/with-premium-features #{}
-        (mt/assert-has-premium-feature-error
-         "Security Center"
-         (mt/user-http-request :crowberto :get 402 "ee/security-center"))))
-    (mt/with-premium-features #{:admin-security-center}
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
+  (with-security-center-env-checks-skipped
+    (testing "GET /api/ee/security-center"
+      (testing "requires premium feature"
+        (mt/with-premium-features #{}
+          (mt/assert-has-premium-feature-error
+           "Security Center"
+           (mt/user-http-request :crowberto :get 402 "ee/security-center"))))
+      (mt/with-premium-features #{:admin-security-center}
         (with-test-advisories!
           (testing "superuser can list advisories"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/security-center")]
@@ -72,23 +82,24 @@
             (mt/user-http-request :rasta :get 403 "ee/security-center")))))))
 
 (deftest trial-subscription-gate-test
-  (testing "Security Center is not available on trial subscriptions"
-    (mt/with-premium-features #{:admin-security-center}
-      (with-redefs [token-check/is-trial? (constantly true)]
-        (testing "GET /api/ee/security-center returns 402 for trial"
-          (is (=? {:message  "Security Center is not available on this instance."
-                   :status   "error-premium-feature-not-available"}
-                  (mt/user-http-request :crowberto :get 402 "ee/security-center"))))
-        (testing "POST acknowledge returns 402 for trial"
-          (is (=? {:message  "Security Center is not available on this instance."
-                   :status   "error-premium-feature-not-available"}
-                  (mt/user-http-request :crowberto :post 402
-                                        "ee/security-center/SC-0000-001/acknowledge"))))))))
+  (with-security-center-env-checks-skipped
+    (testing "Security Center is not available on trial subscriptions"
+      (mt/with-premium-features #{:admin-security-center}
+        (with-redefs [token-check/is-trial? (constantly true)]
+          (testing "GET /api/ee/security-center returns 402 for trial"
+            (is (=? {:message  "Security Center is not available on this instance."
+                     :status   "error-premium-feature-not-available"}
+                    (mt/user-http-request :crowberto :get 402 "ee/security-center"))))
+          (testing "POST acknowledge returns 402 for trial"
+            (is (=? {:message  "Security Center is not available on this instance."
+                     :status   "error-premium-feature-not-available"}
+                    (mt/user-http-request :crowberto :post 402
+                                          "ee/security-center/SC-0000-001/acknowledge")))))))))
 
 (deftest acknowledge-advisory-test
-  (testing "POST /api/ee/security-center/:id/acknowledge"
-    (mt/with-premium-features #{:admin-security-center :audit-app}
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
+  (with-security-center-env-checks-skipped
+    (testing "POST /api/ee/security-center/:id/acknowledge"
+      (mt/with-premium-features #{:admin-security-center :audit-app}
         (with-test-advisories!
           (testing "superuser can acknowledge"
             (is (=? {:advisory_id     "SC-0000-001"
@@ -113,11 +124,12 @@
                                   "ee/security-center/SC-0000-001/acknowledge")))))))
 
 (deftest sync-endpoint-test
-  (testing "POST /api/ee/security-center/sync"
-    (mt/with-premium-features #{:admin-security-center}
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
+  (with-security-center-env-checks-skipped
+    (testing "POST /api/ee/security-center/sync"
+      (mt/with-premium-features #{:admin-security-center}
         (mt/with-temp-scheduler!
-          (task/init! ::sync-advisories/SyncAdvisories)
+          (with-redefs [premium-features/security-center-enabled? (constantly true)]
+            (task/init! ::sync-advisories/SyncAdvisories))
           (testing "calling twice only runs sync once"
             (let [call-count (atom 0)
                   started    (promise)
@@ -132,20 +144,20 @@
                 @started
                 (is (= {:status "already-in-progress"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
                 (deliver finish true)
-                (is (= 1 @call-count) "sync should only run once despite two API calls"))))))
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
-        (testing "non-superuser gets 403"
-          (mt/user-http-request :rasta :post 403 "ee/security-center/sync"))))))
+                (is (= 1 @call-count) "sync should only run once despite two API calls")))))))
+    (mt/with-premium-features #{:admin-security-center}
+      (testing "non-superuser gets 403"
+        (mt/user-http-request :rasta :post 403 "ee/security-center/sync")))))
 
 (deftest test-notification-test
-  (testing "POST /api/ee/security-center/test-notification"
-    (testing "requires premium feature"
-      (mt/with-premium-features #{}
-        (mt/assert-has-premium-feature-error
-         "Security Center"
-         (mt/user-http-request :crowberto :post 402 "ee/security-center/test-notification"))))
-    (mt/with-premium-features #{:admin-security-center}
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
+  (with-security-center-env-checks-skipped
+    (testing "POST /api/ee/security-center/test-notification"
+      (testing "requires premium feature"
+        (mt/with-premium-features #{}
+          (mt/assert-has-premium-feature-error
+           "Security Center"
+           (mt/user-http-request :crowberto :post 402 "ee/security-center/test-notification"))))
+      (mt/with-premium-features #{:admin-security-center}
         (testing "non-superuser gets 403"
           (mt/user-http-request :rasta :post 403 "ee/security-center/test-notification"))
         (testing "superuser can send test notification"

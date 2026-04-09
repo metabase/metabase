@@ -115,7 +115,10 @@
 
 (deftest security-center-token-feature-test
   (testing "admin_security_center is true for self-hosted with the feature flag and non-H2 app db"
-    (mt/with-premium-features #{:admin-security-center}
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
+    (try
+      (reset! premium-features/skip-security-center-env-checks true)
+      (mt/with-premium-features #{:admin-security-center}
         (is (true? (:admin_security_center
-                    (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))))))))
+                    (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
+      (finally
+        (reset! premium-features/skip-security-center-env-checks false)))))
