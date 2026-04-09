@@ -372,7 +372,9 @@
                    [:= :c.column_name :pk.column_name]]]
       :where [:and
               [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-              (when schema-names [:in :c.table_schema schema-names])
+              ;; drop nils from schema-names — `IN (NULL)` never matches in SQL and would
+              ;; silently return zero fields. See GDGT-2144.
+              (when-let [schemas (seq (remove nil? schema-names))] [:in :c.table_schema schemas])
               (when table-names [:in :c.table_name table-names])]}
      {:select [[:pa.attname :name]
                [[:case
@@ -399,7 +401,8 @@
       :where [:and
               [:= :pc.relkind [:inline "m"]]
               [:>= :pa.attnum [:inline 1]]
-              (when schema-names [:in :pn.nspname schema-names])
+              ;; drop nils from schema-names — see GDGT-2144
+              (when-let [schemas (seq (remove nil? schema-names))] [:in :pn.nspname schemas])
               (when table-names [:in :pc.relname table-names])]}]
     :order-by [:table-schema :table-name :database-position]}
    :dialect (sql.qp/quote-style driver)))
@@ -1282,8 +1285,11 @@
 
 (defmethod driver/create-schema-if-needed! :postgres
   [driver conn-spec schema]
-  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
-    (driver/execute-raw-queries! driver conn-spec sql)))
+  ;; Guard against nil/blank schema — otherwise `format` stringifies nil to "null" and we'd
+  ;; silently create a Postgres schema literally named "null" (or ""). See GDGT-2144.
+  (when-not (str/blank? schema)
+    (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+      (driver/execute-raw-queries! driver conn-spec sql))))
 
 (defmethod driver/extra-info :postgres
   [_driver]

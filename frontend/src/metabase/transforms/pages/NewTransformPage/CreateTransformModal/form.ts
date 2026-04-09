@@ -17,7 +17,17 @@ import {
 export const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable().defined(),
+  // Databases that support schemas (Postgres, Snowflake, SQL Server, etc.) require a non-blank
+  // targetSchema; databases that don't (MySQL, MariaDB, SQLite) allow null. The value of
+  // `$supportsSchemas` is threaded in via `FormProvider`'s `validationContext` — see
+  // GDGT-2144 and the LoginForm pattern for other usages of `.when("$ctxKey", ...)`.
+  targetSchema: Yup.string()
+    .nullable()
+    .defined()
+    .when("$supportsSchemas", {
+      is: true,
+      then: (schema) => schema.required(Errors.required),
+    }),
   collection_id: Yup.number().nullable().defined(),
 }).concat(INCREMENTAL_TRANSFORM_VALIDATION_SCHEMA);
 

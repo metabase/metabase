@@ -1094,6 +1094,42 @@
              (is (re-find #"CAST" sql))
              (is (some? (mt/rows (qp/process-query query)))))))))))
 
+(deftest create-schema-if-needed-nil-guard-test
+  (testing "create-schema-if-needed! is a no-op when schema is nil or blank (GDGT-2144)"
+    ;; Previously, a nil `schema` silently generated `CREATE SCHEMA IF NOT EXISTS \"null\";`
+    ;; because Clojure's `%s` format specifier stringifies nil to \"null\", creating a
+    ;; schema literally named \"null\" in the target DB.
+    (let [executed-queries (atom [])]
+      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec queries]
+                                                  (swap! executed-queries conj queries))]
+        (driver/create-schema-if-needed! :postgres ::fake-conn nil)
+        (driver/create-schema-if-needed! :postgres ::fake-conn "")
+        (driver/create-schema-if-needed! :postgres ::fake-conn "   ")
+        (is (empty? @executed-queries)
+            "nil/blank schema should not issue any SQL")))))
+
+(deftest ^:parallel describe-fields-sql-nil-schema-test
+  (testing "describe-fields-sql for Postgres drops nil `schema-names` rather than rendering `IN (NULL)` (GDGT-2144)"
+    ;; Previously, passing [nil] as `:schema-names` generated `c.table_schema IN (NULL)`, which
+    ;; matches no rows in SQL and caused transforms without a target schema to sync zero fields.
+    ;; After the fix, nil entries are removed; if nothing remains, the schema filter is omitted
+    ;; entirely so the query degrades to filtering by table name only.
+    (let [[nil-schema-sql & nil-schema-params] (sql-jdbc.sync/describe-fields-sql
+                                                :postgres
+                                                {:schema-names [nil]
+                                                 :table-names  ["my_table"]
+                                                 :details      {}})
+          [no-schema-sql & no-schema-params]   (sql-jdbc.sync/describe-fields-sql
+                                                :postgres
+                                                {:table-names ["my_table"]
+                                                 :details     {}})]
+      (is (not (re-find #"(?i)IN \(NULL\)" nil-schema-sql))
+          "rendered SQL must not contain `IN (NULL)` which never matches anything")
+      (is (= no-schema-sql nil-schema-sql)
+          "passing [nil] schemas should generate the same SQL as passing no schemas")
+      (is (= no-schema-params nil-schema-params)
+          "parameter lists should also match"))))
+
 ;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"

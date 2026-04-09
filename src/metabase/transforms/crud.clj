@@ -3,6 +3,7 @@
    so that non-REST modules (e.g. metabot-v3, workspaces) can use them without depending
    on the `-rest` module."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
@@ -47,6 +48,20 @@
     (throw (ex-info (:error error)
                     (assoc error
                            :status-code 400)))))
+
+(defn validate-target-schema!
+  "Require a non-blank `:target.schema` when the target database supports schemas.
+
+  Databases that support schemas (Postgres, Snowflake, SQL Server, etc.) need every Metabase
+  table to be qualified by its schema — otherwise post-run sync can't match the physical table
+  and the resulting Metabase table has no fields. Databases that don't support schemas
+  (MySQL, MariaDB, SQLite) are allowed to have a nil schema."
+  [transform]
+  (let [db-id (transforms-base.i/target-db-id transform)
+        db    (t2/select-one :model/Database db-id)]
+    (when (and db (driver.u/supports? (:engine db) :schemas db))
+      (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
+                     (deferred-tru "A target schema is required for this database.")))))
 
 (defn validate-incremental-column-type!
   "Validates that the checkpoint column for an incremental transform has a supported type.
@@ -100,6 +115,7 @@
   ([body creator-id]
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
+   (validate-target-schema! body)
    (let [creator-id (or creator-id api/*current-user-id*)
          transform  (t2/with-transaction [_]
                       (let [tag-ids       (:tag_ids body)
@@ -134,6 +150,7 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! new)
                       (check-database-feature new)
+                      (validate-target-schema! new)
                       (validate-incremental-column-type! new)
                       (when (transforms-base.u/query-transform? old)
                         (validate-transform-query! new)
