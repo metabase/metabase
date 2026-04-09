@@ -128,7 +128,7 @@
    ["/api/embed/"         "guest-embed"]
    ;; preview-embed is guest-embed; the "-preview" suffix is appended separately
    ;; when X-Metabase-Embedded-Preview: true (see embedding-mw below).
-   ["/api/preview-embed/" "guest-embed"]
+   ["/api/preview_embed/" "guest-embed"]
    ["/api/metabot/"       "metabot"]
    ["/api/agent/"         "agent-api"]])
 
