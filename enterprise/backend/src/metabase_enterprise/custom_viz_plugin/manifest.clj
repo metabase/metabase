@@ -31,7 +31,7 @@
 
 (defn compatible?
   "Check whether a plugin with the given metabase_version range string is compatible with the
-   current Metabase version. Uses npm/node-semver range syntax (e.g. \">=59\", \"^59\", \">=59 <61\").
+   current Metabase version. Uses npm/node-semver range syntax (e.g. \">=1.59\", \"^1.59\", \">=1.59 <1.61\").
    Returns true if no range is specified, or if the current version satisfies the range.
    In dev mode (no version info), always returns true."
   [{:keys [metabase_version]}]
