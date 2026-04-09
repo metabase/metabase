@@ -2,9 +2,12 @@
   "Tests that the modules config file is configured correctly."
   (:require
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.tools.namespace.file :as ns.file]
+   [clojure.tools.namespace.parse :as ns.parse]
    [dev.deps-graph]
    [dev.model-boundary-config]
    [metabase.util.json :as json]
@@ -286,6 +289,122 @@
               (format "Modules %s share :ns-prefix %s. Either give them distinct explicit :ns-prefix values, or rename one so its default prefix doesn't collide."
                       (pr-str (sort modules))
                       (pr-str prefix))))))))
+
+;;;; Classpath / namespace convention
+;;;;
+;;;; Asymmetric rules, matching how the classpath separation actually works
+;;;; in Metabase:
+;;;;
+;;;;   - OSS source tree (`src/` and `test/`): namespaces must NOT use the
+;;;;     `metabase-enterprise.*` prefix. That prefix is reserved for the EE
+;;;;     classpath; using it in OSS would at best fail to build and at
+;;;;     worst leak EE code into the OSS jar.
+;;;;
+;;;;   - EE source tree (`enterprise/backend/src/`): every namespace MUST
+;;;;     use the `metabase-enterprise.*` prefix. Files in the EE source
+;;;;     classpath should be EE code; anything else slipping in would
+;;;;     suggest OSS code is being built as part of the EE jar.
+;;;;
+;;;;   - EE test tree (`enterprise/backend/test/`): intentionally NOT
+;;;;     checked. OSS code that needs to be tested with premium features
+;;;;     mocked (via `mt/with-premium-features` and friends) lives here
+;;;;     because premium features don't exist on the OSS test classpath.
+;;;;     Those test files keep their OSS-matching namespace (e.g.
+;;;;     `metabase.notification.payload.execute-test`) because they're
+;;;;     testing OSS code; mixing OSS-namespaced and EE-namespaced tests
+;;;;     in the EE test tree is legitimate.
+;;;;
+;;;; This is the primary mechanism for enforcing the OSS/EE split — much
+;;;; simpler than config-level encapsulation primitives because the
+;;;; classpath separation is already doing the real work at build time.
+;;;; These tests just surface the mistake earlier, with a clearer error
+;;;; message than a build failure.
+
+(def ^:private clojure-source-extensions
+  #{".clj" ".cljc" ".cljs"})
+
+(defn- clojure-source-file? [^java.io.File f]
+  (and (.isFile f)
+       (some #(str/ends-with? (.getName f) %) clojure-source-extensions)))
+
+(defn- source-files-under [^String dir]
+  (let [f (io/file dir)]
+    (when (.exists f)
+      (->> (file-seq f)
+           (filter clojure-source-file?)))))
+
+(defn- file->namespace-symbol
+  "Read `file` and extract its namespace symbol from the `ns` form.
+  Returns `nil` if the file has no recognizable `ns` declaration (e.g.
+  scratch files, data resources)."
+  [file]
+  (try
+    (some-> (ns.file/read-file-ns-decl file)
+            ns.parse/name-from-ns-decl)
+    (catch Throwable _ nil)))
+
+(def ^:private oss-classpath-roots
+  ["src" "test"])
+
+(def ^:private ee-classpath-roots
+  ;; Only the source tree — NOT `enterprise/backend/test`. The EE test tree
+  ;; legitimately contains OSS-namespaced test files for OSS code that needs
+  ;; EE premium features mocked (e.g. `metabase.notification.payload.execute-test`
+  ;; under `enterprise/backend/test/metabase/notification/payload/`). Those
+  ;; tests can only run against the EE classpath because `mt/with-premium-features`
+  ;; and friends don't work when EE isn't loaded. Narrow the strict check to
+  ;; source only — the EE test tree is allowed to mix OSS and EE namespaces.
+  ["enterprise/backend/src"])
+
+(def ^:private ee-namespace-prefix
+  "All EE namespaces start with this string (followed by a dot)."
+  "metabase-enterprise")
+
+(defn- ee-namespace? [ns-symb]
+  (let [s (str ns-symb)]
+    (or (= s ee-namespace-prefix)
+        (str/starts-with? s (str ee-namespace-prefix ".")))))
+
+(deftest ^:parallel oss-classpath-forbids-enterprise-namespaces-test
+  (testing (str "OSS source files under " (pr-str oss-classpath-roots) " must not declare "
+                "namespaces in the `metabase-enterprise.*` tree. That prefix is reserved "
+                "for the EE classpath (enterprise/backend/{src,test}/). An OSS file using "
+                "an EE namespace would at best fail to build against the OSS classpath and "
+                "at worst leak EE code into the OSS jar.")
+    (doseq [root oss-classpath-roots
+            file (source-files-under root)
+            :let [ns-symb (file->namespace-symbol file)]
+            :when ns-symb]
+      (testing (format "\n%s" (.getPath file))
+        (is (not (ee-namespace? ns-symb))
+            (format (str "File %s has namespace %s, which starts with `%s`. That prefix "
+                         "is reserved for the EE classpath. Move the file to "
+                         "enterprise/backend/%s/ if it's actually EE code, or rename "
+                         "its namespace if it's OSS code.")
+                    (.getPath file)
+                    ns-symb
+                    ee-namespace-prefix
+                    root))))))
+
+(deftest ^:parallel ee-classpath-requires-enterprise-namespaces-test
+  (testing (str "Every source file under " (pr-str ee-classpath-roots) " must have a "
+                "namespace in the `metabase-enterprise.*` tree. The EE classpath is "
+                "reserved for EE code; anything else slipping in would mean (a) an OSS "
+                "module is being built as part of the EE jar, or (b) the naming "
+                "convention has drifted.")
+    (doseq [root ee-classpath-roots
+            file (source-files-under root)
+            :let [ns-symb (file->namespace-symbol file)]
+            :when ns-symb]
+      (testing (format "\n%s" (.getPath file))
+        (is (ee-namespace? ns-symb)
+            (format (str "File %s has namespace %s, which does not start with `%s`. "
+                         "Files in the EE classpath must use the `%s.*` prefix. "
+                         "If this file is actually OSS code, move it to src/ or test/ instead.")
+                    (.getPath file)
+                    ns-symb
+                    ee-namespace-prefix
+                    ee-namespace-prefix))))))
 
 (defn- rest-module?
   "True if `module` is a REST module. Under the nested-modules scheme, rest
