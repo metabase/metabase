@@ -62,6 +62,19 @@
                 (some-> (setting/get-value-of-type :json :security-center-severity-repeat-days)
                         (update-keys keyword))))
 
+(defsetting security-center-last-synced-at
+  (deferred-tru "Timestamp of the last successful Security Center advisory sync.")
+  :type               :timestamp
+  :default            nil
+  :encryption         :no
+  :feature            :admin-security-center
+  :visibility         :internal
+  :export?            false
+  :doc                false
+  :audit              :never
+  :include-in-list?   false
+  :can-read-from-env? false)
+
 (defn repeat-days-for-severity
   "Return repeat days for severity, defaults to 1 if not configured"
   [severity]

@@ -5,7 +5,7 @@
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.schema :as security-center.schema]
-   [metabase-enterprise.security-center.settings]
+   [metabase-enterprise.security-center.settings :as settings]
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -68,7 +68,7 @@
   (api/check-superuser)
   (let [advisories (t2/hydrate (t2/select :model/SecurityAdvisory {:order-by [[:published_at :desc]]})
                                :acknowledged_by_user)]
-    {:last_checked_at (some :last_evaluated_at advisories)
+    {:last_checked_at (settings/security-center-last-synced-at)
      :advisories      (mapv advisory-response advisories)}))
 
 (defn- acknowledge-response
