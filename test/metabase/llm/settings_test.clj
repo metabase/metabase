@@ -42,19 +42,19 @@
 ;;; ------------------------------------------- llm-proxy-base-url Feature Guard Tests -------------------------------------------
 
 (deftest llm-proxy-base-url-feature-guard-test
-  (testing "can be set and read when :metabase-ai-provider feature is enabled"
-    (mt/with-premium-features #{:metabase-ai-provider}
+  (testing "can be set and read when :metabase-ai-managed feature is enabled"
+    (mt/with-premium-features #{:metabase-ai-managed}
       (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example"]
         (is (= "https://proxy.example" (llm.settings/llm-proxy-base-url)))
-        (testing "returns default (nil) when :metabase-ai-provider feature is not enabled, even if a value is set"
+        (testing "returns default (nil) when :metabase-ai-managed feature is not enabled, even if a value is set"
           (mt/with-premium-features #{}
             (is (nil? (llm.settings/llm-proxy-base-url))))))))
 
-  (testing "cannot be set when :metabase-ai-provider feature is not enabled"
+  (testing "cannot be set when :metabase-ai-managed feature is not enabled"
     (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Setting llm-proxy-base-url is not enabled because feature :metabase-ai-provider is not available"
+           #"Setting llm-proxy-base-url is not enabled because feature :metabase-ai-managed is not available"
            (llm.settings/llm-proxy-base-url! "https://proxy.example"))))))
 
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------

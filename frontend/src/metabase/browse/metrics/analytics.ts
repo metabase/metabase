@@ -13,3 +13,10 @@ export const trackMetricBookmarked = () => {
     triggered_from: "browse_metrics",
   });
 };
+
+export const trackMetricPageShowMoreClicked = (metricId: number) => {
+  trackSimpleEvent({
+    event: "metric_page_show_more_clicked",
+    target_id: metricId,
+  });
+};

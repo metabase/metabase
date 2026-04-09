@@ -217,7 +217,7 @@ const SearchInput = ({
       data-autofocus
       type="search"
       leftSection={<Icon name="search" size={16} />}
-      miw={400}
+      miw="min(400px, 100%)"
       placeholder={t`Search…`}
       value={localValue}
       onChange={(e) => {

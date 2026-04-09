@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { trackMetricPageShowMoreClicked } from "metabase/browse/metrics/analytics";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
@@ -76,7 +77,10 @@ export function MetricDimensionGrid({ metricId }: MetricDimensionGridProps) {
         <Button
           fullWidth
           leftSection={<Icon name="chevrondown" />}
-          onClick={showMore}
+          onClick={() => {
+            trackMetricPageShowMoreClicked(metricId);
+            showMore();
+          }}
         >
           {t`Show more`}
         </Button>
