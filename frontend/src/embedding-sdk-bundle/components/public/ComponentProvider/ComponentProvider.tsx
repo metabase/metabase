@@ -13,6 +13,7 @@ import {
   setEventHandlers,
   setIsGuestEmbed,
   setPlugins,
+  setPluginsReady,
 } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
@@ -39,23 +40,36 @@ export type ComponentProviderInternalProps = ComponentProviderProps & {
 
 let hasInitializedPlugins = false;
 
-function useInitPlugins() {
+/**
+ * Initializes EE plugins synchronously during render
+ * to avoid an extra frame where children render without plugins.
+ *
+ * Uses reduxStore.dispatch directly instead of the useDispatch hook,
+ * since the hook-based dispatch may not be available during render.
+ * This follows the same pattern as use-init-data-internal.ts.
+ */
+function useInitPlugins(reduxStore: SdkStore) {
   const tokenFeatures = useSelector(
     (state) => state.settings.values["token-features"],
   );
 
-  useEffect(() => {
-    // EAJS already initializes the plugins in its entrypoint, and this
-    // component is used by EAJS we have to make sure we don't re-initialize the
-    // sdk plugins as they could override some of plugins needed by EAJS
-    if (isEmbeddingEajs() || hasInitializedPlugins || !tokenFeatures) {
-      return;
-    }
+  // Modular Embedding already initializes the plugins in its entrypoint.
+  // We have to avoid re-initializing SDK plugins as they could override
+  // some of plugins needed by EAJS
+  if (isEmbeddingEajs() || !tokenFeatures) {
+    return;
+  }
 
+  if (!hasInitializedPlugins) {
     hasInitializedPlugins = true;
 
     initializePlugins();
-  }, [tokenFeatures]);
+  }
+
+  // Mark ready for this store instance on first render.
+  if (!reduxStore.getState().sdk?.pluginsReady) {
+    reduxStore.dispatch(setPluginsReady(true));
+  }
 }
 
 export const ComponentProviderInternal = (
@@ -88,7 +102,7 @@ export const ComponentProviderInternal = (
     isLocalHost,
   });
 
-  useInitPlugins();
+  useInitPlugins(reduxStore);
 
   useSdkCustomLoader();
 
