@@ -194,3 +194,5 @@ export type HoverObject = {
   element?: Element;
   event?: MouseEvent;
 };
+
+export type ClickBehavior = Record<string, unknown>;

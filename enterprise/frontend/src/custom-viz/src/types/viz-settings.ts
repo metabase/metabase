@@ -1,7 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { Column, Series } from "./data";
-import type { BaseWidgetProps } from "./viz";
+import type { BaseWidgetProps, ClickBehavior } from "./viz";
 
 export type WidgetName = keyof Widgets;
 
@@ -100,6 +100,17 @@ type PropsFromWidget<W> = W extends WidgetName
   : W extends ComponentType<infer P>
     ? OmitBaseWidgetProps<P>
     : never;
+
+type CommonSettings = {
+  "card.title": string | undefined | null;
+  "card.description": string | undefined | null;
+  "card.hide_empty": boolean | undefined | null;
+  click_behavior: ClickBehavior | undefined;
+};
+
+type FinalSettings<
+  CustomVisualizationSettings extends Record<string, unknown>,
+> = CustomVisualizationSettings & CommonSettings;
 
 export type CreateDefineSetting<
   CustomVisualizationSettings extends Record<string, unknown>,
@@ -214,7 +225,10 @@ export type CreateDefineSetting<
    * @param settings - All settings resolved so far, respecting `readDependencies` ordering.
    * @returns `true` to keep the stored value, `false` to fall back to`getDefault`.
    */
-  isValid?: (series: Series, settings: CustomVisualizationSettings) => boolean;
+  isValid?: (
+    series: Series,
+    settings: FinalSettings<CustomVisualizationSettings>,
+  ) => boolean;
 
   /**
    * Computes the default value for this setting when no stored value exists,
@@ -231,7 +245,7 @@ export type CreateDefineSetting<
    */
   getDefault?: (
     series: Series,
-    settings: CustomVisualizationSettings,
+    settings: FinalSettings<CustomVisualizationSettings>,
   ) => CustomVisualizationSettings[Key];
 
   /**
@@ -255,8 +269,8 @@ export type CreateDefineSetting<
   getProps?: PropsFromWidget<W> extends never
     ? never
     : (
-        object: Series,
-        vizSettings: CustomVisualizationSettings,
+        series: Series,
+        vizSettings: FinalSettings<CustomVisualizationSettings>,
       ) => PropsFromWidget<W>;
 
   /**
@@ -278,7 +292,7 @@ export type CreateDefineSetting<
    */
   getValue?: (
     series: Series,
-    settings: CustomVisualizationSettings,
+    settings: FinalSettings<CustomVisualizationSettings>,
   ) => CustomVisualizationSettings[Key];
 }) => CustomVisualizationSettingDefinition<CustomVisualizationSettings>;
 
