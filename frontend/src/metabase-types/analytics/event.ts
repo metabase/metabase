@@ -22,7 +22,7 @@ type SimpleEventSchema = {
   event_detail?: string | null;
 };
 
-type ValidateEvent<
+export type ValidateEvent<
   T extends SimpleEventSchema &
     Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
 > = T;
@@ -260,14 +260,6 @@ export type TableEditButtonClickedEvent = ValidateEvent<{
   event: "edit_data_button_clicked";
   target_id: number;
   triggered_from: "table-browser";
-}>;
-
-export type TableEditingRecordModifiedEvent = ValidateEvent<{
-  event: "edit_data_record_modified";
-  event_detail: "create" | "update" | "delete";
-  target_id: number;
-  triggered_from: "inline" | "modal";
-  result: "success" | "error";
 }>;
 
 export type ConnectionStringParsedSuccessEvent = ValidateEvent<{
