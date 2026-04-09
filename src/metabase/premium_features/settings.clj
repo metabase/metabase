@@ -1,6 +1,7 @@
 (ns metabase.premium-features.settings
   "Impls for settings that need to fetch token status live in [[metabase.premium-features.token-check]]."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -299,9 +300,10 @@
   :admin-security-center
   :getter (fn []
             (and (has-feature? :admin-security-center)
+                 (not (is-hosted?))
                  (not ((requiring-resolve 'metabase.premium-features.token-check/is-trial?)))
-                 (or config/is-dev?
-                     (not (is-hosted?))))))
+                 (or config/is-test? config/is-e2e?
+                     (not= (mdb/db-type) :h2)))))
 
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
   "Should the multi-tenant feature be enabled?"
