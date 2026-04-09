@@ -4,9 +4,13 @@ import { CompressionRspackPlugin } from "compression-rspack-plugin";
 
 import { IS_DEV_MODE } from "../constants.js";
 
-export const COMPRESSION_CONFIG = IS_DEV_MODE
-  ? []
-  : [
+const SHOULD_COMPRESS =
+  "COMPRESSION" in process.env
+    ? process.env.COMPRESSION === "true"
+    : !IS_DEV_MODE;
+
+export const COMPRESSION_CONFIG = SHOULD_COMPRESS
+  ? [
       new CompressionRspackPlugin({
         algorithm: "gzip",
         test: /\.(js|css)$/,
@@ -25,4 +29,5 @@ export const COMPRESSION_CONFIG = IS_DEV_MODE
           },
         },
       }),
-    ];
+    ]
+  : [];
