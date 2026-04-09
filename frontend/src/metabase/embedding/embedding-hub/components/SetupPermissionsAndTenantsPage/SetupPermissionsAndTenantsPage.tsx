@@ -11,12 +11,10 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins/oss/tenants";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
+import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { ConnectionImpersonationStepContent } from "./ConnectionImpersonationStepContent";
-import {
-  type DataSegregationStrategy,
-  DataSegregationStrategyPicker,
-} from "./DataSegregationStrategyPicker";
+import { DataSegregationStrategyPicker } from "./DataSegregationStrategyPicker";
 import { DatabaseRoutingStepContent } from "./DatabaseRoutingStepContent";
 import { EnableTenantsStepContent } from "./EnableTenantsStepContent";
 import { MoveDashboardStepContent } from "./MoveDashboardStepContent";

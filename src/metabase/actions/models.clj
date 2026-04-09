@@ -454,7 +454,8 @@
                :parameter_mappings     {:export serdes/export-parameter-mappings
                                         :import serdes/import-parameter-mappings}
                :visualization_settings {:export serdes/export-visualization-settings
-                                        :import serdes/import-visualization-settings}}})
+                                        :import serdes/import-visualization-settings}}
+   :defaults {:archived false}})
 
 (defmethod serdes/dependencies "Action" [action]
   (set
@@ -469,8 +470,7 @@
          (serdes/mbql-deps dataset_query)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
-  (let [{:keys [id label]} (-> action serdes/path last)]
-    ["actions" (serdes/storage-leaf-file-name id label)]))
+  [{:label "actions"} {:label (:name action) :key (:entity_id action)}])
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

@@ -53,6 +53,7 @@ export const setup = (options?: {
     "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
     "jwt-enabled": options?.jwtReady ?? false,
     "jwt-configured": options?.jwtReady ?? false,
+    "jwt-enabled-and-configured": options?.jwtReady ?? false,
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);

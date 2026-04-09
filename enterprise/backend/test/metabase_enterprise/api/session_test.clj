@@ -16,6 +16,7 @@
 
 (deftest properties-token-features-test
   (mt/with-premium-features #{:advanced-permissions
+                              :ai-controls
                               :attached-dwh
                               :audit-app
                               :cache-granular-controls
@@ -35,7 +36,8 @@
                               :embedding-simple
                               :embedding-hub
                               :hosting
-                              :metabot-v3
+                              :metabase-ai-managed
+                              :offer-metabase-ai-managed
                               :no-upsell
                               :official-collections
                               :query-reference-validation
@@ -63,6 +65,7 @@
                               :workspaces
                               :writable-connection}
     (is (= {:advanced_permissions           true
+            :ai_controls                    true
             :attached_dwh                   true
             :audit_app                      true
             :cache_granular_controls        true
@@ -81,7 +84,8 @@
             :embedding_sdk                  true
             :embedding_simple               true
             :hosting                        true
-            :metabot_v3                     true
+            :metabase-ai-managed            true
+            :offer-metabase-ai-managed      true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true

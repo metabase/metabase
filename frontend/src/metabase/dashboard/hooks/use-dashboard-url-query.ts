@@ -9,9 +9,9 @@ import { useSetting } from "metabase/common/hooks";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { selectTab } from "metabase/redux/dashboard";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import { selectTab } from "../actions";
 import {
   getDashboard,
   getSelectedTab,
@@ -122,7 +122,7 @@ export function useDashboardUrlQuery(
   }, [router, location, selectedTab, dispatch]);
 }
 
-const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
+const QUERY_PARAMS_ALLOW_LIST = ["objectId", "returnToEmbeddingSetupGuide"];
 
 function parseTabId(location: Location) {
   const slug = location.query?.tab;

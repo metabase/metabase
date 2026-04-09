@@ -7,6 +7,7 @@ import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import { useMetabotName } from "metabase/metabot/hooks";
 import {
   ActionIcon,
   Box,
@@ -42,6 +43,7 @@ export function GlossaryTable({
   onDelete,
 }: GlossaryTableProps) {
   const [isCreating, setIsCreating] = useState(false);
+  const metabotName = useMetabotName();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingField, setEditingField] = useState<
     "term" | "definition" | null
@@ -75,7 +77,7 @@ export function GlossaryTable({
     <>
       <Group justify="space-between" mb="xs">
         <Text>
-          {t`Define terms to help your team and Metabot understand your data.`}
+          {t`Define terms to help your team and ${metabotName} understand your data.`}
         </Text>
         <Button
           variant="default"

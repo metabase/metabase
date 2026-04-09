@@ -28,6 +28,7 @@
   has-feature?
   log-enabled?
   max-users-allowed
+  meters
   plan-alias
   quotas
   TokenStatus
@@ -41,6 +42,7 @@
   define-premium-feature
   development-mode?
   enable-tenants?
+  enable-ai-controls?
   enable-advanced-permissions?
   enable-any-sso?
   enable-audit-app?
@@ -53,12 +55,12 @@
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?
+  enable-metabase-ai-managed?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
   enable-embedding-simple-feature?
-  enable-metabot-v3?
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?

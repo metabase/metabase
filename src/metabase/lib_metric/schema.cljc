@@ -279,14 +279,17 @@
   [:sequential ::instance-filter])
 
 ;;; ------------------------------------------------- Typed Projections -------------------------------------------------
-;;; Projections keyed by source type and ID.
+;;; Projections keyed by :lib/uuid from the expression leaf, with type and ID for metadata resolution.
 
 (mr/def ::typed-projection
-  "A projection associated with a specific source type and ID."
+  "A projection associated with a specific expression leaf instance via :lib/uuid.
+   The :type and :id identify the source metric/measure for metadata resolution.
+   The :lib/uuid disambiguates multiple references to the same metric/measure in an expression."
   [:map
    {:decode/normalize lib.schema.common/normalize-map}
    [:type       [:enum {:decode/normalize lib.schema.common/normalize-keyword} :metric :measure]]
    [:id         pos-int?]
+   [:lib/uuid   ::lib.schema.common/non-blank-string]
    [:projection [:sequential ::dimension-reference]]])
 
 (mr/def ::typed-projections

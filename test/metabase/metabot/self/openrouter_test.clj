@@ -1,17 +1,21 @@
 (ns metabase.metabot.self.openrouter-test
   (:require
+   [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
-   [metabase.metabot.test-util :as test-util]))
+   [metabase.metabot.test-util :as metabot.tu]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
 (defn- fixture
   "Load cached OpenRouter raw chunks, or capture from the API when `*live*` / no cache."
   [fixture-name opts]
-  (test-util/raw-fixture fixture-name #(openrouter/openrouter-raw (merge {:model "anthropic/claude-haiku-4-5"} opts))))
+  (metabot.tu/raw-fixture fixture-name #(openrouter/openrouter-raw (merge {:model "anthropic/claude-haiku-4-5"} opts))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; parts->cc-messages tests
@@ -60,6 +64,17 @@
              [{:type :tool-output :id "call-1" :result {:output "Result 1"}}
               {:type :tool-output :id "call-2" :result {:output "Result 2"}}])))))
 
+(deftest ^:parallel parts->cc-messages-nil-arguments-test
+  (testing "tool call with nil arguments defaults to empty object JSON string"
+    (is (=? [{:role       "assistant"
+              :content    nil
+              :tool_calls [{:id       "call-1"
+                            :type     "function"
+                            :function {:name      "todo_read"
+                                       :arguments "{}"}}]}]
+            (openrouter/parts->cc-messages
+             [{:type :tool-input :id "call-1" :function "todo_read" :arguments nil}])))))
+
 (deftest ^:parallel parts->cc-messages-full-conversation-test
   (testing "full conversation with tool round-trip"
     (is (=? [{:role "user"      :content "What time is it in Kyiv?"}
@@ -94,7 +109,7 @@
 (deftest ^:parallel openrouter-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-tool-calls"
                             {:input [{:role :user :content "What time is it in Kyiv?"}]
-                             :tools [(test-util/get-time-tool)]})]
+                             :tools [(metabot.tu/get-time-tool)]})]
     (testing "single tool call chunks are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
@@ -112,8 +127,8 @@
 (deftest ^:parallel openrouter-parallel-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-parallel-tool-calls"
                             {:input [{:role :user :content "What time is it in Kyiv AND convert 100 EUR to USD? Use both tools in parallel."}]
-                             :tools [(test-util/get-time-tool)
-                                     (test-util/convert-currency-tool)]})]
+                             :tools [(metabot.tu/get-time-tool)
+                                     (metabot.tu/convert-currency-tool)]})]
     (testing "parallel tool calls are mapped correctly"
       (is (=? [{:type :start} {:type :tool-input-start} {:type :tool-input-delta} {:type :tool-input-available} {:type :usage}]
               (into [] (comp (openrouter/openrouter->aisdk-chunks-xf) (m/distinct-by :type)) raw-chunks))))
@@ -133,7 +148,7 @@
 (deftest ^:parallel openrouter-text-and-tool-calls-conv-test
   (let [raw-chunks (fixture "openrouter-text-and-tool-calls"
                             {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                             :tools [(test-util/get-time-tool)]})]
+                             :tools [(metabot.tu/get-time-tool)]})]
     (testing "text + tool call chunks contain expected types"
       (is (=? [{:type :start}
                {:type :text-start} {:type :text-delta} {:type :text-end}
@@ -156,7 +171,7 @@
   (testing "lite-aisdk-xf streams text deltas for openrouter format"
     (let [raw-chunks (fixture "openrouter-text-and-tool-calls"
                               {:input [{:role :user :content "Tell me what time it is in Kyiv. First explain what you're going to do, then call the tool."}]
-                               :tools [(test-util/get-time-tool)]})
+                               :tools [(metabot.tu/get-time-tool)]})
           res (into [] (comp (openrouter/openrouter->aisdk-chunks-xf)
                              (self.core/lite-aisdk-xf))
                     raw-chunks)]
@@ -168,3 +183,43 @@
                 :usage {:promptTokens pos-int? :completionTokens pos-int?}}]
               (remove #(= (:type %) :text) res)))
       (is (< 10 (count (filter #(= (:type %) :text) res)))))))
+
+(deftest openrouter-auth-preferences-test
+  (mt/with-premium-features #{:metabase-ai-managed}
+    (with-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
+      (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-byok"
+                                         llm.settings/llm-proxy-base-url    "https://proxy.example"]
+        (testing "Prefers BYOK over ai proxy"
+          (with-redefs [self.core/sse-reducible identity
+                        http/request            (fn [req] {:body req})]
+            (is (=? {:method  :post
+                     :url     "https://openrouter.ai/api/v1/chat/completions"
+                     :headers {"Authorization" "Bearer sk-or-v1-byok"}
+                     :body    string?}
+                    (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
+
+        (testing "Uses ai proxy when explicitly requested"
+          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
+            (with-redefs [self.core/sse-reducible identity
+                          http/request            (fn [req] {:body req})]
+              (is (=? {:method  :post
+                       :url     "https://proxy.example/openrouter/v1/chat/completions"
+                       :headers {"x-metabase-instance-token" "proxy-token"}
+                       :body    string?}
+                      (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]
+                                                  :ai-proxy? true}))))))
+
+        (testing "Does not fall back to ai proxy when BYOK is missing"
+          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No OpenRouter API key is set"
+                 (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))
+
+        (testing "Throws an error if nothing is defined"
+          (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key nil
+                                             llm.settings/llm-proxy-base-url    nil]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"No OpenRouter API key is set"
+                 (openrouter/openrouter-raw {:input [{:role :user :content "hi"}]})))))))))
