@@ -27,7 +27,7 @@
    [:repo_url        ms/NonBlankString]
    [:display_name    ms/NonBlankString]
    [:identifier      ms/NonBlankString]
-   [:status          [:enum "pending" "active" "error"]]
+   [:status          [:enum :pending :active :error]]
    [:enabled         :boolean]
    [:icon            {:optional true} [:maybe :string]]
    [:icon_dark       {:optional true} [:maybe :string]]
