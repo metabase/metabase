@@ -414,8 +414,6 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.findByText("2 groupings").click();
     });
 
-    cy.wait(200000);
-
     cy.log("Remove both groupings from the popup");
     popover().within(() => {
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
