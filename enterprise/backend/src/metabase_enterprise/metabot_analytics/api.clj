@@ -6,10 +6,10 @@
   response assembly live in `metabase-enterprise.metabot-analytics.conversations`."
   (:require
    [metabase-enterprise.metabot-analytics.conversations :as analytics.conversations]
-   [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.request.core :as request]
    [metabase.util.malli.schema :as ms]))
 
@@ -33,7 +33,7 @@
    One row per successful query-construction tool call. Errored calls are
    filtered out at the extractor."
   [:map
-   [:tool        (into [:enum] (sort analytics.queries/query-generation-tool-names))]
+   [:tool        (into [:enum] (sort metabot.tools/query-generation-tool-names))]
    [:call_id     [:maybe :string]]
    [:message_id  ms/PositiveInt]
    [:query_id    [:maybe :string]]
