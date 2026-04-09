@@ -5,6 +5,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.lib.core :as lib]
+   [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
