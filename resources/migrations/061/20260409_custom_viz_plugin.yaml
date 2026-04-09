@@ -1,9 +1,9 @@
 ## Create and configure custom_viz_plugin table for custom visualization plugins
 
 databaseChangeLog:
-  - logicalFilePath: migrations/060_update_migrations.yaml
+  - logicalFilePath: migrations/061_update_migrations.yaml
   - changeSet:
-      id: v60.2026-03-18T10:00:00
+      id: v61.2026-04-09T10:00:00
       author: sgavrylov
       comment: Create custom_viz_plugin table for custom visualization plugins
       preConditions:
@@ -116,7 +116,7 @@ databaseChangeLog:
                   remarks: Dev server URL for hot-reload development (e.g. http://localhost:5174)
 
   - changeSet:
-      id: v60.2026-03-18T10:00:01
+      id: v61.2026-04-09T10:00:01
       author: sgavrylov
       failOnError: false
       comment: Add unique constraint on custom_viz_plugin.repo_url
@@ -133,7 +133,7 @@ databaseChangeLog:
             constraintName: uq_custom_viz_plugin_repo_url
 
   - changeSet:
-      id: v60.2026-03-18T10:00:02
+      id: v61.2026-04-09T10:00:02
       author: sgavrylov
       failOnError: false
       comment: Add unique constraint on custom_viz_plugin.identifier
