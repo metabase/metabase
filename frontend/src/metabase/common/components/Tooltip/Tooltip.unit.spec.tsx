@@ -3,7 +3,7 @@ import { forwardRef, useState } from "react";
 
 import { render, screen } from "__support__/ui";
 
-import { Tooltip } from "./Tooltip";
+import { Tooltip, type TooltipProps } from "./Tooltip";
 
 const defaultTooltip = "tooltip content";
 
@@ -17,7 +17,9 @@ function setup({
   target = defaultTarget,
   tooltip = defaultTooltip,
   ...otherProps
-} = {}) {
+}: {
+  target?: JSX.Element;
+} & TooltipProps = {}) {
   return render(
     <div>
       <Tooltip tooltip={tooltip} {...otherProps}>
@@ -92,9 +94,11 @@ describe("Tooltip", () => {
   });
 
   it("should not wrap target Components with forwarded refs", () => {
-    const GoodTarget = forwardRef(function GoodTarget(props, ref) {
-      return <div ref={ref}>good target</div>;
-    });
+    const GoodTarget = forwardRef<HTMLDivElement>(
+      function GoodTarget(props, ref) {
+        return <div ref={ref}>good target</div>;
+      },
+    );
 
     setup({ isOpen: true, target: <GoodTarget /> });
 
@@ -131,13 +135,13 @@ describe("Tooltip", () => {
 
   it("should support using a reference element instead of a child target element", async () => {
     function ReferenceTooltipTest() {
-      const [eventTarget, setEventTarget] = useState();
+      const [eventTarget, setEventTarget] = useState<HTMLDivElement>();
       return (
         <div>
           <Tooltip reference={eventTarget} tooltip="reference tooltip" isOpen />
           <div
             onClick={(event) => {
-              setEventTarget(event.target);
+              setEventTarget(event.target as HTMLDivElement);
             }}
             style={{ width: 100, height: 100 }}
           >
