@@ -10,17 +10,11 @@
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.remote-sync.source.git :as rs.git]
    [metabase.config.core :as config]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;;; ---------------------------------------- In-memory dev bundle URLs -----------------------------------------
-
-;; In-memory cache for dev_bundle_url values persisted in the database.
-;; Acts as a read-through cache: populated lazily from the DB on first access.
-(defonce ^:private dev-bundle-urls
-  (atom {})) ;; {plugin-id -> url-string | ::none}
 
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
@@ -156,7 +150,7 @@
 (defn- validate-dev-url!
   "Validate that a dev bundle URL uses http or https scheme. Throws on invalid input."
   [^String url]
-  (let [scheme (some-> (java.net.URI. url) .getScheme str/lower-case)]
+  (let [scheme (some-> (java.net.URI. url) .getScheme u/lower-case-en)]
     (when-not (#{"http" "https"} scheme)
       (throw (ex-info (str "Dev bundle URL must use http or https, got: " scheme)
                       {:status-code 400 :url url})))))
@@ -202,22 +196,16 @@
                           :connection-timeout 5000}))))
 
 (defn set-or-clear-dev-bundle!
-  "Set or clear the dev base URL for a plugin. Persists to the database and updates the in-memory cache."
+  "Set or clear the dev base URL for a plugin. Persists to the database."
   [id dev-bundle-url]
-  (let [url (when (seq dev-bundle-url) dev-bundle-url)]
-    (when url (validate-dev-url! url))
-    (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})
-    (swap! dev-bundle-urls assoc id (or url ::none))))
+  (let [url (not-empty dev-bundle-url)]
+    (some-> url validate-dev-url!)
+    (t2/update! :model/CustomVizPlugin id {:dev_bundle_url url})))
 
 (defn resolve-dev-bundle
-  "Resolve the dev bundle URL for a plugin. Checks in-memory cache first, falls back to DB."
+  "Resolve the dev bundle URL for a plugin from the database. Returns the URL string or nil."
   [id]
-  (let [cached (get @dev-bundle-urls id)]
-    (if (some? cached)
-      (when-not (= cached ::none) cached)
-      (let [url (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id)]
-        (swap! dev-bundle-urls assoc id (if (seq url) url ::none))
-        (when (seq url) url)))))
+  (not-empty (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id)))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 
