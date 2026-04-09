@@ -1166,10 +1166,10 @@
    :api  #{metabase.mcp.api
            metabase.mcp.core
            metabase.mcp.init}
-   :model-imports #{:model/Session}
    :uses #{agent-api
            api
            api-scope
+           app-db
            config
            llm
            oauth-server
@@ -1400,6 +1400,7 @@
            metabase.oauth-server.init}
    :uses #{api
            appearance
+           mcp
            models
            request
            settings

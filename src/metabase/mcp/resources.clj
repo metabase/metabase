@@ -2,6 +2,7 @@
   "MCP resource handlers. Provides the visualize-query HTML resource
    that renders interactive Metabase visualizations via the Embedding SDK."
   (:require
+   [clojure.java.io :as io]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
@@ -9,6 +10,52 @@
    [stencil.core :as stencil]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private embed-mcp-template-path "frontend_client/embed-mcp.html")
+
+;; The built template is emitted by HtmlWebpackPlugin into resources/frontend_client/
+;; during the frontend build. Backend-only test runs (e.g. CI app-db tests) don't produce
+;; it, so tests install a minimal inline template via `with-fallback-template`.
+(def ^:private test-fallback-template
+  (str "<!doctype html><html><body><script>"
+       "window.metabaseConfig = {"
+       "instanceUrl: {{{instanceUrl}}},"
+       "sessionToken: {{{sessionToken}}}"
+       "};</script></body></html>"))
+
+;; An atom rather than a dynamic var because `resources/read` is invoked from the
+;; HTTP handler thread, which doesn't inherit thread-local bindings from the test
+;; thread that installs the fallback.
+(defonce ^:private fallback-template (atom nil))
+
+(defn do-with-fallback-template
+  "Implementation detail of [[with-fallback-template]]."
+  [thunk]
+  (try
+    (reset! fallback-template test-fallback-template)
+    (thunk)
+    (finally
+      (reset! fallback-template nil))))
+
+(defmacro with-fallback-template
+  "Test-only: install an inline Mustache fallback for the embed-mcp template for
+   the duration of `body`. Backend-only test runs don't produce the built template,
+   so tests that exercise `resources/read` need this."
+  [& body]
+  `(do-with-fallback-template (fn [] ~@body)))
+
+(defn- render-embed-mcp [vars]
+  (cond
+    (io/resource embed-mcp-template-path)
+    (stencil/render-file embed-mcp-template-path vars)
+
+    @fallback-template
+    (stencil/render-string @fallback-template vars)
+
+    :else
+    (throw (ex-info (str "Missing MCP embed template: " embed-mcp-template-path
+                         ". Run the frontend build to produce it.")
+                    {:path embed-mcp-template-path}))))
 
 (defonce ^:private registry
   (atom {:key->uri      {}
@@ -41,6 +88,11 @@
           tool  (assoc tool :scope scope :_meta {:ui {:resourceUri uri}})]
       (swap! registry assoc-in [:uri->tool uri] tool))
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
+
+(defn resource-scopes
+  "Return the distinct set of scopes registered across all UI resources."
+  []
+  (into (sorted-set) (keep :scope) (vals (:uri->resource @registry))))
 
 (defn list-ui-tools
   "Return the list of MCP tools corresponding to UI components"
@@ -92,8 +144,7 @@
   :render-fn   (fn [opts]
                  (let [site-url    (system/site-url)
                        session-key (:session-key opts)]
-                   (stencil/render-file
-                    "frontend_client/embed-mcp.html"
+                   (render-embed-mcp
                     {:instanceUrl    (json/encode site-url)
                      :instanceUrlRaw site-url
                      :sessionToken   (when session-key (json/encode session-key))})))})
