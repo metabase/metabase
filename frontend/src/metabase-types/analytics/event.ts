@@ -42,12 +42,12 @@ type CSVUploadClickedEvent = ValidateEvent<{
   triggered_from: "add-data-modal" | "collection";
 }>;
 
-export type DatabaseAddClickedEvent = ValidateEvent<{
+type DatabaseAddClickedEvent = ValidateEvent<{
   event: "database_add_clicked";
   triggered_from: "db-list";
 }>;
 
-export type DatabaseEngineSelectedEvent = ValidateEvent<{
+type DatabaseEngineSelectedEvent = ValidateEvent<{
   event: "database_setup_selected";
   event_detail: Engine["driver-name"];
   triggered_from: "add-data-modal";
@@ -68,13 +68,13 @@ type OnboardingChecklistItemCTAClickedEvent = ValidateEvent<{
   event_detail: ChecklistItemCTA;
 }>;
 
-export type NewsletterToggleClickedEvent = ValidateEvent<{
+type NewsletterToggleClickedEvent = ValidateEvent<{
   event: "newsletter-toggle-clicked";
   triggered_from: "setup";
   event_detail: "opted-in" | "opted-out";
 }>;
 
-export type NewIFrameCardCreatedEvent = ValidateEvent<{
+type NewIFrameCardCreatedEvent = ValidateEvent<{
   event: "new_iframe_card_created";
   event_detail: string | null;
   target_id: number | null;
@@ -122,7 +122,7 @@ export type DependencyEntitySelected = ValidateEvent<{
   target_id: number;
 }>;
 
-export type DependencyDiagnosticsEntitySelected = ValidateEvent<{
+type DependencyDiagnosticsEntitySelected = ValidateEvent<{
   event: "dependency_diagnostics_entity_selected";
   triggered_from: "broken" | "unreferenced";
   target_id: number;
@@ -134,37 +134,37 @@ export type GsheetsConnectionClickedEvent = ValidateEvent<{
   triggered_from: "db-page" | "add-data-modal";
 }>;
 
-export type GsheetsImportClickedEvent = ValidateEvent<{
+type GsheetsImportClickedEvent = ValidateEvent<{
   event: "sheets_import_by_url_clicked";
   triggered_from: "sheets-url-popup";
 }>;
 
-export type KeyboardShortcutPerformEvent = ValidateEvent<{
+type KeyboardShortcutPerformEvent = ValidateEvent<{
   event: "keyboard_shortcut_performed";
   event_detail: KeyboardShortcutId;
 }>;
 
-export type NewEntityInitiatedEvent = ValidateEvent<{
+type NewEntityInitiatedEvent = ValidateEvent<{
   event: "plus_button_clicked";
   triggered_from: "model" | "metric" | "collection-header" | "collection-nav";
 }>;
 
-export type NewButtonClickedEvent = ValidateEvent<{
+type NewButtonClickedEvent = ValidateEvent<{
   event: "new_button_clicked";
   triggered_from: "app-bar" | "empty-collection";
 }>;
 
-export type NewButtonItemClickedEvent = ValidateEvent<{
+type NewButtonItemClickedEvent = ValidateEvent<{
   event: "new_button_item_clicked";
   triggered_from: "question" | "native-query" | "dashboard";
 }>;
 
-export type VisualizeAnotherWayClickedEvent = ValidateEvent<{
+type VisualizeAnotherWayClickedEvent = ValidateEvent<{
   event: "visualize_another_way_clicked";
   triggered_from: "question-list" | "dashcard-actions-panel";
 }>;
 
-export type VisualizerModalEvent = ValidateEvent<
+type VisualizerModalEvent = ValidateEvent<
   | {
       event:
         | "visualizer_add_more_data_clicked"
@@ -189,111 +189,104 @@ export type VisualizerModalEvent = ValidateEvent<
     }
 >;
 
-export type EventsClickedEvent = ValidateEvent<{
+type EventsClickedEvent = ValidateEvent<{
   event: "events_clicked";
   triggered_from: "chart" | "collection";
 }>;
 
-export type AddDataModalOpenedEvent = ValidateEvent<{
+type AddDataModalOpenedEvent = ValidateEvent<{
   event: "data_add_modal_opened";
   triggered_from: "getting-started" | "left-nav";
 }>;
 
-export type AddDataModalTabEvent = ValidateEvent<{
+type AddDataModalTabEvent = ValidateEvent<{
   event: "csv_tab_clicked" | "sheets_tab_clicked" | "database_tab_clicked";
   triggered_from: "add-data-modal";
 }>;
 
-export type DashboardFilterCreatedEvent = ValidateEvent<{
+type DashboardFilterCreatedEvent = ValidateEvent<{
   event: "dashboard_filter_created";
   target_id: number | null;
   triggered_from: VisualizationDisplay | null;
   event_detail: string | null;
 }>;
 
-export type DashboardFilterMovedEvent = ValidateEvent<{
+type DashboardFilterMovedEvent = ValidateEvent<{
   event: "dashboard_filter_moved";
   target_id: number | null;
   triggered_from: VisualizationDisplay | null;
   event_detail: VisualizationDisplay | null;
 }>;
 
-export type SdkIframeEmbedSetupExperience =
-  | "dashboard"
-  | "chart"
-  | "exploration"
-  | "browser"
-  | "metabot";
-
-export type EmbedWizardOpenedEvent = ValidateEvent<{
+type EmbedWizardOpenedEvent = ValidateEvent<{
   event: "embed_wizard_opened";
 }>;
 
-export type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
+type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
   event: "embed_wizard_experience_completed";
   event_detail: string;
 }>;
 
-export type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{
+type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{
   event: "embed_wizard_resource_selection_completed";
   event_detail: string;
 }>;
 
-export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
+type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
   event: "embed_wizard_options_completed";
   event_detail: string;
 }>;
 
-export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
+type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
   event_detail: string;
 }>;
 
-export type TableEditingSettingsToggledEvent = ValidateEvent<{
+type TableEditingSettingsToggledEvent = ValidateEvent<{
   event: "edit_data_settings_toggled";
   event_detail: "on" | "off";
   target_id: number;
   triggered_from: "admin-settings-databases";
 }>;
 
-export type TableEditButtonClickedEvent = ValidateEvent<{
+type TableEditButtonClickedEvent = ValidateEvent<{
   event: "edit_data_button_clicked";
   target_id: number;
   triggered_from: "table-browser";
 }>;
 
-export type ConnectionStringParsedSuccessEvent = ValidateEvent<{
+type ConnectionStringParsedSuccessEvent = ValidateEvent<{
   event: "connection_string_parsed_success";
   triggered_from: FormLocation;
 }>;
 
-export type ConnectionStringParsedFailedEvent = ValidateEvent<{
+type ConnectionStringParsedFailedEvent = ValidateEvent<{
   event: "connection_string_parsed_failed";
   triggered_from: FormLocation;
 }>;
 
-export type TransformTriggerManualRunEvent = ValidateEvent<{
+type TransformTriggerManualRunEvent = ValidateEvent<{
   event: "transform_trigger_manual_run";
   target_id: TransformId;
 }>;
 
-export type TransformJobTriggerManualRunEvent = ValidateEvent<{
+type TransformJobTriggerManualRunEvent = ValidateEvent<{
   event: "transform_job_trigger_manual_run";
   target_id: TransformId;
 }>;
 
-export type TransformCreateEvent = ValidateEvent<{
+type TransformCreateEvent = ValidateEvent<{
   event: "transform_create";
   event_detail: "query" | "native" | "python" | "saved-question";
 }>;
 
-export type TransformCreatedEvent = ValidateEvent<{
+type TransformCreatedEvent = ValidateEvent<{
   event: "transform_created";
   target_id: number;
   event_detail: "incremental" | undefined;
 }>;
 
-export type TransformRunTagsUpdated = ValidateEvent<{
+type TransformRunTagsUpdated = ValidateEvent<{
   event: "transform_tags_updated";
   result: "success" | "failure";
   triggered_from: "transform_run_page";
@@ -301,143 +294,142 @@ export type TransformRunTagsUpdated = ValidateEvent<{
   target_id: number;
 }>;
 
-export type TransformJobCreatedEvent = ValidateEvent<{
+type TransformJobCreatedEvent = ValidateEvent<{
   event: "transform_job_created";
   triggered_from: "transform_job_new";
   result: "success" | "failure";
   target_id: number | null;
 }>;
 
-export type TransformInspectLensLoadedEvent = ValidateEvent<{
+type TransformInspectLensLoadedEvent = ValidateEvent<{
   event: "transform_inspect_lens_loaded";
   target_id: TransformId;
   event_detail: string;
   duration_ms: number;
 }>;
 
-export type TransformInspectDrillLensClickedEvent = ValidateEvent<{
+type TransformInspectDrillLensClickedEvent = ValidateEvent<{
   event: "transform_inspect_drill_lens_clicked";
   target_id: TransformId;
   event_detail: string;
   triggered_from: "card_drills" | "join_analysis";
 }>;
 
-export type TransformInspectAlertClickedEvent = ValidateEvent<{
+type TransformInspectAlertClickedEvent = ValidateEvent<{
   event: "transform_inspect_alert_clicked";
   target_id: TransformId;
   event_detail: string;
 }>;
 
-export type TransformInspectDrillLensClosedEvent = ValidateEvent<{
+type TransformInspectDrillLensClosedEvent = ValidateEvent<{
   event: "transform_inspect_drill_lens_closed";
   target_id: TransformId;
   event_detail: string;
 }>;
 
-export type TransformInspectEvent =
+type TransformInspectEvent =
   | TransformInspectLensLoadedEvent
   | TransformInspectDrillLensClickedEvent
   | TransformInspectAlertClickedEvent
   | TransformInspectDrillLensClosedEvent;
 
-export type DocumentCreatedEvent = ValidateEvent<{
+type DocumentCreatedEvent = ValidateEvent<{
   event: "document_created";
   target_id: number;
 }>;
 
-export type DocumentUpdatedEvent = ValidateEvent<{
+type DocumentUpdatedEvent = ValidateEvent<{
   event: "document_saved";
   target_id: number;
 }>;
 
-export type DocumentAddCardEvent = ValidateEvent<{
+type DocumentAddCardEvent = ValidateEvent<{
   event: "document_add_card";
   target_id: number | null;
 }>;
 
-export type DocumentAddSmartLinkEvent = ValidateEvent<{
+type DocumentAddSmartLinkEvent = ValidateEvent<{
   event: "document_add_smart_link";
   target_id: number | null;
 }>;
 
-export type DocumentReplaceCardEvent = ValidateEvent<{
+type DocumentReplaceCardEvent = ValidateEvent<{
   event: "document_replace_card";
   target_id: number | null;
 }>;
 
-export type DocumentDuplicatedEvent = ValidateEvent<{
+type DocumentDuplicatedEvent = ValidateEvent<{
   event: "document_duplicated";
   target_id: number | null;
 }>;
 
-export type DocumentAskMetabotEvent = ValidateEvent<{
+type DocumentAskMetabotEvent = ValidateEvent<{
   event: "document_ask_metabot";
   target_id: number | null;
 }>;
 
-export type DocumentPrintEvent = ValidateEvent<{
+type DocumentPrintEvent = ValidateEvent<{
   event: "document_print";
   target_id: number | null;
 }>;
 
-export type DocumentAddSupportingTextEvent = ValidateEvent<{
+type DocumentAddSupportingTextEvent = ValidateEvent<{
   event: "document_add_supporting_text";
   target_id: number | null;
 }>;
 
-export type DatabaseHelpClickedEvent = ValidateEvent<{
+type DatabaseHelpClickedEvent = ValidateEvent<{
   event: "database_help_clicked";
   triggered_from: "admin" | "setup";
 }>;
 
-export type XRayTableClickedEvent = ValidateEvent<{
+type XRayTableClickedEvent = ValidateEvent<{
   event: "x-ray_clicked";
   event_detail: "table";
   triggered_from: "homepage" | "browse_database";
 }>;
 
-export type XRayDataReferenceClickedEvent = ValidateEvent<{
+type XRayDataReferenceClickedEvent = ValidateEvent<{
   event: "x-ray_clicked";
   event_detail: "table" | "field" | "segment";
   triggered_from: "data_reference";
 }>;
 
-export type XRaySuggestionClickedEvent = ValidateEvent<{
+type XRaySuggestionClickedEvent = ValidateEvent<{
   event: "x-ray_clicked";
   event_detail: keyof RelatedDashboardXRays;
   triggered_from: "suggestion_sidebar";
 }>;
 
-export type XRayAutoInsightsClicked = ValidateEvent<{
+type XRayAutoInsightsClicked = ValidateEvent<{
   event: "x-ray_automatic_insights_clicked";
   event_detail: "x-ray" | "compare_to_rest";
 }>;
 
-export type XRayClickedEvent =
+type XRayClickedEvent =
   | XRayTableClickedEvent
   | XRayDataReferenceClickedEvent
   | XRaySuggestionClickedEvent
   | XRayAutoInsightsClicked;
 
-export type XRaySavedEvent = ValidateEvent<{
+type XRaySavedEvent = ValidateEvent<{
   event: "x-ray_saved";
 }>;
 
-export type XRayEvent = XRayClickedEvent | XRaySavedEvent;
+type XRayEvent = XRayClickedEvent | XRaySavedEvent;
 
-export type EmbedWizardEvent =
+type EmbedWizardEvent =
   | EmbedWizardOpenedEvent
   | EmbedWizardExperienceCompletedEvent
   | EmbedWizardResourceSelectionCompletedEvent
   | EmbedWizardOptionsCompletedEvent
   | EmbedWizardCodeCopiedEvent;
 
-export type TableEditingEvent =
+type TableEditingEvent =
   | TableEditingSettingsToggledEvent
-  | TableEditButtonClickedEvent
-  | TableEditingRecordModifiedEvent;
+  | TableEditButtonClickedEvent;
 
-export type MetabotChatOpenedEvent = ValidateEvent<{
+type MetabotChatOpenedEvent = ValidateEvent<{
   event: "metabot_chat_opened";
   triggered_from:
     | "header"
@@ -446,30 +438,30 @@ export type MetabotChatOpenedEvent = ValidateEvent<{
     | "native_editor";
 }>;
 
-export type MetabotRequestSentEvent = ValidateEvent<{
+type MetabotRequestSentEvent = ValidateEvent<{
   event: "metabot_request_sent";
 }>;
 
-export type MetabotFixQueryClickedEvent = ValidateEvent<{
+type MetabotFixQueryClickedEvent = ValidateEvent<{
   event: "metabot_fix_query_clicked";
 }>;
 
-export type MetabotExplainChartClickedEvent = ValidateEvent<{
+type MetabotExplainChartClickedEvent = ValidateEvent<{
   event: "metabot_explain_chart_clicked";
 }>;
 
-export type MetabotEvent =
+type MetabotEvent =
   | MetabotChatOpenedEvent
   | MetabotRequestSentEvent
   | MetabotFixQueryClickedEvent
   | MetabotExplainChartClickedEvent;
 
-export type RevertVersionEvent = ValidateEvent<{
+type RevertVersionEvent = ValidateEvent<{
   event: "revert_version_clicked";
   event_detail: "card" | "dashboard" | "document" | "transform";
 }>;
 
-export type LearnAboutDataClickedEvent = ValidateEvent<{
+type LearnAboutDataClickedEvent = ValidateEvent<{
   event: "learn_about_our_data_clicked";
 }>;
 
@@ -482,94 +474,94 @@ export type MetadataEditEventDetail =
   | "json_unfolding"
   | "formatting";
 
-export type MetadataEditEventTriggeredFrom = "admin" | "data_studio";
+type MetadataEditEventTriggeredFrom = "admin" | "data_studio";
 
-export type MetadataEditEvent = ValidateEvent<{
+type MetadataEditEvent = ValidateEvent<{
   event: "metadata_edited";
   event_detail: MetadataEditEventDetail;
   triggered_from: MetadataEditEventTriggeredFrom;
 }>;
 
-export type BookmarkTableEvent = ValidateEvent<{
+type BookmarkTableEvent = ValidateEvent<{
   event: "bookmark_added";
   event_detail: "table";
   triggered_from: "collection_list";
 }>;
 
-export type BookmarkQuestionEvent = ValidateEvent<{
+type BookmarkQuestionEvent = ValidateEvent<{
   event: "bookmark_added";
   event_detail: "question";
   triggered_from: "qb_action_panel" | "collection_list";
 }>;
 
-export type BookmarkModelEvent = ValidateEvent<{
+type BookmarkModelEvent = ValidateEvent<{
   event: "bookmark_added";
   event_detail: "model";
   triggered_from: "qb_action_panel" | "collection_list";
 }>;
 
-export type BookmarkMetricEvent = ValidateEvent<{
+type BookmarkMetricEvent = ValidateEvent<{
   event: "bookmark_added";
   event_detail: "metric";
   triggered_from: "qb_action_panel" | "collection_list" | "browse_metrics";
 }>;
 
-export type BookmarkDashboardEvent = ValidateEvent<{
+type BookmarkDashboardEvent = ValidateEvent<{
   event: "bookmark_added";
   event_detail: "dashboard";
   triggered_from: "dashboard_header" | "collection_list";
 }>;
 
-export type BookmarkCollectionEvent = ValidateEvent<{
+type BookmarkCollectionEvent = ValidateEvent<{
   event: "bookmark_added";
   event_detail: "collection";
   triggered_from: "collection_header" | "collection_list";
 }>;
 
-export type BookmarkDocumentEvent = ValidateEvent<{
+type BookmarkDocumentEvent = ValidateEvent<{
   event: "bookmark_added";
   event_detail: "document";
   triggered_from: "collection_list" | "document_header";
 }>;
 
-export type ClickActionPerformedEvent = ValidateEvent<{
+type ClickActionPerformedEvent = ValidateEvent<{
   event: "click_action";
   triggered_from: ClickActionSection;
 }>;
 
-export type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
+type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
   event: "remote_sync_branch_switched";
   triggered_from: "admin-settings" | "app-bar";
 }>;
 
-export type RemoteSyncBranchCreatedEvent = ValidateEvent<{
+type RemoteSyncBranchCreatedEvent = ValidateEvent<{
   event: "remote_sync_branch_created";
   triggered_from: "branch-picker" | "conflict-modal";
 }>;
 
-export type RemoteSyncPullChangesEvent = ValidateEvent<{
+type RemoteSyncPullChangesEvent = ValidateEvent<{
   event: "remote_sync_pull_changes";
   triggered_from: "admin-settings" | "app-bar";
   event_detail?: "force";
 }>;
 
-export type RemoteSyncPushChangesEvent = ValidateEvent<{
+type RemoteSyncPushChangesEvent = ValidateEvent<{
   event: "remote_sync_push_changes";
   triggered_from: "conflict-modal" | "app-bar";
   event_detail?: "force";
 }>;
 
-export type RemoteSyncSettingsChangedEvent = ValidateEvent<{
+type RemoteSyncSettingsChangedEvent = ValidateEvent<{
   event: "remote_sync_settings_changed";
   triggered_from: "admin-settings" | "data-studio";
 }>;
 
-export type RemoteSyncDeactivatedEvent = ValidateEvent<{
+type RemoteSyncDeactivatedEvent = ValidateEvent<{
   event: "remote_sync_deactivated";
   triggered_from: "admin-settings";
 }>;
 
-export type RemoteSyncEvent =
+type RemoteSyncEvent =
   | RemoteSyncBranchSwitchedEvent
   | RemoteSyncBranchCreatedEvent
   | RemoteSyncPullChangesEvent
@@ -577,7 +569,7 @@ export type RemoteSyncEvent =
   | RemoteSyncSettingsChangedEvent
   | RemoteSyncDeactivatedEvent;
 
-export type BookmarkEvent =
+type BookmarkEvent =
   | BookmarkTableEvent
   | BookmarkQuestionEvent
   | BookmarkModelEvent
@@ -586,117 +578,117 @@ export type BookmarkEvent =
   | BookmarkCollectionEvent
   | BookmarkDocumentEvent;
 
-export type DataStudioOpenedEvent = ValidateEvent<{
+type DataStudioOpenedEvent = ValidateEvent<{
   event: "data_studio_opened";
   triggered_from: "nav_menu";
 }>;
 
-export type DataStudioLibraryCreatedEvent = ValidateEvent<{
+type DataStudioLibraryCreatedEvent = ValidateEvent<{
   event: "data_studio_library_created";
   target_id: number | null;
 }>;
 
-export type DataStudioTablePublishedEvent = ValidateEvent<{
+type DataStudioTablePublishedEvent = ValidateEvent<{
   event: "data_studio_table_published";
   target_id: ConcreteTableId | undefined;
 }>;
 
-export type DataStudioGlossaryCreatedEvent = ValidateEvent<{
+type DataStudioGlossaryCreatedEvent = ValidateEvent<{
   event: "data_studio_glossary_term_created";
   target_id: number | null;
 }>;
 
-export type DataStudioGlossaryEditedEvent = ValidateEvent<{
+type DataStudioGlossaryEditedEvent = ValidateEvent<{
   event: "data_studio_glossary_term_updated";
   target_id: number | null;
 }>;
 
-export type DataStudioGlossaryDeletedEvent = ValidateEvent<{
+type DataStudioGlossaryDeletedEvent = ValidateEvent<{
   event: "data_studio_glossary_term_deleted";
   target_id: number | null;
 }>;
 
-export type DataStudioTablePickerFiltersAppliedEvent = ValidateEvent<{
+type DataStudioTablePickerFiltersAppliedEvent = ValidateEvent<{
   event: "data_studio_table_picker_filters_applied";
 }>;
 
-export type DataStudioTablePickerFiltersClearedEvent = ValidateEvent<{
+type DataStudioTablePickerFiltersClearedEvent = ValidateEvent<{
   event: "data_studio_table_picker_filters_cleared";
 }>;
 
-export type DataStudioTablePickerSearchPerformedEvent = ValidateEvent<{
+type DataStudioTablePickerSearchPerformedEvent = ValidateEvent<{
   event: "data_studio_table_picker_search_performed";
 }>;
 
-export type DataStudioTableUnpublishedEvent = ValidateEvent<{
+type DataStudioTableUnpublishedEvent = ValidateEvent<{
   event: "data_studio_table_unpublished";
   target_id: ConcreteTableId | undefined;
 }>;
 
-export type DataStudioBulkSyncSettingsClickedEvent = ValidateEvent<{
+type DataStudioBulkSyncSettingsClickedEvent = ValidateEvent<{
   event: "data_studio_bulk_sync_settings_clicked";
 }>;
 
-export type DataStudioBulkAttributeUpdatedEvent = ValidateEvent<{
+type DataStudioBulkAttributeUpdatedEvent = ValidateEvent<{
   event: "data_studio_bulk_attribute_updated";
   event_detail: "owner" | "layer" | "entity_type" | "data_source";
   result: "success" | "failure";
 }>;
 
-export type DataStudioTableSchemaSyncedEvent = ValidateEvent<{
+type DataStudioTableSchemaSyncedEvent = ValidateEvent<{
   event: "data_studio_table_schema_sync_started";
   result: "success" | "failure";
 }>;
 
-export type DataStudioTableFieldsRescannedEvent = ValidateEvent<{
+type DataStudioTableFieldsRescannedEvent = ValidateEvent<{
   event: "data_studio_table_fields_rescan_started";
   result: "success" | "failure";
 }>;
 
-export type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
+type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
   event: "data_studio_table_field_values_discard_started";
   result: "success" | "failure";
 }>;
 
-export type MeasureCreateStartedEvent = ValidateEvent<{
+type MeasureCreateStartedEvent = ValidateEvent<{
   event: "measure_create_started";
   triggered_from: "data_studio_measures_list";
   target_id: number;
 }>;
 
-export type MeasureCreatedEvent = ValidateEvent<{
+type MeasureCreatedEvent = ValidateEvent<{
   event: "measure_created";
   triggered_from: "data_studio_measures";
   result: "success" | "failure";
   target_id: number | null;
 }>;
 
-export type SegmentCreateStartedEvent = ValidateEvent<{
+type SegmentCreateStartedEvent = ValidateEvent<{
   event: "segment_create_started";
   triggered_from: "data_studio_segments" | "admin_datamodel_segments";
   target_id: number | null;
 }>;
 
-export type SegmentCreatedEvent = ValidateEvent<{
+type SegmentCreatedEvent = ValidateEvent<{
   event: "segment_created";
   triggered_from: "data_studio_segments" | "admin_datamodel_segments";
   result: "success" | "failure";
   target_id: number | null;
 }>;
 
-export type MetricCreateStartedEvent = ValidateEvent<{
+type MetricCreateStartedEvent = ValidateEvent<{
   event: "metric_create_started";
   triggered_from: "browse_metrics" | "data_studio_library" | "command_palette";
 }>;
 
-export type MetricCreatedEvent = ValidateEvent<{
+type MetricCreatedEvent = ValidateEvent<{
   event: "metric_created";
   triggered_from: "data_studio" | "main_app";
   result: "success" | "failure";
   target_id: number | null;
 }>;
 
-export type DataStudioEvent =
+type DataStudioEvent =
   | DataStudioOpenedEvent
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
@@ -719,57 +711,57 @@ export type DataStudioEvent =
   | MetricCreateStartedEvent
   | MetricCreatedEvent;
 
-export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
+type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";
   triggered_from: "document";
   target_id: number | null;
 }>;
 
-export type MetricPageShowMoreClickedEvent = ValidateEvent<{
+type MetricPageShowMoreClickedEvent = ValidateEvent<{
   event: "metric_page_show_more_clicked";
   target_id: number;
 }>;
 
-export type MetricsViewerMetricAddedEvent = ValidateEvent<{
+type MetricsViewerMetricAddedEvent = ValidateEvent<{
   event: "metrics_viewer_metric_added";
   target_id: number | null;
   event_detail: "metric" | "measure";
 }>;
 
-export type MetricsViewerMetricRemovedEvent = ValidateEvent<{
+type MetricsViewerMetricRemovedEvent = ValidateEvent<{
   event: "metrics_viewer_metric_removed";
   target_id: number | null;
   event_detail: "metric" | "measure";
 }>;
 
-export type MetricsViewerFilterAddedEvent = ValidateEvent<{
+type MetricsViewerFilterAddedEvent = ValidateEvent<{
   event: "metrics_viewer_filter_added";
   triggered_from: "metric_filter" | "dimension_filter";
 }>;
 
-export type MetricsViewerFilterEditedEvent = ValidateEvent<{
+type MetricsViewerFilterEditedEvent = ValidateEvent<{
   event: "metrics_viewer_filter_edited";
   triggered_from: "metric_filter" | "dimension_filter";
 }>;
 
-export type MetricsViewerFilterRemovedEvent = ValidateEvent<{
+type MetricsViewerFilterRemovedEvent = ValidateEvent<{
   event: "metrics_viewer_filter_removed";
   triggered_from: "metric_filter" | "dimension_filter";
 }>;
 
-export type MetricsViewerDimensionTabAddedEvent = ValidateEvent<{
+type MetricsViewerDimensionTabAddedEvent = ValidateEvent<{
   event: "metrics_viewer_dimension_tab_added";
 }>;
 
-export type MetricsViewerDimensionTabSwitchedEvent = ValidateEvent<{
+type MetricsViewerDimensionTabSwitchedEvent = ValidateEvent<{
   event: "metrics_viewer_dimension_tab_switched";
 }>;
 
-export type MetricsViewerDimensionTabRemovedEvent = ValidateEvent<{
+type MetricsViewerDimensionTabRemovedEvent = ValidateEvent<{
   event: "metrics_viewer_dimension_tab_removed";
 }>;
 
-export type MetricsViewerEvent =
+type MetricsViewerEvent =
   | MetricsViewerMetricAddedEvent
   | MetricsViewerMetricRemovedEvent
   | MetricsViewerFilterAddedEvent
