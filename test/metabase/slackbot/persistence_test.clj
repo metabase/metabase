@@ -21,7 +21,7 @@
                    :role            "user"
                    :profile_id      "test"
                    :total_tokens    0
-                   :data            [{:_type "TEXT" :role "user" :content "what is 2+2?"}]})
+                   :data            [{:type "text" :text "what is 2+2?"}]})
       ;; Assistant message with tool calls
       (t2/insert! :model/MetabotMessage
                   {:conversation_id conv-id
@@ -29,14 +29,18 @@
                    :role            "assistant"
                    :profile_id      "test"
                    :total_tokens    10
-                   :data            [{:_type "TEXT" :role "assistant" :content "hi"}
-                                     {:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "x"}]}
-                                     {:_type "TOOL_RESULT" :role "tool" :tool_call_id "x" :content "y"}]})
+                   :data            [{:type "text" :text "hi"}
+                                     {:type       "tool-search"
+                                      :toolCallId "x"
+                                      :toolName   "search"
+                                      :state      "output-available"
+                                      :input      {}
+                                      :output     "y"}]})
 
       (testing "only TOOL_CALL and TOOL_RESULT are included, TEXT is filtered out"
         (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000002"})]
           (is (= 2 (count (get result "1709567890.000002"))))
-          (is (every? #(#{:assistant :tool} (:role %)) (get result "1709567890.000002")))))
+          (is (every? #(#{"assistant" "tool"} (:role %)) (get result "1709567890.000002")))))
 
       (testing "user messages are excluded, only assistant role is queried"
         (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000001"})]
@@ -54,7 +58,12 @@
                        :role               "assistant"
                        :profile_id         "test"
                        :total_tokens       10
-                       :data               [{:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "y"}]}]
+                       :data               [{:type       "tool-search"
+                                             :toolCallId "y"
+                                             :toolName   "search"
+                                             :state      "output-available"
+                                             :input      {}
+                                             :output     "result"}]
                        :deleted_at         (java.time.OffsetDateTime/now)
                        :deleted_by_user_id (mt/user->id :rasta)})
           (is (empty? (slackbot.persistence/message-history conv-id #{deleted-ts})))
