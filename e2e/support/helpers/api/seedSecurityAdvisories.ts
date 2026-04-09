@@ -19,7 +19,3 @@ export function seedSecurityAdvisories(
     advisories,
   });
 }
-
-export function forceEnableSecurityCenter(): Cypress.Chainable {
-  return cy.request("POST", "/api/testing/security-center/force-enable");
-}

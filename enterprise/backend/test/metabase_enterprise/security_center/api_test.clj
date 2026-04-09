@@ -61,15 +61,14 @@
          "Security Center"
          (mt/user-http-request :crowberto :get 402 "ee/security-center"))))
     (mt/with-premium-features #{:admin-security-center}
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
-        (with-test-advisories!
-          (testing "superuser can list advisories"
-            (let [response (mt/user-http-request :crowberto :get 200 "ee/security-center")]
-              (is (contains? response :last_checked_at))
-              (is (= 3 (count (:advisories response))))
-              (is (= "SC-0000-001" (-> response :advisories first :advisory_id)))))
-          (testing "non-superuser gets 403"
-            (mt/user-http-request :rasta :get 403 "ee/security-center")))))))
+      (with-test-advisories!
+        (testing "superuser can list advisories"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/security-center")]
+            (is (contains? response :last_checked_at))
+            (is (= 3 (count (:advisories response))))
+            (is (= "SC-0000-001" (-> response :advisories first :advisory_id)))))
+        (testing "non-superuser gets 403"
+          (mt/user-http-request :rasta :get 403 "ee/security-center"))))))
 
 (deftest trial-subscription-gate-test
   (testing "Security Center is not available on trial subscriptions"
@@ -88,54 +87,53 @@
 (deftest acknowledge-advisory-test
   (testing "POST /api/ee/security-center/:id/acknowledge"
     (mt/with-premium-features #{:admin-security-center :audit-app}
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
-        (with-test-advisories!
-          (testing "superuser can acknowledge"
-            (is (=? {:advisory_id     "SC-0000-001"
-                     :acknowledged_at some?
-                     :acknowledged_by some?}
-                    (mt/user-http-request :crowberto :post 200
-                                          "ee/security-center/SC-0000-001/acknowledge")))
-            (testing "creates an audit log entry"
-              (is (=? {:topic   :security-advisory-acknowledge
-                       :user_id (mt/user->id :crowberto)}
-                      (t2/select-one [:model/AuditLog :topic :user_id]
-                                     :topic :security-advisory-acknowledge
-                                     {:order-by [[:id :desc]]})))))
-          (testing "cannot acknowledge twice"
-            (mt/user-http-request :crowberto :post 409
-                                  "ee/security-center/SC-0000-001/acknowledge"))
-          (testing "404 for unknown advisory"
-            (mt/user-http-request :crowberto :post 404
-                                  "ee/security-center/SC-0000-999/acknowledge"))
-          (testing "non-superuser gets 403"
-            (mt/user-http-request :rasta :post 403
-                                  "ee/security-center/SC-0000-001/acknowledge")))))))
+      (with-test-advisories!
+        (testing "superuser can acknowledge"
+          (is (=? {:advisory_id     "SC-0000-001"
+                   :acknowledged_at some?
+                   :acknowledged_by some?}
+                  (mt/user-http-request :crowberto :post 200
+                                        "ee/security-center/SC-0000-001/acknowledge")))
+          (testing "creates an audit log entry"
+            (is (=? {:topic   :security-advisory-acknowledge
+                     :user_id (mt/user->id :crowberto)}
+                    (t2/select-one [:model/AuditLog :topic :user_id]
+                                   :topic :security-advisory-acknowledge
+                                   {:order-by [[:id :desc]]})))))
+        (testing "cannot acknowledge twice"
+          (mt/user-http-request :crowberto :post 409
+                                "ee/security-center/SC-0000-001/acknowledge"))
+        (testing "404 for unknown advisory"
+          (mt/user-http-request :crowberto :post 404
+                                "ee/security-center/SC-0000-999/acknowledge"))
+        (testing "non-superuser gets 403"
+          (mt/user-http-request :rasta :post 403
+                                "ee/security-center/SC-0000-001/acknowledge"))))))
 
 (deftest sync-endpoint-test
   (testing "POST /api/ee/security-center/sync"
     (mt/with-premium-features #{:admin-security-center}
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
-        (mt/with-temp-scheduler!
-          (task/init! ::sync-advisories/SyncAdvisories)
-          (testing "calling twice only runs sync once"
-            (let [call-count (atom 0)
-                  started    (promise)
-                  finish     (promise)]
-              (with-redefs [fetch/sync-advisories!
-                            (fn []
-                              (swap! call-count inc)
-                              (deliver started true)
-                              @finish)
-                            matching/evaluate-all-advisories! (constantly nil)]
-                (is (= {:status "started"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
-                @started
-                (is (= {:status "already-in-progress"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
-                (deliver finish true)
-                (is (= 1 @call-count) "sync should only run once despite two API calls"))))))
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
-        (testing "non-superuser gets 403"
-          (mt/user-http-request :rasta :post 403 "ee/security-center/sync"))))))
+      (mt/with-temp-scheduler!
+        (with-redefs [premium-features/security-center-enabled? (constantly true)]
+          (task/init! ::sync-advisories/SyncAdvisories))
+        (testing "calling twice only runs sync once"
+          (let [call-count (atom 0)
+                started    (promise)
+                finish     (promise)]
+            (with-redefs [premium-features/security-center-enabled? (constantly true)
+                          fetch/sync-advisories!
+                          (fn []
+                            (swap! call-count inc)
+                            (deliver started true)
+                            @finish)
+                          matching/evaluate-all-advisories! (constantly nil)]
+              (is (= {:status "started"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
+              @started
+              (is (= {:status "already-in-progress"} (mt/user-http-request :crowberto :post 200 "ee/security-center/sync")))
+              (deliver finish true)
+              (is (= 1 @call-count) "sync should only run once despite two API calls")))))
+      (testing "non-superuser gets 403"
+        (mt/user-http-request :rasta :post 403 "ee/security-center/sync")))))
 
 (deftest test-notification-test
   (testing "POST /api/ee/security-center/test-notification"
@@ -145,15 +143,14 @@
          "Security Center"
          (mt/user-http-request :crowberto :post 402 "ee/security-center/test-notification"))))
     (mt/with-premium-features #{:admin-security-center}
-      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
-        (testing "non-superuser gets 403"
-          (mt/user-http-request :rasta :post 403 "ee/security-center/test-notification"))
-        (testing "superuser can send test notification"
-          (with-redefs [notification/send-test-notification! (constantly nil)]
-            (is (= {:success true}
-                   (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification")))))
-        (testing "returns 400 when no channels are configured"
-          (with-redefs [notification/send-test-notification!
-                        (fn [] (throw (ex-info "No notification channels are configured."
-                                               {:status-code 400})))]
-            (mt/user-http-request :crowberto :post 400 "ee/security-center/test-notification")))))))
+      (testing "non-superuser gets 403"
+        (mt/user-http-request :rasta :post 403 "ee/security-center/test-notification"))
+      (testing "superuser can send test notification"
+        (with-redefs [notification/send-test-notification! (constantly nil)]
+          (is (= {:success true}
+                 (mt/user-http-request :crowberto :post 200 "ee/security-center/test-notification")))))
+      (testing "returns 400 when no channels are configured"
+        (with-redefs [notification/send-test-notification!
+                      (fn [] (throw (ex-info "No notification channels are configured."
+                                             {:status-code 400})))]
+          (mt/user-http-request :crowberto :post 400 "ee/security-center/test-notification"))))))

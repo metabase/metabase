@@ -9,9 +9,9 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest security-center-enabled?-test
-  (testing "disabled on H2 app db even with the feature flag"
+  (testing "enabled when feature flag present, not trial, and self-hosted"
     (mt/with-premium-features #{:admin-security-center}
-      (is (false? (premium-features/security-center-enabled?)))))
+      (is (true? (premium-features/security-center-enabled?)))))
   (testing "disabled without the feature flag"
     (mt/with-premium-features #{}
       (is (false? (premium-features/security-center-enabled?)))))

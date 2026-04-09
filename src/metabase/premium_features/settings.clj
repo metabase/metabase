@@ -1,7 +1,6 @@
 (ns metabase.premium-features.settings
   "Impls for settings that need to fetch token status live in [[metabase.premium-features.token-check]]."
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -293,12 +292,6 @@
   "Should we enable the Library?"
   :library)
 
-(defonce
-  ^{:doc "When true, bypasses the H2 app-db and hosted checks in [[security-center-enabled?]].
-          Defaults to true in dev mode. Can be set via the testing API."}
-  skip-security-center-env-checks
-  (atom config/is-dev?))
-
 (define-premium-feature security-center-enabled?
   "True if the current instance has Security Center access.
    Requires the `:admin-security-center` feature flag, a non-trial subscription,
@@ -307,9 +300,8 @@
   :getter (fn []
             (and (has-feature? :admin-security-center)
                  (not ((requiring-resolve 'metabase.premium-features.token-check/is-trial?)))
-                 (or @skip-security-center-env-checks
-                     (and (not (is-hosted?))
-                          (not= (mdb/db-type) :h2))))))
+                 (or config/is-dev?
+                     (not (is-hosted?))))))
 
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
   "Should the multi-tenant feature be enabled?"

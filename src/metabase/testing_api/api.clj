@@ -288,13 +288,6 @@
   (t2/delete! :model/SecurityAdvisory)
   (t2/insert-returning-instances! :model/SecurityAdvisory advisories))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/security-center/force-enable"
-  "Force-enable Security Center on H2 app dbs for e2e testing."
-  []
-  (reset! @(requiring-resolve 'metabase.premium-features.core/skip-security-center-env-checks) true)
-  {:success true})
-
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
   "Creates a native query from a test query spec."
   [_route-params

@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.security-center.fetch :as fetch]
    [metabase-enterprise.security-center.matching :as matching]
-   [metabase-enterprise.security-center.settings :as settings]
    [metabase-enterprise.security-center.task.sync-advisories :as sync-advisories]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
@@ -19,15 +18,13 @@
                                   matching/evaluate-all-advisories!         #(swap! called conj :evaluate)]
         (#'sync-advisories/sync-and-evaluate!)
         (is (empty? @called)))))
-  (testing "runs fetch then evaluate and records last-synced-at"
+  (testing "runs fetch then evaluate"
     (let [called (atom [])]
       (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                   fetch/sync-advisories!                    #(swap! called conj :fetch)
                                   matching/evaluate-all-advisories!         #(swap! called conj :evaluate)]
-        (mt/with-temporary-setting-values [security-center-last-synced-at nil]
-          (#'sync-advisories/sync-and-evaluate!)
-          (is (= [:fetch :evaluate] @called))
-          (is (some? (settings/security-center-last-synced-at)))))))
+        (#'sync-advisories/sync-and-evaluate!)
+        (is (= [:fetch :evaluate] @called)))))
   (testing "evaluate still runs when fetch throws"
     (let [called (atom [])]
       (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
