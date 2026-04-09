@@ -1674,6 +1674,60 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.runButton().click();
       assertMetricMath();
     });
+
+    it("should handle metrics with numeric names in expressions", () => {
+      const NUMERIC_METRIC_NAME = "123";
+      H.createQuestion({
+        name: NUMERIC_METRIC_NAME,
+        type: "metric",
+        description: "A metric with a numeric name",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      });
+
+      cy.log("Add numeric metric '123' as standalone");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(`, ${NUMERIC_METRIC_NAME}`);
+      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
+      H.MetricsViewer.runButton().click();
+      cy.wait("@dataset");
+
+      cy.log("Sum metric '123' with itself — both selected from dropdown");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(`+ ${NUMERIC_METRIC_NAME}`);
+      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
+      H.MetricsViewer.runButton().click();
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("exist");
+
+      cy.log(
+        "Append literal number 123 — typed without selecting from dropdown",
+      );
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type("+ 123");
+      H.MetricsViewer.runButton().click();
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("exist");
+
+      cy.log("Append metric '123' as standalone — selected from dropdown");
+      cy.findByTestId("metrics-formula-input").click();
+      H.MetricsViewer.searchInput().type(`, ${NUMERIC_METRIC_NAME}`);
+      H.MetricsViewer.searchResults().findByText(NUMERIC_METRIC_NAME).click();
+      H.MetricsViewer.runButton().click();
+      cy.wait("@dataset");
+      H.MetricsViewer.getMetricVisualization().should("exist");
+
+      cy.log("Verify final pill layout");
+      H.MetricsViewer.searchBarPills().should("have.length", 3);
+      H.MetricsViewer.searchBarPills()
+        .eq(0)
+        .should("contain", "Count of orders");
+      H.MetricsViewer.searchBarPills().eq(1).should("contain", "123 + 123");
+      H.MetricsViewer.searchBarPills().eq(2).should("contain", "123");
+    });
   });
 });
 
