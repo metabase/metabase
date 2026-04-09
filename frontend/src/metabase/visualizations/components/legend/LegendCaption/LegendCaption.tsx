@@ -59,7 +59,7 @@ export const LegendCaption = ({
 }: LegendCaptionProps) => {
   /*
    * Optimization: lazy computing the href on title focus & mouseenter only.
-   * Href computation uses getNewCardUrl, which makes a few MLv2 calls,
+   * Href computation uses getNewCardUrl, which makes a few Lib calls,
    * which are expensive.
    * It's a performance issue on dashboards that have hundreds of dashcards
    * (during initial render and after changing dashboard parameters which can

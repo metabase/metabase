@@ -187,6 +187,8 @@
   (when-not (llm.settings/llm-anthropic-api-key)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
+  (when-let [limit-msg (metabot/check-usage-limits!)]
+    (throw (ex-info limit-msg {:status-code 429})))
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
                              (sql-gen-throttlers :user-id)    api/*current-user-id*]
     (let [{:keys [prompt database_id source_sql referenced_entities]} body
@@ -237,6 +239,11 @@
                 ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
                 :source              "oss_metabot"
                 :tag                 "oss-sqlgen"})
+              (metabot/log-ai-usage!
+               {:source            "oss-sql-gen"
+                :model             (:model usage)
+                :prompt-tokens     (:prompt usage)
+                :completion-tokens (:completion usage)})
               (track-sqlgen-event!
                {:duration-ms (u/since-ms start-timer)
                 :result "success"

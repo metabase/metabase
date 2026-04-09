@@ -88,8 +88,8 @@
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
-  io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
-  io.netty/netty-codec-http2                {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
+  io.netty/netty-codec-http                 {:mvn/version "4.2.12.Final"}        ; override of transitive dep from aws s3
+  io.netty/netty-codec-http2                {:mvn/version "4.2.12.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
@@ -115,7 +115,7 @@
                                                            junit/junit]}
   net.thisptr/jackson-jq                        {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress           {:mvn/version "1.28.0"}             ; compression utils
-  org.apache.commons/commons-lang3              {:mvn/version "3.19.0"}             ; helper methods for working with java.lang stuff
+  org.apache.commons/commons-lang3              {:mvn/version "3.20.0"}             ; helper methods for working with java.lang stuff
   org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.4.4"}              ; pinned: ClickHouse JDBC 0.9.7 needs httpcore5 5.3.4+; must pair with httpclient5 5.4.x
   org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.3.4"}              ; pinned: ClickHouse JDBC 0.9.7 requires URIBuilder.optimize() added in 5.3
   org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.3.4"}              ; pinned: must match httpcore5 version
@@ -901,7 +901,7 @@
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.migrate"]}
 
-  ;; run tests against MLv2. Very fast since this is almost all ^:parallel
+  ;; run tests against Lib. Very fast since this is almost all ^:parallel
   :test/lib
   {:exec-args {:only ["test/metabase/lib"
                       "test/metabase/lib_be"]}}
@@ -928,7 +928,7 @@
   {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
                       "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
 
-;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
+;; test all MBQL related stuff: Lib, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql

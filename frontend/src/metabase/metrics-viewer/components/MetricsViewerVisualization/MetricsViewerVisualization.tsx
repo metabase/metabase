@@ -33,7 +33,7 @@ type MetricsViewerVisualizationProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToDefinitionId: Record<CardId, MetricSourceId>;
   interactive?: boolean;
 };
 
@@ -47,7 +47,7 @@ export function MetricsViewerVisualization({
   definitions,
   tab,
   onTabUpdate,
-  cardIdToDimensionId,
+  cardIdToDefinitionId,
   interactive = true,
 }: MetricsViewerVisualizationProps) {
   const { ref, width } = useElementSize();
@@ -60,10 +60,10 @@ export function MetricsViewerVisualization({
             definitions,
             tab,
             onTabUpdate,
-            cardIdToDimensionId,
+            cardIdToDefinitionId,
           })
         : undefined,
-    [cardIdToDimensionId, definitions, interactive, onTabUpdate, tab],
+    [cardIdToDefinitionId, definitions, interactive, onTabUpdate, tab],
   );
 
   return (

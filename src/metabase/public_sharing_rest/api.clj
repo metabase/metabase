@@ -381,10 +381,11 @@
    {:keys [parameters]} :- [:map
                             [:parameters ms/JSONString]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))
-  (actions/fetch-values
-   (api/check-404 (actions/dashcard->action dashcard-id))
-   (json/decode parameters)))
+  (let [dashboard-id (api/check-404 (t2/select-one-pk :model/Dashboard :public_uuid uuid :archived false))]
+    (api/check-404 (t2/select-one-pk :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
+    (actions/fetch-values
+     (api/check-404 (actions/dashcard->action dashcard-id))
+     (json/decode parameters))))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 

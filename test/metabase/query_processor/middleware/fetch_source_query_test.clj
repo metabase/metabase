@@ -21,8 +21,8 @@
 (defn resolve-source-cards* [query]
   ;; Handle old tests written with legacy queries. Convert legacy query to MBQL 5 and then convert results
   ;; back. That way we don't need to update all the tests immediately and can do so at our leisure.
-  (letfn [(thunk [] (let [mlv2-query (lib.query/query (qp.store/metadata-provider) query)
-                          resolved   (fetch-source-query/resolve-source-cards mlv2-query)]
+  (letfn [(thunk [] (let [mbql5-query (lib.query/query (qp.store/metadata-provider) query)
+                          resolved    (fetch-source-query/resolve-source-cards mbql5-query)]
                       (cond-> resolved
                         (not (:lib/type query)) lib.convert/->legacy-MBQL)))]
     (if (qp.store/initialized?)

@@ -67,6 +67,14 @@ export const CHART_STYLE = {
     borderWidth: 1,
   },
   splitPanel: {
-    gap: 30,
+    gapRatio: 2.2,
+    maxGap: 48,
   },
 };
+
+export function getSplitPanelGap(panelHeight: number): number {
+  return Math.min(
+    panelHeight / CHART_STYLE.splitPanel.gapRatio,
+    CHART_STYLE.splitPanel.maxGap,
+  );
+}

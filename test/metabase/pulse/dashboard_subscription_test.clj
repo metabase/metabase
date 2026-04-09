@@ -1087,7 +1087,7 @@
                  (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
 (defn- result-attachment!
-  [part]
+  [part _creator-id]
   (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/maybe-realize-data-rows part)]
     (when (seq rows)
       [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]

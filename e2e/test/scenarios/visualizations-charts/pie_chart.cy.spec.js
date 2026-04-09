@@ -222,6 +222,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.getDraggableElements().contains("Woooget").as("dragElement");
     H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 100,
+      useMouseEvents: true,
     });
 
     ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"]);
@@ -245,6 +246,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.getDraggableElements().contains("Katget").as("dragElement");
     H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 30,
+      useMouseEvents: true,
     });
 
     changeRowLimit(2, 4);
