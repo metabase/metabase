@@ -50,10 +50,11 @@ export function SelectListItem({
     >
       {icon && (
         <EntityIcon
-          {...iconProps}
           iconUrl={iconUrl}
           className={classNames.icon}
           color="brand"
+          size="1.5rem"
+          {...iconProps}
         />
       )}
       <ItemTitle
