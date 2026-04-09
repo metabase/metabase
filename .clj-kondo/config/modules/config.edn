@@ -1032,6 +1032,14 @@
                     :model/QueryExecution
                     :model/User}}
 
+  internal-stats.enterprise
+  {:team      "UX West"
+   :ns-prefix "metabase-enterprise.internal-stats"
+   :private   true
+   :api       #{}
+   :uses      #{premium-features
+                settings}}
+
   legacy-mbql
   {:team "Querying Platform"
    :api  #{metabase.legacy-mbql.normalize
@@ -3001,12 +3009,6 @@
            enterprise/sandbox}
    :model-exports #{:model/ConnectionImpersonation}
    :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
-
-  enterprise/internal-stats
-  {:team "UX West"
-   :api  #{}
-   :uses #{premium-features
-           settings}}
 
   enterprise/library
   {:team "UX West"
