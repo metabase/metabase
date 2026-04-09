@@ -19,7 +19,13 @@ import { isDataEvent } from "./sse-types";
 
 type ToolCall =
   | { toolCallId: string; toolName: string; state: "call" }
-  | { toolCallId: string; toolName: string; state: "result"; value: unknown };
+  | {
+      toolCallId: string;
+      toolName: string;
+      state: "result";
+      value: unknown;
+      error?: unknown;
+    };
 
 type DataPart = { type: string; data: unknown };
 
@@ -131,6 +137,7 @@ function processEvent(
         ...result.toolCalls[index],
         state: "result",
         value: event.output,
+        error: event.error,
       };
       result.history.push({
         role: "tool",

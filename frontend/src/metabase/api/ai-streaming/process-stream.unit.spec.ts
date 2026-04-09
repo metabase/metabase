@@ -1,4 +1,5 @@
 import { processChatResponse } from "./process-stream";
+import type { SSEEvent } from "./sse-types";
 import { createMockSSEStream } from "./test-utils";
 
 const getMockedCallbacks = () => ({
@@ -15,7 +16,7 @@ const expectNoStreamedError = {
   },
 };
 
-const mockSuccessStreamEvents = [
+const mockSuccessStreamEvents: SSEEvent[] = [
   { type: "start", messageId: "m1" },
   { type: "start-step" },
   { type: "text-start", id: "t1" },
@@ -72,6 +73,7 @@ describe("processChatResponse", () => {
   });
 
   it("should ignore unknown event types", async () => {
+    // @ts-expect-error — intentionally testing unknown event type
     const mockStream = createMockSSEStream([
       { type: "some_unknown_event_type" },
     ]);
@@ -120,26 +122,42 @@ describe("processChatResponse", () => {
   });
 
   it("should resolve with partial response for aborted requests", async () => {
-    const mockStream = createMockSSEStream(
-      [
+    async function* abortingSource() {
+      const encoder = new TextEncoder();
+      const events = [
         { type: "text-start", id: "t1" },
         { type: "text-delta", id: "t1", delta: "Partial response" },
         { type: "text-end", id: "t1" },
         { type: "data-state", id: "d1", data: { testing: 123 } },
-      ],
-      {
-        streamOptions: {
-          pull() {
-            throw new DOMException("Stream aborted", "AbortError");
-          },
-        },
-      },
-    );
-    const config = getMockedCallbacks();
+      ];
+      for (const event of events) {
+        yield encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
+      }
+      throw new DOMException("Stream aborted", "AbortError");
+    }
 
+    const gen = abortingSource();
+    const mockStream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        const { value, done } = await gen.next();
+        if (done) {
+          controller.close();
+        } else {
+          controller.enqueue(value);
+        }
+      },
+    });
+
+    const config = getMockedCallbacks();
     const result = await processChatResponse(mockStream, config);
 
-    expect(result).toMatchSnapshot();
+    expect(result.aborted).toBe(true);
+    expect(result.history).toEqual([
+      { content: "Partial response", role: "assistant" },
+    ]);
+    expect(result.data).toEqual([
+      { type: "data-state", data: { testing: 123 } },
+    ]);
     expect(config.onTextPart).toHaveBeenCalled();
     expect(config.onDataPart).toHaveBeenCalled();
     expect(config.onError).not.toHaveBeenCalled();

@@ -480,7 +480,7 @@
           xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
-          ;; function (e.g. aisdk-line-xf wrapping streaming-writer-rf) whose completion
+          ;; function (e.g. aisdk-sse-xf wrapping streaming-writer-rf) whose completion
           ;; arity emits a finish message — that must only fire once, at the end of the
           ;; entire agent loop, not after every iteration.
           result'            (reduce (xf rf) result llm-call)

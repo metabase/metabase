@@ -1,32 +1,10 @@
 import { defer } from "metabase/utils/promise";
 
+import type { SSEEvent } from "./sse-types";
+
 export function createPauses<Count extends number>(count: Count) {
   const pauses = new Array(count).fill(null).map(() => defer());
   return pauses as ReturnType<typeof defer>[] & { length: Count };
-}
-
-export function createMockReadableStream(
-  textChunks: string[] | AsyncGenerator<string, void, unknown>,
-  options?: {
-    disableAutoInsertNewLines?: boolean;
-    streamOptions?: Partial<ConstructorParameters<typeof ReadableStream>[0]>;
-  },
-): ReadableStream<Uint8Array> {
-  return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const textEncoder = new TextEncoder();
-      try {
-        for await (const textChunk of textChunks) {
-          const text =
-            textChunk + (options?.disableAutoInsertNewLines ? "" : "\n");
-          controller.enqueue(textEncoder.encode(text));
-        }
-      } finally {
-        controller.close();
-      }
-    },
-    ...(options?.streamOptions ?? {}),
-  });
 }
 
 /**
@@ -39,7 +17,7 @@ export function createMockReadableStream(
  * controls its own lifecycle — no events are auto-appended.
  */
 export function createMockSSEStream(
-  events: (object | string)[] | AsyncGenerator<object | string, void, unknown>,
+  events: SSEEvent[] | AsyncGenerator<SSEEvent | string, void, unknown>,
   options?: {
     streamOptions?: Partial<ConstructorParameters<typeof ReadableStream>[0]>;
   },
@@ -92,30 +70,20 @@ export function mockEndpoint<T extends Response>(
 }
 
 export type MockStreamedEndpointParams = {
-  textChunks?: string[];
   stream?: ReadableStream<any>;
-  events?: (object | string)[];
+  events?: SSEEvent[];
   waitForResponse?: boolean;
 };
 
 export function mockStreamedEndpoint(
   url: string,
-  {
-    textChunks,
-    stream,
-    events,
-    waitForResponse = false,
-  }: MockStreamedEndpointParams,
+  { stream, events, waitForResponse = false }: MockStreamedEndpointParams,
 ) {
   const responseGate = waitForResponse ? defer() : null;
 
   const mock = mockEndpoint(url, async (init) => {
     await responseGate?.promise;
-    const body =
-      stream ||
-      (events && createMockSSEStream(events)) ||
-      (textChunks && createMockReadableStream(textChunks)) ||
-      undefined;
+    const body = stream || (events && createMockSSEStream(events)) || undefined;
 
     // make stream abortable
     if (body) {

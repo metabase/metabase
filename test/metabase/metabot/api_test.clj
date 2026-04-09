@@ -93,7 +93,7 @@
     ;; streams many text-delta events slowly. The Metabase server connects to it
     ;; via the full native-agent pipeline:
     ;;   openrouter-raw → sse-reducible → openrouter->aisdk-chunks-xf → tool-executor-xf
-    ;;   → lite-aisdk-xf → agent loop → aisdk-line-xf → streaming-writer-rf → client
+    ;;   → lite-aisdk-xf → agent loop → aisdk-sse-xf → streaming-writer-rf → client
     ;; Then the test client reads one byte and closes the connection.
     ;; We assert that store-parts! is called with a partial result.
     (let [total-chunks 30

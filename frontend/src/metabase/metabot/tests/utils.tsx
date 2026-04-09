@@ -14,9 +14,9 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import {
   type MockStreamedEndpointParams,
-  createMockReadableStream,
   createMockSSEStream,
   createPauses,
   mockStreamedEndpoint,
@@ -40,7 +40,7 @@ import {
 } from "../state";
 import { getMetabotInitialState } from "../state/reducer-utils";
 
-export { createMockReadableStream, createMockSSEStream, createPauses };
+export { createMockSSEStream, createPauses };
 
 export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", params);
@@ -134,7 +134,7 @@ export const lastReqBody = async (
 };
 
 // Common mock response fixtures
-export const whoIsYourFavoriteResponse = [
+export const whoIsYourFavoriteResponse: SSEEvent[] = [
   { type: "start", messageId: "m1" },
   { type: "start-step" },
   { type: "text-start", id: "t1" },
@@ -144,7 +144,7 @@ export const whoIsYourFavoriteResponse = [
   { type: "finish-step" },
 ];
 
-export const erroredResponse = [
+export const erroredResponse: SSEEvent[] = [
   { type: "error", errorText: "Anthropic API key expired or invalid" },
 ];
 

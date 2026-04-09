@@ -34,32 +34,12 @@ exports[`processChatResponse should be able to process a valid stream 1`] = `
   ],
   "toolCalls": [
     {
+      "error": undefined,
       "state": "result",
       "toolCallId": "x",
       "toolName": "x",
       "value": "",
     },
   ],
-}
-`;
-
-exports[`processChatResponse should resolve with partial response for aborted requests 1`] = `
-{
-  "aborted": false,
-  "data": [
-    {
-      "data": {
-        "testing": 123,
-      },
-      "type": "data-state",
-    },
-  ],
-  "history": [
-    {
-      "content": "Partial response",
-      "role": "assistant",
-    },
-  ],
-  "toolCalls": [],
 }
 `;

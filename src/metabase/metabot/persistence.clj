@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 ;;; ---------------------------------------- Storage format migration ----------------------------------------
@@ -116,7 +117,7 @@
                                              :name      (:toolName block)
                                              :arguments (if (string? (:input block))
                                                           (:input block)
-                                                          (:input block))}]}
+                                                          (json/encode (:input block)))}]}
                     tool-result (when (#{"output-available" "error"} (:state block))
                                   {:role         "tool"
                                    :tool_call_id (:toolCallId block)

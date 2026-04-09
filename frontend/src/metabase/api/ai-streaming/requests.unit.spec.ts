@@ -6,6 +6,7 @@ import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "./requests";
+import type { SSEEvent } from "./sse-types";
 import { mockStreamedEndpoint } from "./test-utils";
 
 const endpoint = "/some-streamed-endpoint";
@@ -169,7 +170,7 @@ describe("ai requests", () => {
   });
 });
 
-const whoIsYourFavoriteResponse = [
+const whoIsYourFavoriteResponse: SSEEvent[] = [
   { type: "text-start", id: "t1" },
   { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
   { type: "text-end", id: "t1" },
