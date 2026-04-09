@@ -81,25 +81,21 @@
     (let [source        (rs.git/git-source repo_url nil access_token nil)
           snapshot      (rs.git/snapshot-at-ref source (or pinned_version "HEAD"))
           commit-sha    (:version snapshot)
-          content       (rs.git/read-file snapshot "dist/index.js")
-          _             (when-not content
-                          (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
+          _content       (or (rs.git/read-file snapshot "dist/index.js")
+                             (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
           manifest-str  (or (rs.git/read-file snapshot (manifest/manifest-path))
                             (throw (ex-info (str (manifest/manifest-path) " not found in repository")
                                             {:commit commit-sha})))
           parsed        (or (manifest/parse-manifest manifest-str)
                             (throw (ex-info (str "Failed to parse " (manifest/manifest-path))
                                             {:commit commit-sha})))
-          version-str   (get-in parsed [:metabase :version])
-          ;; check version compatibility
-          _             (when (and version-str
-                                   (not (manifest/compatible? {:metabase_version version-str})))
-                          (throw (ex-info
-                                  (format "Plugin requires Metabase version %s but current version is %s"
-                                          version-str
-                                          (str "v" (config/current-major-version)))
-                                  {:metabase_version version-str})))]
-      ;; update DB — display_name and icon always come from manifest
+          version-str   (get-in parsed [:metabase :version])]
+      (when (and version-str
+                 (not (manifest/compatible? {:metabase_version version-str})))
+        (throw (ex-info
+                (format "Plugin requires Metabase version %s but current version is %s"
+                        version-str (:tag config/mb-version-info))
+                {:metabase_version version-str})))
       (t2/update! :model/CustomVizPlugin id
                   {:status            :active
                    :error_message     nil
