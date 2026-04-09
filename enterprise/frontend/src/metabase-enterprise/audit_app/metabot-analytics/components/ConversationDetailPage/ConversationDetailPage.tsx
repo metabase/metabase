@@ -70,14 +70,9 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const userName = conversation.user
     ? getUserName(conversation.user) || t`Unknown`
     : t`Unknown`;
-  const totalTokens = conversation.messages.reduce(
-    (sum, msg) => sum + (msg.total_tokens ?? 0),
-    0,
-  );
-  const messageCount = conversation.messages.length;
-  const firstModel = conversation.messages.find(
-    (m) => m.role === "assistant" && m.model,
-  )?.model;
+  const totalTokens = conversation.total_tokens ?? 0;
+  const messageCount = conversation.message_count ?? 0;
+  const firstModel = conversation.model ?? undefined;
   const queries = conversation.queries ?? [];
 
   return (

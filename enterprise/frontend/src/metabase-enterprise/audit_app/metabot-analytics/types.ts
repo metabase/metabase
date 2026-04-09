@@ -42,15 +42,6 @@ export type ConversationsResponse = {
   offset: number;
 };
 
-export type MessageDetail = {
-  message_id: number;
-  created_at: string;
-  role: "user" | "assistant";
-  model: string | null;
-  total_tokens: number | null;
-  data: unknown;
-};
-
 export type GeneratedQuery = {
   tool: string;
   call_id: string | null;
@@ -66,11 +57,11 @@ export type GeneratedQuery = {
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;
-  user_id: number;
   summary: string | null;
-  state: unknown;
   user: MetabotUserInfo | null;
-  messages: MessageDetail[];
+  message_count: number;
+  total_tokens: number;
+  model: string | null;
   chat_messages: MetabotChatMessage[];
   queries: GeneratedQuery[];
 };

@@ -50,6 +50,9 @@
    [:created_at      ms/TemporalInstant]
    [:summary         [:maybe :string]]
    [:user            [:maybe :map]]
+   [:message_count   ms/IntGreaterThanOrEqualToZero]
+   [:total_tokens    ms/IntGreaterThanOrEqualToZero]
+   [:model           [:maybe :string]]
    [:chat_messages   [:sequential :map]]
    [:queries         [:sequential GeneratedQuery]]])
 

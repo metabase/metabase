@@ -36,8 +36,6 @@
   (let [total   (or (:count (t2/query-one {:select [[[:count :*] :count]]
                                            :from   [:metabot_conversation]}))
                     0)
-        ;; `:c.id :asc` is a stable tiebreaker so pagination stays
-        ;; deterministic when the primary sort key has duplicates.
         results (t2/query (assoc list-query
                                  :order-by [[:c.created_at :desc] [:c.id :asc]]
                                  :limit limit
@@ -63,5 +61,8 @@
        :created_at      (:created_at conversation)
        :summary         (:summary conversation)
        :user            (:user hydrated)
+       :message_count   (count messages)
+       :total_tokens    (reduce + 0 (keep :total_tokens messages))
+       :model           (some :model messages)
        :chat_messages   (metabot-persistence/messages->chat-messages messages)
        :queries         (analytics.queries/messages->generated-queries messages)})))
