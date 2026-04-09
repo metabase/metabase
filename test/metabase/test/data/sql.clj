@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [honey.sql :as sql]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql]
@@ -344,12 +345,11 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defn- get-tabledef
-  [dbdef table-name]
-  (->> dbdef
-       :table-definitions
-       (filter #(= (:table-name %) table-name))
-       first))
+(defn get-tabledef
+  "Find the first table definition with `table-name`."
+  [{:keys [table-definitions], :as _dbdef} table-name]
+  (m/find-first #(= (:table-name %) table-name)
+                table-definitions))
 
 (defmethod add-fk-sql :sql/test-extensions
   [driver {:keys [database-name] :as dbdef} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]

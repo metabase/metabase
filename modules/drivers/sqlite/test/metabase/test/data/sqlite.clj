@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -60,7 +61,7 @@
 (defmethod sql.tx/add-fk-sql            :sqlite [& _] nil) ; SQLite FKs have to be added at Table creation time
 
 (defmethod sql.tx/create-table-sql :sqlite
-  [driver {:keys [database-name], :as _db-def} {:keys [table-name field-definitions], :as _tabledef}]
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions], :as _tabledef}]
   (letfn [(spaces [& args]
             (interpose \space args))
           (table [table-name]
@@ -80,12 +81,16 @@
              "PRIMARY KEY"
              (apply sql-list (map field (sql.tx/fielddefs->pk-field-names field-definitions)))))
           (foreign-key [field-definition]
-            (spaces
-             "FOREIGN KEY"
-             (sql-list (field (:field-name field-definition)))
-             "REFERENCES"
-             (table (name (:fk field-definition)))
-             (sql-list (field (sql.tx/pk-field-name driver)))))
+            (let [dest-table-name (name (:fk field-definition))
+                  pk-names        (->> (sql.tx/get-tabledef dbdef dest-table-name)
+                                       :field-definitions
+                                       sql.tx/fielddefs->pk-field-names)]
+              (spaces
+               "FOREIGN KEY"
+               (sql-list (field (:field-name field-definition)))
+               "REFERENCES"
+               (table dest-table-name)
+               (apply sql-list (map field pk-names)))))
           (foreign-keys []
             (->> field-definitions
                  (filter :fk)
@@ -96,28 +101,28 @@
                  (apply sql-list (concat (field-defs)
                                          [(primary-key)]
                                          (foreign-keys))))]
-      (-> parts
-          flatten
-          str/join))))
+      (str/join (flatten parts)))))
 
 (deftest ^:parallel create-table-ddl-test
   (testing "CREATE TABLE for SQLite should include inline FOREIGN KEY declarations (#45788, QUE2-59)"
-    (let [driver    :sqlite
-          db-def    {:database-name "country"}
-          table-def {:table-name        "country"
-                     :field-definitions [{:field-name    "id"
-                                          :base-type     {:native "INTEGER"}
-                                          :semantic-type :type/PK
-                                          :pk?           true}
-                                         {:field-name "name"
-                                          :base-type  :type/Text}
-                                         {:field-name "continent_id"
-                                          :base-type  :type/Integer
-                                          :fk         :continent}]}
-          sql       (sql.tx/create-table-sql
-                     driver
-                     db-def
-                     table-def)]
+    (let [db-def    {:database-name     "country"
+                     :table-definitions [{:table-name        "continent"
+                                          :field-definitions [{:field-name    "id"
+                                                               :base-type     {:native "INTEGER"}
+                                                               :semantic-type :type/PK
+                                                               :pk?           true}]}
+                                         {:table-name        "country"
+                                          :field-definitions [{:field-name    "id"
+                                                               :base-type     {:native "INTEGER"}
+                                                               :semantic-type :type/PK
+                                                               :pk?           true}
+                                                              {:field-name "name"
+                                                               :base-type  :type/Text}
+                                                              {:field-name "continent_id"
+                                                               :base-type  :type/Integer
+                                                               :fk         :continent}]}]}
+          table-def (second (:table-definitions db-def))
+          sql       (sql.tx/create-table-sql :sqlite db-def table-def)]
       (is (= ["CREATE TABLE \"country\" ("
               "  \"id\" INTEGER,"
               "  \"name\" TEXT,"
@@ -125,7 +130,27 @@
               "  PRIMARY KEY (\"id\"),"
               "  FOREIGN KEY (\"continent_id\") REFERENCES \"continent\" (\"id\")"
               ")"]
-             (str/split-lines (driver/prettify-native-form driver sql)))))))
+             (str/split-lines (driver/prettify-native-form :sqlite sql)))))))
+
+(deftest ^:parallel create-table-ddl-test-2
+  (testing "CREATE TABLE for SQLite should include inline FOREIGN KEY declarations should handle custom PKs (#45788, QUE2-59)"
+    (let [db-def    (mt/dataset-definition "custom-pk"
+                                           [["user"
+                                             [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
+                                             []]
+                                            ["group"
+                                             [{:field-name "id" :base-type {:native "INTEGER"} :pk? true}
+                                              {:field-name "user_custom_id" :base-type :type/Integer :fk "user"}]
+                                             []]])
+          table-def (second (:table-definitions db-def))
+          sql       (sql.tx/create-table-sql :sqlite db-def table-def)]
+      (is (= ["CREATE TABLE \"group\" ("
+              "  \"id\" INTEGER,"
+              "  \"user_custom_id\" INTEGER,"
+              "  PRIMARY KEY (\"id\"),"
+              "  FOREIGN KEY (\"user_custom_id\") REFERENCES \"user\" (\"custom_id\")"
+              ")"]
+             (str/split-lines (driver/prettify-native-form :sqlite sql)))))))
 
 (defmethod tx/destroy-db! :sqlite
   [_driver dbdef]
