@@ -1,7 +1,5 @@
 (ns metabase.util.throttle
-  "Shared helpers for turning throttle exceptions into HTTP 429 responses.
-   Coupled to the `throttle.core` library's `\"Too many attempts!\"` message prefix —
-   update [[throttle-exception?]] if that changes."
+  "Helpers for turning throttle exceptions into HTTP 429 responses."
   (:require
    [clojure.string :as str])
   (:import

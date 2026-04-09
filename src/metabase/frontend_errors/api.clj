@@ -13,11 +13,10 @@
 (mr/def ::frontend-error-type
   [:enum "component-crash" "chart-render-error"])
 
-;; This endpoint is unauthenticated and writes to a Prometheus counter, so it is a
-;; natural target for abuse (flooding to distort metrics or exhaust resources).
-;; Throttle anonymous clients by IP, which is derived server-side. Browser IDs are
-;; client-controlled cookies and can be rotated or omitted to evade throttling, so
-;; they must not be used as the authoritative throttle bucket here.
+;; This endpoint is unauthenticated and writes to a Prometheus counter, so it is a natural target
+;; for abuse (flooding to distort metrics or exhaust resources). Throttle anonymous clients by IP,
+;; which is derived server-side. Browser IDs are client-controlled cookies and can be rotated or
+;; omitted to evade throttling, so they must not be used as the authoritative throttle bucket here.
 (def ^:private frontend-errors-throttler
   (throttle/make-throttler :frontend-errors
                            :attempts-threshold 100

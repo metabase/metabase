@@ -126,16 +126,16 @@
 (def ^:private token-ip-throttler
   (throttle/make-throttler :ip-address :attempts-threshold 50 :attempt-ttl-ms one-hour-ms))
 
-;; /oauth/register is unauthenticated and creates server-side state (client records).
-;; Without throttling, an attacker can exhaust storage or generate unlimited client_id/secret pairs.
-;; Per-IP only since there's no identity at registration time. Threshold allows burst setup of
-;; several agents without enabling sustained spam.
+;; /oauth/register is unauthenticated and creates server-side state (client records). Without
+;; throttling, an attacker can exhaust storage or generate unlimited client_id/secret pairs. Per-IP
+;; only since there's no identity at registration time. Threshold allows burst setup of several
+;; agents without enabling sustained spam.
 (def ^:private registration-throttler
   (throttle/make-throttler :ip-address :attempts-threshold 10 :attempt-ttl-ms one-minute-ms))
 
-;; /oauth/authorize/decision is lower risk (requires authentication + CSRF token),
-;; but a compromised session could automate consent-granting. A per-user cap limits the blast
-;; radius while allowing setup of many agents in a single session.
+;; /oauth/authorize/decision is lower risk (requires authentication + CSRF token), but a
+;; compromised session could automate consent-granting. A per-user cap limits the blast radius
+;; while allowing setup of many agents in a single session.
 (def ^:private authorize-decision-throttler
   (throttle/make-throttler :user-id :attempts-threshold 20 :attempt-ttl-ms one-hour-ms))
 
