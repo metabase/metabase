@@ -67,7 +67,7 @@
   (let [lower (u/lower-case-en path)]
     (some #(str/ends-with? lower %) allowed-asset-extensions)))
 
-(defn- safe-relative-path?
+(defn safe-relative-path?
   "Returns true if path normalizes to a relative path with no directory traversal."
   [^String path]
   (let [normalized (.normalize (java.nio.file.Path/of path (into-array String [])))]
@@ -87,3 +87,16 @@
                          (when (and (image-file? icon-dark) (safe-relative-path? icon-dark)) icon-dark))]
     (distinct (concat declared (when icon-name [icon-name])
                       (when icon-dark-name [icon-dark-name])))))
+
+(defn asset-content-type
+  "Return the MIME content type for an allowed asset file, or nil if not recognized.
+   Allows image files and JSON files (for locale translations)."
+  [^String path]
+  (cond
+    (str/ends-with? path ".json")
+    "application/json"
+
+    :else
+    (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
+      (when (and ct (str/starts-with? ct "image/"))
+        ct))))

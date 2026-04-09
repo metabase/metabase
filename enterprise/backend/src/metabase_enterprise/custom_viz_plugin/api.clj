@@ -245,30 +245,13 @@
     (catch Throwable e
       (raise e))))
 
-(defn- asset-content-type
-  "Return the MIME content type for an allowed asset file, or nil if not recognized.
-   Allows image files and JSON files (for locale translations)."
-  [^String path]
-  (cond
-    (str/ends-with? path ".json")
-    "application/json"
-
-    :else
-    (let [ct (java.net.URLConnection/guessContentTypeFromName path)]
-      (when (and ct (str/starts-with? ct "image/"))
-        ct))))
-
 (defn- validate-asset-path
-  "Validate that an asset path is a simple filename (no directory traversal).
-   Returns the normalized path or throws on invalid input."
+  "Validate that an asset path is a safe relative filename (no directory traversal).
+   Returns the path or throws on invalid input."
   ^String [^String raw-path]
-  (let [root     (.toPath (java.io.File. "/"))
-        resolved (.normalize (.resolve root raw-path))
-        normalized (str (.relativize root resolved))]
-    (when (or (str/blank? normalized)
-              (not (.startsWith resolved root)))
-      (throw (ex-info "Invalid asset path" {:status-code 400 :path raw-path})))
-    normalized))
+  (when-not (manifest/safe-relative-path? raw-path)
+    (throw (ex-info "Invalid asset path" {:status-code 400 :path raw-path})))
+  raw-path)
 
 (api.macros/defendpoint :get "/:id/asset" :- :any
   "Serve a static image asset from the plugin's cached assets.
@@ -284,7 +267,7 @@
    raise]
   (try
     (let [asset-path   (validate-asset-path path)
-          content-type (asset-content-type asset-path)]
+          content-type (manifest/asset-content-type asset-path)]
       (when-not content-type
         (throw (ex-info "Unsupported asset type" {:status-code 404})))
       (let [_plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))

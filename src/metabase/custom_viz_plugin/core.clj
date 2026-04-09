@@ -31,3 +31,10 @@
   metabase-enterprise.custom-viz-plugin.core
   [_parsed-manifest]
   [])
+
+(defenterprise asset-content-type
+  "Return the MIME content type for an allowed asset file, or nil if not recognized.
+   OSS: always returns nil."
+  metabase-enterprise.custom-viz-plugin.core
+  [_path]
+  nil)

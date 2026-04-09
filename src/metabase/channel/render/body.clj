@@ -393,7 +393,7 @@
 (defn- asset->data-uri
   "Convert an asset's bytes to a data: URI string."
   [^String asset-name ^bytes asset-bytes]
-  (let [content-type (or (java.net.URLConnection/guessContentTypeFromName asset-name)
+  (let [content-type (or (custom-viz-plugin/asset-content-type asset-name)
                          "application/octet-stream")]
     (str "data:" content-type ";base64,"
          (.encodeToString (java.util.Base64/getEncoder) asset-bytes))))

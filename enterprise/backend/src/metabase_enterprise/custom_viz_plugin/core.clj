@@ -28,3 +28,9 @@
   :feature :custom-viz
   [parsed-manifest]
   (manifest/asset-paths parsed-manifest))
+
+(defenterprise asset-content-type
+  "Enterprise implementation: return the MIME content type for an allowed asset file."
+  :feature :custom-viz
+  [path]
+  (manifest/asset-content-type path))
