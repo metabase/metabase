@@ -1378,6 +1378,8 @@
            request
            settings
            system
+           task
+           tracing
            util}}
 
   ;; TODO -- too many API namespaces
