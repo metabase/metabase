@@ -124,6 +124,16 @@ export function computeSourceBreakoutColors(
   return result;
 }
 
+export function getSingleColor(
+  colors: BreakoutColorMap | string | undefined,
+): string | undefined {
+  return typeof colors === "string"
+    ? colors
+    : colors instanceof Map
+      ? colors.values().next().value
+      : undefined;
+}
+
 // Column layout with breakout:
 // - 3 cols when dimension != breakout: [dimension, breakout, metric] → output: [dimension, metric]
 // - 2 cols when dimension == breakout: [breakout, metric] → output: [breakout, metric]
@@ -160,7 +170,7 @@ export function splitByBreakout(
       if (rowsByBreakoutValue.size > MAX_SERIES) {
         return {
           series: [series],
-          activeBreakoutColorMap: breakoutColorMap.values().next().value,
+          activeBreakoutColorMap: getSingleColor(breakoutColorMap),
         };
       }
     }
@@ -301,12 +311,7 @@ export function buildRawSeriesFromDefinitions(
     const seriesKey = isFirstSeries ? result.data.cols[1]?.name : name;
 
     const colors = sourceBreakoutColors[entry.id];
-    const color =
-      typeof colors === "string"
-        ? colors
-        : colors instanceof Map
-          ? colors.values().next().value
-          : undefined;
+    const color = getSingleColor(colors);
 
     const singleSeries: SingleSeries = {
       card: createSeriesCard(cardId, name, display, {

@@ -7,6 +7,7 @@ import type {
 
 import { getDefinitionName } from "./definition-builder";
 import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
+import { getSingleColor } from "./series";
 
 export interface LegendItem {
   label: string;
@@ -41,12 +42,7 @@ export function buildLegendGroups(
     }
 
     const colors = activeBreakoutColors[entry.id];
-    const color =
-      typeof colors === "string"
-        ? colors
-        : colors instanceof Map
-          ? colors.values().next().value
-          : undefined;
+    const color = getSingleColor(colors);
     if (!color) {
       continue;
     }
