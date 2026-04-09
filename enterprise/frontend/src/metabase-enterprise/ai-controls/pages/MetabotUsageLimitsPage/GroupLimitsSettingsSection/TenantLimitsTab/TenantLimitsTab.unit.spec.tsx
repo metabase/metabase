@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupUpdateAIControlsTenantLimitEndpoint } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   MetabotLimitPeriod,
   MetabotLimitType,
@@ -144,5 +144,22 @@ describe("TenantLimitsTab", () => {
     await userEvent.type(acmeInput, "300");
 
     expect(acmeInput).toHaveValue(300);
+  });
+
+  it("shows error when value exceeds the instance limit", async () => {
+    setup({ instanceLimit: 100 });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    const tenantInput = screen.getByLabelText(
+      /Max total monthly tokens for Acme Corp/,
+    );
+    await userEvent.type(tenantInput, "200");
+
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(
+        /Can't be higher than the instance limit/,
+      );
+    });
   });
 });
