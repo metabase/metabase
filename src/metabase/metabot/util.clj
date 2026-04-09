@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
@@ -108,7 +107,10 @@
   Handles both legacy format and lib/query format."
   [query]
   (or
-   (and (lib/native-only-query? query)
-        (lib/raw-native-query query))
+   ;; Following should be ideally handled by lib functions. However we have test in place that checks this piece
+   ;; is able to handle not-normalized mblq5 with e.g. string value for type. Lib functions throw on such input.
+   ;;
+   ;; Try lib/query format (with stages)
+   (get-in query [:stages 0 :native])
    ;; Try legacy format
    (get-in query [:native :query])))
