@@ -1,6 +1,7 @@
 (ns metabase-enterprise.custom-viz-plugin.api
   "/api/ee/custom-viz-plugin endpoints."
   (:require
+   [clj-http.client :as http]
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
@@ -14,7 +15,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io BufferedReader InputStream InputStreamReader OutputStream)
-   (java.net HttpURLConnection URI)))
+   (java.net URI)))
 
 (set! *warn-on-reflection* true)
 
@@ -285,25 +286,21 @@
                                              "Connection"         "keep-alive"
                                              "X-Accel-Buffering"  "no"}}
                              [^OutputStream os canceled-chan]
-        (let [uri  (URI. sse-url)
-              conn ^HttpURLConnection (.openConnection (.toURL uri))]
-          (.setRequestMethod conn "GET")
-          (.setRequestProperty conn "Accept" "text/event-stream")
-          (.setConnectTimeout conn 5000)
-          (.setReadTimeout conn 0)
-          (try
-            (with-open [^InputStream is (.getInputStream conn)
+        (try
+          (let [resp (http/get sse-url {:as               :stream
+                                        :socket-timeout   0
+                                        :connection-timeout 5000
+                                        :headers          {"Accept" "text/event-stream"}})]
+            (with-open [^InputStream is (:body resp)
                         rdr (BufferedReader. (InputStreamReader. is "UTF-8"))]
               (loop []
                 (when-not (a/poll! canceled-chan)
                   (when-let [line (.readLine rdr)]
                     (.write os (.getBytes (str line "\n") "UTF-8"))
                     (.flush os)
-                    (recur)))))
-            (catch Exception e
-              (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e)))
-            (finally
-              (.disconnect conn))))))))
+                    (recur))))))
+          (catch Exception e
+            (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))))))))
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the bundle from the git repository.
