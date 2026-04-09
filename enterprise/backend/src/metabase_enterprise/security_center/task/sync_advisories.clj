@@ -72,7 +72,8 @@
     (try
       (send-repeat-notifications!)
       (catch Exception e
-        (log/warn e "Error sending repeat notifications")))))
+        (log/warn e "Error sending repeat notifications")))
+    (settings/security-center-last-synced-at! (t/offset-date-time))))
 
 (task/defjob ^{:doc "Periodically fetch and re-evaluate security advisories."
                DisallowConcurrentExecution true} SyncAdvisories [_]

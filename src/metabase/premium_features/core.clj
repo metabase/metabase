@@ -88,6 +88,7 @@
   is-hosted?
   premium-embedding-token
   security-center-enabled?
+  skip-security-center-env-checks
   site-uuid-for-premium-features-token-checks
   table-data-editing?
   token-features
