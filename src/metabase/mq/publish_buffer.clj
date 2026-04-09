@@ -19,9 +19,13 @@
   "Maximum time in ms since the first message before a flush is forced. 0 = no max."
   5000)
 
+(def ^:dynamic *publish-buffer-max-retries*
+  "Maximum number of flush attempts before messages are dropped. 0 = unlimited retries."
+  10)
+
 (def ^:dynamic *publish-buffer*
   "Global buffer for buffering publishes.
-   channel → {:messages [...] :deadline-ms long :created-ms long}"
+   channel → {:messages [...] :deadline-ms long :created-ms long :retries int}"
   (atom {}))
 
 (defn buffered-publish!
@@ -60,16 +64,26 @@
       (when-let [{:keys [messages] :as entry} @drained]
         (try (transport/publish! channel messages)
              (catch Exception e
-               (log/error e "Error flushing publish buffer, re-buffering" {:channel channel})
-               (analytics/inc! :metabase-mq/publish-buffer-flush-errors {:channel (name channel)})
-               ;; Put messages back into the buffer for retry on next flush cycle
-               (swap! *publish-buffer*
-                      (fn [buf]
-                        (update buf channel
-                                (fn [existing]
-                                  (if existing
-                                    (update existing :messages into messages)
-                                    (assoc entry :deadline-ms (+ (System/currentTimeMillis) *publish-buffer-ms*)))))))))))))
+               (let [retries (inc (:retries entry 0))]
+                 (analytics/inc! :metabase-mq/publish-buffer-flush-errors {:channel (name channel)})
+                 (if (and (pos? *publish-buffer-max-retries*) (>= retries *publish-buffer-max-retries*))
+                   (log/warnf "Dropping %d messages for %s after %d flush failures: %s"
+                              (count messages) channel retries (ex-message e))
+                   (do
+                     (log/error e "Error flushing publish buffer, re-buffering"
+                                {:channel channel :retries retries})
+                     ;; Put messages back into the buffer for retry on next flush cycle
+                     (swap! *publish-buffer*
+                            (fn [buf]
+                              (update buf channel
+                                      (fn [existing]
+                                        (if existing
+                                          (-> existing
+                                              (update :messages into messages)
+                                              (update :retries (fnil max 0) retries))
+                                          (assoc entry
+                                                 :deadline-ms (+ (System/currentTimeMillis) *publish-buffer-ms*)
+                                                 :retries retries)))))))))))))))
 
 (defonce ^:private publish-buffer-executor (atom nil))
 
