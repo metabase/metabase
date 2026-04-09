@@ -99,7 +99,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
     <MantineProvider
       theme={theme}
       forceColorScheme={resolvedColorScheme}
-      getStyleNonce={getCspNonce}
+      getStyleNonce={() => getCspNonce() ?? "metabase"}
       classNamesPrefix="mb-mantine"
       cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
       // This slows down unit tests like crazy
