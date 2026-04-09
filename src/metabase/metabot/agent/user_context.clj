@@ -167,16 +167,16 @@
       (str id)
       (str/join ", " (map-indexed (fn [idx _] (str id "-" idx)) chart_configs)))))
 
-(defn- query-details
-  "Extract query details from legacy or modern mbql query."
+(defn- native-query-details
+  "Extract query details from legacy or modern native query."
   [query]
   {:database-id (:database query)
-   :query-str (metabot.u/extract-sql-content query)})
+   :query-str   (metabot.u/extract-sql-content query)})
 
 (defn- format-native-query
   "Format viewing `item`"
   [item]
-  (let [{:keys [database-id query-str]} (query-details (:query item))]
+  (let [{:keys [database-id query-str]} (native-query-details (:query item))]
     (te/lines
      "The user is currently in the SQL editor."
      (when (:id item)
