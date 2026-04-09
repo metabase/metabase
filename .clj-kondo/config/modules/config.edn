@@ -1384,8 +1384,11 @@
    :uses #{api
            appearance
            models
+           request
            settings
            system
+           task
+           tracing
            util}}
 
   ;; TODO -- too many API namespaces
@@ -2010,7 +2013,8 @@
   source-swap
   {:team "Graphy"
    :api  #{metabase.source-swap.core
-           metabase.source-swap.schema}
+           metabase.source-swap.schema
+           metabase.source-swap.util}
    :uses #{driver
            lib
            sql-tools
@@ -2978,7 +2982,8 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api.routes
+   :api     #{metabase-enterprise.metabot.api
+              metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
    :friends #{enterprise/agent-api
               slackbot
@@ -2988,6 +2993,7 @@
               lib-be
               metabot
               models
+              permissions
               premium-features
               settings
               task
@@ -3067,6 +3073,7 @@
            task
            transforms
            util
+           warehouse-schema
            enterprise/dependencies}
    :model-imports #{:model/Card
                     :model/Dashboard

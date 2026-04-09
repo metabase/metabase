@@ -172,6 +172,7 @@
    [:company       {:optional true} [:string {:min 1}]]
    [:store-users   {:optional true} [:maybe [:sequential [:map
                                                           [:email :string]]]]]
+   [:meters        {:optional true} :map]
    [:quotas        {:optional true} [:sequential [:map]]]])
 
 (defn- http-fetch
@@ -620,6 +621,14 @@
   (some-> (premium-features.settings/premium-embedding-token)
           (check-token)
           :quotas))
+
+(mu/defn meters :- [:maybe :map]
+  "Returns a map of current metered usage for the subscription."
+  []
+  (clear-cache!)
+  (some-> (premium-features.settings/premium-embedding-token)
+          (check-token)
+          :meters))
 
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."
