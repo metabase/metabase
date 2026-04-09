@@ -156,7 +156,6 @@
   agent-api
   {:team    "Metabot"
    :api     #{metabase.agent-api.api}
-   :friends #{enterprise/agent-api}
    :uses    #{api
               auth-identity
               lib
@@ -1375,8 +1374,11 @@
    :uses #{api
            appearance
            models
+           request
            settings
            system
+           task
+           tracing
            util}}
 
   ;; TODO -- too many API namespaces
@@ -1537,7 +1539,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Document}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/Document}}
 
   pulse
   {:team "Gadget"
@@ -2001,7 +2003,8 @@
   source-swap
   {:team "Graphy"
    :api  #{metabase.source-swap.core
-           metabase.source-swap.schema}
+           metabase.source-swap.schema
+           metabase.source-swap.util}
    :uses #{driver
            lib
            sql-tools
@@ -2634,13 +2637,6 @@
                     :model/Sandbox
                     :model/Table}}
 
-  enterprise/agent-api
-  {:team "Metabot"
-   :api  #{metabase-enterprise.agent-api.workspace}
-   :uses #{api
-           util
-           enterprise/workspaces}}
-
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -2959,16 +2955,17 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api.routes
+   :api     #{metabase-enterprise.metabot.api
+              metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
-   :friends #{enterprise/agent-api
-              slackbot
+   :friends #{slackbot
               mcp
               metabot}
    :uses    #{api
               lib-be
               metabot
               models
+              permissions
               premium-features
               settings
               task
@@ -3047,6 +3044,7 @@
            task
            transforms
            util
+           warehouse-schema
            enterprise/dependencies}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -3326,7 +3324,6 @@
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
-   :friends #{enterprise/agent-api}
    :uses #{api
            api-scope
            app-db

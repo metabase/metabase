@@ -29,6 +29,7 @@
   has-feature?
   log-enabled?
   max-users-allowed
+  meters
   plan-alias
   quotas
   TokenStatus
@@ -56,6 +57,7 @@
   enable-database-auth-providers?
   enable-database-routing?
   enable-library?
+  enable-metabase-ai-managed?
   enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
