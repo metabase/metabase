@@ -3,19 +3,19 @@ import userEvent from "@testing-library/user-event";
 import { screen, within } from "__support__/ui";
 
 import {
-  setup as defaultSetup,
   enterChatMessage,
   feedbackModal,
   lastChatMessage,
   mockAgentEndpoint,
   mockFeedbackEndpoint,
+  setup,
   thumbsDown,
   thumbsUp,
   whoIsYourFavoriteResponse,
 } from "./utils";
 
-const setup = async () => {
-  defaultSetup();
+const setupWithNegativeFeedback = async () => {
+  setup({ isHosted: true });
   const feedbackEndpoint = mockFeedbackEndpoint();
   mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
@@ -51,8 +51,23 @@ const submitFeedback = async (modal: HTMLElement) => {
 };
 
 describe("metabot > feedback", () => {
-  it("should present the user an option to provide feedback", async () => {
-    defaultSetup();
+  it("should not show feedback buttons for non-hosted instances", async () => {
+    setup({ isHosted: false });
+    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+
+    await enterChatMessage("Who is your favorite?");
+    const lastMessage = (await lastChatMessage())!;
+
+    expect(
+      within(lastMessage).queryByTestId("metabot-chat-message-thumbs-up"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(lastMessage).queryByTestId("metabot-chat-message-thumbs-down"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should present the user an option to provide feedback for hosted instances", async () => {
+    setup({ isHosted: true });
     const feedbackEndpoint = mockFeedbackEndpoint();
     mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
@@ -75,7 +90,7 @@ describe("metabot > feedback", () => {
   });
 
   it("should prevent submission when ui-bug is selected with empty feedback", async () => {
-    const { feedbackEndpoint, modal } = await setup();
+    const { feedbackEndpoint, modal } = await setupWithNegativeFeedback();
 
     await selectIssueType(modal, "UI bug");
     await submitFeedback(modal);
@@ -85,7 +100,7 @@ describe("metabot > feedback", () => {
   });
 
   it("should allow submission when ui-bug is selected with feedback text", async () => {
-    const { feedbackEndpoint, modal } = await setup();
+    const { feedbackEndpoint, modal } = await setupWithNegativeFeedback();
 
     await selectIssueType(modal, "UI bug");
     await typeFeedback(modal, "The button is in the wrong place");
@@ -95,7 +110,7 @@ describe("metabot > feedback", () => {
   });
 
   it("should prevent submission when other is selected with empty feedback", async () => {
-    const { feedbackEndpoint, modal } = await setup();
+    const { feedbackEndpoint, modal } = await setupWithNegativeFeedback();
 
     await selectIssueType(modal, "Other");
     await submitFeedback(modal);
@@ -105,7 +120,7 @@ describe("metabot > feedback", () => {
   });
 
   it("should allow submission when non-required issue types have empty feedback", async () => {
-    const { feedbackEndpoint, modal } = await setup();
+    const { feedbackEndpoint, modal } = await setupWithNegativeFeedback();
 
     await selectIssueType(modal, "Not factually correct");
     await submitFeedback(modal);

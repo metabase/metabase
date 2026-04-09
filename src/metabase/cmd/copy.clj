@@ -126,12 +126,19 @@
     ;; 59+
     :model/Measure
     ;; 60+
+    :model/OAuthClient
+    :model/OAuthAuthorizationCode
+    :model/OAuthAccessToken
+    :model/OAuthRefreshToken
     :model/Metabot
     :model/MetabotConversation
     :model/MetabotMessage
     :model/MetabotPrompt]
    (when config/ee-available?
-     [:model/Sandbox
+     [:model/MetabotPermissions
+      :model/MetabotGroupLimit
+      :model/MetabotInstanceLimit
+      :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation])))
 

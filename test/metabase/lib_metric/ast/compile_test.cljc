@@ -589,6 +589,25 @@
       (is (seq (:joins stage-0)))
       (is (nil? (:joins stage-1))))))
 
+(deftest ^:parallel compile-two-stage-join-fields-test
+  (testing "join without :fields gets :all in stage 0"
+    (let [join-no-fields (dissoc sample-join :fields)
+          ast            (assoc-in sample-ast [:source :joins]
+                                   [{:node/type :ast/join
+                                     :mbql-join join-no-fields}])
+          result         (ast.compile/compile-to-mbql ast)
+          stage-0-join   (first (:joins (first (:stages result))))]
+      (is (= :all (:fields stage-0-join)))))
+
+  (testing "join with explicit :fields is overridden to :all (dimension system advertises all joined columns)"
+    (let [join-with-fields (assoc sample-join :fields [[:field {:join-alias "Products"} 20]])
+          ast              (assoc-in sample-ast [:source :joins]
+                                     [{:node/type :ast/join
+                                       :mbql-join join-with-fields}])
+          result           (ast.compile/compile-to-mbql ast)
+          stage-0-join     (first (:joins (first (:stages result))))]
+      (is (= :all (:fields stage-0-join))))))
+
 (deftest ^:parallel compile-two-stage-filter-separation-test
   (let [source-filter {:node/type :filter/mbql
                        :clause    [:= {} [:field {} 30] "active"]}

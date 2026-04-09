@@ -589,8 +589,6 @@ Allow these space delimited origins to embed Metabase interactive.
 
 ### `MB_EMBEDDING_APP_ORIGINS_SDK`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: ``
 - [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
@@ -1205,9 +1203,23 @@ The custom illustration for the login page.
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
-### `MB_METABOT_SLACK_SIGNING_SECRET`
+### `MB_MCP_APPS_CORS_CUSTOM_ORIGINS`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+- Type: string
+- Default: ``
+- [Configuration file name](./config-file.md): `mcp-apps-cors-custom-origins`
+
+Custom CORS origins for self-hosted MCP clients, space-separated.
+
+### `MB_MCP_APPS_CORS_ENABLED_CLIENTS`
+
+- Type: csv
+- Default: `[]`
+- [Configuration file name](./config-file.md): `mcp-apps-cors-enabled-clients`
+
+Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vscode).
+
+### `MB_METABOT_SLACK_SIGNING_SECRET`
 
 - Type: string
 - Default: `null`
@@ -1899,8 +1911,6 @@ The name of the channel where bug reports should be posted.
 
 ### `MB_SLACK_CONNECT_ATTRIBUTE_TEAM_ID`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: `https://slack.com/team_id`
 - [Configuration file name](./config-file.md): `slack-connect-attribute-team-id`
@@ -1908,8 +1918,6 @@ The name of the channel where bug reports should be posted.
 Slack OIDC claim for the team/workspace ID.
 
 ### `MB_SLACK_CONNECT_AUTHENTICATION_MODE`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `link-only`
@@ -1919,8 +1927,6 @@ Controls whether Slack can be used for SSO login or just account linking. Valid 
 
 ### `MB_SLACK_CONNECT_CLIENT_ID`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `slack-connect-client-id`
@@ -1928,8 +1934,6 @@ Controls whether Slack can be used for SSO login or just account linking. Valid 
 Client ID for your Slack app. Get this from https://api.slack.com/apps.
 
 ### `MB_SLACK_CONNECT_CLIENT_SECRET`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
@@ -1939,8 +1943,6 @@ Client Secret for your Slack app.
 
 ### `MB_SLACK_CONNECT_ENABLED`
 
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
 - Type: boolean
 - Default: `false`
 - [Configuration file name](./config-file.md): `slack-connect-enabled`
@@ -1948,8 +1950,6 @@ Client Secret for your Slack app.
 Is Slack Connect authentication configured and enabled?
 
 ### `MB_SLACK_CONNECT_USER_PROVISIONING_ENABLED`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: boolean
 - Default: `true`

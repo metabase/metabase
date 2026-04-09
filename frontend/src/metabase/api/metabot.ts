@@ -5,9 +5,13 @@ import type {
   MetabotGenerateContentResponse,
   MetabotId,
   MetabotInfo,
+  MetabotProvider,
+  MetabotSettingsResponse,
   MetabotSlackSettings,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
+  UpdateMetabotSettingsRequest,
+  UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -24,6 +28,29 @@ export const metabotApi = Api.injectEndpoints({
         listTag("metabot"),
         ...(result?.items || []).map((metabot) => idTag("metabot", metabot.id)),
       ],
+    }),
+    getMetabotSettings: builder.query<
+      MetabotSettingsResponse,
+      { provider: MetabotProvider }
+    >({
+      query: ({ provider }) => ({
+        method: "GET",
+        url: "/api/metabot/settings",
+        params: { provider },
+      }),
+      providesTags: () => [listTag("llm-models"), "session-properties"],
+    }),
+    updateMetabotSettings: builder.mutation<
+      MetabotSettingsResponse,
+      UpdateMetabotSettingsRequest
+    >({
+      query: (body) => ({
+        method: "PUT",
+        url: "/api/metabot/settings",
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("llm-models"), "session-properties"]),
     }),
     updateMetabot: builder.mutation<
       MetabotInfo,
@@ -107,11 +134,23 @@ export const metabotApi = Api.injectEndpoints({
       }),
       invalidatesTags: ["session-properties"],
     }),
+    getUserMetabotPermissions: builder.query<
+      UserMetabotPermissionsResponse,
+      void
+    >({
+      query: () => ({
+        method: "GET",
+        url: "/api/metabot/permissions/user-permissions",
+      }),
+      providesTags: () => [listTag("metabot-permissions")],
+    }),
   }),
 });
 
 export const {
+  useGetMetabotSettingsQuery,
   useListMetabotsQuery,
+  useUpdateMetabotSettingsMutation,
   useUpdateMetabotMutation,
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,
@@ -119,4 +158,5 @@ export const {
   useLazyMetabotGenerateContentQuery,
   useSubmitMetabotFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
+  useGetUserMetabotPermissionsQuery,
 } = metabotApi;

@@ -53,7 +53,7 @@
 ;; ## `model-exports`:
 ;;
 ;; Set of `:model/X` keywords defined by this module that it allows others to reference. By default all are private.
-;; If you know what you're doing, we support an :all keyword, but let's prefer explicit sets for now.
+;; If you know what you're doing, we support an :any keyword, but let's prefer explicit sets for now.
 ;;
 ;;    enterprise/workspaces
 ;;    {...
@@ -62,11 +62,24 @@
 ;; ## `model-imports`:
 ;;
 ;; Set of `:model/X` keywords that this module is allowed to reference from other modules. Defaults to none.
-;; If you know what you're doing, we support an :all keyword, but let's prefer explicit sets for now.
+;; If you know what you're doing, we support an :any keyword, but let's prefer explicit sets for now.
 ;;
 ;;    transforms-base
 ;;    {...
 ;;     :model-imports #{:model/Database :model/Field :model/Table :model/Transform}}
+;;
+;; ### `:bypass`
+;;
+;; Some modules (like `cmd` and `enterprise/serialization`) are inherently cross-cutting and import nearly
+;; every model. For these, use `:model-imports :bypass` instead of an explicit set:
+;;
+;;    cmd
+;;    {...
+;;     :model-imports :bypass}
+;;
+;; A bypassed module can reference any model — even ones that are not exported. Models that are *only*
+;; referenced outside their home module by bypassed modules do not need to appear in `:model-exports`
+;; (in fact, they must not — the staleness test will flag them).
 ;;
 ;; ## Tips
 ;;
@@ -97,7 +110,7 @@
            settings
            util
            warehouses}
-   :model-exports #{:model/Action :model/HTTPAction :model/ImplicitAction :model/QueryAction}
+   :model-exports #{:model/Action}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -133,7 +146,6 @@
            events
            models
            util}
-   :model-exports #{:model/RecentViews}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -147,6 +159,7 @@
    :friends #{enterprise/agent-api}
    :uses    #{api
               auth-identity
+              lib
               metabot
               query-processor
               request
@@ -203,8 +216,7 @@
 
   analyze
   {:team "Graphy"
-   :api  #{metabase.analyze.core
-           metabase.analyze.query-results}
+   :api  #{metabase.analyze.core}
    :uses #{config
            driver
            lib
@@ -222,13 +234,15 @@
            metabase.api.docs
            metabase.api.init
            metabase.api.macros
+           metabase.api.macros.defendpoint.tools-manifest
            metabase.api.macros.scope
            metabase.api.open-api
            metabase.api.routes.common
            metabase.api.settings
            metabase.api.util
            metabase.api.util.handlers}
-   :uses #{config
+   :uses #{api-scope
+           config
            events
            models
            settings
@@ -276,6 +290,11 @@
            metabase.api-routes.core}
    :uses :any}
 
+  api-scope
+  {:team "Metabot"
+   :api  #{metabase.api-scope.core
+           metabase.api-scope.init}}
+
   app-db
   {:team "UX West"
    :api  #{metabase.app-db.cluster-lock ; TODO FIXME
@@ -288,7 +307,11 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database :model/Field :model/QueryCache :model/Secret :model/Setting}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/QueryCache
+                    :model/Secret
+                    :model/Setting}}
 
   appearance
   {:team "UX West"
@@ -370,12 +393,11 @@
            collections
            queries
            util}
-   :model-exports #{:model/BookmarkOrdering
-                    :model/CardBookmark
-                    :model/CollectionBookmark
-                    :model/DashboardBookmark
-                    :model/DocumentBookmark}
-   :model-imports #{:model/Card :model/Collection :model/Dashboard :model/Document}}
+   :model-exports #{:model/CardBookmark :model/CollectionBookmark :model/DashboardBookmark}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Document}}
 
   bug-reporting
   {:team "UX West"
@@ -408,7 +430,10 @@
            settings
            util}
    :model-exports #{:model/CacheConfig :model/QueryCache}
-   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/Database}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/Database}}
 
   ;; TODO -- way too many API namespaces.
   channel
@@ -450,7 +475,10 @@
            types
            util}
    :model-exports #{:model/Channel :model/ChannelTemplate}
-   :model-imports #{:model/Dashboard :model/Database :model/PulseChannel :model/User}}
+   :model-imports #{:model/Dashboard
+                    :model/Database
+                    :model/PulseChannel
+                    :model/User}}
 
   classloader
   {:team "DevEx"
@@ -498,78 +526,7 @@
            search
            settings
            util}
-   :model-imports #{:model/Action
-                    :model/ApiKey
-                    :model/ApplicationPermissionsRevision
-                    :model/AuditLog
-                    :model/AuthIdentity
-                    :model/BookmarkOrdering
-                    :model/Card
-                    :model/CardBookmark
-                    :model/Channel
-                    :model/ChannelTemplate
-                    :model/Collection
-                    :model/CollectionBookmark
-                    :model/CollectionPermissionGraphRevision
-                    :model/Comment
-                    :model/CommentReaction
-                    :model/ConnectionImpersonation
-                    :model/Dashboard
-                    :model/DashboardBookmark
-                    :model/DashboardCard
-                    :model/DashboardCardSeries
-                    :model/DashboardTab
-                    :model/DataPermissions
-                    :model/Database
-                    :model/Dimension
-                    :model/Document
-                    :model/DocumentBookmark
-                    :model/Field
-                    :model/FieldUserSettings
-                    :model/FieldValues
-                    :model/Glossary
-                    :model/HTTPAction
-                    :model/ImplicitAction
-                    :model/LoginHistory
-                    :model/Measure
-                    :model/Metabot
-                    :model/MetabotConversation
-                    :model/MetabotMessage
-                    :model/MetabotPrompt
-                    :model/ModelIndex
-                    :model/ModelIndexValue
-                    :model/ModerationReview
-                    :model/NativeQuerySnippet
-                    :model/Notification
-                    :model/NotificationCard
-                    :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/NotificationSubscription
-                    :model/ParameterCard
-                    :model/Permissions
-                    :model/PermissionsGroup
-                    :model/PermissionsGroupMembership
-                    :model/PermissionsRevision
-                    :model/PersistedInfo
-                    :model/Pulse
-                    :model/PulseCard
-                    :model/PulseChannel
-                    :model/PulseChannelRecipient
-                    :model/QueryAction
-                    :model/RecentViews
-                    :model/Revision
-                    :model/Sandbox
-                    :model/Secret
-                    :model/Segment
-                    :model/Session
-                    :model/Setting
-                    :model/Table
-                    :model/Tenant
-                    :model/Timeline
-                    :model/TimelineEvent
-                    :model/User
-                    :model/UserParameterValue
-                    :model/ViewLog}}
+   :model-imports :bypass}
 
   collections
   {:team "UX West"
@@ -650,7 +607,7 @@
            request
            users
            util}
-   :model-exports #{:model/Comment :model/CommentReaction}
+   :model-exports #{:model/Comment}
    :model-imports #{:model/Document :model/User}}
 
   ;; technically this 'uses' `enterprise/core` and `test` since it tries to load them to see if they exists so we know
@@ -781,7 +738,11 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Database :model/Dimension :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   database-routing
   {:team "UX West"
@@ -811,10 +772,14 @@
            util
            view-log}
    :model-exports #{:model/Document}
-   :model-imports #{:model/Card :model/Collection :model/Dashboard :model/Table :model/User}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table
+                    :model/User}}
 
   driver
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.driver
            metabase.driver.common
            metabase.driver.common.parameters
@@ -866,7 +831,7 @@
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   driver-api
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.driver-api.core}
    :uses #{actions
            api
@@ -1039,14 +1004,18 @@
 
   internal-stats
   {:team "UX West"
-   :api  #{metabase.internal-stats.core
-           metabase.internal-stats.metabot}
+   :api  #{metabase.internal-stats.core}
    :uses #{app-db
-           models}
-   :model-imports #{:model/Card :model/Dashboard :model/MetabotMessage :model/QueryExecution :model/User}}
+           models
+           util}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/MetabotMessage
+                    :model/QueryExecution
+                    :model/User}}
 
   legacy-mbql
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.legacy-mbql.normalize
            metabase.legacy-mbql.schema
            metabase.legacy-mbql.util}
@@ -1055,7 +1024,7 @@
            util}}
 
   lib
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.lib.core
            metabase.lib.equality
            metabase.lib.init
@@ -1099,7 +1068,7 @@
               }}
 
   lib-be
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.lib-be.core
            metabase.lib-be.init}
    :uses #{lib
@@ -1139,6 +1108,7 @@
            driver
            lib
            lib-be
+           metabot
            models
            request
            settings
@@ -1173,8 +1143,24 @@
            util}
    :model-exports #{:model/LoginHistory}}
 
+  mcp
+  {:team "Metabot"
+   :api  #{metabase.mcp.api
+           metabase.mcp.core
+           metabase.mcp.init}
+   :uses #{agent-api
+           api
+           api-scope
+           config
+           oauth-server
+           request
+           server
+           settings
+           system
+           util}}
+
   measures
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.measures.api}
    :uses #{api
            events
@@ -1193,25 +1179,25 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-              metabase.metabot.api.sql-fixer
-              metabase.metabot.api.sql-generation
-              metabase.metabot.init}
+               metabase.metabot.core
+               metabase.metabot.init
+               metabase.metabot.self
+               metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
               slackbot}
-   :uses    #{activity-feed
-              analytics
-              analyze
-              api
-              app-db
-              audit-app
-              channel
-              collections
-              config
-              documents
-              driver
-              internal-stats
-              legacy-mbql
+    :uses    #{activity-feed
+               analytics
+               api
+               api-scope
+               app-db
+               audit-app
+               channel
+               collections
+               config
+               documents
+               driver
+               legacy-mbql
               lib
               lib-be
               llm
@@ -1237,10 +1223,7 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/Metabot
-                    :model/MetabotConversation
-                    :model/MetabotMessage
-                    :model/MetabotPrompt}
+   :model-exports #{:model/AiUsageLog :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1264,14 +1247,19 @@
            lib-metric
            models
            parameters
+           permissions
+           premium-features
            query-processor
            request
            server
            util}
-   :model-imports #{:model/Card :model/Field :model/Measure}}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Measure
+                    :model/Table}}
 
   model-persistence
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.model-persistence.api
            metabase.model-persistence.core
            metabase.model-persistence.init}
@@ -1302,32 +1290,15 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
-           metabase.models.transforms.transform
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
            app-db
            classloader
-           collections
-           events
            legacy-mbql
            lib
-           lib-be
-           permissions
-           query-processor
-           remote-sync
-           search
            settings
-           transforms
-           transforms-base
            util}
-   :friends #{transforms}
-   :model-exports #{:model/Transform
-                    :model/TransformJob
-                    :model/TransformJobTransformTag
-                    :model/TransformRun
-                    :model/TransformTag
-                    :model/TransformTransformTag}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1340,7 +1311,7 @@
                     :model/User}}
 
   native-query-snippets
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.native-query-snippets.api
            metabase.native-query-snippets.core}
    :uses #{api
@@ -1387,11 +1358,7 @@
            tracing
            users
            util}
-   :model-exports #{:model/Notification
-                    :model/NotificationCard
-                    :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/NotificationSubscription}
+   :model-exports #{:model/Notification :model/NotificationHandler :model/NotificationRecipient}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/ChannelTemplate
@@ -1400,9 +1367,21 @@
                     :model/DashboardTab
                     :model/User}}
 
+  oauth-server
+  {:team "UX West"
+   :api  #{metabase.oauth-server.api
+           metabase.oauth-server.core
+           metabase.oauth-server.init}
+   :uses #{api
+           appearance
+           models
+           settings
+           system
+           util}}
+
   ;; TODO -- too many API namespaces
   parameters
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.parameters.chain-filter
            metabase.parameters.core
            metabase.parameters.custom-values
@@ -1423,7 +1402,11 @@
            util
            warehouse-schema
            warehouses}
-   :model-imports #{:model/Card :model/Dashboard :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   permissions
   {:team "UX West"
@@ -1451,7 +1434,10 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/PermissionsRevision}
-   :model-imports #{:model/Collection :model/Database :model/Table :model/User}}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Table
+                    :model/User}}
 
   permissions-rest
   {:team "UX West"
@@ -1519,7 +1505,10 @@
            settings
            task
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Database :model/User}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/Database
+                    :model/User}}
 
   public-sharing
   {:team "UX West"
@@ -1548,7 +1537,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/Document}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/Document}}
 
   pulse
   {:team "Gadget"
@@ -1577,7 +1566,10 @@
            util
            enterprise/advanced-permissions
            enterprise/sandbox}
-   :model-exports #{:model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient}
+   :model-exports #{:model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/Collection
@@ -1587,7 +1579,7 @@
                     :model/User}}
 
   queries
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
@@ -1622,7 +1614,6 @@
            view-log
            warehouse-schema}
    :model-exports #{:model/Card
-                    :model/ParameterCard
                     :model/Query
                     :model/QueryExecution
                     :model/QueryTable}
@@ -1637,12 +1628,13 @@
                     :model/Field
                     :model/ModerationReview
                     :model/NativeQuerySnippet
+                    :model/Notification
                     :model/Revision
                     :model/Table
                     :model/User}}
 
   queries-rest
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.queries-rest.api}
    :uses #{analyze
            api
@@ -1685,7 +1677,7 @@
    :model-imports #{:model/Card :model/Field}}
 
   query-processor
-  {:team    "Querying"
+  {:team    "Querying Platform"
    :friends #{driver-api
               enterprise/cache
               enterprise/sandbox
@@ -1825,7 +1817,8 @@
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
-           metabase.search.spec}
+           metabase.search.spec
+           metabase.search.task.search-index}
    :uses #{analytics
            api
            app-db
@@ -1848,16 +1841,20 @@
            tracing
            transforms
            util}
-   :model-imports #{:model/Card :model/Collection :model/Dashboard :model/Table :model/User}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/Table
+                    :model/User}}
 
   secrets
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.secrets.core}
    :uses #{api driver models premium-features util}
    :model-exports #{:model/Secret}}
 
   segments
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.segments.api
            metabase.segments.schema}
    :uses #{api
@@ -1890,6 +1887,8 @@
            embedding
            initialization-status
            lib-be
+           mcp
+           oauth-server
            premium-features
            query-processor
            request
@@ -2085,7 +2084,10 @@
            util
            warehouse-schema
            warehouses}
-   :model-imports #{:model/Database :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   system
   {:team "UX West"
@@ -2140,7 +2142,7 @@
            premium-features
            search
            util}
-   :model-imports #{:model/Card :model/Dashboard}}
+   :model-imports #{:model/AiUsageLog :model/Card :model/Dashboard}}
 
   tiles
   {:team "UX West"
@@ -2165,7 +2167,7 @@
            events
            models
            util}
-   :model-exports #{:model/Timeline :model/TimelineEvent}
+   :model-exports #{:model/Timeline}
    :model-imports #{:model/Collection :model/User}}
 
   tracing
@@ -2178,7 +2180,7 @@
            util}}
 
   transforms
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
@@ -2186,36 +2188,45 @@
            metabase.transforms.util}
    :uses #{analytics
            api
+           app-db
            channel
+           collections
            database-routing
            driver
            events
            lib
+           lib-be
            models
+           permissions
            premium-features
            queries
            query-processor
+           remote-sync
            revisions
+           search
            settings
            task
            task-history
            tracing
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :friends #{models
               enterprise/transforms-python
               enterprise/workspaces}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/Table
-                    :model/Transform
+   :model-exports #{:model/Transform
                     :model/TransformJob
                     :model/TransformJobTransformTag
-                    :model/TransformTransformTag
+                    :model/TransformRun
+                    :model/TransformTag}
+   :model-imports #{:model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Table
                     :model/User}}
 
   transforms-base
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
            metabase.transforms-base.util}
@@ -2263,13 +2274,13 @@
                     :model/WorkspaceMergeTransform}}
 
   types
-  {:team "Querying"
+  {:team "Querying Platform"
    :api  #{metabase.types.core
            metabase.types.init}
    :uses #{util}}
 
   upload
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.upload.api
            metabase.upload.core
            metabase.upload.db
@@ -2288,7 +2299,10 @@
            sync
            util
            warehouse-schema}
-   :model-imports #{:model/Card :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   user-key-value
   {:team "UX West"
@@ -2417,11 +2431,9 @@
            remote-sync
            search
            util
-           warehouses
-           workspaces}
+           warehouses}
    :model-exports #{:model/Dimension
                     :model/Field
-                    :model/FieldUserSettings
                     :model/FieldValues
                     :model/Table}
    :model-imports #{:model/Card
@@ -2454,7 +2466,11 @@
            util
            warehouse-schema
            xrays}
-   :model-imports #{:model/Database :model/Dimension :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Database
+                    :model/Dimension
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   warehouses
   {:team "UX West"
@@ -2476,7 +2492,10 @@
            sync
            util}
    :model-exports #{:model/Database}
-   :model-imports #{:model/Card :model/Field :model/Table :model/User}}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Table
+                    :model/User}}
 
   warehouses-rest
   {:team "UX West"
@@ -2506,15 +2525,18 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}
-   :model-imports #{:model/Card :model/Collection :model/Database :model/Field :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   workspaces
   {:team "Metabot"
-   :api  #{metabase.workspaces.core}
    :uses #{util}}
 
   xrays
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.xrays.api
            metabase.xrays.core
            metabase.xrays.init}
@@ -2561,7 +2583,10 @@
            query-processor
            util
            warehouse-schema}
-   :model-imports #{:model/Database :model/Field :model/FieldValues :model/Table}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldValues
+                    :model/Table}}
 
   enterprise/advanced-config
   {:team "UX West"
@@ -2618,7 +2643,6 @@
    :api  #{}
    :uses #{driver
            premium-features
-           sso
            enterprise/advanced-config
            enterprise/scim
            enterprise/semantic-search
@@ -2755,7 +2779,7 @@
    :uses :any}
 
   enterprise/dashboard-subscription-filters
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{}
    :uses #{premium-features}}
 
@@ -2769,7 +2793,10 @@
            permissions
            premium-features
            util}
-   :model-imports #{:model/Collection :model/Dimension :model/Field :model/Table}}
+   :model-imports #{:model/Collection
+                    :model/Dimension
+                    :model/Field
+                    :model/Table}}
 
   enterprise/database-replication
   {:team "Cloud"
@@ -2800,7 +2827,7 @@
            warehouse-schema
            warehouses}
    :model-exports #{:model/DatabaseRouter}
-   :model-imports #{:model/Database}}
+   :model-imports #{:model/Database :model/Transform}}
 
   enterprise/dependencies
   {:team "Graphy"
@@ -2898,7 +2925,7 @@
            util}}
 
   enterprise/impersonation
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.impersonation.api}
    :uses #{api
            audit-app
@@ -2929,19 +2956,27 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{}
+   :api     #{metabase-enterprise.metabot.api.routes
+              metabase-enterprise.metabot.init}
    :friends #{enterprise/agent-api
               slackbot
+              mcp
               metabot}
    :uses    #{api
               lib-be
               metabot
               models
               premium-features
+              settings
+              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
-   :model-imports #{:model/Card :model/Transform}}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership
+                    :model/Transform}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -3101,7 +3136,7 @@
    :model-imports #{:model/Card :model/Collection :model/ModelIndex}}
 
   enterprise/serialization
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
@@ -3113,6 +3148,7 @@
            collections
            config
            events
+           lib
            logger
            models
            plugins
@@ -3121,10 +3157,10 @@
            server
            setup
            util}
-   :model-imports #{:model/Card :model/Collection :model/Dashboard :model/User}}
+   :model-imports :bypass}
 
   enterprise/snippet-collections
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{}
    :uses #{models
            native-query-snippets
@@ -3200,7 +3236,7 @@
    :model-imports #{:model/Collection :model/User}}
 
   enterprise/transforms
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.transforms.api}
    :uses #{premium-features
            enterprise/transforms-inspector}}
@@ -3219,10 +3255,13 @@
            transforms
            transforms-base
            util}
-   :model-imports #{:model/Database :model/Field :model/Table :model/Transform}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/Transform}}
 
   enterprise/transforms-python
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.core
            metabase-enterprise.transforms-python.init
@@ -3243,7 +3282,10 @@
            transforms-base
            util}
    :model-exports #{:model/PythonLibrary}
-   :model-imports #{:model/Database :model/Field :model/Table :model/TransformRun}}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/TransformRun}}
 
   enterprise/upload-management
   {:team "UX West"
@@ -3262,6 +3304,7 @@
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
    :friends #{enterprise/agent-api}
    :uses #{api
+           api-scope
            app-db
            config
            database-routing
@@ -3277,7 +3320,6 @@
            request
            settings
            sql-tools
-           system
            transforms
            transforms-base
            util
@@ -3291,7 +3333,7 @@
                     :model/Transform}}
 
   enterprise/writable-connection
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{}
    :uses #{premium-features}}}
 
@@ -3308,6 +3350,7 @@
      "test[-.]dataset"                      ; anything that contains `test.dataset` or `test-dataset`
      "test\\.impl"                          ; anything that contains `test.impl`
      "test-setup"                           ; anything that contains `test-setup`
+     "test[-_]helpers"                      ; anything that contains `test-helpers` or `test_helpers`
      "^metabase(?:-enterprise)?\\.test"}}}} ; anything starting with `metabase.test` or `metabase-enterprise.test`
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

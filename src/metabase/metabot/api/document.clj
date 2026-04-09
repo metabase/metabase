@@ -2,66 +2,30 @@
   "`/api/metabot/document` routes"
   (:require
    [clojure.string :as str]
-   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.agent.core :as metabot.agent]
-   [metabase.metabot.client :as metabot.client]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
-   [metabase.metabot.table-utils :as table-utils]
-   [metabase.query-processor.core :as qp]
-   [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.core :as warehouses]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
-(defn- fix-sql [fix-request]
-  (let [response (metabot.client/fix-sql fix-request)
-        return-sql (:sql fix-request)]
-    (when-let [fixes (:fixes response)]
-      (str/join "\n" (reduce
-                      (fn [sql-lines fix]
-                        (assoc sql-lines (dec (:line_number fix)) (:fixed_sql fix)))
-                      (vec (str/split-lines return-sql))
-                      fixes)))))
+(def ^:private generate-content-body-schema
+  [:map
+   [:instructions ms/NonBlankString]
+   [:references {:optional true} ms/Map]])
 
-(defn- check-query
-  "If the query is valid, return nil. If not, return the error message."
-  [query]
-  (try
-    (qp/process-query query)
-    nil
-    (catch Exception e
-      (ex-message e))))
-
-(defn- maybe-fix-native-sql
-  [response references]
-  (let [query (get-in response [:draft_card :dataset_query])]
-    (if-let [error (when (= "native" (name (:type query))) (check-query query))]
-      (let [db-id (-> references
-                      keys
-                      first
-                      name
-                      (#(str/split % #":"))
-                      last
-                      Integer/parseInt)
-            db (warehouses/get-database db-id)
-            schema-ddl (table-utils/schema-full db-id)]
-        ;; Attempt to fix SQL 5 times before returning.
-        (loop [attempts-left 5
-               sql (get-in query [:native :query])
-               error error]
-          (let [fixed-sql (fix-sql {:sql           sql
-                                    :dialect       (:engine db)
-                                    :error_message error
-                                    :schema_ddl    schema-ddl})
-                ;; Only re-check query if new SQL was produced.
-                error (when fixed-sql
-                        (check-query (assoc-in query [:native :query] fixed-sql)))]
-            (if (and error (> attempts-left 1))
-              (recur (dec attempts-left) fixed-sql error)
-              (assoc-in response [:draft_card :dataset_query :native :query] (or fixed-sql sql))))))
-      response)))
+(def ^:private generate-content-response-schema
+  [:map
+   [:draft_card [:maybe [:map
+                         [:name ms/NonBlankString]
+                         [:dataset_query ms/Map]
+                         [:database_id ms/PositiveInt]
+                         [:parameters [:maybe [:sequential ms/Map]]]
+                         [:visualization_settings ms/Map]]]]
+   [:error [:maybe ms/NonBlankString]]
+   [:description [:maybe ms/NonBlankString]]])
 
 (defn- part->structured-output
   [part]
@@ -93,6 +57,17 @@
        :parameters             []
        :visualization_settings {}})))
 
+(defn- last-tool-output-message
+  [parts]
+  (some->> parts
+           reverse
+           (keep (fn [part]
+                   (when (= :tool-output (:type part))
+                     (or (get-in part [:result :output])
+                         (some-> part :error :message)))))
+           (remove str/blank?)
+           first))
+
 (defn- last-agent-message
   [parts]
   (let [text-groups (reduce (fn [groups part]
@@ -106,72 +81,40 @@
                                    (map #(str/trim (str/join "" %)))
                                    (remove str/blank?)
                                    first)]
-    last-text-message))
+    (or last-text-message
+        (last-tool-output-message parts))))
 
-(defn- native-generate-content
-  [{:keys [instructions references]}]
-  (let [context (assoc
-                 (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
-                 :references references)
-        parts (into [] (metabot.agent/run-agent-loop
-                        {:messages           [{:role :user
-                                               :content instructions}]
-                         :profile-id         :document-generate-content
-                         :state              {}
-                         :context            context
-                         :tracking-opts      {:source              "document_generate_content"
-                                              :track-user-intent?  true}}))
+(api.macros/defendpoint :post "/generate-content" :- generate-content-response-schema
+  "Create a new piece of content to insert into the document. Kept for backwards compatibility; now uses the native Clojure agent."
+  [_route-params
+   _query-params
+
+   {:keys [instructions references]} :- generate-content-body-schema]
+  (metabot.config/check-metabot-enabled!)
+  (let [context      (assoc
+                      (metabot.context/create-context {:capabilities #{"permission:write_sql_queries"}})
+                      :references references)
+        parts        (into [] (metabot.agent/run-agent-loop
+                               {:messages      [{:role    :user
+                                                 :content instructions}]
+                                :profile-id    :document-generate-content
+                                :state         {}
+                                :context       context
+                                :tracking-opts {:source             "document_generate_content"
+                                                :track-user-intent? true}}))
         chart-output (latest-chart-structured-output parts)
-        draft-card (draft-card-from-chart-output chart-output)
-        description (or (:description chart-output)
-                        (:name chart-output)
-                        (:name draft-card))]
-
+        draft-card   (draft-card-from-chart-output chart-output)
+        description  (or (:description chart-output)
+                         (:name chart-output)
+                         (:name draft-card))]
     (if draft-card
-      (maybe-fix-native-sql {:draft_card draft-card
-                             :description description
-                             :error nil} references)
-      {:draft_card nil
+      {:draft_card  draft-card
+       :description description
+       :error       nil}
+      {:draft_card  nil
        :description nil
-       :error (or
-               (last-agent-message parts)
-               "Unable to generate chart content.")})))
-
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/generate-content"
-  "Create a new piece of content to insert into the document."
-  [_route-params
-   _query-params
-
-   body :- [:map
-            [:instructions ms/NonBlankString]
-            [:references {:optional true} ms/Map]]]
-  (let [response (metabot.client/document-generate-content {:instructions    (:instructions body)
-                                                            :references      (:references body)
-                                                            :user_id         api/*current-user-id*
-                                                            :conversation_id (str (random-uuid))})]
-    (maybe-fix-native-sql response (:references body))))
-
-(api.macros/defendpoint :post "/native-generate-content" :- [:map
-                                                             [:draft_card [:maybe [:map
-                                                                                   [:name ms/NonBlankString]
-                                                                                   [:dataset_query ms/Map]
-                                                                                   [:database_id ms/PositiveInt]
-                                                                                   [:parameters [:maybe [:sequential ms/Map]]]
-                                                                                   [:visualization_settings ms/Map]]]]
-                                                             [:error [:maybe ms/NonBlankString]]
-                                                             [:description [:maybe ms/NonBlankString]]]
-  "Create a new piece of content to insert into the document using the native Clojure agent."
-  [_route-params
-   _query-params
-
-   body :- [:map
-            [:instructions ms/NonBlankString]
-            [:references {:optional true} ms/Map]]]
-  (native-generate-content body))
+       :error       (or (last-agent-message parts)
+                        "Unable to generate chart content.")})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/document` routes."

@@ -70,7 +70,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   hasParametersList?: boolean;
   hasRunButton?: boolean;
   hasTopBar?: boolean;
-  highlightedLineNumbers?: number;
+  highlightedLineNumbers?: number[];
   insertSnippet?: (snippet: NativeQuerySnippet) => void;
   isInitiallyOpen?: boolean;
   isNativeEditorOpen: boolean;

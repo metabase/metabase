@@ -11,6 +11,7 @@ import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useRouter } from "metabase/router";
 import {
   Box,
@@ -22,7 +23,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
-import { useMetabotAgent } from "../../hooks";
+import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -53,7 +54,7 @@ const responseHasNavigateTo = (action: SubmitInputResult) =>
     isMatching({ type: "navigate_to" }),
   );
 
-export const MetabotQueryBuilder = () => {
+const MetabotQueryBuilderInner = () => {
   const dispatch = useDispatch();
   const {
     setVisible,
@@ -241,4 +242,14 @@ export const MetabotQueryBuilder = () => {
       </Box>
     </Box>
   );
+};
+
+export const MetabotQueryBuilder = (
+  props: React.ComponentProps<typeof QueryBuilder>,
+) => {
+  const { canUseNlq } = useUserMetabotPermissions();
+  if (!canUseNlq) {
+    return <QueryBuilder {...props} />;
+  }
+  return <MetabotQueryBuilderInner />;
 };

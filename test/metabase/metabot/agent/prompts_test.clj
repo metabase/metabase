@@ -10,13 +10,13 @@
       (is (some? template))
       (is (string? template))
       (is (> (count template) 1000))
-      (is (re-find #"Metabot" template))))
+      (is (re-find #"metabot_name" template))))
 
   (testing "loads embedding-next.selmer template"
     (let [template (prompts/load-system-prompt-template "embedding-next.selmer")]
       (is (some? template))
       (is (string? template))
-      (is (re-find #"Metabot" template))))
+      (is (re-find #"metabot_name" template))))
 
   (testing "returns nil for non-existent template"
     (let [template (prompts/load-system-prompt-template "non-existent.selmer")]
@@ -172,12 +172,12 @@
       (is (not (str/includes? content "{%raw%}")))
       (is (not (str/includes? content "{% safe %}")))))
 
-  (testing "includes current user info when provided"
+  (testing "current user info is not in system message (moved to message injection)"
     (let [profile {:prompt-template "internal.selmer"}
           context {:current_time "2024-01-15 14:30:00"
                    :current_user_info "<user><name>Jane Doe</name></user>"}
           tools {}
           content (prompts/build-system-message-content profile context tools)]
       (is (some? content))
-      (is (str/includes? content "Here is some information about the user:"))
-      (is (str/includes? content "<user><name>Jane Doe</name></user>")))))
+      (is (not (str/includes? content "Here is some information about the user:")))
+      (is (not (str/includes? content "<user><name>Jane Doe</name></user>"))))))

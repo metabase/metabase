@@ -60,7 +60,6 @@ export const DataGridRow = <TData,>({
   return (
     <div
       role="row"
-      key={row.origin.id}
       ref={rowMeasureRef}
       {...{
         [datasetIndexAttributeName]: row.origin.index,
@@ -88,6 +87,7 @@ export const DataGridRow = <TData,>({
         return (
           <div
             key={cell.id}
+            role="gridcell"
             aria-selected={selection.isCellSelected(cell)}
             data-column-id={column.origin.id}
             data-selectable-cell={isSelectable ? "" : undefined}

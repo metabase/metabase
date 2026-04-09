@@ -68,7 +68,7 @@ For each series on the chart, you can:
 - Line shape
 - Line style
 - Line size: Small, Medium, or Large
-- Whether to show docs on the lines (the dots represent the actual data points plotted on the chart)
+- Whether to show dots on the lines (the dots represent the actual data points plotted on the chart)
 - Whether to show values for the series. This option is only available if you've toggled on [Show value on data points](#values-on-data-points).
 - How to replace missing values: Zero, Nothing (just a break in the line), or Linear interpolated
 
@@ -87,6 +87,7 @@ Here you set things like:
 
 - [Goal line](#goal-lines)
 - [Stack a bar chart](#stacked-bar-chart)
+- [Stack series](#stack-series)
 - [Whether to show values on data points](#values-on-data-points)
 
 ### Goal lines
@@ -110,6 +111,22 @@ If you have multiple series, you can stack them on bar chart.
 As well as stack them as a percentage:
 
 ![Stacked bar chart 100%](../images/stacked-100.png)
+
+### Stack series
+
+To stack series, one chart on top of the other, your query must include **either**:
+
+**Multiple breakouts**: at least two entries in the grouping block in the query builder or `GROUP BY` clause in SQL.
+
+OR
+
+**Multiple metrics**: at least two entries in the summarize block, or two aggregation functions in the `SELECT` statement.
+
+![Stacked series](../images/stacked-series.png)
+
+You can mix and match bar, line, and areas in stacked series - select the right visualization type for each series in the **Data** tab:
+
+![Stacked series mixed types](../images/stacked-series-mix.png)
 
 ### Values on data points
 

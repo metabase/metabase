@@ -3,7 +3,19 @@
   (:require
    [clojure.string :as str]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]))
+
+(defn- trimmed-string
+  [value]
+  (when (string? value)
+    (not-empty (str/trim value))))
+
+(defn- set-prefixed-api-key!
+  [setting-key prefix deferred-message new-value]
+  (let [trimmed (trimmed-string new-value)]
+    (when (and trimmed (not (str/starts-with? trimmed prefix)))
+      (throw (ex-info (str deferred-message) {:status-code 400})))
+    (setting/set-value-of-type! :string setting-key trimmed)))
 
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
 
@@ -13,13 +25,10 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-anthropic-api-key
-  :setter           (fn [new-value]
-                      (let [trimmed (when (string? new-value)
-                                      (not-empty (str/trim new-value)))]
-                        (when (and trimmed (not (str/starts-with? trimmed "sk-ant-")))
-                          (throw (ex-info (tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
-                                          {:status-code 400})))
-                        (setting/set-value-of-type! :string :llm-anthropic-api-key trimmed)))
+  :setter           (partial set-prefixed-api-key!
+                             :llm-anthropic-api-key
+                             "sk-ant-"
+                             (deferred-tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''."))
   :doc false)
 
 (defsetting llm-anthropic-api-key-configured?
@@ -82,6 +91,10 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-openai-api-key
+  :setter           (partial set-prefixed-api-key!
+                             :llm-openai-api-key
+                             "sk-"
+                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''."))
   :doc              false)
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
@@ -101,6 +114,21 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-openrouter-api-key
+  :setter           (partial set-prefixed-api-key!
+                             :llm-openrouter-api-key
+                             "sk-or-v1-"
+                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
+  :doc              false)
+
+;;; --------------------------------------------------- Proxy ---------------------------------------------------
+
+(defsetting llm-proxy-base-url
+  (deferred-tru "Base URL for the LLM proxy. When set, all LLM requests are routed through this proxy and authenticated with the instance token instead of provider API keys.")
+  :feature          :metabase-ai-provider
+  :encryption       :no
+  :visibility       :internal
+  :default          nil
+  :export?          false
   :doc              false)
 
 ;;; -------------------------------------------------- General --------------------------------------------------

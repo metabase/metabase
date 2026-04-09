@@ -133,11 +133,10 @@ export const DataGrid = function DataGrid<TData>({
   const renderRow = (
     row: DataGridRowType<TData>,
     columns: DataGridColumnType<TData>[],
-    index: number,
     measureRef?: (element: Element | null) => void,
   ) => (
     <DataGridRow
-      key={index}
+      key={row.virtualItem?.key ?? row.origin.id}
       row={row}
       rowMeasureRef={measureRef}
       pinnedRowsCount={pinnedRows.length}
@@ -214,11 +213,9 @@ export const DataGrid = function DataGrid<TData>({
     minHeight?: string,
   ) =>
     renderGridPanels({
-      pinnedContent: rows.map((row, index) =>
-        renderRow(row, pinnedColumns, index),
-      ),
-      centerContent: rows.map((row, index) =>
-        renderRow(row, centerColumns, index, measureRef),
+      pinnedContent: rows.map((row) => renderRow(row, pinnedColumns)),
+      centerContent: rows.map((row) =>
+        renderRow(row, centerColumns, measureRef),
       ),
       minHeight,
       rowsSection,
@@ -257,6 +254,7 @@ export const DataGrid = function DataGrid<TData>({
             <div
               ref={headerRef}
               data-testid="table-header"
+              role="rowgroup"
               className={cx(S.headerContainer, classNames?.headerContainer)}
               style={{
                 backgroundColor: stickyElementsBackgroundColor,
@@ -286,6 +284,7 @@ export const DataGrid = function DataGrid<TData>({
             ) : (
               <div
                 data-testid="table-body"
+                role="rowgroup"
                 className={cx(
                   S.bodyContainer,
                   {

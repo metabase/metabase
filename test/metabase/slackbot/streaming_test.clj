@@ -1,6 +1,7 @@
 (ns metabase.slackbot.streaming-test
   (:require
    [clojure.test :refer :all]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.persistence :as slackbot.persistence]
    [metabase.slackbot.streaming :as slackbot.streaming]
@@ -147,6 +148,54 @@
                   (is (= 1 (count blocks)))
                   (is (= "metabot_feedback" (:block_id (first blocks))))
                   (is (= "feedback_buttons" (:type (first (:elements (first blocks)))))))))))))))
+
+(deftest slackbot-streaming-sets-ai-proxied-on-messages-test
+  (testing "store-message! receives ai-proxy? = true for metabase/ prefixed provider"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            store-opts (atom [])]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [stop-stream-calls]}]
+            (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-haiku-4-5"]
+              (with-redefs [metabot.persistence/store-message!
+                            (fn [_conv-id _profile-id _messages & {:as opts}]
+                              (swap! store-opts conj opts)
+                              nil)]
+                (mt/client :post 200 "metabot/slack/events"
+                           (tu/slack-request-options event-body)
+                           event-body)
+                (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                         :done?      true?
+                         :timeout-ms 5000})))
+            (testing "user + assistant store-message! calls both received ai-proxy? = true"
+              (is (=? [{:ai-proxy? true}
+                       {:ai-proxy? true}]
+                      @store-opts)))))))))
+
+(deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
+  (testing "store-message! receives ai-proxy? = false for direct BYOK provider"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-dm-event
+            store-opts (atom [])]
+        (tu/with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [stop-stream-calls]}]
+            (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-haiku-4-5"]
+              (with-redefs [metabot.persistence/store-message!
+                            (fn [_conv-id _profile-id _messages & {:as opts}]
+                              (swap! store-opts conj opts)
+                              nil)]
+                (mt/client :post 200 "metabot/slack/events"
+                           (tu/slack-request-options event-body)
+                           event-body)
+                (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                         :done?      true?
+                         :timeout-ms 5000})))
+            (testing "user + assistant store-message! calls both received ai-proxy? = false"
+              (is (=? [{:ai-proxy? false}
+                       {:ai-proxy? false}]
+                      @store-opts)))))))))
 
 ;;; ------------------------------------------------ Flush throttle tests ------------------------------------------------
 

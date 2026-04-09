@@ -18,7 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
-(mu/defn legacy-inner-query->mlv2-query :- ::lib.schema/query
+(mu/defn legacy-inner-query->mbql5-query :- ::lib.schema/query
   "Convert a legacy `inner-query` to an MLv2 query. Requires bound QP store."
   {:deprecated "0.57.0"}
   [inner-query :- [:and
@@ -35,7 +35,7 @@
        (:id (lib.metadata/database (qp.store/metadata-provider)))
        (mbql.normalize/normalize ::mbql.s/MBQLQuery inner-query))
       (catch Throwable e
-        (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))
+        (throw (ex-info (tru "Error converting query to MBQL 5: {0}" (ex-message e))
                         {:inner-query inner-query, :type qp.error-type/qp}
                         e))))))
 
@@ -46,13 +46,13 @@
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
   [legacy-inner-query :- :map
    legacy-ag-clause]
-  (let [ag-clause (lib/->pMBQL legacy-ag-clause)]
+  (let [ag-clause (lib/->mbql5 legacy-ag-clause)]
     (or (::add/desired-alias (lib/options ag-clause))
         (:name (lib/options ag-clause))
         (lib/column-name
          #_{:clj-kondo/ignore [:deprecated-var]}
-         (legacy-inner-query->mlv2-query legacy-inner-query)
-         (lib/->pMBQL legacy-ag-clause)))))
+         (legacy-inner-query->mbql5-query legacy-inner-query)
+         (lib/->mbql5 legacy-ag-clause)))))
 
 (mu/defn merged-column-info :- :metabase.query-processor.middleware.annotate/cols
   "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results

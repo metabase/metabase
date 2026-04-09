@@ -17,16 +17,13 @@ import { Box, Text } from "metabase/ui";
 import { SettingTitle } from "../../SettingHeader";
 import { EmbeddedResources } from "../../widgets/PublicLinksListing/EmbeddedResources";
 import { EmbeddingSecretKeyWidget } from "../EmbeddingSecretKeyWidget";
-import { CorsInputWidget } from "../EmbeddingSecuritySettings/CorsInputWidget";
 
 type Props = {
   showEmbeddingSdkSettings?: boolean;
-  showCorsSettings?: boolean;
   showContentTranslationSettings?: boolean;
 };
 
 export function SharedCombinedEmbeddingSettings({
-  showCorsSettings,
   showContentTranslationSettings,
 }: Props) {
   const isSimpleEmbedFeatureAvailable =
@@ -84,12 +81,6 @@ export function SharedCombinedEmbeddingSettings({
 
             <EmbeddedResources />
           </Box>
-        </SettingsSection>
-      )}
-
-      {showCorsSettings && (
-        <SettingsSection>
-          <CorsInputWidget />
         </SettingsSection>
       )}
 

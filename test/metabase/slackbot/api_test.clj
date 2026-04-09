@@ -389,16 +389,14 @@
                 (is (=? [{:channel "C123"
                           :thread_ts "1234567890.000001"
                           :text #"(?i).*connect.*slack.*metabase.*"}]
-                        @post-calls)))
-              (testing "DM auth message does not include user mention prefix"
-                (is (not (str/starts-with? (:text (first @post-calls)) "<@")))))))))))
+                        @post-calls))))))))))
 
 (deftest app-mention-unlinked-user-test
-  (testing "POST /events with app_mention from unlinked user sends auth message"
+  (testing "POST /events with app_mention from unlinked user sends ephemeral auth message"
     (tu/with-slackbot-setup
       (doseq [[desc thread-ts expected-thread-ts]
-              [["top-level @mention" nil "1234567890.000002"]
-               ["@mention in thread" "1234567890.000001" "1234567890.000001"]]]
+              [["top-level @mention (no thread)" nil nil]
+               ["@mention in thread"             "1234567890.000001" "1234567890.000001"]]]
         (testing desc
           (let [event-body (cond-> (update tu/base-mention-event :event merge
                                            {:user     "U-UNKNOWN"
@@ -408,18 +406,18 @@
             (tu/with-slackbot-mocks
               {:ai-text "Should not be called"
                :user-id ::tu/no-user}
-              (fn [{:keys [post-calls]}]
+              (fn [{:keys [post-calls ephemeral-calls]}]
                 (is (= "ok" (mt/client :post 200 "metabot/slack/events"
                                        (tu/slack-request-options event-body) event-body)))
-                (u/poll {:thunk #(= 1 (count @post-calls))
+                (u/poll {:thunk #(= 1 (count @ephemeral-calls))
                          :done? true?
                          :timeout-ms 5000})
-                (is (=? {:channel "C123"
-                         :thread_ts expected-thread-ts
-                         :text #"(?i).*connect.*slack.*metabase.*"}
-                        (first @post-calls)))
-                (testing "channel auth message includes user mention prefix"
-                  (is (str/starts-with? (:text (first @post-calls)) "<@U-UNKNOWN>")))))))))))
+                (is (= 0 (count @post-calls)))
+                (is (=? (cond-> {:channel "C123"
+                                 :user    "U-UNKNOWN"
+                                 :text    #"(?i).*connect.*slack.*metabase.*"}
+                          expected-thread-ts (assoc :thread_ts expected-thread-ts))
+                        (first @ephemeral-calls)))))))))))
 
 (deftest slack-id->user-id-test
   (testing "slack-id->user-id only returns active users with sso_source 'slack'"
@@ -785,11 +783,13 @@
               result (#'slackbot/handle-feedback-modal-submission payload)]
           @result
           (is (= 1 (count @harbormaster-calls)))
-          (let [feedback (first @harbormaster-calls)]
-            (is (false? (get-in feedback [:feedback :positive])))
-            (is (= "conv-123" (get-in feedback [:feedback :message_id])))
-            (is (= "not-factual" (get-in feedback [:feedback :issue_type])))
-            (is (= "The answer was wrong" (get-in feedback [:feedback :freeform_feedback]))))))))
+          (is (=? {:feedback          {:positive          false
+                                       :message_id        "conv-123"
+                                       :issue_type        "not-factual"
+                                       :freeform_feedback "The answer was wrong"}
+                   :source            "slack"
+                   :conversation_data {:messages []}}
+                  (first @harbormaster-calls)))))))
 
   (testing "modal submission with only freeform text submits"
     (let [harbormaster-calls (atom [])]
@@ -807,7 +807,10 @@
               result (#'slackbot/handle-feedback-modal-submission payload)]
           @result
           (is (= 1 (count @harbormaster-calls)))
-          (is (= "Great response!" (get-in (first @harbormaster-calls) [:feedback :freeform_feedback])))))))
+          (is (=? {:feedback {:positive          true
+                              :freeform_feedback "Great response!"}
+                   :source   "slack"}
+                  (first @harbormaster-calls)))))))
 
   (testing "modal submission with no details still submits basic feedback"
     (let [harbormaster-calls (atom [])]
@@ -825,7 +828,10 @@
               result (#'slackbot/handle-feedback-modal-submission payload)]
           @result
           (is (= 1 (count @harbormaster-calls)))
-          (is (true? (get-in (first @harbormaster-calls) [:feedback :positive])))))))
+          (is (=? {:feedback {:positive          true
+                              :freeform_feedback ""}
+                   :source   "slack"}
+                  (first @harbormaster-calls)))))))
 
   (testing "modal submission with only issue type submits"
     (let [harbormaster-calls (atom [])]
@@ -844,7 +850,53 @@
               result (#'slackbot/handle-feedback-modal-submission payload)]
           @result
           (is (= 1 (count @harbormaster-calls)))
-          (is (= "ui-bug" (get-in (first @harbormaster-calls) [:feedback :issue_type]))))))))
+          (is (=? {:feedback {:positive   false
+                              :issue_type "ui-bug"}
+                   :source   "slack"}
+                  (first @harbormaster-calls)))))))
+
+  (testing "feedback includes conversation messages from the database"
+    (let [conv-id            (str (random-uuid))
+          harbormaster-calls (atom [])]
+      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :role            "user"
+                     :profile_id      "slackbot"
+                     :total_tokens    0
+                     :data            [{:_type "TEXT" :role "user" :content "What is revenue?"}]})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :role            "assistant"
+                     :profile_id      "slackbot"
+                     :total_tokens    10
+                     :data            [{:_type "TEXT" :role "assistant" :content "Here are the results."}]})
+        (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                 (swap! harbormaster-calls conj feedback)
+                                                                 true)]
+          (let [payload {:type "view_submission"
+                         :view {:callback_id      "metabot_feedback_modal"
+                                :private_metadata (json/encode {:conversation_id conv-id
+                                                                :positive        true
+                                                                :user_id         (mt/user->id :rasta)
+                                                                :channel_id      "C123"
+                                                                :message_ts      "123.456"})
+                                :state {:values {:freeform_feedback {:freeform_input {:value "Great!"}}}}}}
+                result (#'slackbot/handle-feedback-modal-submission payload)]
+            @result
+            (is (= 1 (count @harbormaster-calls)))
+            (is (=? {:feedback          {:positive          true
+                                         :message_id        conv-id
+                                         :freeform_feedback "Great!"}
+                     :source            "slack"
+                     :conversation_data {:messages [{:role        :user
+                                                     :data        [{:_type "TEXT" :role "user" :content "What is revenue?"}]
+                                                     :profile_id  "slackbot"}
+                                                    {:role        :assistant
+                                                     :data        [{:_type "TEXT" :role "assistant" :content "Here are the results."}]
+                                                     :profile_id  "slackbot"}]}}
+                    (first @harbormaster-calls)))))))))
 
 ;; -------------------------------- Visualization Integration Tests --------------------------------
 
