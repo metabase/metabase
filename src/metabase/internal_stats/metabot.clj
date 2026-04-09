@@ -28,8 +28,7 @@
                              (->> (for [usage               usages
                                         [prov-model tokens] usage
                                         :let [k (str/replace-first (u/qualified-name prov-model) "/" ":")]]
-                                    {(str k ":in")  (:prompt tokens)
-                                     (str k ":out") (:completion tokens)})
+                                    {(str k ":tokens") (+ (:prompt tokens) (:completion tokens))})
                                   (apply merge-with +)))
        :metabot-queries    (t2/select-one-fn :cnt
                                              [:model/MetabotMessage [:%count.id :cnt]]
