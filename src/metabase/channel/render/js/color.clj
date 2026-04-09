@@ -19,7 +19,7 @@
    (fn []
      (let [file-url (io/resource js-file-path)]
        (assert file-url (trs "Can''t find JS color selector at ''{0}''" js-file-path))
-       (doto (js.engine/context)
+       (doto (js.engine/trusted-context)
          (js.engine/load-resource  js-file-path))))
    5))
 
