@@ -175,6 +175,74 @@
         (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
           (is (empty? extraneous)))))))
 
+(defn- top-level-ancestor
+  "Return the topmost ancestor of module `m` (or `m` itself if it's already
+  top-level). Used for subtree-membership checks."
+  [m]
+  (or (last (dev.deps-graph/module-ancestor-chain m)) m))
+
+(defn- same-subtree?
+  "True if `caller` and `target` share a top-level ancestor — i.e., they're
+  both descendants of the same top-level module (or one of them is the
+  top-level ancestor of the other)."
+  [caller target]
+  (= (top-level-ancestor caller) (top-level-ancestor target)))
+
+(defn- externally-referenceable?
+  "True if `target` may be named in the `:uses` of a module outside its
+  top-level subtree. Equivalent to: every ancestor in the chain from
+  target up to top-level is `:open`ed by its parent (and the top-level
+  ancestor is implicitly externally referenceable). Mirror of the
+  `externally-visible?` helper in the kondo hook."
+  [config target]
+  (loop [m target]
+    (if-let [p (dev.deps-graph/module-parent m)]
+      (let [parent-opens (set (get-in config [p :open]))]
+        (if (contains? parent-opens m)
+          (recur p)
+          false))
+      true)))
+
+(defn- can-be-named-by?
+  "True if `caller` is permitted to put `target` in its `:uses` declaration
+  under the strict module model. Permitted iff:
+    - they share a top-level subtree (anyone in the same subtree can name
+      anyone else in the subtree), OR
+    - `target` is externally referenceable (top-level OR `:open`ed all the
+      way from the root)."
+  [config caller target]
+  (or (= caller target)
+      (same-subtree? caller target)
+      (externally-referenceable? config target)))
+
+(deftest ^:parallel uses-references-must-be-namable-test
+  (testing (str "Every entry in a module's `:uses` must be a module that the caller is "
+                "allowed to name. Outside-of-subtree callers may only name modules that "
+                "are externally referenceable (top-level OR `:open`ed by every ancestor "
+                "from the root). Same-subtree callers may name any module in the subtree.")
+    (let [config (dev.deps-graph/kondo-config)]
+      (doseq [[caller cfg] config
+              :let          [uses (:uses cfg)]
+              :when         (set? uses)
+              target        uses
+              ;; Skip references to modules that aren't actually declared
+              ;; (these will be caught by the staleness test as a separate
+              ;; concern; here we only check naming validity for declared
+              ;; targets).
+              :when         (contains? config target)]
+        (testing (format "\n[%s :uses %s]" (pr-str caller) (pr-str target))
+          (is (can-be-named-by? config caller target)
+              (format
+               (str "%s declares :uses #{%s} but cannot name %s under the strict module model. "
+                    "Either: (a) move %s into %s's top-level subtree (currently %s vs %s), or "
+                    "(b) ensure %s is externally referenceable by adding it to its parent's "
+                    ":open set (and recursively up to the top-level).")
+               caller target target
+               target caller
+               (top-level-ancestor caller)
+               (top-level-ancestor target)
+               target)))))))
+
 (deftest ^:parallel ns-prefix-uniqueness-test
   (testing (str "Every module has a unique effective :ns-prefix (explicit via :ns-prefix "
                 "config key or derived from the module name). Two modules sharing the same "
