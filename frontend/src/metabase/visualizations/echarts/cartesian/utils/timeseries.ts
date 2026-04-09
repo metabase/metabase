@@ -60,6 +60,7 @@ export const TICKS_TIMESERIES_INTERVALS: (TimeSeriesInterval & {
   { unit: "hour", count: 12, testFn: (d: Dayjs) => d.hour() % 12 }, // (12) 12 hours
   { unit: "day", count: 1, testFn: (d: Dayjs) => d.hour() }, // (13) 1 day
   { unit: "week", count: 1, testFn: (d: Dayjs) => d.day() }, // (14) 1 week
+  { unit: "week", count: 2 },
   { unit: "month", count: 1, testFn: (d: Dayjs) => d.date() }, // (15) 1 month
   { unit: "month", count: 2 },
   { unit: "quarter", count: 1, testFn: (d: Dayjs) => d.month() % 3 }, // (16) 3 months / 1 quarter

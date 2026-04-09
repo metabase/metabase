@@ -78,7 +78,9 @@ export const getTicksOptions = (
   if (largestInterval.unit === "week") {
     const startOfWeek = range[0].day();
     canRender = (date: Dayjs) =>
-      isWithinRange(date) && date.day() === startOfWeek;
+      isWithinRange(date) &&
+      date.day() === startOfWeek &&
+      date.week() % largestInterval.count === 0;
     const effectiveTicksUnit = "day";
     maxInterval = getTimeSeriesIntervalDuration({
       count: 1,
