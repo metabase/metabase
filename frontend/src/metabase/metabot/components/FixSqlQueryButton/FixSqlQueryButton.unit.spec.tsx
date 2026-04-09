@@ -11,6 +11,7 @@ import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { useDispatch } from "metabase/redux";
 
 import { trackQueryFixClicked } from "../../analytics";
+import { getMetabotNotConfiguredToastProps } from "../AIProviderConfigurationNotice";
 
 import { FixSqlQueryButton } from "./FixSqlQueryButton";
 
@@ -45,18 +46,29 @@ jest.mock("metabase/query_builder/actions", () => ({
 }));
 
 function setup(options?: {
-  isMetabotEnabled?: boolean;
+  canUseSqlGeneration?: boolean;
+  hasSqlGenerationAccess?: boolean;
   isDoingScience?: boolean;
 }) {
-  const { isMetabotEnabled = true, isDoingScience = false } = options ?? {};
+  const {
+    canUseSqlGeneration = true,
+    hasSqlGenerationAccess = true,
+    isDoingScience = false,
+  } = options ?? {};
 
   jest.mocked(useUserMetabotPermissions).mockReturnValue({
     isLoading: false,
     isError: false,
-    canUseMetabot: isMetabotEnabled,
-    canUseSqlGeneration: isMetabotEnabled,
-    canUseNlq: isMetabotEnabled,
-    canUseOtherTools: isMetabotEnabled,
+    isConfigured: canUseSqlGeneration,
+    canConfigure: true,
+    hasMetabotAccess: hasSqlGenerationAccess,
+    canUseMetabot: canUseSqlGeneration,
+    hasSqlGenerationAccess,
+    canUseSqlGeneration,
+    hasNlqAccess: hasSqlGenerationAccess,
+    canUseNlq: canUseSqlGeneration,
+    hasOtherToolsAccess: hasSqlGenerationAccess,
+    canUseOtherTools: canUseSqlGeneration,
   });
   jest.mocked(useMetabotAgent).mockReturnValue({
     submitInput: mockSubmitInput,
@@ -83,7 +95,7 @@ describe("FixSqlQueryButton", () => {
   });
 
   it("should render the button with correct text when metabot is enabled", () => {
-    setup({ isMetabotEnabled: true });
+    setup({ canUseSqlGeneration: true });
     expect(
       screen.getByRole("button", { name: /Have Metabot fix it/ }),
     ).toBeInTheDocument();
@@ -91,10 +103,47 @@ describe("FixSqlQueryButton", () => {
   });
 
   it("should not render the button when metabot is disabled", () => {
-    setup({ isMetabotEnabled: false });
+    setup({ canUseSqlGeneration: false, hasSqlGenerationAccess: false });
     expect(
       screen.queryByRole("button", { name: /Have Metabot fix it/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("is visible when SQL generation access exists but Metabot is not configured", () => {
+    setup({ canUseSqlGeneration: false, hasSqlGenerationAccess: true });
+
+    expect(
+      screen.getByRole("button", { name: /Have Metabot fix it/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the not-configured toast instead of starting SQL fixing when Metabot is not configured", async () => {
+    const expectedToast = getMetabotNotConfiguredToastProps({
+      featureName: "Metabot",
+    });
+
+    setup({ canUseSqlGeneration: false, hasSqlGenerationAccess: true });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Have Metabot fix it/ }),
+    );
+
+    expect(mockSendToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: expectedToast.id,
+        dark: expectedToast.dark,
+        icon: expectedToast.icon,
+        toastColor: expectedToast.toastColor,
+        dismissIconColor: expectedToast.dismissIconColor,
+        timeout: expectedToast.timeout,
+        style: expectedToast.style,
+        renderChildren: expect.any(Function),
+      }),
+    );
+    expect(trackQueryFixClicked).not.toHaveBeenCalled();
+    expect(mockSetIsNativeEditorOpen).not.toHaveBeenCalled();
+    expect(mockDispatch).not.toHaveBeenCalled();
+    expect(mockSubmitInput).not.toHaveBeenCalled();
   });
 
   it("should submit an SQL fix prompt when clicked", async () => {

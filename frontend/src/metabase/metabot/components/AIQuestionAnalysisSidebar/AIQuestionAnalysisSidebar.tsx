@@ -5,6 +5,8 @@ import { t } from "ttag";
 import { useAnalyzeChartMutation } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { useSetting } from "metabase/common/hooks";
+import { useAiProviderConfigurationModal } from "metabase/metabot/hooks";
 import { getIsLoadingComplete } from "metabase/query_builder/selectors";
 import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
@@ -16,6 +18,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import { AIAnalysisContent } from "../AIAnalysisContent/AIAnalysisContent";
+import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
 
 import { getTimelineEventsForAnalysis } from "./utils";
 
@@ -38,6 +41,9 @@ export function AIQuestionAnalysisSidebar({
   onClose,
 }: AIQuestionAnalysisSidebarProps) {
   const previousQuestion = usePrevious(question);
+  const { aiProviderConfigurationModal, openAiProviderConfigurationModal } =
+    useAiProviderConfigurationModal();
+  const isConfigured = !!useSetting("llm-metabot-configured?");
   const [analyzeChart, { data: analysisData }] = useAnalyzeChartMutation();
   const isLoadingComplete = useSelector(getIsLoadingComplete);
   const pendingAnalysisRef = useRef(false);
@@ -54,7 +60,7 @@ export function AIQuestionAnalysisSidebar({
   }, [previousQuestion, question]);
 
   useEffect(() => {
-    if (!pendingAnalysisRef.current || !isLoadingComplete) {
+    if (!isConfigured || !pendingAnalysisRef.current || !isLoadingComplete) {
       return;
     }
 
@@ -94,6 +100,7 @@ export function AIQuestionAnalysisSidebar({
     };
   }, [
     analyzeChart,
+    isConfigured,
     isLoadingComplete,
     question,
     timelines,
@@ -101,7 +108,7 @@ export function AIQuestionAnalysisSidebar({
   ]);
 
   const renderCopyButton = () => {
-    if (!analysisData?.summary) {
+    if (!isConfigured || !analysisData?.summary) {
       return null;
     }
 
@@ -123,7 +130,15 @@ export function AIQuestionAnalysisSidebar({
       headerActions={renderCopyButton()}
     >
       <Box px="1.5rem" py="0.5rem">
-        <AIAnalysisContent explanation={analysisData?.summary} />
+        {isConfigured ? (
+          <AIAnalysisContent explanation={analysisData?.summary} />
+        ) : (
+          <AIProviderConfigurationNotice
+            featureName={t`chart analysis`}
+            onConfigureAi={openAiProviderConfigurationModal}
+          />
+        )}
+        {aiProviderConfigurationModal}
       </Box>
     </SidebarContent>
   );

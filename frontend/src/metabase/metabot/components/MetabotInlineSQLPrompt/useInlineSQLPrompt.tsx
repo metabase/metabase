@@ -57,7 +57,8 @@ export function useInlineSQLPrompt(
   question: Question,
   bufferId: string,
 ): UseInlineSqlEditResult {
-  const { canUseSqlGeneration: isEnabled } = useUserMetabotPermissions();
+  const { canUseSqlGeneration, hasSqlGenerationAccess } =
+    useUserMetabotPermissions();
 
   const databaseId = question.databaseId();
 
@@ -169,7 +170,7 @@ export function useInlineSQLPrompt(
 
   const extensions = useMemo(
     () =>
-      isEnabled
+      hasSqlGenerationAccess
         ? [
             createPromptInputExtension(setPortalTarget),
             keymap.of([
@@ -201,13 +202,13 @@ export function useInlineSQLPrompt(
             }),
           ]
         : [],
-    [isEnabled],
+    [hasSqlGenerationAccess],
   );
 
   return {
     extensions,
     portalElement:
-      isEnabled && portalTarget
+      hasSqlGenerationAccess && portalTarget
         ? createPortal(
             <MetabotInlineSQLPrompt
               databaseId={databaseId}
@@ -224,8 +225,12 @@ export function useInlineSQLPrompt(
             portalTarget.container,
           )
         : null,
-    proposedQuestion: isEnabled ? proposedQuestion : undefined,
-    handleRejectProposed: isEnabled ? handleRejectProposed : undefined,
-    handleAcceptProposed: isEnabled ? handleAcceptProposed : undefined,
+    proposedQuestion: canUseSqlGeneration ? proposedQuestion : undefined,
+    handleRejectProposed: canUseSqlGeneration
+      ? handleRejectProposed
+      : undefined,
+    handleAcceptProposed: canUseSqlGeneration
+      ? handleAcceptProposed
+      : undefined,
   };
 }

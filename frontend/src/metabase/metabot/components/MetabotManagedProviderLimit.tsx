@@ -41,7 +41,7 @@ export const MetabotManagedProviderLimitActions = ({
 
   const configureModal = (
     <Modal
-      title="Connect to an AI provider"
+      title={t`Connect to an AI provider`}
       onClose={close}
       opened={isOpen}
       size="lg"
