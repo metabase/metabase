@@ -25374,6 +25374,418 @@
         "tags" : [ "/api/ee/ai-controls/permissions" ]
       }
     },
+    "/api/ee/ai-controls/usage/group" : {
+      "get" : {
+        "operationId" : "get-api-ee-ai-controls-usage-group",
+        "summary" : "GET /api/ee/ai-controls/usage/group",
+        "description" : "Get all group-level metabot usage limits.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "group_id" : {
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "max_usage" : {
+                        "type" : "integer",
+                        "minimum" : 0
+                      }
+                    },
+                    "required" : [ "group_id", "max_usage" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/usage" ]
+      }
+    },
+    "/api/ee/ai-controls/usage/group/{group-id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-ai-controls-usage-group-group-id",
+        "summary" : "GET /api/ee/ai-controls/usage/group/{group-id}",
+        "description" : "Get the metabot usage limit for a specific group. Returns `max_usage: null` if no limit is set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "group-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "group_id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "max_usage" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 0
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "group_id", "max_usage" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/usage" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-ai-controls-usage-group-group-id",
+        "summary" : "PUT /api/ee/ai-controls/usage/group/{group-id}",
+        "description" : "Set or update the metabot usage limit for a specific group. Pass `max_usage: null` to remove the limit.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "group-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "group_id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "max_usage" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 0
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "group_id", "max_usage" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "max_usage" : {
+                    "oneOf" : [ {
+                      "type" : "integer",
+                      "minimum" : 0
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "max_usage" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/usage" ]
+      }
+    },
+    "/api/ee/ai-controls/usage/instance" : {
+      "get" : {
+        "operationId" : "get-api-ee-ai-controls-usage-instance",
+        "summary" : "GET /api/ee/ai-controls/usage/instance",
+        "description" : "Get the instance-wide metabot usage limit. Returns `max_usage: null` if no limit is set (unlimited).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "max_usage" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 0
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "max_usage" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/usage" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-ai-controls-usage-instance",
+        "summary" : "PUT /api/ee/ai-controls/usage/instance",
+        "description" : "Set or update the instance-wide metabot usage limit. Pass `max_usage: null` to remove the limit (unlimited).",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "max_usage" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 0
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "max_usage" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "max_usage" : {
+                    "oneOf" : [ {
+                      "type" : "integer",
+                      "minimum" : 0
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "max_usage" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/usage" ]
+      }
+    },
+    "/api/ee/ai-controls/usage/tenant" : {
+      "get" : {
+        "operationId" : "get-api-ee-ai-controls-usage-tenant",
+        "summary" : "GET /api/ee/ai-controls/usage/tenant",
+        "description" : "Get all tenant-level metabot usage limits.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "max_usage" : {
+                        "type" : "integer",
+                        "minimum" : 0
+                      },
+                      "tenant_id" : {
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    },
+                    "required" : [ "tenant_id", "max_usage" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/usage" ]
+      }
+    },
+    "/api/ee/ai-controls/usage/tenant/{tenant-id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-ai-controls-usage-tenant-tenant-id",
+        "summary" : "GET /api/ee/ai-controls/usage/tenant/{tenant-id}",
+        "description" : "Get the metabot usage limit for a specific tenant. Returns `max_usage: null` if no limit is set.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tenant-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "max_usage" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 0
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "tenant_id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "tenant_id", "max_usage" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/usage" ]
+      },
+      "put" : {
+        "operationId" : "put-api-ee-ai-controls-usage-tenant-tenant-id",
+        "summary" : "PUT /api/ee/ai-controls/usage/tenant/{tenant-id}",
+        "description" : "Set or update the metabot usage limit for a specific tenant. Pass `max_usage: null` to remove the limit.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tenant-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "max_usage" : {
+                      "oneOf" : [ {
+                        "type" : "integer",
+                        "minimum" : 0
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "tenant_id" : {
+                      "type" : "integer",
+                      "minimum" : 1
+                    }
+                  },
+                  "required" : [ "tenant_id", "max_usage" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "max_usage" : {
+                    "oneOf" : [ {
+                      "type" : "integer",
+                      "minimum" : 0
+                    }, {
+                      "type" : "null"
+                    } ]
+                  }
+                },
+                "required" : [ "max_usage" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/ai-controls/usage" ]
+      }
+    },
     "/api/ee/audit-app/analytics-dev/export" : {
       "post" : {
         "operationId" : "post-api-ee-audit-app-analytics-dev-export",
@@ -25525,7 +25937,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "metabase-ai", "metabase-ai-tiered", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
           }
         } ],
         "responses" : {
@@ -27106,6 +27518,50 @@
           }
         },
         "tags" : [ "/api/ee/logs" ]
+      }
+    },
+    "/api/ee/metabot/usage" : {
+      "get" : {
+        "operationId" : "get-api-ee-metabot-usage",
+        "summary" : "GET /api/ee/metabot/usage",
+        "description" : "Fetch current Metabot token usage for the current billing period.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "tokens" : {
+                      "oneOf" : [ {
+                        "type" : "integer"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "updated-at" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "tokens", "updated-at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/metabot" ]
       }
     },
     "/api/ee/permission_debug" : {
@@ -35842,8 +36298,11 @@
                     } ]
                   },
                   "model" : {
-                    "type" : "string",
-                    "minLength" : 1
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
                   },
                   "provider" : {
                     "type" : "string",

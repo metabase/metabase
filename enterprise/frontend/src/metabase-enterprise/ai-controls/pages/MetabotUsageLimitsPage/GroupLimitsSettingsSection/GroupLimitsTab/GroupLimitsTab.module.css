@@ -42,3 +42,8 @@
 .LimitInput {
   max-width: 10rem;
 }
+
+.InputWrapper {
+  display: inline-flex;
+  position: relative;
+}

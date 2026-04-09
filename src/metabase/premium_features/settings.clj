@@ -300,6 +300,14 @@
   "Should we allow users to use workspaces?"
   :workspaces)
 
+(define-premium-feature ^{:added "0.60.0"} enable-metabase-ai-managed?
+  "Should we allow users to use the Metabase-managed AI provider?"
+  :metabase-ai-managed)
+
+(define-premium-feature ^{:added "0.60.0"} enable-offer-metabase-ai-managed?
+  "Should we offer users the Metabase-managed AI provider?"
+  :offer-metabase-ai-managed)
+
 (define-premium-feature enable-custom-viz?
   "Should we enable custom visualizations?"
   :custom-viz)
@@ -339,6 +347,8 @@
    :etl_connections                (enable-etl-connections?)
    :etl_connections_pg             (enable-etl-connections-pg?)
    :hosting                        (is-hosted?)
+   :metabase-ai-managed            (enable-metabase-ai-managed?)
+   :offer-metabase-ai-managed      (enable-offer-metabase-ai-managed?)
    :official_collections           (enable-official-collections?)
    :query_reference_validation     (enable-query-reference-validation?)
    :remote_sync                    (enable-remote-sync?)

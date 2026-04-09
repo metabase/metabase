@@ -164,7 +164,7 @@
               {:type :text :text ""}])))))
 
 (deftest claude-auth-preferences-test
-  (mt/with-premium-features #{:metabase-ai-provider}
+  (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
       (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
                                          llm.settings/llm-proxy-base-url    "https://proxy.example"]
@@ -204,7 +204,7 @@
                    (claude/claude-raw {:input [{:role :user :content "hi"}]}))))))))))
 
 (deftest claude-list-models-auth-preferences-test
-  (mt/with-premium-features #{:metabase-ai-provider}
+  (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
       (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key "sk-ant-byok"
                                          llm.settings/llm-proxy-base-url    "https://proxy.example"]

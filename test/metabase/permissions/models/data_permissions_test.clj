@@ -56,7 +56,7 @@
         (testing "A database-level permission cannot be set to an invalid value"
           (is (thrown-with-msg?
                ExceptionInfo
-               #"Permission type :perms/create-queries cannot be set to :invalid-value"
+               #"Invalid permission value :invalid-value for permission type :perms/create-queries"
                (data-perms/set-database-permission! group-id database-id :perms/create-queries :invalid-value))))))))
 
 (deftest set-table-permissions!-test
@@ -111,7 +111,7 @@
         (testing "A table-level permission cannot be set to an invalid value"
           (is (thrown-with-msg?
                ExceptionInfo
-               #"Permission type :perms/create-queries cannot be set to :invalid"
+               #"Invalid permission value :invalid for permission type :perms/create-queries"
                (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :invalid}))))
 
         (testing "A table-level permission can be set to :block"
