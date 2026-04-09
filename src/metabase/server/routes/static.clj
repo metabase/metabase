@@ -5,22 +5,16 @@
    instead of compressing on the fly. This avoids CPU overhead at request time
    and lets us use higher compression levels during the build."
   (:require
-   [clojure.string :as string]
+   [clojure.string :as str]
    [compojure.core :as compojure]
    [ring.util.mime-type :as mime]
    [ring.util.response :as response]))
-
-(set! *warn-on-reflection* true)
-
-(def ^:private compressible-content-types
-  "Content types for which we look for pre-compressed variants."
-  #{"application/javascript" "text/javascript" "text/css"})
 
 (defn- accepts-encoding?
   "Returns true if the request Accept-Encoding header includes `encoding`."
   [request encoding]
   (some-> (get-in request [:headers "accept-encoding"])
-          (string/includes? encoding)))
+          (str/includes? encoding)))
 
 (defn- compressed-path
   "Returns the path of the pre-compressed artifact for a given encoding."
@@ -49,7 +43,7 @@
         (response/resource-response resource-path))))
 
 (defn- add-wildcard [path]
-  (str path (if (string/ends-with? path "/") "*" "/*")))
+  (str path (if (str/ends-with? path "/") "*" "/*")))
 
 (defn precompressed-resources
   "A Ring handler that serves classpath resources from `root`, preferring
