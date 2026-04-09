@@ -1178,25 +1178,25 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
-               metabase.metabot.core
-               metabase.metabot.init
-               metabase.metabot.self
-               metabase.metabot.settings}
+              metabase.metabot.core
+              metabase.metabot.init
+              metabase.metabot.self
+              metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
               slackbot}
-    :uses    #{activity-feed
-               analytics
-               api
-               api-scope
-               app-db
-               audit-app
-               channel
-               collections
-               config
-               documents
-               driver
-               legacy-mbql
+   :uses    #{activity-feed
+              analytics
+              api
+              api-scope
+              app-db
+              audit-app
+              channel
+              collections
+              config
+              documents
+              driver
+              legacy-mbql
               lib
               lib-be
               llm
@@ -2631,7 +2631,6 @@
                     :model/Sandbox
                     :model/Table}}
 
-
   enterprise/analytics
   {:team "UX West"
    :api  #{}
@@ -2953,8 +2952,7 @@
    :api     #{metabase-enterprise.metabot.api
               metabase-enterprise.metabot.api.routes
               metabase-enterprise.metabot.init}
-   :friends #{enterprise/agent-api
-              slackbot
+   :friends #{slackbot
               mcp
               metabot}
    :uses    #{api
@@ -3299,7 +3297,6 @@
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
    :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
-   :friends #{enterprise/agent-api}
    :uses #{api
            api-scope
            app-db
