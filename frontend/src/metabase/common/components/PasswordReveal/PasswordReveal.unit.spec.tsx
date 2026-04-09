@@ -3,7 +3,7 @@ import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 
 describe("password reveal", () => {
   it("should toggle the visibility state when hide / show are clicked", () => {
-    render(<PasswordReveal />);
+    render(<PasswordReveal password="password" />);
     expect(screen.queryByText("Hide")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Show"));
@@ -13,7 +13,7 @@ describe("password reveal", () => {
   });
 
   it("should render a copy button", () => {
-    render(<PasswordReveal />);
+    render(<PasswordReveal password="password" />);
     expect(screen.getByTestId("copy-button")).toBeInTheDocument();
   });
 });

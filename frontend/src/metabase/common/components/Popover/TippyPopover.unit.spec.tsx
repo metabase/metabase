@@ -1,10 +1,9 @@
-/* eslint-disable react/prop-types */
 import userEvent from "@testing-library/user-event";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 
 import { render, screen } from "__support__/ui";
 
-import { TippyPopover } from "./TippyPopover";
+import { type ITippyPopoverProps, TippyPopover } from "./TippyPopover";
 
 const defaultTarget = (
   <div id="child-target" style={{ width: 100, height: 100 }}>
@@ -12,9 +11,9 @@ const defaultTarget = (
   </div>
 );
 
-function Content({ fn }) {
+function Content({ fn }: { fn?: jest.Mock }) {
   useEffect(() => {
-    fn && fn();
+    fn?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -26,7 +25,11 @@ function setup({
   target = defaultTarget,
   parentOnClick,
   ...otherProps
-} = {}) {
+}: {
+  contentFn?: jest.Mock;
+  target?: JSX.Element;
+  parentOnClick?: jest.Mock;
+} & ITippyPopoverProps = {}) {
   return render(
     <div onClick={parentOnClick}>
       <TippyPopover content={<Content fn={contentFn} />} {...otherProps}>
