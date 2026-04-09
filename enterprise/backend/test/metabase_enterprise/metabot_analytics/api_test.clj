@@ -1,8 +1,7 @@
 (ns metabase-enterprise.metabot-analytics.api-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.channel.settings :as channel.settings]
-   [metabase.slackbot.client :as slackbot.client]
+   [metabase.slackbot.api :as slackbot.api]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -319,12 +318,10 @@
                                  :slack-team-id    "T123"
                                  :slack-channel-id "C123"
                                  :slack-thread-ts  "1712785577.123456"})
-          (with-redefs [channel.settings/slack-configured?             (constantly true)
-                        channel.settings/unobfuscated-slack-app-token   (constantly "xoxb-fake")
-                        slackbot.client/get-permalink                  (fn [_client {:keys [channel ts]}]
-                                                                         (is (= "C123" channel))
-                                                                         (is (= "1712785577.123456" ts))
-                                                                         {:ok true :permalink permalink})]
+          (with-redefs [slackbot.api/conversation-permalink (fn [channel ts]
+                                                              (is (= "C123" channel))
+                                                              (is (= "1712785577.123456" ts))
+                                                              permalink)]
             (let [response (mt/user-http-request :crowberto :get 200
                                                  (format "ee/metabot-analytics/conversations/%s" conversation-id))]
               (is (= permalink (:slack_permalink response)))))

@@ -2989,6 +2989,7 @@
            driver
            metabot
            request
+           slackbot
            sql-tools
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotMessage}}

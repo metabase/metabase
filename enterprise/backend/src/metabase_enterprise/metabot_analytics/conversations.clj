@@ -8,10 +8,8 @@
   (:require
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
-   [metabase.channel.settings :as channel.settings]
    [metabase.metabot.persistence :as metabot-persistence]
-   [metabase.slackbot.client :as slackbot.client]
-   [metabase.util.log :as log]
+   [metabase.slackbot.api :as slackbot.api]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -103,19 +101,7 @@
 (defn- slack-permalink
   "Best-effort Slack permalink for a Slack-originated conversation."
   [{:keys [slack_channel_id slack_thread_ts]}]
-  (when (and slack_channel_id
-             slack_thread_ts
-             (channel.settings/slack-configured?))
-    (try
-      (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
-            {:keys [ok permalink]} (slackbot.client/get-permalink client
-                                                                  {:channel slack_channel_id
-                                                                   :ts      slack_thread_ts})]
-        (when ok
-          permalink))
-      (catch Exception e
-        (log/warn e "Unable to fetch Slack permalink for metabot conversation")
-        nil))))
+  (slackbot.api/conversation-permalink slack_channel_id slack_thread_ts))
 
 (defn fetch-conversation-detail
   "Fetch a conversation with its user info, the frontend-ready flattened
