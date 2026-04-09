@@ -1,11 +1,10 @@
+import { useMergedRef } from "@mantine/hooks";
 import cx from "classnames";
-import { type Ref, forwardRef, useMemo } from "react";
+import { type Ref, forwardRef, useMemo, useRef } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useLocale } from "metabase/common/hooks";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useMergedRef } from "metabase/hooks/use-merged-ref";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { isTouchDevice } from "metabase/lib/browser";
@@ -52,15 +51,13 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
   const isLiteral =
     expression != null && Lib.isJoinConditionLHSorRHSLiteral(expression);
 
-  const [setRef, buttonRef] = useMergedRef<HTMLButtonElement>(ref);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const mergedRef = useMergedRef(buttonRef, ref);
 
   useMount(() => {
-    // On mobile devices for SDK/EAJS we scroll to the auto-opened dropdown,
-    // as depending on a consumer site CSS the anchor button of the opened dropdown
-    // may be horizontally out of the screen.
-    const isMobileEmbeddingSdk = isEmbeddingSdk() && isTouchDevice();
-
-    if (isOpened && buttonRef.current && isMobileEmbeddingSdk) {
+    // On touch devices we scroll to the auto-opened dropdown,
+    // as the anchor button of the opened dropdown may be horizontally out of the screen.
+    if (isOpened && buttonRef.current && isTouchDevice()) {
       buttonRef.current.scrollIntoView({
         behavior: "smooth",
         inline: "start",
@@ -77,7 +74,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
         [S.noColumnStyle]: isEmpty,
         [S.isOpen]: isOpened,
       })}
-      ref={setRef}
+      ref={mergedRef}
       disabled={isReadOnly}
       onClick={onClick}
       aria-label={isLhsPicker ? t`Left column` : t`Right column`}

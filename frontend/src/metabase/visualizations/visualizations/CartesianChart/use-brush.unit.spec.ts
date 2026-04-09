@@ -2,6 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject, RefObject } from "react";
 
+import { createMockMediaQueryList } from "__support__/ui";
+
 import {
   createZrenderMousedownEvent,
   hasMovedBeyondThreshold,
@@ -78,16 +80,10 @@ const firePointer = (
 
 const mockMatchMedia = (results: Record<string, boolean>) => {
   window.matchMedia = (query: string) =>
-    ({
+    createMockMediaQueryList({
       matches: results[query] ?? false,
       media: query,
-      onchange: null,
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn(),
-      dispatchEvent: jest.fn(),
-    }) as MediaQueryList;
+    });
 };
 
 const simulateTouch = () => {

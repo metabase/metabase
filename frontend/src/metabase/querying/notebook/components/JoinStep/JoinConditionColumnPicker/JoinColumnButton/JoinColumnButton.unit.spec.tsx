@@ -1,13 +1,7 @@
 import { renderWithProviders } from "__support__/ui";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTouchDevice } from "metabase/lib/browser";
 
 import { JoinColumnButton } from "./JoinColumnButton";
-
-jest.mock("metabase/embedding-sdk/config", () => ({
-  ...jest.requireActual("metabase/embedding-sdk/config"),
-  isEmbeddingSdk: jest.fn(() => false),
-}));
 
 jest.mock("metabase/lib/browser", () => ({
   ...jest.requireActual("metabase/lib/browser"),
@@ -29,14 +23,12 @@ const defaultProps = {
 };
 
 describe("JoinColumnButton scroll on auto-open", () => {
-  function setupMobileSDK() {
+  function setupTouch() {
     (isTouchDevice as jest.Mock).mockReturnValue(true);
-    (isEmbeddingSdk as jest.Mock).mockReturnValue(true);
   }
 
   function setupDesktop() {
     (isTouchDevice as jest.Mock).mockReturnValue(false);
-    (isEmbeddingSdk as jest.Mock).mockReturnValue(false);
   }
 
   beforeEach(() => {
@@ -48,8 +40,8 @@ describe("JoinColumnButton scroll on auto-open", () => {
     jest.restoreAllMocks();
   });
 
-  it("scrolls into view on auto-open in mobile SDK", async () => {
-    setupMobileSDK();
+  it("scrolls into view on auto-open on touch devices", async () => {
+    setupTouch();
 
     renderWithProviders(<JoinColumnButton {...defaultProps} isOpened={true} />);
 
@@ -61,7 +53,7 @@ describe("JoinColumnButton scroll on auto-open", () => {
   });
 
   it("does not scroll when mounted as closed then opened later", () => {
-    setupMobileSDK();
+    setupTouch();
 
     const { rerender } = renderWithProviders(
       <JoinColumnButton {...defaultProps} isOpened={false} />,
