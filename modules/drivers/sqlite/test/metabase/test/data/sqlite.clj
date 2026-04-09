@@ -3,7 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.driver :as metabase.driver]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test.data.interface :as tx]
@@ -59,16 +59,6 @@
 (defmethod sql.tx/create-db-sql         :sqlite [& _] nil)
 (defmethod sql.tx/add-fk-sql            :sqlite [& _] nil) ; SQLite FKs have to be added at Table creation time
 
-(defn join-parts [parts]
-  (let [sb (StringBuilder.)]
-    (letfn [(append! [x]
-              (if (sequential? x)
-                (doseq [item x]
-                  (append! item))
-                (.append sb (str x))))]
-      (append! parts))
-    (.toString sb)))
-
 (defmethod sql.tx/create-table-sql :sqlite
   [driver {:keys [database-name], :as _db-def} {:keys [table-name field-definitions], :as _tabledef}]
   (letfn [(spaces [& args]
@@ -110,7 +100,9 @@
                  (apply sql-list (concat (field-defs)
                                          [(primary-key)]
                                          (foreign-keys))))]
-      (join-parts parts))))
+      (-> parts
+          flatten
+          str/join))))
 
 (deftest ^:parallel create-table-ddl-test
   (testing "CREATE TABLE for SQLite should include inline FOREIGN KEY declarations (#45788, QUE2-59)"
@@ -137,7 +129,7 @@
               "  PRIMARY KEY (\"id\"),"
               "  FOREIGN KEY (\"continent_id\") REFERENCES \"continent\" (\"id\")"
               ")"]
-             (str/split-lines (metabase.driver/prettify-native-form driver sql)))))))
+             (str/split-lines (driver/prettify-native-form driver sql)))))))
 
 (defmethod tx/destroy-db! :sqlite
   [_driver dbdef]
