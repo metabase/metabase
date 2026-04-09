@@ -116,7 +116,7 @@
   If `old-alias` is `nil`, updates the RHS of all 'standard' conditions (binary filter clauses with the operator from
   [[join-condition-operators]], the LHS expression with columns from [[join-condition-lhs-columns]], the RHS expression
   with columns from [[join-condition-rhs-columns]]). This currently doesn't handle more complex filter clauses that
-  were created without the 'normal' MLv2 functions used by the frontend; we can add this in the future if we need it."
+  were created without the 'normal' Lib functions used by the frontend; we can add this in the future if we need it."
   [join      :- ::lib.join.util/partial-join
    old-alias :- [:maybe ::lib.schema.join/alias]
    new-alias :- [:maybe ::lib.schema.join/alias]]
@@ -722,7 +722,7 @@
   ([query]
    (available-join-strategies query -1))
 
-  ;; stage number is not currently used, but it is taken as a parameter for consistency with the rest of MLv2
+  ;; stage number is not currently used, but it is taken as a parameter for consistency with the rest of Lib
   ([query         :- ::lib.schema/query
     _stage-number :- :int]
    (into []
