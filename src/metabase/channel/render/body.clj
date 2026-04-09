@@ -12,11 +12,9 @@
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
-   [metabase.config.core :as config]
    [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
@@ -405,11 +403,8 @@
    Assets are included as a map of `{name -> data-uri}` so the static viz JS context
    can resolve `getAssetUrl` calls without HTTP."
   [card]
-  (when (and config/ee-available?
-             (premium-features/enable-custom-viz?)
-             (render.util/custom-viz-display? (:display card)))
-    (let [identifier (subs (name (:display card)) (count "custom:"))
-          plugin     (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+  (when-let [identifier (render.util/custom-viz-identifier (:display card))]
+    (let [plugin (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
       (when-let [content (some-> plugin
                                  custom-viz-plugin/resolve-bundle
                                  :content)]

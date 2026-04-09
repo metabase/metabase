@@ -7,10 +7,8 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
-   [metabase.config.core :as config]
    [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -111,12 +109,9 @@
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
 
-        (and config/ee-available?
-             (premium-features/enable-custom-viz?)
-             (render.util/custom-viz-display? display-type)
-             (let [identifier (subs (name display-type) (count "custom:"))
-                   plugin  (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
-               (some-> plugin custom-viz-plugin/resolve-bundle :content)))
+        (when-let [identifier (render.util/custom-viz-identifier display-type)]
+          (let [plugin (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+            (some-> plugin custom-viz-plugin/resolve-bundle :content)))
         (chart-type :javascript_visualization "display-type is a custom visualization with static support")
 
         (#{:pin_map :state :country} display-type)
