@@ -47,27 +47,6 @@ You can also type into the input to filter options before clicking.
 **Modals and dialogs:**
 To dismiss: `browser_click` the close/action button, or `browser_press_key` with `Escape`.
 
-### Key tools
-
-| Tool | What it does | Key params |
-|------|-------------|------------|
-| `browser_navigate` | Go to a URL | `url` |
-| `browser_snapshot` | Accessibility tree with element refs | — |
-| `browser_click` | Click an element | `element`, `ref` |
-| `browser_fill` | Clear and fill a text field | `element`, `ref`, `value` |
-| `browser_type` | Type with keyboard events (appends) | `text`, optional `element`/`ref` |
-| `browser_press_key` | Press a key (Enter, Escape, Tab, ArrowDown, etc.) | `key` |
-| `browser_select_option` | Select from a native dropdown (NOT for Mantine) | `element`, `ref`, `values` |
-| `browser_hover` | Hover over an element | `element`, `ref` |
-| `browser_evaluate` | Run JavaScript on the page | `script` |
-| `browser_take_screenshot` | Save a visual screenshot | `raw` (base64) |
-| `browser_console_messages` | Browser console logs | — |
-| `browser_network_requests` | Network activity | — |
-| `browser_close` | Close the browser | — |
-| `browser_resize` | Change viewport size | `width`, `height` |
-| `browser_navigate_back` | Browser back button | — |
-| `browser_wait_for` | Wait for a condition | — |
-
 ### Login
 
 1. `browser_navigate` to `http://localhost:$MB_JETTY_PORT/auth/login`
@@ -75,27 +54,13 @@ To dismiss: `browser_click` the close/action button, or `browser_press_key` with
 3. **`browser_navigate` to `http://localhost:$MB_JETTY_PORT/`** — always navigate explicitly to the home page after login. Do NOT rely on the login redirect alone. The redirect can leave the browser session in a state where clicks don't register.
 4. `browser_snapshot` to confirm you're logged in
 
-### When clicks don't seem to work
+### When clicks don't work
 
-If a click had no effect (inline response shows no change):
+1. Take a fresh snapshot (async rendering). 2. Try hover + click (menu triggers). 3. Try keyboard (focus + Enter). 4. After 3 attempts, report and move on.
 
-1. **Take one fresh snapshot** — async rendering may not have completed
-2. **Try hover + click** — if the element is a menu trigger
-3. **Try keyboard** — `browser_click` to focus, then `browser_press_key` with `Enter` or `Space`
-4. **If nothing on the page responds at all**, `browser_close` and `browser_navigate` to restart the session
-5. **After 3 attempts**, report it as a struggle and move on. Do NOT use JavaScript workarounds.
+### Rules
 
-### Configuration notes
-
-The browser is pre-configured with:
-- **1440x900 viewport** — wide enough to avoid responsive breakpoints hiding UI elements
-- **Full snapshot mode** — every snapshot shows the complete page, not just changes since the last one
-- **Isolated session** — clean in-memory browser profile every time (no stale state from previous sessions)
-- **10-second action timeout** — longer than default to handle slow-rendering menus
-
-### General rules
-
-- Always use `http://localhost:$MB_JETTY_PORT` — never any other port
-- Close the browser when done to free resources
-- If the Playwright MCP tools are unavailable on first use, skip browser work entirely
-- **Be efficient with snapshots** — use the inline response snapshot when it shows what you need. Only take a separate `browser_snapshot` when the inline response is insufficient.
+- Always use `http://localhost:$MB_JETTY_PORT`
+- Close the browser when done
+- Use inline response snapshots when sufficient — only take separate `browser_snapshot` when needed
+- Browser is pre-configured: 1440x900 viewport, full snapshot mode, isolated session, 10s action timeout

@@ -74,7 +74,7 @@ Run:
   --set "PR_CONTEXT=<PR title and body, or empty>"
 ```
 
-**Shell escaping:** The `--set` values may contain quotes, newlines, and special characters. Use the `Write` tool to save multi-line values to temp files (e.g., `/tmp/qabot-server-info.txt`), then reference them with command substitution: `--set "SERVER_INFO=$(cat /tmp/qabot-server-info.txt)"`. Do NOT use `cat` with heredoc or `echo` to create the temp files — always use the `Write` tool, which doesn't require Bash permissions.
+**Shell escaping:** The `--set` values may contain quotes, newlines, and special characters. Use the `Write` tool to save multi-line values to temp files under `.qabot/tmp/` (e.g., `.qabot/tmp/server-info.txt`), then reference them with command substitution: `--set "SERVER_INFO=$(cat .qabot/tmp/server-info.txt)"`. Do NOT use `cat` with heredoc or `echo` to create the temp files — always use the `Write` tool, which doesn't require Bash permissions. Do NOT write to `/tmp` — use `.qabot/tmp/` so everything stays within the project directory and matches the `Write(./**)` permission.
 
 ### 4. Execute
 

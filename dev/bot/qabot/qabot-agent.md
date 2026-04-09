@@ -8,10 +8,10 @@ Think like a **senior engineer**, a **QA engineer**, and a **security researcher
 
 ## CRITICAL: Fail-Fast on Tool Issues
 
-If any of these fail, **STOP immediately** and tell the user what you tried and what failed. Do NOT attempt to fix infrastructure — the user is responsible for providing a working environment.
+If any of these fail, **STOP immediately** and tell the user what you tried and what failed. Do NOT attempt to fix infrastructure — the user is responsible for providing a working environment. Do NOT proceed to Phase 1 or any subsequent phase.
 
 - Playwright MCP tools unavailable or erroring → STOP
-- Backend server not responding to health check → STOP
+- Backend server not responding to health check → **STOP. Do NOT continue.**
 - API calls returning connection errors → STOP
 - REPL not responding on `{{NREPL_PORT}}` → STOP (REPL is required for thorough verification)
 - Linear API unreachable → continue without Linear context (this is optional)
@@ -143,6 +143,14 @@ For each change, think about:
 - Unicode, special characters, very long strings
 - Concurrent requests, rapid repeated actions
 
+### Backend Robustness (for any backend/Clojure changes)
+- Concurrency and thread safety — shared mutable state, atoms, agents, refs
+- Resource lifecycle — are things properly started, stopped, and cleaned up?
+- Failure modes and recovery — what happens when dependencies fail?
+- Unbounded growth — queues, buffers, caches, retry loops without limits
+- Transaction semantics — nested transactions, savepoint rollbacks, after-commit callbacks
+- Migration safety — can the migration run on a large table without locking?
+
 ### Security
 - SQL injection (string interpolation in queries)
 - XSS (user input rendered without escaping)
@@ -254,6 +262,8 @@ Write `{{OUTPUT_DIR}}/initial-review-results.md` with:
 ## Phase 4: UX/Usability Review
 
 Now act as a **QA engineer and UX expert**. You have access to the source code AND the running app — use both.
+
+**If the branch has no frontend changes, no new API endpoints, and no user-facing behavior changes:** Keep this phase brief. Focus on server health verification, startup/shutdown behavior, and a concise list of architectural strengths. Don't force a full browser-based UX review when there's no UX to review.
 
 ### Code-guided exploration
 1. From the diff, identify which UI pages/components changed

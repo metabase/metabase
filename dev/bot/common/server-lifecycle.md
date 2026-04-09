@@ -1,6 +1,6 @@
 ## Server Lifecycle (via REPL)
 
-Use the `/clojure-eval` skill for all REPL operations below.
+Use `clj-nrepl-eval -p {{NREPL_PORT}}` for all REPL operations below.
 
 ### Restart the server (without killing the JVM)
 
