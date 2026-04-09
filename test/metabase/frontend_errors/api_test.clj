@@ -26,7 +26,7 @@
            (select-keys (mt/user-http-request :rasta :post 400 "frontend-errors" {:type "bogus"})
                         [:errors]))))
 
-  (testing "POST /api/frontend-errors is throttled for the same browser once the threshold is exceeded"
+  (testing "POST /api/frontend-errors is throttled for the same IP once the threshold is exceeded"
     (mt/with-prometheus-system! [_ system]
       (with-redefs [frontend-errors.api/frontend-errors-throttler
                     (throttle/make-throttler :frontend-errors :attempts-threshold 1)
@@ -48,7 +48,7 @@
             (is (str/starts-with? (get-in resp [:body :error]) "Too many attempts!"))
             (is (string? (get-in resp [:headers "Retry-After"])))))))
 
-    (testing "POST /api/frontend-errors prefers browser-id over shared IP throttling"
+    (testing "POST /api/frontend-errors throttles requests from the same IP even if the browser ID changes"
       (mt/with-prometheus-system! [_ system]
         (with-redefs [frontend-errors.api/frontend-errors-throttler
                       (throttle/make-throttler :frontend-errors :attempts-threshold 1)
@@ -62,15 +62,11 @@
                 initial-count          (mt/metric-value system :metabase-frontend/errors {:type "component-crash"})]
             (is (nil? (mt/user-http-request :rasta :post 204 "frontend-errors" device-a-opts
                                             {:type "component-crash"})))
-            (is (nil? (mt/user-http-request :crowberto :post 204 "frontend-errors" device-b-opts
-                                            {:type "component-crash"})))
-            (let [count-after-two-browsers (mt/metric-value system :metabase-frontend/errors {:type "component-crash"})
-                  resp                     (mt/user-http-request-full-response :lucky :post 429 "frontend-errors"
-                                                                               device-a-opts
-                                                                               {:type "component-crash"})
+            (let [resp                   (mt/user-http-request-full-response :crowberto :post 429 "frontend-errors"
+                                                                             device-b-opts
+                                                                             {:type "component-crash"})
                   count-after-throttling   (mt/metric-value system :metabase-frontend/errors {:type "component-crash"})]
-              (is (= (+ initial-count 2) count-after-two-browsers))
-              (is (= count-after-two-browsers count-after-throttling))
+              (is (= (inc initial-count) count-after-throttling))
               (is (str/starts-with? (get-in resp [:body :error]) "Too many attempts!")))))))
 
     (testing "POST /api/frontend-errors throttles repeated invalid payloads before validation"

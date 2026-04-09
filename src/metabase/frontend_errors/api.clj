@@ -15,21 +15,19 @@
 
 ;; This endpoint is unauthenticated and writes to a Prometheus counter, so it is a
 ;; natural target for abuse (flooding to distort metrics or exhaust resources).
-;; Throttle anonymous clients by browser ID, with IP as a fallback. The threshold
-;; is generous enough to accommodate a page with many components reporting errors
-;; in a burst, but low enough to blunt a sustained flood from a single source.
+;; Throttle anonymous clients by IP, which is derived server-side. Browser IDs are
+;; client-controlled cookies and can be rotated or omitted to evade throttling, so
+;; they must not be used as the authoritative throttle bucket here.
 (def ^:private frontend-errors-throttler
   (throttle/make-throttler :frontend-errors
                            :attempts-threshold 100
                            :attempt-ttl-ms     (* 60 1000)))
 
 (defn- frontend-errors-throttle-key
-  "Prefer the per-browser identifier for anonymous clients so unrelated users on the
-  same egress IP do not share a throttle bucket. Fall back to IP if the request does
-  not have a browser ID for some reason."
+  "Use the request IP as the throttle key. This keeps the bucket tied to a trusted,
+  server-derived identifier for this unauthenticated endpoint."
   [request]
-  (or (:browser-id request)
-      (request/ip-address request)))
+  (request/ip-address request))
 
 (defn- throttle-frontend-errors
   "Apply throttling before `defendpoint` body parsing/validation runs."
