@@ -40,7 +40,7 @@
       (testing "only TOOL_CALL and TOOL_RESULT are included, TEXT is filtered out"
         (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000002"})]
           (is (= 2 (count (get result "1709567890.000002"))))
-          (is (every? #(#{"assistant" "tool"} (:role %)) (get result "1709567890.000002")))))
+          (is (every? #(#{:assistant :tool} (:role %)) (get result "1709567890.000002")))))
 
       (testing "user messages are excluded, only assistant role is queried"
         (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000001"})]

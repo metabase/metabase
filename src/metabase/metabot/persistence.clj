@@ -112,14 +112,14 @@
   (mapcat (fn [block]
             (when (and (string? (:type block))
                        (str/starts-with? (:type block) "tool-"))
-              (let [tool-call {:role       "assistant"
+              (let [tool-call {:role       :assistant
                                :tool_calls [{:id        (:toolCallId block)
                                              :name      (:toolName block)
                                              :arguments (if (string? (:input block))
                                                           (:input block)
                                                           (json/encode (:input block)))}]}
                     tool-result (when (#{"output-available" "error"} (:state block))
-                                  {:role         "tool"
+                                  {:role         :tool
                                    :tool_call_id (:toolCallId block)
                                    :content      (or (:output block) (some-> (:error block) :message))})]
                 (cond-> [tool-call]
