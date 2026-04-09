@@ -42,6 +42,7 @@ describe("admin > custom visualizations", () => {
       H.getAddVisualizationLink().click();
 
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+      cy.findByLabelText(/I understand/).click();
       H.interceptPluginCreate();
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@pluginCreate");
@@ -78,6 +79,7 @@ describe("admin > custom visualizations", () => {
       cy.findByLabelText(/Repository URL/).type(
         "file:///nonexistent/repo/.git",
       );
+      cy.findByLabelText(/I understand/).click();
 
       cy.intercept("POST", "/api/ee/custom-viz-plugin").as(
         "pluginCreateInvalid",
@@ -134,6 +136,7 @@ describe("admin > custom visualizations", () => {
 
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
       cy.findByLabelText(/Repository access token/).type("test-token-123");
+      cy.findByLabelText(/I understand/).click();
 
       cy.intercept("POST", "/api/ee/custom-viz-plugin", (req) => {
         expect(req.body.access_token).to.equal("test-token-123");
@@ -191,6 +194,7 @@ describe("admin > custom visualizations", () => {
         cy.findByLabelText(/Pinned version/)
           .clear()
           .type("main");
+        cy.findByLabelText(/I understand/).click();
 
         cy.intercept("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`).as(
           "pluginUpdate",
