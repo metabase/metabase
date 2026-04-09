@@ -218,7 +218,7 @@
 
       ;; All other requests require a valid session
       :else
-      (let [{:keys [session-id error]} (require-valid-session user-id session-id)]
+      (let [{:keys [error]} (require-valid-session user-id session-id)]
         (if error
           error
           (let [messages  (if batch? body [body])

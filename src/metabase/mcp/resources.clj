@@ -14,20 +14,48 @@
 (def ^:private embed-mcp-template-path "frontend_client/embed-mcp.html")
 
 ;; The built template is emitted by HtmlWebpackPlugin into resources/frontend_client/
-;; during the frontend build. Backend-only test runs (e.g. CI app-db tests) don't
-;; produce it, so we fall back to a minimal inline template that still substitutes
-;; the same Mustache variables, keeping resource-read responses deterministic.
-(def ^:private embed-mcp-fallback-template
+;; during the frontend build. Backend-only test runs (e.g. CI app-db tests) don't produce
+;; it, so tests install a minimal inline template via `with-fallback-template`.
+(def ^:private test-fallback-template
   (str "<!doctype html><html><body><script>"
        "window.metabaseConfig = {"
        "instanceUrl: {{{instanceUrl}}},"
        "sessionToken: {{{sessionToken}}}"
        "};</script></body></html>"))
 
+;; An atom rather than a dynamic var because `resources/read` is invoked from the
+;; HTTP handler thread, which doesn't inherit thread-local bindings from the test
+;; thread that installs the fallback.
+(defonce ^:private fallback-template (atom nil))
+
+(defn do-with-fallback-template
+  "Implementation detail of [[with-fallback-template]]."
+  [thunk]
+  (try
+    (reset! fallback-template test-fallback-template)
+    (thunk)
+    (finally
+      (reset! fallback-template nil))))
+
+(defmacro with-fallback-template
+  "Test-only: install an inline Mustache fallback for the embed-mcp template for
+   the duration of `body`. Backend-only test runs don't produce the built template,
+   so tests that exercise `resources/read` need this."
+  [& body]
+  `(do-with-fallback-template (fn [] ~@body)))
+
 (defn- render-embed-mcp [vars]
-  (if (io/resource embed-mcp-template-path)
+  (cond
+    (io/resource embed-mcp-template-path)
     (stencil/render-file embed-mcp-template-path vars)
-    (stencil/render-string embed-mcp-fallback-template vars)))
+
+    @fallback-template
+    (stencil/render-string @fallback-template vars)
+
+    :else
+    (throw (ex-info (str "Missing MCP embed template: " embed-mcp-template-path
+                         ". Run the frontend build to produce it.")
+                    {:path embed-mcp-template-path}))))
 
 (defonce ^:private registry
   (atom {:key->uri      {}
@@ -61,7 +89,7 @@
       (swap! registry assoc-in [:uri->tool uri] tool))
     (throw (ex-info "Unknown resource" {:resource-key resource-key}))))
 
-(defn all-scopes
+(defn resource-scopes
   "Return the distinct set of scopes registered across all UI resources."
   []
   (into (sorted-set) (keep :scope) (vals (:uri->resource @registry))))

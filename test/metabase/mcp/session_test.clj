@@ -25,6 +25,20 @@
       (is (not (t2/exists? :core_session :key_hashed (derived-hash session-id)))
           "No core_session should exist yet"))))
 
+(deftest derive-embedding-session-key-is-uuid-formatted-test
+  (testing "derived key is UUID-formatted so it passes server.middleware.session/valid-session-key?"
+    ;; If this regresses, the embedding SDK iframe will get 403s from /api when it sends the
+    ;; derived key as X-Metabase-Session, because the middleware rejects non-UUID keys up-front.
+    (let [session-id (mcp.session/create! (mt/user->id :crowberto))
+          key        (mcp.session/derive-embedding-session-key session-id)
+          parsed     (parse-uuid key)]
+      (is (some? parsed)
+          "derive-embedding-session-key must return a UUID-formatted string")
+      (is (= 8 (.version ^java.util.UUID parsed))
+          "should be a v8 (custom/vendor-defined) UUID per RFC 9562")
+      (is (= 2 (.variant ^java.util.UUID parsed))
+          "should carry the RFC 4122 variant (10xx)"))))
+
 (deftest get-or-create-session-key-test
   (testing "first call creates a core_session and returns the derived embedding key"
     (let [user-id    (mt/user->id :crowberto)

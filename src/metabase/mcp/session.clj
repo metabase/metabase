@@ -16,12 +16,12 @@
    its own TTL and will be reaped independently; if a subsequent resource read
    finds it missing, `get-or-create-session-key!` will re-insert it."
   (:require
-   [buddy.core.codecs :as codecs]
    [metabase.app-db.core :as app-db]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
    [toucan2.core :as t2])
   (:import
+   (java.nio ByteBuffer)
    (java.util UUID)
    (javax.crypto Mac)
    (javax.crypto.spec SecretKeySpec)))
@@ -30,17 +30,48 @@
 
 ;;; ---------------------------------------------- Key Derivation -------------------------------------------------
 
-(defn- hmac-sha256-hex
-  [^String secret ^String message]
+(defn- hmac-sha256
+  ^bytes [^String secret ^String message]
   (let [mac (Mac/getInstance "HmacSHA256")]
     (.init mac (SecretKeySpec. (.getBytes secret "UTF-8") "HmacSHA256"))
-    (codecs/bytes->hex (.doFinal mac (.getBytes message "UTF-8")))))
+    (.doFinal mac (.getBytes message "UTF-8"))))
 
 (defn derive-embedding-session-key
   "Deterministically derive the embedding session key for `mcp-session-id` from the
-   instance-wide signing secret. See ns docstring for rationale."
+   instance-wide signing secret. See ns docstring for rationale.
+
+   The output is formatted as a UUID string because `metabase.server.middleware.session`
+   rejects non-UUID session keys up-front. Specifically we emit a version-8 UUID
+   (RFC 9562), which is the version reserved for \"custom / vendor-defined\"
+   constructions — i.e. exactly our case: 128 bits produced by our own HMAC-SHA256
+   derivation rather than by the standard v1/v3/v4/v5 algorithms. v4 would lie
+   about randomness, v5 would lie about the hash algorithm; v8 is the only version
+   that's actually honest here.
+
+   Trade-offs to be aware of:
+   - Masking the variant (2 bits) and version (4 bits) costs 6 bits of entropy, so
+     we end up with 122 bits of randomness — identical to `UUID/randomUUID`, and
+     plenty for the ~2^61 birthday bound the rest of the session model already
+     relies on.
+   - Some older UUID inspection tools predate RFC 9562 and may render v8 as
+     \"unknown version\". `java.util.UUID/fromString` and our `valid-uuid?` are
+     format-only, so nothing in Metabase breaks.
+   - The output is deterministic in `mcp-session-id` and the signing secret. That's
+     intentional (so any webserver can recompute it) — don't treat two of these as
+     independently random just because they look like UUIDs."
   [mcp-session-id]
-  (hmac-sha256-hex (mcp.settings/mcp-embedding-signing-secret) mcp-session-id))
+  (let [bytes (hmac-sha256 (mcp.settings/unobfuscated-mcp-embedding-signing-secret) mcp-session-id)
+        buf   (ByteBuffer/wrap bytes)
+        ;; .getLong is stateful: each call consumes 8 bytes and advances the position,
+        ;; so `raw-high` reads bytes 0-7 and `raw-low` reads bytes 8-15.
+        raw-high (.getLong buf)
+        raw-low  (.getLong buf)
+        ;; Force RFC 9562 v8 bits: version nibble = 1000, variant = 10.
+        high     (bit-or (bit-and raw-high -61441)                ; clear version nibble (bits 12-15 of high)
+                         0x0000000000008000)                      ; set version = 8
+        low      (bit-or (bit-and raw-low 0x3fffffffffffffff)     ; clear variant (top 2 bits of low)
+                         (unchecked-long 0x8000000000000000))]    ; set RFC 4122 variant (10)
+    (str (UUID. high low))))
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 

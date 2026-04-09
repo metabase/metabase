@@ -32,7 +32,7 @@
   "All supported OAuth scopes: those declared on agent-api endpoints via
    defendpoint metadata, plus scopes from MCP UI resources (e.g. visualize_query)."
   []
-  (into (mcp.resources/all-scopes)
+  (into (mcp.resources/resource-scopes)
         (comp (keep #(get-in % [:form :metadata :scope]))
               (filter string?))
         (vals (api.macros/ns-routes 'metabase.agent-api.api))))

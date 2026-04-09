@@ -18,6 +18,11 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
+;; Backend-only test runs don't produce embed-mcp.html; install the inline fallback.
+(use-fixtures :each
+  (fn [thunk]
+    (mcp.resources/with-fallback-template (thunk))))
+
 ;;; --------------------------------------------------- Helpers ----------------------------------------------------
 
 (defn- mcp-request
