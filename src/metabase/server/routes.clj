@@ -3,6 +3,7 @@
    how these work. `/api/` routes are in [[metabase.api-routes.routes]]."
   (:require
    [compojure.core :as compojure :refer #_{:clj-kondo/ignore [:discouraged-var]} [context defroutes GET OPTIONS]]
+   [compojure.route :as route]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.appearance.core :as appearance]
