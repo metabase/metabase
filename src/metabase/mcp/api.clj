@@ -16,7 +16,8 @@
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [oidc-provider.store :as oidc.store])
+   [oidc-provider.store :as oidc.store]
+   [throttle.core :as throttle])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
    (java.net URI)
@@ -246,6 +247,30 @@
     (or session-err
         {:status 200 :headers {"Content-Type" "application/json"} :body ""})))
 
+;;; -------------------------------------------------- Throttling --------------------------------------------------
+
+;; MCP is auth-gated (session cookie or bearer token), so the risk is lower than the
+;; unauthenticated OAuth endpoints. The threshold is generous to accommodate users running
+;; multiple concurrent agents (e.g. 5 agents × 200 req/min). throttle/check counts every
+;; request (not just failures) which is correct here — we want to cap total throughput
+;; regardless of success to prevent resource exhaustion from a compromised token.
+(def ^:private one-minute-ms (* 60 1000))
+
+(def ^:private mcp-throttler
+  (throttle/make-throttler :user-id :attempts-threshold 1000 :attempt-ttl-ms one-minute-ms))
+
+(defn- check-throttle
+  "Returns a 429 JSON-RPC response if rate-limited, nil otherwise."
+  [user-id]
+  (try
+    (throttle/check mcp-throttler user-id)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (let [message       (ex-message e)
+            retry-seconds (some->> message (re-find #"(\d+) seconds") second)]
+        (cond-> (json-response 429 (jsonrpc-error nil -32000 message))
+          retry-seconds (assoc-in [:headers "Retry-After"] retry-seconds))))))
+
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
 (defn- www-authenticate-discovery []
@@ -261,15 +286,17 @@
            session-auth    api/*current-user-id*]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
-                   (try
-                     (let [request (assoc request :token-scopes token-scopes)]
-                       (case (:request-method request)
-                         :post   (respond (handle-post user-id request))
-                         :get    (handle-get user-id request respond raise)
-                         :delete (respond (handle-delete user-id request))
-                         (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
-                     (catch Throwable e
-                       (raise e)))))]
+                   (if-let [throttle-err (check-throttle user-id)]
+                     (respond throttle-err)
+                     (try
+                       (let [request (assoc request :token-scopes token-scopes)]
+                         (case (:request-method request)
+                           :post   (respond (handle-post user-id request))
+                           :get    (handle-get user-id request respond raise)
+                           :delete (respond (handle-delete user-id request))
+                           (respond (json-response 405 (jsonrpc-error nil -32600 "Method not allowed")))))
+                       (catch Throwable e
+                         (raise e))))))]
          (cond
            (some? origin-error)
            (respond origin-error)
