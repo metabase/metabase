@@ -1382,6 +1382,7 @@
    :uses #{api
            appearance
            models
+           request
            settings
            system
            task
