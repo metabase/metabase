@@ -5,7 +5,6 @@ import { isEmpty } from "metabase/lib/validate";
 import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
-import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -13,6 +12,7 @@ import type {
   Card,
   CardId,
   Dataset,
+  DatasetColumn,
   DimensionId,
   MetricBreakoutValuesResponse,
   RowValue,
@@ -23,17 +23,16 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  BreakoutColorMap,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
   SelectedMetric,
+  SourceBreakoutColorMap,
   SourceColorMap,
 } from "../types/viewer-state";
 
-import {
-  getDefinitionColumnName,
-  getDefinitionName,
-} from "./definition-builder";
+import { getDefinitionName } from "./definition-builder";
 import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
 import { findDimensionById } from "./dimension-lookup";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
@@ -52,19 +51,23 @@ function getDefinitionCardId(def: MetricDefinition): number | null {
   return null;
 }
 
-/**
- * Computes colors for each definition by building the same series key array
- * that the chart pipeline would produce, then passing it to getColorsForValues.
- *
- * Chart key rules (from transformSeries → keyForSingleSeries):
- *   - First series key = col.name (slugified metric/measure card name)
- *   - Subsequent series keys = card.name (displayName or "displayName: breakoutValue")
- */
-export function computeSourceColors(
+function formatBreakoutValue(value: RowValue, column: DatasetColumn): string {
+  return String(
+    formatValue(isEmpty(value) ? NULL_DISPLAY_VALUE : value, {
+      column,
+    }),
+  );
+}
+
+export function computeSourceBreakoutColors(
   definitions: MetricsViewerDefinitionEntry[],
   breakoutValuesBySourceId?: Map<MetricSourceId, MetricBreakoutValuesResponse>,
-): SourceColorMap {
-  const entries: { sourceId: MetricSourceId; keys: string[] }[] = [];
+): SourceBreakoutColorMap {
+  const entries: {
+    sourceId: MetricSourceId;
+    keys: string[];
+    keyToBreakoutValue: Record<string, string>;
+  }[] = [];
 
   for (const entry of definitions) {
     if (!entry.definition) {
@@ -77,19 +80,23 @@ export function computeSourceColors(
 
     const response = breakoutValuesBySourceId?.get(entry.id);
     if (entryHasBreakout(entry) && response && response.values.length > 0) {
-      const keys = response.values.map((val) => {
-        const formatted = String(
-          formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
-            column: response.col,
-          }),
-        );
-        return definitions.length > 1
-          ? `${displayName}: ${formatted}`
-          : formatted;
+      // getColorsForValues needs unique keys
+      const keys: string[] = [];
+      // but we want to return the (possibly non-unique) breakout values to be displayed in the legend
+      const keyToBreakoutValue: Record<string, string> = {};
+      response.values.forEach((val) => {
+        const breakoutValue = formatBreakoutValue(val, response.col);
+        const key = `${displayName}: ${breakoutValue}`;
+        keys.push(key);
+        keyToBreakoutValue[key] = breakoutValue;
       });
-      entries.push({ sourceId: entry.id, keys });
+      entries.push({ sourceId: entry.id, keys, keyToBreakoutValue });
     } else {
-      entries.push({ sourceId: entry.id, keys: [displayName] });
+      entries.push({
+        sourceId: entry.id,
+        keys: [displayName],
+        keyToBreakoutValue: {},
+      });
     }
   }
 
@@ -97,29 +104,34 @@ export function computeSourceColors(
     return {};
   }
 
-  const allKeys = entries.flatMap((entry) => entry.keys);
+  const colorMapping = getColorsForValues(
+    entries.flatMap((entry) => entry.keys),
+  );
 
-  const firstDefinition = definitions.find(
-    (definition) => definition.id === entries[0].sourceId,
-  )?.definition;
-  if (firstDefinition) {
-    const columnName = getDefinitionColumnName(firstDefinition);
-    if (columnName) {
-      allKeys[0] = columnName;
+  const result: SourceBreakoutColorMap = {};
+  for (const entry of entries) {
+    if (entry.keys.length === 1) {
+      result[entry.sourceId] = colorMapping[entry.keys[0]];
+    } else {
+      result[entry.sourceId] = new Map(
+        Object.entries(entry.keyToBreakoutValue).map(([key, breakoutValue]) => [
+          breakoutValue,
+          colorMapping[key],
+        ]),
+      );
     }
   }
-
-  const colorMapping = getColorsForValues(allKeys);
-
-  const result: SourceColorMap = {};
-  let idx = 0;
-  for (const entry of entries) {
-    result[entry.sourceId] = entry.keys.map(
-      (_, i) => colorMapping[allKeys[idx + i]],
-    );
-    idx += entry.keys.length;
-  }
   return result;
+}
+
+export function getSingleColor(
+  colors: BreakoutColorMap | string | undefined,
+): string | undefined {
+  return typeof colors === "string"
+    ? colors
+    : colors instanceof Map
+      ? colors.values().next().value
+      : undefined;
 }
 
 // Column layout with breakout:
@@ -128,8 +140,12 @@ export function computeSourceColors(
 export function splitByBreakout(
   series: SingleSeries,
   seriesCount: number,
-  sourceColors?: string[],
-): SingleSeries[] {
+  isFirstSeries: boolean,
+  breakoutColorMap: BreakoutColorMap,
+): {
+  series: SingleSeries[];
+  activeBreakoutColorMap: BreakoutColorMap | string | undefined;
+} {
   const { card, data } = series;
   const { cols } = data;
 
@@ -143,58 +159,65 @@ export function splitByBreakout(
   const rowsByBreakoutValue = new Map<RowValue, RowValues[]>();
 
   for (const row of data.rows) {
-    const breakoutValue = row[breakoutColumnIndex];
+    const breakoutValue = formatBreakoutValue(
+      row[breakoutColumnIndex],
+      breakoutCol,
+    );
     let groupedRows = rowsByBreakoutValue.get(breakoutValue);
     if (!groupedRows) {
       groupedRows = [];
       rowsByBreakoutValue.set(breakoutValue, groupedRows);
       if (rowsByBreakoutValue.size > MAX_SERIES) {
-        return [series];
+        return {
+          series: [series],
+          activeBreakoutColorMap: getSingleColor(breakoutColorMap),
+        };
       }
     }
     groupedRows.push([row[0], row[metricColumnIndex]] as RowValues);
   }
 
-  return Array.from(rowsByBreakoutValue.keys()).map((breakoutValue, i) => {
-    const name = [
-      seriesCount > 1 && card.name,
-      formatValue(isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue, {
-        column: breakoutCol,
-      }),
-    ]
-      .filter(Boolean)
-      .join(": ");
+  const activeBreakoutColorMap: BreakoutColorMap = new Map();
 
-    const seriesKey = getSeriesVizSettingsKey(
-      metricCol,
-      false,
-      true,
-      1,
-      null,
-      name,
-    );
+  const breakoutSeries = Array.from(breakoutColorMap)
+    .map(([breakoutValue, color]) => {
+      const rows = rowsByBreakoutValue.get(breakoutValue);
+      if (!rows) {
+        return null;
+      }
 
-    return {
-      ...series,
-      card: {
-        ...card,
-        id: nextSyntheticCardId(),
-        name,
-        visualization_settings: {
-          ...computeColorVizSettings({
-            displayType: card.display,
-            seriesKey,
-            color: sourceColors?.[i],
-          }),
+      activeBreakoutColorMap.set(breakoutValue, color);
+
+      const name = [seriesCount > 1 && card.name, breakoutValue]
+        .filter(Boolean)
+        .join(": ");
+
+      const seriesKey = isFirstSeries ? metricCol?.name : name;
+      isFirstSeries = false;
+
+      return {
+        ...series,
+        card: {
+          ...card,
+          id: nextSyntheticCardId(),
+          name,
+          visualization_settings: {
+            ...computeColorVizSettings({
+              displayType: card.display,
+              seriesKey,
+              color,
+            }),
+          },
         },
-      },
-      data: {
-        ...data,
-        rows: rowsByBreakoutValue.get(breakoutValue)!,
-        cols: outputCols,
-      },
-    };
-  });
+        data: {
+          ...data,
+          rows,
+          cols: outputCols,
+        },
+      };
+    })
+    .filter((s) => s != null);
+  return { series: breakoutSeries, activeBreakoutColorMap };
 }
 
 function createSeriesCard(
@@ -217,10 +240,11 @@ export function buildRawSeriesFromDefinitions(
   display: MetricsViewerDisplayType,
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
-  sourceColors: SourceColorMap,
+  sourceBreakoutColors: SourceBreakoutColorMap,
 ): {
   series: SingleSeries[];
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+  cardIdToDefinitionId: Record<CardId, MetricSourceId>;
+  activeBreakoutColors: SourceBreakoutColorMap;
 } {
   const firstSettingsEntry = definitions.reduce<{
     def: MetricDefinition;
@@ -245,15 +269,18 @@ export function buildRawSeriesFromDefinitions(
   }, null);
 
   if (!firstSettingsEntry) {
-    return { series: [], cardIdToDimensionId: {} };
+    return { series: [], cardIdToDefinitionId: {}, activeBreakoutColors: {} };
   }
 
-  const baseSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
+  const displayType = DISPLAY_TYPE_REGISTRY[display];
+  const baseSettings = displayType.getSettings(
     firstSettingsEntry.def,
     firstSettingsEntry.dimension,
   );
 
-  const cardIdToDimensionId: Record<CardId, MetricSourceId> = {};
+  let isFirstSeries = true;
+  const cardIdToDefinitionId: Record<CardId, MetricSourceId> = {};
+  const activeBreakoutColors: SourceBreakoutColorMap = {};
 
   const series = definitions.flatMap((entry) => {
     const dimensionId = dimensionMapping[entry.id];
@@ -277,15 +304,14 @@ export function buildRawSeriesFromDefinitions(
     }
 
     const name = getDefinitionName(entry.definition);
+    if (!name) {
+      return [];
+    }
 
-    const seriesKey = getSeriesVizSettingsKey(
-      result.data.cols[1], // metric API returns [projection_cols..., aggregation_col]
-      false,
-      true,
-      1,
-      null,
-      name ?? undefined,
-    );
+    const seriesKey = isFirstSeries ? result.data.cols[1]?.name : name;
+
+    const colors = sourceBreakoutColors[entry.id];
+    const color = getSingleColor(colors);
 
     const singleSeries: SingleSeries = {
       card: createSeriesCard(cardId, name, display, {
@@ -293,31 +319,46 @@ export function buildRawSeriesFromDefinitions(
         ...computeColorVizSettings({
           displayType: display,
           seriesKey,
-          color: sourceColors[entry.id]?.[0],
+          color,
         }),
       }),
       data: result.data,
     };
 
     let entrySeries: SingleSeries[];
-    if (!entryHasBreakout(entry) || singleSeries.data.rows.length === 0) {
+    if (
+      !entryHasBreakout(entry) ||
+      singleSeries.data.rows.length === 0 ||
+      !(colors instanceof Map)
+    ) {
       entrySeries = [singleSeries];
+      activeBreakoutColors[entry.id] = color;
     } else {
-      entrySeries = splitByBreakout(
+      const { series, activeBreakoutColorMap } = splitByBreakout(
         singleSeries,
         definitions.length,
-        sourceColors[entry.id],
+        isFirstSeries,
+        colors,
       );
+      entrySeries = series;
+      activeBreakoutColors[entry.id] = activeBreakoutColorMap;
     }
+    isFirstSeries = false;
 
     for (const s of entrySeries) {
-      cardIdToDimensionId[s.card.id] = entry.id;
+      cardIdToDefinitionId[s.card.id] = entry.id;
     }
 
     return entrySeries;
   });
 
-  return { series, cardIdToDimensionId };
+  if (series.length > 1 && displayType.combineSettings) {
+    series[0].card.visualization_settings = displayType.combineSettings(
+      series.map((s) => s.card.visualization_settings),
+    );
+  }
+
+  return { series, cardIdToDefinitionId, activeBreakoutColors };
 }
 
 function computeColorVizSettings({

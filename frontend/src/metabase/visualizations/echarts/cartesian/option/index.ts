@@ -338,7 +338,7 @@ export function buildSplitPanelGrid(
     right: chartLayout.padding.right,
     top:
       chartLayout.padding.top +
-      index * ((chartLayout.panelHeight ?? 0) + CHART_STYLE.splitPanel.gap),
+      index * ((chartLayout.panelHeight ?? 0) + chartLayout.panelGap),
     height: chartLayout.panelHeight ?? 0,
   }));
 }
@@ -455,7 +455,7 @@ export function getSplitPanelTimelineEventsYExtent(
     topY: chartLayout.padding.top,
     bottomY:
       chartLayout.padding.top +
-      (panelCount - 1) * (panelHeight + CHART_STYLE.splitPanel.gap) +
+      (panelCount - 1) * (panelHeight + chartLayout.panelGap) +
       panelHeight,
   };
 }
@@ -473,7 +473,7 @@ export function buildSplitPanelYAxisLabel(
 
   const panelHeight = chartLayout.panelHeight ?? 0;
   const totalPanelsHeight =
-    panelCount * panelHeight + (panelCount - 1) * CHART_STYLE.splitPanel.gap;
+    panelCount * panelHeight + (panelCount - 1) * chartLayout.panelGap;
   const { fontSize } = renderingContext.theme.cartesian.label;
 
   return [
