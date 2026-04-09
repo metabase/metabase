@@ -13,7 +13,7 @@ If any of these fail, **STOP immediately** and tell the user what you tried and 
 - Playwright MCP tools unavailable or erroring → STOP
 - Backend server not responding to health check → STOP
 - API calls returning connection errors → STOP
-- `/clojure-eval` skill unavailable → continue without REPL (use API calls and code reading instead)
+- REPL not responding on `{{NREPL_PORT}}` → STOP (REPL is required for thorough verification)
 - Linear API unreachable → continue without Linear context (this is optional)
 
 ## CRITICAL: Getting the User's Attention
@@ -57,7 +57,8 @@ Use the Admin API key for admin-level testing and the Regular API key for permis
 ## Phase 0: Setup
 
 1. Your output directory is already created at `{{OUTPUT_DIR}}`. Use this path for ALL output files. Subdirectory `{{OUTPUT_DIR}}/output/` is also ready.
-2. Load Playwright MCP tools:
+2. Your nREPL port is `{{NREPL_PORT}}`. Use this for all `clj-nrepl-eval` calls: `clj-nrepl-eval -p {{NREPL_PORT}} "<expression>"`. Verify connectivity: `clj-nrepl-eval -p {{NREPL_PORT}} "(+ 1 1)"`. If this fails, STOP and tell the user the REPL is not responding.
+3. Load Playwright MCP tools:
    ```
    ToolSearch: select:mcp__playwright__browser_navigate,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_fill,mcp__playwright__browser_type,mcp__playwright__browser_press_key,mcp__playwright__browser_hover,mcp__playwright__browser_take_screenshot,mcp__playwright__browser_close,mcp__playwright__browser_evaluate,mcp__playwright__browser_console_messages,mcp__playwright__browser_network_requests
    ```
@@ -186,7 +187,7 @@ For each finding from Phase 2 with confidence MEDIUM or above. Also, spend extra
 
 Before reproducing each finding, pick the fastest tool:
 - **API endpoint bug** → `./bin/mage -bot-api-call` (fast, direct)
-- **Internal function logic** → `/clojure-eval` REPL (fastest for verifying edge cases, type coercions, nil handling)
+- **Internal function logic** → `clj-nrepl-eval -p {{NREPL_PORT}}` REPL (fastest for verifying edge cases, type coercions, nil handling)
 - **UI interaction bug** → Playwright (slowest — use only when the finding genuinely requires browser interaction)
 
 Start with the fastest tool. Only escalate to Playwright for findings that require visual verification or multi-step UI interaction sequences.
@@ -206,8 +207,8 @@ Start with the fastest tool. Only escalate to Playwright for findings that requi
 2. Save the full response to `{{OUTPUT_DIR}}/output/` as JSON files by redirecting stdout
 3. Check response codes, body structure, error messages
 
-### Backend Logic Issues (use REPL via `/clojure-eval`)
-For Clojure-heavy changes, the REPL is often the most powerful verification tool. Use the `/clojure-eval` skill to:
+### Backend Logic Issues (use REPL via `clj-nrepl-eval -p {{NREPL_PORT}}`)
+For Clojure-heavy changes, the REPL is often the most powerful verification tool. Use `clj-nrepl-eval -p {{NREPL_PORT}}` to:
 - Call functions directly to verify their behavior (e.g., `(settings/get :some-setting)`)
 - Test edge cases that are hard to trigger via the API (e.g., nil inputs, empty collections, type coercions)
 - Verify database state after operations (e.g., `(t2/select-one :model/Setting :key "some-key")`)
@@ -231,16 +232,19 @@ For Clojure-heavy changes, the REPL is often the most powerful verification tool
 - For permission boundary testing: try the same action with both users
 
 ### For each finding, update status:
-- **CONFIRMED** — the bug reproduces as described
+- **CONFIRMED** — reproduced the bug dynamically (via REPL, API call, or browser). This is the gold standard — you triggered it and observed the wrong behavior.
+- **CONFIRMED_STATIC** — verified by reading source code that the bug exists, but did not dynamically reproduce it. Explain why dynamic reproduction wasn't attempted or wasn't possible. This is still a valid finding, but lower confidence than CONFIRMED.
 - **SUSPECTED** — you couldn't trigger it, but the code analysis strongly suggests it's a real bug. Explain what you tried, why it didn't trigger, and under what conditions you believe it would manifest
 - **NOT_REPRODUCED** — tested and the code actually handles it correctly; explain why the initial concern was wrong
 - **BLOCKED** — couldn't test due to missing data/setup; explain what's needed
+
+**Prefer CONFIRMED over CONFIRMED_STATIC**: When a finding can be demonstrated via REPL (e.g., calling the function directly and showing the wrong return value), do that rather than just describing the code path. The REPL is available — use it.
 
 Use **SUSPECTED** (not NOT_REPRODUCED) when the code clearly has a problem but you just couldn't construct the right conditions to trigger it. NOT_REPRODUCED means you verified the code is actually fine.
 
 Write `{{OUTPUT_DIR}}/initial-review-results.md` with:
 - Each finding's original description
-- Updated status (CONFIRMED / SUSPECTED / NOT_REPRODUCED / BLOCKED)
+- Updated status (CONFIRMED / CONFIRMED_STATIC / SUSPECTED / NOT_REPRODUCED / BLOCKED)
 - **Steps taken** — exactly what you did to try to reproduce
 - What happened vs what you expected
 - References to evidence files in `output/`
@@ -317,6 +321,8 @@ Create `{{OUTPUT_DIR}}/report.md` with this structure:
 
 <2-3 paragraphs describing what the branch does, based on the diff analysis and Linear context>
 
+**If no actionable findings were found** (no SECURITY, SEVERE, or GOOD_TO_FIX): The Summary should genuinely celebrate the quality of the work. Be complimentary — reference specific things that impressed you (thorough test coverage, clean error handling, thoughtful edge case handling, well-structured code, etc.). Feel free to be fun and a bit funny about it. The Metabase engineers are talented and when the code is solid, say so with enthusiasm.
+
 ## Findings
 
 ### SECURITY
@@ -390,10 +396,10 @@ cd {{OUTPUT_DIR}} && npx -y md-to-pdf report.md
 Show the user:
 1. Absolute path to `report.pdf`
 2. Absolute path to `report.md`
-3. Absolute path to `fix-plan.md` (see Phase 6)
+3. Absolute path to `fix-plan.md` (only if Phase 6 generated one)
 4. A brief summary: how many findings per category, and the most important one
 
-Use the attention banner:
+**If findings exist**, use this banner:
 ```
 ╔══════════════════════════════════════════════════════════════╗
 ║  📋  QABOT REPORT COMPLETE                                   ║
@@ -407,9 +413,24 @@ Use the attention banner:
 ╚══════════════════════════════════════════════════════════════╝
 ```
 
+**If no actionable findings**, use this banner instead:
+```
+╔══════════════════════════════════════════════════════════════╗
+║  ✅  QABOT REPORT COMPLETE — ALL CLEAR!                      ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  Report: <absolute path to report.pdf>                       ║
+║                                                              ║
+║  No bugs found. Solid work! 🎉                               ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
 ---
 
 ## Phase 6: Fix Plan
+
+**If the report has no SECURITY, SEVERE, or GOOD_TO_FIX findings, skip this phase entirely.** Do not create fix-plan.md — there's nothing to fix.
 
 After generating the report, create a fix plan that another agent can use to address the found bugs.
 
@@ -449,7 +470,7 @@ Generated by QABot on YYYY-MM-DD from [report](report.md).
 
 ### Reference from the PDF report
 
-Add a final section to `report.md` before generating the PDF:
+Only if fix-plan.md was created, add a final section to `report.md` before generating the PDF:
 
 ```markdown
 ## Fix Plan

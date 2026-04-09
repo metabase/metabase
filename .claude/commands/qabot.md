@@ -14,9 +14,7 @@ echo '{"mcpServers":{"playwright":{"command":"npx","args":["-y","@playwright/mcp
 #### Verify tools are available (stop if any fail)
 - Playwright MCP: `npx -y @playwright/mcp@0.0.68 --version` — available via npx
 - Backend health: `./bin/mage -bot-api-call /api/health` — must succeed and return `{"status":"ok"}`
-
-Optional (warn but continue if missing):
-- `LINEAR_API_KEY` env var — enables fetching Linear issue context
+- REPL: Run `clj-nrepl-eval --discover-ports` to find nREPL servers. Pick the port that belongs to the server running in the current project directory (the output indicates which directory each server is in). Store it as NREPL_PORT. Do NOT rely on the `NREPL_PORT` env var — always discover dynamically. **If no matching port is found, STOP** — REPL testing is required for qabot.
 
 If any required check fails, show the error and stop. Do not attempt to recover.
 
@@ -69,13 +67,14 @@ Run:
   --set "BRANCH_NAME=<branch>" \
   --set "TIMESTAMP=<timestamp>" \
   --set "OUTPUT_DIR=.qabot/<branch>/<timestamp>" \
+  --set "NREPL_PORT=<discovered-port>" \
   --set "LINEAR_ISSUE_ID=<resolved-id-or-empty>" \
   --set "SERVER_INFO=<output from -bot-server-info>" \
   --set "LINEAR_CONTEXT=<output from -bot-fetch-issue, or empty>" \
   --set "PR_CONTEXT=<PR title and body, or empty>"
 ```
 
-**Shell escaping:** The `--set` values may contain quotes, newlines, and special characters. Write multi-line values to temp files and use command substitution: `--set "SERVER_INFO=$(cat /tmp/server-info.txt)"`.
+**Shell escaping:** The `--set` values may contain quotes, newlines, and special characters. Use the `Write` tool to save multi-line values to temp files (e.g., `/tmp/qabot-server-info.txt`), then reference them with command substitution: `--set "SERVER_INFO=$(cat /tmp/qabot-server-info.txt)"`. Do NOT use `cat` with heredoc or `echo` to create the temp files — always use the `Write` tool, which doesn't require Bash permissions.
 
 ### 4. Execute
 
