@@ -2,6 +2,7 @@
   ;; TODO (Cam 10/30/25) -- Move this somewhere better
   (:require
    [clojure.test :refer :all]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -56,7 +57,7 @@
                               :cloud-custom-smtp
                               :workspaces
                               :writable-connection}
-    (is (= {:admin_security_center          false ;; requires self-hosted (non-cloud)
+    (is (= {:admin_security_center          false ;; requires self-hosted (non-cloud) and non-H2 app db
             :advanced_permissions           true
             :ai_controls                    true
             :attached_dwh                   true
@@ -109,7 +110,8 @@
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
 
 (deftest security-center-token-feature-test
-  (testing "admin_security_center is true for self-hosted with the feature flag"
+  (testing "admin_security_center is true for self-hosted with the feature flag and non-H2 app db"
     (mt/with-premium-features #{:admin-security-center}
-      (is (true? (:admin_security_center
-                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
+      (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)]
+        (is (true? (:admin_security_center
+                    (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))))))))
