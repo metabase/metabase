@@ -6,6 +6,7 @@ export { archiveQuestion } from "./archiveQuestion";
 export { updateSnippet } from "./updateSnippet";
 export { createApiKey } from "./createApiKey";
 export { createCard } from "./createCard";
+export * from "./customVizPlugin";
 export { createCollection } from "./createCollection";
 export { createComment } from "./createComment";
 export { createDashboard } from "./createDashboard";
