@@ -1,5 +1,5 @@
 import { assocIn } from "icepick";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins/oss/custom-viz";
 import {
@@ -94,35 +94,24 @@ export function useSettingsWidgets({
   const { loading: customVizLoading } =
     PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
 
-  const [widgets, setWidgets] = useState<Widget[]>(() =>
-    getSettingsWidgetsForSeries(
+  const widgets = useMemo(
+    () =>
+      customVizLoading
+        ? []
+        : getSettingsWidgetsForSeries(
+            transformedSeries,
+            handleChangeSettings,
+            isDashboard,
+            extra,
+          ),
+    [
+      customVizLoading,
       transformedSeries,
       handleChangeSettings,
       isDashboard,
       extra,
-    ),
+    ],
   );
-
-  useEffect(() => {
-    if (customVizLoading) {
-      return;
-    }
-
-    setWidgets(
-      getSettingsWidgetsForSeries(
-        transformedSeries,
-        handleChangeSettings,
-        isDashboard,
-        extra,
-      ),
-    );
-  }, [
-    customVizLoading,
-    transformedSeries,
-    handleChangeSettings,
-    isDashboard,
-    extra,
-  ]);
 
   return widgets;
 }
