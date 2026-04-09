@@ -733,12 +733,10 @@ export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
-<<<<<<< security-center
 export type SecurityCenterPageViewedEvent = ValidateEvent<{
   event: "security_center_page_viewed";
 }>;
 
-=======
 export type MetricPageShowMoreClickedEvent = ValidateEvent<{
   event: "metric_page_show_more_clicked";
   target_id: number;
@@ -793,7 +791,6 @@ export type MetricsViewerEvent =
   | MetricsViewerDimensionTabSwitchedEvent
   | MetricsViewerDimensionTabRemovedEvent;
 
->>>>>>> master
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -854,9 +851,6 @@ export type SimpleEvent =
   | ClickActionPerformedEvent
   | DataStudioEvent
   | UnsavedChangesWarningDisplayedEvent
-<<<<<<< security-center
-  | SecurityCenterPageViewedEvent;
-=======
+  | SecurityCenterPageViewedEvent
   | MetricPageShowMoreClickedEvent
   | MetricsViewerEvent;
->>>>>>> master
