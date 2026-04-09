@@ -487,5 +487,3 @@
                       {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
                        :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
-
-

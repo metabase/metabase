@@ -221,4 +221,3 @@
               (is (not (t2/exists? :model/Session :id idle-id))))
             (testing "session with NULL last_active_at but recent created_at is kept"
               (is (t2/exists? :model/Session :id no-activity-id)))))))))
-
