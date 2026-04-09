@@ -372,6 +372,69 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it.only("should show all summaries and groupings from multi-stage queries and handle removal correctly", () => {
+    mountSdkContent(<InteractiveQuestion questionId="new" />);
+
+    cy.log("Pick starting data");
+    H.popover().findByRole("link", { name: "Orders" }).click();
+
+    cy.log("Stage 0: add Count aggregation");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a function or metric")
+      .click();
+    H.popover().findByRole("option", { name: "Count of rows" }).click();
+
+    cy.log("Stage 0: add Created At grouping");
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByRole("heading", { name: "Created At" }).click();
+
+    cy.log("Stage 1: add a second summarize step");
+    cy.button("Summarize").click();
+
+    cy.log("Stage 1: add Max of Count aggregation");
+    H.addSummaryField({ metric: "Maximum of ...", field: "Count", stage: 1 });
+
+    cy.log("Stage 1: add Created At: Month grouping");
+    H.getNotebookStep("summarize", { stage: 1 })
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("Created At: Month").click();
+
+    cy.log("Visualize the 2-stage query");
+    H.visualize();
+
+    getSdkRoot().within(() => {
+      cy.log("Toolbar should show 2 summaries and 2 groupings");
+      cy.findByText("2 summaries").should("be.visible");
+      cy.findByText("2 groupings").should("be.visible");
+
+      cy.log("Open groupings popup and verify 2 badges");
+      cy.findByText("2 groupings").click();
+    });
+
+    cy.wait(200000);
+
+    cy.log("Remove both groupings from the popup");
+    popover().within(() => {
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
+      cy.findAllByLabelText("close icon").last().click();
+    });
+
+    popover().within(() => {
+      cy.findAllByLabelText("close icon").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.log(
+        "After removing both groupings, only 1 summary should remain (empty stage gets dropped)",
+      );
+      cy.findByText("1 summary").should("be.visible");
+      cy.findByText("Group").should("be.visible");
+    });
+  });
+
   it("does not contain known console errors (metabase#48497)", () => {
     cy.get<number>("@questionId").then((questionId) => {
       mountSdkContentAndAssertNoKnownErrors(
