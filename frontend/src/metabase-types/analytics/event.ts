@@ -832,4 +832,5 @@ export type SimpleEvent =
   | DataStudioEvent
   | UnsavedChangesWarningDisplayedEvent
   | MetricPageShowMoreClickedEvent
-  | MetricsViewerEvent;
+  | MetricsViewerEvent
+  | { event: string; [key: string]: unknown };
