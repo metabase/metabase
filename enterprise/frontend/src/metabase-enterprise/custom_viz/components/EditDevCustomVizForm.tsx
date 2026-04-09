@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import * as Yup from "yup";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
@@ -8,6 +9,7 @@ import {
 } from "metabase/api";
 import {
   Form,
+  FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
@@ -22,14 +24,29 @@ type Props = {
 
 type FormState = {
   devBundleUrl: string;
+  acknowledgedRisk: boolean;
 };
 
 export function EditDevCustomVizForm({ plugin }: Props) {
   const [setDevUrl] = useSetCustomVizPluginDevUrlMutation();
   const [deletePlugin] = useDeleteCustomVizPluginMutation();
 
+  const validationSchema = useMemo(
+    () =>
+      Yup.object({
+        acknowledgedRisk: Yup.boolean().oneOf(
+          [true],
+          t`You must acknowledge the security risk before proceeding.`,
+        ),
+      }),
+    [],
+  );
+
   const initialValues = useMemo<FormState>(
-    () => ({ devBundleUrl: plugin.dev_bundle_url ?? "" }),
+    () => ({
+      devBundleUrl: plugin.dev_bundle_url ?? "",
+      acknowledgedRisk: false,
+    }),
     [plugin.dev_bundle_url],
   );
 
@@ -50,9 +67,10 @@ export function EditDevCustomVizForm({ plugin }: Props) {
   return (
     <SettingsSection>
       <FormProvider
-        initialValues={initialValues}
-        onSubmit={handleSubmit}
         enableReinitialize
+        initialValues={initialValues}
+        validationSchema={validationSchema}
+        onSubmit={handleSubmit}
       >
         {({ dirty }) => (
           <Form>
@@ -75,6 +93,10 @@ export function EditDevCustomVizForm({ plugin }: Props) {
                 name="devBundleUrl"
                 label={t`Dev server URL`}
                 placeholder="http://localhost:5174"
+              />
+              <FormCheckbox
+                name="acknowledgedRisk"
+                label={t`I understand that custom visualizations can execute arbitrary code and should only be added from trusted sources.`}
               />
               <FormErrorMessage />
               <Group justify="flex-end">
