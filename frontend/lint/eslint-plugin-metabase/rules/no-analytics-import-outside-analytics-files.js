@@ -7,9 +7,8 @@
 //------------------------------------------------------------------------------
 
 const ERROR_MESSAGE =
-  'Imports from "metabase/lib/analytics" are only allowed in files named "analytics", Please move this import to an analytics file.';
+  'Imports from "metabase/lib/analytics" are only allowed in files named "analytics", Please create a type-safe wrapper for the analytics functions in an analytics.ts file, and call that function from your component or module.';
 
-// eslint-disable-next-line import/no-commonjs
 module.exports = {
   meta: {
     type: "problem",
