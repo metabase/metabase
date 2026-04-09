@@ -81,9 +81,10 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
+  [& {:keys [last_run_start_time last_run_statuses tag_ids database_id]}]
   (api/check-superuser)
-  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
+  (let [transforms (cond->> (t2/select :model/Transform {:order-by [[:id :asc]]})
+                     database_id (filter #(= (transforms.i/source-db-id %) database_id)))]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
@@ -106,7 +107,8 @@
    [:map
     [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
+    [:database_id {:optional true} [:maybe ms/PositiveInt]]]]
   (get-transforms query-params))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

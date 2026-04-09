@@ -1943,7 +1943,8 @@
            settings
            util
            warehouse-schema
-           warehouses-rest}}
+           warehouses-rest
+           enterprise/transforms}}
 
   enterprise/dependencies
   {:team "Querying"

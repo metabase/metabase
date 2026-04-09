@@ -1,5 +1,6 @@
 import {
   setupDatabasesEndpoints,
+  setupListTransformsEndpoint,
   setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -20,6 +21,7 @@ const setup = (database: Partial<Database>) => {
 
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([db]);
+  setupListTransformsEndpoint([]);
 
   renderWithProviders(<DatabaseRoutingSection database={db} />, {
     storeInitialState: {
