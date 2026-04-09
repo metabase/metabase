@@ -5470,3 +5470,115 @@
                                                                               })]
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
+
+;;; +--------------------------------------------------------------------------------------------------+
+;;; |       result_metadata persistence with parameters (QUE2-502)                                     |
+;;; |       See also: metabase.queries-rest.api.card-test (card endpoint tests for native cards)       |
+;;; +--------------------------------------------------------------------------------------------------+
+
+(deftest parameterized-mbql-dashcard-does-not-persist-result-metadata-test
+  ;; QUE2-502
+  (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — MBQL card with parameters should not update result_metadata"
+    (mt/with-temp [:model/Card          {card-id :id}
+                   {:dataset_query (mt/mbql-query orders
+                                     {:aggregation [[:count] [:sum $total]]
+                                      :breakout    [$product_id]})}
+                   :model/Dashboard     {dashboard-id :id}
+                   {:parameters [{:name "Product ID"
+                                  :slug "product_id"
+                                  :id   "_PRODUCT_ID_"
+                                  :type :id}]}
+                   :model/DashboardCard {dashcard-id :id}
+                   {:card_id            card-id
+                    :dashboard_id       dashboard-id
+                    :parameter_mappings [{:parameter_id "_PRODUCT_ID_"
+                                          :card_id      card-id
+                                          :target       [:dimension (mt/$ids orders $product_id)]}]}]
+      ;; Run without parameters to establish baseline metadata
+      (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+        (mt/user-http-request :rasta :post 202 url)
+        (let [baseline-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+          (is (some? baseline-metadata)
+              "Baseline metadata should be established by non-parameterized run")
+          ;; Run with a parameter value — metadata should NOT be updated
+          (mt/user-http-request :rasta :post 202 url
+                                {:parameters [{:id "_PRODUCT_ID_" :value 1}]})
+          (is (= baseline-metadata
+                 (t2/select-one-fn :result_metadata :model/Card :id card-id))
+              "result_metadata should not change when MBQL dashcard is run with parameters")
+          ;; Run with a different parameter value — metadata should still not change
+          (mt/user-http-request :rasta :post 202 url
+                                {:parameters [{:id "_PRODUCT_ID_" :value 50}]})
+          (is (= baseline-metadata
+                 (t2/select-one-fn :result_metadata :model/Card :id card-id))
+              "result_metadata should remain stable across different parameter values"))))))
+
+(deftest parameterized-native-dashcard-does-not-persist-result-metadata-test
+  ;; QUE2-502
+  (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — native card with non-default parameters should not update result_metadata"
+    (let [native-query (mt/native-query
+                        {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
+                         :template-tags {"product_id" {:id           "_PRODUCT_ID_TAG_"
+                                                       :name         "product_id"
+                                                       :display-name "Product ID"
+                                                       :type         :number
+                                                       :required     true
+                                                       :default      "1"}}})]
+      (mt/with-temp [:model/Card          {card-id :id}
+                     {:dataset_query native-query}
+                     :model/Dashboard     {dashboard-id :id}
+                     {:parameters [{:name    "Product ID"
+                                    :slug    "product_id"
+                                    :id      "_DASH_PRODUCT_ID_"
+                                    :type    :number
+                                    :default "1"}]}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:card_id            card-id
+                      :dashboard_id       dashboard-id
+                      :parameter_mappings [{:parameter_id "_DASH_PRODUCT_ID_"
+                                            :card_id      card-id
+                                            :target       [:variable [:template-tag "product_id"]]}]}]
+        (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
+          ;; Run without parameters to establish baseline metadata (uses template tag default)
+          (mt/user-http-request :rasta :post 202 url)
+          (let [baseline-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+            (is (some? baseline-metadata)
+                "Baseline metadata should be established by default-value run")
+            ;; Run with a non-default parameter value — metadata should NOT be updated
+            (mt/user-http-request :rasta :post 202 url
+                                  {:parameters [{:id "_DASH_PRODUCT_ID_" :value "50"}]})
+            (is (= baseline-metadata
+                   (t2/select-one-fn :result_metadata :model/Card :id card-id))
+                "result_metadata should not change when native dashcard is run with non-default parameter values")))))))
+
+(deftest native-dashcard-with-default-parameters-persists-result-metadata-test
+  ;; QUE2-502
+  (testing "POST /api/dashboard/:id/dashcard/:id/card/:id/query — native card with default parameter values SHOULD update result_metadata"
+    (let [native-query (mt/native-query
+                        {:query         "SELECT COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{product_id}}"
+                         :template-tags {"product_id" {:id           "_PRODUCT_ID_TAG_"
+                                                       :name         "product_id"
+                                                       :display-name "Product ID"
+                                                       :type         :number
+                                                       :required     true
+                                                       :default      "1"}}})]
+      (mt/with-temp [:model/Card          {card-id :id}
+                     {:dataset_query native-query}
+                     :model/Dashboard     {dashboard-id :id}
+                     {:parameters [{:name    "Product ID"
+                                    :slug    "product_id"
+                                    :id      "_DASH_PRODUCT_ID_"
+                                    :type    :number
+                                    :default "1"}]}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:card_id            card-id
+                      :dashboard_id       dashboard-id
+                      :parameter_mappings [{:parameter_id "_DASH_PRODUCT_ID_"
+                                            :card_id      card-id
+                                            :target       [:variable [:template-tag "product_id"]]}]}]
+        ;; Run with the default value passed explicitly (as the frontend does)
+        (mt/user-http-request :rasta :post 202
+                              (dashboard-card-query-url dashboard-id card-id dashcard-id)
+                              {:parameters [{:id "_DASH_PRODUCT_ID_" :value "1"}]})
+        (is (some? (t2/select-one-fn :result_metadata :model/Card :id card-id))
+            "result_metadata should be persisted when native dashcard runs with default parameter values")))))
