@@ -34,6 +34,8 @@ Read `.claude/settings.local.json` if it exists. Check that the permissions incl
 - `Write` — output files to `.qabot/`
 - `Skill` — `/clojure-eval` for REPL access
 - `Bash(./bin/mage *)` or `Bash(*)` — mage wrapper commands
+- `Bash(npx -y @playwright/mcp*)` or `Bash(npx *)` or `Bash(*)` — Playwright CLI commands
+- `Bash(npx -y md-to-pdf *)` or `Bash(npx *)` or `Bash(*)` — PDF generation
 - `mcp__playwright__*` — all Playwright browser tools
 
 **Nice to have:**
@@ -42,28 +44,25 @@ Read `.claude/settings.local.json` if it exists. Check that the permissions incl
 
 Report which permissions are present, which are missing, and suggest the additions.
 
-### 3. Mage commands available
-
-Run each of these and verify they don't error on startup (check exit code, don't worry about the output content):
-- `./bin/mage -bot-server-info` — should print server config
-- `./bin/mage -bot-git-readonly git status` — should print git status
-- `./bin/mage -bot-fetch-issue TEST` — should fail with "Invalid issue identifier" or "LINEAR_API_KEY not set", not a compilation error
-
-**IMPORTANT:** When running Bash commands for these checks, do NOT append shell constructs like `; echo ...`, `&& ...`, `2>&1`, or pipe chains to the mage commands. The permission `Bash(./bin/mage *)` only matches commands that start with `./bin/mage` and contain nothing beyond its arguments. Chaining or redirecting turns it into a compound command that won't match the permission glob and will trigger a permission prompt.
-
-### 4. clojure-eval skill (optional)
+### 3. clojure-eval skill (optional)
 
 Check if the `/clojure-eval` skill is available by looking for it in the skill list. If not available, warn that REPL-based verification (server restart, log capture, function testing) won't be possible.
 
-### 5. PDF generation
+### 4. PDF generation
 
 Run `npx -y md-to-pdf --version` to verify the PDF generator is available via npx.
 
 **IMPORTANT:** Run this as a standalone command — do not append `; echo ...` or other shell constructs, as this may not match the user's permission globs.
 
-### 6. Linear API key (optional)
+### 5. Server info and environment
 
-Check if `LINEAR_API_KEY` is set in the environment (via `./bin/mage -bot-server-info` output). If not, warn that Linear context won't be available but qabot can still run.
+Run `./bin/mage -bot-server-info` (standalone, no shell chaining) and check the output for:
+
+**Required:**
+- **Config file**: The output should reference a config file (e.g., `local/config.yml`) that defines at least one user and at least one API key. If the config section is missing or has no users/api-keys, report as a failure — qabot needs pre-configured users and API keys to authenticate.
+
+**Optional:**
+- **LINEAR_API_KEY**: Check if it appears in the output. If not set, warn that Linear context won't be available but qabot can still run.
 
 ## Report format
 
@@ -74,16 +73,16 @@ QABot Precheck Results
 ======================
 
 [PASS] Playwright MCP configured in .mcp.json
-[PASS] Claude permissions: Read, Grep, Glob, Write, Skill, Bash(*), mcp__playwright__*
-[PASS] Mage commands: -bot-server-info, -bot-git-readonly, -bot-fetch-issue
+[PASS] Claude permissions: Read, Grep, Glob, Write, Skill, Bash(mage/npx), mcp__playwright__*
 [PASS] PDF generation (md-to-pdf via npx)
+[PASS] Server info: config file with users and API keys
 [WARN] LINEAR_API_KEY not set (qabot will skip Linear context)
 [WARN] /clojure-eval skill not available (REPL testing disabled)
 
 Ready to run /qabot: YES (with warnings above)
 ```
 
-If any required check fails (Playwright, permissions, mage commands), report:
+If any required check fails (Playwright, permissions, PDF generation, server info config), report:
 ```
 Ready to run /qabot: NO — fix the issues above first
 ```

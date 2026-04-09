@@ -27,7 +27,12 @@ Run `./bin/mage -bot-server-info` and capture the full output. This will be pass
 
 #### Branch and timestamp
 - Get current branch: `./bin/mage -bot-git-readonly git branch --show-current`
-- Generate timestamp: `date +%Y%m%d-%H%M%S`
+- Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — instead, use the current date/time you already know to construct it directly (e.g., `20260409-143022`).
+
+#### Create output directory
+Once you have the branch name and timestamp, create the output directory by writing a placeholder file using the `Write` tool:
+- Write an empty `.gitkeep` file to `.qabot/<BRANCH_NAME>/<TIMESTAMP>/output/.gitkeep`
+- This creates the full directory tree without needing `mkdir -p` in bash.
 
 #### Linear issue
 The user provided: `$ARGUMENTS`
@@ -62,6 +67,8 @@ Run:
   --template dev/bot/qabot/qabot-agent.md \
   --output .qabot/qabot-prompt.md \
   --set "BRANCH_NAME=<branch>" \
+  --set "TIMESTAMP=<timestamp>" \
+  --set "OUTPUT_DIR=.qabot/<branch>/<timestamp>" \
   --set "LINEAR_ISSUE_ID=<resolved-id-or-empty>" \
   --set "SERVER_INFO=<output from -bot-server-info>" \
   --set "LINEAR_CONTEXT=<output from -bot-fetch-issue, or empty>" \

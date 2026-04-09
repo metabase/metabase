@@ -56,12 +56,8 @@ Use the Admin API key for admin-level testing and the Regular API key for permis
 
 ## Phase 0: Setup
 
-1. Generate a timestamp: `date +%Y%m%d-%H%M%S` — **memorize this and use it consistently** for ALL output files.
-2. Create the output directory structure:
-   ```bash
-   mkdir -p .qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/output
-   ```
-3. Load Playwright MCP tools:
+1. Your output directory is already created at `{{OUTPUT_DIR}}`. Use this path for ALL output files. Subdirectory `{{OUTPUT_DIR}}/output/` is also ready.
+2. Load Playwright MCP tools:
    ```
    ToolSearch: select:mcp__playwright__browser_navigate,mcp__playwright__browser_snapshot,mcp__playwright__browser_click,mcp__playwright__browser_fill,mcp__playwright__browser_type,mcp__playwright__browser_press_key,mcp__playwright__browser_hover,mcp__playwright__browser_take_screenshot,mcp__playwright__browser_close,mcp__playwright__browser_evaluate,mcp__playwright__browser_console_messages,mcp__playwright__browser_network_requests
    ```
@@ -116,7 +112,7 @@ Read the E2E test files related to the changed functionality (`e2e/` directory, 
 
 ### Write summary
 
-Write a brief diff summary to `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/diff-summary.md` covering:
+Write a brief diff summary to `{{OUTPUT_DIR}}/diff-summary.md` covering:
 - What changed and the context from Linear/PR description (if any)
 - Test coverage assessment: what's well-tested vs what's not
 
@@ -176,7 +172,7 @@ For each change, think about:
 - **Reproduction hypothesis**: How to trigger it (specific API call, UI action, or data condition)
 - **Confidence**: HIGH, MEDIUM, or LOW
 
-Write all findings to `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/initial-review.md`.
+Write all findings to `{{OUTPUT_DIR}}/initial-review.md`.
 
 If no potential bugs are found, write "No issues found during code analysis. The changes look correct and well-structured." to the file and **skip to Phase 4**.
 
@@ -202,12 +198,12 @@ Start with the fastest tool. Only escalate to Playwright for findings that requi
    - Before the action (baseline state)
    - After the action (result — bug or not)
    - Any error states or unexpected UI
-4. Save screenshots to `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/output/` with descriptive names like `issue-01-before.png`, `issue-01-after.png`
+4. Save screenshots to `{{OUTPUT_DIR}}/output/` with descriptive names like `issue-01-before.png`, `issue-01-after.png`
 5. **Always capture the current URL** (including query parameters) before each screenshot using `browser_evaluate` with script `window.location.href`. Include the URL in the screenshot filename or as a caption when referencing it in the report. Example: `![Filter page at /question/42?filter=status](output/issue-03-filter-state.png)`
 
 ### Backend/API Issues (use `./bin/mage -bot-api-call`)
 1. Make the API call described in the reproduction hypothesis using `./bin/mage -bot-api-call` with the API keys from Phase 0
-2. Save the full response to `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/output/` as JSON files by redirecting stdout
+2. Save the full response to `{{OUTPUT_DIR}}/output/` as JSON files by redirecting stdout
 3. Check response codes, body structure, error messages
 
 ### Backend Logic Issues (use REPL via `/clojure-eval`)
@@ -242,7 +238,7 @@ For Clojure-heavy changes, the REPL is often the most powerful verification tool
 
 Use **SUSPECTED** (not NOT_REPRODUCED) when the code clearly has a problem but you just couldn't construct the right conditions to trigger it. NOT_REPRODUCED means you verified the code is actually fine.
 
-Write `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/initial-review-results.md` with:
+Write `{{OUTPUT_DIR}}/initial-review-results.md` with:
 - Each finding's original description
 - Updated status (CONFIRMED / SUSPECTED / NOT_REPRODUCED / BLOCKED)
 - **Steps taken** — exactly what you did to try to reproduce
@@ -293,11 +289,11 @@ While testing UI interactions and API calls, check the server logs for:
 Use `(logger/messages)` via REPL or `./bin/mage -bot-api-call /api/logger/logs` to check after each significant interaction.
 
 ### Capture evidence
-- Screenshots → `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/output/`
-- API responses → `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/output/`
-- Server log excerpts → `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/output/` (see "Log Access" section)
+- Screenshots → `{{OUTPUT_DIR}}/output/`
+- API responses → `{{OUTPUT_DIR}}/output/`
+- Server log excerpts → `{{OUTPUT_DIR}}/output/` (see "Log Access" section)
 
-Write `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/ux-review.md` with findings and evidence references.
+Write `{{OUTPUT_DIR}}/ux-review.md` with findings and evidence references.
 
 ---
 
@@ -307,16 +303,17 @@ Write `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/ux-review.md` with findings and evid
 Read `initial-review-results.md` and `ux-review.md` from the output directory.
 
 ### Write the report
-Create `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/report.md` with this structure:
+Create `{{OUTPUT_DIR}}/report.md` with this structure:
 
 ```markdown
 # QA Report: {{BRANCH_NAME}}
 
-**Date:** YYYY-MM-DD
-**Branch:** <branch> (commit <hash>)
-**Linear Issue:** <ID and title, or "N/A">
-
 ## Summary
+
+- **Date:** YYYY-MM-DD
+- **Branch:** <branch> (commit <hash>)
+- **Linear Issue:** [MB-XXXXX: <title>](https://linear.app/metabase/issue/MB-XXXXX) (or "N/A" if no issue)
+- **PR:** [<PR title>](https://github.com/metabase/metabase/pull/NNNNN) (or omit this line if no PR)
 
 <2-3 paragraphs describing what the branch does, based on the diff analysis and Linear context>
 
@@ -383,7 +380,7 @@ For each:
 ### Generate PDF
 
 ```bash
-cd .qabot/{{BRANCH_NAME}}/TIMESTAMP && npx -y md-to-pdf report.md
+cd {{OUTPUT_DIR}} && npx -y md-to-pdf report.md
 ```
 
 {{FILE:dev/bot/common/report-generation.md}}
@@ -416,7 +413,7 @@ Use the attention banner:
 
 After generating the report, create a fix plan that another agent can use to address the found bugs.
 
-Write `.qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/fix-plan.md` with this structure:
+Write `{{OUTPUT_DIR}}/fix-plan.md` with this structure:
 
 ```markdown
 # Fix Plan: {{BRANCH_NAME}}
@@ -497,7 +494,7 @@ Use the API keys from `./bin/mage -bot-server-info` output (Phase 0). Use the ac
 
 To save responses to the output directory for evidence, redirect stdout:
 ```bash
-./bin/mage -bot-api-call /api/<endpoint> --api-key $ADMIN_API_KEY > .qabot/{{BRANCH_NAME}}/{{TIMESTAMP}}/output/api-<name>.json
+./bin/mage -bot-api-call /api/<endpoint> --api-key $ADMIN_API_KEY > {{OUTPUT_DIR}}/output/api-<name>.json
 ```
 
 ## Minimizing Permission Prompts
@@ -513,7 +510,7 @@ Bash commands can trigger permission prompts that slow you down. Prefer tools an
 | `grep`, `rg` | `Grep` tool | Never prompts |
 | `find`, `ls` | `Glob` tool | Never prompts |
 
-When you must use bash (e.g., `mkdir -p`, `date`, `npx`), combine independent operations into a single command with `&&` to reduce the total number of prompts.
+When you must use bash (e.g., `npx`), keep each command simple and standalone — do NOT chain commands with `&&`, `;`, or `|` as this creates compound commands that won't match permission globs like `Bash(./bin/mage *)`. Use the `Write` tool to create files/directories instead of `mkdir -p`, and use your built-in knowledge for timestamps instead of `date`.
 
 ## Important Rules
 
