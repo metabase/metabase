@@ -1,6 +1,6 @@
 (ns metabase.frontend-errors.api
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.interface :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.registry :as mr]))
@@ -15,7 +15,7 @@
   [_route-params
    _query-params
    {:keys [type]} :- [:map [:type ::frontend-error-type]]]
-  (prometheus/inc! :metabase-frontend/errors {:type type})
+  (analytics/inc! :metabase-frontend/errors {:type type})
   api/generic-204-no-content)
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
