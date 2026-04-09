@@ -54,6 +54,9 @@ export function BucketButton({
     <Popover opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Button
+          w={184}
+          style={{ flexShrink: 1 }}
+          justify="space-between"
           fw="bold"
           py="xs"
           px="sm"
