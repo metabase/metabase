@@ -2,11 +2,8 @@ import * as Snowplow from "@snowplow/browser-tracker";
 
 import { shouldLogAnalytics } from "metabase/env";
 import Settings from "metabase/lib/settings";
-import type {
-  SchemaEvent,
-  SchemaType,
-  SimpleEvent,
-} from "metabase-types/analytics";
+import type { SchemaEventMap, SchemaType } from "metabase-types/analytics";
+import type { SimpleEventSchema } from "metabase-types/analytics/event";
 
 export * from "./analytics-untyped";
 
@@ -37,11 +34,17 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   upsell: "1-0-0",
 };
 
-export function trackSimpleEvent(event: SimpleEvent) {
+export function trackSimpleEvent<
+  T extends SimpleEventSchema &
+    Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
+>(event: T) {
   trackSchemaEvent("simple_event", event);
 }
 
-export function trackSchemaEvent(schema: SchemaType, event: SchemaEvent): void {
+export function trackSchemaEvent<S extends SchemaType>(
+  schema: S,
+  event: SchemaEventMap[S],
+): void {
   const shouldSendEvent =
     Settings.trackingEnabled() && Settings.snowplowEnabled();
 
