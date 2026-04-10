@@ -6,13 +6,18 @@ import Settings from "metabase/utils/settings";
 // server associates requests with a session/visit without client-side storage.
 const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
 
-const anonymizedHostname = "my-instance.com";
+// FIXME: need to find out what filtering is happening here
+// only metabase host is working
+const anonymizedHostname = "metabase.com";
 const anonymizedOrigin = `http://${anonymizedHostname}`;
 
 const getSanitizedUrl = (url: string) => {
-  const urlWithoutSlug = url.replace(/(\/\d+)-[^\/]+$/, (match, path) => path);
-  const urlWithoutHost = new URL(urlWithoutSlug, anonymizedOrigin);
-  return urlWithoutHost.href;
+  const parsed = new URL(url, window.location.origin);
+  const pathWithoutSlug = parsed.pathname.replace(
+    /(\/\d+)-[^\/]+$/,
+    (_, path) => path,
+  );
+  return anonymizedOrigin + pathWithoutSlug;
 };
 
 function getBasePayload(url: string) {
