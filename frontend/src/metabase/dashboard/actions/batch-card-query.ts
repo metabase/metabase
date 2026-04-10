@@ -1,11 +1,35 @@
-import type { CardId, DashCardId, Dataset } from "metabase-types/api";
+import type {
+  CardId,
+  DashCardId,
+  Dataset,
+  DatasetData,
+  RowValues,
+} from "metabase-types/api";
 
-type BatchCardResult = {
-  type: "card-result";
+type BatchCardBegin = {
+  type: "card-begin";
   dashcard_id: DashCardId;
   card_id: CardId;
-  result: Dataset;
+  // A partial DatasetData — what's known before rows are reduced (cols, native_form, etc.).
+  data: Partial<DatasetData> & Record<string, unknown>;
 };
+
+type BatchCardRows = {
+  type: "card-rows";
+  dashcard_id: DashCardId;
+  card_id: CardId;
+  rows: RowValues[];
+};
+
+type BatchCardEnd = {
+  type: "card-end";
+  dashcard_id: DashCardId;
+  card_id: CardId;
+  row_count: number;
+  status: string;
+  running_time?: number;
+  data: Partial<DatasetData> & Record<string, unknown>;
+} & Record<string, unknown>;
 
 type BatchCardError = {
   type: "card-error";
@@ -21,7 +45,12 @@ type BatchComplete = {
   failed: number;
 };
 
-type BatchMessage = BatchCardResult | BatchCardError | BatchComplete;
+type BatchMessage =
+  | BatchCardBegin
+  | BatchCardRows
+  | BatchCardEnd
+  | BatchCardError
+  | BatchComplete;
 
 export type BatchCallbacks = {
   onCardResult: (
@@ -53,6 +82,84 @@ export type BatchRequestConfig = {
   signal?: AbortSignal;
 };
 
+type PartialCard = {
+  beginData: Partial<DatasetData> & Record<string, unknown>;
+  rows: RowValues[];
+};
+
+const keyOf = (dashcardId: DashCardId, cardId: CardId) =>
+  `${dashcardId}:${cardId}`;
+
+function assembleDataset(partial: PartialCard, end: BatchCardEnd): Dataset {
+  // End-side `data` fields win over begin-side (they represent the final state), and rows are
+  // the concatenated row chunks.
+  const mergedData = {
+    ...partial.beginData,
+    ...end.data,
+    rows: partial.rows,
+  } as DatasetData;
+  const { type: _t, dashcard_id: _dc, card_id: _cid, data: _d, ...rest } = end;
+  return { ...rest, data: mergedData } as unknown as Dataset;
+}
+
+function handleMessage(
+  msg: BatchMessage,
+  partial: Map<string, PartialCard>,
+  callbacks: BatchCallbacks,
+): void {
+  switch (msg.type) {
+    case "card-begin": {
+      partial.set(keyOf(msg.dashcard_id, msg.card_id), {
+        beginData: msg.data ?? {},
+        rows: [],
+      });
+      return;
+    }
+    case "card-rows": {
+      const entry = partial.get(keyOf(msg.dashcard_id, msg.card_id));
+      if (entry) {
+        for (const row of msg.rows) {
+          entry.rows.push(row);
+        }
+      }
+      return;
+    }
+    case "card-end": {
+      const key = keyOf(msg.dashcard_id, msg.card_id);
+      const entry = partial.get(key);
+      if (entry) {
+        partial.delete(key);
+        callbacks.onCardResult(
+          msg.dashcard_id,
+          msg.card_id,
+          assembleDataset(entry, msg),
+        );
+      }
+      return;
+    }
+    case "card-error": {
+      partial.delete(keyOf(msg.dashcard_id, msg.card_id));
+      callbacks.onCardError(msg.dashcard_id, msg.card_id, msg.error);
+      return;
+    }
+    case "complete": {
+      callbacks.onComplete({
+        total: msg.total,
+        succeeded: msg.succeeded,
+        failed: msg.failed,
+      });
+      if (partial.size > 0) {
+        console.warn(
+          `streamBatchCardQuery: ${partial.size} card(s) never completed`,
+          Array.from(partial.keys()),
+        );
+        partial.clear();
+      }
+      return;
+    }
+  }
+}
+
 export async function streamBatchCardQuery(
   config: BatchRequestConfig,
   callbacks: BatchCallbacks,
@@ -75,6 +182,7 @@ export async function streamBatchCardQuery(
   }
 
   const decoder = new TextDecoder();
+  const partial = new Map<string, PartialCard>();
   let buffer = "";
 
   try {
@@ -87,7 +195,6 @@ export async function streamBatchCardQuery(
       buffer += decoder.decode(value, { stream: true });
 
       const lines = buffer.split("\n");
-      // Keep the last (potentially incomplete) line in the buffer
       buffer = lines.pop()!;
 
       for (const line of lines) {
@@ -95,36 +202,16 @@ export async function streamBatchCardQuery(
         if (!trimmed) {
           continue;
         }
-
-        const msg: BatchMessage = JSON.parse(trimmed);
-        switch (msg.type) {
-          case "card-result":
-            callbacks.onCardResult(msg.dashcard_id, msg.card_id, msg.result);
-            break;
-          case "card-error":
-            callbacks.onCardError(msg.dashcard_id, msg.card_id, msg.error);
-            break;
-          case "complete":
-            callbacks.onComplete(msg);
-            break;
-        }
+        handleMessage(JSON.parse(trimmed) as BatchMessage, partial, callbacks);
       }
     }
 
-    // Process any remaining data in buffer
     if (buffer.trim()) {
-      const msg: BatchMessage = JSON.parse(buffer.trim());
-      switch (msg.type) {
-        case "card-result":
-          callbacks.onCardResult(msg.dashcard_id, msg.card_id, msg.result);
-          break;
-        case "card-error":
-          callbacks.onCardError(msg.dashcard_id, msg.card_id, msg.error);
-          break;
-        case "complete":
-          callbacks.onComplete(msg);
-          break;
-      }
+      handleMessage(
+        JSON.parse(buffer.trim()) as BatchMessage,
+        partial,
+        callbacks,
+      );
     }
   } finally {
     reader.releaseLock();

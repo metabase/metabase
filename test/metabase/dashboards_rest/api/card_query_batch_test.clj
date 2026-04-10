@@ -42,10 +42,36 @@
       (mt/user-http-request :rasta :post 202 (batch-url dashboard-id)
                             (merge {:parameters []} body))))))
 
-(defn- card-results
-  "Filter batch response to just card-result messages."
+(defn- assemble-card-results
+  "Reassemble streamed card-begin/card-rows/card-end messages into synthetic `card-result` entries
+  matching the shape the tests assert against: `{:type \"card-result\" :dashcard_id N :card_id N
+  :result <full dataset>}`. A `card-error` drops any partial buffer for the same key. Cards with
+  only a `card-begin` and no `card-end` are treated as incomplete and dropped."
   [lines]
-  (filter #(= "card-result" (:type %)) lines))
+  (let [partial (atom {})
+        results (atom [])]
+    (doseq [line lines]
+      (let [key [(:dashcard_id line) (:card_id line)]]
+        (case (:type line)
+          "card-begin" (swap! partial assoc key {:begin (:data line) :rows []})
+          "card-rows"  (swap! partial update-in [key :rows] into (:rows line))
+          "card-end"   (when-let [{:keys [begin rows]} (get @partial key)]
+                         (let [result (-> line
+                                          (dissoc :type :dashcard_id :card_id)
+                                          (assoc :data (merge begin (:data line) {:rows rows})))]
+                           (swap! results conj {:type        "card-result"
+                                                :dashcard_id (first key)
+                                                :card_id     (second key)
+                                                :result      result})
+                           (swap! partial dissoc key)))
+          "card-error" (swap! partial dissoc key)
+          nil)))
+    @results))
+
+(defn- card-results
+  "Reassemble streamed messages into per-card Dataset results."
+  [lines]
+  (assemble-card-results lines))
 
 (defn- card-errors
   "Filter batch response to just card-error messages."

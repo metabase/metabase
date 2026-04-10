@@ -19,9 +19,12 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.streaming.batch-ndjson :as batch-ndjson]
+   [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.users.models.user-parameter-value :as user-parameter-value]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -29,7 +32,8 @@
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)
-   (java.nio.charset StandardCharsets)))
+   (java.util.concurrent BlockingQueue LinkedBlockingQueue)
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -76,16 +80,45 @@
          (routing-batch-cache-bindings)
          (cache-strategy-batch-cache-bindings)))
 
-;;; ------------------------------------------------ NDJSON Writing ------------------------------------------------
+;;; -------------------------------------------- Writer Thread --------------------------------------------
 
-(defn- write-ndjson-line!
-  "Write a single NDJSON line (map encoded as JSON + newline) to the output stream and flush."
-  [^OutputStream os m]
-  (let [^bytes json-bytes (.getBytes ^String (json/encode m) StandardCharsets/UTF_8)
-        ^bytes newline    (.getBytes "\n" StandardCharsets/UTF_8)]
-    (.write os json-bytes)
-    (.write os newline)
-    (.flush os)))
+(def ^:private queue-capacity
+  "Capacity of the writer-thread inbox. Small enough that a slow client backpressures through the
+  queue into the QP workers before heap grows unbounded; large enough that a healthy client never
+  stalls on it."
+  256)
+
+(def ^:private ^:dynamic *done-sentinel* ::done)
+
+(defn- start-writer-thread!
+  "Launch a daemon thread that drains `queue`, writing `:bytes` to `os` and calling `.flush` only
+  when `:flush?` is set. Exits when it dequeues [[*done-sentinel*]]. On `EofException` (client
+  disconnect), drains the remaining queue to the floor so producers' `.put` calls don't block."
+  ^Thread [^BlockingQueue queue ^OutputStream os]
+  (doto (Thread.
+         (fn []
+           (try
+             (loop []
+               (let [msg (.take queue)]
+                 (when-not (identical? *done-sentinel* msg)
+                   (let [^bytes bs (:bytes msg)]
+                     (.write os bs 0 (alength bs)))
+                   (when (:flush? msg)
+                     (.flush os))
+                   (recur))))
+             (catch EofException _
+               ;; Client disconnected — drain the queue so producers can finish and shut down.
+               (loop []
+                 (when-not (identical? *done-sentinel* (.take queue))
+                   (recur))))
+             (catch Throwable t
+               (log/error t "Batch NDJSON writer thread failed")
+               (loop []
+                 (when-not (identical? *done-sentinel* (.take queue))
+                   (recur))))))
+         "batch-ndjson-writer")
+    (.setDaemon true)
+    (.start)))
 
 ;;; -------------------------------------------- Shared Work Helpers --------------------------------------------
 
@@ -189,16 +222,41 @@
                    (filter some?))
           merged-parameters)))
 
-(defn- batch-make-run
-  "A `:make-run` function for [[qp.card/process-query-for-card]] that executes the query synchronously
-   and returns the raw result map, rather than wrapping in a StreamingResponse."
-  [qp _export-format]
-  (fn [query info]
-    (qp (update query :info merge info) nil)))
+(defn- make-batch-make-run
+  "Build a `:make-run` function closure for a single card's execution. The returned make-run binds
+  `qp.pipeline/*result*` so that completed queries flush their `card-end` envelope and failed
+  queries emit a `card-error`. Rows stream directly into `queue` via the [[batch-ndjson]] writer —
+  workers never touch the output stream themselves."
+  [^BlockingQueue queue dashcard-id card-id]
+  (fn [qp _export-format]
+    (fn [query info]
+      (let [writer (batch-ndjson/batch-card-writer queue dashcard-id card-id)
+            rff    (qp.streaming/streaming-rff writer)]
+        (binding [qp.pipeline/*result*
+                  (fn [result]
+                    (cond
+                      (= (:status result) :completed)
+                      (try
+                        (qp.si/finish! writer result)
+                        (catch EofException _))
+
+                      (= (:status result) :failed)
+                      (batch-ndjson/emit-card-error!
+                       queue dashcard-id card-id
+                       {:status  (or (-> result :ex-data :status-code)
+                                     (:status-code result)
+                                     500)
+                        :message (or (:error result)
+                                     "Unknown error running card query")}))
+                    (qp.pipeline/default-result-handler result))]
+          (qp (update query :info merge info) rff))))))
 
 (defn- run-single-card-query
-  "Execute a single card query synchronously. Returns either a result map or an error map."
-  [{:keys [dashboard-id card-id dashcard-id dashboard-param-id->param parameters
+  "Execute a single card query. Rows / completion / failure are streamed into `queue` via the
+  rebound [[qp.pipeline/*result*]]. Returns a status keyword: `:success`, `:failed`, or `:error`
+  (the latter for exceptions escaping the QP)."
+  [^BlockingQueue queue
+   {:keys [dashboard-id card-id dashcard-id dashboard-param-id->param parameters
            ignore-cache context prefetched-card prefetched-dash-viz]
     :or   {context :dashboard}}]
   (try
@@ -210,17 +268,24 @@
                                    :ignore-cache (boolean ignore-cache)
                                    :constraints  (qp.constraints/default-query-constraints)
                                    :context      context
-                                   :make-run     batch-make-run}
+                                   :make-run     (make-batch-make-run queue dashcard-id card-id)}
                             prefetched-card     (assoc :prefetched-card prefetched-card)
-                            prefetched-dash-viz (assoc :prefetched-dash-viz prefetched-dash-viz))]
-      (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
-        (qp.card/process-query-for-card card-id :api options)))
+                            prefetched-dash-viz (assoc :prefetched-dash-viz prefetched-dash-viz))
+          result          (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
+                            (qp.card/process-query-for-card card-id :api options))]
+      (if (= (:status result) :failed)
+        :failed
+        :success))
+    (catch EofException _
+      ;; Client disconnected — nothing to report; writer thread will exit on its own.
+      :error)
     (catch Throwable e
-      (let [data    (ex-data e)
-            status  (or (:status-code data) 500)]
+      (let [data   (ex-data e)
+            status (or (:status-code data) 500)]
         (log/warnf e "Batch card query failed for dashcard %d card %d" dashcard-id card-id)
-        {:error {:status  status
-                 :message (ex-message e)}}))))
+        (batch-ndjson/emit-card-error! queue dashcard-id card-id
+                                       {:status status :message (ex-message e)})
+        :error))))
 
 ;;; ------------------------------------------- Batch Orchestrator -------------------------------------------
 
@@ -284,9 +349,11 @@
           (user-parameter-value/store! current-user-id dashboard-id normalized-params)))
       ;; === Stream results ===
       (streaming-response/streaming-response {:content-type "application/x-ndjson"} [os canceled-chan]
-        (let [pool      (or *thread-pool* @default-thread-pool)
-              succeeded (volatile! 0)
-              failed    (volatile! 0)
+        (let [pool          (or *thread-pool* @default-thread-pool)
+              queue         (LinkedBlockingQueue. (int queue-capacity))
+              writer-thread (start-writer-thread! queue os)
+              succeeded     (volatile! 0)
+              failed        (volatile! 0)
               ;; Pre-classify cards into immediately-resolvable errors vs queries to run
               {to-query true, immediate-errors false}
               (group-by
@@ -303,55 +370,46 @@
 
                    :else true))
                cards)]
-          ;; Write immediate errors
-          (doseq [{:keys [dashcard-id card-id]} immediate-errors]
-            (vswap! failed inc)
-            (let [error (if (contains? valid-pairs [dashcard-id card-id])
-                          {:status 403 :message "You don't have permission to view this card"}
-                          {:status 404 :message "Card not found in dashboard"})]
-              (write-ndjson-line! os {:type        "card-error"
-                                      :dashcard_id dashcard-id
-                                      :card_id     card-id
-                                      :error       error})))
-          ;; Run queries via claypoole — results stream in completion order
-          (doseq [result (cp/upmap pool
-                                   (fn [{:keys [dashcard-id card-id]}]
-                                     (let [bindings (merge {#'api/*current-user-id*                current-user-id
-                                                            #'api/*current-user-permissions-set*   (atom current-user-perms)
-                                                            #'lib-be/*metadata-provider-cache* metadata-cache}
-                                                           ee-bindings)]
-                                       (with-bindings bindings
-                                         {:dashcard-id dashcard-id
-                                          :card-id     card-id
-                                          :result      (run-single-card-query
-                                                        {:dashboard-id              dashboard-id
-                                                         :card-id                   card-id
-                                                         :dashcard-id               dashcard-id
-                                                         :dashboard-param-id->param dashboard-param-id->param
-                                                         :parameters                parameters
-                                                         :ignore-cache              ignore-cache
-                                                         :context                   context
-                                                         :prefetched-card           (get card-id->card card-id)
-                                                         :prefetched-dash-viz       (get dashcard-id->viz dashcard-id)})})))
-                                   (or to-query []))]
-            (when-not (a/poll! canceled-chan)
-              (let [{:keys [dashcard-id card-id result]} result]
-                (if (:error result)
-                  (do
-                    (vswap! failed inc)
-                    (write-ndjson-line! os {:type        "card-error"
-                                            :dashcard_id dashcard-id
-                                            :card_id     card-id
-                                            :error       (:error result)}))
-                  (do
-                    (vswap! succeeded inc)
-                    (write-ndjson-line! os {:type        "card-result"
-                                            :dashcard_id dashcard-id
-                                            :card_id     card-id
-                                            :result      result}))))))
-          ;; Write completion sentinel
-          (let [s @succeeded f @failed]
-            (write-ndjson-line! os {:type      "complete"
-                                    :total     (+ s f)
-                                    :succeeded s
-                                    :failed    f})))))))
+          (try
+            ;; Enqueue immediate errors
+            (doseq [{:keys [dashcard-id card-id]} immediate-errors]
+              (vswap! failed inc)
+              (batch-ndjson/emit-card-error!
+               queue dashcard-id card-id
+               (if (contains? valid-pairs [dashcard-id card-id])
+                 {:status 403 :message "You don't have permission to view this card"}
+                 {:status 404 :message "Card not found in dashboard"})))
+            ;; Run queries via claypoole — results flow to the queue as rows arrive.
+            (doseq [result (cp/upmap pool
+                                     (fn [{:keys [dashcard-id card-id]}]
+                                       (if (a/poll! canceled-chan)
+                                         :canceled
+                                         (let [bindings (merge {#'api/*current-user-id*              current-user-id
+                                                                #'api/*current-user-permissions-set* (atom current-user-perms)
+                                                                #'lib-be/*metadata-provider-cache*   metadata-cache}
+                                                               ee-bindings)]
+                                           (with-bindings bindings
+                                             (run-single-card-query
+                                              queue
+                                              {:dashboard-id              dashboard-id
+                                               :card-id                   card-id
+                                               :dashcard-id               dashcard-id
+                                               :dashboard-param-id->param dashboard-param-id->param
+                                               :parameters                parameters
+                                               :ignore-cache              ignore-cache
+                                               :context                   context
+                                               :prefetched-card           (get card-id->card card-id)
+                                               :prefetched-dash-viz       (get dashcard-id->viz dashcard-id)})))))
+                                     (or to-query []))]
+              (case result
+                :success  (vswap! succeeded inc)
+                :failed   (vswap! failed inc)
+                :error    (vswap! failed inc)
+                :canceled nil
+                nil))
+            ;; Completion sentinel + shutdown
+            (let [s @succeeded f @failed]
+              (batch-ndjson/emit-complete! queue {:total (+ s f) :succeeded s :failed f}))
+            (finally
+              (.put queue *done-sentinel*)
+              (.join writer-thread))))))))
