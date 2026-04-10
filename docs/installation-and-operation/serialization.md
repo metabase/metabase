@@ -260,44 +260,65 @@ This section covers the structure of exported YAML files: what they look like, h
 
 ### Example of a serialized question
 
-Questions are stored as YAML files inside their parent collection folder. Here's an example YAML file for a question written with SQL that uses a field filter and has an area chart visualization.
-
-To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
+Questions are stored as YAML files inside their parent collection folder. Here's an example YAML file for a question written with SQL that uses a field filter and has an area chart visualization. Here's an example YAML file for a metric saved to the Library:
 
 ```yml
-name: Total Revenue
-entity_id: IW8kbqZVaMxdGtCM2F4U6
-collection_id: cOlQuErIeS0ExAmPlE2x1
+name: Product count
+entity_id: xK9mProdCount0000ab01
+created_at: '2026-04-06T20:00:00Z'
 creator_id: admin@example.com
 display: scalar
-type: metric
-database_id: Sample Database
+collection_id: librarylibrarymetrics
+query_type: query
+database_id: Sample PostgreSQL
+table_id:
+- Sample PostgreSQL
+- public
+- products
+parameters: []
+parameter_mappings: []
 dataset_query:
-  "lib/type": mbql/query
-  database: Sample Database
+  database: Sample PostgreSQL
   stages:
-    - "lib/type": mbql.stage/mbql
-      source-table:
-      - Sample Database
-      - PUBLIC
-      - ORDERS
-      aggregation:
-      - - sum
-        - {}
-        - - field
-          - base-type: type/Float
-          - - Sample Database
-            - PUBLIC
-            - ORDERS
-            - TOTAL
-visualization_settings: {}
+  - aggregation:
+    - - count
+      - {}
+    source-table:
+    - Sample PostgreSQL
+    - public
+    - products
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings: null
+card_schema: 23
 serdes/meta:
-- id: IW8kbqZVaMxdGtCM2F4U6
-  label: total_revenue
+- id: xK9mProdCount0000ab01
+  label: product_count
   model: Card
+metabase_version: v1.60.1
+type: metric
 ```
 
 To keep exported files compact, Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Top-level fields with `null` values are also omitted.
+
+To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
+
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
