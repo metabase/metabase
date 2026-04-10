@@ -92,9 +92,3 @@ export const queryDrillThru = (
 
   return drill ?? null;
 };
-
-export function createLegendItemClickObject(
-  dimension: Lib.ClickObjectDimension,
-) {
-  return { dimensions: [dimension] };
-}
