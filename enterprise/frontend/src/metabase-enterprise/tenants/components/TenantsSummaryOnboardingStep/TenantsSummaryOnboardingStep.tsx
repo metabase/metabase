@@ -4,10 +4,10 @@ import { push } from "react-router-redux";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
-import { conjunct } from "metabase/lib/formatting/strings";
-import { useDispatch } from "metabase/lib/redux";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
+import { conjunct } from "metabase/utils/formatting/strings";
+import { useDispatch } from "metabase/utils/redux";
 import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { useListTenantsQuery } from "../../../api/tenants";

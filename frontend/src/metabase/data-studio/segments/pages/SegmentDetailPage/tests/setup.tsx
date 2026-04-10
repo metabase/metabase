@@ -10,7 +10,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { DataModelSegmentBreadcrumbs } from "metabase/data-studio/segments/components/SegmentBreadcrumbs";
 import { SegmentDetailPage } from "metabase/data-studio/segments/pages/SegmentDetailPage";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   EnterpriseSettings,
   Segment,

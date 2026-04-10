@@ -51,7 +51,7 @@ Familiarize yourself with Mantine's Layout components. You can often save a lot 
 
 ## Colors
 
-Colors should only be used in the form of mantine color props (primarily `c` and `bg`), or in css modules using variables eg: `color: var(--mb-color-text-primary);`. Using these colors ensures consistent visual design and user experience across both dark and light modes. Literal color values such as `black` or `#FFF` are not allowed, as well as using `color-mix` in your CSS modules to adjust the color or transparency of a variable. The full list of keys can be found in `frontend/src/metabase/lib/colors/types/color-keys.ts`, with their light and dark values found in `frontend/src/metabase/lib/colors/constants/themes`. If you find yourself requiring a color that does not already exist but is present in designs, reach out to the design team for guidance.
+Colors should only be used in the form of mantine color props (primarily `c` and `bg`), or in css modules using variables eg: `color: var(--mb-color-text-primary);`. Using these colors ensures consistent visual design and user experience across both dark and light modes. Literal color values such as `black` or `#FFF` are not allowed, as well as using `color-mix` in your CSS modules to adjust the color or transparency of a variable. The full list of keys can be found in `frontend/src/metabase/utils/colors/types/color-keys.ts`, with their light and dark values found in `frontend/src/metabase/utils/colors/constants/themes`. If you find yourself requiring a color that does not already exist but is present in designs, reach out to the design team for guidance.
 
 ## Unit testing
 

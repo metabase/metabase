@@ -4,9 +4,9 @@ import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Badge, Icon, Menu } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

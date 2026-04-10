@@ -10,7 +10,7 @@ import {
   createStoreHook,
 } from "react-redux";
 
-import { MetabaseReduxContext } from "metabase/lib/redux";
+import { MetabaseReduxContext } from "metabase/utils/redux";
 
 import { apiQuery } from "./query";
 import { TAG_TYPES } from "./tags";

@@ -2,8 +2,8 @@ import { c, t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import CS from "metabase/css/core/index.css";
-import { type NamedUser, getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
+import { type NamedUser, getUserName } from "metabase/utils/user";
 
 type EntityCreationInfoProps = {
   createdAt?: string | null;

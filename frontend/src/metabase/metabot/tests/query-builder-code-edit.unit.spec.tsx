@@ -9,9 +9,9 @@ import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
-import { checkNotNull } from "metabase/lib/types";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {

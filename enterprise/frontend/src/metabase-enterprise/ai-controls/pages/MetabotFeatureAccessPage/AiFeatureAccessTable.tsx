@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isDefaultGroup } from "metabase/lib/groups";
+import { isDefaultGroup } from "metabase/utils/groups";
 import {
   AIToolKey,
   type GroupInfo,

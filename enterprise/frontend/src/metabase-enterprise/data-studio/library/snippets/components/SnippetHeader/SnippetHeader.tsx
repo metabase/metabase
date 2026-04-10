@@ -14,9 +14,9 @@ import {
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
 import { SnippetMoreMenu } from "../SnippetMoreMenu";

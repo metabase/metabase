@@ -5,7 +5,6 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { getIcon } from "metabase/lib/icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import {
   Box,
@@ -16,6 +15,7 @@ import {
   SegmentedControl,
   Text,
 } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
 
 import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
 import { useOmniPickerContext } from "../../context";
@@ -43,7 +43,7 @@ export const SearchResults = ({
   if (isLoading || error) {
     return (
       <Box h="100%" w="40rem">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Box>
     );
   }

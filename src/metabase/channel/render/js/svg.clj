@@ -46,6 +46,12 @@
     (js.engine/load-resource bundle-path)
     (js.engine/load-resource interface-path)))
 
+(defn make-context
+  "Create a new JS context for static viz rendering. UNTRUSTED: this context is sandboxed
+   and must only be used to run code that may include third-party custom viz plugins."
+  []
+  (js.engine/context))
+
 (def ^:private ^Pool static-viz-context-pool
   "Pool of Truffle JS engine objects. They are not thread-safe, so the access to them has to be carefully managed
   between threads. Each engine with loaded static viz code takes ~130 MB in memory, so we don't want too many of them.
@@ -60,7 +66,7 @@
     (Pool. (reify IPool$Generator
              (generate [_ _]
                ;; Generate a tuple of the engine and the expiry timestamp.
-               [(load-viz-bundle (js.engine/context))
+               [(load-viz-bundle (make-context))
                 (+ (System/nanoTime) (.toNanos TimeUnit/MINUTES 10))])
              (destroy [_ _ _v]))
            ;; Wrap the utilization controller with a modification that doesn't allow the pool to go below 1 instance.
@@ -96,7 +102,7 @@
   "Impl for [[with-static-viz-context]]."
   [f]
   (if config/is-dev?
-    (f (load-viz-bundle (js.engine/context)))
+    (f (load-viz-bundle (make-context)))
     (loop []
       (let [[context expiry-ts :as tuple] (.acquire static-viz-context-pool :engines)]
         (if (>= (System/nanoTime) expiry-ts)
@@ -231,10 +237,10 @@
   "Clojure entrypoint to render javascript visualizations. This functions is dynamic only for testing purposes.
    `custom-viz-bundles` is an optional seq of `{:identifier str :source str :assets map}` maps for custom visualization plugins."
   [cards-with-data dashcard-viz-settings custom-viz-bundles]
-  (let [options (json/encode {:applicationColors (appearance/application-colors)
-                              :startOfWeek      (lib-be/start-of-week)
-                              :customFormatting  (appearance/custom-formatting)
-                              :tokenFeatures    (premium-features/token-features)})
+  (let [options  (json/encode {:applicationColors (appearance/application-colors)
+                               :startOfWeek       (lib-be/start-of-week)
+                               :customFormatting  (appearance/custom-formatting)
+                               :tokenFeatures     (premium-features/token-features)})
         response (with-static-viz-context context
                    (js.engine/execute-fn-name context "initialize_context" options)
                    (when (seq custom-viz-bundles)

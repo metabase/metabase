@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import type { IconData } from "metabase/lib/icon";
 import type { IconName, IconProps } from "metabase/ui";
+import type { IconData } from "metabase/utils/icon";
 
 import {
   FullWidthButton,

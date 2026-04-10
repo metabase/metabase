@@ -4,11 +4,11 @@ import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
-import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
+import * as Urls from "metabase/utils/urls";
 import type { Transform, TransformId } from "metabase-types/api";
 
 type TransformTabsProps = {

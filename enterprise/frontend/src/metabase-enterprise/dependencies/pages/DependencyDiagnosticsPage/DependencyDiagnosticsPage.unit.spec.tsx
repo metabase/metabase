@@ -12,7 +12,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import type * as Urls from "metabase/lib/urls";
+import type * as Urls from "metabase/utils/urls";
 import type {
   DependencyDiagnosticsUserParams,
   DependencyNode,

@@ -1,6 +1,6 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
-import { isVirtualDashCard } from "metabase/lib/dashboard";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
 import type {
   Alert,
   ApiKey,
