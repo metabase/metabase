@@ -1106,22 +1106,30 @@
             "nil/blank schema should not issue any SQL")))))
 
 (deftest ^:parallel describe-fields-sql-nil-schema-test
-  (testing "describe-fields-sql for Postgres drops nil `schema-names` rather than rendering `IN (NULL)` (GDGT-2144)"
-    (let [[nil-schema-sql & nil-schema-params] (sql-jdbc.sync/describe-fields-sql
-                                                :postgres
-                                                {:schema-names [nil]
-                                                 :table-names  ["my_table"]
-                                                 :details      {}})
-          [no-schema-sql & no-schema-params]   (sql-jdbc.sync/describe-fields-sql
-                                                :postgres
-                                                {:table-names ["my_table"]
-                                                 :details     {}})]
+  (testing "describe-fields-sql for Postgres handles nil schema-names correctly (GDGT-2144)"
+    (let [[nil-schema-sql]   (sql-jdbc.sync/describe-fields-sql
+                              :postgres
+                              {:schema-names [nil]
+                               :table-names  ["my_table"]
+                               :details      {}})
+          [mixed-schema-sql] (sql-jdbc.sync/describe-fields-sql
+                              :postgres
+                              {:schema-names [nil "public"]
+                               :table-names  ["my_table"]
+                               :details      {}})
+          [normal-schema-sql] (sql-jdbc.sync/describe-fields-sql
+                               :postgres
+                               {:schema-names ["public"]
+                                :table-names  ["my_table"]
+                                :details      {}})]
       (is (not (re-find #"(?i)IN \(NULL\)" nil-schema-sql))
           "rendered SQL must not contain `IN (NULL)` which never matches anything")
-      (is (= no-schema-sql nil-schema-sql)
-          "passing [nil] schemas should generate the same SQL as passing no schemas")
-      (is (= no-schema-params nil-schema-params)
-          "parameter lists should also match"))))
+      (is (re-find #"\"table_schema\" IS NULL" nil-schema-sql)
+          "passing [nil] schemas should produce an IS NULL check on table_schema")
+      (is (re-find #"\"table_schema\" IN .+OR .+\"table_schema\" IS NULL" mixed-schema-sql)
+          "mixed nil + non-nil schemas should include both IN and IS NULL")
+      (is (not (re-find #"\"table_schema\" IS NULL" normal-schema-sql))
+          "non-nil-only schemas should not have IS NULL on table_schema"))))
 
 ;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
