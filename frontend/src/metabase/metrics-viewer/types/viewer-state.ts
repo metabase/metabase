@@ -6,6 +6,7 @@ import type {
   DimensionId,
   MathOperator,
   TemporalUnit,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import type { DimensionFilterValue } from "../utils/dimension-filters";
@@ -109,6 +110,7 @@ export interface MetricsViewerTabState {
   type: MetricsViewerTabType;
   label: string | null;
   display: MetricsViewerDisplayType;
+  visualizationSettings?: Partial<VisualizationSettings>;
   dimensionMapping: Record<number, DimensionId | null>;
   projectionConfig: MetricsViewerTabProjectionConfig;
 }

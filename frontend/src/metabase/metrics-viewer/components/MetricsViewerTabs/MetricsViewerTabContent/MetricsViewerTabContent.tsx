@@ -6,7 +6,12 @@ import { getObjectKeys, getObjectValues } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { CardId, SingleSeries, TemporalUnit } from "metabase-types/api";
+import type {
+  CardId,
+  SingleSeries,
+  TemporalUnit,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import type {
   MetricSourceId,
@@ -21,7 +26,7 @@ import { getProjectionInfo } from "../../../utils/definition-builder";
 import type { DimensionFilterValue } from "../../../utils/dimension-filters";
 import type { MetricSlot } from "../../../utils/metric-slots";
 import { buildDimensionItemsFromDefinitions } from "../../../utils/series";
-import { getTabConfig } from "../../../utils/tab-config";
+import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 
@@ -150,6 +155,18 @@ export function MetricsViewerTabContent({
     [onTabUpdate],
   );
 
+  const handleVisualizationSettingsChange = useCallback(
+    (updates: Partial<VisualizationSettings>) => {
+      onTabUpdate({
+        visualizationSettings: {
+          ...tab.visualizationSettings,
+          ...updates,
+        },
+      });
+    },
+    [onTabUpdate, tab.visualizationSettings],
+  );
+
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
       updateProjectionConfig({
@@ -163,6 +180,9 @@ export function MetricsViewerTabContent({
     },
     [updateProjectionConfig],
   );
+
+  const showStackSeries =
+    DISPLAY_TYPE_REGISTRY[tab.display].supportsStacking && rawSeries.length > 1;
 
   const isTimeTab = tab.type === "time";
   const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
@@ -213,6 +233,9 @@ export function MetricsViewerTabContent({
             onDimensionFilterChange={handleDimensionFilterChange}
             onTemporalUnitChange={handleTemporalUnitChange}
             onBinningChange={handleBinningChange}
+            showStackSeries={showStackSeries}
+            visualizationSettings={tab.visualizationSettings}
+            onVisualizationSettingsChange={handleVisualizationSettingsChange}
           />
         </Flex>
       )}

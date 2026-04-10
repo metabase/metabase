@@ -197,6 +197,7 @@ export function useMetricsViewer({
       resultsByEntityIndex,
       modifiedDefinitionsBySlotIndex,
       sourceBreakoutColors,
+      extraVizSettings: activeTab.visualizationSettings,
     });
   }, [
     state.formulaEntities,

@@ -71,6 +71,7 @@ interface BuildSeriesParams {
   display: MetricsViewerDisplayType;
   modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
   sourceBreakoutColors: SourceBreakoutColorMap;
+  extraVizSettings?: Partial<VisualizationSettings>;
 }
 
 export function buildSeries({
@@ -82,6 +83,7 @@ export function buildSeries({
   display,
   modifiedDefinitionsBySlotIndex,
   sourceBreakoutColors,
+  extraVizSettings,
 }: BuildSeriesParams): {
   series: SingleSeries[];
   cardIdToEntityIndex: Record<CardId, number>;
@@ -149,21 +151,20 @@ export function buildSeries({
       const singleSeries: SingleSeries = {
         card: createSeriesCard(cardId, name, display, {
           ...vizSettings,
-          ...computeColorVizSettings({
-            displayType: display,
-            seriesKey,
-            color,
-          }),
+          ...(nativeBreakout
+            ? {}
+            : computeColorVizSettings({
+                displayType: display,
+                seriesKey,
+                color,
+              })),
+          ...extraVizSettings,
         }),
         data: result.data,
       };
 
       let entrySeries: SingleSeries[];
-      if (
-        isMetricEntry(entity) &&
-        needsManualBreakoutSplit &&
-        colors instanceof Map
-      ) {
+      if (needsManualBreakoutSplit && colors instanceof Map) {
         const { series, activeBreakoutColorMap } = splitByBreakout(
           singleSeries,
           formulaEntities.length,
@@ -175,13 +176,7 @@ export function buildSeries({
         activeBreakoutColors[entityIndex] = activeBreakoutColorMap;
       } else {
         entrySeries = [singleSeries];
-
-        if (
-          isMetricEntry(entity) &&
-          hasBreakout &&
-          !needsManualBreakoutSplit &&
-          colors instanceof Map
-        ) {
+        if (hasBreakout && !needsManualBreakoutSplit && colors instanceof Map) {
           activeBreakoutColors[entityIndex] = filterBreakoutColorsByData(
             colors,
             result.data,

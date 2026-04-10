@@ -26,6 +26,7 @@ type DisplayTypeDefinition =
   | {
       dimensionRequired: true;
       supportsMultipleSeries: boolean;
+      supportsStacking: boolean;
       getSettings: (
         def: MetricDefinition,
         dimension: DimensionMetadata,
@@ -37,6 +38,7 @@ type DisplayTypeDefinition =
   | {
       dimensionRequired: false;
       supportsMultipleSeries: boolean;
+      supportsStacking: boolean;
       getSettings: (def: MetricDefinition) => VisualizationSettings;
       combineSettings?: (
         settings: VisualizationSettings[],
@@ -250,35 +252,41 @@ export const DISPLAY_TYPE_REGISTRY: Record<
   line: {
     dimensionRequired: true,
     supportsMultipleSeries: true,
+    supportsStacking: true,
     getSettings: getChartSettings,
     combineSettings: combineColors,
   },
   area: {
     dimensionRequired: true,
     supportsMultipleSeries: true,
+    supportsStacking: true,
     getSettings: getChartSettings,
     combineSettings: combineColors,
   },
   bar: {
     dimensionRequired: true,
     supportsMultipleSeries: true,
+    supportsStacking: true,
     getSettings: getChartSettings,
     combineSettings: combineColors,
   },
   scatter: {
     dimensionRequired: true,
     supportsMultipleSeries: true,
+    supportsStacking: true,
     getSettings: getScatterSettings,
     combineSettings: combineColors,
   },
   map: {
     dimensionRequired: true,
     supportsMultipleSeries: false,
+    supportsStacking: true,
     getSettings: getMapSettings,
   },
   scalar: {
     dimensionRequired: false,
     supportsMultipleSeries: false,
+    supportsStacking: true,
     getSettings: getScalarSettings,
   },
 };
