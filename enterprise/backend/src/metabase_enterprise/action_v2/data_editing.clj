@@ -29,10 +29,21 @@
   nil)
 
 (defn- batch-invalidate-field-values!
-  "Recalculate the field values for the given fields."
+  "Recalculate the field values for the given fields. Groups fields by table so each table issues
+   one bulk warehouse query regardless of how many of its columns were touched."
   [field-batches]
-  (->> (t2/select :model/Field :id [:in (into #{} cat field-batches)])
-       (run! field-values/create-or-update-full-field-values!)))
+  (let [field-ids (into #{} cat field-batches)
+        fields    (when (seq field-ids)
+                    (filter field-values/field-should-have-field-values?
+                            (t2/select :model/Field :id [:in field-ids])))]
+    (when (seq fields)
+      (let [fvs-map (field-values/batched-get-latest-full-field-values (map :id fields))]
+        (doseq [[table-id table-fields] (group-by :table_id fields)]
+          (when-let [bulk-values (field-values/bulk-distinct-values table-id table-fields)]
+            (doseq [field table-fields]
+              (let [fv (get fvs-map (:id field))
+                    dv (get bulk-values (:id field))]
+                (field-values/persist-field-values! field fv (:values dv) (:has_more_values dv))))))))))
 
 (defmethod queue/init-listener! ::FieldValueInvalidation [_]
   (queue/listen! "field-value-invalidate" global-field-value-invalidate-queue batch-invalidate-field-values!

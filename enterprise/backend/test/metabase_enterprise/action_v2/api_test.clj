@@ -528,6 +528,47 @@
              (check-coercion-fn-coverage @#'coerce/unimplemented-coercion-functions)
              (run! #(apply do-test %)))))))
 
+(deftest batch-invalidate-field-values-bulk-test
+  (testing "batch-invalidate-field-values! groups field IDs by table and runs bulk-distinct-values once per table"
+    (mt/dataset test-data
+      (let [cat-id      (mt/id :products :category)
+            vendor-id   (mt/id :products :vendor)
+            source-id   (mt/id :people :source)
+            bulk-calls  (atom [])
+            orig-bulk   field-values/bulk-distinct-values]
+        ;; products.category, products.vendor and people.source are all category fields by default in test-data
+        (t2/delete! :model/FieldValues :field_id [:in [cat-id vendor-id source-id]])
+        (with-redefs [field-values/bulk-distinct-values (fn [table-id fields]
+                                                          (swap! bulk-calls conj
+                                                                 {:table-id table-id
+                                                                  :field-ids (set (map :id fields))})
+                                                          (orig-bulk table-id fields))]
+          ;; Three field IDs spanning two tables, in two queue messages — exactly the shape the
+          ;; production listener delivers.
+          (#'data-editing/batch-invalidate-field-values! [[cat-id vendor-id] [source-id]]))
+        (testing "exactly one bulk call per table"
+          (is (= 2 (count @bulk-calls))))
+        (testing "fields are correctly grouped by table"
+          (is (= #{{:table-id (mt/id :products) :field-ids #{cat-id vendor-id}}
+                   {:table-id (mt/id :people)   :field-ids #{source-id}}}
+                 (set @bulk-calls))))
+        (testing "FieldValues were persisted for all three fields"
+          (is (= #{"Doohickey" "Gadget" "Gizmo" "Widget"}
+                 (set (:values (t2/select-one :model/FieldValues :field_id cat-id :type :full)))))
+          (is (some? (t2/select-one :model/FieldValues :field_id vendor-id :type :full)))
+          (is (some? (t2/select-one :model/FieldValues :field_id source-id :type :full))))))))
+
+(deftest batch-invalidate-field-values-skips-ineligible-test
+  (testing "batch-invalidate-field-values! filters out fields that shouldn't have FieldValues"
+    (mt/dataset test-data
+      (let [pk-id      (mt/id :orders :id)  ; PK — field-should-have-field-values? returns false
+            bulk-calls (atom 0)]
+        (with-redefs [field-values/bulk-distinct-values (fn [& _]
+                                                          (swap! bulk-calls inc)
+                                                          nil)]
+          (#'data-editing/batch-invalidate-field-values! [[pk-id]]))
+        (is (zero? @bulk-calls))))))
+
 (deftest field-values-invalidated-test
   (mt/with-premium-features #{actions-feature-flag}
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
