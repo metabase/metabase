@@ -98,21 +98,6 @@ export const queryDrillThru = (
   return drill ?? null;
 };
 
-export const findDrillThru = (
-  query: Lib.Query,
-  stageIndex: number,
-  clickObject: Lib.ClickObject,
-  drillType: Lib.DrillThruType,
-) => {
-  const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
-  if (!drill) {
-    throw new Error(`Could not find drill ${drillType}`);
-  }
-
-  const drillInfo = Lib.displayInfo(query, stageIndex, drill);
-  return { drill, drillInfo };
-};
-
 interface ColumnClickObjectOpts {
   column: DatasetColumn;
 }
