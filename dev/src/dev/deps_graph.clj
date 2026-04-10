@@ -918,6 +918,7 @@
     (sorted-set)
     (comp (map file->namespace)
           (map (partial module prefix->mod))
+          (remove nil?)
           (distinct)
           (mapcat #(module->dependents deps %))
           (mapcat #(module->test-files modules-config %)))
