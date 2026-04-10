@@ -98,6 +98,11 @@
     (when (seq matches)
       (get prefix->module (apply max-key count matches)))))
 
+(defn- normalize-test-namespace [ns-symb]
+  (if (str/ends-with? (name ns-symb) "-test")
+    (symbol (str/replace (name ns-symb) #"-test$" ""))
+    ns-symb))
+
 (mu/defn- module :- [:maybe symbol?]
   "Resolve a namespace symbol to a module symbol via prefix-map lookup.
 
@@ -116,18 +121,19 @@
    (module nil ns-symb))
   ([prefix->module :- [:maybe [:map-of :string symbol?]]
     ns-symb :- simple-symbol?]
-   (or
-    ;; Primary path: prefix-map longest match over declared modules.
-    (when (seq prefix->module)
-      (longest-matching-prefix prefix->module (str ns-symb)))
-    ;; Fallback: single-segment extraction. Regex literals preserved
-    ;; byte-for-byte to match the kondo hook for the consistency test.
-    (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
-             second
-             (symbol "enterprise"))
-    (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
-            second
-            symbol))))
+   (let [ns-symb (normalize-test-namespace ns-symb)]
+     (or
+      ;; Primary path: prefix-map longest match over declared modules.
+      (when (seq prefix->module)
+        (longest-matching-prefix prefix->module (str ns-symb)))
+      ;; Fallback: single-segment extraction. Regex literals preserved
+      ;; byte-for-byte to match the kondo hook for the consistency test.
+      (some->> (re-find #"^metabase-enterprise\.([^.]+)" (str ns-symb))
+               second
+               (symbol "enterprise"))
+      (some-> (re-find #"^metabase\.([^.]+)" (str ns-symb))
+              second
+              symbol)))))
 
 (def ^:private require-symbols
   '#{require

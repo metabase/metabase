@@ -230,6 +230,9 @@
                               {:ns 'metabase.lib.schema.util
                                :file "src/metabase/lib/schema/util.clj"
                                :want 'lib.schema}
+                              {:ns 'metabase.lib.schema-test
+                               :file "test/metabase/lib/schema_test.cljc"
+                               :want 'lib.schema}
                               {:ns 'metabase.lib-be.core
                                :file "src/metabase/lib_be/core.clj"
                                :want 'lib.be}

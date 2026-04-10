@@ -282,6 +282,19 @@
     (when (seq matches)
       (get prefix->module (apply max-key count matches)))))
 
+(defn- normalize-test-namespace
+  "Normalize exact `-test` namespaces back to their module/source namespace
+  for module resolution.
+
+  This keeps namespace-based resolution aligned with file-path-based helpers
+  for module-level test files such as `test/metabase/lib/schema_test.cljc`,
+  whose declared namespace is `metabase.lib.schema-test` but whose owning
+  module should resolve as `lib.schema` rather than top-level `lib`."
+  [ns-symb]
+  (if (str/ends-with? (name ns-symb) "-test")
+    (symbol (str/replace (name ns-symb) #"-test$" ""))
+    ns-symb))
+
 (defn module
   "Resolve a namespace symbol to the module symbol that owns it.
 
@@ -327,12 +340,10 @@
   ([ns-symb] (module nil ns-symb))
   ([config ns-symb]
    {:pre [(simple-symbol? ns-symb)]}
-   ;; treat something like `metabase.driver-test` (for a module that hasn't
-   ;; fully been updated to use `.core` namespaces) as being in the `driver`
-   ;; module
-   (let [ns-symb (if (str/ends-with? (name ns-symb) "-test")
-                   (symbol (str/replace (name ns-symb) #"-test$" ""))
-                   ns-symb)]
+   ;; Treat exact `-test` namespaces as their source/module namespace so
+   ;; `metabase.lib.schema-test` resolves to `lib.schema`, while still
+   ;; supporting older flat cases like `metabase.driver-test` -> `driver`.
+   (let [ns-symb (normalize-test-namespace ns-symb)]
      (or
       ;; Primary path: prefix-map longest match over declared modules.
       (when (seq (get config :metabase/modules))
