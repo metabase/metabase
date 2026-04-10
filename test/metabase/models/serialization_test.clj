@@ -4,7 +4,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.models.serialization :as serdes]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test
   (binding [serdes/*export-field-fk* (constantly ::field-id)]
@@ -238,3 +239,30 @@
           (is (= ["db" nil "t" "f1" "f2" "f3"] (serdes/*export-field-fk* f3-id)))
           (is (= ["db" nil "t" "f1" "f2"]      (serdes/*export-field-fk* f2-id)))
           (is (= ["db" nil "t" "f1"]           (serdes/*export-field-fk* f1-id))))))))
+
+(deftest export-table-fk-with-orphaned-fk-target-test
+  (testing "table with FK field pointing to a nonexistent target field does not crash"
+    (mt/with-temp [:model/Database {db-id :id}       {:name "db" :engine :h2}
+                   :model/Table    {t1-id :id}       {:name "t1" :schema "public" :db_id db-id}
+                   :model/Field    {f-id :id}        {:name "f" :table_id t1-id :base_type :type/Integer
+                                                      :fk_target_field_id nil}
+                   :model/Field    {target-id :id}   {:name "target" :table_id t1-id :base_type :type/Integer}]
+      (t2/update! :model/Field f-id {:fk_target_field_id target-id})
+      (t2/delete! :model/Field :id target-id)
+      (binding [serdes/*batch-cache-max-size* 2]
+        (serdes/with-cache
+          (is (= ["db" "public" "t1"] (serdes/*export-table-fk* t1-id))))))))
+
+(deftest export-field-fk-with-orphaned-fk-target-test
+  (testing "field with fk_target_field_id pointing to a nonexistent field does not crash"
+    (mt/with-temp [:model/Database {db-id :id}       {:name "db" :engine :h2}
+                   :model/Table    {t-id :id}        {:name "t" :schema nil :db_id db-id}
+                   :model/Field    {f-id :id}        {:name "f" :table_id t-id :base_type :type/Integer
+                                                      :fk_target_field_id nil}
+                   :model/Field    {target-id :id}   {:name "target" :table_id t-id :base_type :type/Integer}]
+      ;; create a valid FK reference, then delete the target to simulate an orphaned reference
+      (t2/update! :model/Field f-id {:fk_target_field_id target-id})
+      (t2/delete! :model/Field :id target-id)
+      (binding [serdes/*batch-cache-max-size* 2]
+        (serdes/with-cache
+          (is (= ["db" nil "t" "f"] (serdes/*export-field-fk* f-id))))))))

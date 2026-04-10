@@ -1101,7 +1101,9 @@
                                          :table_id id
                                          :fk_target_field_id [:not= nil]))
         fk-table-ids (when (seq fk-field-ids)
-                       (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
+                       (t2/select-fn-set :table_id :model/Field
+                                         :id [:in fk-field-ids]
+                                         :table_id [:not= nil]))
         fk-tables    (when (seq fk-table-ids)
                        (t2/select-pk->fn identity [:model/Table :id :db_id :name :schema]
                                          :id [:in fk-table-ids]
@@ -1217,16 +1219,23 @@
     (if-not (pos? remaining)
       required
       (let [table-id      (:table_id (get required field-id))
-            fk-field-ids  (t2/select-fn-set :fk_target_field_id :model/Field
-                                            :table_id table-id
-                                            :fk_target_field_id [:not= nil])
+            fk-field-ids  (when table-id
+                            (t2/select-fn-set :fk_target_field_id :model/Field
+                                              :table_id table-id
+                                              :fk_target_field_id [:not= nil]))
             fk-table-ids  (when (seq fk-field-ids)
-                            (t2/select-fn-set :table_id :model/Field :id [:in fk-field-ids]))
-            all-table-ids (cond-> #{table-id} (seq fk-table-ids) (into fk-table-ids))
-            extras        (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
-                                            :id [:not-in (set (keys required))]
-                                            :table_id [:in all-table-ids]
-                                            {:limit remaining})]
+                            (t2/select-fn-set :table_id :model/Field
+                                              :id [:in fk-field-ids]
+                                              :table_id [:not= nil]))
+            all-table-ids (cond-> #{}
+                            table-id           (conj table-id)
+                            (seq fk-table-ids) (into fk-table-ids))
+            required-ids  (set (keys required))
+            extras        (when (and (seq all-table-ids) (seq required-ids))
+                            (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
+                                              :id [:not-in required-ids]
+                                              :table_id [:in all-table-ids]
+                                              {:limit remaining}))]
         (merge required extras)))))
 
 (defn recursively-find-field-q
