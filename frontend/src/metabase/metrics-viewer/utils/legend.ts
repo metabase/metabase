@@ -51,17 +51,22 @@ export function buildLegendGroups(
 
   formulaEntities.forEach((entity, entityIndex) => {
     const colors = activeBreakoutColors[entityIndex];
-    const color =
-      typeof colors === "string"
+
+    const getNextColor = () => {
+      return typeof colors === "string"
         ? colors
         : colors instanceof Map
           ? colors.values().next().value
           : undefined;
-    if (!color) {
-      return;
-    }
+    };
 
     if (isExpressionEntry(entity)) {
+      const color = getNextColor();
+
+      if (!color) {
+        return;
+      }
+
       groups.push({
         key: entityIndex,
         header: entity.name,
@@ -110,7 +115,9 @@ export function buildLegendGroups(
         items,
       });
     } else {
-      if (!definitionName) {
+      const color = getNextColor();
+
+      if (!definitionName || !color) {
         return;
       }
       groups.push({

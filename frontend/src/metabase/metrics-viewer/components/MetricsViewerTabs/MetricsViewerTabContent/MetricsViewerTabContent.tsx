@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
 import { Center, Flex, Stack } from "metabase/ui";
+import { getObjectKeys, getObjectValues } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { CardId, SingleSeries, TemporalUnit } from "metabase-types/api";

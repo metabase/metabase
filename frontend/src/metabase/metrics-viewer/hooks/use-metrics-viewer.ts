@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 
-import { objectFromEntries } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { objectFromEntries } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
 import type {
   DimensionMetadata,
   MetricDefinition,

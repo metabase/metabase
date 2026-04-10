@@ -1,4 +1,4 @@
-import { getObjectEntries } from "metabase/lib/objects";
+import { getObjectEntries } from "metabase/utils/objects";
 
 import type {
   MetricSourceId,
