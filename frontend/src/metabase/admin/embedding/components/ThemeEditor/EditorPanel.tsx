@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
+import { ColorPicker } from "metabase/common/components/ColorPicker";
 import { ColorPickerContent } from "metabase/common/components/ColorPicker/ColorPickerContent";
 import type { MetabaseColor } from "metabase/embedding-sdk/theme";
 import type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
@@ -8,12 +10,15 @@ import {
   Box,
   Button,
   Card,
+  Collapse,
   Flex,
+  Icon,
   Popover,
   Select,
   Stack,
   Text,
   TextInput,
+  UnstyledButton,
 } from "metabase/ui";
 
 const FONT_FAMILY_OPTIONS: { value: string; label: string }[] = [
@@ -47,18 +52,38 @@ const PRIMARY_COLORS: {
   { key: "text-primary", label: () => t`Primary text` },
 ];
 
+const MORE_COLORS: {
+  key: Exclude<MetabaseColor, "charts">;
+  label: () => string;
+}[] = [
+  { key: "text-secondary", label: () => t`Secondary text` },
+  { key: "text-tertiary", label: () => t`Tertiary text` },
+  { key: "border", label: () => t`Border` },
+  { key: "background-secondary", label: () => t`Secondary background` },
+  { key: "filter", label: () => t`Filter` },
+  { key: "summarize", label: () => t`Summarize` },
+  { key: "positive", label: () => t`Positive` },
+  { key: "negative", label: () => t`Negative` },
+  { key: "shadow", label: () => t`Shadow` },
+];
+
+const CHART_COLOR_COUNT = 8;
+
 interface EditorPanelProps {
   editor: EmbeddingThemeEditorResult;
   onCancel: () => void;
 }
 
 export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
+  const [moreColorsOpen, setMoreColorsOpen] = useState(false);
+
   const { currentTheme } = editor;
   if (!currentTheme) {
     return null;
   }
 
   const colors = currentTheme.settings.colors ?? {};
+  const charts = colors.charts ?? [];
 
   const parseFontSizeNumber = (fontSize: string | undefined): string => {
     if (!fontSize) {
@@ -101,6 +126,59 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
                 />
               ))}
             </Flex>
+
+            <UnstyledButton
+              mt="sm"
+              onClick={() => setMoreColorsOpen((v) => !v)}
+            >
+              <Flex align="center" gap="xs">
+                <Text c="brand" fz="sm" fw={600}>
+                  {moreColorsOpen
+                    ? t`Hide additional colors`
+                    : t`Show more colors`}
+                </Text>
+                <Icon
+                  name={moreColorsOpen ? "chevronup" : "chevronright"}
+                  size={12}
+                  c="brand"
+                />
+              </Flex>
+            </UnstyledButton>
+
+            <Collapse in={moreColorsOpen}>
+              <Stack gap="sm" mt="md">
+                {MORE_COLORS.map(({ key, label }) => (
+                  <ColorRow
+                    key={key}
+                    label={label()}
+                    value={(colors[key] as string) ?? ""}
+                    onChange={(color) => editor.setColor(key, color ?? "")}
+                  />
+                ))}
+
+                <Text fw={600} fz="sm" mt="sm">{t`Chart colors`}</Text>
+                <Flex gap="sm" wrap="wrap">
+                  {Array.from({ length: CHART_COLOR_COUNT }, (_, i) => {
+                    const chartColor = charts[i];
+                    const value =
+                      typeof chartColor === "object" && chartColor?.base
+                        ? chartColor.base
+                        : typeof chartColor === "string"
+                          ? chartColor
+                          : "";
+                    return (
+                      <ColorPicker
+                        key={i}
+                        value={value}
+                        onChange={(color) =>
+                          editor.setChartColor(i, color ?? "")
+                        }
+                      />
+                    );
+                  })}
+                </Flex>
+              </Stack>
+            </Collapse>
           </Card>
 
           {/* Font */}
@@ -198,5 +276,22 @@ function ColorSwatchCard({
         <ColorPickerContent value={value} onChange={onChange} />
       </Popover.Dropdown>
     </Popover>
+  );
+}
+
+function ColorRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (color?: string) => void;
+}) {
+  return (
+    <Flex align="center" justify="space-between">
+      <Text fz="sm">{label}</Text>
+      <ColorPicker value={value} onChange={onChange} />
+    </Flex>
   );
 }

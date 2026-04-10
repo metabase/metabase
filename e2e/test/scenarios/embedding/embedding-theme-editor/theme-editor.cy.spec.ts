@@ -4,9 +4,42 @@ function createThemeViaApi(name = "Test theme") {
   return cy
     .request("POST", "/api/embed-theme", {
       name,
-      settings: { colors: { brand: "#509EE3" } },
+      settings: {
+        colors: {
+          brand: "#509EE3",
+          background: "#ffffff",
+          "text-primary": "#2E353B",
+          "text-secondary": "#697D8C",
+          "text-tertiary": "#949AAB",
+          border: "#EEECEC",
+          "background-secondary": "#F9FBFC",
+          filter: "#7172AD",
+          summarize: "#88BF4D",
+          positive: "#84BB4C",
+          negative: "#ED6E6E",
+          shadow: "#000000",
+          charts: [
+            "#509EE3",
+            "#88BF4D",
+            "#A989C5",
+            "#EF8C8C",
+            "#F9D45C",
+            "#F2A86F",
+            "#98D9D9",
+            "#7172AD",
+          ],
+        },
+        fontFamily: "",
+        fontSize: "",
+      },
     })
     .then((response) => response.body);
+}
+
+function visitThemeEditor(themeId: number) {
+  cy.intercept("GET", `/api/embed-theme/${themeId}`).as("getTheme");
+  cy.visit(`/admin/embedding/themes/${themeId}`);
+  cy.wait("@getTheme");
 }
 
 describe(
@@ -21,7 +54,7 @@ describe(
 
     it("loads the theme editor page and shows the theme name", () => {
       createThemeViaApi("My custom theme").then((theme) => {
-        cy.visit(`/admin/embedding/themes/${theme.id}`);
+        visitThemeEditor(theme.id);
       });
 
       cy.log("editor panel should show the theme name");
@@ -36,7 +69,7 @@ describe(
 
     it("can edit and save a theme name", () => {
       createThemeViaApi("Original name").then((theme) => {
-        cy.visit(`/admin/embedding/themes/${theme.id}`);
+        visitThemeEditor(theme.id);
       });
 
       cy.log("change the theme name");
@@ -56,7 +89,7 @@ describe(
 
     it("can cancel and navigate back to listing", () => {
       createThemeViaApi("A theme").then((theme) => {
-        cy.visit(`/admin/embedding/themes/${theme.id}`);
+        visitThemeEditor(theme.id);
       });
 
       cy.findByRole("button", { name: /Cancel/ }).click();
@@ -77,7 +110,7 @@ describe(
         cy.intercept("PUT", "/api/embed-theme/*").as("updateTheme");
 
         createThemeViaApi("Font test").then((theme) => {
-          cy.visit(`/admin/embedding/themes/${theme.id}`);
+          visitThemeEditor(theme.id);
         });
 
         H.main().within(() => {
@@ -116,7 +149,7 @@ describe(
     describe("main colors", () => {
       it("shows the main color swatches", () => {
         createThemeViaApi("Color test").then((theme) => {
-          cy.visit(`/admin/embedding/themes/${theme.id}`);
+          visitThemeEditor(theme.id);
         });
 
         H.main().within(() => {
@@ -128,12 +161,67 @@ describe(
       });
     });
 
+    describe("additional colors", () => {
+      it("shows additional colors section when expanded", () => {
+        createThemeViaApi("Colors test").then((theme) => {
+          visitThemeEditor(theme.id);
+        });
+
+        H.main().within(() => {
+          cy.log("additional colors should be hidden by default");
+          cy.findByText("Secondary text").should("not.be.visible");
+
+          cy.log("expand additional colors");
+          cy.findByText("Show more colors").click();
+
+          cy.log("additional color rows should be visible");
+          cy.findByText("Secondary text").should("be.visible");
+          cy.findByText("Border").should("be.visible");
+          cy.findByText("Filter").should("be.visible");
+          cy.findByText("Chart colors").should("exist");
+
+          cy.log("collapse additional colors");
+          cy.findByText("Hide additional colors").click();
+          cy.findByText("Secondary text").should("not.be.visible");
+        });
+      });
+
+      it("can edit additional colors and save them", () => {
+        cy.intercept("PUT", "/api/embed-theme/*").as("updateTheme");
+
+        createThemeViaApi("Edit colors").then((theme) => {
+          visitThemeEditor(theme.id);
+        });
+
+        H.main().within(() => {
+          cy.findByText("Show more colors").click();
+
+          cy.log("edit the border color via its inline input");
+          cy.findByText("Border").parent().find("input").clear().type("FF5733");
+
+          cy.log("edit the filter color via its inline input");
+          cy.findByText("Filter").parent().find("input").clear().type("2D2D30");
+
+          cy.log("save the theme");
+          cy.findByRole("button", { name: /Save theme/ }).click();
+        });
+
+        cy.wait("@updateTheme").then((interception) => {
+          const { settings } = interception.request.body;
+          expect(settings.colors?.border).to.eq("#FF5733");
+          expect(settings.colors?.filter).to.eq("#2D2D30");
+        });
+
+        H.undoToast().findByText("Theme saved").should("exist");
+      });
+    });
+
     describe("preview panel", () => {
       it("shows enable embedding prompt when embedding is not enabled", () => {
         H.updateSetting("enable-embedding-simple", false);
 
         createThemeViaApi("Preview test").then((theme) => {
-          cy.visit(`/admin/embedding/themes/${theme.id}`);
+          visitThemeEditor(theme.id);
         });
 
         cy.log("should show prompt to enable embedding");
@@ -153,7 +241,7 @@ describe(
         H.updateSetting("show-simple-embed-terms", false);
 
         createThemeViaApi("Preview test").then((theme) => {
-          cy.visit(`/admin/embedding/themes/${theme.id}`);
+          visitThemeEditor(theme.id);
         });
 
         cy.log("should show the theme preview heading");
