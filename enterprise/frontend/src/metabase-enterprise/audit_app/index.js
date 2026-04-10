@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { isInternalUser } from "metabase/lib/urls";
 import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_AUDIT,
 } from "metabase/plugins";
 import { Menu } from "metabase/ui";
+import { isInternalUser } from "metabase/utils/urls";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { InsightsLink } from "./components/InsightsLink";

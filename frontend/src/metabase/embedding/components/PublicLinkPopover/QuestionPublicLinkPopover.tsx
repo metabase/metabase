@@ -5,13 +5,13 @@ import {
   useDeleteCardPublicLinkMutation,
 } from "metabase/api";
 import {
-  exportFormats,
-  publicQuestion as getPublicQuestionUrl,
-} from "metabase/lib/urls";
-import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
 } from "metabase/public/lib/analytics";
+import {
+  exportFormats,
+  publicQuestion as getPublicQuestionUrl,
+} from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { PublicLinkPopover } from "./PublicLinkPopover";

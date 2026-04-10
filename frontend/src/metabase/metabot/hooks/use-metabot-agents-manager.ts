@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import {
   type MetabotAgentId,

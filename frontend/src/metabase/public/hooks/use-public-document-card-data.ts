@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { useAsync } from "react-use";
 
-import { useSelector } from "metabase/lib/redux";
 import { usePublicDocumentContext } from "metabase/public/contexts/PublicDocumentContext";
 import { getMetadata } from "metabase/selectors/metadata";
 import { PublicApi } from "metabase/services";
+import { useSelector } from "metabase/utils/redux";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Dataset, RawSeries } from "metabase-types/api";
 

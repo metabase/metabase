@@ -21,10 +21,10 @@ import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSing
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
-import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
+import { MetabaseReduxProvider, useSelector } from "metabase/utils/redux";
 import { initializePlugins } from "sdk-ee-plugins";
 
 import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";

@@ -11,10 +11,10 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Markdown } from "metabase/common/components/Markdown";
-import { useSelector } from "metabase/lib/redux";
 import type { HelpText } from "metabase/querying/expressions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Input, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type * as Lib from "metabase-lib";
 
 import { HighlightExpressionSource } from "../HighlightExpression";

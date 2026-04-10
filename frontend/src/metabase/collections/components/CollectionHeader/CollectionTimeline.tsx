@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
-import * as Urls from "metabase/lib/urls";
 import { Indicator, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";

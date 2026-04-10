@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 
 import { setGuestTokenFetchError } from "embedding-sdk-bundle/store/guest-embed";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { isWithinIframe } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 
 import type {

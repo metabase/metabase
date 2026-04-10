@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";
+import { isSyncAborted, isSyncInProgress } from "metabase/utils/syncing";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 
 import StatusSmall from "../StatusSmall";

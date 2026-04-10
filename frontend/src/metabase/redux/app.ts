@@ -9,8 +9,8 @@ import {
   isSmallScreen,
   openInBlankWindow,
   shouldOpenInBlankWindow,
-} from "metabase/lib/dom";
-import { combineReducers, handleActions } from "metabase/lib/redux";
+} from "metabase/utils/dom";
+import { combineReducers, handleActions } from "metabase/utils/redux";
 import type {
   DetailViewState,
   Dispatch,

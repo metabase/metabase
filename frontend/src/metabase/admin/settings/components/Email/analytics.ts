@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 
 type SMTPSetupEventDetail = "self-hosted" | "cloud";
 

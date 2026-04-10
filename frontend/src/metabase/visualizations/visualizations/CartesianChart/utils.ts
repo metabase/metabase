@@ -1,6 +1,6 @@
 import type { EChartsCoreOption } from "echarts/core";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type {
   DataKey,
   SeriesModel,

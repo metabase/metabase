@@ -1,7 +1,7 @@
 import { skipToken, useGetDashboardQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { getCustomHomePageDashboardId } from "metabase/selectors/app";
 import { getSettingsLoading } from "metabase/selectors/settings";
+import { useSelector } from "metabase/utils/redux";
 
 export const useHomepageDashboard = () => {
   const dashboardId = useSelector(getCustomHomePageDashboardId);

@@ -5,7 +5,6 @@ import { EmbeddingSettingsCard } from "metabase/admin/settings/components/Embedd
 import { NewEmbedButton } from "metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton";
 import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,
@@ -13,6 +12,7 @@ import {
 } from "metabase/plugins";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import { SettingTitle } from "../../SettingHeader";
 import { EmbeddedResources } from "../../widgets/PublicLinksListing/EmbeddedResources";

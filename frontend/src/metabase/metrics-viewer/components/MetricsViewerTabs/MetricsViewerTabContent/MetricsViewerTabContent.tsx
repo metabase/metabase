@@ -2,9 +2,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
 import { Center, Flex, Stack } from "metabase/ui";
+import { getObjectKeys } from "metabase/utils/objects";
+import { isNotNull } from "metabase/utils/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -203,7 +203,7 @@ export function MetricsViewerTabContent({
     DISPLAY_TYPE_REGISTRY[tab.display].supportsStacking && rawSeries.length > 1;
 
   const isTimeTab = tab.type === "time";
-  const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
+  const mappedDimensionCount = Object.values(tab.dimensionMapping).filter(
     isNotNull,
   ).length;
   const dimensionRemoveHandler =

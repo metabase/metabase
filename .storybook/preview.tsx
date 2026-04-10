@@ -2,14 +2,14 @@ import React, { useEffect, useMemo } from "react";
 
 import { ThemeProvider } from "metabase/ui";
 
-// @ts-expect-error: See metabase/lib/delay
+// @ts-expect-error: See metabase/utils/delay
 // This will skip the skippable delays in stories
 window.METABASE_REMOVE_DELAYS = true;
 
 require("metabase/css/core/index.css");
 require("metabase/css/vendor.css");
 require("metabase/css/index.module.css");
-require("metabase/lib/dayjs");
+require("metabase/utils/dayjs");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";

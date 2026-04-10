@@ -10,9 +10,12 @@ import {
   isLinkDashCard,
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
-import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { Box, Icon } from "metabase/ui";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
 import { getVisualizationRaw } from "metabase/visualizations";
 import {
   isDisabledForVisualizer,

@@ -42,8 +42,8 @@ import type {
 } from "metabase/data-grid/types";
 import { getDataColumn } from "metabase/data-grid/utils/columns/data-column";
 import { getRowIdColumn } from "metabase/data-grid/utils/columns/row-id-column";
-import { getScrollBarSize } from "metabase/lib/dom";
-import { isNotNull } from "metabase/lib/types";
+import { getScrollBarSize } from "metabase/utils/dom";
+import { isNotNull } from "metabase/utils/types";
 
 import { getTruncatedColumnSizing } from "../utils/column-sizing";
 import { maybeExpandColumnWidths } from "../utils/maybe-expand-column-widths";
