@@ -5,6 +5,7 @@
    [metabase-enterprise.security-center.schema :as schema]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -64,17 +65,16 @@
       even if the driver doesn't enforce read-only
    3. setQueryTimeout — kills the query if it exceeds [[*query-timeout-seconds*]]"
   [hsql-query]
-  (let [[sql & params] (mdb/compile hsql-query)]
+  (let [[sql & params] (mdb/compile hsql-query)
+        driver         (mdb/db-type)]
     (with-open [^java.sql.Connection conn (.getConnection (mdb/data-source))]
       (.setReadOnly conn true)
       (.setAutoCommit conn false)
       (try
-        (with-open [stmt (doto (.prepareStatement conn sql)
-                           (.setQueryTimeout *query-timeout-seconds*))]
-          (doseq [[i param] (map-indexed vector params)]
-            (.setObject stmt (inc i) param))
-          (with-open [rs (.executeQuery stmt)]
-            (rs/datafiable-result-set rs conn {})))
+        (with-open [stmt (doto (sql-jdbc.execute/prepared-statement driver conn sql params)
+                           (.setQueryTimeout *query-timeout-seconds*))
+                    rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+          (rs/datafiable-result-set rs conn {}))
         (finally
           (.rollback conn))))))
 
