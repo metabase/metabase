@@ -20,9 +20,10 @@
   "Reference to a database column/field."
   [:map
    [:node/type [:= :ast/column]]
-   [:id pos-int?]
+   [:id [:or pos-int? string?]]
    [:name {:optional true} [:maybe string?]]
-   [:table-id {:optional true} [:maybe pos-int?]]])
+   [:table-id {:optional true} [:maybe pos-int?]]
+   [:base-type {:optional true} [:maybe keyword?]]])
 
 ;;; -------------------- Dimension Nodes --------------------
 
@@ -230,6 +231,7 @@
    [:name {:optional true} [:maybe string?]]
    [:aggregation ::aggregation-node]
    [:base-table ::table-node]
+   [:source-card-id {:optional true} [:maybe pos-int?]]
    [:metadata {:optional true} [:maybe :map]]
    [:joins {:optional true} [:maybe [:sequential ::join-node]]]
    [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
