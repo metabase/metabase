@@ -71,6 +71,13 @@
     (assert v (str ns-sym "/" sym " not found"))
     v))
 
+(defn- babashka-available?
+  []
+  (try
+    (zero? (:exit (shell/sh "bb" "--version")))
+    (catch java.io.IOException _
+      false)))
+
 (defn- bb-mage-file->module [modules-config filename]
   (let [expr               (str "(do "
                                 "(require 'mage.modules) "
@@ -84,6 +91,23 @@
         {:keys [exit out err]} (shell/sh "bb" "-e" expr)]
     (when-not (zero? exit)
       (throw (ex-info "Babashka mage.modules evaluation failed"
+                      {:exit exit
+                       :stderr err
+                       :expr expr})))
+    (edn/read-string (str/trim out))))
+
+(defn- bb-mage-module->test-paths [modules-config module]
+  (let [expr               (str "(do "
+                                "(require 'mage.modules) "
+                                "(let [module->test-paths (ns-resolve 'mage.modules 'module->test-paths)] "
+                                "  (prn ((deref module->test-paths) "
+                                (pr-str (list 'quote modules-config))
+                                " "
+                                (pr-str (list 'quote module))
+                                "))))")
+        {:keys [exit out err]} (shell/sh "bb" "-e" expr)]
+    (when-not (zero? exit)
+      (throw (ex-info "Babashka mage.modules test-path evaluation failed"
                       {:exit exit
                        :stderr err
                        :expr expr})))
@@ -160,43 +184,85 @@
 
 (deftest ^:parallel module-resolution-behavior-agrees-test
   (testing "Representative namespace/file-path cases resolve to the same module across all three sites"
-    (let [hook-module               (private-fn 'hooks.common.modules 'module)
-          dev-module                (private-fn 'dev.deps-graph 'module)
-          config                    {:metabase/modules
-                                     {'actions               {}
-                                      'actions.rest          {:ns-prefix "metabase.actions-rest"}
-                                      'queries               {}
-                                      'queries.rest          {:ns-prefix "metabase.queries-rest"}
-                                      'lib                   {}
-                                      'lib.schema            {}
-                                      'lib.be                {:ns-prefix "metabase.lib-be"}
-                                      'enterprise/transforms {}
-                                      'enterprise/transforms.python {}}}
-          modules-config            (:metabase/modules config)
-          dev-prefix->module        (dev.deps-graph/build-prefix->module modules-config)
-          cases                     [{:ns 'metabase.actions-rest.api
-                                      :file "src/metabase/actions_rest/api.clj"
-                                      :want 'actions.rest}
-                                     {:ns 'metabase.queries-rest.middleware
-                                      :file "test/metabase/queries_rest/middleware_test.clj"
-                                      :want 'queries.rest}
-                                     {:ns 'metabase.lib.schema.util
-                                      :file "src/metabase/lib/schema/util.clj"
-                                      :want 'lib.schema}
-                                     {:ns 'metabase.lib-be.core
-                                      :file "src/metabase/lib_be/core.clj"
-                                      :want 'lib.be}
-                                     {:ns 'metabase-enterprise.transforms.python.runner
-                                      :file "enterprise/backend/src/metabase_enterprise/transforms/python/runner.clj"
-                                      :want 'enterprise/transforms.python}]]
+    (let [hook-module        (private-fn 'hooks.common.modules 'module)
+          dev-module         (private-fn 'dev.deps-graph 'module)
+          config             {:metabase/modules
+                              {'actions               {}
+                               'actions.rest          {:ns-prefix "metabase.actions-rest"}
+                               'queries               {}
+                               'queries.rest          {:ns-prefix "metabase.queries-rest"}
+                               'lib                   {}
+                               'lib.schema            {}
+                               'lib.be                {:ns-prefix "metabase.lib-be"}
+                               'enterprise/transforms {}
+                               'enterprise/transforms.python {}}}
+          modules-config     (:metabase/modules config)
+          dev-prefix->module (dev.deps-graph/build-prefix->module modules-config)
+          cases              [{:ns 'metabase.actions-rest.api
+                               :file "src/metabase/actions_rest/api.clj"
+                               :want 'actions.rest}
+                              {:ns 'metabase.queries-rest.middleware
+                               :file "test/metabase/queries_rest/middleware_test.clj"
+                               :want 'queries.rest}
+                              {:ns 'metabase.lib.schema.util
+                               :file "src/metabase/lib/schema/util.clj"
+                               :want 'lib.schema}
+                              {:ns 'metabase.lib-be.core
+                               :file "src/metabase/lib_be/core.clj"
+                               :want 'lib.be}
+                              {:ns 'metabase-enterprise.transforms.python.runner
+                               :file "enterprise/backend/src/metabase_enterprise/transforms/python/runner.clj"
+                               :want 'enterprise/transforms.python}]]
       (doseq [{:keys [ns file want]} cases]
         (testing (str ns " <-> " file)
           (is (= want (hook-module config ns)))
           (is (= want (dev-module dev-prefix->module ns)))
-          (is (= want (bb-mage-file->module modules-config file)))
-          (is (= (hook-module config ns)
-                 (dev-module dev-prefix->module ns)
-                 (bb-mage-file->module modules-config file))))))))
+          (if (babashka-available?)
+            (do
+              (is (= want (bb-mage-file->module modules-config file)))
+              (is (= (hook-module config ns)
+                     (dev-module dev-prefix->module ns)
+                     (bb-mage-file->module modules-config file))))
+            (is true "Skipping mage.modules resolution assertions because `bb` is unavailable")))))))
+
+(deftest ^:parallel dotted-module-test-paths-test
+  (testing "Dotted modules resolve to the actual on-disk test paths for both default and explicit prefixes"
+    (let [modules-config {'actions.rest {:ns-prefix "metabase.actions-rest"}
+                          'lib.schema   {}}
+          module->test-files (private-fn 'dev.deps-graph 'module->test-files)]
+      (testing "dev.deps-graph finds both explicit-prefix and default nested-module tests"
+        (is (contains? (module->test-files modules-config 'actions.rest)
+                       "test/metabase/actions_rest/api_test.clj"))
+        (is (contains? (module->test-files modules-config 'lib.schema)
+                       "test/metabase/lib/schema/util_test.cljc"))
+        (is (contains? (module->test-files modules-config 'lib.schema)
+                       "test/metabase/lib/schema_test.cljc")))
+      (if (babashka-available?)
+        (testing "mage.modules emits both exact-file and nested-directory test paths"
+          (is (= #{"test/metabase/actions_rest"}
+                 (set (bb-mage-module->test-paths modules-config 'actions.rest))))
+          (is (= #{"test/metabase/lib/schema"
+                   "test/metabase/lib/schema_test.cljc"}
+                 (set (bb-mage-module->test-paths modules-config 'lib.schema)))))
+        (is true "Skipping mage.modules path assertions because `bb` is unavailable")))))
+
+(deftest ^:parallel explicit-prefix-map-overloads-remain-pure-test
+  (testing "dev.deps-graph path helpers honor caller-supplied prefix->module maps instead of recomputing live config"
+    (let [deps        [{:module 'lib.schema.util
+                        :deps   []
+                        :filename "src/metabase/lib/schema/util/core.cljc"}]
+          prefix->mod {"metabase.lib.schema.util" 'lib.schema.util}]
+      (is (= #{"src/metabase/lib/schema/util/core.cljc"}
+             (set (dev.deps-graph/test-filenames->relevant-source-filenames
+                   deps
+                   prefix->mod
+                   ["test/metabase/lib/schema/util/core_test.cljc"]))))
+      (is (= #{"test/metabase/lib/schema/util_test.cljc"}
+             (set (dev.deps-graph/source-filenames->relevant-test-filenames
+                   deps
+                   {'lib.schema.util {}}
+                   prefix->mod
+                   ["src/metabase/lib/schema/util/core.cljc"])))))))
 
 (deftest ^:parallel canonical-comments-present-test
   (testing "Each of the three mapping sites must carry a comment pointing at the others"

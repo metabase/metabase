@@ -3,6 +3,7 @@
    ^:clj-kondo/ignore
    [cheshire.core :as json]
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [mage.color :as c]
@@ -117,14 +118,18 @@
     (when-let [[_match module] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^/]+)/.*$" filename)]
       (symbol "enterprise" (str/replace module #"_" "-"))))))
 
+(defn- read-modules-config
+  []
+  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
+        (edn/read r))
+      :metabase/modules))
+
 (defn- read-prefix->module
   "Read the `:metabase/modules` map from kondo config and build the
   `{ns-prefix-string module-symbol}` lookup map used for file→module
   resolution."
   []
-  (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
-        (edn/read r))
-      :metabase/modules
+  (-> (read-modules-config)
       build-prefix->module))
 
 (defn- updated-files->updated-modules [updated-files]
@@ -138,27 +143,52 @@
         updated-files (u/updated-files git-ref)]
     (updated-files->updated-modules updated-files)))
 
-(defn- module->test-dir-name [module]
-  (str/replace (name module) #"[.-]" "_"))
+(defn- module-ns-prefix
+  [modules-config module]
+  (or (get-in modules-config [module :ns-prefix])
+      (default-ns-prefix-for module)))
 
-(defn- module->test-directory
-  [module]
-  (case (namespace module)
-    "enterprise" (str "enterprise/backend/test/metabase_enterprise/" (module->test-dir-name module))
-    nil (str "test/metabase/" (module->test-dir-name module))))
+(def ^:private test-source-file-extensions
+  [".clj" ".cljc" ".cljs" ".bb"])
+
+(defn- module->test-path-prefix
+  [modules-config module]
+  (let [ns-prefix   (module-ns-prefix modules-config module)
+        [parent-dir ns-fragment]
+        (if (str/starts-with? ns-prefix "metabase-enterprise.")
+          ["enterprise/backend/test/metabase_enterprise/"
+           (subs ns-prefix (count "metabase-enterprise."))]
+          ["test/metabase/"
+           (subs ns-prefix (count "metabase."))])]
+    (str parent-dir
+         (-> ns-fragment
+             (str/replace #"\." "/")
+             (str/replace #"-" "_")))))
+
+(defn- module->test-paths
+  [modules-config module]
+  (let [path-prefix (module->test-path-prefix modules-config module)
+        test-dir    (io/file path-prefix)]
+    (into (sorted-set)
+          (concat
+           (for [extension test-source-file-extensions
+                 :let      [file (io/file (str path-prefix "_test" extension))]
+                 :when     (.isFile file)]
+             (str file))
+           (when (.isDirectory test-dir)
+             [(str test-dir)])))))
 
 (defn- dependencies
   "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
-  []
-  (let [config (-> (with-open [r (java.io.PushbackReader. (java.io.FileReader. ".clj-kondo/config/modules/config.edn"))]
-                     (edn/read r))
-                   :metabase/modules
+  ([] (dependencies (read-modules-config)))
+  ([modules-config]
+   (let [config (-> modules-config
                    ;; ignore the config for [[metabase.connection-pool]] which comes from one of our libraries.
-                   (dissoc 'connection-pool))]
-    (into (sorted-map)
-          (map (fn [[k config]]
-                 [k (:uses config)]))
-          config)))
+                    (dissoc 'connection-pool))]
+     (into (sorted-map)
+           (map (fn [[k config]]
+                  [k (:uses config)]))
+           config))))
 
 (defn- direct-dependents
   "Set of modules that directly depend on `module`."
@@ -287,9 +317,10 @@
 
 (defn cli-print-affected-modules
   [[git-ref, :as _command-line-args]]
-  (let [deps (dependencies)
-        updated (updated-modules git-ref)
-        affected (affected-modules deps updated)
+  (let [modules-config         (read-modules-config)
+        deps                   (dependencies modules-config)
+        updated                (updated-modules git-ref)
+        affected               (affected-modules deps updated)
         driver-deps-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
     (print-updated-and-unaffected-modules deps updated driver-deps-affected?)
     (println)
@@ -297,7 +328,8 @@
     (println "You can run tests for these modules and all downstream modules as follows:")
     (println)
     (println)
-    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n" (pr-str (mapv module->test-directory affected)))
+    (printf "clojure -X :dev:ee:ee-dev:test :only '%s'\n"
+            (pr-str (into [] (mapcat #(module->test-paths modules-config %)) affected)))
     (flush)
     (u/exit 0)))
 

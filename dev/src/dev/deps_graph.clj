@@ -791,20 +791,20 @@
   "Given a collection of `test-filenames`, return the set of source filenames (relative to the project root directory)
   that when changed should trigger these tests."
   ([test-filenames]
-   (let [prefix->mod (build-prefix->module (kondo-config))]
-     (test-filenames->relevant-source-filenames (dependencies prefix->mod) test-filenames)))
-  ([deps test-filenames]
-   (let [prefix->mod (build-prefix->module (kondo-config))]
-     (into
-      (sorted-set)
-      (comp (map file->namespace)
-            (map (partial module prefix->mod))
-            (distinct)
-            (mapcat (fn [module]
-                      (into #{module} (module->all-deps deps module))))
-            (distinct)
-            (mapcat #(module->source-files deps %)))
-      test-filenames))))
+   (let [modules-config (kondo-config)
+         prefix->mod    (build-prefix->module modules-config)]
+     (test-filenames->relevant-source-filenames (dependencies prefix->mod) prefix->mod test-filenames)))
+  ([deps prefix->mod test-filenames]
+   (into
+    (sorted-set)
+    (comp (map file->namespace)
+          (map (partial module prefix->mod))
+          (distinct)
+          (mapcat (fn [module]
+                    (into #{module} (module->all-deps deps module))))
+          (distinct)
+          (mapcat #(module->source-files deps %)))
+    test-filenames)))
 
 (comment
   ;; should include source files for `settings-rest` itself as well as all modules used either directly or indirectly
@@ -852,42 +852,60 @@
 (comment
   (module->dependents (dependencies) 'settings-rest))
 
-(defn- module->test-dir-name [module]
-  (str/replace (name module) #"[.-]" "_"))
+(def ^:private test-source-file-extensions
+  [".clj" ".cljc" ".cljs" ".bb"])
 
-(defn- module->test-directory [module]
-  (let [parent-dir (case (namespace module)
-                     nil          "test/metabase/"
-                     "enterprise" "enterprise/backend/test/metabase_enterprise/")
-        module-dir (module->test-dir-name module)]
-    (str parent-dir module-dir)))
+(defn- module->test-path-prefix [modules-config module]
+  (let [ns-prefix   (module-ns-prefix modules-config module)
+        [parent-dir ns-fragment]
+        (if (str/starts-with? ns-prefix "metabase-enterprise.")
+          ["enterprise/backend/test/metabase_enterprise/"
+           (subs ns-prefix (count "metabase-enterprise."))]
+          ["test/metabase/"
+           (subs ns-prefix (count "metabase."))])]
+    (str parent-dir
+         (-> ns-fragment
+             (str/replace #"\." "/")
+             (str/replace #"-" "_")))))
+
+(defn- existing-test-file-paths [path-prefix]
+  (into (sorted-set)
+        (keep (fn [extension]
+                (let [file (io/file (str path-prefix "_test" extension))]
+                  (when (.isFile file)
+                    (file->path-relative-to-project-root file)))))
+        test-source-file-extensions))
 
 (mu/defn- module->test-files :- [:set :string]
   "Return the set of test filenames associated with a `module`."
-  [module :- :symbol]
-  (let [test-dir       (module->test-directory module)
-        test-filenames (ns.find/find-sources-in-dir (io/file test-dir))]
-    (into
-     (sorted-set)
-     (map file->path-relative-to-project-root)
-     test-filenames)))
+  [modules-config :- [:map-of :any :any]
+   module :- :symbol]
+  (let [path-prefix    (module->test-path-prefix modules-config module)
+        test-dir       (io/file path-prefix)
+        nested-tests   (when (.isDirectory test-dir)
+                         (into
+                          (sorted-set)
+                          (map file->path-relative-to-project-root)
+                          (ns.find/find-sources-in-dir test-dir)))]
+    (into (existing-test-file-paths path-prefix)
+          nested-tests)))
 
 (defn source-filenames->relevant-test-filenames
   "Given a collection of `source-filenames`, return the set of test filenames (relative to the project root directory)
   that we should re-run when any of `source-filenames` change."
   ([source-filenames]
-   (let [prefix->mod (build-prefix->module (kondo-config))]
-     (source-filenames->relevant-test-filenames (dependencies prefix->mod) source-filenames)))
-  ([deps source-filenames]
-   (let [prefix->mod (build-prefix->module (kondo-config))]
-     (into
-      (sorted-set)
-      (comp (map file->namespace)
-            (map (partial module prefix->mod))
-            (distinct)
-            (mapcat #(module->dependents deps %))
-            (mapcat module->test-files))
-      source-filenames))))
+   (let [modules-config (kondo-config)
+         prefix->mod    (build-prefix->module modules-config)]
+     (source-filenames->relevant-test-filenames (dependencies prefix->mod) modules-config prefix->mod source-filenames)))
+  ([deps modules-config prefix->mod source-filenames]
+   (into
+    (sorted-set)
+    (comp (map file->namespace)
+          (map (partial module prefix->mod))
+          (distinct)
+          (mapcat #(module->dependents deps %))
+          (mapcat #(module->test-files modules-config %)))
+    source-filenames)))
 
 (comment
   ;; should only include tests for `settings-rest`, `api-routes`, `core`, and the handful of random modules that use
