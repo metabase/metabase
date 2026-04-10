@@ -172,7 +172,7 @@
                                            :uri uri)))
       "/api/public/card/1"         "public"
       "/api/embed/dashboard/42"    "guest-embed"
-      "/api/preview-embed/card/1"  "guest-embed"
+      "/api/preview_embed/card/1"  "guest-embed"
       "/api/metabot/query"         "metabot"
       "/api/agent/chat"            "agent-api"))
   (testing "route requests without header give nil *client*"

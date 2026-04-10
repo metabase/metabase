@@ -126,7 +126,7 @@
 (def ^:private route-surface-mapping
   [["/api/public/"        "public"]
    ["/api/embed/"         "guest-embed"]
-   ;; preview-embed is guest-embed; the "-preview" suffix is appended separately
+   ;; preview_embed is guest-embed; the "-preview" suffix is appended separately
    ;; when X-Metabase-Embedded-Preview: true (see embedding-mw below).
    ["/api/preview_embed/" "guest-embed"]
    ["/api/metabot/"       "metabot"]

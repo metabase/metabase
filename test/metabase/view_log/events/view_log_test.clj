@@ -502,7 +502,7 @@
          (= expected (sdk/route-surface uri))
       "/api/public/something"         "public"
       "/api/embed/something"          "guest-embed"
-      "/api/preview-embed/something"  "guest-embed"
+      "/api/preview_embed/something"  "guest-embed"
       "/api/metabot/something"        "metabot"
       "/api/agent/something"          "agent-api"))
   (testing "route-surface returns nil for non-matching URIs"
