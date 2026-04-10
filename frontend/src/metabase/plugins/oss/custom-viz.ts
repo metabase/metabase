@@ -28,11 +28,11 @@ const getDefaultPluginCustomViz = () => ({
   isCustomVizDisplay,
 
   // Static viz rendering (GraalJS context)
-  customVizRegistry: new Map<string, any>(),
+  customVizRegistry: new Map<string, Record<string, any>>(),
   registerCustomVizPlugin: (
-    _factory: any,
+    _factory: (props: Record<string, unknown>) => Record<string, any>,
     _identifier: string,
-    _assets: any,
+    _assets: Record<string, string> | undefined,
   ) => {},
 });
 
