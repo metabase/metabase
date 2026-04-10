@@ -49,7 +49,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
       </Badge>
       {acknowledged && (
         <Badge color="brand" variant="light" data-testid="acknowledged-badge">
-          {t`Acknowledged`}
+          {t`Dismissed`}
         </Badge>
       )}
     </>
@@ -62,7 +62,7 @@ export function AdvisoryCard({ advisory, onAcknowledge }: AdvisoryCardProps) {
       onClick={() => onAcknowledge(advisory.advisory_id)}
       data-testid="acknowledge-button"
     >
-      {t`Acknowledge`}
+      {t`Dismiss`}
     </Anchor>
   );
 
