@@ -755,7 +755,7 @@
                             (filter (comp #{(:id table)} only-table-id))
                             (map :id)
                             seq)]
-    ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
+    ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage Lib.
     (model-persistence/invalidate! {:card_id [:in model-ids]})
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]

@@ -1,10 +1,13 @@
 import type { Location } from "history";
 import _ from "underscore";
 
-import { isQuestionDashCard, isVirtualDashCard } from "metabase/lib/dashboard";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
-import type { StaticEmbeddingEntityError } from "metabase/lib/errors/types";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
+import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,

@@ -2,14 +2,15 @@ import { t } from "ttag";
 
 import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { ViewFooterButton } from "metabase/common/components/ViewFooterButton";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUiControls } from "metabase/query_builder/selectors";
 import {
   onCloseTimelines,
   onOpenTimelines,
 } from "metabase/redux/query-builder";
 import { Indicator } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+
+import { trackEventsClicked } from "./analytics";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;
@@ -26,10 +27,7 @@ function QuestionTimelineAcknowledgement({
         <Indicator disabled={hasSeen} size={6} offset={4}>
           {children({
             ack: () => {
-              trackSimpleEvent({
-                event: "events_clicked",
-                triggered_from: "chart",
-              });
+              trackEventsClicked();
               if (!hasSeen) {
                 ack();
               }

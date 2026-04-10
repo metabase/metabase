@@ -5,11 +5,11 @@ import { t } from "ttag";
 
 import { CANCEL_EDITING_DASHBOARD } from "metabase/dashboard/actions/core";
 import { Dashboards } from "metabase/entities/dashboards";
-import { isVirtualDashCard } from "metabase/lib/dashboard";
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
-import { checkNotNull } from "metabase/lib/types";
 import { INITIALIZE, selectTab } from "metabase/redux/dashboard";
 import { addUndo } from "metabase/redux/undo";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   DashCardId,
   DashboardId,

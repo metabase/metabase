@@ -1,8 +1,8 @@
 import fetchMock from "fetch-mock";
 
 import { createMockEntitiesState } from "__support__/store";
-import { defer } from "metabase/lib/promise";
 import { getMetadata } from "metabase/selectors/metadata";
+import { defer } from "metabase/utils/promise";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,

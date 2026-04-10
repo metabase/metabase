@@ -5,8 +5,8 @@ import {
   type DashboardContextProps,
   DashboardContextProvider,
 } from "metabase/dashboard/context";
-import { isActionDashCard, isQuestionCard } from "metabase/lib/dashboard";
 import type { EmbeddingAdditionalHashOptions } from "metabase/public/lib/types";
+import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 

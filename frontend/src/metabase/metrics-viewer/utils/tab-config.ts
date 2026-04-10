@@ -23,9 +23,13 @@ export interface ChartTypeOption {
 
 interface DisplayTypeDefinition {
   supportsMultipleSeries: boolean;
+  supportsStacking: boolean;
   getSettings: (
     def: MetricDefinition,
     dimension: DimensionMetadata,
+  ) => VisualizationSettings;
+  combineSettings?: (
+    settings: VisualizationSettings[],
   ) => VisualizationSettings;
 }
 
@@ -197,15 +201,61 @@ function getMapSettings(
   };
 }
 
+function combineColors(
+  settings: VisualizationSettings[],
+): VisualizationSettings {
+  // getStoredSettingsForSeries only looks at settings on the first series
+  return settings.reduce((acc, setting) => {
+    return {
+      ...acc,
+      series_settings: {
+        ...acc["series_settings"],
+        ...setting["series_settings"],
+      },
+    };
+  });
+}
+
 export const DISPLAY_TYPE_REGISTRY: Record<
   MetricsViewerDisplayType,
   DisplayTypeDefinition
 > = {
-  line: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  area: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  bar: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  row: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  scatter: { supportsMultipleSeries: true, getSettings: getScatterSettings },
-  map: { supportsMultipleSeries: false, getSettings: getMapSettings },
-  pie: { supportsMultipleSeries: false, getSettings: getPieSettings },
+  line: {
+    supportsMultipleSeries: true,
+    supportsStacking: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  area: {
+    supportsMultipleSeries: true,
+    supportsStacking: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  bar: {
+    supportsMultipleSeries: true,
+    supportsStacking: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  row: {
+    supportsMultipleSeries: true,
+    supportsStacking: false,
+    getSettings: getChartSettings,
+  },
+  scatter: {
+    supportsMultipleSeries: true,
+    supportsStacking: false,
+    getSettings: getScatterSettings,
+  },
+  map: {
+    supportsMultipleSeries: false,
+    supportsStacking: false,
+    getSettings: getMapSettings,
+  },
+  pie: {
+    supportsMultipleSeries: false,
+    supportsStacking: false,
+    getSettings: getPieSettings,
+  },
 };

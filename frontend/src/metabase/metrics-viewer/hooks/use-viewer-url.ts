@@ -2,8 +2,8 @@ import type { Location } from "history";
 import { useEffect, useRef } from "react";
 import { push, replace } from "react-router-redux";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 

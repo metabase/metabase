@@ -951,6 +951,7 @@
    :api  #{metabase.frontend-errors.api}
    :uses #{analytics
            api
+           request
            util}}
 
   geojson
@@ -1445,7 +1446,6 @@
   {:team "UX West"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
-           app-db
            audit-app
            events
            permissions
@@ -1771,6 +1771,7 @@
            config
            embedding
            permissions ; FIXME
+           premium-features
            session
            settings
            users
@@ -1904,7 +1905,8 @@
            tracing
            users
            util
-           enterprise/sso}}
+           enterprise/sso}
+   :model-imports #{:model/Session}}
 
   session
   {:team "UX West"

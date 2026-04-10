@@ -328,7 +328,7 @@
          expressionable (lib.common/->op-arg expressionable)]
      ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
      ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by
-     ;; the QP code, and it should be powered by MLv2 in due course.
+     ;; the QP code, and it should be powered by Lib in due course.
      #_(when (conflicting-name? query stage-number expression-name)
          (throw (ex-info "Expression name conflicts with a column in the same query stage"
                          {:expression-name expression-name})))

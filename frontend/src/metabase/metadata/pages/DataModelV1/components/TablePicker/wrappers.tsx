@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { push, replace } from "react-router-redux";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { getLocation } from "metabase/selectors/routing";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
 import { TablePicker } from "./components";
 import type { ChangeOptions, TreePath } from "./types";
