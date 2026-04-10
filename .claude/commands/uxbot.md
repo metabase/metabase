@@ -1,25 +1,36 @@
-You are the orchestrator for the uxbot workflow. Your job is to launch a UX testing session where an agent acts as a regular Metabase user trying to accomplish tasks.
+You are the orchestrator for the uxbot workflow. UXBot acts as a regular Metabase user trying to accomplish tasks, running directly against the locally running server. For an isolated worktree version, use `/uxbot-workmux` instead.
 
 ## Steps
 
-### 1. Preflight checks
+### 1. Preflight checks (inline mode — no workmux/Docker needed)
 
-Verify these are available by running each check (stop if any fail):
-- `workmux --version` — workmux is installed (`cargo install workmux`)
-- `docker info` — Docker is running
-- Check `MB_PREMIUM_EMBEDDING_TOKEN` env var is set
-- `npx -y @playwright/mcp --version` — Playwright MCP is available (auto-installs via npx)
-- Check `node_modules/` exists in the project root (run `bun install` if not)
+#### Ensure Playwright MCP is configured
+
+Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and suggest the user run `./bin/mage -bot-setup --bot uxbot` to generate it, then restart.
+
+#### Verify tools are available (stop if any fail)
+- Playwright MCP: `npx -y @playwright/mcp --version` — available via npx
+- Backend health: `./bin/mage -bot-api-call /api/health` — must succeed and return `{"status":"ok"}`
+
+If any required check fails, show the error and stop. Do not attempt to recover.
 
 ### 2. Parse arguments
 
 The user provided: `$ARGUMENTS`
 
-Parse as: `<branch-name> [task description...] [--app-db postgres|mysql|mariadb]`
+Parse as: `[task description...]`
 
-The first word is the branch name. Everything after it is the initial task description (optional). If `--app-db` is specified, use that database type; otherwise default to `postgres`.
+Everything provided is the initial task description (optional). If no task was provided, the agent will wait for instructions.
 
-### 3. Generate the agent prompt
+### 3. Gather context
+
+#### Server info
+Read `mise.local.toml` to discover `MB_JETTY_PORT` for the backend URL.
+
+#### Branch name
+Get current branch: `git branch --show-current`
+
+### 4. Generate agent prompt
 
 If the user provided a task description, set `INITIAL_TASK` to:
 ```
@@ -42,28 +53,8 @@ Run:
   --set "INITIAL_TASK=<initial task text>"
 ```
 
-**Shell escaping:** The `--set` values are passed as shell arguments. If a value contains quotes, dollar signs, backticks, or other shell metacharacters, escape them or use single quotes for the outer quoting. For example: `--set 'INITIAL_TASK=## Your First Task
+**Shell escaping:** If the task description contains quotes or special characters, write it to a temp file using the `Write` tool first: write to `.uxbot/tmp/task.txt`, then use `--set "INITIAL_TASK=$(cat .uxbot/tmp/task.txt)"`.
 
-Show me the "orders" dashboard'`. When in doubt, write the value to a temp file and use command substitution: `--set "INITIAL_TASK=$(cat /tmp/task.txt)"`.
+### 5. Execute
 
-### 4. Launch the workmux session
-
-Run:
-```
-./bin/mage uxbot-go <BRANCH_NAME> --app-db <APP_DB> --prompt-file .uxbot/uxbot-prompt.md
-```
-
-This will:
-- If a worktree already exists for this branch, reuse it (fresh tooling + prompt copied in)
-- If a tmux session is already running, it will refuse and tell you to stop it first
-- If no worktree exists, create a fresh one
-
-If it fails, show the error to the user and stop.
-
-### 5. Report
-
-Tell the user:
-- The uxbot session has been launched
-- How to attach: `tmux attach -t uxbot-<branch-slug>`
-- Available commands inside the session: `/uxbot-report` (generate UX report), `/uxbot-reset` (clear browser state)
-- How to stop: `/uxbot-stop <branch>`
+Read the generated `.uxbot/uxbot-prompt.md` and follow its instructions. Act as a regular user navigating the browser. Execute tasks as they come — the first task (if any) is embedded in the prompt.

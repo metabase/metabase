@@ -1,15 +1,18 @@
-You are the orchestrator for the fixbot workflow. Your job is to resolve the issue ID, generate the agent prompt, and launch the workmux session.
+You are the orchestrator for the fixbot workflow. Fixbot fixes a Linear issue, running directly in this project against the locally running server. For an isolated worktree version, use `/fixbot-workmux` instead.
 
 ## Steps
 
-### 1. Preflight checks
+### 1. Preflight checks (inline mode — no workmux/Docker needed)
 
-Run:
-```
-./bin/mage -fixbot-preflight
-```
+#### Ensure Playwright MCP is configured
 
-If it fails, show the error to the user and stop. Do not attempt to recover or work around failures.
+Check if `.mcp.json` exists in the project root. If it does NOT exist, STOP and suggest the user run `./bin/mage -bot-setup --bot fixbot` to generate it, then restart.
+
+#### Verify tools are available (stop if any fail)
+- Backend health: `./bin/mage -bot-api-call /api/health` — must succeed and return `{"status":"ok"}`
+- REPL: Run `clj-nrepl-eval --discover-ports` to find nREPL servers. Pick the port that belongs to the server running in the current project directory. Store it as NREPL_PORT. **If no matching port is found, STOP** — REPL is required.
+
+If any required check fails, show the error and stop. Do not attempt to recover.
 
 ### 2. Resolve the issue ID
 
@@ -28,56 +31,35 @@ This can be one of three formats:
 
 **Validation:** After resolving, confirm the issue ID looks like a Linear identifier (e.g., `MB-12345`). If not, tell the user the expected format and stop.
 
-Run `./bin/mage -fixbot-list` and check if a session already exists for this issue (look for the issue ID in the branch name or session name). If one exists:
-- Tell the user the session already exists
-- Show them how to connect: `tmux attach -t <session-name>`
-- Show them how to stop it: `/fixbot-quit <issue-id>`
-- **STOP** — do not proceed with the remaining steps. Do not attempt to shut it down or clean it up.
+### 3. Gather context
 
-### 3. Fetch the issue from Linear
+#### Server info
+Run `./bin/mage -bot-server-info` and capture the full output.
 
+#### Fetch the issue from Linear
 Run:
 ```
 ./bin/mage -fixbot-fetch-issue <ISSUE_ID>
 ```
-
-Read the output to extract:
-- Branch name (the suggested branch name from Linear)
+Read the output to extract issue details and branch name.
 
 Also determine the app database from the issue description/comments:
-- If the issue mentions **MySQL** problems, MySQL-specific SQL syntax, or MySQL error messages → `mysql`
-- If the issue mentions **MariaDB** specifically → `mariadb`
-- Otherwise → `postgres` (the default)
+- If the issue mentions **MySQL** problems, MySQL-specific SQL syntax, or MySQL error messages → `Mysql`
+- If the issue mentions **MariaDB** specifically → `Mariadb`
+- Otherwise → `Postgres` (the default)
 
-If the issue is not found, tell the user and stop.
-
-### 4. Generate the agent prompt
+### 4. Generate agent prompt
 
 Run:
 ```
 ./bin/mage -bot-generate-prompt \
   --template dev/bot/fixbot/fixbot-agent.md \
-  --output .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md \
+  --output .fixbot/fixbot-prompt.md \
   --set ISSUE_ID=<ISSUE_ID> \
-  --set "BRANCH_NAME=<branch>" \
+  --set "BRANCH_NAME=$(git branch --show-current)" \
   --set "APP_DB=<Postgres|Mysql|Mariadb>"
 ```
 
-The worktree agent will fetch the issue details itself during Phase 1.
+### 5. Execute
 
-### 5. Launch the workmux session
-
-Run:
-```
-./bin/mage fixbot-go <ISSUE_ID> --app-db <DB> --prompt-file .fixbot/metabase-fixbot-<ISSUE_ID>-prompt.md --branch '<BRANCH_NAME>'
-```
-
-Using the values from step 3.
-
-### 6. Report
-
-Tell the user:
-- Which issue you're fixing
-- Which database was chosen and why
-- That the workmux session has been launched
-- That they can run `./bin/mage -fixbot-dashboard` in a separate terminal for a live TUI dashboard showing all active agents
+Read the generated `.fixbot/fixbot-prompt.md` and follow its instructions (Phases 0–6) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.
