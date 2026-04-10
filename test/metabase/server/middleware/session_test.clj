@@ -522,3 +522,25 @@
                       {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
                        :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
+
+(deftest auth-method-test
+  (testing "auth-method prefers route-based override on special routes"
+    (let [f #'mw.session/auth-method]
+      (are [session-info api-key-info embedding-route expected]
+           (= expected (f session-info api-key-info embedding-route))
+        ;; session-based auth on non-special routes
+        {:auth-provider "password"} nil nil            "password"
+        {:auth-provider "saml"}     nil nil            "saml"
+        {:auth-provider "jwt"}      nil nil            "jwt"
+        {:auth-provider "ldap"}     nil nil            "ldap"
+        {}                          nil nil            "session"
+        ;; api-key on non-special route
+        nil                         {}  nil            "api-key"
+        ;; route override: special routes win over credentials
+        nil                         {}  "guest-embed"  "guest"   ; api-key + embed -> guest
+        nil                         nil "guest-embed"  "guest"   ; anon guest embed
+        nil                         nil "public"       "public"
+        nil                         nil "metabot"      "metabot"
+        nil                         nil "agent-api"    "agent-api"
+        ;; fully anonymous, non-special route
+        nil                         nil nil            nil))))
