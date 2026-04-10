@@ -18,13 +18,13 @@ import {
   Flex,
   Icon,
   Loader,
-  Modal,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
 
+import { DeleteThemeModal } from "./DeleteThemeModal";
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 
 export function EmbeddingThemeListingApp() {
@@ -136,29 +136,3 @@ export function EmbeddingThemeListingApp() {
     </Stack>
   );
 }
-
-const DeleteThemeModal = ({
-  isOpen,
-  onCancel,
-  onDelete,
-}: {
-  isOpen: boolean;
-  onCancel: () => void;
-  onDelete: () => void;
-}) => (
-  <Modal opened={isOpen} onClose={onCancel} title={t`Delete theme`}>
-    <Stack>
-      <Text>{t`Are you sure you want to delete this theme? This action cannot be undone.`}</Text>
-
-      <Flex justify="flex-end" gap="md">
-        <Button variant="subtle" onClick={onCancel}>
-          {t`Cancel`}
-        </Button>
-
-        <Button variant="filled" color="error" onClick={onDelete}>
-          {t`Delete`}
-        </Button>
-      </Flex>
-    </Stack>
-  </Modal>
-);

@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
 import { ColorPicker } from "metabase/common/components/ColorPicker";
-import { ColorPickerContent } from "metabase/common/components/ColorPicker/ColorPickerContent";
 import type { MetabaseColor } from "metabase/embedding-sdk/theme";
 import type { MetabaseFontFamily } from "metabase/embedding-sdk/theme/fonts";
 import {
@@ -13,13 +12,15 @@ import {
   Collapse,
   Flex,
   Icon,
-  Popover,
   Select,
   Stack,
   Text,
   TextInput,
   UnstyledButton,
 } from "metabase/ui";
+
+import { ColorRow } from "./ColorRow";
+import { ColorSwatchCard } from "./ColorSwatchCard";
 
 const FONT_FAMILY_OPTIONS: { value: string; label: string }[] = [
   { value: "Roboto", label: "Roboto" },
@@ -235,63 +236,6 @@ export function EditorPanel({ editor, onCancel }: EditorPanelProps) {
           {t`Save theme`}
         </Button>
       </Flex>
-    </Flex>
-  );
-}
-
-function ColorSwatchCard({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (color?: string) => void;
-}) {
-  return (
-    <Popover position="bottom" shadow="md">
-      <Popover.Target>
-        <Card withBorder p="sm" style={{ cursor: "pointer", flex: 1 }}>
-          <Flex
-            h={48}
-            direction="column"
-            align="center"
-            justify="space-evenly"
-            pt={2}
-          >
-            <Box
-              w={20}
-              h={20}
-              style={{
-                borderRadius: "50%",
-                backgroundColor: value || "transparent",
-                border: "1px solid var(--mb-color-border)",
-              }}
-            />
-            <Text fz={10}>{label}</Text>
-          </Flex>
-        </Card>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <ColorPickerContent value={value} onChange={onChange} />
-      </Popover.Dropdown>
-    </Popover>
-  );
-}
-
-function ColorRow({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (color?: string) => void;
-}) {
-  return (
-    <Flex align="center" justify="space-between">
-      <Text fz="sm">{label}</Text>
-      <ColorPicker value={value} onChange={onChange} />
     </Flex>
   );
 }
