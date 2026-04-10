@@ -10,7 +10,7 @@ import S from "./MetricsFilterPill.module.css";
 
 interface MetricsFilterPillProps extends HTMLAttributes<HTMLDivElement> {
   colors: string[];
-  fallbackIcon: IconName;
+  fallbackIcon?: IconName;
   onRemoveClick?: () => void;
 }
 
