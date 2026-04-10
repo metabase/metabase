@@ -26,7 +26,7 @@ dataset_query:
     - - =
       - {}
       - - field
-        - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
         - [Internal Metabase Database, public, v_content, entity_type]
       - question
     joins:
@@ -38,17 +38,17 @@ dataset_query:
           - {base-type: type/Text, effective-type: type/Text}
           - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
         - - field
-          - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
           - [Internal Metabase Database, public, v_content, entity_qualified_id]
       fields:
       - - field
-        - {base-type: type/Integer, join-alias: Content - Entity Qualified, effective-type: type/Integer}
+        - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Entity Qualified}
         - [Internal Metabase Database, public, v_content, entity_id]
       - - field
-        - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
         - [Internal Metabase Database, public, v_content, name]
       - - field
-        - {base-type: type/Text, join-alias: Content - Entity Qualified, effective-type: type/Text}
+        - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
         - [Internal Metabase Database, public, v_content, description]
       stages:
       - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}
@@ -63,7 +63,7 @@ dataset_query:
           - {base-type: type/Integer, lib/uuid: b9475110-eb88-4d8f-81eb-8179df5445ac}
           - user_id
         - - field
-          - {base-type: type/Integer, join-alias: People - Creator, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - Creator}
           - [Internal Metabase Database, public, v_users, user_id]
       fields: none
       stages:
