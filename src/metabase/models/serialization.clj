@@ -1030,19 +1030,30 @@
 
 (def ^:private cache-miss (Object.))
 
+(def ^:private ^:dynamic *batch-cache-max-size*
+  "Maximum number of entries in a batch cache before old entries are dropped."
+  50000)
+
 (defn- make-batch-cache
   "Returns a fn `(f id) -> entity`. On miss, calls `(load-fn id)` which must
    return a map of `{id entity, ...}`. All returned entries are merged into
-   the cache so sibling lookups become hits."
+   the cache so sibling lookups become hits.
+   When the cache exceeds `*batch-cache-max-size*`, the oldest half is dropped."
   [load-fn]
-  (let [cache (atom {})]
+  (let [cache (atom {})
+        order (atom (clojure.lang.PersistentQueue/EMPTY))]
     (fn [id]
       (let [v (get @cache id cache-miss)]
         (if-not (identical? v cache-miss)
           v
-          (let [id->entity (load-fn id)]
-            (swap! cache merge id->entity)
-            (get id->entity id)))))))
+          (let [new-batch (load-fn id)]
+            (swap! cache merge new-batch)
+            (swap! order into (keys new-batch))
+            (when (> (count @cache) *batch-cache-max-size*)
+              (let [to-drop (quot (count @cache) 2)]
+                (swap! order #(into (clojure.lang.PersistentQueue/EMPTY) (drop to-drop) %))
+                (swap! cache #(select-keys % @order))))
+            (get new-batch id)))))))
 
 (defn- batch-load-databases
   "Loads all databases as a map of `{id entity}`."
@@ -1184,7 +1195,7 @@
                                                           [:= :table_id {:select [:table_id]
                                                                          :from   [:metabase_field]
                                                                          :where  [:= :id field-id]}]
-                                                          [:!= :fk_target_field_id nil]]}]]}]})))
+                                                          [:!= :fk_target_field_id nil]]}]]}]}))
 
 (defn recursively-find-field-q
   "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
@@ -2007,22 +2018,19 @@
                          [fq-sym `(memoize ~fq-sym)]))
        ~@body)))
 
-(defmacro with-batch-cache
-  "Rebinds database/table export fns to versions backed by batch-loading caches."
-  [& body]
-  `(let [db-cache#    (make-batch-cache batch-load-databases)
-         table-cache# (make-batch-cache batch-load-tables)
-         field-cache# (make-batch-cache batch-load-fields)]
-     (binding [*export-database-fk* (fn [id#]
-                                      (export-database-fk id# db-cache#))
-               *export-table-fk*    (fn [table-id#]
-                                      (export-table-fk table-id# table-cache# db-cache#))
-               *export-field-fk*    (fn [field-id#]
-                                      (export-field-fk field-id# field-cache# table-cache# db-cache#))]
-       ~@body)))
+(defn- with-batch-cache
+  "Runs `thunk` with the batch cache bound to the export functions."
+  [thunk]
+  (let [db-cache    (make-batch-cache batch-load-databases)
+        table-cache (make-batch-cache batch-load-tables)
+        field-cache (make-batch-cache batch-load-fields)]
+    (binding [*export-database-fk* #(export-database-fk % db-cache)
+              *export-table-fk*    #(export-table-fk % table-cache db-cache)
+              *export-field-fk*    #(export-field-fk % field-cache table-cache db-cache)]
+      (thunk))))
 
 (defmacro with-cache
   "Runs body with all functions marked with ::cache re-bound to memoized versions for performance,
    and with database/table lookups backed by batch-loading caches."
   [& body]
-  `(with-batch-cache (with-memoize-cache ~@body)))
+  `(with-batch-cache (fn [] (with-memoize-cache ~@body))))
