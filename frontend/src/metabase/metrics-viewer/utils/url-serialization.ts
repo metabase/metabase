@@ -2,7 +2,7 @@ import { b64url_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 import { getObjectEntries } from "metabase/lib/objects";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { TemporalUnit } from "metabase-types/api";
+import type { TemporalUnit, VisualizationSettings } from "metabase-types/api";
 
 import type {
   MetricSourceId,
@@ -68,6 +68,7 @@ interface SerializedTab {
   type: MetricsViewerTabType;
   label: string | null;
   display: MetricsViewerDisplayType;
+  visualizationSettings?: Partial<VisualizationSettings>;
   definitions: SerializedTabDef[];
   projectionConfig?: SerializedProjectionConfig;
 }
@@ -105,6 +106,10 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
     type: tab.type,
     label: tab.label,
     display: tab.display,
+    ...(tab.visualizationSettings &&
+    Object.keys(tab.visualizationSettings).length > 0
+      ? { visualizationSettings: tab.visualizationSettings }
+      : {}),
     definitions: getObjectEntries(tab.dimensionMapping).map(
       ([sourceId, dimensionId]) => ({
         definitionId: sourceId,
@@ -134,6 +139,9 @@ export function deserializeTab(
     type: serializedTab.type,
     label: serializedTab.label,
     display: serializedTab.display,
+    ...(serializedTab.visualizationSettings
+      ? { visualizationSettings: serializedTab.visualizationSettings }
+      : {}),
     dimensionMapping,
     projectionConfig: {
       dimensionFilter: serializedTab.projectionConfig?.dimensionFilter,
@@ -245,6 +253,7 @@ const tabSchema = defineCompactSchema<SerializedTab>({
   type: "t",
   label: { key: "l", default: null },
   display: { key: "d", default: "line" },
+  visualizationSettings: { key: "V", optional: true },
   definitions: { key: "D", schema: tabDefSchema, default: [] },
   projectionConfig: {
     key: "p",
