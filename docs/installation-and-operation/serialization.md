@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Serialization" %}
 
-Once you get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
+Once you get rolling with Metabase, it's often the case that you'll have more than one Metabase spun up. You might have a couple of Metabases for testing or development, and a few production ones, or maybe you have a separate Metabase per office or region.
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
@@ -30,7 +30,7 @@ There are two ways to run these `export` and `import` commands:
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
 - **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable. For a built-in Git workflow with push/pull from the Metabase UI, see [Remote Sync](./remote-sync.md).
-- **Duplicating assets to other Metabase instances**. Export the "template" data from a source Metabase and import them to one or more target instances.
+- **Duplicating assets to other Metabases**. Export the "template" data from a source Metabase and import them to one or more target instances.
 
 Check out our guides for:
 
@@ -42,8 +42,6 @@ Check out our guides for:
 - [What gets exported](#what-gets-exported)
 - [General Metabase settings that get exported](#general-metabase-settings-that-are-exported)
 - [Customize what gets exported](#customize-what-gets-exported)
-- [Example of a serialized question](#example-of-a-serialized-question)
-- [Metabase uses Entity IDs to identify and reference items](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items)
 
 ### What gets exported
 
@@ -51,7 +49,7 @@ Metabase will only export the following entities:
 
 - Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
 - Dashboards
-- Saved questions
+- Questions (cards)
 - Transforms (including tags and jobs)
 - Documents (without comments)
 - Actions
@@ -61,11 +59,12 @@ Metabase will only export the following entities:
 - Data model and table metadata
 - Segments
 - Measures
+- Glossary entries (data definitions)
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines
 - Channels (email and HTTP notification channels)
-- Metabots
+- Metabot settings
 - Python libraries (shared Python modules used by transforms)
 - Database connection strings (only if specified through [export options](#customize-what-gets-exported))
 
@@ -88,6 +87,7 @@ Metabase will export its artifacts to a directory of YAML files. The export incl
     - snippets
     - transforms
   - databases
+  - glossary
   - metabots
   - python_libraries
   - transforms
@@ -164,6 +164,50 @@ You can customize what gets exported. You can tell Metabase:
 
 See [export parameters in CLI commands](#export-options) or [export parameters in API calls](#api-export-parameters).
 
+For details on the YAML format, Entity IDs, and how items reference each other in exported files, see [Understanding the export format](#understanding-the-export-format).
+
+## How import works
+
+Metabase will read the provided YAML files and look for [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite.
+
+- If the `entity_ie` doesn't exist, Metabase will create a new item.
+- If Metabase finds the `entity_id`, it will overwrite the existing item. Overwriting replaces the entire item; there's no field-level merge with local changes. If someone customizes a dashboard directly on the target instance, importing an older YAML of that dashboard will clobber those customizations.
+- If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
+- All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the imported YAMLs.
+
+## Serialization best practices
+
+### Avoid using serialization for backups
+
+Just a note: serialization is _not_ meant to back up your Metabase.
+
+See [Backing up Metabase](./backing-up-metabase-application-data.md).
+
+If you're instead looking to do a one-time migration from the default H2 database included with Metabase to a MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
+
+### Use the same Metabase version for source and target instance
+
+Currently, serialization only works if source and target Metabase have the same major version. If you're using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
+
+Metabase will log a warning if the versions doesn't match, but it won't block the import.
+
+### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
+
+If you're using Postgres or MySQL as your application database, you can import and export while your Metabase is still running.
+
+### You'll need to manually add license tokens
+
+Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](../installation-and-operation/activating-the-enterprise-edition.md), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+
+### Metabase adds logs to exports and imports
+
+- Exports: Metabase adds logs to the compressed directory as `export.log`.
+- Imports: You can add the `-o -` flag to export logs directly into the terminal, or `-o import.log` to save to a file.
+
+## Understanding the export format
+
+This section covers the structure of exported YAML files: what they look like, how Metabase identifies items, and how items reference each other. You don't need to read this to run a basic export and import — it's here for when you need to inspect, hand-edit, or script against the exported files.
+
 ### Example of a serialized question
 
 Questions are stored as YAML files inside their parent collection folder. Here's an example YAML file for a question written with SQL that uses a field filter and has an area chart visualization.
@@ -171,103 +215,39 @@ Questions are stored as YAML files inside their parent collection folder. Here's
 To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
 
 ```yml
-name: Products by week
-description: Area chart of products created by week
-entity_id: r6vC_vLmo9zG6_r9sAuYG
-created_at: "2024-05-08T19:10:24.348808Z"
-creator_id: admin@metabase.local
-display: area
-collection_id: onou5H28Wvy3kWnjxxdKQ
-query_type: native
+name: Total Revenue
+entity_id: IW8kbqZVaMxdGtCM2F4U6
+collection_id: cOlQuErIeS0ExAmPlE2x1
+creator_id: admin@example.com
+display: scalar
+type: metric
 database_id: Sample Database
-type: question
-parameters:
-  - default:
-      - Gizmo
-    id: c37d2f38-05fa-48c4-a208-19d9dba803c6
-    name: Pick a category
-    slug: category_filter
-    target:
-      - dimension
-      - - template-tag
-        - category_filter
-    type: string/=
-parameter_mappings: []
 dataset_query:
+  "lib/type": mbql/query
   database: Sample Database
-  native:
-    query: |-
-      SELECT
-        category,
-        date_trunc ('week', created_at) AS "Week",
-        count(*) AS "Count"
-      FROM
-        products
-      WHERE
-        {{category_filter}}
-      GROUP BY
-        category,
-        "Week"
-    template-tags:
-      category_filter:
-        default:
-          - Gizmo
-        dimension:
-          - field
+  stages:
+    - "lib/type": mbql.stage/mbql
+      source-table:
+      - Sample Database
+      - PUBLIC
+      - ORDERS
+      aggregation:
+      - - sum
+        - {}
+        - - field
+          - base-type: type/Float
           - - Sample Database
             - PUBLIC
-            - PRODUCTS
-            - CATEGORY
-          - base-type: type/Text
-        display-name: Pick a category
-        id: c37d2f38-05fa-48c4-a208-19d9dba803c6
-        name: category_filter
-        type: dimension
-        widget-type: string/=
-  type: native
-result_metadata:
-  - base_type: type/Text
-    display_name: CATEGORY
-    effective_type: type/Text
-    field_ref:
-      - field
-      - CATEGORY
-      - base-type: type/Text
-    name: CATEGORY
-    semantic_type: null
-  - base_type: type/DateTime
-    display_name: Week
-    effective_type: type/DateTime
-    field_ref:
-      - field
-      - Week
-      - base-type: type/DateTime
-    name: Week
-    semantic_type: null
-  - base_type: type/BigInteger
-    display_name: Count
-    effective_type: type/BigInteger
-    field_ref:
-      - field
-      - Count
-      - base-type: type/BigInteger
-    name: Count
-    semantic_type: type/Quantity
-visualization_settings:
-  column_settings: null
-  graph.dimensions:
-    - Week
-    - CATEGORY
-  graph.metrics:
-    - Count
+            - ORDERS
+            - TOTAL
+visualization_settings: {}
 serdes/meta:
-  - id: r6vC_vLmo9zG6_r9sAuYG
-    label: products_created_by_week
-    model: Card
-metabase_version: v1.49.7 (f0ff786)
+- id: IW8kbqZVaMxdGtCM2F4U6
+  label: total_revenue
+  model: Card
 ```
 
-Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Top-level fields with `null` values are also omitted. This keeps exported files compact and easier to review in version control.
+To keep exported files compact, Metabase omits fields from the YAML when their values match the default. For example, `archived` defaults to `false`, so it won't appear unless the item is archived. Top-level fields with `null` values are also omitted.
 
 ### Metabase uses Entity IDs to identify and reference Metabase items
 
@@ -351,6 +331,7 @@ In the description of the field filter (`category_filter:`) in that example, you
 ```yaml
 dimension:
   - field
+  - {}
   - - Sample Database
     - PUBLIC
     - PRODUCTS
@@ -358,57 +339,6 @@ dimension:
 ```
 
 It refers to the `CATEGORY` field in the `PRODUCTS` table in the `PUBLIC` schema in `Sample Database`. The serialized `Sample Database` in the `databases` directory will also include YAML files for this field and table.
-
-## How import works
-
-During import, Metabase will read the provided YAML files and create items according to the YAML specs. [Example of a serialized question](#example-of-a-serialized-question) how Metabase records information it needs to reconstruct an item.
-
-Metabase will not delete items from target instance during import, but it will overwrite items that already exist. Overwriting replaces the entire item — there's no field-level merge with local changes. If someone customizes a dashboard directly on the target instance, importing an older export of that dashboard will replace those customizations.
-
-Metabase relies on [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite, and what are the relationships between items. When importing into an instance that already has some content in it, keep in mind:
-
-- If you import an item with an `entity_id` that doesn't exist in your target Metabase, Metabase will create a new item.
-
-- If you import an item with an `entity_id` that already exists in your target Metabase, the existing item will be overwritten.
-
-  In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
-
-- If you import an item with a blank `entity_id`, Metabase will create a new item. Any `serdes/meta → id` will be ignored in this case.
-
-- All items and data sources referenced in YAML must either exist in the target Metabase already, or be included in the import.
-
-  For example, if an exported YAML has the field `collection_id: onou5H28Wvy3kWnjxxdKQ`, then the collection `onou5H28Wvy3kWnjxxdKQ` must already exist in target instance, or there must be a YAML file with the export of a collection that has this ID.
-
-## Serialization best practices
-
-### Use the same Metabase version for source and target instance
-
-Currently, serialization only works if source and target Metabase have the same major version.
-If you are using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
-
-Metabase will log a warning if the export version doesn't match the target version, but it won't block the import. To avoid subtle issues, make sure your source and target instances are running the same version.
-
-### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
-
-If you're using Postgres or MySQL as your application database, you can import and export while your Metabase is still running.
-
-### Avoid using serialization for backups
-
-Just a note: serialization is _not_ meant to back up your Metabase.
-
-See [Backing up Metabase](./backing-up-metabase-application-data.md).
-
-If you're instead looking to do a one-time migration from the default H2 database included with Metabase to a MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
-
-### You'll need to manually add license tokens
-
-Metabase excludes your license token from exports, so if you're running multiple environments of Metabase Enterprise Edition, you'll need to manually add your license token to the target Metabase(s), either via the [Metabase user interface](../installation-and-operation/activating-the-enterprise-edition.md), or via an [environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
-
-### Metabase adds logs to exports and imports
-
-Exports: Metabase adds logs to the compressed directory as `export.log`.
-
-Imports: You can add the `-o -` flag to export logs directly into the terminal, or `-o import.log` to save to a file.
 
 ## Serialization with CLI commands
 
