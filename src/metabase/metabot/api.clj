@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -87,6 +88,16 @@
    {}
    parts))
 
+(defn- strip-tool-output-bloat
+  "For :tool-output parts, keep only :output in the result map.
+  Both LLM adapters only read (get-in part [:result :output]) when replaying history.
+  Everything else (:structured-output, :resources, :data-parts, etc.) is transient
+  runtime data that can be very large."
+  [{:keys [type result] :as part}]
+  (if (= :tool-output type)
+    (assoc part :result {:output (:output result)})
+    part))
+
 (defn- store-native-parts!
   "Store assistant response parts directly to the database.
 
@@ -104,7 +115,10 @@
         ;; :data is like `:navigate_to`
         content    (->> parts
                         (remove #(#{:start :usage :finish :data} (:type %)))
-                        vec)]
+                        (mapv strip-tool-output-bloat))]
+    (prometheus/observe! :metabase-metabot/message-persist-bytes
+                         {:profile-id (or profile-id "unknown")}
+                         (count (pr-str content)))
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
