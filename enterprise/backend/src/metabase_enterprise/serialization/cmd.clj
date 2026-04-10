@@ -144,8 +144,7 @@
     report))
 
 (comment
-  (v2-dump! "/tmp/serdes" {})
-  )
+  (v2-dump! "/tmp/serdes" {}))
 
 (defn seed-entity-ids!
   "Add entity IDs for instances of serializable models that don't already have them.

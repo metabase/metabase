@@ -308,9 +308,9 @@
     (let [entities {:databases {"Test DB" {:name "Test DB" :engine "h2"}}
                     :tables {["Test DB" "PUBLIC" "ORDERS"] {:name "ORDERS" :schema "PUBLIC"}}
                     :fields {["Test DB" "PUBLIC" "ORDERS" "ID"] {:name "ID"
-                                                                  :base_type "type/BigInteger"
-                                                                  :database_type "BIGINT"
-                                                                  :table_id ["Test DB" "PUBLIC" "ORDERS"]}}
+                                                                 :base_type "type/BigInteger"
+                                                                 :database_type "BIGINT"
+                                                                 :table_id ["Test DB" "PUBLIC" "ORDERS"]}}
                     ;; Card references NONEXISTENT_FIELD which doesn't exist
                     :cards {"bad-field" {:name "Bad Field Card"
                                          :entity_id "bad-field"
@@ -405,11 +405,11 @@
                                  :database_type "DOUBLE PRECISION"
                                  :table_id ["Test DB" "PUBLIC" "ORDERS"]}}
                     :cards     {"good-sql" {:name "Good SQL"
-                                             :entity_id "good-sql"
-                                             :type "question"
-                                             :dataset_query {:database "Test DB"
-                                                             :type "native"
-                                                             :native {:query "SELECT ID, TOTAL FROM ORDERS"}}}}}
+                                            :entity_id "good-sql"
+                                            :type "question"
+                                            :dataset_query {:database "Test DB"
+                                                            :type "native"
+                                                            :native {:query "SELECT ID, TOTAL FROM ORDERS"}}}}}
           [schema assets index] (helpers/make-sources-and-index entities)
           results (checker/check-entities schema assets index ["good-sql"])
           result  (get results "good-sql")]
@@ -444,14 +444,14 @@
                                                              :query {:source-table ["DB" "PUBLIC" "ORDERS"]}}}
                                 ;; Native card referencing the MBQL card's columns
                                 "native-card" {:name "Native Ref"
-                                                :entity_id "native-card"
-                                                :type "question"
-                                                :dataset_query {:database "DB"
-                                                                :type "native"
-                                                                :native {:query "SELECT ID FROM {{#1-mbql}}"
-                                                                         :template-tags {"#1-mbql" {:type :card
-                                                                                                    :name "#1-mbql"
-                                                                                                    :card-id "mbql-card"}}}}}}}
+                                               :entity_id "native-card"
+                                               :type "question"
+                                               :dataset_query {:database "DB"
+                                                               :type "native"
+                                                               :native {:query "SELECT ID FROM {{#1-mbql}}"
+                                                                        :template-tags {"#1-mbql" {:type :card
+                                                                                                   :name "#1-mbql"
+                                                                                                   :card-id "mbql-card"}}}}}}}
           [schema assets index] (helpers/make-sources-and-index entities)
           results (checker/check-entities schema assets index ["native-card"])
           result  (get results "native-card")]
@@ -484,14 +484,14 @@
                                                                                     {:base-type :type/Float}]]]}}}
                                 ;; Native card referencing the named aggregation column
                                 "ref-card" {:name "Ref Card"
-                                             :entity_id "ref-card"
-                                             :type "question"
-                                             :dataset_query {:database "DB"
-                                                             :type "native"
-                                                             :native {:query "SELECT total_revenue FROM {{#1-agg}}"
-                                                                      :template-tags {"#1-agg" {:type :card
-                                                                                                :name "#1-agg"
-                                                                                                :card-id "agg-card"}}}}}}}
+                                            :entity_id "ref-card"
+                                            :type "question"
+                                            :dataset_query {:database "DB"
+                                                            :type "native"
+                                                            :native {:query "SELECT total_revenue FROM {{#1-agg}}"
+                                                                     :template-tags {"#1-agg" {:type :card
+                                                                                               :name "#1-agg"
+                                                                                               :card-id "agg-card"}}}}}}}
           [schema assets index] (helpers/make-sources-and-index entities)
           results (checker/check-entities schema assets index ["ref-card"])
           result  (get results "ref-card")]
@@ -613,7 +613,7 @@
           entities {:databases {"DB" {:name "DB" :engine "h2"}}
                     :tables    {["DB" "PUBLIC" "ORDERS"] {:name "ORDERS" :schema "PUBLIC"}}
                     :fields    {["DB" "PUBLIC" "ORDERS" "ID"] {:name "ID" :base_type "type/BigInteger"
-                                                                :database_type "BIGINT"}}
+                                                               :database_type "BIGINT"}}
                     :cards     {inner-eid {:name "Inner Card"
                                            :entity_id inner-eid
                                            :dataset_query {:database "DB"
@@ -738,8 +738,8 @@
           result (get results "card-1")]
       (is (seq (:unresolved result)) "collection_id pointing to a card should be flagged")
       (is (some #(and (= :collection (:type %))
-                       (re-find #"card" (or (:message %) "")))
-                 (:unresolved result))
+                      (re-find #"card" (or (:message %) "")))
+                (:unresolved result))
           "Error should mention it points to a card"))))
 
 (deftest nil-collection-id-test
@@ -837,8 +837,8 @@
           result (get results "card-1")]
       (is (seq (:unresolved result)) "dashboard_id pointing to a card should be flagged")
       (is (some #(and (= :dashboard (:type %))
-                       (re-find #"card" (or (:message %) "")))
-                 (:unresolved result))
+                      (re-find #"card" (or (:message %) "")))
+                (:unresolved result))
           "Error should mention it points to a card"))))
 
 (deftest dashboard-bad-collection-id-test
