@@ -45,7 +45,7 @@ const StaticSkeleton = ({
             <EntityIcon
               {...icon}
               size="1.5rem"
-              color="text-secondary"
+              color="var(--mb-color-text-secondary)"
               style={{ display: "block" }}
             />
             {tooltip && (

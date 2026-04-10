@@ -8,7 +8,7 @@ export type EntityIconProps = Omit<IconProps, "name" | "color"> & {
   name?: IconData["name"];
   iconUrl?: string;
   iconDarkUrl?: string;
-  color?: ColorName | "inherit";
+  color?: ColorName | "inherit" | (string & {});
   size?: string | number;
   style?: CSSProperties;
   alt?: string;
@@ -46,15 +46,5 @@ export function EntityIcon({
     );
   }
 
-  const resolvedColor =
-    color && color !== "inherit" ? `var(--mb-color-${color})` : color;
-
-  return (
-    <Icon
-      name={name}
-      size={size}
-      style={{ color: resolvedColor, ...style }}
-      {...rest}
-    />
-  );
+  return <Icon name={name} size={size} c={color} style={style} {...rest} />;
 }
