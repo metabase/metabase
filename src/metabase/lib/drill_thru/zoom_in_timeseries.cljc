@@ -50,7 +50,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :refer [some]]
+   [metabase.util.time :as u.time]))
 
 (mu/defn- valid-current-units :- [:sequential ::lib.schema.temporal-bucketing/unit.date-time.truncate]
   [query :- ::lib.schema/query
@@ -132,11 +133,19 @@
    _stage-number                 :- :int
    {:keys [dimension next-unit]} :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries]
   (let [{:keys [column value]} dimension
-        old-breakout           (:column-ref dimension)
-        new-breakout           (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)
-        stage-number           (lib.underlying/top-level-stage-number query)
-        resolved-column        (lib.drill-thru.common/breakout->resolved-column
-                                query stage-number column {:preserve-type? true})]
+        old-breakout            (:column-ref dimension)
+        base-type               (:base-type (second old-breakout))
+        old-unit                (lib.temporal-bucket/raw-temporal-bucket old-breakout)
+        new-breakout            (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)
+        stage-number            (lib.underlying/top-level-stage-number query)
+        resolved-column         (lib.drill-thru.common/breakout->resolved-column
+                                 query stage-number column {:preserve-type? true})
+        start                   (u.time/coerce-to-timestamp value)
+        [range-start range-end] (u.time/to-range start {:unit old-unit})]
     (-> query
-        (lib.filter/filter stage-number (lib.filter/= resolved-column value))
+        (lib.filter/filter stage-number
+                           (lib.filter/between
+                            resolved-column
+                            (u.time/format-for-base-type range-start base-type)
+                            (u.time/format-for-base-type range-end base-type)))
         (lib.remove-replace/replace-clause stage-number old-breakout new-breakout))))
