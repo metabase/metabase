@@ -1,4 +1,8 @@
+import { USER_GROUPS } from "e2e/support/cypress_data";
+
 const { H } = cy;
+
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const PLUGIN_ICON_SELECTOR = "img[src*='icon.svg']";
 
@@ -27,6 +31,17 @@ describe("admin > custom visualizations", () => {
         .findByText("Manage custom visualizations")
         .should("be.visible");
       H.getAddVisualizationLink().should("be.visible");
+    });
+
+    it('should not show custom visualizations page to non-admins with "Settings access" permission', () => {
+      H.activateToken("bleeding-edge");
+      H.updateAdvancedPermissionsGraph({
+        [ALL_USERS_GROUP]: { setting: "yes" },
+      });
+      cy.signInAsNormalUser();
+      cy.visit("/admin");
+
+      // TODO
     });
   });
 
