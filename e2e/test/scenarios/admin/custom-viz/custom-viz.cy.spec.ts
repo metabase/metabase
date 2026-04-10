@@ -1,3 +1,5 @@
+import type { CustomVizPlugin } from "metabase-types/api";
+
 const { H } = cy;
 
 const PLUGIN_ICON_SELECTOR = "img[src*='icon.svg']";
@@ -153,8 +155,11 @@ describe("admin > custom visualizations", () => {
     });
 
     it("should update commit after refetch", () => {
-      H.setupCustomVizPlugin().then((plugin) => {
+      H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
         const initialCommit = plugin.resolved_commit;
+        if (initialCommit == null) {
+          throw new Error("expected plugin.resolved_commit to be set");
+        }
 
         // Make a new commit in the repo
         H.updateFixtureAndCommit(() => {
@@ -176,8 +181,14 @@ describe("admin > custom visualizations", () => {
         cy.findByRole("button", { name: /ellipsis/i }).click();
         H.popover().findByText("Re-fetch").click();
         cy.wait("@pluginRefresh").then(({ response }) => {
-          const newCommit = response.body.resolved_commit;
+          const newCommit: string | null | undefined =
+            response?.body?.resolved_commit;
           expect(newCommit).to.not.equal(initialCommit);
+          if (newCommit == null) {
+            throw new Error(
+              "expected refreshed plugin.resolved_commit to be set",
+            );
+          }
 
           // Verify updated commit is shown
           cy.get("main")
@@ -188,7 +199,7 @@ describe("admin > custom visualizations", () => {
     });
 
     it("should update pinned version via edit form", () => {
-      H.setupCustomVizPlugin().then((plugin) => {
+      H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
         H.visitCustomVizEditForm(plugin.id);
 
         cy.findByLabelText(/Pinned version/)
