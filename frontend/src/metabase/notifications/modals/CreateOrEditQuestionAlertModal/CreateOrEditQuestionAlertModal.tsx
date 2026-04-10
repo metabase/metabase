@@ -317,6 +317,7 @@ export const CreateOrEditQuestionAlertModal = ({
         body: {
           paddingLeft: 0,
           paddingRight: 0,
+          paddingBottom: "1.5rem",
         },
       }}
     >
@@ -416,6 +417,7 @@ export const CreateOrEditQuestionAlertModal = ({
       </Stack>
       <Flex
         justify="space-between"
+        align="center"
         px="2.5rem"
         pt="lg"
         className={CS.borderTop}
@@ -428,8 +430,8 @@ export const CreateOrEditQuestionAlertModal = ({
         >
           {isLoading ? t`Sending…` : t`Send now`}
         </Button>
-        <div>
-          <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
+        <Flex gap="md">
+          <Button onClick={onClose}>{t`Cancel`}</Button>
           <ActionButton
             primary
             disabled={!isValid}
@@ -437,7 +439,7 @@ export const CreateOrEditQuestionAlertModal = ({
           >
             {isEditMode && hasChanges ? t`Save changes` : t`Done`}
           </ActionButton>
-        </div>
+        </Flex>
       </Flex>
     </Modal>
   );
