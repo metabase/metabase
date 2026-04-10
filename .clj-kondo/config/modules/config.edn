@@ -93,7 +93,6 @@
    :api  #{metabase.actions.args
            metabase.actions.core
            metabase.actions.init
-           metabase.actions.schema
            metabase.actions.types}
    :uses #{analytics
            api
@@ -638,7 +637,7 @@
 
   content-translation
   {:team "UX West"
-   :api  #{metabase.content-translation.models}
+   :api  #{}
    :uses #{premium-features
            util}
    :model-exports #{:model/ContentTranslation}}
@@ -667,8 +666,7 @@
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab
-           metabase.dashboards.schema
-           metabase.dashboards.settings}
+           metabase.dashboards.schema}
    :uses #{api
            app-db
            audit-app
@@ -1206,7 +1204,6 @@
               metabase.metabot.self
               metabase.metabot.settings}
    :friends #{agent-api
-              enterprise/metabot
               slackbot}
    :uses    #{activity-feed
               agent-lib
@@ -1439,8 +1436,7 @@
   {:team "UX West"
    :open #{permissions.rest}
    :api  #{metabase.permissions.core
-           metabase.permissions.init
-           metabase.permissions.schema}
+           metabase.permissions.init}
    :uses #{api
            app-db
            audit-app
@@ -1846,11 +1842,9 @@
   search
   {:team "UX West"
    :api  #{metabase.search.api
-           metabase.search.appdb.scoring
            metabase.search.config
            metabase.search.core
            metabase.search.engine
-           metabase.search.in-place.scoring
            metabase.search.ingestion
            metabase.search.init
            metabase.search.scoring
@@ -2069,22 +2063,21 @@
 
   sso
   {:team "UX West"
-   :api     #{metabase.sso.api
-              metabase.sso.api.slack-connect
-              metabase.sso.core
-              metabase.sso.init
-              metabase.sso.settings}
-   :friends #{enterprise/sso}
-   :uses    #{api
-              auth-identity
-              config
-              permissions
-              premium-features
-              request
-              server
-              settings
-              system
-              util}
+   :api  #{metabase.sso.api
+           metabase.sso.api.slack-connect
+           metabase.sso.core
+           metabase.sso.init
+           metabase.sso.settings}
+   :uses #{api
+           auth-identity
+           config
+           permissions
+           premium-features
+           request
+           server
+           settings
+           system
+           util}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
   startup

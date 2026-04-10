@@ -298,21 +298,25 @@
    ((hook-fn 'usage-error) config current-ns current-module required-namespace)))
 
 (deftest ^:parallel usage-error-parent-needs-explicit-uses-and-api-test
-  (testing "Parent accessing descendant must declare :uses and go through descendant's :api — no implicit access"
+  (testing "Parent accessing descendant must declare :uses AND obey the child's :api"
     (let [config-without-uses
           {:metabase/modules {'lib        {:uses #{}}
                               'lib.schema {:api  #{'metabase.lib.schema.foo}
                                            :uses #{}}}}]
       (is (some? (usage-error config-without-uses 'lib 'metabase.lib.schema.foo))
-          "lib does not declare :uses #{lib.schema} so the access is denied even though lib is the parent"))
+          "lib does not declare :uses #{lib.schema} so the access is denied"))
     (let [config-with-uses
           {:metabase/modules {'lib        {:uses #{'lib.schema}}
                               'lib.schema {:api  #{'metabase.lib.schema.foo}
                                            :uses #{}}}}]
-      (is (nil? (usage-error config-with-uses 'lib 'metabase.lib.schema.foo))
-          "with :uses declared and the namespace in lib.schema's :api, the access is allowed")
-      (is (some? (usage-error config-with-uses 'lib 'metabase.lib.schema.private-ns))
-          "even with :uses declared, namespaces NOT in lib.schema's :api are denied"))))
+      (testing "namespace in lib.schema's :api — allowed"
+        (is (nil? (usage-error config-with-uses 'lib 'metabase.lib.schema.foo))))
+      (testing "namespace NOT in lib.schema's :api — denied even though lib is the parent"
+        ;; Subtree trust is UNIDIRECTIONAL: descendants can read their
+        ;; ancestors' internals, but ancestors must respect their
+        ;; descendants' :api. The child's :api is its outward-facing
+        ;; contract, and even its parent must go through it.
+        (is (some? (usage-error config-with-uses 'lib 'metabase.lib.schema.private-ns)))))))
 
 (deftest ^:parallel usage-error-siblings-need-explicit-uses-and-api-test
   (testing "Siblings must declare :uses and go through each other's :api — no sibling trust"
@@ -336,7 +340,7 @@
           "even with :uses declared, namespaces NOT in lib.schema's :api are denied"))))
 
 (deftest ^:parallel usage-error-child-must-declare-uses-on-parent-test
-  (testing "Child accessing parent must declare :uses on the parent — no implicit subtree access"
+  (testing "Child accessing parent must declare :uses, but :api is waived by subtree trust"
     (let [config-without-uses
           {:metabase/modules {'lib        {:api  #{'metabase.lib.core}
                                            :uses #{}}
@@ -349,8 +353,12 @@
                                            :uses #{}}
                               'lib.schema {:api  :any
                                            :uses #{'lib}}}}]
-      (is (nil? (usage-error config-with-uses 'lib.schema 'metabase.lib.core))
-          "with :uses declared and the namespace in lib's :api, child→parent access is allowed"))))
+      (testing "namespace in lib's :api — allowed"
+        (is (nil? (usage-error config-with-uses 'lib.schema 'metabase.lib.core))))
+      (testing "namespace NOT in lib's :api — ALSO allowed (subtree trust)"
+        (is (nil? (usage-error config-with-uses 'lib.schema 'metabase.lib.internal))
+            (str "Under subtree trust, a child reaching into its parent's internals is "
+                 "allowed regardless of :api — this is the ancestor-descendant relaxation."))))))
 
 (deftest ^:parallel usage-error-encapsulated-grandchild-denied-test
   (testing "Outside module cannot reach into an unopened nested module"
@@ -392,6 +400,41 @@
                                      'query-processor {:uses #{'lib.schema}
                                                        :api  :any}}}]
       (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))))))
+
+(deftest ^:parallel usage-error-subtree-trust-is-unidirectional-test
+  (testing "Subtree trust is UNIDIRECTIONAL: descendants can read ancestors' internals, but ancestors must respect descendants' :api"
+    (let [config {:metabase/modules {'outer              {:uses #{'outer.middle.inner}
+                                                          :api  #{'metabase.outer.public}}
+                                     'outer.middle       {:api  #{}}
+                                     'outer.middle.inner {:api  #{'metabase.outer.middle.inner.public}
+                                                          :uses #{'outer}}}}]
+      (testing "grandchild → grandparent bypasses :api (descendant reading ancestor)"
+        (is (nil? (usage-error config 'outer.middle.inner 'metabase.outer.internal))
+            (str "outer.middle.inner declares :uses on outer; the grandparent's :api is "
+                 "waived because descendants can read ancestors' internals.")))
+      (testing "grandparent → grandchild must go through grandchild's :api"
+        (is (some? (usage-error config 'outer 'metabase.outer.middle.inner.internal))
+            (str "outer declares :uses on outer.middle.inner, but the grandchild's "
+                 ":api is enforced — parents (and grandparents) do NOT get free "
+                 "access to their descendants' internals. The :api is the outward "
+                 "contract, and even its ancestors must respect it.")))
+      (testing "grandparent → grandchild CAN access the grandchild's public :api"
+        (is (nil? (usage-error config 'outer 'metabase.outer.middle.inner.public)))))))
+
+(deftest ^:parallel usage-error-subtree-trust-does-not-extend-to-cousins-test
+  (testing "Cousins (same grandparent, different parents) are NOT subtree-trusted — they go through :api"
+    (let [config {:metabase/modules {'outer             {}
+                                     'outer.a           {}
+                                     'outer.a.leaf      {:api  #{'metabase.outer.a.leaf.public}
+                                                         :uses #{}}
+                                     'outer.b           {}
+                                     'outer.b.leaf      {:api  :any
+                                                         :uses #{'outer.a.leaf}}}}]
+      (testing "namespace in cousin's :api — allowed"
+        (is (nil? (usage-error config 'outer.b.leaf 'metabase.outer.a.leaf.public))))
+      (testing "namespace NOT in cousin's :api — denied (no subtree trust between cousins)"
+        (is (some? (usage-error config 'outer.b.leaf 'metabase.outer.a.leaf.internal))
+            "cousins are not in an ancestor-descendant relationship, so :api still applies")))))
 
 (deftest ^:parallel usage-error-uses-must-name-resolved-module-exactly-test
   (testing "`:uses` is matched exactly against the resolved required module — no walking up the tree"

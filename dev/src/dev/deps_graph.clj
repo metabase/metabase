@@ -401,17 +401,34 @@
   [kondo-config module-symb]
   (get-in kondo-config [module-symb :friends]))
 
-(declare kondo-config)
+(declare kondo-config module-ancestor-chain)
 
 (defn externally-used-namespaces-ignoring-friends
-  "All namespaces from a module that are used outside that module, excluding usages by `:friends` of the module."
+  "All namespaces from a module that are used outside that module, excluding
+  usages by `:friends` of the module AND usages by descendants of the
+  module (subtree trust).
+
+  Subtree trust means a descendant reaching into its ancestor's internals
+  is allowed via `:uses` alone, without the namespace needing to appear
+  in the ancestor's `:api`. Correspondingly, when computing what SHOULD
+  be in `module-symb`'s `:api` for the staleness test, we must NOT count
+  descendant usages as external consumers — they're not expressing an
+  `:api` requirement. Ancestors, siblings, cousins, and unrelated
+  consumers still count because they must respect `module-symb`'s `:api`."
   ([module-symb]
    (externally-used-namespaces-ignoring-friends (dependencies) (kondo-config) module-symb))
 
   ([deps kondo-config module-symb]
-   (let [friends (module-friends kondo-config module-symb)]
+   (let [friends       (module-friends kondo-config module-symb)
+         declared      (set (keys kondo-config))
+         descendant-of-me? (fn [other]
+                             ;; `other` is a descendant of `module-symb` iff
+                             ;; `module-symb` appears in `other`'s ancestor chain.
+                             (some #(= module-symb %)
+                                   (module-ancestor-chain declared other)))]
      (into (sorted-set)
            (comp (remove #(contains? friends (:module %)))
+                 (remove #(descendant-of-me? (:module %)))
                  (map :depends-on-namespace))
            (external-usages deps module-symb)))))
 
@@ -582,7 +599,9 @@
 
 (defn kondo-config-diff
   ([]
-   (kondo-config-diff (dependencies)))
+   (let [kc          (kondo-config)
+         prefix->mod (build-prefix->module kc)]
+     (kondo-config-diff (dependencies prefix->mod))))
 
   ([deps]
    (let [kondo-config (kondo-config)]
@@ -772,18 +791,20 @@
   "Given a collection of `test-filenames`, return the set of source filenames (relative to the project root directory)
   that when changed should trigger these tests."
   ([test-filenames]
-   (test-filenames->relevant-source-filenames (dependencies) test-filenames))
+   (let [prefix->mod (build-prefix->module (kondo-config))]
+     (test-filenames->relevant-source-filenames (dependencies prefix->mod) test-filenames)))
   ([deps test-filenames]
-   (into
-    (sorted-set)
-    (comp (map file->namespace)
-          (map module)
-          (distinct)
-          (mapcat (fn [module]
-                    (into #{module} (module->all-deps deps module))))
-          (distinct)
-          (mapcat #(module->source-files deps %)))
-    test-filenames)))
+   (let [prefix->mod (build-prefix->module (kondo-config))]
+     (into
+      (sorted-set)
+      (comp (map file->namespace)
+            (map (partial module prefix->mod))
+            (distinct)
+            (mapcat (fn [module]
+                      (into #{module} (module->all-deps deps module))))
+            (distinct)
+            (mapcat #(module->source-files deps %)))
+      test-filenames))))
 
 (comment
   ;; should include source files for `settings-rest` itself as well as all modules used either directly or indirectly
@@ -831,11 +852,14 @@
 (comment
   (module->dependents (dependencies) 'settings-rest))
 
+(defn- module->test-dir-name [module]
+  (str/replace (name module) #"[.-]" "_"))
+
 (defn- module->test-directory [module]
   (let [parent-dir (case (namespace module)
                      nil          "test/metabase/"
                      "enterprise" "enterprise/backend/test/metabase_enterprise/")
-        module-dir (str/replace (name module) #"-" "_")]
+        module-dir (module->test-dir-name module)]
     (str parent-dir module-dir)))
 
 (mu/defn- module->test-files :- [:set :string]

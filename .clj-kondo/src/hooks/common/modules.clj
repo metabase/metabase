@@ -400,19 +400,52 @@
     (or (= allowed-modules :any)
         (boolean (contains? (set allowed-modules) required-module)))))
 
+(defn- descendant-of?
+  "True if `viewer` is a descendant of `viewed` in the module tree (or they
+  are the same module). Used for subtree trust — descendants are allowed
+  to reach into their ancestors' internals past `:api`, but NOT the other
+  way around. The `:api` is the outward-facing contract of a module; even
+  its parent must respect it when reaching in.
+
+  This is asymmetric on purpose: parent → child goes through the child's
+  `:api`, child → parent bypasses `:api` (subject to the normal `:uses`
+  declaration requirement)."
+  [declared-modules viewer viewed]
+  (or (= viewer viewed)
+      (ancestor? declared-modules viewed viewer)))
+
 (defn- allowed-module-namespace?
   "True if `ns-symb` (the namespace being required) is an allowed reference
-  from `current-module`. Strict check against the resolved required module's
-  own `:api` set (and its `:friends` list as the audited bypass). No
-  external-face walking — the required module is whatever longest-prefix
-  resolution returned, and the `:api` is that exact module's `:api`."
+  from `current-module`.
+
+  Two access paths:
+
+    1. **Subtree trust (descendants only)**: if `current-module` is a
+       descendant of the resolved required module (or the same module),
+       the access is allowed regardless of `:api`. A descendant is
+       conceptually inside its ancestor and can see past the ancestor's
+       public contract. The `:uses` declaration is still required, so
+       the dependency is still recorded in the module graph — what's
+       relaxed is only the `:api` restriction. Note that this is
+       UNIDIRECTIONAL: a parent reaching into its child's internals is
+       NOT allowed — the parent must go through the child's `:api` like
+       any other consumer.
+
+    2. **Standard `:api` check**: for all other relationships (parent
+       reading child, siblings, cousins, unrelated), the required
+       namespace must be in the required module's `:api` set, OR
+       `current-module` must appear in the required module's `:friends`
+       list (as an audited bypass)."
   [config current-module ns-symb]
-  (let [required-module        (module config ns-symb)
-        api-namespaces         (module-api-namespaces config required-module)
-        friends                (module-friends config required-module)]
-    (or (empty? api-namespaces)
-        (contains? api-namespaces ns-symb)
-        (contains? friends current-module))))
+  (let [required-module (module config ns-symb)
+        declared        (declared-modules config)]
+    (if (descendant-of? declared current-module required-module)
+      true
+      (let [api-namespaces (module-api-namespaces config required-module)
+            friends        (module-friends config required-module)]
+        (or (empty? api-namespaces)
+            (contains? api-namespaces ns-symb)
+            (contains? friends current-module))))))
 
 (defn usage-error
   "Find usage errors when a `required-namespace` is required from `current-ns`

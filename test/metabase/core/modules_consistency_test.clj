@@ -49,15 +49,45 @@
   intentional — then apply the equivalent change to the other two sites
   and re-run the test."
   (:require
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [clojure.java.shell :as shell]
    [clojure.string :as str]
-   [clojure.test :refer :all]))
+   [clojure.test :refer :all]
+   [dev.deps-graph]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private kondo-hook-path ".clj-kondo/src/hooks/common/modules.clj")
 (def ^:private deps-graph-path "dev/src/dev/deps_graph.clj")
 (def ^:private mage-modules-path "mage/src/mage/modules.clj")
+
+;; Mirror sites live in different classpaths in production, but in tests we can
+;; load/resolve them directly and compare behavior on representative fixtures.
+(load-file ".clj-kondo/src/hooks/common/modules.clj")
+
+(defn- private-fn [ns-sym sym]
+  (let [v (ns-resolve (find-ns ns-sym) sym)]
+    (assert v (str ns-sym "/" sym " not found"))
+    v))
+
+(defn- bb-mage-file->module [modules-config filename]
+  (let [expr               (str "(do "
+                                "(require 'mage.modules) "
+                                "(let [build-prefix->module (ns-resolve 'mage.modules 'build-prefix->module) "
+                                "      file->module (ns-resolve 'mage.modules 'file->module)] "
+                                "  (prn ((deref file->module) ((deref build-prefix->module) "
+                                (pr-str (list 'quote modules-config))
+                                ") "
+                                (pr-str filename)
+                                "))))")
+        {:keys [exit out err]} (shell/sh "bb" "-e" expr)]
+    (when-not (zero? exit)
+      (throw (ex-info "Babashka mage.modules evaluation failed"
+                      {:exit exit
+                       :stderr err
+                       :expr expr})))
+    (edn/read-string (str/trim out))))
 
 (defn- regex-literals-in-file
   "Parse the file at `path` as text and return the seq of regex literal strings
@@ -127,6 +157,46 @@
             (str "mage/src/mage/modules.clj should contain a comment pointing at "
                  ".clj-kondo/src/hooks/common/modules.clj as the canonical source "
                  "of the module-resolution algorithm."))))))
+
+(deftest ^:parallel module-resolution-behavior-agrees-test
+  (testing "Representative namespace/file-path cases resolve to the same module across all three sites"
+    (let [hook-module               (private-fn 'hooks.common.modules 'module)
+          dev-module                (private-fn 'dev.deps-graph 'module)
+          config                    {:metabase/modules
+                                     {'actions               {}
+                                      'actions.rest          {:ns-prefix "metabase.actions-rest"}
+                                      'queries               {}
+                                      'queries.rest          {:ns-prefix "metabase.queries-rest"}
+                                      'lib                   {}
+                                      'lib.schema            {}
+                                      'lib.be                {:ns-prefix "metabase.lib-be"}
+                                      'enterprise/transforms {}
+                                      'enterprise/transforms.python {}}}
+          modules-config            (:metabase/modules config)
+          dev-prefix->module        (dev.deps-graph/build-prefix->module modules-config)
+          cases                     [{:ns 'metabase.actions-rest.api
+                                      :file "src/metabase/actions_rest/api.clj"
+                                      :want 'actions.rest}
+                                     {:ns 'metabase.queries-rest.middleware
+                                      :file "test/metabase/queries_rest/middleware_test.clj"
+                                      :want 'queries.rest}
+                                     {:ns 'metabase.lib.schema.util
+                                      :file "src/metabase/lib/schema/util.clj"
+                                      :want 'lib.schema}
+                                     {:ns 'metabase.lib-be.core
+                                      :file "src/metabase/lib_be/core.clj"
+                                      :want 'lib.be}
+                                     {:ns 'metabase-enterprise.transforms.python.runner
+                                      :file "enterprise/backend/src/metabase_enterprise/transforms/python/runner.clj"
+                                      :want 'enterprise/transforms.python}]]
+      (doseq [{:keys [ns file want]} cases]
+        (testing (str ns " <-> " file)
+          (is (= want (hook-module config ns)))
+          (is (= want (dev-module dev-prefix->module ns)))
+          (is (= want (bb-mage-file->module modules-config file)))
+          (is (= (hook-module config ns)
+                 (dev-module dev-prefix->module ns)
+                 (bb-mage-file->module modules-config file))))))))
 
 (deftest ^:parallel canonical-comments-present-test
   (testing "Each of the three mapping sites must carry a comment pointing at the others"

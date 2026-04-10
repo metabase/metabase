@@ -138,11 +138,14 @@
         updated-files (u/updated-files git-ref)]
     (updated-files->updated-modules updated-files)))
 
+(defn- module->test-dir-name [module]
+  (str/replace (name module) #"[.-]" "_"))
+
 (defn- module->test-directory
   [module]
   (case (namespace module)
-    "enterprise" (str "enterprise/backend/test/metabase_enterprise/" (str/replace (name module) #"-" "_"))
-    nil (str "test/metabase/" (str/replace (name module) #"-" "_"))))
+    "enterprise" (str "enterprise/backend/test/metabase_enterprise/" (module->test-dir-name module))
+    nil (str "test/metabase/" (module->test-dir-name module))))
 
 (defn- dependencies
   "Read out the Kondo config for the modules linter; return a map of module => set of modules it directly depends on."
