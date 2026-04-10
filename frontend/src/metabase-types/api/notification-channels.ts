@@ -5,10 +5,15 @@ import type {
 import type { User } from "metabase-types/api/user";
 import { isObject } from "metabase-types/guards";
 
+export type SlackChannelOption = {
+  displayName: string;
+  id: string;
+};
+
 type ChannelField = {
   name: string;
   displayName: string;
-  options?: string[];
+  options?: string[] | SlackChannelOption[];
   required?: boolean;
 };
 

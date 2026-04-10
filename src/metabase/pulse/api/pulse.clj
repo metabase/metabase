@@ -310,7 +310,8 @@
                                   :channels
                                   (m/distinct-by :id)
                                   (m/distinct-by :display-name)
-                                  (map #(select-keys % [:display-name :id]))))
+                                  (mapv (fn [{:keys [display-name id]}]
+                                          {:displayName display-name :id id}))))
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 

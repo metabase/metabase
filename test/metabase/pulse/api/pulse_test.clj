@@ -1292,9 +1292,9 @@
                                                       :id "U1DYU9W3WZ2"
                                                       :display-name "@user1"}]}]
         (is (= [{:name "channel", :type "select", :displayName "Post to",
-                 :options [{:display-name "#foo"     :id "CAAS3DD9XND"}
-                           {:display-name "#general" :id "C3MJRZ9EUVA"}
-                           {:display-name "@user1"   :id "U1DYU9W3WZ2"}], :required true}]
+                 :options [{:displayName "#foo"     :id "CAAS3DD9XND"}
+                           {:displayName "#general" :id "C3MJRZ9EUVA"}
+                           {:displayName "@user1"   :id "U1DYU9W3WZ2"}], :required true}]
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields]))))))
 
@@ -1317,14 +1317,14 @@
                                                       :name "general"
                                                       :display-name "#general"
                                                       :id "C003"}]}]
-        (is (= [{:display-name "#channel" :id "C001"}
-                {:display-name "#general" :id "C003"}]
+        (is (= [{:displayName "#channel" :id "C001"}
+                {:displayName "#general" :id "C003"}]
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields])
                    first
                    :options)))
         (is (apply distinct?
-                   (map :display-name
+                   (map :displayName
                         (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                             (get-in [:channels :slack :fields])
                             first
@@ -1349,8 +1349,8 @@
                                                       :name "general"
                                                       :display-name "#general"
                                                       :id "C003"}]}]
-        (is (= [{:display-name "#old-name" :id "C001"}
-                {:display-name "#general"  :id "C003"}]
+        (is (= [{:displayName "#old-name" :id "C001"}
+                {:displayName "#general"  :id "C003"}]
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields])
                    first

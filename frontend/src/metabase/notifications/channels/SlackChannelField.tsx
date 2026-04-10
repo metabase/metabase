@@ -6,11 +6,26 @@ import CS from "metabase/css/core/index.css";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Autocomplete } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
-import type { Channel, ChannelSpec } from "metabase-types/api";
+import type {
+  Channel,
+  ChannelSpec,
+  SlackChannelOption,
+} from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";
 const CHANNEL_PREFIX = "#";
 const USER_PREFIX = "@";
+
+export function getDisplayNames(options: SlackChannelOption[]): string[] {
+  return options.map((o) => o.displayName);
+}
+
+export function findChannelId(
+  options: SlackChannelOption[],
+  displayName: string,
+): string | undefined {
+  return options.find((o) => o.displayName === displayName)?.id;
+}
 
 const ALLOWED_PREFIXES = [CHANNEL_PREFIX, USER_PREFIX];
 
@@ -31,13 +46,19 @@ export const SlackChannelField = ({
   const channelField = channelSpec.fields?.find(
     (field) => field.name === CHANNEL_FIELD_NAME,
   );
+  const slackOptions = (channelField?.options ?? []) as SlackChannelOption[];
+  const displayNames = getDisplayNames(slackOptions);
   const value = String(channel?.details?.[CHANNEL_FIELD_NAME] ?? "");
 
-  const updateChannel = (value: string) =>
+  const updateChannel = (value: string) => {
+    const { channel_id: _, ...restDetails } = channel.details ?? {};
+    const newChannelId = findChannelId(slackOptions, value);
     onChannelPropertyChange("details", {
-      ...channel.details,
+      ...restDetails,
       [CHANNEL_FIELD_NAME]: value,
+      ...(newChannelId != null && { channel_id: newChannelId }),
     });
+  };
 
   const handleChange = (value: string) => {
     updateChannel(value);
@@ -55,8 +76,7 @@ export const SlackChannelField = ({
       updateChannel(fullChannelName);
     }
 
-    const isPrivate =
-      value.trim().length > 0 && !channelField?.options?.includes(value);
+    const isPrivate = value.trim().length > 0 && !displayNames.includes(value);
 
     setHasPrivateChannelWarning(isPrivate);
   };
@@ -69,7 +89,7 @@ export const SlackChannelField = ({
         {channelField?.displayName}
       </span>
       <Autocomplete
-        data={channelField?.options || []}
+        data={displayNames}
         value={value}
         placeholder={t`Pick a user or channel...`}
         limit={300}
