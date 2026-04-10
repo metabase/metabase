@@ -82,14 +82,20 @@
    is required for FK / implicitly-joinable column resolution.
 
    For source-card queries (metrics based on models or saved questions), resolves
-   the card's table_id and uses that to find the database provider."
+   the card's table_id and uses that to find the database provider. Native-SQL
+   models have no underlying table (`:table_id` is nil), so in that case we fall
+   back to the card's `:database_id` and look up the database provider directly."
   [mp query-with-mp]
   (when (satisfies? lib-metric.provider/MetricMetadataProvider mp)
     (or (when-let [table-id (lib.util/source-table-id query-with-mp)]
           (lib-metric.provider/database-provider-for-table mp table-id))
         (when-let [card-id (lib.util/source-card-id query-with-mp)]
-          (when-let [table-id (t2/select-one-fn :table_id :model/Card card-id)]
-            (lib-metric.provider/database-provider-for-table mp table-id))))))
+          (when-let [{:keys [table_id database_id]}
+                     (t2/select-one [:model/Card :table_id :database_id] card-id)]
+            (or (when table_id
+                  (lib-metric.provider/database-provider-for-table mp table_id))
+                (when database_id
+                  (lib-metric.provider/database-provider-for-database mp database_id))))))))
 
 (defn- group-type->type
   "Convert a column group's group-type to a dimension group type string."
