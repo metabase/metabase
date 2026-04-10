@@ -191,13 +191,6 @@
   [a-query]
   (lib.core/append-stage a-query))
 
-(defn ^:export drop-stage
-  "Drops the final *stage* in the query, even if it's not empty. If there is only one stage, this is a no-op.
-
-  > **Code health:** Healthy"
-  [a-query]
-  (lib.core/drop-stage a-query))
-
 (defn ^:export drop-empty-stages
   "Drops **all** stages which are empty from `a-query`. To be fully clear, this does not only drop empty final stages,
   it drops all empty middle stages as well.

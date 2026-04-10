@@ -1560,7 +1560,6 @@
   prepare-for-serialization]
  [lib.stage
   append-stage
-  drop-stage
   drop-empty-stages
   ensure-filter-stage
   has-clauses?]
