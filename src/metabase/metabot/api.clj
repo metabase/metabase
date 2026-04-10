@@ -176,7 +176,7 @@
       (let [parts-atom (atom [])
             ;; Compose: collect parts AND convert to SSE events for streaming.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-sse-xf))]
+                             (self.core/parts->aisdk-sse-xf))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan)

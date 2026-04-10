@@ -65,7 +65,7 @@
                                   :profile-id :embedding_next
                                   :context    {}}))]
             ;; Should get parts + state data
-            ;; Note: :finish is not emitted as a part; it's handled by aisdk-sse-xf completion
+            ;; Note: :finish is not emitted as a part; it's handled by parts->aisdk-sse-xf completion
             (is (pos? (count result)))
             ;; Should have state data (final part)
             (is (some #(= :data (:type %)) result)))))
@@ -164,7 +164,7 @@
             (is (pos? (count result)))
             ;; Should have text part
             (is (some #(= :text (:type %)) result))
-            ;; Should have state data part (finish is handled by aisdk-sse-xf, not emitted as part)
+            ;; Should have state data part (finish is handled by parts->aisdk-sse-xf, not emitted as part)
             (is (some #(and (= :data (:type %))
                             (map? (:data %)))
                       result))))))))

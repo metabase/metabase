@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
@@ -181,12 +182,12 @@
                :duration-ms 1234}]
              (into [] (self.core/lite-aisdk-xf) chunks))))))
 
-;;; aisdk-sse-xf
+;;; parts->aisdk-sse-xf
 
 (defn- sse-event-payloads
   "Drop the `data: ` prefix and the trailing `\\n`, then JSON-decode each SSE
   line into a map. Skips the `[DONE]` terminator. Used to make assertions
-  against `aisdk-sse-xf` output cleaner."
+  against `parts->aisdk-sse-xf` output cleaner."
   [lines]
   (->> lines
        (remove #(= "data: [DONE]\n" %))
@@ -194,13 +195,13 @@
               ;; lines look like: "data: {...}\n"
               (json/decode+kw (subs s 6 (dec (count s))))))))
 
-(deftest ^:parallel aisdk-sse-xf-usage-single-model-test
+(deftest ^:parallel parts->aisdk-sse-xf-usage-single-model-test
   (testing "single :usage part is carried out on the terminal finish event only"
     (let [parts  [{:type :start :id "msg-1"}
                   {:type :text :id "t1" :text "hi"}
                   {:type :usage :model "model-a"
                    :usage {:promptTokens 10 :completionTokens 20}}]
-          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          events (sse-event-payloads (into [] (self.core/parts->aisdk-sse-xf) parts))
           finish (->> events (filter #(= "finish" (:type %))) first)]
       (testing "no mid-stream message-metadata events are emitted"
         (is (empty? (filter #(= "message-metadata" (:type %)) events))))
@@ -214,7 +215,7 @@
                   (-> finish :messageMetadata :usage :outputTokens))
                (-> finish :messageMetadata :usage :totalTokens)))))))
 
-(deftest ^:parallel aisdk-sse-xf-usage-cumulative-same-model-test
+(deftest ^:parallel parts->aisdk-sse-xf-usage-cumulative-same-model-test
   (testing "cumulative :usage parts for the same model — finish reflects the latest, not a sum"
     ;; The agent loop emits cumulative-per-model snapshots (see
     ;; metabase.metabot.agent.core/accumulate-usage-xf), so the transducer
@@ -224,19 +225,19 @@
                    :usage {:promptTokens 10 :completionTokens 20}}
                   {:type :usage :model "model-a"
                    :usage {:promptTokens 35 :completionTokens 60}}]
-          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          events (sse-event-payloads (into [] (self.core/parts->aisdk-sse-xf) parts))
           finish (->> events (filter #(= "finish" (:type %))) first)]
       (is (= {:inputTokens 35 :outputTokens 60 :totalTokens 95}
              (-> finish :messageMetadata :usage))))))
 
-(deftest ^:parallel aisdk-sse-xf-usage-multi-model-test
+(deftest ^:parallel parts->aisdk-sse-xf-usage-multi-model-test
   (testing "two :usage parts for different models — usageByModel has both, flat usage is the sum"
     (let [parts  [{:type :start :id "msg-1"}
                   {:type :usage :model "model-a"
                    :usage {:promptTokens 100 :completionTokens 50}}
                   {:type :usage :model "model-b"
                    :usage {:promptTokens 200 :completionTokens 75}}]
-          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          events (sse-event-payloads (into [] (self.core/parts->aisdk-sse-xf) parts))
           finish (->> events (filter #(= "finish" (:type %))) first)
           meta   (:messageMetadata finish)]
       (is (= {:inputTokens 300 :outputTokens 125 :totalTokens 425}
@@ -245,18 +246,18 @@
               :model-b {:inputTokens 200 :outputTokens 75 :totalTokens 275}}
              (:usageByModel meta))))))
 
-(deftest ^:parallel aisdk-sse-xf-no-usage-test
+(deftest ^:parallel parts->aisdk-sse-xf-no-usage-test
   (testing "zero :usage parts — no messageMetadata key on finish"
     (let [parts  [{:type :start :id "msg-1"}
                   {:type :text :id "t1" :text "hi"}]
-          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          events (sse-event-payloads (into [] (self.core/parts->aisdk-sse-xf) parts))
           finish (->> events (filter #(= "finish" (:type %))) first)]
       (is (empty? (filter #(= "message-metadata" (:type %)) events)))
       (testing "messageMetadata key is absent from finish (not nil, not {})"
         (is (some? finish))
         (is (not (contains? finish :messageMetadata)))))))
 
-(deftest ^:parallel aisdk-sse-xf-text-coalesces-same-id-test
+(deftest ^:parallel parts->aisdk-sse-xf-text-coalesces-same-id-test
   (testing "consecutive :text parts sharing the same id collapse into one text block"
     ;; The upstream provider streams a single logical text block as multiple
     ;; :text parts that share the same :id. The Vercel AI SDK v6 stream
@@ -268,7 +269,7 @@
                        {:type :text :id "t1" :text "Hi"}
                        {:type :text :id "t1" :text " Sloan!"}
                        {:type :text :id "t1" :text " 👋"}]
-          events      (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          events      (sse-event-payloads (into [] (self.core/parts->aisdk-sse-xf) parts))
           text-events (filter #(#{"text-start" "text-delta" "text-end"} (:type %)) events)]
       (is (= [{:type "text-start" :id "t1"}
               {:type "text-delta" :id "t1" :delta "Hi"}
@@ -277,12 +278,12 @@
               {:type "text-end" :id "t1"}]
              text-events)))))
 
-(deftest ^:parallel aisdk-sse-xf-text-different-ids-separate-blocks-test
+(deftest ^:parallel parts->aisdk-sse-xf-text-different-ids-separate-blocks-test
   (testing "consecutive :text parts with different ids produce separate blocks"
     (let [parts       [{:type :start :id "msg-1"}
                        {:type :text :id "t1" :text "first"}
                        {:type :text :id "t2" :text "second"}]
-          events      (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          events      (sse-event-payloads (into [] (self.core/parts->aisdk-sse-xf) parts))
           text-events (filter #(#{"text-start" "text-delta" "text-end"} (:type %)) events)]
       (is (= [{:type "text-start" :id "t1"}
               {:type "text-delta" :id "t1" :delta "first"}
@@ -292,13 +293,13 @@
               {:type "text-end" :id "t2"}]
              text-events)))))
 
-(deftest ^:parallel aisdk-sse-xf-text-closed-by-non-text-event-test
+(deftest ^:parallel parts->aisdk-sse-xf-text-closed-by-non-text-event-test
   (testing "an intervening non-text part closes the current text block before its own events"
     (let [parts  [{:type :start :id "msg-1"}
                   {:type :text :id "t1" :text "before tool"}
                   {:type :tool-input :id "call-1" :function "search" :arguments {:q "x"}}
                   {:type :text :id "t1" :text "after tool"}]
-          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          events (sse-event-payloads (into [] (self.core/parts->aisdk-sse-xf) parts))
           types  (mapv :type events)]
       (is (= ["start"
               "start-step"
@@ -314,11 +315,11 @@
               "finish"]
              types)))))
 
-(deftest ^:parallel aisdk-sse-xf-text-closed-by-completion-test
+(deftest ^:parallel parts->aisdk-sse-xf-text-closed-by-completion-test
   (testing "completion arity closes any open text block before finish-step"
     (let [parts  [{:type :start :id "msg-1"}
                   {:type :text :id "t1" :text "trailing"}]
-          events (sse-event-payloads (into [] (self.core/aisdk-sse-xf) parts))
+          events (sse-event-payloads (into [] (self.core/parts->aisdk-sse-xf) parts))
           types  (mapv :type events)]
       (is (= ["start"
               "start-step"
@@ -329,7 +330,7 @@
               "finish"]
              types)))))
 
-(deftest ^:parallel aisdk-sse-xf-tee-composition-test
+(deftest ^:parallel parts->aisdk-sse-xf-tee-composition-test
   (testing "composing with tee-xf upstream still passes raw :usage parts to the tee"
     ;; This safeguards the api.clj store-native-parts! → extract-usage → DB path,
     ;; which depends on raw :usage parts landing in parts-atom unchanged.
@@ -338,7 +339,7 @@
                       {:type :text :id "t1" :text "hi"}
                       {:type :usage :model "model-a"
                        :usage {:promptTokens 10 :completionTokens 20}}]
-          xf         (comp (u/tee-xf parts-atom) (self.core/aisdk-sse-xf))
+          xf         (comp (u/tee-xf parts-atom) (self.core/parts->aisdk-sse-xf))
           _          (into [] xf parts)]
       (is (= parts @parts-atom)
           ":usage parts must reach the tee'd atom unchanged"))))
@@ -551,6 +552,255 @@
           "filter without bucket should pass through unchanged")
       (is (=? {:type :tool-output-available :toolCallId "call-d5"}
               (last result))))))
+
+;;; ===================== AI SDK SSE Protocol Tests =====================
+
+(defn- parse-sse-event
+  "Parse an SSE event string of the form `data: <json>\\n` back into a map.
+  Returns `:done` for the terminal `data: [DONE]\\n` line."
+  [s]
+  (when (string? s)
+    (let [trimmed (str/replace s #"\n$" "")]
+      (cond
+        (= trimmed "data: [DONE]") :done
+        (str/starts-with? trimmed "data: ") (json/decode+kw (subs trimmed 6))))))
+
+(deftest format-sse-event-test
+  (testing "wraps payload as `data: <json>\\n`"
+    (let [line (self.core/format-sse-event {:type "text-delta" :id "t1" :delta "Hi"})]
+      (is (str/starts-with? line "data: "))
+      (is (str/ends-with? line "\n"))
+      (is (= {:type "text-delta" :id "t1" :delta "Hi"}
+             (json/decode+kw (subs (str/replace line #"\n$" "") 6)))))))
+
+(defn- run-sse-xf
+  "Run `parts->aisdk-sse-xf` over `parts` and return the parsed SSE events."
+  [parts]
+  (mapv parse-sse-event (into [] (self.core/parts->aisdk-sse-xf) parts)))
+
+(deftest parts->aisdk-sse-xf-start-test
+  (testing "first :start emits start + start-step, completion adds finish-step + finish + [DONE]"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}])]
+      (is (= 5 (count events)))
+      (is (=? [{:type "start" :messageId "msg-1"}
+               {:type "start-step"}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events)))))
+
+(deftest parts->aisdk-sse-xf-subsequent-start-test
+  (testing "subsequent :start parts emit finish-step + start-step boundaries"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :start :id "msg-2"}])]
+      ;; first start: start + start-step
+      ;; second start: finish-step + start-step
+      ;; completion: finish-step + finish + [DONE]
+      (is (=? [{:type "start" :messageId "msg-1"}
+               {:type "start-step"}
+               {:type "finish-step"}
+               {:type "start-step"}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events)))))
+
+(deftest parts->aisdk-sse-xf-text-test
+  (testing "single :text emits text-start + text-delta and the open block is closed by completion (text-end)"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :text :id "t1" :text "Hello"}])]
+      (is (=? [{:type "start" :messageId "msg-1"}
+               {:type "start-step"}
+               {:type "text-start" :id "t1"}
+               {:type "text-delta" :id "t1" :delta "Hello"}
+               {:type "text-end" :id "t1"}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events))))
+
+  (testing "consecutive :text parts with the same id are coalesced into one block"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :text :id "t1" :text "Hello "}
+                              {:type :text :id "t1" :text "world"}
+                              {:type :text :id "t1" :text "!"}])]
+      ;; one text-start, three text-deltas, one text-end (emitted at completion)
+      (is (=? [{:type "start"}
+               {:type "start-step"}
+               {:type "text-start" :id "t1"}
+               {:type "text-delta" :id "t1" :delta "Hello "}
+               {:type "text-delta" :id "t1" :delta "world"}
+               {:type "text-delta" :id "t1" :delta "!"}
+               {:type "text-end" :id "t1"}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events))))
+
+  (testing "switching :text id closes the prior block and opens a new one"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :text :id "t1" :text "first"}
+                              {:type :text :id "t2" :text "second"}])]
+      (is (=? [{:type "start"}
+               {:type "start-step"}
+               {:type "text-start" :id "t1"}
+               {:type "text-delta" :id "t1" :delta "first"}
+               {:type "text-end" :id "t1"}
+               {:type "text-start" :id "t2"}
+               {:type "text-delta" :id "t2" :delta "second"}
+               {:type "text-end" :id "t2"}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events))))
+
+  (testing ":text with no :id auto-generates an id used for all events in the block"
+    (let [events    (run-sse-xf [{:type :start :id "msg-1"}
+                                 {:type :text :text "x"}])
+          text-evts (filter #(and (map? %) (str/starts-with? (:type %) "text-")) events)]
+      (is (= 3 (count text-evts)))
+      (is (= #{"text-start" "text-delta" "text-end"} (set (map :type text-evts))))
+      (is (some? (:id (first text-evts))))
+      (is (apply = (map :id text-evts))))))
+
+(deftest parts->aisdk-sse-xf-tool-input-test
+  (testing ":tool-input emits tool-input-start + tool-input-available with toolCallId, toolName, and input"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type      :tool-input
+                               :id        "call-1"
+                               :function  "search"
+                               :arguments {:q "revenue"}}])]
+      (is (=? [{:type "start"}
+               {:type "start-step"}
+               {:type "tool-input-start" :toolCallId "call-1" :toolName "search"}
+               {:type "tool-input-available" :toolCallId "call-1" :toolName "search" :input {:q "revenue"}}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events)))))
+
+(deftest parts->aisdk-sse-xf-tool-output-test
+  (testing ":tool-output success emits tool-output-available with the result"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type     :tool-output
+                               :id       "call-1"
+                               :function "search"
+                               :result   {:data [{:id 1}]}}])]
+      (is (=? {:type       "tool-output-available"
+               :toolCallId "call-1"
+               :toolName   "search"
+               :output     {:data [{:id 1}]}}
+              (nth events 2)))))
+
+  (testing ":tool-output with :error includes the error and a default empty output"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type     :tool-output
+                               :id       "call-2"
+                               :function "search"
+                               :error    {:message "boom"}}])]
+      (is (=? {:type       "tool-output-available"
+               :toolCallId "call-2"
+               :toolName   "search"
+               :output     ""
+               :error      {:message "boom"}}
+              (nth events 2))))))
+
+(deftest parts->aisdk-sse-xf-data-test
+  (testing ":data with custom :data-type emits data-<type>"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :data :data-type "state" :id "d1" :data {:queries {}}}])]
+      (is (=? {:type "data-state" :id "d1" :data {:queries {}}}
+              (nth events 2)))))
+
+  (testing ":data without :data-type defaults to data-data"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :data :id "d2" :data {:foo 1}}])]
+      (is (= "data-data" (:type (nth events 2)))))))
+
+(deftest parts->aisdk-sse-xf-error-test
+  (testing ":error with map :error extracts :message into errorText"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :error :error {:message "Something went wrong"}}])]
+      (is (=? {:type "error" :errorText "Something went wrong"}
+              (nth events 2)))))
+
+  (testing ":error with string :error stringifies it into errorText"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :error :error "boom"}])]
+      (is (=? {:type "error" :errorText "boom"}
+              (nth events 2))))))
+
+(deftest parts->aisdk-sse-xf-finish-skipped-test
+  (testing ":finish parts are dropped — only the completion arity emits the terminal finish event"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :finish}])]
+      (is (= 5 (count events)))
+      (is (=? [{:type "start"}
+               {:type "start-step"}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events))
+      ;; The terminal finish event has no messageMetadata when no usage was observed.
+      (is (not (contains? (nth events 3) :messageMetadata))))))
+
+(deftest parts->aisdk-sse-xf-usage-metadata-test
+  (testing ":usage parts are accumulated per model and surfaced as messageMetadata on the terminal finish"
+    (let [events       (run-sse-xf [{:type :start :id "msg-1"}
+                                    {:type  :usage
+                                     :model "claude-sonnet"
+                                     :usage {:promptTokens 10 :completionTokens 5}}
+                                    ;; The latest snapshot per model wins
+                                    ;; (cumulative-per-model semantics — see
+                                    ;; accumulate-usage-xf in metabot.agent.core).
+                                    {:type  :usage
+                                     :model "claude-sonnet"
+                                     :usage {:promptTokens 20 :completionTokens 7}}])
+          finish-event (first (filter #(and (map? %) (= "finish" (:type %))) events))]
+      (is (=? {:type "finish"
+               :messageMetadata
+               {:usage        {:inputTokens  20
+                               :outputTokens 7
+                               :totalTokens  27}
+                :usageByModel {:claude-sonnet
+                               {:inputTokens 20 :outputTokens 7 :totalTokens 27}}}}
+              finish-event)))))
+
+(deftest parts->aisdk-sse-xf-completion-without-start-test
+  (testing "completion without any :start still emits finish + [DONE] but no finish-step"
+    (let [events (run-sse-xf [])]
+      (is (=? [{:type "finish"} :done] events)))))
+
+(deftest parts->aisdk-sse-xf-full-conversation-test
+  (testing "realistic sequence: start, text, tool-input, tool-output, text"
+    (let [events (run-sse-xf [{:type :start :id "msg-1"}
+                              {:type :text :id "t1" :text "Looking that up..."}
+                              {:type      :tool-input
+                               :id        "call-1"
+                               :function  "search"
+                               :arguments {:q "Q1"}}
+                              {:type     :tool-output
+                               :id       "call-1"
+                               :function "search"
+                               :result   {:hits 3}}
+                              {:type :text :id "t2" :text "Found 3 results."}])]
+      ;; The t1 text block is implicitly closed by the next non-text part
+      ;; (the :tool-input). The t2 text block is closed by the completion arity.
+      (is (=? [{:type "start" :messageId "msg-1"}
+               {:type "start-step"}
+               {:type "text-start" :id "t1"}
+               {:type "text-delta" :id "t1" :delta "Looking that up..."}
+               {:type "text-end" :id "t1"}
+               {:type "tool-input-start" :toolCallId "call-1" :toolName "search"}
+               {:type "tool-input-available" :toolCallId "call-1" :toolName "search" :input {:q "Q1"}}
+               {:type "tool-output-available" :toolCallId "call-1" :toolName "search" :output {:hits 3}}
+               {:type "text-start" :id "t2"}
+               {:type "text-delta" :id "t2" :delta "Found 3 results."}
+               {:type "text-end" :id "t2"}
+               {:type "finish-step"}
+               {:type "finish"}
+               :done]
+              events)))))
 
 ;;; ===================== Retry Logic Tests =====================
 

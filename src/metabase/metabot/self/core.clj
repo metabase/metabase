@@ -247,7 +247,7 @@
       {:usage        totals
        :usageByModel by-model})))
 
-(defn aisdk-sse-xf
+(defn parts->aisdk-sse-xf
   "Transducer that converts internal parts to SSE protocol format.
   Returns strings ready to be written to the output stream. Each string is one
   SSE event line ending with \\n; the streaming writer adds another \\n to form
