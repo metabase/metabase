@@ -119,6 +119,7 @@ export function initializeContext(options) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
   MetabaseSettings.set("application-colors", options.applicationColors);
   MetabaseSettings.set("custom-formatting", options.customFormatting);
+  MetabaseSettings.set("site-locale", options.locale ?? "en");
   if (typeof enterpriseOverrides === "function") {
     enterpriseOverrides();
   }
