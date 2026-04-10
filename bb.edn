@@ -612,6 +612,7 @@
              [nil "--app-db DB" "App database: h2, postgres, mysql, mariadb (default: prompt)"]
              [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
               :multi true :default nil :update-fn conj]
+             [nil "--bot BOT" "Bot name (enables bot-specific config: Docker containers, bot dirs, Playwright dirs)"]
              [nil "--run" "Also launch backend + frontend in background"]
              [nil "--no-frontend" "Skip frontend dev server (only with --run)"]
              [nil "--down" "Stop everything for this worktree"]
@@ -643,12 +644,12 @@
   -fixbot-preflight
   {:doc "Check prerequisites for the fixbot workflow"
    :examples [["./bin/mage -fixbot-preflight" "Run all preflight checks"]]
-   :requires [[mage.fixbot.preflight :as preflight]]
+   :requires [[mage.bot.fixbot-preflight :as preflight]]
    :task (task! (preflight/preflight!))}
 
   -bot-status
   {:doc "Watch and display bot status"
-   :requires [[mage.fixbot.status :as status]]
+   :requires [[mage.bot.status :as status]]
    :arg-schema [:? [:string {:name "file-path"}]]
    :task (task! (status/run! parsed))}
 
@@ -664,54 +665,24 @@
    :task (task! (bot-prompt/generate-prompt! parsed))}
 
   -bot-setup
-  {:doc "Set up a bot worktree (git-ignored files: settings, dev-env, deps, mcp)"
-   :examples [["./bin/mage -bot-setup --bot fixbot --app-db postgres"
-               "Set up fixbot worktree"]]
+  {:doc "Install workmux-status hooks in a bot worktree"
+   :examples [["./bin/mage -bot-setup --bot fixbot" "Install hooks for fixbot"]]
    :requires [[mage.bot.setup :as bot-setup]]
-   :options [[nil "--bot BOT" "Bot name: fixbot, qabot, uxbot"]
-             [nil "--app-db DB" "App database" :default "postgres"]]
+   :options [[nil "--bot BOT" "Bot name: fixbot, qabot, uxbot"]]
    :task (task! (bot-setup/setup! parsed))}
-
-  -bot-dev-env
-  {:doc "Stand up/tear down dev environment (BE, FE, DB) for bot worktrees"
-   :examples [["./bin/mage -bot-dev-env --app-db postgres" "Postgres app-db"]
-              ["./bin/mage -bot-dev-env --down" "Tear down"]]
-   :requires [[mage.bot.dev-env :as bot-dev-env]]
-   :options [[nil "--app-db DB" "App database: postgres (default), mysql, h2" :default "postgres"]
-             [nil "--bot BOT" "Bot name (for path generation)"]
-             [nil "--down" "Tear down containers"]
-             [nil "--status" "Show status"]
-             [nil "--slot SLOT" "Override port slot" :parse-fn Integer/parseInt]]
-   :task (task! (bot-dev-env/dev-env! parsed))}
-
-  ;; Alias for backward compat
-  -fixbot-dev-env
-  {:doc "Alias for -bot-dev-env"
-   :requires [[mage.bot.dev-env :as bot-dev-env]]
-   :options [[nil "--app-db DB" :default "postgres"]
-             [nil "--bot BOT"]
-             [nil "--down"] [nil "--status"]
-             [nil "--slot SLOT" :parse-fn Integer/parseInt]]
-   :task (task! (bot-dev-env/dev-env! parsed))}
 
   -fixbot-fetch-issue
   {:doc "Fetch a Linear issue by identifier"
    :examples [["./bin/mage -fixbot-fetch-issue MB-12345" "Fetch and display issue"]]
-   :requires [[mage.fixbot.linear :as linear]]
+   :requires [[mage.bot.linear :as linear]]
    :arg-schema [:tuple [:string {:name "issue-id"}]]
    :task (task! (linear/print-issue! parsed))}
 
   -fixbot-write-sandbox-settings
   {:doc "Write container-compatible settings.local.json for sandbox"
    :examples [["./bin/mage -fixbot-write-sandbox-settings" "Write sandbox settings"]]
-   :requires [[mage.fixbot.session :as session]]
-   :task (task! (session/write-sandbox-settings! parsed))}
-
-  -fixbot-dashboard
-  {:doc "Open fixbot TUI dashboard"
-   :examples [["./bin/mage -fixbot-dashboard" "Open dashboard"]]
-   :requires [[mage.fixbot.session :as session]]
-   :task (task! (session/dashboard!))}
+   :requires [[mage.bot.fixbot-preflight :as fixbot]]
+   :task (task! (fixbot/write-sandbox-settings! parsed))}
 
   ;;; Unified autobot session management
 
@@ -766,6 +737,12 @@
    :requires [[mage.bot.server-info :as server-info]]
    :task (task! (server-info/server-info! parsed))}
 
+  -bot-preflight-health
+  {:doc "Wait for Metabase backend to become healthy (retries for up to 5 minutes)"
+   :examples [["./bin/mage -bot-preflight-health" "Wait for backend health"]]
+   :requires [[mage.bot.preflight :as preflight]]
+   :task (task! (preflight/preflight-health! parsed))}
+
   -bot-api-call
   {:doc "Make an API call to the local Metabase instance"
    :examples [["./bin/mage -bot-api-call /api/health" "Health check"]
@@ -787,4 +764,17 @@
               ["./bin/mage -bot-git-readonly gh pr list" "List open PRs"]]
    :requires [[mage.bot.git-readonly :as git-readonly]]
    ;; Bypass task! macro — args are passed through raw to git/gh, not parsed by tools.cli
-   :task (git-readonly/git-readonly! {:arguments (vec *command-line-args*)})}}}
+   :task (git-readonly/git-readonly! {:arguments (vec *command-line-args*)})}
+
+  -bot-md-to-pdf
+  {:doc "Convert a markdown file to PDF using md-to-pdf"
+   :examples [["./bin/mage -bot-md-to-pdf report.md" "Convert report.md to report.pdf"]
+              ["./bin/mage -bot-md-to-pdf .bot/qabot/20260410/report.md" "Convert with full path"]]
+   :task (let [args (vec *command-line-args*)]
+           (when (empty? args)
+             (println "Usage: ./bin/mage -bot-md-to-pdf <file.md>")
+             (System/exit 1))
+           (let [md-file (first args)
+                 dir     (.getParent (java.io.File. ^String md-file))
+                 fname   (.getName (java.io.File. ^String md-file))]
+             (babashka.tasks/shell {:dir (or dir ".")} "npx" "-y" "md-to-pdf" fname)))}}}

@@ -45,6 +45,32 @@ Test and dev namespaces are available on the classpath — no manual setup neede
 
 **Pivot tables**: "Old pivot" = `table.pivot: true` on Table visualization (3-column only). "New pivot" = `PivotTable` visualization type. Separate code paths, separate bugs.
 
+### Server Lifecycle (via REPL)
+
+**Restart the server** (without killing the JVM):
+```clojure
+;; Full restart — stops web server, reinitializes DB/plugins/scheduler, restarts web server
+(dev/restart!)
+
+;; Or step by step:
+(dev/stop!)   ; stops Jetty + Malli dev tools
+(dev/start!)  ; starts Jetty + runs full init (migrations, plugins, scheduler, etc.)
+```
+
+After `(dev/restart!)`, the backend will be temporarily unavailable. Wait for it to come back — poll with `./bin/mage -bot-api-call /api/health` until it succeeds.
+
+**Refresh settings without restart:**
+```clojure
+(metabase.settings.core/restore-cache!)
+```
+
+**When to restart vs refresh:**
+- **Setting changed via API/UI**: No restart needed — cache auto-updates
+- **Setting changed via env var or directly in the DB**: Use `(metabase.settings.core/restore-cache!)`
+- **Code changed that affects initialization** (e.g., startup logic, plugin loading): Use `(dev/restart!)`
+- **Need a clean state for testing**: Use `(dev/restart!)`
+- **Testing startup behavior** (e.g., what happens on first boot with a new setting): Use `(dev/restart!)`
+
 ### H2-Specific Constraints
 
 If the dev environment uses H2 (the default for inline mode):

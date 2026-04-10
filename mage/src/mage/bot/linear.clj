@@ -2,8 +2,8 @@
   (:require
    [babashka.json :as json]
    [clojure.string :as str]
-   [mage.bot.env :as bot-env]
    [mage.color :as c]
+   [mage.nvoxland.env :as bot-env]
    [mage.shell :as shell]
    [mage.util :as u]))
 

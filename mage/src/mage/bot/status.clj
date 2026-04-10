@@ -1,21 +1,17 @@
-(ns mage.fixbot.status
+(ns mage.bot.status
+  "Autobot status monitor — watches .bot/autobot/llm-status.txt and checks service health."
   (:require
    [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.string :as str]
-   [mage.bot.env :as bot-env]
    [mage.color :as c]
+   [mage.nvoxland.env :as bot-env]
    [mage.shell :as shell])
   (:import
    (java.io File)
    (java.net Socket)))
 
 (set! *warn-on-reflection* true)
-
-(defn- parse-mise-env
-  "Parse key=value pairs from mise.local.toml [env] section."
-  [^String _path]
-  (bot-env/read-mise-local-toml))
 
 (defn- extract-port
   "Extract port number from a string, trying env value directly or parsing from JDBC URL."
@@ -53,13 +49,10 @@
       :ready)
     (catch Exception _ :waiting)))
 
-(defn- colorize [color-fn text]
-  (color-fn text))
-
 (defn- load-ports
   "Read mise.local.toml and extract ports. Returns a map or nil if file not ready."
-  [^String mise-path]
-  (when-let [env (parse-mise-env mise-path)]
+  []
+  (when-let [env (bot-env/read-mise-local-toml)]
     (let [jetty-port    (extract-port (get env "MB_JETTY_PORT"))
           frontend-port (extract-port (get env "MB_FRONTEND_DEV_PORT"))
           db-uri        (get env "MB_DB_CONNECTION_URI")
@@ -74,28 +67,6 @@
          :db-port       db-port
          :db-host       (or db-host "localhost")}))))
 
-(defn- load-issue-info
-  "Read issue.txt and prompt file to get issue ID, URL, and title."
-  []
-  (let [issue-file (File. ".fixbot/issue.txt")]
-    (when (.exists issue-file)
-      (let [issue-line (str/trim (slurp issue-file))
-            [id url]   (str/split issue-line #"\s*\|\s*" 2)
-            ;; Find prompt file to extract title
-            fixbot-dir (File. ".fixbot")
-            prompt-files (when (.isDirectory fixbot-dir)
-                           (->> (.listFiles fixbot-dir)
-                                (filter #(str/starts-with? (.getName ^File %) "metabase-fixbot-"))
-                                (filter #(str/ends-with? (.getName ^File %) "-prompt.md"))))
-            title (when (seq prompt-files)
-                    (let [first-line (first (str/split-lines (slurp ^File (first prompt-files))))]
-                      ;; Parse "# Fixbot Agent — UXW-3155: Add keyboard shortcut..."
-                      (when-let [[_ t] (re-find #":\s*(.+)" first-line)]
-                        (str/trim t))))]
-        {:id (str/trim (or id ""))
-         :url (str/trim (or url ""))
-         :title (or title "")}))))
-
 (defn- check-pr
   "Check if there's an open PR for the current branch. Returns {:url ... :number ...} or nil."
   []
@@ -109,19 +80,9 @@
 
 (defn- render-display
   "Render the full status pane display."
-  [issue ports be-status db-status llm-status pr-info]
+  [ports be-status db-status llm-status pr-info]
   (let [sb (StringBuilder.)]
-    ;; Line 1: Issue title
-    (when (and issue (seq (:title issue)))
-      (.append sb (:title issue))
-      (.append sb "\n"))
-    ;; Line 2: Issue ID | URL | PR
-    (when issue
-      (.append sb (str (:id issue) " | " (:url issue)))
-      (when pr-info
-        (.append sb (str " | " (colorize c/green (str "PR #" (:number pr-info))))))
-      (.append sb "\n"))
-    ;; Line 3: Metabase | URL | DB
+    ;; Line 1: Metabase URL | DB
     (when ports
       (let [be-up?      (= be-status :ready)
             mb-color    (if be-up? c/green c/red)
@@ -131,10 +92,12 @@
             db-color    (if (= db-status :ready) c/green c/red)
             db-text     (when (and db-name (:db-port ports))
                           (str db-name ": " (:db-port ports)))]
-        (.append sb (colorize mb-color mb-text))
+        (.append sb (mb-color mb-text))
         (when db-text
           (.append sb " | ")
-          (.append sb (colorize db-color db-text)))
+          (.append sb (db-color db-text)))
+        (when pr-info
+          (.append sb (str " | " (c/green (str "PR #" (:number pr-info))))))
         (.append sb "\n")))
     ;; Blank line + LLM status
     (when (seq llm-status)
@@ -144,22 +107,19 @@
     (.toString sb)))
 
 (defn run!
-  "Watch .fixbot/llm-status.txt and periodically check service health."
+  "Watch llm-status.txt and periodically check service health."
   [{:keys [arguments]}]
-  (let [file-path (or (first arguments) ".fixbot/llm-status.txt")
-        f         (File. ^String file-path)
-        mise-path "mise.local.toml"]
+  (let [file-path (or (first arguments) ".bot/autobot/llm-status.txt")
+        f         (File. ^String file-path)]
     (loop [last-output    ""
            ports          nil
-           issue          nil
            pr-info        nil
            last-be-status :unhealthy
            last-db-status :unhealthy
            tick           0]
       (let [check?    (zero? (mod tick 5))
             pr-check? (and (not pr-info) (zero? (mod tick 30)))
-            ports     (or ports (when check? (load-ports mise-path)))
-            issue     (or issue (when check? (load-issue-info)))
+            ports     (or ports (when check? (load-ports)))
             pr-info   (or pr-info (when pr-check? (check-pr)))
             be-status (if (and check? ports)
                         (check-http (str "http://localhost:" (:jetty-port ports) "/api/health") 2000)
@@ -167,13 +127,12 @@
             db-status (if (and check? ports (:db-port ports))
                         (check-tcp (:db-host ports) (:db-port ports) 2000)
                         last-db-status)
-            ;; Read LLM status from file
             llm-status (when (.exists f)
                          (str/trim (slurp f)))
-            output    (render-display issue ports be-status db-status llm-status pr-info)]
+            output    (render-display ports be-status db-status llm-status pr-info)]
         (when (not= output last-output)
           (println "=========================================\n")
           (print output)
           (flush))
         (Thread/sleep 1000)
-        (recur output ports issue pr-info be-status db-status (inc tick))))))
+        (recur output ports pr-info be-status db-status (inc tick))))))

@@ -1,27 +1,29 @@
-(ns mage.bot.session-test
+(ns mage.bot.autobot-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [mage.bot.session :as session]))
+   [mage.bot.autobot :as autobot]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private parse-wt-name #'session/parse-worktree-name)
+(def ^:private parse-wt-name #'autobot/parse-worktree-name)
 
 (deftest branch-to-session-name-test
-  (testing "strips remote prefix"
-    (is (= "qabot-my-branch" (session/branch-to-session-name "qabot" "feature/my-branch"))))
+  (testing "simple branch name"
+    (is (= "stream-fingerprinting" (autobot/branch-to-session-name "stream-fingerprinting"))))
+  (testing "replaces slashes with dashes"
+    (is (= "feature-my-branch" (autobot/branch-to-session-name "feature/my-branch"))))
   (testing "lowercases"
-    (is (= "fixbot-mb-12345-fix" (session/branch-to-session-name "fixbot" "MB-12345-Fix"))))
+    (is (= "mb-12345-fix" (autobot/branch-to-session-name "MB-12345-Fix"))))
   (testing "replaces special chars with hyphens"
-    (is (= "uxbot-foo-bar-baz" (session/branch-to-session-name "uxbot" "foo_bar.baz"))))
+    (is (= "foo-bar-baz" (autobot/branch-to-session-name "foo_bar.baz"))))
   (testing "deduplicates hyphens"
-    (is (= "qabot-a-b" (session/branch-to-session-name "qabot" "a--b"))))
+    (is (= "a-b" (autobot/branch-to-session-name "a--b"))))
   (testing "strips leading/trailing hyphens"
-    (is (= "qabot-abc" (session/branch-to-session-name "qabot" "-abc-"))))
+    (is (= "abc" (autobot/branch-to-session-name "-abc-"))))
   (testing "truncates to 40 chars"
     (let [long-branch (apply str (repeat 50 "a"))
-          result (session/branch-to-session-name "qabot" long-branch)]
-      (is (<= (count result) (+ 6 40)))))) ;; "qabot-" + 40
+          result (autobot/branch-to-session-name long-branch)]
+      (is (<= (count result) 40)))))
 
 (deftest parse-worktree-name-test
   (testing "extracts name from __worktrees/ path"

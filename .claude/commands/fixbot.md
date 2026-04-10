@@ -24,7 +24,7 @@ This can be one of three formats:
 - **GitHub issue URL** (e.g., `https://github.com/metabase/metabase/issues/12345`) — extract the number, then resolve to Linear
 
 **If the input is a GitHub issue number or URL:**
-1. Fetch the GitHub issue with `gh issue view <NUMBER> --repo metabase/metabase --json body,comments,title`
+1. Fetch the GitHub issue with `./bin/mage -bot-git-readonly gh issue view <NUMBER> --repo metabase/metabase --json body,comments,title`
 2. Search the issue body and comments for a Linear issue link (pattern: `https://linear.app/metabase/issue/[A-Z]+-[0-9]+`). Extract the Linear issue ID from the URL.
 3. If no Linear link is found in the GitHub issue, search Linear directly: run `./bin/mage -fixbot-fetch-issue` with a search term derived from the GitHub issue title. If that doesn't find a match, tell the user you couldn't find a corresponding Linear issue and stop.
 4. Tell the user which Linear issue you resolved to, so they can verify it's correct.
@@ -53,13 +53,11 @@ Also determine the app database from the issue description/comments:
 Run:
 ```
 ./bin/mage -bot-generate-prompt \
-  --template dev/bot/fixbot/fixbot-agent.md \
-  --output .fixbot/fixbot-prompt.md \
-  --set ISSUE_ID=<ISSUE_ID> \
-  --set "BRANCH_NAME=$(git branch --show-current)" \
-  --set "APP_DB=<postgres|mysql|mariadb>"
+  --template dev/bot/fixbot-agent.md \
+  --output .bot/fixbot/<TIMESTAMP>/prompt.md \
+  --set ISSUE_ID=<ISSUE_ID>
 ```
 
 ### 5. Execute
 
-Read the generated `.fixbot/fixbot-prompt.md` and follow its instructions (Phases 0–6) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.
+Read the generated `.bot/fixbot/<TIMESTAMP>/prompt.md` and follow its instructions (Phases 0–6) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.

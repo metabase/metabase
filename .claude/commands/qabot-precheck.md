@@ -15,7 +15,7 @@ Read `.claude/settings.local.json` if it exists. Check that the permissions incl
 - `Read` — code analysis
 - `Grep` — code search
 - `Glob` — file search
-- `Write` — output files to `.qabot/`
+- `Write` — output files to `.bot/qabot/`
 - `Skill` — `/clojure-eval` for REPL access
 - `Bash(./bin/mage *)` or `Bash(*)` — mage wrapper commands
 - `Bash(npx -y @playwright/mcp*)` or `Bash(npx *)` or `Bash(*)` — Playwright CLI commands

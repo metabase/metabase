@@ -2,7 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [clojure.test :refer [deftest is testing]]
-   [mage.bot.env :as bot-env]))
+   [mage.nvoxland.env :as bot-env]))
 
 (set! *warn-on-reflection* true)
 

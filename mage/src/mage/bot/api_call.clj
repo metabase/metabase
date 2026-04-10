@@ -5,8 +5,8 @@
    [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.string :as str]
-   [mage.bot.env :as bot-env]
    [mage.color :as c]
+   [mage.nvoxland.env :as bot-env]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)

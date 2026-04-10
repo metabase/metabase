@@ -10,6 +10,6 @@ Reset the UX testing session to a clean state.
    sessionStorage.clear();
    ```
 3. **Close the browser again** after clearing
-4. **Write a reset marker**: Write the current timestamp to `.uxbot/reset-<timestamp>.txt` where timestamp is `YYYYMMDD-HHMMSS`. This marks the boundary — future `/uxbot-report` calls will only include activity after this point.
-5. **Update status**: Write "Waiting for task (reset)" to `.uxbot/llm-status.txt`
+4. **Write a reset marker**: Write the current timestamp to `.bot/uxbot/reset-<timestamp>.txt` where timestamp is `YYYYMMDD-HHMMSS`. This marks the boundary — future `/uxbot-report` calls will only include activity after this point.
+5. **Update status**: Write "Waiting for task (reset)" to `.bot/autobot/llm-status.txt`
 6. **Tell the user**: "Session reset. Browser cleared, ready for new tasks. Any future reports will only cover activity from this point forward."

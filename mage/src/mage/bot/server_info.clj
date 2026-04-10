@@ -4,7 +4,8 @@
    then prints the config YAML along with port/connection info."
   (:require
    [clojure.string :as str]
-   [mage.bot.env :as bot-env]
+   [mage.nvoxland.env :as bot-env]
+   [mage.shell :as shell]
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -14,6 +15,15 @@
   [& _]
   (let [resolved     (bot-env/resolve-all)
         config-path  (get resolved "MB_CONFIG_FILE_PATH")]
+
+    ;; Git branch
+    (println "## Git Branch")
+    (println)
+    (let [{:keys [exit out]} (shell/sh* {:quiet? true} "git" "branch" "--show-current")]
+      (if (zero? exit)
+        (println (str/trim (str/join "" out)))
+        (println "unknown")))
+    (println)
 
     ;; MB_* environment variables section
     (println "## Environment Variables")
@@ -28,13 +38,23 @@
     ;; Other useful variables
     (println "## Other Variables")
     (println)
-    (doseq [var-name ["NREPL_PORT" "SOCKET_REPL_PORT" "LINEAR_API_KEY"
-                      "METASTORE_DEV_SERVER_URL" "DISABLE_BUILD_NOTIFICATIONS"]]
+    (doseq [var-name ["LINEAR_API_KEY" "METASTORE_DEV_SERVER_URL"]]
       (when-let [v (get resolved var-name)]
         (let [display-v (if (= var-name "LINEAR_API_KEY")
                           (str (subs v 0 (min 12 (count v))) "...")
                           v)]
           (println (str var-name "=" display-v)))))
+    (println)
+
+    ;; nREPL discovery
+    (println "## nREPL Servers")
+    (println)
+    (let [{:keys [exit out]} (shell/sh* {:quiet? true} "clj-nrepl-eval" "--discover-ports")
+          lines (when (zero? exit) (remove str/blank? out))]
+      (if (seq lines)
+        (doseq [line lines]
+          (println line))
+        (println "NONE")))
     (println)
 
     ;; Source info

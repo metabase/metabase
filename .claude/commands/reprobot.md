@@ -25,7 +25,7 @@ This can be one of three formats:
 - **GitHub issue URL** (e.g., `https://github.com/metabase/metabase/issues/12345`) — extract the number, then resolve to Linear
 
 **If the input is a GitHub issue number or URL:**
-1. Fetch the GitHub issue with `gh issue view <NUMBER> --repo metabase/metabase --json body,comments,title`
+1. Fetch the GitHub issue with `./bin/mage -bot-git-readonly gh issue view <NUMBER> --repo metabase/metabase --json body,comments,title`
 2. Search the issue body and comments for a Linear issue link (pattern: `https://linear.app/metabase/issue/[A-Z]+-[0-9]+`). Extract the Linear issue ID.
 3. If no Linear link found, search Linear directly: run `./bin/mage -bot-fetch-issue` with a search term derived from the GitHub issue title.
 4. Tell the user which Linear issue you resolved to.
@@ -37,24 +37,23 @@ This can be one of three formats:
 #### Server info
 Run `./bin/mage -bot-server-info` and capture the output.
 
-#### Branch and timestamp
-- Get current branch: `git branch --show-current`
+#### Timestamp
 - Generate a timestamp in `YYYYMMDD-HHMMSS` format (construct directly, don't use `date` command).
 
 #### Create output directory
-Write an empty `.gitkeep` file to `.reprobot/<ISSUE_ID>/<TIMESTAMP>/output/.gitkeep` using the Write tool.
+Write an empty `.gitkeep` file to `.bot/reprobot/<TIMESTAMP>/output/.gitkeep` using the Write tool.
 
 ### 4. Generate agent prompt
 
 Run:
 ```
 ./bin/mage -bot-generate-prompt \
-  --template dev/bot/reprobot/reprobot-agent.md \
-  --output .reprobot/reprobot-prompt.md \
+  --template dev/bot/reprobot-agent.md \
+  --output .bot/reprobot/<TIMESTAMP>/prompt.md \
   --set "ISSUE_ID=<ISSUE_ID>" \
-  --set "OUTPUT_DIR=.reprobot/<ISSUE_ID>/<TIMESTAMP>"
+  --set "OUTPUT_DIR=.bot/reprobot/<TIMESTAMP>"
 ```
 
 ### 5. Execute
 
-Read the generated `.reprobot/reprobot-prompt.md` and follow its instructions (Phases 0–4) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.
+Read the generated `.bot/reprobot/<TIMESTAMP>/prompt.md` and follow its instructions (Phases 0–4) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.

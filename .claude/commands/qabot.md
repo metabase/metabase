@@ -20,13 +20,12 @@ If any required check fails, show the error and stop. Do not attempt to recover.
 #### Server info
 Run `./bin/mage -bot-server-info` and capture the full output. This will be passed to the agent.
 
-#### Branch and timestamp
-- Get current branch: `./bin/mage -bot-git-readonly git branch --show-current`
+#### Timestamp
 - Generate a timestamp in `YYYYMMDD-HHMMSS` format. Do NOT use `date` in a Bash command — instead, use the current date/time you already know to construct it directly (e.g., `20260409-143022`).
 
 #### Create output directory
-Once you have the branch name and timestamp, create the output directory by writing a placeholder file using the `Write` tool:
-- Write an empty `.gitkeep` file to `.qabot/<BRANCH_NAME>/<TIMESTAMP>/output/.gitkeep`
+Create the output directory by writing a placeholder file using the `Write` tool:
+- Write an empty `.gitkeep` file to `.bot/qabot/<TIMESTAMP>/output/.gitkeep`
 - This creates the full directory tree without needing `mkdir -p` in bash.
 
 #### Linear issue
@@ -59,20 +58,17 @@ If a PR exists, capture the title and body as PR_CONTEXT. This is often the best
 Run:
 ```
 ./bin/mage -bot-generate-prompt \
-  --template dev/bot/qabot/qabot-agent.md \
-  --output .qabot/qabot-prompt.md \
-  --set "BRANCH_NAME=<branch>" \
+  --template dev/bot/qabot-agent.md \
+  --output .bot/qabot/<timestamp>/prompt.md \
   --set "TIMESTAMP=<timestamp>" \
-  --set "OUTPUT_DIR=.qabot/<branch>/<timestamp>" \
-  --set "NREPL_PORT=<discovered-port>" \
+  --set "OUTPUT_DIR=.bot/qabot/<timestamp>" \
   --set "LINEAR_ISSUE_ID=<resolved-id-or-empty>" \
-  --set "SERVER_INFO=<output from -bot-server-info>" \
   --set "LINEAR_CONTEXT=<output from -bot-fetch-issue, or empty>" \
   --set "PR_CONTEXT=<PR title and body, or empty>"
 ```
 
-**Shell escaping:** The `--set` values may contain quotes, newlines, and special characters. Use the `Write` tool to save multi-line values to temp files under `.qabot/tmp/` (e.g., `.qabot/tmp/server-info.txt`), then reference them with command substitution: `--set "SERVER_INFO=$(cat .qabot/tmp/server-info.txt)"`. Do NOT use `cat` with heredoc or `echo` to create the temp files — always use the `Write` tool, which doesn't require Bash permissions. Do NOT write to `/tmp` — use `.qabot/tmp/` so everything stays within the project directory and matches the `Write(./**)` permission.
+**Shell escaping:** The `--set` values may contain quotes, newlines, and special characters. Use the `Write` tool to save multi-line values to temp files under `.bot/qabot/<timestamp>/tmp/` (e.g., `.bot/qabot/<timestamp>/tmp/linear-context.txt`), then reference them with command substitution: `--set "LINEAR_CONTEXT=$(cat .bot/qabot/<timestamp>/tmp/linear-context.txt)"`. Do NOT use `cat` with heredoc or `echo` to create the temp files — always use the `Write` tool, which doesn't require Bash permissions. Do NOT write to `/tmp` — use `.bot/qabot/<timestamp>/tmp/` so everything stays within the project directory and matches the `Write(./**)` permission.
 
 ### 4. Execute
 
-Read the generated `.qabot/qabot-prompt.md` and follow its instructions (Phases 1–6) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.
+Read the generated `.bot/qabot/<timestamp>/prompt.md` and follow its instructions (Phases 1–6) in sequence. Execute all phases in a single turn — do not stop between phases unless a STOP condition is triggered.

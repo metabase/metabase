@@ -14,9 +14,7 @@
 .cpcache
 .eastwood
 /.beads/
-/.fixbot/
-/.qabot/
-/.uxbot/
+/.bot/
 .idea/
 .nrepl-port
 .portal

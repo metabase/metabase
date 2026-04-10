@@ -2,11 +2,11 @@ Regenerate the QA report from existing review files.
 
 ## Instructions
 
-1. **Find the latest qabot output**: Look in `.qabot/` for the most recent branch/timestamp directory that contains `initial-review-results.md` and/or `ux-review.md`.
+1. **Find the latest qabot output**: Look in `.bot/qabot/` for the most recent timestamp directory that contains `initial-review-results.md` and/or `ux-review.md`.
 
 2. **Gather environment info**:
-   - `git branch --show-current` — branch name
-   - `git rev-parse --short HEAD` — commit hash
+   - `./bin/mage -bot-git-readonly git branch --show-current` — branch name
+   - `./bin/mage -bot-git-readonly git rev-parse --short HEAD` — commit hash
    - Current date
 
 3. **Regenerate the report**: Follow the Phase 5 instructions from the qabot agent prompt:

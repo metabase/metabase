@@ -54,6 +54,18 @@ To dismiss: `browser_click` the close/action button, or `browser_press_key` with
 3. **`browser_navigate` to `http://localhost:$MB_JETTY_PORT/`** — always navigate explicitly to the home page after login. Do NOT rely on the login redirect alone. The redirect can leave the browser session in a state where clicks don't register.
 4. `browser_snapshot` to confirm you're logged in
 
+### Quick login via API (alternative)
+
+Get a session token via API and set it as a cookie — faster than filling the login form:
+```bash
+./bin/mage -bot-api-call /api/session --method POST --body '{"username":"<email>","password":"<password>"}'
+```
+Extract the `id` from the response, then use `browser_evaluate` with script:
+```javascript
+document.cookie = 'metabase.SESSION=<token>;path=/'
+```
+Then `browser_navigate` to the target page. Use the credentials from `./bin/mage -bot-server-info`.
+
 ### When clicks don't work
 
 1. Take a fresh snapshot (async rendering). 2. Try hover + click (menu triggers). 3. Try keyboard (focus + Enter). 4. After 3 attempts, report and move on.

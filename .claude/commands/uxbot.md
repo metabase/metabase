@@ -28,7 +28,7 @@ Everything provided is the initial task description (optional). If no task was p
 Read `mise.local.toml` to discover `MB_JETTY_PORT` for the backend URL.
 
 #### Branch name
-Get current branch: `git branch --show-current`
+Get current branch: `./bin/mage -bot-git-readonly git branch --show-current`
 
 ### 4. Generate agent prompt
 
@@ -47,14 +47,13 @@ No initial task specified. Wait for the user to give you a task.
 Run:
 ```
 ./bin/mage -bot-generate-prompt \
-  --template dev/bot/uxbot/uxbot-agent.md \
-  --output .uxbot/uxbot-prompt.md \
-  --set "BRANCH_NAME=<branch>" \
+  --template dev/bot/uxbot-agent.md \
+  --output .bot/uxbot/<TIMESTAMP>/prompt.md \
   --set "INITIAL_TASK=<initial task text>"
 ```
 
-**Shell escaping:** If the task description contains quotes or special characters, write it to a temp file using the `Write` tool first: write to `.uxbot/tmp/task.txt`, then use `--set "INITIAL_TASK=$(cat .uxbot/tmp/task.txt)"`.
+**Shell escaping:** If the task description contains quotes or special characters, write it to a temp file using the `Write` tool first: write to `.bot/uxbot/tmp/task.txt`, then use `--set "INITIAL_TASK=$(cat .bot/uxbot/tmp/task.txt)"`.
 
 ### 5. Execute
 
-Read the generated `.uxbot/uxbot-prompt.md` and follow its instructions. Act as a regular user navigating the browser. Execute tasks as they come — the first task (if any) is embedded in the prompt.
+Read the generated `.bot/uxbot/<TIMESTAMP>/prompt.md` and follow its instructions. Act as a regular user navigating the browser. Execute tasks as they come — the first task (if any) is embedded in the prompt.

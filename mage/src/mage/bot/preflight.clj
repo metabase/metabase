@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [mage.color :as c]
+   [mage.nvoxland.env :as bot-env]
    [mage.shell :as shell]
    [mage.util :as u]))
 
@@ -88,22 +89,6 @@
       (println "It should auto-install via npx. Check your npm/node setup.")
       (u/exit 1))))
 
-(defn check-pandoc!
-  "Check that pandoc is installed. Exits on failure."
-  []
-  (when-not (u/can-run? "pandoc")
-    (println (c/red "pandoc is not installed."))
-    (println "  brew install pandoc")
-    (u/exit 1)))
-
-(defn check-weasyprint!
-  "Check that weasyprint is installed. Exits on failure."
-  []
-  (when-not (u/can-run? "weasyprint")
-    (println (c/red "weasyprint is not installed."))
-    (println "  pip3 install weasyprint")
-    (u/exit 1)))
-
 (defn check-node-modules!
   "Ensure node_modules exists. Auto-installs via bun if missing."
   []
@@ -112,12 +97,38 @@
     (shell/sh {:dir u/project-root-directory} "bun" "install")))
 
 (defn check-backend-health!
-  "Check that the Metabase backend is responding on the given port. Exits on failure."
+  "Check that the Metabase backend is responding on the given port.
+   Retries every 10 seconds for up to 5 minutes to allow startup time.
+   Exits on failure after timeout."
   [port]
-  (let [{:keys [exit out]} (shell/sh* {:quiet? true}
-                                      "curl" "-s" "-o" "/dev/null" "-w" "%{http_code}"
-                                      (str "http://localhost:" port "/api/health"))]
-    (when (or (not (zero? exit)) (not= (str/trim (str/join out)) "200"))
-      (println (c/red (str "Backend is not responding on port " port ".")))
-      (println "Start the backend before running qabot.")
-      (u/exit 1))))
+  (let [url        (str "http://localhost:" port "/api/health")
+        timeout-ms (* 5 60 1000)
+        interval   10000
+        start      (System/currentTimeMillis)]
+    (loop []
+      (let [{:keys [exit out]} (shell/sh* {:quiet? true}
+                                          "curl" "-s" "-o" "/dev/null" "-w" "%{http_code}" url)
+            healthy? (and (zero? exit) (= (str/trim (str/join out)) "200"))
+            elapsed  (- (System/currentTimeMillis) start)]
+        (cond
+          healthy?
+          (println (c/green (str "Backend healthy on port " port)))
+
+          (>= elapsed timeout-ms)
+          (do
+            (println (c/red (str "Backend did not become healthy on port " port " after 5 minutes.")))
+            (println "Check the backend logs for errors.")
+            (u/exit 1))
+
+          :else
+          (do
+            (println (c/yellow (str "Waiting for backend on port " port "... ("
+                                    (int (/ elapsed 1000)) "s elapsed)")))
+            (Thread/sleep interval)
+            (recur)))))))
+
+(defn preflight-health!
+  "CLI entry point: wait for backend health, auto-discovering the port."
+  [_parsed]
+  (let [port (or (bot-env/resolve-env "MB_JETTY_PORT") "3000")]
+    (check-backend-health! port)))

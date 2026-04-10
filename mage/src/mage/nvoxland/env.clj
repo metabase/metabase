@@ -1,5 +1,5 @@
-(ns mage.bot.env
-  "Shared environment variable resolution across all bot infrastructure.
+(ns mage.nvoxland.env
+  "Environment variable resolution across dev infrastructure.
    Priority order: mise.local.toml > .env > .lein-env > system env."
   (:require
    [clojure.edn :as edn]
