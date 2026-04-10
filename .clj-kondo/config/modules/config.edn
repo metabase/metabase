@@ -89,7 +89,7 @@
 {:metabase/modules
  {actions
   {:team "Gadget"
-   :open #{actions.rest}
+   :module-exports #{actions.rest}
    :api  #{metabase.actions.args
            metabase.actions.core
            metabase.actions.init
@@ -540,7 +540,7 @@
 
   collections
   {:team "UX West"
-   :open #{collections.rest}
+   :module-exports #{collections.rest}
    :api  #{metabase.collections.core
            metabase.collections.models.collection
            metabase.collections.models.collection.root
@@ -659,7 +659,7 @@
 
   dashboards
   {:team "UX West"
-   :open #{dashboards.rest}
+   :module-exports #{dashboards.rest}
    :api  #{metabase.dashboards.autoplace
            metabase.dashboards.constants
            metabase.dashboards.init
@@ -899,7 +899,7 @@
 
   embedding
   {:team "Embedding"
-   :open #{embedding.rest}
+   :module-exports #{embedding.rest}
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
@@ -1434,7 +1434,7 @@
 
   permissions
   {:team "UX West"
-   :open #{permissions.rest}
+   :module-exports #{permissions.rest}
    :api  #{metabase.permissions.core
            metabase.permissions.init}
    :uses #{api
@@ -1537,7 +1537,7 @@
 
   public-sharing
   {:team "UX West"
-   :open #{public-sharing.rest}
+   :module-exports #{public-sharing.rest}
    :api  #{metabase.public-sharing.core
            metabase.public-sharing.init
            metabase.public-sharing.validation}
@@ -1610,7 +1610,7 @@
 
   queries
   {:team "Graphy"
-   :open #{queries.rest}
+   :module-exports #{queries.rest}
    :api  #{metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
@@ -1957,7 +1957,7 @@
 
   settings
   {:team "DevEx"
-   :open #{settings.rest}
+   :module-exports #{settings.rest}
    :api  #{metabase.settings.core
            metabase.settings.init}
    :uses #{api
@@ -1981,7 +1981,7 @@
 
   setup
   {:team "UX West"
-   :open #{setup.rest}
+   :module-exports #{setup.rest}
    :api  #{metabase.setup.core
            metabase.setup.init}
    :uses #{app-db
@@ -2221,7 +2221,7 @@
 
   transforms
   {:team "Graphy"
-   :open #{transforms.rest}
+   :module-exports #{transforms.rest}
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
@@ -2357,7 +2357,7 @@
 
   users
   {:team "UX West"
-   :open #{users.rest}
+   :module-exports #{users.rest}
    :api  #{metabase.users.core
            metabase.users.init
            metabase.users.models.user
@@ -2452,7 +2452,7 @@
 
   warehouse-schema
   {:team "UX West"
-   :open #{warehouse-schema.rest}
+   :module-exports #{warehouse-schema.rest}
    :api  #{metabase.warehouse-schema.field
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
@@ -2520,7 +2520,7 @@
 
   warehouses
   {:team "UX West"
-   :open #{warehouses.rest}
+   :module-exports #{warehouses.rest}
    :api  #{metabase.warehouses.core
            metabase.warehouses.init
            metabase.warehouses.models.database}

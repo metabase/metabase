@@ -205,11 +205,11 @@
        (not (str/includes? (name m) "."))))
 
 (defn- open-children*
-  "Mirror of `hooks.common.modules/open-children`. Returns the `:open` set
+  "Mirror of `hooks.common.modules/open-children`. Returns the `:module-exports` set
   for `parent` including the auto-opened `enterprise/X` counterpart when
   `parent` is a top-level OSS module with a declared EE counterpart."
   [config parent]
-  (let [explicit (set (get-in config [parent :open]))
+  (let [explicit (set (get-in config [parent :module-exports]))
         ee-child (when (top-level-oss-module? parent)
                    (let [candidate (symbol "enterprise" (name parent))]
                      (when (contains? config candidate)
@@ -220,7 +220,7 @@
 (defn- externally-referenceable?
   "True if `target` may be named in the `:uses` of a module outside its
   top-level subtree. Equivalent to: every ancestor in the chain from
-  target up to top-level is `:open`ed by its parent (and the top-level
+  target up to top-level is `:module-exports`ed by its parent (and the top-level
   ancestor is implicitly externally referenceable). Mirror of the
   `externally-visible?` helper in the kondo hook."
   [config target]
@@ -237,7 +237,7 @@
   under the strict module model. Permitted iff:
     - they share a top-level subtree (anyone in the same subtree can name
       anyone else in the subtree), OR
-    - `target` is externally referenceable (top-level OR `:open`ed all the
+    - `target` is externally referenceable (top-level OR `:module-exports`ed all the
       way from the root).
 
   Uses the declared-modules set (from the config) so that the `enterprise/X`
@@ -252,7 +252,7 @@
 (deftest ^:parallel uses-references-must-be-namable-test
   (testing (str "Every entry in a module's `:uses` must be a module that the caller is "
                 "allowed to name. Outside-of-subtree callers may only name modules that "
-                "are externally referenceable (top-level OR `:open`ed by every ancestor "
+                "are externally referenceable (top-level OR `:module-exports`ed by every ancestor "
                 "from the root). Same-subtree callers may name any module in the subtree.")
     (let [config   (dev.deps-graph/kondo-config)
           declared (declared-modules-set config)]
@@ -271,7 +271,7 @@
                (str "%s declares :uses #{%s} but cannot name %s under the strict module model. "
                     "Either: (a) move %s into %s's top-level subtree (currently %s vs %s), or "
                     "(b) ensure %s is externally referenceable by adding it to its parent's "
-                    ":open set (and recursively up to the top-level).")
+                    ":module-exports set (and recursively up to the top-level).")
                caller target target
                target caller
                (top-level-ancestor declared caller)

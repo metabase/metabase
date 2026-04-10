@@ -1,6 +1,6 @@
 (ns metabase.core.modules-nesting-test
   "Tests for the nested-modules mechanism: longest-prefix namespace→module
-  resolution and `:open`-based visibility.
+  resolution and `:module-exports`-based visibility.
 
   The kondo hook at `.clj-kondo/src/hooks/common/modules.clj` lives in
   clj-kondo's isolated classpath and cannot be `require`d from the test
@@ -198,13 +198,13 @@
       (is (false? (siblings? 'lib 'lib))))))                 ; same module
 
 ;;;; -------------------------------------------------------------------------
-;;;; :open set and external-face
+;;;; :module-exports set and external-face
 ;;;; -------------------------------------------------------------------------
 
 (deftest ^:parallel open-children-test
-  (testing "`open-children` returns the set declared under `:open` on the parent"
+  (testing "`open-children` returns the set declared under `:module-exports` on the parent"
     (let [open-children (hook-fn 'open-children)
-          config {:metabase/modules {'lib {:open #{'lib.schema 'lib.be}}}}]
+          config {:metabase/modules {'lib {:module-exports #{'lib.schema 'lib.be}}}}]
       (is (= #{'lib.schema 'lib.be} (open-children config 'lib)))
       (is (= #{}                     (open-children config 'query-processor)))
       (is (= #{}                     (open-children {} 'lib))))))
@@ -216,18 +216,18 @@
         (is (true? (externally-visible? {} 'lib)))
         (is (true? (externally-visible? {} 'query-processor))))
       (testing "a nested module whose parent opens it is visible (parent is top-level)"
-        (let [config {:metabase/modules {'lib {:open #{'lib.schema}}}}]
+        (let [config {:metabase/modules {'lib {:module-exports #{'lib.schema}}}}]
           (is (true? (externally-visible? config 'lib.schema)))))
       (testing "a nested module whose parent does NOT open it is NOT visible"
-        (let [config {:metabase/modules {'lib {:open #{}}}}]
+        (let [config {:metabase/modules {'lib {:module-exports #{}}}}]
           (is (false? (externally-visible? config 'lib.schema)))))
       (testing "a grandchild is visible only if both its parent and grandparent open the chain"
-        (let [ok       {:metabase/modules {'outer        {:open #{'outer.middle}}
-                                           'outer.middle {:open #{'outer.middle.deepest}}}}
-              bad-mid  {:metabase/modules {'outer        {:open #{}}
-                                           'outer.middle {:open #{'outer.middle.deepest}}}}
-              bad-deep {:metabase/modules {'outer        {:open #{'outer.middle}}
-                                           'outer.middle {:open #{}}}}]
+        (let [ok       {:metabase/modules {'outer        {:module-exports #{'outer.middle}}
+                                           'outer.middle {:module-exports #{'outer.middle.deepest}}}}
+              bad-mid  {:metabase/modules {'outer        {:module-exports #{}}
+                                           'outer.middle {:module-exports #{'outer.middle.deepest}}}}
+              bad-deep {:metabase/modules {'outer        {:module-exports #{'outer.middle}}
+                                           'outer.middle {:module-exports #{}}}}]
           (is (true?  (externally-visible? ok       'outer.middle.deepest)))
           (is (false? (externally-visible? bad-mid  'outer.middle.deepest)))
           (is (false? (externally-visible? bad-deep 'outer.middle.deepest))))))))
@@ -238,14 +238,14 @@
       (testing "top-level module is its own face"
         (is (= 'lib (external-face {} 'lib))))
       (testing "unopened child's face is its parent"
-        (let [config {:metabase/modules {'lib {:open #{}}}}]
+        (let [config {:metabase/modules {'lib {:module-exports #{}}}}]
           (is (= 'lib (external-face config 'lib.schema)))))
       (testing "opened child's face is itself"
-        (let [config {:metabase/modules {'lib {:open #{'lib.schema}}}}]
+        (let [config {:metabase/modules {'lib {:module-exports #{'lib.schema}}}}]
           (is (= 'lib.schema (external-face config 'lib.schema)))))
       (testing "grandchild of unopened child falls through to the grandparent"
-        (let [config {:metabase/modules {'lib        {:open #{}}
-                                         'lib.schema {:open #{'lib.schema.foo}}}}]
+        (let [config {:metabase/modules {'lib        {:module-exports #{}}
+                                         'lib.schema {:module-exports #{'lib.schema.foo}}}}]
           ;; lib.schema.foo's parent opens it, but lib does NOT open lib.schema,
           ;; so the whole subtree is encapsulated behind `lib`.
           (is (= 'lib (external-face config 'lib.schema.foo))))))))
@@ -366,13 +366,13 @@
     ;; lib.schema is encapsulated behind lib. Outside callers see only
     ;; lib's :api and cannot reach lib.schema's contents — even if
     ;; lib.schema's own :api declares those namespaces. This is strict
-    ;; encapsulation: :open is the only way to expose a nested child.
+    ;; encapsulation: :module-exports is the only way to expose a nested child.
     ;;
     ;; Note: the hook currently treats `(empty? api-set)` as "allow
     ;; anything" (matching the :any case), so to get real encapsulation
     ;; behavior in a fixture you must provide a non-empty :api that
     ;; excludes the namespace being tested.
-    (let [config {:metabase/modules {'lib             {:open #{}
+    (let [config {:metabase/modules {'lib             {:module-exports #{}
                                                        :api  #{'metabase.lib.core}
                                                        :uses #{}}
                                      'lib.schema      {:api  #{'metabase.lib.schema.public-ns}
@@ -387,13 +387,13 @@
         ;; lib.schema's :api declares `metabase.lib.schema.public-ns`, but
         ;; lib does NOT open lib.schema, so lib.schema's API is invisible
         ;; to outside callers. The only way for query-processor to reach
-        ;; this would be for lib to explicitly `:open #{lib.schema}` or
+        ;; this would be for lib to explicitly `:module-exports #{lib.schema}` or
         ;; for lib to re-export the namespace in its own :api.
         (is (some? (usage-error config 'query-processor 'metabase.lib.schema.public-ns)))))))
 
 (deftest ^:parallel usage-error-opened-child-allowed-test
-  (testing "Outside module CAN reach into an opened nested module when listed in :open"
-    (let [config {:metabase/modules {'lib             {:open #{'lib.schema}
+  (testing "Outside module CAN reach into an opened nested module when listed in :module-exports"
+    (let [config {:metabase/modules {'lib             {:module-exports #{'lib.schema}
                                                        :api  :any}
                                      'lib.schema      {:api  :any
                                                        :uses #{}}
@@ -473,10 +473,10 @@
 ;;;;
 ;;;; When an `enterprise/X` module is declared in config and an OSS module
 ;;;; `X` is also declared, the system treats `enterprise/X` as if it were a
-;;;; nested child of `X` — same subtree, auto-opened in `X`'s `:open` set.
+;;;; nested child of `X` — same subtree, auto-opened in `X`'s `:module-exports` set.
 ;;;; This lets EE modules be organized as companions to their OSS
 ;;;; counterparts without needing to rename anything or declare explicit
-;;;; `:ns-prefix` / `:open` entries.
+;;;; `:ns-prefix` / `:module-exports` entries.
 ;;;;
 ;;;; If `X` is NOT declared (e.g. `enterprise/sandbox` with no OSS
 ;;;; counterpart), the shorthand falls back: `enterprise/sandbox` stays a
@@ -505,29 +505,29 @@
 (deftest ^:parallel open-children-auto-opens-enterprise-test
   (testing "`open-children` auto-includes `enterprise/X` when X is a declared OSS top-level"
     (let [open-children (hook-fn 'open-children)]
-      (testing "no enterprise counterpart declared: only the explicit :open set"
-        (let [config {:metabase/modules {'lib {:open #{'lib.schema}}}}]
+      (testing "no enterprise counterpart declared: only the explicit :module-exports set"
+        (let [config {:metabase/modules {'lib {:module-exports #{'lib.schema}}}}]
           (is (= #{'lib.schema} (open-children config 'lib)))))
-      (testing "enterprise/X counterpart declared: auto-included in :open"
+      (testing "enterprise/X counterpart declared: auto-included in :module-exports"
         (let [config {:metabase/modules {'cache            {}
                                          'enterprise/cache {}}}]
           (is (= #{'enterprise/cache} (open-children config 'cache)))))
       (testing "combines explicit and auto-opened"
-        (let [config {:metabase/modules {'lib             {:open #{'lib.schema}}
+        (let [config {:metabase/modules {'lib             {:module-exports #{'lib.schema}}
                                          'enterprise/lib  {}}}]
           (is (= #{'lib.schema 'enterprise/lib} (open-children config 'lib)))))
       (testing "nested modules (not top-level) do NOT get auto-opened enterprise counterparts"
         ;; `foo.bar` is not top-level (has a dot in its name), so
         ;; `enterprise/foo.bar` is not auto-opened on it even if declared.
-        ;; `foo.bar` has no explicit `:open` set, so open-children should be #{}.
-        (let [config {:metabase/modules {'foo                 {:open #{'foo.bar}}
+        ;; `foo.bar` has no explicit `:module-exports` set, so open-children should be #{}.
+        (let [config {:metabase/modules {'foo                 {:module-exports #{'foo.bar}}
                                          'foo.bar             {}
                                          'enterprise/foo.bar  {}}}]
           (is (= #{} (open-children config 'foo.bar))))))))
 
 (deftest ^:parallel usage-error-enterprise-shorthand-allows-cross-subtree-access-test
   (testing (str "Under the shorthand, `enterprise/X` is in the X subtree. Other modules "
-                "can still reach it via the auto-opened `:open` set. `enterprise/core`'s "
+                "can still reach it via the auto-opened `:module-exports` set. `enterprise/core`'s "
                 "init chain, for instance, can statically require `enterprise/cache` "
                 "because `cache` auto-opens `enterprise/cache`.")
     (let [config {:metabase/modules {'core              {:api :any}

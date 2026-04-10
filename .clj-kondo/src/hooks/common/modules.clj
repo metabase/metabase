@@ -127,9 +127,9 @@
 ;;;; and every dependency is declared in `:uses`. There is no implicit
 ;;;; visibility based on tree relationships — neither parent→descendant nor
 ;;;; descendant→parent nor sibling→sibling. The hierarchy exists for
-;;;; encapsulation scoping (controlled by `:open`), not for trust.
+;;;; encapsulation scoping (controlled by `:module-exports`), not for trust.
 ;;;;
-;;;; The `:open` config key on a module is a SET of direct-child module
+;;;; The `:module-exports` config key on a module is a SET of direct-child module
 ;;;; symbols that the parent explicitly promotes to externally-referenceable
 ;;;; status. An unopened nested child is private to its top-level subtree:
 ;;;; only modules sharing the same top-level ancestor may name it in their
@@ -164,14 +164,14 @@
 
 (defn- open-children
   "Set of direct child module symbols that `parent` exposes. Combines the
-  explicit `:open` set from config with the auto-opened `enterprise/X`
+  explicit `:module-exports` set from config with the auto-opened `enterprise/X`
   counterpart if `parent` is a top-level OSS module `X` and `enterprise/X`
   is declared. The auto-open exists so that outside callers (e.g. the
   `metabase-enterprise.core.init` loader chain) can statically reference
   each OSS module's EE companion without needing to explicitly list it
-  in `:open`."
+  in `:module-exports`."
   [config parent]
-  (let [explicit (set (get-in config [:metabase/modules parent :open]))
+  (let [explicit (set (get-in config [:metabase/modules parent :module-exports]))
         ee-child (when (top-level-oss-module? parent)
                    (let [candidate (symbol "enterprise" (name parent))]
                      (when (contains? (declared-modules config) candidate)
@@ -180,7 +180,7 @@
       ee-child (conj ee-child))))
 
 (defn- opens-child?
-  "True if `parent` exposes `child` via its `:open` set (explicit or
+  "True if `parent` exposes `child` via its `:module-exports` set (explicit or
   auto-opened via the `enterprise/X` shorthand)."
   [config parent child]
   (contains? (open-children config parent) child))
@@ -188,7 +188,7 @@
 (defn- externally-visible?
   "True if `m` may be named in the `:uses` of a module that is NOT in `m`'s
   top-level subtree. This is the case iff `m` is top-level, OR `m`'s parent
-  has `m` in its `:open` set AND the parent is itself externally visible.
+  has `m` in its `:module-exports` set AND the parent is itself externally visible.
 
   Used by the subtree-membership lint to validate `:uses` declarations.
   NOT used at require-lint time — requires are checked strictly against
@@ -387,7 +387,7 @@
   `current-module`'s `:uses` declaration.
 
   Strict exact-match: the resolved required module must be a literal entry
-  in `current-module`'s `:uses` set. There is no walking of `:open` chains,
+  in `current-module`'s `:uses` set. There is no walking of `:module-exports` chains,
   no inheriting from ancestors. If `lib.schema` is what the require resolves
   to, then `:uses #{lib.schema}` is what's required — `:uses #{lib}` does
   NOT cover it.
