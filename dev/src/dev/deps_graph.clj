@@ -775,14 +775,21 @@
     ;; =>
     metabase-enterprise.advanced-permissions.common"
   [file]
-  (-> file
-      file->path-relative-to-project-root
-      (str/replace #"^enterprise/backend/" "")
-      (str/replace #"^(?:(?:src)|(?:test))/" "")
-      (str/replace #"\.clj[cs]?$" "")
-      (str/replace #"/" ".")
-      (str/replace #"_" "-")
-      symbol))
+  (let [relative-file (file->path-relative-to-project-root file)
+        test-file?    (or (str/starts-with? relative-file "test/")
+                          (str/starts-with? relative-file "enterprise/backend/test/"))]
+    (-> relative-file
+        (str/replace #"^enterprise/backend/" "")
+        (str/replace #"^(?:(?:src)|(?:test))/" "")
+        (str/replace #"\.clj[cs]?$" "")
+        ;; Module-level tests live at e.g. test/metabase/lib/schema_test.cljc and
+        ;; should map back to metabase.lib.schema for reverse lookup.
+        (#(if test-file?
+            (str/replace % #"_test$" "")
+            %))
+        (str/replace #"/" ".")
+        (str/replace #"_" "-")
+        symbol)))
 
 (defn- module->all-deps [deps module]
   (keys (all-module-deps-paths deps module)))

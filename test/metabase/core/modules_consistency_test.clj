@@ -268,6 +268,24 @@
                    prefix->mod
                    ["src/metabase/lib/schema/util/core.cljc"])))))))
 
+(deftest ^:parallel exact-dotted-module-test-files-round-trip-test
+  (testing "Exact-file dotted-module tests resolve back to the dotted module"
+    (let [deps        [{:module   'lib.schema
+                        :deps     []
+                        :filename "src/metabase/lib/schema.cljc"}]
+          prefix->mod {"metabase.lib.schema" 'lib.schema}
+          test-file   "test/metabase/lib/schema_test.cljc"]
+      (is (= #{"src/metabase/lib/schema.cljc"}
+             (set (dev.deps-graph/test-filenames->relevant-source-filenames
+                   deps
+                   prefix->mod
+                   [test-file]))))
+      (if (babashka-available?)
+        (is (= 'lib.schema
+               (bb-mage-file->module {'lib.schema {}}
+                                     test-file)))
+        (is true "Skipping mage.modules exact-file assertions because `bb` is unavailable")))))
+
 (deftest ^:parallel canonical-comments-present-test
   (testing "Each of the three mapping sites must carry a comment pointing at the others"
     (testing (format "\n%s contains the word CANONICAL" kondo-hook-path)

@@ -52,17 +52,22 @@
                                             => metabase-enterprise.transforms.python.foo
     src/metabase/lib_be/core.clj            => metabase.lib-be.core"
   [filename]
-  (or
-   (when-let [[_match module-path] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^.]+)\.(?:clj|cljc|cljs|bb)$" filename)]
-     (symbol (str "metabase."
-                  (-> module-path
-                      (str/replace #"/" ".")
-                      (str/replace #"_" "-")))))
-   (when-let [[_match module-path] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^.]+)\.(?:clj|cljc|cljs|bb)$" filename)]
-     (symbol (str "metabase-enterprise."
-                  (-> module-path
-                      (str/replace #"/" ".")
-                      (str/replace #"_" "-")))))))
+  (letfn [(normalize-module-path [module-path]
+            (if (or (str/starts-with? filename "test/")
+                    (str/starts-with? filename "enterprise/backend/test/"))
+              (str/replace module-path #"_test$" "")
+              module-path))]
+    (or
+     (when-let [[_match module-path] (re-matches #"^(?:(?:src)|(?:test))/metabase/([^.]+)\.(?:clj|cljc|cljs|bb)$" filename)]
+       (symbol (str "metabase."
+                    (-> (normalize-module-path module-path)
+                        (str/replace #"/" ".")
+                        (str/replace #"_" "-")))))
+     (when-let [[_match module-path] (re-matches #"^enterprise/backend/(?:(?:src)|(?:test))/metabase_enterprise/([^.]+)\.(?:clj|cljc|cljs|bb)$" filename)]
+       (symbol (str "metabase-enterprise."
+                    (-> (normalize-module-path module-path)
+                        (str/replace #"/" ".")
+                        (str/replace #"_" "-"))))))))
 
 (defn- ns-starts-with-prefix?
   "True if `ns-str` equals `prefix` or begins with `prefix + \".\"`

@@ -370,3 +370,12 @@
       (is (-> [changed-file]
               mage.modules/updated-files->updated-modules
               mage.modules/driver-deps-affected?)))))
+
+(deftest dotted-module-exact-test-files-mark-correct-module-changes
+  (testing "module-level dotted test files resolve back to the dotted module when a dotted prefix exists"
+    (let [build-prefix->module @#'mage.modules/build-prefix->module
+          file->module         @#'mage.modules/file->module
+          prefix->module       (build-prefix->module {'lib.schema {}})]
+      (is (= 'lib.schema
+             (file->module prefix->module
+                           "test/metabase/lib/schema_test.cljc"))))))
