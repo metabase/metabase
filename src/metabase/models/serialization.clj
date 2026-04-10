@@ -1224,8 +1224,9 @@
                                             :fk_target_field_id [:not= nil])
             fk-table-ids  (when (seq fk-field-ids)
                             (t2/select-fn-set :table_id :model/Field
-                                              :id [:in fk-field-ids]))
-            all-table-ids (into (if table-id #{table-id} #{}) fk-table-ids)
+                                              :id [:in fk-field-ids]
+                                              :table_id [:not= nil]))
+            all-table-ids (into #{table-id} fk-table-ids)
             required-ids  (set (keys required))
             extras        (t2/select-pk->fn identity [:model/Field :id :name :table_id :parent_id]
                                             :id [:not-in required-ids]
