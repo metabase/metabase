@@ -9,10 +9,12 @@
 
 ;;; Utilities
 
-(defn- sh
+(defn- sh-nil
   "Run shell command, return stdout or nil on error.
-   Uses p/process (not p/shell) so non-zero exits don't throw - some tools like
-   `gh pr checks` return exit 1 with valid output when checks fail."
+   Use for commands where non-zero exit is expected - e.g., `gh pr checks`
+   returns exit 1 when checks fail but output is still valid JSON, and
+   `gh pr view` returns exit 1 when no PR exists for the branch.
+   For commands that should fail loudly, use `mage.util/sh` instead."
   [& args]
   (try
     (let [result @(apply p/process {:out :string :err :string :in nil} args)]
@@ -26,7 +28,7 @@
 (defn- gh-api
   "Call GitHub API via gh cli, return parsed JSON"
   [endpoint]
-  (when-let [result (sh "gh" "api" endpoint)]
+  (when-let [result (u/sh "gh" "api" endpoint)]
     (json/parse-string result true)))
 
 (defn- strip-ansi
@@ -71,15 +73,15 @@
 (defn- pr-info
   "Fetch PR metadata"
   [pr-number]
-  (when-let [result (sh "gh" "pr" "view" (str pr-number) "-R" repo
-                        "--json" "headRefName,headRefOid,title,url")]
+  (when-let [result (u/sh "gh" "pr" "view" (str pr-number) "-R" repo
+                          "--json" "headRefName,headRefOid,title,url")]
     (json/parse-string result true)))
 
 (defn- pr-checks
   "Fetch PR check statuses"
   [pr-number]
-  (when-let [result (sh "gh" "pr" "checks" (str pr-number) "-R" repo
-                        "--json" "name,state,link")]
+  (when-let [result (sh-nil "gh" "pr" "checks" (str pr-number) "-R" repo
+                            "--json" "name,state,link")]
     (json/parse-string result true)))
 
 (defn- find-test-report-start
@@ -472,7 +474,7 @@
 (defn- get-current-branch-pr
   "Get PR number for current branch, or nil if none"
   []
-  (when-let [result (sh "gh" "pr" "view" "--json" "number" "-q" ".number")]
+  (when-let [result (sh-nil "gh" "pr" "view" "--json" "number" "-q" ".number")]
     (when (re-matches #"\d+" result)
       result)))
 
@@ -606,7 +608,7 @@
                                      (do (log-success (format "Found PR #%s for current branch" pr))
                                          {:type :pr :value pr})
                                      ;; No PR — use current branch name
-                                     (let [branch (sh "git" "rev-parse" "--abbrev-ref" "HEAD")]
+                                     (let [branch (u/sh "git" "rev-parse" "--abbrev-ref" "HEAD")]
                                        (if branch
                                          (do (log-progress (format "No PR found, using branch: %s" branch))
                                              {:type :branch :value branch})
