@@ -1911,24 +1911,6 @@
   [a-query stage-number]
   (to-array (lib.core/joins a-query stage-number)))
 
-(defn ^:export rename-join
-  "Rename the join specified by `join-spec` on the given stage of `a-query` to `new-name`.
-
-  `join-spec` can be any of:
-
-  - The join clause itself (as returned by [[joins]])
-  - Its join alias (a string)
-  - Its index in the list of joins as returned by [[joins]]
-
-  If the specified join cannot be found, then `a-query` is returned with no changes.
-
-  If renaming the join to `new-name` would clash with an existing join, a suffix is appended to `new-name` to make it
-  unique.
-
-  > **Code health:** Healthy"
-  [a-query stage-number join-spec new-name]
-  (lib.core/rename-join a-query stage-number join-spec new-name))
-
 (defn ^:export remove-join
   "Remove the join specified by `join-spec` from the given stage of `a-query` at `stage-number`.
 
